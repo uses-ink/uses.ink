@@ -7,10 +7,10 @@ import { useEffect } from "react";
 export default function Post({ content }: { content: string }) {
 	const { meta, Content } = runMDX(content);
 	useEffect(() => {
-		if (meta.title) {
+		if (meta?.title) {
 			document.title = meta.title;
 		}
-		if (meta.description) {
+		if (meta?.description) {
 			document
 				.querySelector('meta[name="description"]')
 				?.setAttribute("content", meta.description);

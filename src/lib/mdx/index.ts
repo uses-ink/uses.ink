@@ -65,12 +65,14 @@ export function runMDX(code: string) {
 
 	return {
 		Content,
-		meta: frontmatter as {
-			title?: string;
-			description?: string;
-			tags?: string[];
-			date?: string;
-			author?: string;
-		},
+		meta: frontmatter as
+			| {
+					title?: string;
+					description?: string;
+					tags?: string[];
+					date?: string;
+					author?: string;
+			  }
+			| undefined,
 	};
 }
