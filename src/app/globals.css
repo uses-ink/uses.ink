@@ -2,32 +2,107 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+article {
+	padding-top: 5rem;
+	padding-bottom: 3rem;
+	display: block;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+article,
+article img {
+	margin-left: auto;
+	margin-right: auto;
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+html.dark .shiki,
+html.dark .shiki span {
+	color: var(--shiki-dark);
+	background-color: var(--shiki-dark-bg);
+}
+.shiki,
+.shiki span {
+	color: var(--shiki-light);
+	background-color: var(--shiki-light-bg);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+pre.shiki .copy-button {
+	@apply appearance-none border-none cursor-pointer;
+	@apply bg-opacity-30 bg-black rounded-md text-gray-400 opacity-0 select-none;
+	@apply py-2 px-2 absolute right-2 top-2 transition-opacity duration-200 ease-in-out;
+}
+
+pre.shiki.with-title .copy-button {
+	@apply top-4;
+}
+
+pre.shiki:hover > .copy-button,
+.copy-button:focus {
+	@apply opacity-100;
+}
+
+pre.shiki {
+	position: relative;
+	@apply border dark:border-gray-700 border-gray-200 rounded-md;
+}
+
+code .diff,
+code .line.highlighted {
+	transition: background-color 0.5s;
+	margin: 0 -24px;
+	padding: 2.5px 24px;
+	width: calc(100% + 48px);
+	display: inline-block;
+}
+
+code .diff.add {
+	background-color: rgba(16, 185, 129, 0.16) !important;
+	position: relative;
+}
+
+code .diff.remove {
+	background-color: rgba(239, 68, 68, 0.16) !important;
+	position: relative;
+	opacity: 0.65;
+}
+
+code .line.highlighted {
+	background-color: rgba(185, 185, 185, 0.16) !important;
+}
+
+code .diff.add::before {
+	content: "+";
+	color: #10b981;
+	position: absolute;
+	@apply left-2;
+}
+
+code .diff.remove::before {
+	content: "-";
+	color: #ef4444;
+	position: absolute;
+	@apply left-2;
+}
+
+code .diff.add span,
+code .diff.remove span,
+code .line.highlighted span {
+	background-color: transparent;
+}
+
+span.highlighted-word {
+	background-color: rgba(185, 185, 185, 0.16) !important;
+	border: 1px solid rgba(185, 185, 185, 0.32);
+	padding: 2px 4px;
+	border-radius: 4px;
+}
+
+.has-focused .line:not(.focused) {
+	filter: blur(0.095rem);
+	opacity: 0.4;
+	transition: filter 0.35s, opacity 0.35s;
+}
+
+.has-focused:hover .line:not(.focused) {
+	filter: blur(0);
+	opacity: 1;
 }
