@@ -74,6 +74,7 @@ export function runMDX(code: string) {
 				description?: string;
 				date?: string;
 				author?: string;
+				hideTop?: boolean;
 			}) ?? {},
 		readingTime: readingTime as ReturnType<typeof getReadingTime>,
 	};
