@@ -1,0 +1,30 @@
+diff --git a/lib/index.d.ts b/lib/index.d.ts
+index 81d8325228a87c60759bdd4dea974566ef932d10..b8f2ed02f6d21c3ed4b7856c637115243b6746d9 100644
+--- a/lib/index.d.ts
++++ b/lib/index.d.ts
+@@ -53,6 +53,7 @@ export type PropertyDefinition = [string, ...Array<Exclude<Properties[keyof Prop
+  * ```
+  */
+ export type Schema = {
++    unknownNodeHandler: (state: State, unsafe: Readonly<Record<string, Readonly<unknown>>>) => Nodes;
+     /**
+      * Whether to allow comment nodes (default: `false`).
+      *
+diff --git a/lib/index.js b/lib/index.js
+index 7fa8b25ddb95cfeaa0d4ce50232cea20ecd038b9..680d396a50daae304360b0fda6f06ead267c831a 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -287,10 +287,13 @@ function transform(state, node) {
+       }
+ 
+       default:
++        return state.schema.unknownNodeHandler?.(state, unsafe)
+     }
+   }
+ }
+ 
++
++
+ /**
+  * Make a safe comment.
+  *

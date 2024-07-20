@@ -20,16 +20,7 @@ export default function Post({
 		readingTime: { text: readTime },
 		Content,
 	} = runMDX(content);
-	useEffect(() => {
-		if (title) {
-			document.title = title;
-		}
-		if (description) {
-			document
-				.querySelector('meta[name="description"]')
-				?.setAttribute("content", description);
-		}
-	}, [title, description]);
+
 	const resolvedDate = date ?? lastCommit?.date;
 	const { resolvedAuthor, link } = lastCommit?.author
 		? {
@@ -37,6 +28,25 @@ export default function Post({
 				link: `https://github.com/${lastCommit.author.login}`,
 			}
 		: { resolvedAuthor: author, link: null };
+	let resolvedTitle = title;
+	if (!resolvedTitle) {
+		for (const child of Content({ components: mdxComponents }).props.children) {
+			if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(child.type)) {
+				resolvedTitle = child.props.children;
+				break;
+			}
+		}
+	}
+	useEffect(() => {
+		if (resolvedTitle) {
+			document.title = resolvedTitle;
+		}
+		if (description) {
+			document
+				.querySelector('meta[name="description"]')
+				?.setAttribute("content", description);
+		}
+	}, [resolvedTitle, description]);
 	return (
 		<>
 			{!hideTop && (

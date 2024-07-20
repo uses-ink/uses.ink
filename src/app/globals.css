@@ -17,6 +17,9 @@ article,
 article img {
 	margin-left: auto;
 	margin-right: auto;
+	display: inherit !important;
+	margin-top: 0px !important;
+	margin-bottom: 0px !important;
 }
 
 html.dark .shiki,

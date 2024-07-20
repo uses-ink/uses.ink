@@ -2,6 +2,7 @@ import { readingTime, type SupportedLanguages } from "reading-time-estimator";
 import { toString as mdToString } from "mdast-util-to-string";
 import type { Plugin } from "unified";
 import { valueToEstree } from "estree-util-value-to-estree";
+import test from "node:test";
 
 interface RemarkReadingTimeOptions {
 	name?: string;
@@ -14,7 +15,7 @@ export const remarkReadingTime: Plugin<[RemarkReadingTimeOptions?]> = ({
 	wordsPerMinute,
 	name = "readingTime",
 }: RemarkReadingTimeOptions = {}) => {
-	return (tree, file) => {
+	return (tree) => {
 		const textOnPage = mdToString(tree);
 		const time = readingTime(textOnPage, wordsPerMinute, language);
 

@@ -119,7 +119,7 @@ const fetchLocalData = async (path: string) => {
 
 const Page: NextPage = async () => {
 	const repoData = getRepo();
-	console.log("repoData", repoData);
+
 	const { content, lastCommit, error } =
 		repoData.owner !== null && repoData.repo !== null
 			? await fetchData({
@@ -127,8 +127,6 @@ const Page: NextPage = async () => {
 					path: repoData.path ?? "",
 				} as GitHubRequest)
 			: await fetchLocalData(repoData.path ?? "README.md");
-	console.log("content", content);
-	console.log("lastCommit", lastCommit);
 
 	if (error !== undefined) {
 		return (

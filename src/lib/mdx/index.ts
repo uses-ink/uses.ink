@@ -19,7 +19,7 @@ import {
 import { remarkReadingTime } from "./read-time";
 import type { readingTime as getReadingTime } from "reading-time-estimator";
 import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 
 export async function compileMDX(
 	content: string,
@@ -31,11 +31,30 @@ export async function compileMDX(
 		remarkPlugins: [
 			remarkGfm,
 			[remarkFrontmatter, { marker: "-", type: "yaml" }],
-			remarkReadingTime,
 			[remarkMdxFrontmatter, { name: "matter" }],
 			remarkMath,
+			remarkReadingTime,
 		],
 		rehypePlugins: [
+			[
+				rehypeRaw,
+				{
+					passThrough: ["mdxjsEsm"],
+				},
+			],
+			[
+				rehypeSanitize,
+				{
+					...defaultSchema,
+					tagNames: [...(defaultSchema.tagNames ?? []), "mdxjsEsm"],
+					// @ts-ignore
+					unknownNodeHandler: (state, node) => {
+						if (node.type === "mdxjsEsm") {
+							return node;
+						}
+					},
+				},
+			],
 			[rehypeKatex, { output: "mathml" }],
 			[
 				rehypeShiki,
@@ -55,21 +74,17 @@ export async function compileMDX(
 					defaultColor: false,
 				},
 			],
-			[
-				rehypeRaw,
-				{
-					passThrough: ["mdxjsEsm", "u"],
-				},
-			],
-			[rehypeSanitize],
 			...getMdxUrl({ resolvers: urlResolvers }),
 		],
-		remarkRehypeOptions: { allowDangerousHtml: true },
+		remarkRehypeOptions: {
+			allowDangerousHtml: true,
+		},
 	});
 	return result.toString();
 }
 
 export function runMDX(code: string) {
+	console.log(code);
 	// Need to run sync so the server build also has full html
 	// biome-ignore lint/suspicious/noExplicitAny: This is fine
 	const mdx = runSync(code, runtime as any);

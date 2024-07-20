@@ -1,7 +1,13 @@
 ---
 hideTop: true
-title: Welcome to uses.ink !
+# title: Welcome to uses.ink !
 ---
+### test
 
-# Welcome to uses.ink !
+test test
 
+## Welcome to uses.ink !
+
+Bla bla bla
+
+## Features
