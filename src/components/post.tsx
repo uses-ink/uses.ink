@@ -39,37 +39,35 @@ export default function Post({
 		: { resolvedAuthor: author, link: null };
 	return (
 		<>
-			<article className="prose md:prose-lg dark:prose-invert">
-				{!hideTop && (
-					<header className="mb-8">
-						<h1 className="text-3xl font-bold">{title}</h1>
-						<p className="text-sm text-gray-500">
-							{resolvedAuthor && (
-								<>
-									By{" "}
-									<b>
-										{link ? (
-											<a href={link} target="_blank" rel="noreferrer">
-												{resolvedAuthor}
-											</a>
-										) : (
-											resolvedAuthor
-										)}{" "}
-									</b>
-									•
-								</>
-							)}{" "}
-							{resolvedDate && (
-								<>
-									Last updated <Moment fromNow>{resolvedDate}</Moment> •
-								</>
-							)}{" "}
-							{readTime}
-						</p>
-					</header>
-				)}
-				<Content components={mdxComponents} />
-			</article>
+			{!hideTop && (
+				<header className="mb-8">
+					<h1 className="text-3xl font-bold">{title}</h1>
+					<p className="text-sm text-gray-500">
+						{resolvedAuthor && (
+							<>
+								By{" "}
+								<b>
+									{link ? (
+										<a href={link} target="_blank" rel="noreferrer">
+											{resolvedAuthor}
+										</a>
+									) : (
+										resolvedAuthor
+									)}{" "}
+								</b>
+								•
+							</>
+						)}{" "}
+						{resolvedDate && (
+							<>
+								Last updated <Moment fromNow>{resolvedDate}</Moment> •
+							</>
+						)}{" "}
+						{readTime}
+					</p>
+				</header>
+			)}
+			<Content components={mdxComponents} />
 		</>
 	);
 }

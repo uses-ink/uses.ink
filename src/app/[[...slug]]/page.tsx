@@ -3,6 +3,7 @@ import {
 	DEFAULT_BRANCH,
 	DEFAULT_REPO,
 	DEFAULT_REPO_DATA,
+	SHOW_DEV_TOOLS,
 } from "@/lib/constants";
 import nodepath from "node:path";
 import { compileMDX } from "@/lib/mdx";
@@ -177,8 +178,11 @@ const Page: NextPage = async () => {
 	});
 
 	return (
-		<div className="container mx-auto">
-			{isDev && (
+		<article
+			className="container mx-auto prose max-md:prose-sm dark:prose-invert"
+			dir="ltr"
+		>
+			{isDev && SHOW_DEV_TOOLS && (
 				<div className="absolute top-4 right-4 p-3 bg-red-500 text-white rounded-md">
 					<h1>
 						Repo:{" "}
@@ -200,19 +204,18 @@ const Page: NextPage = async () => {
 					</h1>
 				</div>
 			)}
-			<div>
-				<Post content={mdx} lastCommit={lastCommit} />
-				<div className="flex justify-center mb-12">
-					<div className="flex gap-4 items-center justify-between">
-						<ThemeSelect />
-						<span className="cursor-pointer flex">
-							<Rss className="w-5 h-5 mr-2" />
-							RSS
-						</span>
-					</div>
+
+			<Post content={mdx} lastCommit={lastCommit} />
+			{/* <div className="flex justify-center mb-12">
+				<div className="flex gap-4 items-center justify-between">
+					<ThemeSelect />
+					<span className="cursor-pointer flex">
+						<Rss className="w-5 h-5 mr-2" />
+						RSS
+					</span>
 				</div>
-			</div>
-		</div>
+			</div> */}
+		</article>
 	);
 };
 
