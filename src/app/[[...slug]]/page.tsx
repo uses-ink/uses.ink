@@ -9,6 +9,7 @@ import type { NextPage } from "next";
 import { headers } from "next/headers";
 import ThemeSelect from "@/components/theme-select";
 import { Rss } from "lucide-react";
+import { readingTime } from "reading-time-estimator";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -79,11 +80,13 @@ const Page: NextPage = async () => {
 		path: repoData.path ?? "",
 	};
 
-	const content = await (["mdx", "md"].includes(
+	const { content, lastCommit } = await (["mdx", "md"].includes(
 		request.path.split(".").pop() ?? "",
 	)
 		? fetchPost
 		: fetchReadme)(request);
+
+	console.log("lastCommit", lastCommit);
 
 	const mdx = await compileMDX(content, {
 		asset: (url) => {
@@ -126,7 +129,7 @@ const Page: NextPage = async () => {
 				</div>
 			)}
 			<div>
-				<Post content={mdx} />
+				<Post content={mdx} lastCommit={lastCommit} />
 				<div className="flex justify-center mb-12">
 					<div className="flex gap-4 items-center justify-between">
 						<ThemeSelect />

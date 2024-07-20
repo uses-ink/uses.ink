@@ -25,12 +25,6 @@ html.dark .shiki span {
 	background-color: var(--shiki-light-bg);
 }
 
-pre.shiki .copy-button {
-	@apply appearance-none border-none cursor-pointer;
-	@apply bg-opacity-30 bg-black rounded-md text-gray-400 opacity-0 select-none;
-	@apply py-2 px-2 absolute right-2 top-2 transition-opacity duration-200 ease-in-out;
-}
-
 pre.shiki.with-title .copy-button {
 	@apply top-4;
 }

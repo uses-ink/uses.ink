@@ -16,6 +16,8 @@ import {
 	transformerNotationErrorLevel,
 	transformerMetaHighlight,
 } from "@shikijs/transformers";
+import { remarkReadingTime } from "./read-time";
+import type { readingTime as getReadingTime } from "reading-time-estimator";
 
 export async function compileMDX(
 	content: string,
@@ -27,7 +29,8 @@ export async function compileMDX(
 		remarkPlugins: [
 			remarkGfm,
 			[remarkFrontmatter, { marker: "-", type: "yaml" }],
-			remarkMdxFrontmatter,
+			remarkReadingTime,
+			[remarkMdxFrontmatter, { name: "matter" }],
 			remarkMath,
 		],
 		rehypePlugins: [
@@ -61,18 +64,17 @@ export function runMDX(code: string) {
 	// biome-ignore lint/suspicious/noExplicitAny: This is fine
 	const mdx = runSync(code, runtime as any);
 	console.log(mdx);
-	const { default: Content, frontmatter } = mdx;
+	const { default: Content, matter, readingTime } = mdx;
 
 	return {
 		Content,
-		meta: frontmatter as
-			| {
-					title?: string;
-					description?: string;
-					tags?: string[];
-					date?: string;
-					author?: string;
-			  }
-			| undefined,
+		meta:
+			(matter as {
+				title?: string;
+				description?: string;
+				date?: string;
+				author?: string;
+			}) ?? {},
+		readingTime: readingTime as ReturnType<typeof getReadingTime>,
 	};
 }

@@ -3,14 +3,14 @@ import { redisStore } from "cache-manager-redis-yet";
 import type { GitHubContent, GitHubRequest } from "./types";
 import type { OctokitResponse } from "@octokit/types";
 
-type GitHubResponse = OctokitResponse<GitHubContent>;
-
 const cache: { current: Cache<Store> | null } = {
 	current: null,
 };
 
 const makeCache = async () => {
-	return createCache(await redisStore({ url: process.env.REDIS_URL }));
+	return createCache(await redisStore({ url: process.env.REDIS_URL }), {
+		ttl: 60 * 60 * 24, // 24 hours
+	});
 };
 
 export const getCache = async () => {
@@ -20,30 +20,36 @@ export const getCache = async () => {
 	return cache.current;
 };
 
-const getKey = (request: GitHubRequest): string => {
+const getKey = (request: GitHubRequest, type: CacheType): string => {
 	const { owner, path, repo } = request;
-	const key = `${owner}/${repo}/${path}`;
+	const key = `${owner}/${repo}/${path}@${type}`;
 	return key;
 };
 
-export const getGitHubCache = async (
+type CacheType = "content" | "commit";
+
+export const getGitHubCache = async <R = GitHubContent>(
 	request: GitHubRequest,
-): Promise<GitHubResponse | null> => {
+	type: "content" | "commit" = "content",
+): Promise<OctokitResponse<R> | null> => {
 	const cache = await getCache();
 	if (cache === null) {
+		console.log("cache is null");
 		return null;
 	}
-	const key = getKey(request);
-	const data = (await cache.get<null | GitHubResponse>(key)) ?? null;
+	const key = getKey(request, type);
+
+	const data = (await cache.get<null | OctokitResponse<R>>(key)) ?? null;
 	return data;
 };
 
-export const setGitHubCache = async (
+export const setGitHubCache = async <R = GitHubContent>(
 	request: GitHubRequest,
-	response: GitHubResponse,
+	response: OctokitResponse<R>,
+	type: CacheType = "content",
 ): Promise<void> => {
 	const cache = await getCache();
 	if (cache === null) return;
-	const key = getKey(request);
+	const key = getKey(request, type);
 	await cache.set(key, response);
 };

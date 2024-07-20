@@ -1,11 +1,11 @@
 import { compile, runSync } from "@mdx-js/mdx";
 import remarkGfm from "remark-gfm";
 import * as runtime from "react/jsx-runtime";
-import { fetchGitHubContent } from "./content";
+import { fetchGitHubContent, fetchGithubLastCommit } from "./github";
 import type { GitHubRequest } from "./types";
 import type { components } from "@octokit/openapi-types";
 
-export const fetchPost = async (request: GitHubRequest): Promise<string> => {
+export const fetchPost = async (request: GitHubRequest) => {
 	const { owner, repo, path } = request;
 	const raw = await fetchGitHubContent({
 		...request,
@@ -18,8 +18,13 @@ export const fetchPost = async (request: GitHubRequest): Promise<string> => {
 	if (raw.type !== "file") throw Error(`Unknown type "${raw.type}"`);
 
 	const contents = raw as components["schemas"]["content-file"];
+	const lastCommit = await fetchGithubLastCommit(request);
+
 	if (contents.content) {
-		return Buffer.from(contents.content, "base64").toString("utf-8");
+		return {
+			content: Buffer.from(contents.content, "base64").toString("utf-8"),
+			lastCommit,
+		};
 	}
 	throw Error(`No post found in ${owner}/${repo}`);
 };
