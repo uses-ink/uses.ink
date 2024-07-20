@@ -38,9 +38,11 @@ function getRepo() {
 		console.log("path", path);
 		const pathParts = path.split("/").filter(Boolean);
 		repo = pathParts.shift();
+		console.log("repo", repo);
 
 		if (repo?.includes("@")) {
-			const [repoPart, branchPart] = path.split("@");
+			const [repoPart, branchPart] = repo.split("@");
+
 			repo = repoPart;
 			branch = branchPart;
 		}
@@ -131,6 +133,8 @@ const Page: NextPage = async () => {
 			: await fetchLocalData(repoData.path ?? "README.md");
 
 	if (error !== undefined) {
+		console.log("Error", error);
+		console.log("repoData", repoData);
 		return (
 			<div className="flex w-screen h-screen justify-center items-center">
 				<div className="text-center flex gap-2 flex-col">
