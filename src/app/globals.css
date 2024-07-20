@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+	padding-left: 1rem;
+	padding-right: 1rem;
+}
+
 article {
 	padding-top: 5rem;
 	padding-bottom: 3rem;
