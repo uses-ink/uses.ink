@@ -1,11 +1,6 @@
 import Post from "@/components/post";
-import {
-	DEFAULT_BRANCH,
-	DEFAULT_REPO,
-	DEFAULT_REPO_DATA,
-	SHOW_DEV_TOOLS,
-} from "@/lib/constants";
-import nodepath from "node:path";
+import { SHOW_DEV_TOOLS } from "@/lib/constants";
+import nodepath, { join } from "node:path";
 import { compileMDX } from "@/lib/mdx";
 import { fetchPost } from "@/lib/post";
 import { fetchReadme } from "@/lib/readme";
@@ -16,15 +11,10 @@ import ThemeSelect from "@/components/theme-select";
 import { Rss } from "lucide-react";
 import { readingTime } from "reading-time-estimator";
 import { isErrorHasStatus } from "@/lib/github";
-
+import { promises as fs } from "node:fs";
 const isDev = process.env.NODE_ENV === "development";
 
-function getRepo(): {
-	owner: string;
-	repo: string;
-	branch: string;
-	path?: string;
-} | null {
+function getRepo() {
 	const headersList = headers();
 	const host = headersList.get("host");
 	const url = headersList.get("x-url");
@@ -61,16 +51,12 @@ function getRepo(): {
 	// cestef.uses.ink/notes/2021-09-01
 	// cestef.uses.ink/notes/2021-09-01@master
 
-	if (owner) {
-		return {
-			owner: owner,
-			repo: repo ?? DEFAULT_REPO,
-			branch: branch ?? DEFAULT_BRANCH,
-			path: folder,
-		};
-	}
-
-	return null;
+	return {
+		owner: owner,
+		repo: repo,
+		branch: branch,
+		path: folder || undefined,
+	};
 }
 
 const fetchData = async (
@@ -123,20 +109,24 @@ const fetchData = async (
 	}
 };
 
+const fetchLocalData = async (path: string) => {
+	console.log("path", JSON.stringify(path));
+	const toRead = join(process.cwd(), "blog", path);
+	console.log("toRead", toRead);
+	const content = await fs.readFile(toRead, "utf-8");
+	return { content, lastCommit: null, error: undefined };
+};
+
 const Page: NextPage = async () => {
-	let repoData = getRepo();
-
-	if (!repoData || !repoData.owner) {
-		repoData = DEFAULT_REPO_DATA;
-	}
-
-	const request: GitHubRequest = {
-		owner: repoData.owner,
-		repo: repoData.repo,
-		path: repoData.path ?? "",
-	};
-
-	const { content, lastCommit, error } = await fetchData(request);
+	const repoData = getRepo();
+	console.log("repoData", repoData);
+	const { content, lastCommit, error } =
+		repoData.owner !== null && repoData.repo !== null
+			? await fetchData({
+					...repoData,
+					path: repoData.path ?? "",
+				} as GitHubRequest)
+			: await fetchLocalData(repoData.path ?? "README.md");
 	console.log("content", content);
 	console.log("lastCommit", lastCommit);
 
@@ -160,20 +150,26 @@ const Page: NextPage = async () => {
 			</div>
 		);
 	}
-
 	const mdx = await compileMDX(content, {
 		asset: (url) => {
-			const { owner, repo, path } = request;
-			const dirname = nodepath.dirname(path);
-			const assetPath = nodepath.join(dirname, url);
-			const origin = "https://raw.githubusercontent.com";
-			return `${origin}/${owner}/${repo}/HEAD/${assetPath}`;
+			if (repoData.owner && repoData.repo) {
+				const { owner, repo, path } = repoData;
+				const dirname = nodepath.dirname(path ?? "");
+				const assetPath = nodepath.join(dirname, url);
+				const origin = "https://raw.githubusercontent.com";
+				return `${origin}/${owner}/${repo}/HEAD/${assetPath}`;
+			}
+			return url;
 		},
 		link: (url) => {
-			const { repo, path } = request;
-			const dirname = nodepath.dirname(path);
-			const assetPath = nodepath.join(dirname, url);
-			return `/${repo}/${assetPath}`;
+			if (repoData.owner && repoData.repo) {
+				const { repo, path } = repoData;
+				const dirname = nodepath.dirname(path ?? "");
+				const assetPath = nodepath.join(dirname, url);
+				return `/${repo}/${assetPath}`;
+			}
+
+			return url;
 		},
 	});
 
@@ -182,7 +178,7 @@ const Page: NextPage = async () => {
 			className="container mx-auto prose max-md:prose-sm dark:prose-invert"
 			dir="ltr"
 		>
-			{isDev && SHOW_DEV_TOOLS && (
+			{isDev && SHOW_DEV_TOOLS && repoData !== null && (
 				<div className="absolute top-4 right-4 p-3 bg-red-500 text-white rounded-md">
 					<h1>
 						Repo:{" "}

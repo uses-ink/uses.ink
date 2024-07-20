@@ -18,6 +18,8 @@ import {
 } from "@shikijs/transformers";
 import { remarkReadingTime } from "./read-time";
 import type { readingTime as getReadingTime } from "reading-time-estimator";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 
 export async function compileMDX(
 	content: string,
@@ -34,7 +36,6 @@ export async function compileMDX(
 			remarkMath,
 		],
 		rehypePlugins: [
-			...getMdxUrl({ resolvers: urlResolvers }),
 			[rehypeKatex, { output: "mathml" }],
 			[
 				rehypeShiki,
@@ -54,7 +55,16 @@ export async function compileMDX(
 					defaultColor: false,
 				},
 			],
+			[
+				rehypeRaw,
+				{
+					passThrough: ["mdxjsEsm", "u"],
+				},
+			],
+			[rehypeSanitize],
+			...getMdxUrl({ resolvers: urlResolvers }),
 		],
+		remarkRehypeOptions: { allowDangerousHtml: true },
 	});
 	return result.toString();
 }
@@ -76,6 +86,6 @@ export function runMDX(code: string) {
 				author?: string;
 				hideTop?: boolean;
 			}) ?? {},
-		readingTime: readingTime as ReturnType<typeof getReadingTime>,
+		readingTime: (readingTime as ReturnType<typeof getReadingTime>) ?? {},
 	};
 }
