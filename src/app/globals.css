@@ -136,14 +136,14 @@ code .diff.add::before {
 	content: "+";
 	color: #10b981;
 	position: absolute;
-	@apply left-2;
+	@apply left-[0.7rem];
 }
 
 code .diff.remove::before {
 	content: "-";
 	color: #ef4444;
 	position: absolute;
-	@apply left-2;
+	@apply left-[0.7rem];
 }
 
 code .diff.add span,
