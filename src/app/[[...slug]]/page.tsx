@@ -34,22 +34,23 @@ function getRepo() {
 	let branch = undefined;
 	let folder = undefined;
 	if (url) {
-		let path = url.split(/https?:\/\/[^/]+/)[1];
-		if (path.includes("@")) {
-			const [pathParts, branchPart] = path.split("@");
-			path = pathParts;
-			branch = branchPart;
-		}
+		const path = url.split(/https?:\/\/[^/]+/)[1];
 		console.log("path", path);
 		const pathParts = path.split("/").filter(Boolean);
 		repo = pathParts.shift();
+
+		if (repo?.includes("@")) {
+			const [repoPart, branchPart] = path.split("@");
+			repo = repoPart;
+			branch = branchPart;
+		}
 		folder = pathParts.join("/");
 	}
 
-	// <username>.uses.ink/[repo]/[folder]@[branch]
+	// <username>.uses.ink/[repo]@[branch]/[folder]
 	// cestef.uses.ink/notes@main
 	// cestef.uses.ink/notes/2021-09-01
-	// cestef.uses.ink/notes/2021-09-01@master
+	// cestef.uses.ink/notes@master/2021-09-01
 
 	return {
 		owner: owner,
