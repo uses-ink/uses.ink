@@ -1,3 +1,9 @@
+## v0.1.2 (2024-07-21)
+
+### Refactor
+
+- use v-prefixed tag
+
 ## 0.1.1 (2024-07-21)
 
 ### Feat
