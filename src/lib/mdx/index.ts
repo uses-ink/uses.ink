@@ -46,9 +46,9 @@ export async function compileMDX(
 				rehypeSanitize,
 				{
 					...defaultSchema,
-					tagNames: [...(defaultSchema.tagNames ?? []), "mdxjsEsm"],
 					// @ts-ignore
 					unknownNodeHandler: (state, node) => {
+						console.log("Unknown node", node);
 						if (node.type === "mdxjsEsm") {
 							return node;
 						}
@@ -84,11 +84,10 @@ export async function compileMDX(
 }
 
 export function runMDX(code: string) {
-	console.log(code);
 	// Need to run sync so the server build also has full html
 	// biome-ignore lint/suspicious/noExplicitAny: This is fine
 	const mdx = runSync(code, runtime as any);
-	console.log(mdx);
+
 	const { default: Content, matter, readingTime } = mdx;
 
 	return {
