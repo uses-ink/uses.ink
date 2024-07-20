@@ -10,12 +10,12 @@ import {
 import { Moon, Sun } from "lucide-react";
 
 export default function ThemeSelect() {
-	const { theme, setTheme } = useTheme();
+	const { resolvedTheme, setTheme } = useTheme();
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<div className="cursor-pointer">
-					{theme === "dark" ? (
+					{resolvedTheme === "dark" ? (
 						<Moon className="w-4 h-4" />
 					) : (
 						<Sun className="w-4 h-4" />
