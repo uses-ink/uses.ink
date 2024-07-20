@@ -9,3 +9,4 @@ export const DEFAULT_REPO_DATA = {
 };
 
 export const CACHE_TTL = 60; // 60 seconds
+export const SHOW_DEV_TOOLS = false;
