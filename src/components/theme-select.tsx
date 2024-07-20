@@ -1,18 +1,38 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Moon, Sun } from "lucide-react";
 
 export default function ThemeSelect() {
 	const { theme, setTheme } = useTheme();
 	return (
-		<select
-			value={theme}
-			onChange={(e) => setTheme(e.target.value)}
-			className="cursor-pointer"
-		>
-			<option value="system">System</option>
-			<option value="light">Light</option>
-			<option value="dark">Dark</option>
-		</select>
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<div className="cursor-pointer">
+					{theme === "dark" ? (
+						<Moon className="w-4 h-4" />
+					) : (
+						<Sun className="w-4 h-4" />
+					)}
+				</div>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent className="bg-inherit">
+				<DropdownMenuItem onClick={() => setTheme("dark")}>
+					Dark
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={() => setTheme("light")}>
+					Light
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={() => setTheme("system")}>
+					System
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

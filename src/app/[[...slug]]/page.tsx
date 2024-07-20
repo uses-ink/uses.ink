@@ -8,7 +8,7 @@ import type { GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
 import { headers } from "next/headers";
 import ThemeSelect from "@/components/theme-select";
-import { Rss } from "lucide-react";
+import { PenTool, Rss } from "lucide-react";
 import { readingTime } from "reading-time-estimator";
 import { isErrorHasStatus } from "@/lib/github";
 import { promises as fs } from "node:fs";
@@ -206,15 +206,18 @@ const Page: NextPage = async () => {
 			)}
 
 			<Post content={mdx} lastCommit={lastCommit} />
-			{/* <div className="flex justify-center mb-12">
+			<hr className="mb-4" />
+			<div className="flex justify-center mb-12 text-xs">
 				<div className="flex gap-4 items-center justify-between">
 					<ThemeSelect />
-					<span className="cursor-pointer flex">
-						<Rss className="w-5 h-5 mr-2" />
-						RSS
-					</span>
+					<p className="whitespace-nowrap !text-muted-foreground">
+						Made with{" "}
+						<a href="https://uses.ink" target="_blank" rel="noreferrer">
+							uses.ink
+						</a>
+					</p>
 				</div>
-			</div> */}
+			</div>
 		</article>
 	);
 };

@@ -33,7 +33,7 @@ const CodeBlock = ({
 			<button
 				type="button"
 				aria-label={"Copy code to clipboard"}
-				className="copy-button appearance-none dark:border-none border cursor-pointer bg-opacity-30 dark:bg-black rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 absolute right-2 top-2 transition-opacity duration-200 ease-in-out bg-white text-gray-800"
+				className="copy-button appearance-none dark:border-none border cursor-pointer  dark:bg-black !bg-opacity-30 rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 absolute right-2 top-2 transition-opacity duration-200 ease-in-out bg-white text-gray-800"
 				onClick={handleCopyCode}
 			>
 				{showCopied ? (
