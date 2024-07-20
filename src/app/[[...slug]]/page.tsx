@@ -1,5 +1,5 @@
 import Post from "@/components/post";
-import { SHOW_DEV_TOOLS } from "@/lib/constants";
+import { DEFAULT_REPO, SHOW_DEV_TOOLS } from "@/lib/constants";
 import nodepath, { join } from "node:path";
 import { compileMDX } from "@/lib/mdx";
 import { fetchPost } from "@/lib/post";
@@ -120,11 +120,12 @@ const fetchLocalData = async (path: string) => {
 
 const Page: NextPage = async () => {
 	const repoData = getRepo();
-
+	console.log("repoData", JSON.stringify(repoData));
 	const { content, lastCommit, error } =
-		repoData.owner !== null && repoData.repo !== null
+		repoData.owner !== null
 			? await fetchData({
 					...repoData,
+					repo: repoData.repo ?? DEFAULT_REPO,
 					path: repoData.path ?? "",
 				} as GitHubRequest)
 			: await fetchLocalData(repoData.path ?? "README.md");

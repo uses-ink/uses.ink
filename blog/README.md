@@ -5,7 +5,7 @@ title: Welcome to uses.ink !
 
 # Welcome to uses.ink !
 
-This is minimalistic blog platform for developers. It's based on markdown files and uses GitHub as a storage.
+This is a minimalistic blog platform for developers. It's based on markdown files and uses GitHub as a storage.
 
 ---
 
@@ -26,3 +26,7 @@ The current path can be specified in the URL after the repository name like this
 ### I am not using the `main` branch
 
 The branch is specified in the URL with the `@` symbol like this: `https://<your-username>.uses.ink/<your-repo-name>@<your-branch>/`
+
+<p align="center">
+    <a href="https://github.com/cestef/uses.ink">Github Repository</a> • <a href="https://cestef.uses.ink/">Demo</a>
+</p>
