@@ -2,6 +2,7 @@ import { createCache, type Store, type Cache } from "cache-manager";
 import { redisStore } from "cache-manager-redis-yet";
 import type { GitHubContent, GitHubRequest } from "./types";
 import type { OctokitResponse } from "@octokit/types";
+import { CACHE_TTL } from "./constants";
 
 const cache: { current: Cache<Store> | null } = {
 	current: null,
@@ -9,7 +10,7 @@ const cache: { current: Cache<Store> | null } = {
 
 const makeCache = async () => {
 	return createCache(await redisStore({ url: process.env.REDIS_URL }), {
-		ttl: 60 * 60 * 24, // 24 hours
+		ttl: CACHE_TTL,
 	});
 };
 

@@ -7,3 +7,5 @@ export const DEFAULT_REPO_DATA = {
 	branch: DEFAULT_BRANCH,
 	path: "blog",
 };
+
+export const CACHE_TTL = 60; // 60 seconds
