@@ -157,20 +157,20 @@ const Page: NextPage = async () => {
 	const mdx = await compileMDX(content, {
 		asset: (url) => {
 			if (repoData.owner) {
-				const { owner, repo, path } = repoData;
+				const { owner, repo, path, branch } = repoData;
 				const dirname = nodepath.dirname(path ?? "");
 				const assetPath = nodepath.join(dirname, url);
 				const origin = "https://raw.githubusercontent.com";
-				return `${origin}/${owner}/${repo ?? DEFAULT_REPO}/HEAD/${assetPath}`;
+				return `${origin}/${owner}/${repo ?? DEFAULT_REPO}/${branch ?? "HEAD"}/${assetPath}`;
 			}
 			return url;
 		},
 		link: (url) => {
 			if (repoData.owner) {
-				const { repo, path } = repoData;
+				const { repo, path, branch } = repoData;
 				const dirname = nodepath.dirname(path ?? "");
 				const assetPath = nodepath.join(dirname, url);
-				return `/${repo ?? DEFAULT_REPO}/${assetPath}`;
+				return `/${repo ?? DEFAULT_REPO}${branch && `@${branch}`}/${assetPath}`;
 			}
 
 			return url;
