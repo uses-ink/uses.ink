@@ -1,4 +1,6 @@
-# 🖋️ uses.ink 
+<p align="center">
+    <img src="assets/light.png" width="70%"/>
+</p>
 
 This is a minimalistic blog platform for developers. It's based on markdown files and uses GitHub as a storage.
 
