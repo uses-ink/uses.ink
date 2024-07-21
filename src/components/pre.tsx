@@ -28,12 +28,14 @@ const CodeBlock = ({
 	};
 
 	return (
-		<pre {...props} ref={pre}>
-			{children}
+		<div className="relative group">
+			<pre {...props} ref={pre}>
+				{children}
+			</pre>
 			<button
 				type="button"
 				aria-label={"Copy code to clipboard"}
-				className="copy-button appearance-none dark:border-none border cursor-pointer  dark:bg-black !bg-opacity-30 rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 absolute right-2 top-2 transition-opacity duration-200 ease-in-out bg-white text-gray-800"
+				className="group-hover:opacity-100 appearance-none border dark:border-gray-700 border-gray-200 cursor-pointer dark:bg-[--shiki-background] rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 absolute right-2 top-2 transition-opacity duration-200 ease-in-out bg-white text-gray-800"
 				onClick={handleCopyCode}
 			>
 				{showCopied ? (
@@ -42,7 +44,7 @@ const CodeBlock = ({
 					<Clipboard className="w-4 h-4" />
 				)}
 			</button>
-		</pre>
+		</div>
 	);
 };
 

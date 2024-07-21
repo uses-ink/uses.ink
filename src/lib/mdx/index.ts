@@ -6,7 +6,7 @@ import remarkMath from "remark-math";
 // @ts-ignore
 import * as runtime from "react/jsx-runtime";
 import { getMdxUrl, type MdxUrlResolvers } from "./url";
-import rehypeShiki from "@shikijs/rehype";
+import rehypeShiki from "@shikijs/rehype/core";
 import rehypeKatex from "rehype-katex";
 import {
 	transformerNotationDiff,
@@ -21,10 +21,13 @@ import type { readingTime as getReadingTime } from "reading-time-estimator";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 
+import { getShiki } from "./shiki";
+
 export async function compileMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
 ) {
+	const shiki = await getShiki();
 	const result = await compile(content, {
 		format: "md",
 		outputFormat: "function-body",
@@ -62,11 +65,10 @@ export async function compileMDX(
 			[rehypeKatex, { output: "mathml" }],
 			[
 				rehypeShiki,
+				shiki,
 				{
-					themes: {
-						dark: "github-dark",
-						light: "github-light",
-					},
+					theme: "default",
+
 					transformers: [
 						transformerNotationDiff(),
 						transformerNotationHighlight(),
