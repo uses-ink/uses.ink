@@ -33,4 +33,8 @@ You kind of can. Elements can be styled using the `style` attribute in the markd
 
 ## Can I use custom JavaScript ?
 
-No. JavaScript is disabled for security reasons.
+No. JavaScript is disabled for obvious security reasons.
+
+## I found a bug, what should I do ?
+
+Please report it by creating an issue on the [GitHub repository](https://github.com/cestef/uses.ink/issues/new).
