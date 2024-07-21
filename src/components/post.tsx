@@ -35,11 +35,19 @@ export default function Post({
 		: { resolvedAuthor: author, link: null, avatar: null };
 	let resolvedTitle = title;
 	if (!resolvedTitle) {
-		for (const child of Content({ components: mdxComponents }).props.children ??
-			[]) {
-			if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(child.type)) {
-				resolvedTitle = child.props.children;
-				break;
+		const content =
+			Content({ components: mdxComponents })?.props.children ?? [];
+		// if is iterable
+		if (Symbol.iterator in Object(content)) {
+			for (const child of content) {
+				if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(child.type)) {
+					resolvedTitle = child.props.children;
+					break;
+				}
+			}
+		} else {
+			if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(content.type)) {
+				resolvedTitle = content.props;
 			}
 		}
 	}
