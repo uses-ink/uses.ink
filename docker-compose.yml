@@ -9,7 +9,7 @@ services:
     app:
         image: ghcr.io/cestef/uses.ink:latest
         ports:
-            - "3000:3000"
+            - "8765:8765"
         env_file:
             - .env
         depends_on:
