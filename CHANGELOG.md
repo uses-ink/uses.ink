@@ -1,3 +1,17 @@
+## v0.1.9 (2024-07-21)
+
+### Feat
+
+- allow style and class attributes
+
+### Fix
+
+- ignore repo and branch when no owner is specified (root domain)
+
+### Refactor
+
+- move multiple parts to components
+
 ## v0.1.8 (2024-07-21)
 
 ### Fix
