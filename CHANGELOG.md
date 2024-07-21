@@ -1,3 +1,9 @@
+## v0.1.6 (2024-07-21)
+
+### Fix
+
+- undefined appearing as branch name
+
 ## v0.1.5 (2024-07-21)
 
 ### Fix
