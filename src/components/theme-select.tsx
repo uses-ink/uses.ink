@@ -22,7 +22,7 @@ export default function ThemeSelect() {
 					)}
 				</div>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent className="bg-inherit border-muted">
+			<DropdownMenuContent className="border-muted">
 				<DropdownMenuItem onClick={() => setTheme("dark")}>
 					Dark
 				</DropdownMenuItem>

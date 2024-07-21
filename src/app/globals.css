@@ -62,6 +62,7 @@
 body {
 	padding-left: 1rem;
 	padding-right: 1rem;
+	@apply bg-background text-foreground;
 }
 
 article {
