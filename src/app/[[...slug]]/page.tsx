@@ -1,129 +1,21 @@
+import { ErrorPage } from "@/components/error";
+import { Footer } from "@/components/footer";
 import Post from "@/components/post";
+import { RepoDevTools } from "@/components/repo";
 import { DEFAULT_REPO, SHOW_DEV_TOOLS } from "@/lib/constants";
-import nodepath, { join } from "node:path";
+import { fetchData, fetchLocalData } from "@/lib/fetch";
 import { compileMDX } from "@/lib/mdx";
-import { fetchPost } from "@/lib/post";
-import { fetchReadme } from "@/lib/readme";
+import { getRepo } from "@/lib/repo";
 import type { GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
-import { headers } from "next/headers";
-import ThemeSelect from "@/components/theme-select";
-import { PenTool, Rss } from "lucide-react";
-import { readingTime } from "reading-time-estimator";
-import { isErrorHasStatus } from "@/lib/github";
-import { promises as fs } from "node:fs";
+import { join, dirname } from "node:path";
+
 const isDev = process.env.NODE_ENV === "development";
-
-function getRepo() {
-	const headersList = headers();
-	const host = headersList.get("host");
-	const url = headersList.get("x-url");
-	console.log("host", host);
-	console.log("url", url);
-	const isLocalhost = host?.includes("localhost");
-	const parts = host?.split(".") ?? [];
-	let owner = null;
-	if (isLocalhost) {
-		if (parts.length > 1) {
-			owner = parts[0];
-		}
-	} else if (parts.length > 2) {
-		owner = parts[0];
-	}
-	let repo = undefined;
-	let branch = undefined;
-	let folder = undefined;
-	if (url) {
-		const path = url.split(/https?:\/\/[^/]+/)[1];
-		console.log("path", path);
-		const pathParts = path.split("/").filter(Boolean);
-		repo = pathParts.shift();
-		console.log("repo", repo);
-
-		if (repo?.includes("@")) {
-			const [repoPart, branchPart] = repo.split("@");
-
-			repo = repoPart;
-			branch = branchPart;
-		}
-		folder = pathParts.join("/");
-	}
-
-	// <username>.uses.ink/[repo]@[branch]/[folder]
-	// cestef.uses.ink/notes@main
-	// cestef.uses.ink/notes/2021-09-01
-	// cestef.uses.ink/notes@master/2021-09-01
-
-	return {
-		owner: owner,
-		repo: repo,
-		branch: branch,
-		path: folder || undefined,
-	};
-}
-
-const fetchData = async (
-	request: GitHubRequest,
-): Promise<
-	| {
-			content: string;
-			lastCommit: {
-				date: string;
-				author: {
-					name: string;
-					login: string;
-					avatar: string;
-				};
-				link: string;
-			} | null;
-			error: undefined;
-	  }
-	| {
-			content: null;
-			lastCommit: null;
-			error: string;
-	  }
-> => {
-	try {
-		const { content, lastCommit } = await (["mdx", "md"].includes(
-			request.path.split(".").pop() ?? "",
-		)
-			? fetchPost
-			: fetchReadme)(request);
-
-		return { content, lastCommit, error: undefined };
-	} catch (
-		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-		error: any
-	) {
-		console.error("Error fetching data", error);
-		if (isErrorHasStatus(error)) {
-			switch (error.status) {
-				case 404:
-					return { content: null, lastCommit: null, error: "Not found" };
-				default:
-					return {
-						content: null,
-						lastCommit: null,
-						error: `Error status ${error.status}`,
-					};
-			}
-		}
-		return { content: null, lastCommit: null, error: error.toString() };
-	}
-};
-
-const fetchLocalData = async (path: string) => {
-	console.log("path", JSON.stringify(path));
-	const toRead = join(process.cwd(), "blog", path);
-	console.log("toRead", toRead);
-	const content = await fs.readFile(toRead, "utf-8");
-	return { content, lastCommit: null, error: undefined };
-};
 
 const Page: NextPage = async () => {
 	const repoData = getRepo();
 	console.log("repoData", JSON.stringify(repoData));
+
 	const { content, lastCommit, error } =
 		repoData.owner !== null
 			? await fetchData({
@@ -136,31 +28,14 @@ const Page: NextPage = async () => {
 	if (error !== undefined) {
 		console.log("Error", error);
 		console.log("repoData", repoData);
-		return (
-			<div className="flex w-screen h-screen justify-center items-center">
-				<div className="text-center flex gap-2 flex-col">
-					<h1 className="text-4xl">
-						An error occured: <b>{error}</b>
-					</h1>
-					<p className="text-2xl dark:text-gray-400 text-gray-600">
-						<a
-							href={`https://github.com/${repoData.owner}/${repoData.repo}/tree/${repoData.branch}/${repoData.path}`}
-							target="_blank"
-							rel="noreferrer"
-						>
-							Check the repository and path provided in the URL.
-						</a>
-					</p>
-				</div>
-			</div>
-		);
+		return <ErrorPage repoData={repoData} error={error} />;
 	}
 	const mdx = await compileMDX(content, {
 		asset: (url) => {
 			if (repoData.owner) {
 				const { owner, repo, path, branch } = repoData;
-				const dirname = nodepath.dirname(path ?? "");
-				const assetPath = nodepath.join(dirname, url);
+				const dir = dirname(path ?? "");
+				const assetPath = join(dir, url);
 				const origin = "https://raw.githubusercontent.com";
 				return `${origin}/${owner}/${repo ?? DEFAULT_REPO}/${branch ?? "HEAD"}/${assetPath}`;
 			}
@@ -169,8 +44,8 @@ const Page: NextPage = async () => {
 		link: (url) => {
 			if (repoData.owner) {
 				const { repo, path, branch } = repoData;
-				const dirname = nodepath.dirname(path ?? "");
-				const assetPath = nodepath.join(dirname, url);
+				const dir = dirname(path ?? "");
+				const assetPath = join(dir, url);
 				return `/${repo ?? DEFAULT_REPO}${branch ? `@${branch}` : ""}/${assetPath}`;
 			}
 
@@ -184,41 +59,12 @@ const Page: NextPage = async () => {
 			dir="ltr"
 		>
 			{isDev && SHOW_DEV_TOOLS && repoData !== null && (
-				<div className="absolute top-4 right-4 p-3 bg-red-500 text-white rounded-md">
-					<h1>
-						Repo:{" "}
-						<a
-							href={`https://github.com/${repoData.owner}/${repoData.repo}`}
-							rel="noreferrer"
-							target="_blank"
-						>
-							<b>
-								{repoData.owner}/{repoData.repo}
-							</b>
-						</a>
-					</h1>
-					<h1>
-						Branch: <b>{repoData.branch}</b>
-					</h1>
-					<h1>
-						Path: <b>{repoData.path}</b>
-					</h1>
-				</div>
+				<RepoDevTools {...repoData} />
 			)}
 
 			<Post content={mdx} lastCommit={lastCommit} />
 			<hr className="mb-4" />
-			<div className="flex justify-center mb-12 text-xs">
-				<div className="flex gap-4 items-center justify-between">
-					<ThemeSelect />
-					<p className="whitespace-nowrap !text-muted-foreground">
-						Made with{" "}
-						<a href="https://uses.ink" target="_blank" rel="noreferrer">
-							uses.ink
-						</a>
-					</p>
-				</div>
-			</div>
+			<Footer />
 		</article>
 	);
 };

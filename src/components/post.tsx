@@ -10,17 +10,14 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "./ui/tooltip";
+import type { CommitResponse } from "@/lib/types";
 
 export default function Post({
 	content,
 	lastCommit,
 }: {
 	content: string;
-	lastCommit: {
-		date: string;
-		author: { name: string; login: string; avatar: string };
-		link: string;
-	} | null;
+	lastCommit: CommitResponse | null;
 }) {
 	const {
 		meta: { title, description, author, date, hideTop },
