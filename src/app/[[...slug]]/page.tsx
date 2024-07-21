@@ -74,6 +74,7 @@ const fetchData = async (
 					login: string;
 					avatar: string;
 				};
+				link: string;
 			} | null;
 			error: undefined;
 	  }
