@@ -4,7 +4,7 @@ This is a minimalistic blog platform for developers. It's based on markdown file
 
 **Head over to the [website](https://uses.ink) to get started.**
 
-## Development
+## Self-hosting
 
 You can easily self-host this platform with Docker. Start by copying the `.env.example` file to `.env` and fill in the required values.
 
