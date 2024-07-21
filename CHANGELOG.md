@@ -1,3 +1,9 @@
+## v0.1.7 (2024-07-21)
+
+### Feat
+
+- add informational tooltips to header
+
 ## v0.1.6 (2024-07-21)
 
 ### Fix
