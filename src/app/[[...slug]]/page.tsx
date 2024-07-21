@@ -170,7 +170,7 @@ const Page: NextPage = async () => {
 				const { repo, path, branch } = repoData;
 				const dirname = nodepath.dirname(path ?? "");
 				const assetPath = nodepath.join(dirname, url);
-				return `/${repo ?? DEFAULT_REPO}${branch && `@${branch}`}/${assetPath}`;
+				return `/${repo ?? DEFAULT_REPO}${branch ? `@${branch}` : ""}/${assetPath}`;
 			}
 
 			return url;
