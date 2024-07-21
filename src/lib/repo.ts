@@ -4,6 +4,13 @@ export const getRepo = () => {
 	const headersList = headers();
 	const host = headersList.get("host");
 	const url = headersList.get("x-url");
+	if (!url) {
+		return {
+			owner: null,
+			repo: null,
+			branch: null,
+		};
+	}
 	console.log("host", host);
 	console.log("url", url);
 	const isLocalhost = host?.includes("localhost");
@@ -19,10 +26,11 @@ export const getRepo = () => {
 	let repo = undefined;
 	let branch = undefined;
 	let folder = undefined;
-	if (url) {
-		const path = url.split(/https?:\/\/[^/]+/)[1];
-		console.log("path", path);
-		const pathParts = path.split("/").filter(Boolean);
+
+	const path = url.split(/https?:\/\/[^/]+/)[1];
+	console.log("path", path);
+	const pathParts = path.split("/").filter(Boolean);
+	if (owner) {
 		repo = pathParts.shift();
 		console.log("repo", repo);
 
@@ -33,6 +41,9 @@ export const getRepo = () => {
 			branch = branchPart;
 		}
 		folder = pathParts.join("/");
+	} else {
+		// If the owner is not defined, we ignre the repo and branch, and just use the path
+		folder = path;
 	}
 
 	// <username>.uses.ink/[repo]@[branch]/[folder]
