@@ -1,26 +1,26 @@
-version: "3"
+version: "3.8"
 services:
     redis:
         image: redis:alpine
         volumes:
             - redis-data:/data
         networks:
-            - flow-network
+            - base-network
 
     app:
-        image: ghcr.io/cestef/uses.ink:latest
+        image: uses.ink
         ports:
             - "3000:3000"
         env_file:
-            - .env.production
+            - .env
         depends_on:
             - redis
         networks:
-            - flow-network
+            - base-network
 
 volumes:
     redis-data:
 
 networks:
-    flow-network:
+    base-network:
         driver: bridge
