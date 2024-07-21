@@ -53,6 +53,10 @@ export async function compileMDX(
 							return node;
 						}
 					},
+					attributes: {
+						...defaultSchema.attributes,
+						"*": ["className", "style"],
+					},
 				},
 			],
 			[rehypeKatex, { output: "mathml" }],
