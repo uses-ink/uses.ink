@@ -58,7 +58,11 @@ export async function compileMDX(
 					},
 					attributes: {
 						...defaultSchema.attributes,
-						"*": ["className", "style"],
+						"*": [
+							"className",
+							"style",
+							...(defaultSchema.attributes?.["*"] ?? []),
+						],
 					},
 				},
 			],
