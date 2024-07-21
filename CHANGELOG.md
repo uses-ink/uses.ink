@@ -1,3 +1,9 @@
+## v0.1.8 (2024-07-21)
+
+### Fix
+
+- add link to the return type of fetchData
+
 ## v0.1.7 (2024-07-21)
 
 ### Feat
