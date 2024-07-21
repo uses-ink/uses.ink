@@ -34,6 +34,7 @@ export const fetchGithubLastCommit = async (
 		login: string;
 		avatar: string;
 	};
+	link: string;
 } | null> => {
 	const { owner, path, repo } = request;
 	const cached = await getGitHubCache<GithubCommit>(request, "commit");
@@ -51,8 +52,11 @@ export const fetchGithubLastCommit = async (
 			login: response.data[0].author?.login,
 			avatar: response.data[0].author?.avatar_url,
 		};
-		if (!date || !author.name || !author.login || !author.avatar) return null;
-		return { date, author: author as any };
+		const link = response.data[0].html_url;
+		if (!date || !author.name || !author.login || !author.avatar || !link)
+			return null;
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		return { date, author: author as any, link };
 	} catch (error) {
 		// Return cache
 		if (!isErrorHasStatus(error)) throw error;
@@ -64,8 +68,11 @@ export const fetchGithubLastCommit = async (
 			login: cached.data[0].author?.login,
 			avatar: cached.data[0].author?.avatar_url,
 		};
-		if (!date || !author.name || !author.login || !author.avatar) return null;
-		return { date, author: author as any };
+		const link = cached.data[0].html_url;
+		if (!date || !author.name || !author.login || !author.avatar || !link)
+			return null;
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		return { date, author: author as any, link };
 	}
 };
 
