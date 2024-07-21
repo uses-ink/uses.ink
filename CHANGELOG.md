@@ -1,3 +1,17 @@
+## v0.1.10 (2024-07-21)
+
+### Feat
+
+- add word wrap toggle to pre
+
+### Fix
+
+- root path wasn't working anymore for some reason
+
+### Refactor
+
+- move shiki highlighting to css variables for external access
+
 ## v0.1.9 (2024-07-21)
 
 ### Feat
