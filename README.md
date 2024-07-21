@@ -32,7 +32,7 @@ Then, run the following command to start the platform:
 docker compose up -d
 ```
 
-You can now access the platform at `http://localhost:3000`.
+You can now access the platform at [`http://localhost:8765`](http://localhost:8765).
 
 ## Development
 
