@@ -256,3 +256,8 @@ span.highlighted-word {
 	filter: blur(0);
 	opacity: 1;
 }
+
+html[data-word-wrap] .shiki {
+	word-break: break-word;
+	@apply whitespace-pre-wrap md:whitespace-pre;
+}
