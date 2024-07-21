@@ -11,7 +11,7 @@ This is a minimalistic blog platform for developers. It's based on markdown file
 
 ## You got a github repo ? You got a blog !
 
-1. Create a new repository on GitHub named `blog`
+1. Create a new repository on GitHub named [`blog`](https://github.com/new?name=blog)
 2. Create a new file in the repository named `README.md` on branch `main`
 3. Visit `https://<user>.uses.ink/` to see your blog !
 
