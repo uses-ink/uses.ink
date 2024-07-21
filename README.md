@@ -4,7 +4,13 @@
 
 This is a minimalistic blog platform for developers. It's based on markdown files and uses GitHub as a storage.
 
-**Head over to the [website](https://uses.ink) to get started.**
+<p align="center">
+    <b>
+        <a href="https://uses.ink">Website</a>
+        •
+        <a href="https://cestef.uses.ink">Demo</a>
+    </b>
+</p>
 
 ## Self-hosting
 
