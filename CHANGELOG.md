@@ -1,3 +1,13 @@
+## v0.1.12 (2024-07-22)
+
+### Fix
+
+- diff signs not positioned correctly
+
+### Refactor
+
+- make title bigger and allow lg-prose on xl screens
+
 ## v0.1.11 (2024-07-22)
 
 ### Feat
