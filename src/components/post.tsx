@@ -13,9 +13,11 @@ import {
 import type { CommitResponse } from "@/lib/types";
 
 export default function Post({
+	filename,
 	content,
 	lastCommit,
 }: {
+	filename?: string;
 	content: string;
 	lastCommit: CommitResponse | null;
 }) {
@@ -49,6 +51,14 @@ export default function Post({
 			if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(content.type)) {
 				resolvedTitle = content.props;
 			}
+		}
+		if (!resolvedTitle) {
+			const lastPath = filename?.split("/").pop();
+			const lastPathWithoutExtension = lastPath?.split(".").shift() ?? lastPath;
+			if (lastPathWithoutExtension)
+				resolvedTitle =
+					lastPathWithoutExtension.slice(0, 1).toUpperCase() +
+					lastPathWithoutExtension.slice(1);
 		}
 	}
 	useEffect(() => {

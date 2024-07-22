@@ -62,7 +62,7 @@ const Page: NextPage = async () => {
 				<RepoDevTools {...repoData} />
 			)}
 
-			<Post content={mdx} lastCommit={lastCommit} />
+			<Post content={mdx} lastCommit={lastCommit} filename={repoData.path} />
 			<hr className="mb-4" />
 			<Footer />
 		</article>
