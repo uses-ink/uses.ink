@@ -1,3 +1,19 @@
+## v0.1.11 (2024-07-22)
+
+### Feat
+
+- resolve title to file name in case none is found
+- add icons to titled code blocks
+- switch to rehype-pretty-code for syntax highlighting
+- add rehype-slug
+
+### Fix
+
+- restrain title search to h3
+- adapt wrap toggle for pretty-code
+- check if content is iterable before resolving title
+- re-add default allowed attributes
+
 ## v0.1.10 (2024-07-21)
 
 ### Feat
