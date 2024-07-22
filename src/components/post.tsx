@@ -10,16 +10,19 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "./ui/tooltip";
-import type { CommitResponse } from "@/lib/types";
+import type { CommitResponse, ConfigSchema } from "@/lib/types";
+import type { z } from "zod";
 
 export default function Post({
 	filename,
 	content,
 	lastCommit,
+	config,
 }: {
 	filename?: string;
 	content: string;
 	lastCommit: CommitResponse | null;
+	config: z.infer<typeof ConfigSchema> | null;
 }) {
 	const {
 		meta: {
@@ -82,7 +85,7 @@ export default function Post({
 	}, [resolvedTitle, description]);
 	return (
 		<>
-			{!hideTop && (
+			{!(config?.hideTop ?? hideTop) && (
 				<header className="mb-8">
 					<h1>{title}</h1>
 
@@ -128,7 +131,7 @@ export default function Post({
 									</TooltipContent>
 								</Tooltip>
 							)}{" "}
-							{enableReadingTime && (
+							{(config?.readingTime ?? enableReadingTime) && (
 								<Tooltip>
 									<TooltipTrigger>
 										<span>{readTime}</span>

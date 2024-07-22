@@ -54,3 +54,8 @@ export const MetaSchema = z.object({
 	hideTop: z.boolean().default(false),
 	readingTime: z.boolean().default(true),
 });
+
+export const ConfigSchema = z.object({
+	hideTop: z.boolean().optional(),
+	readingTime: z.boolean().optional(),
+});

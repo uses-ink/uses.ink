@@ -3,10 +3,10 @@ import { Footer } from "@/components/footer";
 import Post from "@/components/post";
 import { RepoDevTools } from "@/components/repo";
 import { DEFAULT_REPO, SHOW_DEV_TOOLS } from "@/lib/constants";
-import { fetchData, fetchLocalData } from "@/lib/fetch";
+import { fetchConfig, fetchData, fetchLocalData } from "@/lib/fetch";
 import { compileMDX } from "@/lib/mdx";
 import { getRepo } from "@/lib/repo";
-import type { GitHubRequest } from "@/lib/types";
+import { ConfigSchema, type GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
 import { join, dirname } from "node:path";
 
@@ -30,6 +30,19 @@ const Page: NextPage = async () => {
 		console.log("repoData", repoData);
 		return <ErrorPage repoData={repoData} error={error} />;
 	}
+	const {
+		content: configContent,
+		lastCommit: configLastCommit,
+		error: configError,
+	} = await fetchConfig({
+		...repoData,
+		repo: repoData.repo ?? DEFAULT_REPO,
+		path: repoData.path ?? "",
+	} as GitHubRequest);
+
+	const config = configContent
+		? ConfigSchema.parse(JSON.parse(configContent))
+		: null;
 	const mdx = await compileMDX(content, {
 		asset: (url) => {
 			if (repoData.owner) {
@@ -62,7 +75,12 @@ const Page: NextPage = async () => {
 				<RepoDevTools {...repoData} />
 			)}
 
-			<Post content={mdx} lastCommit={lastCommit} filename={repoData.path} />
+			<Post
+				content={mdx}
+				lastCommit={lastCommit}
+				filename={repoData.path}
+				config={config}
+			/>
 			<hr className="mb-4" />
 			<Footer />
 		</article>

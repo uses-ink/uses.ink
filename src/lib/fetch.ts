@@ -4,6 +4,7 @@ import type { DataResponse, GitHubRequest } from "./types";
 import { fetchPost } from "./post";
 import { fetchReadme } from "./readme";
 import { isErrorHasStatus } from "./github";
+import { CONFIG_FILE } from "./constants";
 
 export const fetchData = async (
 	request: GitHubRequest,
@@ -16,10 +17,7 @@ export const fetchData = async (
 			: fetchReadme)(request);
 
 		return { content, lastCommit, error: undefined };
-	} catch (
-		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-		error: any
-	) {
+	} catch (error: any) {
 		console.error("Error fetching data", error);
 		if (isErrorHasStatus(error)) {
 			switch (error.status) {
@@ -33,6 +31,17 @@ export const fetchData = async (
 					};
 			}
 		}
+		return { content: null, lastCommit: null, error: error.toString() };
+	}
+};
+
+export const fetchConfig = async (request: GitHubRequest) => {
+	const configPath = join(request.path, CONFIG_FILE);
+	try {
+		const content = await fetchLocalData(configPath);
+		return content;
+	} catch (error: any) {
+		console.error("Error fetching config", error);
 		return { content: null, lastCommit: null, error: error.toString() };
 	}
 };
