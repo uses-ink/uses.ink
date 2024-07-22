@@ -57,7 +57,7 @@ const Pre = ({
 			<pre
 				{...props}
 				ref={preRef}
-				className={cn({
+				className={cn("overflow-auto", {
 					"rounded-t-none border-t-transparent": hasTitle,
 				})}
 			>
