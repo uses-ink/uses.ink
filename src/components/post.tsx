@@ -42,13 +42,13 @@ export default function Post({
 		// if is iterable
 		if (Symbol.iterator in Object(content)) {
 			for (const child of content) {
-				if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(child.type)) {
+				if (["h1", "h2", "h3"].includes(child.type)) {
 					resolvedTitle = child.props.children;
 					break;
 				}
 			}
 		} else {
-			if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(content.type)) {
+			if (["h1", "h2", "h3"].includes(content.type)) {
 				resolvedTitle = content.props;
 			}
 		}
