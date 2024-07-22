@@ -181,7 +181,7 @@ pre.with-title .copy-button {
 }
 
 pre {
-	@apply border dark:border-gray-700 border-gray-200 rounded-md;
+	@apply border dark:border-gray-700 border-gray-200 rounded-md py-2;
 }
 
 code .diff.add {
@@ -203,14 +203,14 @@ code .diff.add::before {
 	content: "+";
 	color: #10b981;
 	position: absolute;
-	@apply left-[0.7rem];
+	@apply left-0;
 }
 
 code .diff.remove::before {
 	content: "-";
 	color: #ef4444;
 	position: absolute;
-	@apply left-[0.7rem];
+	@apply left-0;
 }
 
 code .diff.add span,
