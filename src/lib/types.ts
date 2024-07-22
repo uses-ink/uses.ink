@@ -1,4 +1,5 @@
 import type { components, operations } from "@octokit/openapi-types";
+import { z } from "zod";
 
 export interface GitHubRequest {
 	/** E.g. "thien-do" */
@@ -44,3 +45,12 @@ export type AuthorResponse = {
 	login: string;
 	avatar: string;
 };
+
+export const MetaSchema = z.object({
+	title: z.string().optional(),
+	description: z.string().optional(),
+	date: z.string().optional(),
+	author: z.string().optional(),
+	hideTop: z.boolean().default(false),
+	readingTime: z.boolean().default(true),
+});

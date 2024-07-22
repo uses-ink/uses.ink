@@ -1,9 +1,7 @@
 ---
-hideTop: true
+readingTime: false
 title: FAQ
 ---
-
-# FAQ
 
 ## Can I use my own domain ?
 

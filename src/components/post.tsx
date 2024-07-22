@@ -22,10 +22,19 @@ export default function Post({
 	lastCommit: CommitResponse | null;
 }) {
 	const {
-		meta: { title, description, author, date, hideTop },
+		meta: {
+			title,
+			description,
+			author,
+			date,
+			hideTop,
+			readingTime: enableReadingTime,
+		},
 		readingTime: { text: readTime, words },
 		Content,
 	} = runMDX(content);
+
+	console.log("Post -> enableReadingTime", enableReadingTime);
 
 	const resolvedDate = date ?? lastCommit?.date;
 	const { resolvedAuthor, link, avatar } = lastCommit?.author
@@ -76,6 +85,7 @@ export default function Post({
 			{!hideTop && (
 				<header className="mb-8">
 					<h1>{title}</h1>
+
 					<p className="text-sm text-gray-500">
 						{resolvedAuthor && (
 							<>
@@ -118,16 +128,19 @@ export default function Post({
 									</TooltipContent>
 								</Tooltip>
 							)}{" "}
-							<Tooltip>
-								<TooltipTrigger>
-									<span>{readTime}</span>
-								</TooltipTrigger>
-								<TooltipContent>{words} words</TooltipContent>
-							</Tooltip>
+							{enableReadingTime && (
+								<Tooltip>
+									<TooltipTrigger>
+										<span>{readTime}</span>
+									</TooltipTrigger>
+									<TooltipContent>{words} words</TooltipContent>
+								</Tooltip>
+							)}
 						</TooltipProvider>
 					</p>
 				</header>
 			)}
+
 			<Content components={mdxComponents} />
 		</>
 	);

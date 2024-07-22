@@ -22,6 +22,7 @@ import { inspect } from "unist-util-inspect";
 import { getShiki } from "./shiki";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeMetaString from "./meta";
+import { MetaSchema } from "../types";
 
 const DEBUG_TREE = false;
 
@@ -119,17 +120,14 @@ export function runMDX(code: string) {
 	const mdx = runSync(code, runtime as any);
 
 	const { default: Content, matter, readingTime } = mdx;
+	console.log("runMDX -> readingTime", readingTime);
+	console.log("runMDX -> matter", matter);
+	const meta = MetaSchema.parse(matter ?? {});
+	console.log("runMDX -> meta", meta);
 
 	return {
 		Content,
-		meta:
-			(matter as {
-				title?: string;
-				description?: string;
-				date?: string;
-				author?: string;
-				hideTop?: boolean;
-			}) ?? {},
+		meta,
 		readingTime: (readingTime as ReturnType<typeof getReadingTime>) ?? {},
 	};
 }
