@@ -2,8 +2,11 @@
 // which is under MIT License as per the banner
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { Clipboard, Check, WrapText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { icons } from "./icons";
+
 const Pre = ({
 	children,
 	...props
@@ -45,11 +48,30 @@ const Pre = ({
 	const divRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		setHasTitle(
-			divRef.current?.parentElement?.querySelector(
-				"[data-rehype-pretty-code-title]",
-			) != null,
+		const element = divRef.current?.parentElement?.querySelector(
+			"[data-rehype-pretty-code-title]",
 		);
+
+		if (element) {
+			element.classList.add("flex", "items-center");
+			setHasTitle(true);
+
+			if (element.children.length === 0) {
+				const language = element.getAttribute("data-language") || "";
+				const Icon = icons[language as keyof typeof icons];
+				console.log(Icon, language, icons);
+				if (!Icon) {
+					console.error(`No icon found for language: ${language}`);
+					return;
+				}
+				const iconElement = <Icon className="w-6 h-6 mr-2" />;
+				const rendered = renderToStaticMarkup(iconElement);
+				const htmlIcon = document.createElement("svg");
+				htmlIcon.innerHTML = rendered;
+
+				element.prepend(htmlIcon);
+			}
+		}
 	}, []);
 
 	return (
