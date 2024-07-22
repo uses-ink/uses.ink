@@ -7,9 +7,7 @@ title: FAQ
 
 ## Can I use my own domain ?
 
-Sure ! You can use your own domain by creating a `CNAME` record pointing to `<user>.uses.ink`.
-
-The only limitation is that you won't be able to use custom paths like `/<repo>/` or `/<repo>/<path>/` with a custom domain. This means that you need to have your blog in a repository named `blog` and the files in the root of the repository.
+At the moment, you can't use your own domain. This is a feature that is planned for the future.
 
 ## How can I add a new blog post ?
 
