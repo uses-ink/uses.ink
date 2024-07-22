@@ -55,7 +55,7 @@ const Page: NextPage = async () => {
 
 	return (
 		<article
-			className="container mx-auto prose max-md:prose-sm dark:prose-invert"
+			className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
 			dir="ltr"
 		>
 			{isDev && SHOW_DEV_TOOLS && repoData !== null && (

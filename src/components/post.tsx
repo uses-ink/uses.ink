@@ -75,7 +75,7 @@ export default function Post({
 		<>
 			{!hideTop && (
 				<header className="mb-8">
-					<h1 className="text-3xl font-bold">{title}</h1>
+					<h1>{title}</h1>
 					<p className="text-sm text-gray-500">
 						{resolvedAuthor && (
 							<>
