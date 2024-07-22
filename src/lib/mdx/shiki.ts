@@ -1,7 +1,7 @@
 import {
-	createHighlighterCore,
-	createCssVariablesTheme,
 	type HighlighterCore,
+	createCssVariablesTheme,
+	createHighlighterCore,
 } from "shiki/core";
 
 import { bundledLanguages } from "shiki/langs";

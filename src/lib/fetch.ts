@@ -1,11 +1,11 @@
-import { dirname, join } from "node:path";
 import { promises as fs } from "node:fs";
-import { ConfigSchema, type DataResponse, type GitHubRequest } from "./types";
+import { dirname, join } from "node:path";
+import type { components } from "@octokit/openapi-types";
+import { CONFIG_FILE } from "./constants";
+import { fetchGitHubContent, isErrorHasStatus } from "./github";
 import { fetchPost } from "./post";
 import { fetchReadme } from "./readme";
-import { fetchGitHubContent, isErrorHasStatus } from "./github";
-import { CONFIG_FILE } from "./constants";
-import type { components } from "@octokit/openapi-types";
+import { ConfigSchema, type DataResponse, type GitHubRequest } from "./types";
 
 export const fetchData = async (
 	request: GitHubRequest,

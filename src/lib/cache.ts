@@ -1,8 +1,8 @@
-import { createCache, type Store, type Cache } from "cache-manager";
-import { redisStore } from "cache-manager-redis-yet";
-import type { GitHubContent, GitHubRequest } from "./types";
 import type { OctokitResponse } from "@octokit/types";
+import { type Cache, type Store, createCache } from "cache-manager";
+import { redisStore } from "cache-manager-redis-yet";
 import { CACHE_TTL } from "./constants";
+import type { GitHubContent, GitHubRequest } from "./types";
 
 const cache: { current: Cache<Store> | null } = {
 	current: null,

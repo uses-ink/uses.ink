@@ -2,16 +2,16 @@
 
 import { runMDX } from "@/lib/mdx";
 import { mdxComponents } from "@/lib/mdx/components";
+import type { CommitResponse, ConfigSchema } from "@/lib/types";
 import { useEffect } from "react";
 import Moment from "react-moment";
+import type { z } from "zod";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
 } from "./ui/tooltip";
-import type { CommitResponse, ConfigSchema } from "@/lib/types";
-import type { z } from "zod";
 
 export default function Post({
 	filename,

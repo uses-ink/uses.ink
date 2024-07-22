@@ -1,4 +1,4 @@
-import type { GithubCommit, GitHubContent, GitHubRequest } from "./types";
+import type { GitHubContent, GitHubRequest, GithubCommit } from "./types";
 
 import { getGitHubCache, setGitHubCache } from "./cache";
 import { getOctokit } from "./octokit";
@@ -55,7 +55,6 @@ export const fetchGithubLastCommit = async (
 		const link = response.data[0].html_url;
 		if (!date || !author.name || !author.login || !author.avatar || !link)
 			return null;
-		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		return { date, author: author as any, link };
 	} catch (error) {
 		// Return cache
@@ -71,7 +70,6 @@ export const fetchGithubLastCommit = async (
 		const link = cached.data[0].html_url;
 		if (!date || !author.name || !author.login || !author.avatar || !link)
 			return null;
-		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		return { date, author: author as any, link };
 	}
 };

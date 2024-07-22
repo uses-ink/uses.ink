@@ -1,8 +1,8 @@
 import path from "node:path";
-import type { GitHubFile, GitHubRequest } from "./types";
-import { fetchGitHubContent, fetchGithubLastCommit } from "./github";
-import { README_FILES } from "./constants";
 import type { components } from "@octokit/openapi-types";
+import { README_FILES } from "./constants";
+import { fetchGitHubContent, fetchGithubLastCommit } from "./github";
+import type { GitHubFile, GitHubRequest } from "./types";
 
 export const fetchReadme = async (request: GitHubRequest) => {
 	const { owner, repo } = request;

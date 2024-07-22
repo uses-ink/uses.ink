@@ -1,9 +1,6 @@
-import { compile, runSync } from "@mdx-js/mdx";
-import remarkGfm from "remark-gfm";
-import * as runtime from "react/jsx-runtime";
+import type { components } from "@octokit/openapi-types";
 import { fetchGitHubContent, fetchGithubLastCommit } from "./github";
 import type { GitHubRequest } from "./types";
-import type { components } from "@octokit/openapi-types";
 
 export const fetchPost = async (request: GitHubRequest) => {
 	const { owner, repo, path } = request;

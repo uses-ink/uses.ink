@@ -1,3 +1,4 @@
+import { dirname, join } from "node:path";
 import { ErrorPage } from "@/components/error";
 import { Footer } from "@/components/footer";
 import Post from "@/components/post";
@@ -8,7 +9,6 @@ import { compileMDX } from "@/lib/mdx";
 import { getRepo } from "@/lib/repo";
 import { ConfigSchema, type GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
-import { join, dirname } from "node:path";
 
 const isDev = process.env.NODE_ENV === "development";
 

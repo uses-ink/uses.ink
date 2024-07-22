@@ -1,8 +1,8 @@
-import { readingTime, type SupportedLanguages } from "reading-time-estimator";
-import { toString as mdToString } from "mdast-util-to-string";
-import type { Plugin } from "unified";
-import { valueToEstree } from "estree-util-value-to-estree";
 import test from "node:test";
+import { valueToEstree } from "estree-util-value-to-estree";
+import { toString as mdToString } from "mdast-util-to-string";
+import { type SupportedLanguages, readingTime } from "reading-time-estimator";
+import type { Plugin } from "unified";
 
 interface RemarkReadingTimeOptions {
 	name?: string;
@@ -19,7 +19,6 @@ export const remarkReadingTime: Plugin<[RemarkReadingTimeOptions?]> = ({
 		const textOnPage = mdToString(tree);
 		const time = readingTime(textOnPage, wordsPerMinute, language);
 
-		// biome-ignore lint/suspicious/noExplicitAny: I know what I'm doing
 		(tree as any).children.unshift({
 			type: "mdxjsEsm",
 			value: "",

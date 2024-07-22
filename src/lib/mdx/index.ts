@@ -1,28 +1,28 @@
 import { compile, runSync } from "@mdx-js/mdx";
-import remarkGfm from "remark-gfm";
-import remarkFrontmatter from "remark-frontmatter";
-import remarkMdxFrontmatter from "remark-mdx-frontmatter";
-import remarkMath from "remark-math";
-// @ts-ignore
-import * as runtime from "react/jsx-runtime";
-import { getMdxUrl, type MdxUrlResolvers } from "./url";
-import rehypeKatex from "rehype-katex";
-import rehypeSlug from "rehype-slug";
 import {
 	transformerNotationDiff,
-	transformerNotationFocus,
 	transformerNotationErrorLevel,
+	transformerNotationFocus,
 } from "@shikijs/transformers";
-import { remarkReadingTime } from "./read-time";
+// @ts-ignore
+import * as runtime from "react/jsx-runtime";
 import type { readingTime as getReadingTime } from "reading-time-estimator";
+import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import rehypeSlug from "rehype-slug";
+import remarkFrontmatter from "remark-frontmatter";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 import { inspect } from "unist-util-inspect";
+import { remarkReadingTime } from "./read-time";
+import { type MdxUrlResolvers, getMdxUrl } from "./url";
 
-import { getShiki } from "./shiki";
 import rehypePrettyCode from "rehype-pretty-code";
-import rehypeMetaString from "./meta";
 import { MetaSchema } from "../types";
+import rehypeMetaString from "./meta";
+import { getShiki } from "./shiki";
 
 const DEBUG_TREE = false;
 
