@@ -8,6 +8,7 @@ import * as runtime from "react/jsx-runtime";
 import { getMdxUrl, type MdxUrlResolvers } from "./url";
 import rehypeShiki from "@shikijs/rehype/core";
 import rehypeKatex from "rehype-katex";
+import rehypeSlug from "rehype-slug";
 import {
 	transformerNotationDiff,
 	transformerNotationHighlight,
@@ -84,6 +85,7 @@ export async function compileMDX(
 					defaultColor: false,
 				},
 			],
+			rehypeSlug,
 			...getMdxUrl({ resolvers: urlResolvers }),
 		],
 		remarkRehypeOptions: {
