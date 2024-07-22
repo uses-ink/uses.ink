@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promises as fs } from "node:fs";
 import type { DataResponse, GitHubRequest } from "./types";
 import { fetchPost } from "./post";
@@ -36,7 +36,7 @@ export const fetchData = async (
 };
 
 export const fetchConfig = async (request: GitHubRequest) => {
-	const configPath = join(request.path, CONFIG_FILE);
+	const configPath = join(dirname(request.path), CONFIG_FILE);
 	try {
 		const content = await fetchLocalData(configPath);
 		return content;
