@@ -30,19 +30,14 @@ const Page: NextPage = async () => {
 		console.log("repoData", repoData);
 		return <ErrorPage repoData={repoData} error={error} />;
 	}
-	const {
-		content: configContent,
-		lastCommit: configLastCommit,
-		error: configError,
-	} = await fetchConfig({
+	const config = await fetchConfig({
 		...repoData,
 		repo: repoData.repo ?? DEFAULT_REPO,
 		path: repoData.path ?? "",
 	} as GitHubRequest);
 
-	const config = configContent
-		? ConfigSchema.parse(JSON.parse(configContent))
-		: null;
+	console.log("config", config);
+
 	const mdx = await compileMDX(content, {
 		asset: (url) => {
 			if (repoData.owner) {

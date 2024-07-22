@@ -1,16 +1,17 @@
 import { dirname, join } from "node:path";
 import { promises as fs } from "node:fs";
-import type { DataResponse, GitHubRequest } from "./types";
+import { ConfigSchema, type DataResponse, type GitHubRequest } from "./types";
 import { fetchPost } from "./post";
 import { fetchReadme } from "./readme";
-import { isErrorHasStatus } from "./github";
+import { fetchGitHubContent, isErrorHasStatus } from "./github";
 import { CONFIG_FILE } from "./constants";
+import type { components } from "@octokit/openapi-types";
 
 export const fetchData = async (
 	request: GitHubRequest,
 ): Promise<DataResponse> => {
 	try {
-		const { content, lastCommit } = await (["mdx", "md"].includes(
+		const { content, lastCommit } = await (["mdx", "md", "json"].includes(
 			request.path.split(".").pop() ?? "",
 		)
 			? fetchPost
@@ -37,12 +38,34 @@ export const fetchData = async (
 
 export const fetchConfig = async (request: GitHubRequest) => {
 	const configPath = join(dirname(request.path), CONFIG_FILE);
+	console.log("configPath", configPath);
 	try {
-		const content = await fetchLocalData(configPath);
-		return content;
+		const raw = await fetchGitHubContent({ ...request, path: configPath });
+		if (Array.isArray(raw)) throw Error("Post should not be a dir");
+		if (typeof raw === "string") throw Error("Response should be in json");
+		if (raw.type !== "file") throw Error(`Unknown type "${raw.type}"`);
+
+		const { content } = raw as components["schemas"]["content-file"];
+		const parsed = Buffer.from(content, "base64").toString("utf-8");
+		console.log("parsed", parsed);
+		try {
+			const config = ConfigSchema.parse(JSON.parse(parsed));
+			return config;
+		} catch (error) {
+			console.error("Error parsing config", error);
+			return null;
+		}
 	} catch (error: any) {
 		console.error("Error fetching config", error);
-		return { content: null, lastCommit: null, error: error.toString() };
+		if (isErrorHasStatus(error)) {
+			switch (error.status) {
+				case 404:
+					return null;
+				default:
+					throw error;
+			}
+		}
+		throw error;
 	}
 };
 
