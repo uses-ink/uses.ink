@@ -1,20 +1,23 @@
 // Based on https://github.com/facebook/docusaurus/blob/ed9d2a26f5a7b8096804ae1b3a4fffc504f8f90d/packages/docusaurus-theme-classic/src/theme/CodeBlock/index.tsx
 // which is under MIT License as per the banner
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Clipboard, Check, WrapText } from "lucide-react";
-const CodeBlock = ({
+import { cn } from "@/lib/utils";
+const Pre = ({
 	children,
 	...props
 }: {
 	children: React.ReactNode;
 }) => {
-	const pre = useRef<HTMLPreElement>(null);
+	const preRef = useRef<HTMLPreElement>(null);
 	const [showCopied, setShowCopied] = useState(false);
 
 	const handleCopyCode = async () => {
-		if (pre.current) {
-			const content = Array.from(pre.current.querySelectorAll("code span.line"))
+		if (preRef.current) {
+			const content = Array.from(
+				preRef.current.querySelectorAll("code span.line"),
+			)
 				.map((el) => el.textContent)
 				.join("\n");
 
@@ -38,9 +41,26 @@ const CodeBlock = ({
 		}
 	}, []);
 
+	const [hasTitle, setHasTitle] = useState(false);
+	const divRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		setHasTitle(
+			divRef.current?.parentElement?.querySelector(
+				"[data-rehype-pretty-code-title]",
+			) != null,
+		);
+	}, []);
+
 	return (
-		<div className="relative group">
-			<pre {...props} ref={pre}>
+		<div className="relative group not-prose" ref={divRef}>
+			<pre
+				{...props}
+				ref={preRef}
+				className={cn({
+					"rounded-t-none border-t-transparent": hasTitle,
+				})}
+			>
 				{children}
 			</pre>
 			<div className="absolute right-2 top-2">
@@ -69,4 +89,4 @@ const CodeBlock = ({
 	);
 };
 
-export default CodeBlock;
+export default Pre;

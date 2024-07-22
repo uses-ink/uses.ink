@@ -187,11 +187,11 @@ html.dark .shiki span {
 	background-color: var(--shiki-light-bg);
 }
 
-pre.shiki.with-title .copy-button {
+pre.with-title .copy-button {
 	@apply top-4;
 }
 
-pre.shiki {
+pre {
 	@apply border dark:border-gray-700 border-gray-200 rounded-md;
 }
 
@@ -260,4 +260,46 @@ span.highlighted-word {
 html[data-word-wrap] .shiki {
 	word-break: break-word;
 	@apply whitespace-pre-wrap md:whitespace-pre;
+}
+
+[data-rehype-pretty-code-figure] pre {
+	@apply px-0;
+}
+
+[data-rehype-pretty-code-figure] code {
+	@apply text-[0.8571429em] !leading-loose md:text-sm;
+}
+
+[data-rehype-pretty-code-title] {
+	@apply text-sm text-gray-500 border rounded-t-md px-4 py-2;
+}
+
+[data-rehype-pretty-code-figure] code[data-line-numbers] {
+	counter-reset: line;
+}
+
+[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::before {
+	counter-increment: line;
+	content: counter(line);
+	@apply mr-4 inline-block w-4 text-right text-gray-500;
+}
+
+[data-rehype-pretty-code-figure] pre [data-line] {
+	@apply border-l-2 border-l-transparent px-3;
+}
+
+[data-rehype-pretty-code-figure] [data-highlighted-line] {
+	background: rgba(200, 200, 255, 0.1);
+	@apply !border-l-blue-400;
+}
+
+[data-rehype-pretty-code-figure] [data-highlighted-chars] {
+	background-color: rgba(224, 224, 249, 0.1);
+	border: 1px solid rgba(200, 200, 255, 0.2);
+	padding: 2px 4px;
+	border-radius: 4px;
+}
+
+[data-rehype-pretty-code-figure] [data-chars-id] {
+	@apply border-b-2 p-1 shadow-none;
 }
