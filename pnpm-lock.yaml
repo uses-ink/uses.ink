@@ -79,9 +79,15 @@ dependencies:
   mdx:
     specifier: ^0.3.1
     version: 0.3.1
+  moment:
+    specifier: ^2.30.1
+    version: 2.30.1
   next:
     specifier: 14.2.5
     version: 14.2.5(@babel/core@7.24.9)(react-dom@18.3.1)(react@18.3.1)
+  next-build-id:
+    specifier: ^3.0.0
+    version: 3.0.0
   next-themes:
     specifier: ^0.3.0
     version: 0.3.0(react-dom@18.3.1)(react@18.3.1)
@@ -4806,6 +4812,11 @@ packages:
     resolution: {integrity: sha512-eSRppjcPIatRIMC1U6UngP8XFcz8MQWGQdt1MTBQ7NaAmvXDfvNxbvWV3x2y6CdEUciCSsDHDQZbhYaB8QEo2g==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
+
+  /next-build-id@3.0.0:
+    resolution: {integrity: sha512-B3JCsL/9Z/wkmo3EySukQHCgx89Aw0i4LPi2MEhCboQBJ6wpkYTIu1z6hOYKuw/S1Wy8ZRqCEq0dVY/ST6jGqg==}
+    engines: {node: '>=8'}
+    dev: false
 
   /next-themes@0.3.0(react-dom@18.3.1)(react@18.3.1):
     resolution: {integrity: sha512-/QHIrsYpd6Kfk7xakK4svpDI5mmXP0gfvCoJdGpZQ2TOrQZmsW0QxjaiLn8wbIKjtm4BTSqLoix4lxYYOnLJ/w==}

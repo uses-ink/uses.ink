@@ -3,7 +3,7 @@
 import { runMDX } from "@/lib/mdx";
 import { mdxComponents } from "@/lib/mdx/components";
 import type { CommitResponse, ConfigSchema } from "@/lib/types";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Moment from "react-moment";
 import type { z } from "zod";
 import {
@@ -12,6 +12,8 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "./ui/tooltip";
+import { ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Post({
 	filename,
@@ -24,6 +26,20 @@ export default function Post({
 	lastCommit: CommitResponse | null;
 	config: z.infer<typeof ConfigSchema> | null;
 }) {
+	const [canScroll, setCanScroll] = useState(false);
+	useEffect(() => {
+		const handleScroll = () => {
+			setCanScroll(window.scrollY > 100);
+		};
+		window.addEventListener("scroll", handleScroll);
+		return () => {
+			window.removeEventListener("scroll", handleScroll);
+		};
+	}, []);
+
+	const scrollUp = useCallback(() => {
+		window.scrollTo({ top: 0, behavior: "smooth" });
+	}, []);
 	const {
 		meta: {
 			title,
@@ -145,6 +161,18 @@ export default function Post({
 			)}
 
 			<Content components={mdxComponents} />
+			<div className="fixed sm:bottom-8 sm:right-8 bottom-4 right-4">
+				<ChevronUp
+					className={cn(
+						"h-4 w-4 sm:w-6 sm:h-6 cursor-pointer transition-opacity ease-in-out duration-300",
+						{
+							"opacity-100": canScroll,
+							"opacity-0": !canScroll,
+						},
+					)}
+					onClick={scrollUp}
+				/>
+			</div>
 		</>
 	);
 }
