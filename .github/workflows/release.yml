@@ -99,6 +99,8 @@ jobs:
                   docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
     create-release:
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         needs:
             - merge-docker
         steps:
