@@ -40,6 +40,9 @@ This project uses [`pnpm`](https://pnpm.io) as the package manager. It is needed
 To start the development server, run the following command:
 
 ```bash
+# Install dependencies
+pnpm install
+# Start the development server
 pnpm dev
 ```
 
