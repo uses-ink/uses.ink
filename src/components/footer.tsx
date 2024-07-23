@@ -27,8 +27,8 @@ export const Footer = () => {
 									process.env.NEXT_PUBLIC_BUILD_VERSION?.includes(
 										process.env.NEXT_PUBLIC_BUILD_COMMIT?.slice(0, 7) ?? "",
 									)
-										? `https://github.com/usesink/uses.ink/commit/${process.env.NEXT_PUBLIC_BUILD_COMMIT}`
-										: `https://github.com/usesink/uses.ink/releases/tag/${process.env.NEXT_PUBLIC_BUILD_VERSION}`
+										? `https://github.com/uses-ink/uses.ink/commit/${process.env.NEXT_PUBLIC_BUILD_COMMIT?.slice(0, 7)}`
+										: `https://github.com/uses-ink/uses.ink/releases/tag/${process.env.NEXT_PUBLIC_BUILD_VERSION}`
 								}
 								target="_blank"
 								rel="noreferrer"
