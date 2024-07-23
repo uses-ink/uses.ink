@@ -31,11 +31,14 @@ const Page: NextPage = async () => {
 
 		return <ErrorPage repoData={repoData} error={error} />;
 	}
-	const config = await fetchConfig({
-		...repoData,
-		repo: repoData.repo ?? DEFAULT_REPO,
-		path: repoData.path ?? "",
-	} as GitHubRequest);
+	const config =
+		repoData.owner !== null
+			? await fetchConfig({
+					...repoData,
+					repo: repoData.repo ?? DEFAULT_REPO,
+					path: repoData.path ?? "",
+				} as GitHubRequest)
+			: null;
 
 	console.log("config", config);
 
