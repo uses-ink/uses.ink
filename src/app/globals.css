@@ -241,6 +241,10 @@ html[data-word-wrap] pre {
 	@apply whitespace-pre-wrap md:whitespace-pre;
 }
 
+span[data-rehype-pretty-code-figure] code {
+	@apply rounded-sm px-1 dark:border-gray-700 border-gray-200 border;
+}
+
 [data-rehype-pretty-code-figure] pre {
 	@apply px-0;
 }
