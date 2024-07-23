@@ -38,7 +38,6 @@ export const getGitHubCache = async <R = GitHubContent>(
 ): Promise<OctokitResponse<R> | null> => {
 	console.log("getGitHubCache");
 	const cache = await getCache();
-	console.log("cache", cache);
 	if (cache === null) {
 		console.log("cache is null");
 		return null;
@@ -46,14 +45,18 @@ export const getGitHubCache = async <R = GitHubContent>(
 	const key = getKey(request, type);
 	console.log("key", key);
 
-	// const data = (await cache.get<null | OctokitResponse<R>>(key)) ?? null;
-	const data = await cache.get(key);
-	const parsedData = data
-		? JSON.parse(Buffer.from(data, "base64").toString())
-		: null;
+	try {
+		const data = await cache.get(key);
+		const parsedData = data
+			? JSON.parse(Buffer.from(data, "base64").toString())
+			: null;
 
-	console.log("data", parsedData);
-	return parsedData;
+		console.log("data", parsedData);
+		return parsedData;
+	} catch (error) {
+		console.log("error", error);
+		return null;
+	}
 };
 
 export const setGitHubCache = async <R = GitHubContent>(
@@ -65,5 +68,9 @@ export const setGitHubCache = async <R = GitHubContent>(
 	if (cache === null) return;
 	const key = getKey(request, type);
 	const toSet = Buffer.from(JSON.stringify(response)).toString("base64");
-	await cache.set(key, toSet, "EX", CACHE_TTL);
+	try {
+		await cache.set(key, toSet, "EX", CACHE_TTL);
+	} catch (error) {
+		console.log("error", error);
+	}
 };
