@@ -29,7 +29,7 @@
     "hast-util-sanitize": "^5.0.1",
     "hastscript": "^9.0.0",
     "ioredis": "^5.4.1",
-    "lucide-react": "^0.411.0",
+    "lucide-react": "^0.414.0",
     "mdast-util-to-string": "^4.0.0",
     "mdx": "^0.3.1",
     "next": "14.2.5",
