@@ -24,7 +24,7 @@ const ErrorPage = ({
 	);
 
 	return (
-		<div className="flex w-screen h-screen justify-center items-center">
+		<div className="flex w-screen h-screen justify-center items-center prose max-w-full">
 			<div className="text-center flex gap-2 flex-col items-center">
 				<h1 className="text-4xl">
 					An error occured:{" "}
@@ -53,6 +53,9 @@ const ErrorPage = ({
 						Reload
 					</button>
 				)}
+				<h3>
+					<a href="https://uses.ink">Back to uses.ink</a>
+				</h3>
 			</div>
 		</div>
 	);
