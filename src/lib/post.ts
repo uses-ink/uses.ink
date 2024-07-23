@@ -21,6 +21,7 @@ export const fetchPost = async (request: GitHubRequest) => {
 		return {
 			content: Buffer.from(contents.content, "base64").toString("utf-8"),
 			lastCommit,
+			fileName: contents.name,
 		};
 	}
 	throw Error(`No post found in ${owner}/${repo}`);

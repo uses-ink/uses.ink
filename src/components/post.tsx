@@ -135,7 +135,7 @@ export default function Post({
 									<TooltipTrigger>
 										<a
 											className="not-prose"
-											href={lastCommit?.link}
+											href={lastCommit?.link ?? undefined}
 											target="_blank"
 											rel="noreferrer"
 										>

@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { dirname, join } from "node:path";
 import type { components } from "@octokit/openapi-types";
-import { CONFIG_FILE } from "./constants";
+import { CONFIG_FILE, EXTENSIONS } from "./constants";
 import { fetchGitHubContent, isErrorHasStatus } from "./github";
 import { fetchPost } from "./post";
 import { fetchReadme } from "./readme";
@@ -11,28 +11,40 @@ export const fetchData = async (
 	request: GitHubRequest,
 ): Promise<DataResponse> => {
 	try {
-		const { content, lastCommit } = await (["mdx", "md", "json"].includes(
-			request.path.split(".").pop() ?? "",
-		)
+		const { content, lastCommit, fileName } = await ([
+			...EXTENSIONS,
+			"json",
+		].includes(request.path.split(".").pop() ?? "")
 			? fetchPost
 			: fetchReadme)(request);
 
-		return { content, lastCommit, error: undefined };
+		return { content, lastCommit, error: undefined, fileName };
 	} catch (error: any) {
 		console.error("Error fetching data", error);
 		if (isErrorHasStatus(error)) {
 			switch (error.status) {
 				case 404:
-					return { content: null, lastCommit: null, error: "Not found" };
+					return {
+						content: null,
+						lastCommit: null,
+						error: "Not found",
+						fileName: null,
+					};
 				default:
 					return {
 						content: null,
 						lastCommit: null,
+						fileName: null,
 						error: `Error status ${error.status}`,
 					};
 			}
 		}
-		return { content: null, lastCommit: null, error: error.toString() };
+		return {
+			content: null,
+			lastCommit: null,
+			error: error.toString(),
+			fileName: null,
+		};
 	}
 };
 
@@ -87,6 +99,7 @@ export const fetchLocalData = async (path: string): Promise<DataResponse> => {
 				date: lastModified.toISOString(),
 				link: null,
 			},
+			fileName: trimmedPath,
 			error: undefined,
 		};
 	} catch (error: any) {
@@ -95,6 +108,7 @@ export const fetchLocalData = async (path: string): Promise<DataResponse> => {
 			content: null,
 			lastCommit: null,
 			error: is404 ? "Not found" : error.toString(),
+			fileName: null,
 		};
 	}
 };

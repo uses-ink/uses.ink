@@ -26,6 +26,8 @@ import { getShiki } from "./shiki";
 
 const DEBUG_TREE = false;
 
+const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
+
 export async function compileMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
@@ -53,7 +55,7 @@ export async function compileMDX(
 			[
 				rehypeRaw,
 				{
-					passThrough: ["mdxjsEsm"],
+					passThrough: ALLOWED_NODES,
 				},
 			],
 			DEBUG_TREE
@@ -65,8 +67,10 @@ export async function compileMDX(
 					...defaultSchema,
 					// @ts-ignore
 					unknownNodeHandler: (state, node) => {
-						console.log("Unknown node", node);
-						if (node.type === "mdxjsEsm") {
+						if (DEBUG_TREE) {
+							console.log("Unknown node", node);
+						}
+						if (ALLOWED_NODES.includes(node.type)) {
 							return node;
 						}
 					},
@@ -131,3 +135,5 @@ export function runMDX(code: string) {
 		readingTime: (readingTime as ReturnType<typeof getReadingTime>) ?? {},
 	};
 }
+
+export type RunMDXResult = ReturnType<typeof runMDX>;

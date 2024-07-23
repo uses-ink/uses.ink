@@ -16,7 +16,7 @@ const Page: NextPage = async () => {
 	const repoData = getRepo();
 	console.log("repoData", JSON.stringify(repoData));
 
-	const { content, lastCommit, error } =
+	const { content, lastCommit, error, fileName } =
 		repoData.owner !== null
 			? await fetchData({
 					...repoData,
@@ -41,6 +41,12 @@ const Page: NextPage = async () => {
 			: null;
 
 	console.log("config", config);
+
+	const extension = fileName.split(".").pop() ?? "md";
+
+	if (extension !== "md") {
+		return <ErrorPage repoData={repoData} error="File type not supported" />;
+	}
 
 	const mdx = await compileMDX(content, {
 		asset: (url) => {

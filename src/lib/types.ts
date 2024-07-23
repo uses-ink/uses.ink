@@ -26,11 +26,13 @@ export type DataResponse =
 	| {
 			content: string;
 			lastCommit: CommitResponse | null;
+			fileName: string;
 			error: undefined;
 	  }
 	| {
 			content: null;
 			lastCommit: null;
+			fileName: null;
 			error: string;
 	  };
 
@@ -59,3 +61,6 @@ export const ConfigSchema = z.object({
 	hideTop: z.boolean().optional(),
 	readingTime: z.boolean().optional(),
 });
+
+// Utility type to get the type of a promise
+export type PromiseOf<T> = T extends Promise<infer U> ? U : T;
