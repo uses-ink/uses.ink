@@ -1,3 +1,18 @@
+## v0.1.17 (2024-07-23)
+
+### Feat
+
+- add heading anchors with rehype-slug
+- add go back to top + build information
+
+### Fix
+
+- Add a home link in error page
+
+### Refactor
+
+- add proper error page
+
 ## v0.1.16 (2024-07-23)
 
 ### Fix
