@@ -14,11 +14,11 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ubuntu-latest, buildjet-8vcpu-ubuntu-2204-arm]
+                os: [ubuntu-latest, blacksmith-4vcpu-ubuntu-2204-arm-arm]
                 include:
                     - os: ubuntu-latest
                       platform: linux/amd64
-                    - os: buildjet-8vcpu-ubuntu-2204-arm
+                    - os: blacksmith-4vcpu-ubuntu-2204-arm-arm
                       platform: linux/arm64
         runs-on: ${{ matrix.os }}
         steps:
