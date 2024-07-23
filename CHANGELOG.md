@@ -1,3 +1,13 @@
+## v0.1.14 (2024-07-23)
+
+### Feat
+
+- add opengraph stuff
+
+### Fix
+
+- do not set line-height to 2
+
 ## v0.1.13 (2024-07-23)
 
 ### Feat
