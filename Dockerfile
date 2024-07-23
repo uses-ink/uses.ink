@@ -1,6 +1,6 @@
 # syntax=docker.io/docker/dockerfile:1.9-labs
 
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --exclude=docker-entrypoint.sh --exclude=.env.production . .
 
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm run build
 
