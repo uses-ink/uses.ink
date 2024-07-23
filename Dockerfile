@@ -1,4 +1,4 @@
-# syntax=docker.io/docker/dockerfile:1.7-labs
+# syntax=docker.io/docker/dockerfile:1.9-labs
 
 FROM node:18-alpine AS base
 
@@ -34,9 +34,9 @@ FROM base AS runner
 WORKDIR /app
 COPY blog ./blog
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -62,8 +62,8 @@ USER nextjs
 
 EXPOSE 8765
 
-ENV PORT 8765
+ENV PORT=8765
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD node server.js
+CMD ["node", "server.js"]
