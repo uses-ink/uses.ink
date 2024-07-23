@@ -34,3 +34,7 @@ No. JavaScript is disabled for obvious security reasons.
 ## I found a bug, what should I do ?
 
 Please report it by creating an issue on the [GitHub repository](https://github.com/cestef/uses.ink/issues/new).
+
+## Where is this hosted ?
+
+This instance of [uses.ink](https://uses.ink) is hosted on my own server using the [Docker image](https://ghcr.io/cestef/uses.ink) provided by the project.
