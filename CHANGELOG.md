@@ -1,3 +1,9 @@
+## v0.2.0 (2024-07-23)
+
+### Fix
+
+- ci included too many instances
+
 ## v0.1.23 (2024-07-23)
 
 ### Fix
