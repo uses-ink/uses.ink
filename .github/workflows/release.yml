@@ -27,7 +27,7 @@ jobs:
               run: |
                   printf 'timestamp=%(%s)T\n' >> "$GITHUB_OUTPUT"
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
             - name: Docker meta
               id: meta
               uses: docker/metadata-action@v4
@@ -105,7 +105,7 @@ jobs:
             - merge-docker
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
             - name: Create Release
               uses: taiki-e/create-gh-release-action@v1
               with:
