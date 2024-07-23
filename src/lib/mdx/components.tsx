@@ -54,8 +54,8 @@ export const mdxComponents = {
 const Anchor = ({ id }: any) => (
 	<a
 		href={`#${id}`}
-		className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-		style={{ marginLeft: "0.25rem", textDecoration: "none" }}
+		className="anchor !text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+		style={{ marginLeft: "0.5rem", textDecoration: "none" }}
 	>
 		#
 	</a>

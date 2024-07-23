@@ -3,7 +3,7 @@ hideTop: true
 title: Welcome to uses.ink !
 ---
 
-# Welcome to uses.ink !
+<h1 id="no-anchor">Welcome to uses.ink !</h1>
 
 This is a minimalistic **blog platform** for anyone to use. It's based on **markdown** files and uses **GitHub** as a storage.
 

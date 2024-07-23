@@ -290,3 +290,12 @@ span[data-rehype-pretty-code-figure] code {
 [data-rehype-pretty-code-figure] [data-chars-id] {
 	@apply border-b-2 p-1 shadow-none;
 }
+
+h1#user-content-no-anchor a.anchor,
+h2#user-content-no-anchor a.anchor,
+h3#user-content-no-anchor a.anchor,
+h4#user-content-no-anchor a.anchor,
+h5#user-content-no-anchor a.anchor,
+h6#user-content-no-anchor a.anchor {
+	@apply hidden;
+}
