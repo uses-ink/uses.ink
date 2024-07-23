@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import { ErrorPage } from "@/components/error";
+import ErrorPage from "./error";
 import { Footer } from "@/components/footer";
 import Post from "@/components/post";
 import { RepoDevTools } from "@/components/repo";
@@ -7,7 +7,7 @@ import { DEFAULT_REPO, SHOW_DEV_TOOLS } from "@/lib/constants";
 import { fetchConfig, fetchData, fetchLocalData } from "@/lib/fetch";
 import { compileMDX } from "@/lib/mdx";
 import { getRepo } from "@/lib/repo";
-import { ConfigSchema, type GitHubRequest } from "@/lib/types";
+import type { GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -28,6 +28,7 @@ const Page: NextPage = async () => {
 	if (error !== undefined) {
 		console.log("Error", error);
 		console.log("repoData", repoData);
+
 		return <ErrorPage repoData={repoData} error={error} />;
 	}
 	const config = await fetchConfig({

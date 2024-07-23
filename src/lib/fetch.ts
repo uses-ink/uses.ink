@@ -69,14 +69,23 @@ export const fetchConfig = async (request: GitHubRequest) => {
 	}
 };
 
-export const fetchLocalData = async (path: string) => {
-	console.log("path", path);
-	// Remove leading slash
-	const trimmedPath =
-		(path.startsWith("/") ? path.slice(1) : path) || "README.md";
-	console.log("trimmedPath", trimmedPath);
-	const toRead = join(process.cwd(), "blog", trimmedPath);
-	console.log("toRead", toRead);
-	const content = await fs.readFile(toRead, "utf-8");
-	return { content, lastCommit: null, error: undefined };
+export const fetchLocalData = async (path: string): Promise<DataResponse> => {
+	try {
+		console.log("path", path);
+		// Remove leading slash
+		const trimmedPath =
+			(path.startsWith("/") ? path.slice(1) : path) || "README.md";
+		console.log("trimmedPath", trimmedPath);
+		const toRead = join(process.cwd(), "blog", trimmedPath);
+		console.log("toRead", toRead);
+		const content = await fs.readFile(toRead, "utf-8");
+		return { content, lastCommit: null, error: undefined };
+	} catch (error: any) {
+		const is404 = error.code === "ENOENT";
+		return {
+			content: null,
+			lastCommit: null,
+			error: is404 ? "Not found" : error.toString(),
+		};
+	}
 };
