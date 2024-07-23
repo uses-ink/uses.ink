@@ -1,3 +1,20 @@
+## v0.1.13 (2024-07-23)
+
+### Feat
+
+- add support for config at `uses.ink.json`
+- add readTime to frontmatter to allow disabling reading time on posts
+
+### Fix
+
+- reposition diff signs
+- correctly fetch config
+- use dirname for config searching
+
+### Refactor
+
+- switch to ioredis
+
 ## v0.1.12 (2024-07-22)
 
 ### Fix
