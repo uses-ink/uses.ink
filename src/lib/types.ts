@@ -36,8 +36,8 @@ export type DataResponse =
 
 export type CommitResponse = {
 	date: string;
-	author: AuthorResponse;
-	link: string;
+	author: AuthorResponse | null;
+	link: string | null;
 };
 
 export type AuthorResponse = {

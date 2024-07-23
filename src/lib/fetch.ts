@@ -79,7 +79,16 @@ export const fetchLocalData = async (path: string): Promise<DataResponse> => {
 		const toRead = join(process.cwd(), "blog", trimmedPath);
 		console.log("toRead", toRead);
 		const content = await fs.readFile(toRead, "utf-8");
-		return { content, lastCommit: null, error: undefined };
+		const lastModified = (await fs.stat(toRead)).mtime;
+		return {
+			content,
+			lastCommit: {
+				author: null,
+				date: lastModified.toISOString(),
+				link: null,
+			},
+			error: undefined,
+		};
 	} catch (error: any) {
 		const is404 = error.code === "ENOENT";
 		return {
