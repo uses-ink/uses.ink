@@ -247,7 +247,7 @@ html[data-word-wrap] pre {
 }
 
 [data-rehype-pretty-code-figure] code {
-	@apply text-[0.8571429em] !leading-loose md:text-sm;
+	@apply text-[0.8571429em] md:text-sm;
 }
 
 [data-rehype-pretty-code-title] {
