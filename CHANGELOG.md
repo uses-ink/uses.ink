@@ -1,3 +1,10 @@
+## v0.2.2 (2024-07-23)
+
+### Fix
+
+- **deps**: update dependency lucide-react to ^0.414.0
+- **deps**: update shiki monorepo to v1.11.1
+
 ## v0.2.1 (2024-07-23)
 
 ## v0.2.0 (2024-07-23)
