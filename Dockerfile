@@ -1,6 +1,6 @@
 # syntax=docker.io/docker/dockerfile:1.9-labs
 
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
