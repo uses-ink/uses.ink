@@ -53,7 +53,7 @@ const Pre = ({
 		);
 
 		if (element) {
-			element.classList.add("flex", "items-center");
+			element.classList.add("flex", "items-center", "gap-1");
 			setHasTitle(true);
 
 			if (element.children.length === 0) {
