@@ -1,3 +1,9 @@
+## v0.1.20 (2024-07-23)
+
+### Fix
+
+- remove .git from dockerignore
+
 ## v0.1.19 (2024-07-23)
 
 ### Fix
