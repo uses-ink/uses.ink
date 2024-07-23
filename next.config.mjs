@@ -17,7 +17,15 @@ const nextConfig = {
 		return config;
 	},
 	env: {
-		NEXT_PUBLIC_BUILD_ID: `${nextBuildId.sync({ dir: __dirname })}@@${new Date().toISOString()}`,
+		NEXT_PUBLIC_BUILD_VERSION: nextBuildId.sync({
+			dir: __dirname,
+			describe: true,
+		}),
+		NEXT_PUBLIC_BUILD_COMMIT: nextBuildId
+			.sync({
+				dir: __dirname,
+			})
+			.slice(0, 7),
 	},
 };
 

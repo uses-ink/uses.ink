@@ -5,8 +5,6 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "./ui/tooltip";
-import { BUILD_DATE, BUILD_HASH } from "@/lib/constants";
-import moment from "moment";
 
 export const Footer = () => {
 	return (
@@ -24,9 +22,9 @@ export const Footer = () => {
 							</p>
 						</TooltipTrigger>
 						<TooltipContent>
-							Built on {moment(BUILD_DATE).format("LLL")}{" "}
+							{process.env.NEXT_PUBLIC_BUILD_VERSION ?? "v0.0.0"}{" "}
 							<span className="dark:text-gray-500 text-gray-300">
-								({BUILD_HASH.slice(0, 7)})
+								({process.env.NEXT_PUBLIC_BUILD_COMMIT})
 							</span>
 						</TooltipContent>
 					</Tooltip>
