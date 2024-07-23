@@ -100,7 +100,7 @@ jobs:
     create-release:
         runs-on: ubuntu-latest
         permissions:
-            contents: read
+            contents: write
         needs:
             - merge-docker
         steps:
