@@ -22,10 +22,23 @@ export const Footer = () => {
 							</p>
 						</TooltipTrigger>
 						<TooltipContent>
-							{process.env.NEXT_PUBLIC_BUILD_VERSION ?? "v0.0.0"}{" "}
-							<span className="dark:text-gray-500 text-gray-300">
-								({process.env.NEXT_PUBLIC_BUILD_COMMIT})
-							</span>
+							<a
+								href={
+									process.env.NEXT_PUBLIC_BUILD_VERSION?.includes(
+										process.env.NEXT_PUBLIC_BUILD_COMMIT?.slice(0, 7) ?? "",
+									)
+										? `https://github.com/usesink/uses.ink/commit/${process.env.NEXT_PUBLIC_BUILD_COMMIT}`
+										: `https://github.com/usesink/uses.ink/releases/tag/${process.env.NEXT_PUBLIC_BUILD_VERSION}`
+								}
+								target="_blank"
+								rel="noreferrer"
+								className="not-prose"
+							>
+								{process.env.NEXT_PUBLIC_BUILD_VERSION ?? "v0.0.0"}{" "}
+								<span className="dark:text-gray-500 text-gray-300">
+									({process.env.NEXT_PUBLIC_BUILD_COMMIT?.slice(0, 7)})
+								</span>
+							</a>
 						</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>

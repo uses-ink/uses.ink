@@ -21,11 +21,9 @@ const nextConfig = {
 			dir: __dirname,
 			describe: true,
 		}),
-		NEXT_PUBLIC_BUILD_COMMIT: nextBuildId
-			.sync({
-				dir: __dirname,
-			})
-			.slice(0, 7),
+		NEXT_PUBLIC_BUILD_COMMIT: nextBuildId.sync({
+			dir: __dirname,
+		}),
 	},
 };
 
