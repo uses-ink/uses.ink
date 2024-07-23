@@ -1,3 +1,12 @@
+## v0.1.16 (2024-07-23)
+
+### Fix
+
+- style inline code blocks
+- code blocks titles
+- image centered
+- add top padding for code blocks
+
 ## v0.1.15 (2024-07-23)
 
 ### Fix
