@@ -8,6 +8,20 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
 	title: "uses.ink",
 	description: "You got a github repo? You got a blog.",
+	openGraph: {
+		type: "website",
+		url: "https://uses.ink",
+		title: "uses.ink",
+		description: "You got a github repo? You got a blog.",
+		images: [
+			{
+				url: "https://uses.ink/og.png",
+				width: 1277,
+				height: 641,
+				alt: "uses.ink",
+			},
+		],
+	},
 };
 
 export default function RootLayout({
