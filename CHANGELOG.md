@@ -1,3 +1,17 @@
+## v0.1.22 (2024-07-23)
+
+### Feat
+
+- allow `no-anchor` id for titles without the `#` link
+
+### Fix
+
+- demo link
+
+### Refactor
+
+- do not show build date, show version instead
+
 ## v0.1.21 (2024-07-23)
 
 ## v0.1.20 (2024-07-23)
