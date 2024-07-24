@@ -25,6 +25,7 @@ const nextConfig = {
 			dir: __dirname,
 		}),
 	},
+	transpilePackages: ["shiki"],
 };
 
 export default nextConfig;
