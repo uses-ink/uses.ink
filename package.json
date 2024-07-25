@@ -30,7 +30,7 @@
     "hast-util-sanitize": "^5.0.1",
     "hastscript": "^9.0.0",
     "ioredis": "^5.4.1",
-    "lucide-react": "^0.414.0",
+    "lucide-react": "^0.416.0",
     "mark.js": "^8.11.1",
     "mdast-util-to-string": "^4.0.0",
     "mdx": "^0.3.1",
