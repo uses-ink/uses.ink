@@ -62,7 +62,7 @@ function SearchableContent<T extends ContentComponentProps>({
 
 	return (
 		<>
-			<div className="absolute top-0 right-0 p-4">
+			<div className="fixed top-0 right-0 p-4">
 				<div className="relative">
 					<Input
 						value={searchTerm}
