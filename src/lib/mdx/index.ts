@@ -23,9 +23,9 @@ import rehypePrettyCode from "rehype-pretty-code";
 import { MetaSchema } from "../types";
 import rehypeMetaString from "./meta";
 import { getShiki } from "./shiki";
-import { useEffect, useState } from "react";
+import remarkToc from "remark-toc";
 
-const DEBUG_TREE = false;
+const DEBUG_TREE = true;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
 
@@ -42,6 +42,7 @@ export async function compileMDX(
 			[remarkMdxFrontmatter, { name: "matter" }],
 			remarkMath,
 			remarkReadingTime,
+			[remarkToc, { maxDepth: 3 }],
 		],
 		rehypePlugins: [
 			DEBUG_TREE

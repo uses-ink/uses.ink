@@ -50,6 +50,7 @@
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
     "remark-mdx-frontmatter": "^5.0.0",
+    "remark-toc": "^9.0.0",
     "shiki": "^1.10.3",
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.7",
