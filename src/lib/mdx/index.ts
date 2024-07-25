@@ -23,6 +23,7 @@ import rehypePrettyCode from "rehype-pretty-code";
 import { MetaSchema } from "../types";
 import rehypeMetaString from "./meta";
 import { getShiki } from "./shiki";
+import { useEffect, useState } from "react";
 
 const DEBUG_TREE = false;
 
@@ -126,7 +127,7 @@ export function runMDX(code: string) {
 	const { default: Content, matter, readingTime } = mdx;
 	console.log("runMDX -> readingTime", readingTime);
 	console.log("runMDX -> matter", matter);
-	const meta = MetaSchema.parse(matter ?? {});
+	const meta = MetaSchema.safeParse(matter ?? {});
 	console.log("runMDX -> meta", meta);
 
 	return {
@@ -135,5 +136,3 @@ export function runMDX(code: string) {
 		readingTime: (readingTime as ReturnType<typeof getReadingTime>) ?? {},
 	};
 }
-
-export type RunMDXResult = ReturnType<typeof runMDX>;

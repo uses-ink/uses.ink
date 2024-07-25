@@ -55,6 +55,8 @@ export const MetaSchema = z.object({
 	author: z.string().optional(),
 	hideTop: z.boolean().default(false),
 	readingTime: z.boolean().default(true),
+	image: z.string().optional(),
+	nav: z.record(z.string()).optional(),
 });
 
 export const ConfigSchema = z.object({

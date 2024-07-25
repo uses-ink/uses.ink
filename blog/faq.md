@@ -1,6 +1,6 @@
 ---
-readingTime: false
 title: FAQ
+author: cstef
 ---
 
 ## Can I use my own domain ?

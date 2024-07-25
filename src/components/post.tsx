@@ -1,6 +1,5 @@
 "use client";
 
-import { runMDX } from "@/lib/mdx";
 import { mdxComponents } from "@/lib/mdx/components";
 import type { CommitResponse, ConfigSchema } from "@/lib/types";
 import { useCallback, useEffect, useState } from "react";
@@ -14,6 +13,32 @@ import {
 } from "./ui/tooltip";
 import { ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { runMDX } from "@/lib/mdx";
+import { Loading } from "./loading";
+
+const useRunMDX = (code: string) => {
+	const [result, setResult] = useState<ReturnType<typeof runMDX>>();
+	useEffect(() => {
+		setResult(runMDX(code));
+	}, [code]);
+	return result ?? { Content: null, meta: null, readingTime: {} };
+};
+
+const resolveTitle = (Content: (props: any) => any) => {
+	const content = Content({ components: mdxComponents })?.props.children ?? [];
+	if (Symbol.iterator in Object(content)) {
+		for (const child of content) {
+			if (["h1", "h2", "h3"].includes(child.type)) {
+				return child.props.children;
+			}
+		}
+	} else {
+		if (["h1", "h2", "h3"].includes(content.type)) {
+			return content.props;
+		}
+	}
+	return null;
+};
 
 export default function Post({
 	filename,
@@ -27,6 +52,9 @@ export default function Post({
 	config: z.infer<typeof ConfigSchema> | null;
 }) {
 	const [canScroll, setCanScroll] = useState(false);
+	const [resolvedTitle, setResolvedTitle] = useState<string | null>(null);
+	const [description, setDescription] = useState<string | null>(null);
+
 	useEffect(() => {
 		const handleScroll = () => {
 			setCanScroll(window.scrollY > 100);
@@ -40,55 +68,7 @@ export default function Post({
 	const scrollUp = useCallback(() => {
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	}, []);
-	const {
-		meta: {
-			title,
-			description,
-			author,
-			date,
-			hideTop,
-			readingTime: enableReadingTime,
-		},
-		readingTime: { text: readTime, words },
-		Content,
-	} = runMDX(content);
 
-	console.log("Post -> enableReadingTime", enableReadingTime);
-
-	const resolvedDate = date ?? lastCommit?.date;
-	const { resolvedAuthor, link, avatar } = lastCommit?.author
-		? {
-				resolvedAuthor: lastCommit.author.name,
-				link: `https://github.com/${lastCommit.author.login}`,
-				avatar: lastCommit.author.avatar,
-			}
-		: { resolvedAuthor: author, link: null, avatar: null };
-	let resolvedTitle = title;
-	if (!resolvedTitle) {
-		const content =
-			Content({ components: mdxComponents })?.props.children ?? [];
-		// if is iterable
-		if (Symbol.iterator in Object(content)) {
-			for (const child of content) {
-				if (["h1", "h2", "h3"].includes(child.type)) {
-					resolvedTitle = child.props.children;
-					break;
-				}
-			}
-		} else {
-			if (["h1", "h2", "h3"].includes(content.type)) {
-				resolvedTitle = content.props;
-			}
-		}
-		if (!resolvedTitle) {
-			const lastPath = filename?.split("/").pop();
-			const lastPathWithoutExtension = lastPath?.split(".").shift() ?? lastPath;
-			if (lastPathWithoutExtension)
-				resolvedTitle =
-					lastPathWithoutExtension.slice(0, 1).toUpperCase() +
-					lastPathWithoutExtension.slice(1);
-		}
-	}
 	useEffect(() => {
 		if (resolvedTitle) {
 			document.title = resolvedTitle;
@@ -99,11 +79,64 @@ export default function Post({
 				?.setAttribute("content", description);
 		}
 	}, [resolvedTitle, description]);
+
+	const { meta, readingTime, Content } = useRunMDX(content);
+
+	useEffect(() => {
+		if (meta?.success) {
+			setDescription(meta.data.description ?? null);
+			if (Content) {
+				setResolvedTitle(meta.data.title ?? resolveTitle(Content));
+			}
+		}
+	}, [meta, Content]);
+
+	if (!meta) {
+		return <Loading />;
+	}
+
+	if (!meta.success) {
+		return (
+			<div className="flex w-screen justify-center items-center prose max-w-full dark:prose-invert">
+				<div className="text-center flex gap-2 flex-col items-center">
+					<h1 className="text-4xl">
+						An error occured when parsing your frontmatter.
+					</h1>
+					<pre className="text-left language-json">{meta.error.message}</pre>
+					<p className="text-lg dark:text-gray-400 text-gray-600">
+						See the{" "}
+						<a
+							href="https://uses.ink/docs/frontmatter"
+							target="_blank"
+							rel="noreferrer"
+						>
+							frontmatter documentation
+						</a>{" "}
+						for more information.
+					</p>
+					<h3>
+						<a href="https://uses.ink">Back to uses.ink</a>
+					</h3>
+				</div>
+			</div>
+		);
+	}
+
+	const resolvedDate = meta.data.date ?? lastCommit?.date;
+
+	const { resolvedAuthor, link, avatar } = lastCommit?.author
+		? {
+				resolvedAuthor: lastCommit.author.name,
+				link: `https://github.com/${lastCommit.author.login}`,
+				avatar: lastCommit.author.avatar,
+			}
+		: { resolvedAuthor: meta.data.author, link: null, avatar: null };
+
 	return (
 		<>
-			{!(config?.hideTop ?? hideTop) && (
+			{!(config?.hideTop ?? meta.data.hideTop) && (
 				<header className="mb-8">
-					<h1>{title}</h1>
+					<h1>{meta.data.title}</h1>
 
 					<p className="text-sm text-gray-500">
 						{resolvedAuthor && (
@@ -126,9 +159,9 @@ export default function Post({
 										resolvedAuthor
 									)}{" "}
 								</b>
-								•
 							</>
-						)}{" "}
+						)}
+						{resolvedAuthor && resolvedDate && " • "}
 						<TooltipProvider>
 							{resolvedDate && (
 								<Tooltip>
@@ -139,20 +172,23 @@ export default function Post({
 											target="_blank"
 											rel="noreferrer"
 										>
-											Last updated <Moment fromNow>{resolvedDate}</Moment> •
+											Last updated <Moment fromNow>{resolvedDate}</Moment>
 										</a>
 									</TooltipTrigger>
 									<TooltipContent>
 										<Moment format="LLL">{resolvedDate}</Moment>
 									</TooltipContent>
 								</Tooltip>
-							)}{" "}
-							{(config?.readingTime ?? enableReadingTime) && (
+							)}
+							{resolvedDate &&
+								(config?.readingTime ?? meta.data.readingTime) &&
+								" • "}
+							{(config?.readingTime ?? meta.data.readingTime) && (
 								<Tooltip>
 									<TooltipTrigger>
-										<span>{readTime}</span>
+										<span>{readingTime.text}</span>
 									</TooltipTrigger>
-									<TooltipContent>{words} words</TooltipContent>
+									<TooltipContent>{readingTime.words} words</TooltipContent>
 								</Tooltip>
 							)}
 						</TooltipProvider>
