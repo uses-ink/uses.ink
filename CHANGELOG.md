@@ -1,3 +1,24 @@
+## v0.2.6 (2024-07-26)
+
+### Feat
+
+- add search bar for post content
+- add table of contents support
+- proper loading of client-side pages
+- automatically set last updated for local content
+- add link to commit/tag in footer tooltip
+
+### Fix
+
+- error page wasn't following theme
+- shiki esm errors gone
+- do not fetch config if content is local
+- only include 8 first chars of commit hash
+
+### Refactor
+
+- prepare for an eventual migration to mdx
+
 ## v0.2.5 (2024-07-23)
 
 ## v0.2.4 (2024-07-23)
