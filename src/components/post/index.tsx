@@ -2,43 +2,20 @@
 
 import { mdxComponents } from "@/lib/mdx/components";
 import type { CommitResponse, ConfigSchema } from "@/lib/types";
-import { useCallback, useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { ChevronUp } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Moment from "react-moment";
 import type { z } from "zod";
+import { Loading } from "../loading";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "./ui/tooltip";
-import { ChevronUp } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { runMDX } from "@/lib/mdx";
-import { Loading } from "./loading";
-
-const useRunMDX = (code: string) => {
-	const [result, setResult] = useState<ReturnType<typeof runMDX>>();
-	useEffect(() => {
-		setResult(runMDX(code));
-	}, [code]);
-	return result ?? { Content: null, meta: null, readingTime: {} };
-};
-
-const resolveTitle = (Content: (props: any) => any) => {
-	const content = Content({ components: mdxComponents })?.props.children ?? [];
-	if (Symbol.iterator in Object(content)) {
-		for (const child of content) {
-			if (["h1", "h2", "h3"].includes(child.type)) {
-				return child.props.children;
-			}
-		}
-	} else {
-		if (["h1", "h2", "h3"].includes(content.type)) {
-			return content.props;
-		}
-	}
-	return null;
-};
+} from "../ui/tooltip";
+import { resolveTitle, useRunMDX } from "./utils";
+import SearchableContent from "../search";
 
 export default function Post({
 	filename,
@@ -54,6 +31,7 @@ export default function Post({
 	const [canScroll, setCanScroll] = useState(false);
 	const [resolvedTitle, setResolvedTitle] = useState<string | null>(null);
 	const [description, setDescription] = useState<string | null>(null);
+	const [searchText, setSearchText] = useState("");
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -196,7 +174,11 @@ export default function Post({
 				</header>
 			)}
 
-			<Content components={mdxComponents} />
+			<SearchableContent
+				ContentComponent={Content}
+				contentProps={{ components: mdxComponents }}
+			/>
+
 			<div className="fixed sm:bottom-8 sm:right-8 bottom-4 right-4">
 				<ChevronUp
 					className={cn(

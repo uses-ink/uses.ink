@@ -25,7 +25,7 @@ import rehypeMetaString from "./meta";
 import { getShiki } from "./shiki";
 import remarkToc from "remark-toc";
 
-const DEBUG_TREE = true;
+const DEBUG_TREE = false;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
 
