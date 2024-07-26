@@ -109,7 +109,7 @@ function SearchableContent<T extends ContentComponentProps>({
 					<div className="flex gap-2 items-center">
 						<p className="not-prose text-sm flex items-center justify-between">
 							<input
-								className="appearance-none bg-transparent border-none w-4 max-w-8 text-center focus:outline-none remove-arrow text-right"
+								className="appearance-none bg-transparent border-none w-4 max-w-8 focus:outline-none remove-arrow text-right"
 								value={currentMatchIndex === -1 ? "" : currentMatchIndex + 1}
 								type="number"
 								onChange={(e) => {
