@@ -60,3 +60,10 @@ const Anchor = ({ id }: any) => (
 		#
 	</a>
 );
+
+export const GalleryImage = ({ src, alt }: { src: string; alt: string }) => (
+	<div className="flex flex-col items-center not-prose gap-2">
+		<img src={src} alt={alt} className="rounded-lg" />
+		{alt && <p className="text-sm !text-muted-foreground">{alt}</p>}
+	</div>
+);

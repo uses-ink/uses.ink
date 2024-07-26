@@ -1,6 +1,6 @@
 "use client";
 
-import { mdxComponents } from "@/lib/mdx/components";
+import { GalleryImage, mdxComponents } from "@/lib/mdx/components";
 import type { CommitResponse, ConfigSchema } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ChevronUp } from "lucide-react";
@@ -100,6 +100,27 @@ export default function Post({
 			</div>
 		);
 	}
+	const { layout } = meta.data;
+	const getLayout = () => {
+		switch (layout) {
+			case "gallery":
+				return GalleryLayout;
+			default:
+				return PostLayout;
+		}
+	};
+
+	const Layout = getLayout();
+	const LayoutContent = () => (
+		<Layout>
+			<Content
+				components={{
+					...mdxComponents,
+					...(layout === "gallery" ? { img: GalleryImage as any } : {}),
+				}}
+			/>
+		</Layout>
+	);
 
 	const resolvedDate = meta.data.date ?? lastCommit?.date;
 
@@ -176,10 +197,7 @@ export default function Post({
 				</header>
 			)}
 
-			<SearchableContent
-				ContentComponent={Content}
-				contentProps={{ components: mdxComponents }}
-			/>
+			<SearchableContent ContentComponent={LayoutContent} contentProps={{}} />
 
 			<div className="fixed sm:bottom-8 sm:right-8 bottom-4 right-4">
 				<ChevronUp
@@ -194,5 +212,16 @@ export default function Post({
 				/>
 			</div>
 		</>
+	);
+}
+
+function PostLayout({ children }) {
+	return <>{children}</>;
+}
+
+function GalleryLayout({ children }) {
+	return (
+		// spread the children to the grid horizontally
+		<div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
 	);
 }

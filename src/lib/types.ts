@@ -57,6 +57,7 @@ export const MetaSchema = z.object({
 	readingTime: z.boolean().default(true),
 	image: z.string().optional(),
 	nav: z.record(z.string()).optional(),
+	layout: z.enum(["post", "gallery"]).default("post"),
 });
 
 export const ConfigSchema = z.object({
