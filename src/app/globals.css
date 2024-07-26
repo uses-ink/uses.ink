@@ -299,3 +299,12 @@ h5#user-content-no-anchor a.anchor,
 h6#user-content-no-anchor a.anchor {
 	@apply hidden;
 }
+
+.remove-arrow::-webkit-inner-spin-button,
+.remove-arrow::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+.remove-arrow {
+	-moz-appearance: textfield;
+}
