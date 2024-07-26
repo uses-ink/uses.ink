@@ -5,9 +5,17 @@ services:
             - redis-data:/data
         networks:
             - base-network
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
 
     app:
-        image: ghcr.io/uses-ink/uses.ink:latest
+        # image: ghcr.io/uses-ink/uses.ink:latest
+        build:
+            context: .
+            dockerfile: Dockerfile
         ports:
             - "8765:8765"
         env_file:
@@ -16,6 +24,11 @@ services:
             - redis
         networks:
             - base-network
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://app:8765/api/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
 
 volumes:
     redis-data:
