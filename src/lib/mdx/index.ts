@@ -24,8 +24,9 @@ import { MetaSchema } from "../types";
 import rehypeMetaString from "./meta";
 import { getShiki } from "./shiki";
 import remarkToc from "remark-toc";
+import remarkCallout from "@r4ai/remark-callout";
 
-const DEBUG_TREE = false;
+const DEBUG_TREE = true;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
 
@@ -43,6 +44,7 @@ export async function compileMDX(
 			remarkMath,
 			remarkReadingTime,
 			[remarkToc, { maxDepth: 3 }],
+			remarkCallout,
 		],
 		rehypePlugins: [
 			DEBUG_TREE
@@ -83,6 +85,10 @@ export async function compileMDX(
 							"className",
 							"style",
 							"metastring",
+							"dataCallout",
+							"dataCalloutType",
+							"dataCalloutTitle",
+							"dataCalloutBody",
 						],
 					},
 				},
