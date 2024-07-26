@@ -1,3 +1,17 @@
+## v0.3.1 (2024-07-26)
+
+### Feat
+
+- add navbar support
+- ability to select current match
+
+### Fix
+
+- remove redundant class
+- fixed positioning for search
+- **deps**: update dependency lucide-react to ^0.416.0
+- **deps**: update shiki monorepo to v1.11.2
+
 ## v0.3.0 (2024-07-26)
 
 ### Feat
