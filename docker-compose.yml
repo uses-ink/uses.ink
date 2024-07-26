@@ -12,10 +12,7 @@ services:
             retries: 5
 
     app:
-        # image: ghcr.io/uses-ink/uses.ink:latest
-        build:
-            context: .
-            dockerfile: Dockerfile
+        image: ghcr.io/uses-ink/uses.ink:latest
         ports:
             - "8765:8765"
         env_file:
