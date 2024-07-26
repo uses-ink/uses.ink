@@ -16,6 +16,7 @@ import {
 } from "../ui/tooltip";
 import { resolveTitle, useRunMDX } from "./utils";
 import SearchableContent from "../search";
+import { Navbar } from "../navbar";
 
 export default function Post({
 	filename,
@@ -112,6 +113,7 @@ export default function Post({
 
 	return (
 		<>
+			{meta.data.nav && <Navbar routes={meta.data.nav} />}
 			{!(config?.hideTop ?? meta.data.hideTop) && (
 				<header className="mb-8">
 					<h1>{meta.data.title}</h1>

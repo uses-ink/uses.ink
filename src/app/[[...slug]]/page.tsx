@@ -86,7 +86,7 @@ const Page: NextPage = async () => {
 				filename={repoData.path}
 				config={config}
 			/>
-			<hr className="mb-4" />
+			<hr className="!mb-4" />
 			<Footer />
 		</article>
 	);
