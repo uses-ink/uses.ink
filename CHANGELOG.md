@@ -1,3 +1,9 @@
+## v0.3.3 (2024-07-27)
+
+### Fix
+
+- add proper typing to layouts
+
 ## v0.3.2 (2024-07-27)
 
 ### Feat
