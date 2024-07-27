@@ -75,6 +75,10 @@ span[data-rehype-pretty-code-figure] code {
 	}
 }
 
+span[data-rehype-pretty-code-figure] {
+	text-wrap: nowrap;
+}
+
 [data-rehype-pretty-code-figure] pre {
 	@apply px-0;
 }
