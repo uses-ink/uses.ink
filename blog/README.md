@@ -32,5 +32,5 @@ The current path can be specified in the URL after the repository name like this
 The branch is specified in the URL with the `@` symbol like this: `<user>.uses.ink/<repo>@<branch>`
 
 <p align="center">
-    <a href="https://github.com/uses-ink/uses.ink">GitHub Repository</a> • <a href="https://cestef.uses.ink">Demo</a> • <a href="/faq.md">FAQ</a>
+    <a href="https://github.com/uses-ink/uses.ink">GitHub Repository</a> • <a href="https://cestef.uses.ink">Demo</a> • <a href="/faq.md">FAQ</a> • <a href="/tutorials.md">Tutorials</a>
 </p>
