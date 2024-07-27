@@ -26,7 +26,7 @@ import { getShiki } from "./shiki";
 import remarkToc from "remark-toc";
 import remarkCallout from "@r4ai/remark-callout";
 
-const DEBUG_TREE = true;
+const DEBUG_TREE = false;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
 
