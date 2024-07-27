@@ -243,6 +243,13 @@ html[data-word-wrap] pre {
 
 span[data-rehype-pretty-code-figure] code {
 	@apply rounded-sm px-1 dark:border-gray-700 border-gray-200 border;
+
+	&::before {
+		content: "";
+	}
+	&::after {
+		content: "";
+	}
 }
 
 [data-rehype-pretty-code-figure] pre {
