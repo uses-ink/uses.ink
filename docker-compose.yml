@@ -13,6 +13,7 @@ services:
 
     app:
         image: ghcr.io/uses-ink/uses.ink:latest
+        profiles: [prod]
         ports:
             - "8765:8765"
         env_file:
@@ -23,6 +24,25 @@ services:
             - base-network
         healthcheck:
             test: ["CMD", "curl", "-f", "http://app:8765/api/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+
+    app-dev:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        profiles: [dev]
+        ports:
+            - "8765:8765"
+        env_file:
+            - .env
+        depends_on:
+            - redis
+        networks:
+            - base-network
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://app-dev:8765/api/health"]
             interval: 30s
             timeout: 10s
             retries: 5
