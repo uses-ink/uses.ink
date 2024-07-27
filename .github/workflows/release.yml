@@ -18,7 +18,7 @@ jobs:
                 include:
                     - os: ubuntu-latest
                       platform: linux/amd64
-                    - os: blacksmith-16vcpu-ubuntu-2204-arm
+                    - os: blacksmith-4vcpu-ubuntu-2204-arm
                       platform: linux/arm64
         runs-on: ${{ matrix.os }}
         steps:
