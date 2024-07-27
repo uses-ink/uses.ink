@@ -19,11 +19,11 @@ const Pre = ({
 	const handleCopyCode = async () => {
 		if (preRef.current) {
 			const content = Array.from(
-				preRef.current.querySelectorAll("code span.line"),
+				preRef.current.querySelectorAll("code span[data-line]"),
 			)
 				.map((el) => el.textContent)
 				.join("\n");
-
+			console.log("handleCopyCode -> content", content);
 			await navigator.clipboard.writeText(content);
 		} else {
 			console.error("pre.current is null");
