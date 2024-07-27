@@ -1,3 +1,18 @@
+## v0.3.4 (2024-07-28)
+
+### Feat
+
+- switch to rehype callouts for vitepress-styled callouts
+- add emoji + twemoji support
+
+### Fix
+
+- **deps**: update shiki monorepo to v1.12.0 (#22)
+
+### Refactor
+
+- split css into their respective files
+
 ## v0.3.3 (2024-07-27)
 
 ### Fix
