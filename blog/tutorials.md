@@ -3,7 +3,7 @@ title: Tutorials
 author: cstef
 ---
 
-:wave:
+## Table of Contents
 
 ## Metadata
 
@@ -147,4 +147,24 @@ Tables are rendered with GitHub Flavored Markdown:
 | -------- | -------- |
 | Row 1    | Row 1    |
 | Row 2    | Row 2    |
+
+## Emojis
+
+Shortcodes for emojis are supported:
+
+```markdown
+:smile:
+```
+
+:smile:
+
+Emojis are rendered using [Twemoji](https://twemoji.twitter.com/).
+
+## Tables of Contents
+
+If a heading matching `/table[ -]of[ -])?contents?|toc/i{:regex}` is present in the markdown file, a table of contents will be generated.
+
+In case you don't want a table of contents to be generated, you can add a `<!-- no-toc -->` comment after the heading.
+This also allows you to remove particular headings from the table of contents.
+
 
