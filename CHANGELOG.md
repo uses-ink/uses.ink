@@ -1,3 +1,18 @@
+## v0.3.2 (2024-07-27)
+
+### Feat
+
+- add callouts support
+- add layouts + gallery layout
+- add healthcheck for docker-compose
+
+### Fix
+
+- set debug_tree back to false
+- remove backticks in inline highlighted code
+- port copy to pretty-code
+- roll back to remote image instead of local building
+
 ## v0.3.1 (2024-07-26)
 
 ### Feat
