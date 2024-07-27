@@ -29,7 +29,7 @@ cp .env.example .env
 Then, run the following command to start the platform:
 
 ```bash
-docker compose up -d
+docker compose --profile prod up -d
 ```
 
 You can now access the platform at [`http://localhost:8765`](http://localhost:8765).
