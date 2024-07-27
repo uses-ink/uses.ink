@@ -25,11 +25,15 @@ import { MetaSchema } from "../types";
 import rehypeMetaString from "./meta";
 import { getShiki } from "./shiki";
 import remarkToc from "remark-toc";
-import remarkCallout from "@r4ai/remark-callout";
+import rehypeCallouts from "rehype-callouts";
+import remarSuperSub from "remark-supersub";
 
 const DEBUG_TREE = false;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
+
+const makeDebug = (name: string) =>
+	DEBUG_TREE ? (tree: any) => console.log(name, inspect(tree)) : () => {};
 
 export async function compileMDX(
 	content: string,
@@ -45,28 +49,22 @@ export async function compileMDX(
 			remarkMath,
 			remarkReadingTime,
 			[remarkToc, { maxDepth: 3 }],
-			remarkCallout,
 			remarkEmoji,
+			remarSuperSub,
 		],
 		rehypePlugins: [
-			DEBUG_TREE
-				? () => (tree) => console.log("before", inspect(tree), "\n\n")
-				: [() => {}],
+			makeDebug("start"),
 			// Moves `data.meta` to `properties.metastring` for the `code` element node
 			// Because `rehype-raw` strips `data` from all nodes, which may contain useful information.
 			rehypeMetaString,
-			DEBUG_TREE
-				? () => (tree) => console.log("after meta", inspect(tree), "\n\n")
-				: [() => {}],
+			makeDebug("after metastring"),
 			[
 				rehypeRaw,
 				{
 					passThrough: ALLOWED_NODES,
 				},
 			],
-			DEBUG_TREE
-				? () => (tree) => console.log("after raw", inspect(tree), "\n\n")
-				: [() => {}],
+			makeDebug("after raw"),
 			[
 				rehypeSanitize,
 				{
@@ -95,9 +93,7 @@ export async function compileMDX(
 					},
 				},
 			],
-			DEBUG_TREE
-				? () => (tree) => console.log("after sanitize", inspect(tree), "\n\n")
-				: [() => {}],
+			makeDebug("after sanitize"),
 			[
 				rehypePrettyCode,
 				{
@@ -110,10 +106,7 @@ export async function compileMDX(
 					],
 				},
 			],
-			DEBUG_TREE
-				? () => (tree) =>
-						console.log("after pretty-code", inspect(tree), "\n\n")
-				: [() => {}],
+			makeDebug("after pretty code"),
 
 			[rehypeKatex, { output: "mathml" }],
 			rehypeSlug,
@@ -124,10 +117,9 @@ export async function compileMDX(
 					source: "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest",
 				} satisfies RehypeTwemojiOptions,
 			],
+			[rehypeCallouts, { theme: "vitepress" }],
 			...getMdxUrl({ resolvers: urlResolvers }),
-			DEBUG_TREE
-				? () => (tree) => console.log("end", inspect(tree), "\n\n")
-				: [() => {}],
+			makeDebug("after url"),
 		],
 		remarkRehypeOptions: {
 			allowDangerousHtml: true,

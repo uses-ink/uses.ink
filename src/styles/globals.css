@@ -1,7 +1,8 @@
 @tailwind components;
 @tailwind utilities;
 
-@import "./callout.css";
+@import "rehype-callouts/theme/vitepress";
+/* @import "./callout.css"; */
 @import "./colors.css";
 @import "./code.css";
 
