@@ -18,7 +18,8 @@ import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 import { inspect } from "unist-util-inspect";
 import { remarkReadingTime } from "./read-time";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
-
+import { rehypeTwemoji, type RehypeTwemojiOptions } from "rehype-twemoji";
+import remarkEmoji from "remark-emoji";
 import rehypePrettyCode from "rehype-pretty-code";
 import { MetaSchema } from "../types";
 import rehypeMetaString from "./meta";
@@ -45,6 +46,7 @@ export async function compileMDX(
 			remarkReadingTime,
 			[remarkToc, { maxDepth: 3 }],
 			remarkCallout,
+			remarkEmoji,
 		],
 		rehypePlugins: [
 			DEBUG_TREE
@@ -115,6 +117,13 @@ export async function compileMDX(
 
 			[rehypeKatex, { output: "mathml" }],
 			rehypeSlug,
+			[
+				rehypeTwemoji,
+				{
+					format: "svg",
+					source: "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest",
+				} satisfies RehypeTwemojiOptions,
+			],
 			...getMdxUrl({ resolvers: urlResolvers }),
 			DEBUG_TREE
 				? () => (tree) => console.log("end", inspect(tree), "\n\n")

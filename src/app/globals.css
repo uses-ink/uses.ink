@@ -749,3 +749,7 @@ details[data-callout][open] > summary[data-callout-title]::after {
 [data-callout][data-callout-type="cite"] > [data-callout-title]:empty::after {
 	content: "Cite";
 }
+
+[data-twemoji] {
+	@apply size-[1.2em] inline-block align-text-bottom;
+}

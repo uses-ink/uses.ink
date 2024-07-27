@@ -3,6 +3,8 @@ title: Tutorials
 author: cstef
 ---
 
+:wave:
+
 ## Metadata
 
 You can add metadata to your markdown files by adding a YAML front matter block at the top of the file. This block must be the first thing in the file and must take the form of a valid YAML object. The metadata block is separated from the rest of the content by a line of three dashes.
