@@ -2,6 +2,7 @@
 @tailwind utilities;
 
 @import "rehype-callouts/theme/vitepress";
+@import "katex/dist/katex.min.css";
 /* @import "./callout.css"; */
 @import "./colors.css";
 @import "./code.css";

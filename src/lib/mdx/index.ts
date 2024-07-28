@@ -90,6 +90,7 @@ export async function compileMDX(
 							"dataCalloutTitle",
 							"dataCalloutBody",
 						],
+						code: [["className", /^language-./, "math-inline", "math-display"]],
 					},
 				},
 			],
@@ -108,7 +109,7 @@ export async function compileMDX(
 			],
 			makeDebug("after pretty code"),
 
-			[rehypeKatex, { output: "mathml" }],
+			[rehypeKatex, { throwOnError: false, output: "htmlAndMathml" }],
 			rehypeSlug,
 			[
 				rehypeTwemoji,
