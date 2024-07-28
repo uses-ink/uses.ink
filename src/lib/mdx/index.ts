@@ -43,7 +43,7 @@ export async function compileMDX(
 		format: "md",
 		outputFormat: "function-body",
 		remarkPlugins: [
-			remarkGfm,
+			[remarkGfm, { singleTilde: false }],
 			[remarkFrontmatter, { marker: "-", type: "yaml" }],
 			[remarkMdxFrontmatter, { name: "matter" }],
 			remarkMath,
