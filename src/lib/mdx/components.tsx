@@ -3,7 +3,8 @@ import Head from "next/head";
 import Link from "next/link";
 
 // To have client-side routing
-const CustomLink = (props: any) => <Link {...props} />;
+const CustomLink = (props: any) =>
+	props.href.startsWith("#") ? <a {...props} /> : <Link {...props} />;
 
 /**
  * Use Next's components in MDX (e.g. Head)

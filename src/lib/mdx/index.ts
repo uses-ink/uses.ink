@@ -33,7 +33,7 @@ const DEBUG_TREE = false;
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
 
 const makeDebug = (name: string) =>
-	DEBUG_TREE ? (tree: any) => console.log(name, inspect(tree)) : () => {};
+	DEBUG_TREE ? () => (tree: any) => console.log(name, inspect(tree)) : () => {};
 
 export async function compileMDX(
 	content: string,
@@ -124,6 +124,7 @@ export async function compileMDX(
 		],
 		remarkRehypeOptions: {
 			allowDangerousHtml: true,
+			clobberPrefix: "",
 		},
 	});
 	return result.toString();

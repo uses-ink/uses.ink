@@ -32,17 +32,63 @@ export default function Post({
 	const [canScroll, setCanScroll] = useState(false);
 	const [resolvedTitle, setResolvedTitle] = useState<string | null>(null);
 	const [description, setDescription] = useState<string | null>(null);
-	const [searchText, setSearchText] = useState("");
+
+	const { meta, readingTime, Content } = useRunMDX(content);
 
 	useEffect(() => {
 		const handleScroll = () => {
 			setCanScroll(window.scrollY > 100);
 		};
+		const handleHashChange = () => {
+			let hash: string;
+
+			try {
+				hash = decodeURIComponent(location.hash.slice(1)).toLowerCase();
+			} catch (e) {
+				console.warn("Error decoding hash", e);
+				return;
+			}
+
+			const name = `user-content-${hash}`;
+			const target =
+				document.getElementById(name) ||
+				document.getElementsByName(name)[0] ||
+				document.getElementById(hash);
+
+			if (target) {
+				console.log("Post -> target", target);
+
+				target.scrollIntoView({ behavior: "smooth" });
+			} else {
+				console.warn("No anchor found for:", hash);
+			}
+		};
+		const handleClick = (event: MouseEvent) => {
+			if (
+				event.target &&
+				event.target instanceof HTMLAnchorElement &&
+				event.target.href === location.href &&
+				location.hash.length > 1
+			) {
+				if (!event.defaultPrevented) {
+					handleHashChange();
+				}
+			}
+		};
+		// JSX has finished rendering
+		if (meta) {
+			console.log("Post -> meta", meta);
+			handleHashChange();
+		}
 		window.addEventListener("scroll", handleScroll);
+		window.addEventListener("hashchange", handleHashChange);
+		document.addEventListener("click", handleClick, false);
 		return () => {
 			window.removeEventListener("scroll", handleScroll);
+			window.removeEventListener("hashchange", handleHashChange);
+			document.removeEventListener("click", handleClick);
 		};
-	}, []);
+	}, [meta]);
 
 	const scrollUp = useCallback(() => {
 		window.scrollTo({ top: 0, behavior: "smooth" });
@@ -58,8 +104,6 @@ export default function Post({
 				?.setAttribute("content", description);
 		}
 	}, [resolvedTitle, description]);
-
-	const { meta, readingTime, Content } = useRunMDX(content);
 
 	useEffect(() => {
 		if (meta?.success) {
