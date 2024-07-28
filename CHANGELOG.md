@@ -1,3 +1,18 @@
+## v0.3.5 (2024-07-28)
+
+### Feat
+
+- add `<!-- no-toc -->` to bypass table of contents rendering
+
+### Fix
+
+- footnotes ids mismatch because of clobbering prevention
+- don't use single-tilde gfm strikethrough
+- padding for non-styled pre
+- correct katex rendering
+- add `nowrap` to inline code blocks
+- correct regexp for skipping toc
+
 ## v0.3.4 (2024-07-28)
 
 ### Feat
