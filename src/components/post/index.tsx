@@ -216,11 +216,16 @@ export default function Post({
 											href={lastCommit?.link ?? undefined}
 											target="_blank"
 											rel="noreferrer"
+											// The timezone of the server may be different from the user's timezone
+											suppressHydrationWarning
 										>
 											Last updated <Moment fromNow>{resolvedDate}</Moment>
 										</a>
 									</TooltipTrigger>
-									<TooltipContent>
+									<TooltipContent
+										// The timezone of the server may be different from the user's timezone
+										suppressHydrationWarning
+									>
 										<Moment format="LLL">{resolvedDate}</Moment>
 									</TooltipContent>
 								</Tooltip>
