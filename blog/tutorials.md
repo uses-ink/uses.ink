@@ -167,4 +167,68 @@ If a heading matching `/table[ -]of[ -])?contents?|toc/i{:regex}` is present in 
 In case you don't want a table of contents to be generated, you can add a `<!-- no-toc -->` comment after the heading.
 This also allows you to remove particular headings from the table of contents.
 
+An example of a table of contents is shown at the [beginning of this document](#table-of-contents).
 
+## Math
+
+Math is rendered using [KaTeX](https://katex.org/):
+
+```latex
+$$
+\text{Given a matrix } A = \begin{pmatrix}
+a_{11} & a_{12} & \cdots & a_{1n} \\
+a_{21} & a_{22} & \cdots & a_{2n} \\
+\vdots & \vdots & \ddots & \vdots \\
+a_{m1} & a_{m2} & \cdots & a_{mn}
+\end{pmatrix}
+$$
+
+$$
+\det(A) = \sum_{k=1}^{n} (-1)^{k+1} a_{1k} \det(A_{1k})
+$$
+```
+
+$$
+\text{Given a matrix } A = \begin{pmatrix}
+a_{11} & a_{12} & \cdots & a_{1n} \\
+a_{21} & a_{22} & \cdots & a_{2n} \\
+\vdots & \vdots & \ddots & \vdots \\
+a_{m1} & a_{m2} & \cdots & a_{mn}
+\end{pmatrix}
+$$
+
+$$
+\det(A) = \sum_{k=1}^{n} (-1)^{k+1} a_{1k} \det(A_{1k})
+$$
+
+## Super- and Subscripts
+
+You can add super- and subscripts using the `^` and `_` characters:
+
+```markdown
+H~2~O
+21^st^ century
+```
+
+H~2~O
+21^st^ century
+
+## Footnotes
+
+Footnotes can be added using the following syntax:
+
+```markdown
+Here is a footnote reference,[^1] and another.[^longnote]
+
+[^1]: Here is the footnote.
+[^longnote]: Here's one with multiple blocks.
+
+    Subsequent paragraphs are indented to show that they belong to the previous footnote.
+```
+
+Here is a footnote reference,[^1] and another.[^longnote]
+
+[^1]: Here is the footnote.
+[^longnote]: Here's one with multiple blocks.
+
+    Subsequent paragraphs are indented to show that they belong to the previous footnote.
