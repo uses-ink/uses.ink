@@ -126,7 +126,7 @@ importers:
         version: 1.11.0
       redis:
         specifier: ^4.6.15
-        version: 4.6.15
+        version: 4.7.0
       rehype-callouts:
         specifier: ^1.0.3
         version: 1.0.3
@@ -1470,6 +1470,10 @@ packages:
     resolution: {integrity: sha512-IPvU9A31qRCZ7lds/x+ksuK/UMndd0EASveAvCvEtFFKIZjZ+m/a4a0L7S28KEWoR5ka8526hlSghDo4Hrc2Hg==}
     engines: {node: '>=14'}
 
+  '@redis/client@1.6.0':
+    resolution: {integrity: sha512-aR0uffYI700OEEH4gYnitAnv3vzVGXCFvYfdpu/CJKvk4pHfLPEy/JSZyrpQ+15WhXe1yJRXLtfQ84s4mEXnPg==}
+    engines: {node: '>=14'}
+
   '@redis/graph@1.1.1':
     resolution: {integrity: sha512-FEMTcTHZozZciLRl6GiiIB4zGm5z5F3F6a6FZCyrfxdKOhFlGkiAqlexWMBzCi4DcRoyiOsuLfW+cjlGWyExOw==}
     peerDependencies:
@@ -1480,13 +1484,28 @@ packages:
     peerDependencies:
       '@redis/client': ^1.0.0
 
+  '@redis/json@1.0.7':
+    resolution: {integrity: sha512-6UyXfjVaTBTJtKNG4/9Z8PSpKE6XgSyEb8iwaqDcy+uKrd/DGYHTWkUdnQDyzm727V7p21WUMhsqz5oy65kPcQ==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+
   '@redis/search@1.1.6':
     resolution: {integrity: sha512-mZXCxbTYKBQ3M2lZnEddwEAks0Kc7nauire8q20oA0oA/LoA+E/b5Y5KZn232ztPb1FkIGqo12vh3Lf+Vw5iTw==}
     peerDependencies:
       '@redis/client': ^1.0.0
 
+  '@redis/search@1.2.0':
+    resolution: {integrity: sha512-tYoDBbtqOVigEDMAcTGsRlMycIIjwMCgD8eR2t0NANeQmgK/lvxNAvYyb6bZDD4frHRhIHkJu2TBRvB0ERkOmw==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+
   '@redis/time-series@1.0.5':
     resolution: {integrity: sha512-IFjIgTusQym2B5IZJG3XKr5llka7ey84fw/NOYqESP5WUfQs9zz1ww/9+qoz4ka/S6KcGBodzlCeZ5UImKbscg==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+
+  '@redis/time-series@1.1.0':
+    resolution: {integrity: sha512-c1Q99M5ljsIuc4YdaCwfUEXsofakb9c8+Zse2qxTadu8TalLXuAESzLvFAvNVbkmSlvlzIQOLpBCmWI9wTOt+g==}
     peerDependencies:
       '@redis/client': ^1.0.0
 
@@ -3059,8 +3078,8 @@ packages:
     resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
     engines: {node: '>=4'}
 
-  redis@4.6.15:
-    resolution: {integrity: sha512-2NtuOpMW3tnYzBw6S8mbXSX7RPzvVFCA2wFJq9oErushO2UeBkxObk+uvo7gv7n0rhWeOj/IzrHO8TjcFlRSOg==}
+  redis@4.7.0:
+    resolution: {integrity: sha512-zvmkHEAdGMn+hMRXuMBtu4Vo5P6rHQjLoHftu+lBqq8ZTA3RCVC/WzD790bkKKiNFp7d5/9PcSD19fJyyRvOdQ==}
 
   regenerate-unicode-properties@10.1.1:
     resolution: {integrity: sha512-X007RyZLsCJVVrjgEFVpLUTZwyOZk3oiL75ZcuYjlIWd6rNJtOjkBwQc5AsRrpbKVkxN6sklw/k/9m2jJYOf8Q==}
@@ -5007,7 +5026,17 @@ snapshots:
     dependencies:
       '@redis/client': 1.5.17
 
+  '@redis/bloom@1.2.0(@redis/client@1.6.0)':
+    dependencies:
+      '@redis/client': 1.6.0
+
   '@redis/client@1.5.17':
+    dependencies:
+      cluster-key-slot: 1.1.2
+      generic-pool: 3.9.0
+      yallist: 4.0.0
+
+  '@redis/client@1.6.0':
     dependencies:
       cluster-key-slot: 1.1.2
       generic-pool: 3.9.0
@@ -5017,17 +5046,33 @@ snapshots:
     dependencies:
       '@redis/client': 1.5.17
 
+  '@redis/graph@1.1.1(@redis/client@1.6.0)':
+    dependencies:
+      '@redis/client': 1.6.0
+
   '@redis/json@1.0.6(@redis/client@1.5.17)':
     dependencies:
       '@redis/client': 1.5.17
+
+  '@redis/json@1.0.7(@redis/client@1.6.0)':
+    dependencies:
+      '@redis/client': 1.6.0
 
   '@redis/search@1.1.6(@redis/client@1.5.17)':
     dependencies:
       '@redis/client': 1.5.17
 
+  '@redis/search@1.2.0(@redis/client@1.6.0)':
+    dependencies:
+      '@redis/client': 1.6.0
+
   '@redis/time-series@1.0.5(@redis/client@1.5.17)':
     dependencies:
       '@redis/client': 1.5.17
+
+  '@redis/time-series@1.1.0(@redis/client@1.6.0)':
+    dependencies:
+      '@redis/client': 1.6.0
 
   '@shikijs/core@1.12.0':
     dependencies:
@@ -5334,7 +5379,7 @@ snapshots:
       '@redis/search': 1.1.6(@redis/client@1.5.17)
       '@redis/time-series': 1.0.5(@redis/client@1.5.17)
       cache-manager: 5.7.4
-      redis: 4.6.15
+      redis: 4.7.0
 
   cache-manager@5.7.4:
     dependencies:
@@ -6988,14 +7033,14 @@ snapshots:
     dependencies:
       redis-errors: 1.2.0
 
-  redis@4.6.15:
+  redis@4.7.0:
     dependencies:
-      '@redis/bloom': 1.2.0(@redis/client@1.5.17)
-      '@redis/client': 1.5.17
-      '@redis/graph': 1.1.1(@redis/client@1.5.17)
-      '@redis/json': 1.0.6(@redis/client@1.5.17)
-      '@redis/search': 1.1.6(@redis/client@1.5.17)
-      '@redis/time-series': 1.0.5(@redis/client@1.5.17)
+      '@redis/bloom': 1.2.0(@redis/client@1.6.0)
+      '@redis/client': 1.6.0
+      '@redis/graph': 1.1.1(@redis/client@1.6.0)
+      '@redis/json': 1.0.7(@redis/client@1.6.0)
+      '@redis/search': 1.2.0(@redis/client@1.6.0)
+      '@redis/time-series': 1.1.0(@redis/client@1.6.0)
 
   regenerate-unicode-properties@10.1.1:
     dependencies:
