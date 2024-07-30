@@ -40,7 +40,9 @@ export const userContentHash = () => {
 		if (target) {
 			console.log("Post -> target", target);
 
-			target.scrollIntoView({ behavior: "smooth" });
+			const offset = 100;
+			const y = target.getBoundingClientRect().top + window.scrollY - offset;
+			window.scrollTo({ top: y, behavior: "smooth" });
 		} else {
 			console.warn("No anchor found for:", hash);
 		}
