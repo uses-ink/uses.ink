@@ -1,9 +1,11 @@
 ---
-title: Tutorials
+title: Features
 author: cstef
 ---
 
-## Table of Contents
+`uses.ink` comes with a lot of features out of the box. No configuration needed. You push and we render.
+
+## Overview <!-- toc -->
 
 ## Metadata
 
@@ -96,7 +98,7 @@ What if `const a = 1;{:js}` ?
 
 What if `const a = 1;{:js}` ?
 
-### Line Numbers
+### Line Numbers <!-- no-toc -->
 
 You can add line numbers to code blocks by adding `showLineNumbers` to the code block:
 
@@ -112,7 +114,7 @@ while True:
     print("Hello, World!")
 ```
 
-### Line Highlighting
+### Line Highlighting <!-- no-toc -->
 
 You can highlight particular lines in a code block by specifying the line numbers after the language name:
 
@@ -162,10 +164,14 @@ Emojis are rendered using [Twemoji](https://twemoji.twitter.com/).
 
 ## Tables of Contents
 
-If a heading matching `/table[ -]of[ -])?contents?|toc/i{:regex}` is present in the markdown file, a table of contents will be generated.
+If a heading matching `/^.*<!--( ?)toc( ?)-->$/i{:regex}` is present in the markdown file, a table of contents will be generated.
 
-In case you don't want a table of contents to be generated, you can add a `<!-- no-toc -->` comment after the heading.
-This also allows you to remove particular headings from the table of contents.
+In case you want to remove particular headings from the table of contents, you can add a `<!-- no-toc -->` comment after the heading:
+
+```markdown
+## Heading 1 <!-- no-toc -->
+## Heading 2
+```
 
 An example of a table of contents is shown at the [beginning of this document](#table-of-contents).
 

@@ -46,7 +46,14 @@ export async function compileMDX(
 			[remarkMdxFrontmatter, { name: "matter" }],
 			remarkMath,
 			remarkReadingTime,
-			[remarkToc, { maxDepth: 3, skip: ".*<!-- no-toc -->" }],
+			[
+				remarkToc,
+				{
+					maxDepth: 3,
+					skip: ".*<!--( ?)no-?toc( ?)-->",
+					heading: ".*<!--( ?)toc( ?)-->",
+				},
+			],
 			remarkEmoji,
 			remarSuperSub,
 		],
