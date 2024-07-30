@@ -50,6 +50,8 @@ pnpm dev
 
 This project uses a patched version of [`hast-util-sanitize@5.0.1`](patches/hast-util-sanitize@5.0.1.patch) to allow unknown nodes to be processed through an `unknownNodeHandler` function. We need this to allow plugin such as [`remark-frontmatter`](https://github.com/remarkjs/remark-frontmatter) to pass declarations.
 
+[`@myriaddreamin/typst-ts-node-compiler@0.5.0-rc6`](patches/@myriaddreamin__typst-ts-node-compiler@0.5.0-rc6.patch) is also patched to fix webpack compilation issues.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
