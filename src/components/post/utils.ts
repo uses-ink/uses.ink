@@ -1,27 +1,71 @@
-import { runMDX } from "@/lib/mdx/run";
 import { mdxComponents } from "@/lib/mdx/components";
-import { useState, useEffect } from "react";
 
-export const useRunMDX = (code: string) => {
-	const [result, setResult] = useState<ReturnType<typeof runMDX>>();
-	useEffect(() => {
-		setResult(runMDX(code));
-	}, [code]);
-	return result ?? { Content: null, meta: null, readingTime: {} };
-};
-
-export const resolveTitle = (Content: (props: any) => any) => {
+export const resolveTitle = (Content: (props: any) => any): string | null => {
 	const content = Content({ components: mdxComponents })?.props.children ?? [];
 	if (Symbol.iterator in Object(content)) {
 		for (const child of content) {
 			if (["h1", "h2", "h3"].includes(child.type)) {
-				return child.props.children;
+				if (typeof child.props.children === "string") {
+					return child.props.children;
+				}
 			}
 		}
 	} else {
 		if (["h1", "h2", "h3"].includes(content.type)) {
-			return content.props;
+			if (typeof content.props.children === "string") {
+				return content.props;
+			}
 		}
 	}
 	return null;
+};
+
+export const userContentHash = () => {
+	const handleHashChange = () => {
+		let hash: string;
+
+		try {
+			hash = decodeURIComponent(location.hash.slice(1)).toLowerCase();
+		} catch (e) {
+			console.warn("Error decoding hash", e);
+			return;
+		}
+
+		const name = `user-content-${hash}`;
+		const target =
+			document.getElementById(name) ||
+			document.getElementsByName(name)[0] ||
+			document.getElementById(hash);
+
+		if (target) {
+			console.log("Post -> target", target);
+
+			target.scrollIntoView({ behavior: "smooth" });
+		} else {
+			console.warn("No anchor found for:", hash);
+		}
+	};
+	const handleClick = (event: MouseEvent) => {
+		if (
+			event.target &&
+			event.target instanceof HTMLAnchorElement &&
+			event.target.href === location.href &&
+			location.hash.length > 1
+		) {
+			if (!event.defaultPrevented) {
+				handleHashChange();
+			}
+		}
+	};
+
+	handleHashChange();
+
+	return { handleClick, handleHashChange };
+};
+
+export const capitalizeFileName = (filename: string): string => {
+	return filename
+		.split(/[-_ ]/)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
 };

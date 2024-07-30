@@ -1,22 +1,22 @@
 "use client";
 
-import { GalleryImage, mdxComponents } from "@/lib/mdx/components";
+import { runMDX } from "@/lib/mdx/run";
 import type { CommitResponse, ConfigSchema } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ChevronUp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import Moment from "react-moment";
 import type { z } from "zod";
-import { Loading } from "../loading";
+import { getLayout } from "../layouts";
+import { Navbar } from "../navbar";
+import SearchableContent from "../search";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
 } from "../ui/tooltip";
-import { resolveTitle, useRunMDX } from "./utils";
-import SearchableContent from "../search";
-import { Navbar } from "../navbar";
+import { capitalizeFileName, resolveTitle, userContentHash } from "./utils";
 
 export default function Post({
 	filename,
@@ -30,56 +30,16 @@ export default function Post({
 	config: z.infer<typeof ConfigSchema> | null;
 }) {
 	const [canScroll, setCanScroll] = useState(false);
-	const [resolvedTitle, setResolvedTitle] = useState<string | null>(null);
-	const [description, setDescription] = useState<string | null>(null);
 
-	const { meta, readingTime, Content } = useRunMDX(content);
+	const { meta, readingTime, Content } = runMDX(content);
 
 	useEffect(() => {
 		const handleScroll = () => {
 			setCanScroll(window.scrollY > 100);
 		};
-		const handleHashChange = () => {
-			let hash: string;
 
-			try {
-				hash = decodeURIComponent(location.hash.slice(1)).toLowerCase();
-			} catch (e) {
-				console.warn("Error decoding hash", e);
-				return;
-			}
+		const { handleClick, handleHashChange } = userContentHash();
 
-			const name = `user-content-${hash}`;
-			const target =
-				document.getElementById(name) ||
-				document.getElementsByName(name)[0] ||
-				document.getElementById(hash);
-
-			if (target) {
-				console.log("Post -> target", target);
-
-				target.scrollIntoView({ behavior: "smooth" });
-			} else {
-				console.warn("No anchor found for:", hash);
-			}
-		};
-		const handleClick = (event: MouseEvent) => {
-			if (
-				event.target &&
-				event.target instanceof HTMLAnchorElement &&
-				event.target.href === location.href &&
-				location.hash.length > 1
-			) {
-				if (!event.defaultPrevented) {
-					handleHashChange();
-				}
-			}
-		};
-		// JSX has finished rendering
-		if (meta) {
-			console.log("Post -> meta", meta);
-			handleHashChange();
-		}
 		window.addEventListener("scroll", handleScroll);
 		window.addEventListener("hashchange", handleHashChange);
 		document.addEventListener("click", handleClick, false);
@@ -88,35 +48,11 @@ export default function Post({
 			window.removeEventListener("hashchange", handleHashChange);
 			document.removeEventListener("click", handleClick);
 		};
-	}, [meta]);
+	}, []);
 
 	const scrollUp = useCallback(() => {
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	}, []);
-
-	useEffect(() => {
-		if (resolvedTitle) {
-			document.title = resolvedTitle;
-		}
-		if (description) {
-			document
-				.querySelector('meta[name="description"]')
-				?.setAttribute("content", description);
-		}
-	}, [resolvedTitle, description]);
-
-	useEffect(() => {
-		if (meta?.success) {
-			setDescription(meta.data.description ?? null);
-			if (Content) {
-				setResolvedTitle(meta.data.title ?? resolveTitle(Content));
-			}
-		}
-	}, [meta, Content]);
-
-	if (!meta) {
-		return <Loading />;
-	}
 
 	if (!meta.success) {
 		return (
@@ -144,27 +80,21 @@ export default function Post({
 			</div>
 		);
 	}
-	const { layout } = meta.data;
-	const getLayout = () => {
-		switch (layout) {
-			case "gallery":
-				return GalleryLayout;
-			default:
-				return PostLayout;
-		}
-	};
 
-	const Layout = getLayout();
-	const LayoutContent = () => (
-		<Layout>
-			<Content
-				components={{
-					...mdxComponents,
-					...(layout === "gallery" ? { img: GalleryImage as any } : {}),
-				}}
-			/>
-		</Layout>
-	);
+	document
+		.querySelector('meta[name="description"]')
+		?.setAttribute("content", meta.data.description ?? "");
+
+	if (Content) {
+		document.title =
+			meta.data.title ??
+			resolveTitle(Content) ??
+			(filename ? capitalizeFileName(filename) : "uses.ink");
+	}
+
+	const { layout } = meta.data;
+
+	const Layout = getLayout(layout, Content);
 
 	const resolvedDate = meta.data.date ?? lastCommit?.date;
 
@@ -246,7 +176,7 @@ export default function Post({
 				</header>
 			)}
 
-			<SearchableContent ContentComponent={LayoutContent} contentProps={{}} />
+			<SearchableContent ContentComponent={Layout} contentProps={{}} />
 
 			<div className="fixed sm:bottom-8 sm:right-8 bottom-4 right-4">
 				<ChevronUp
@@ -261,16 +191,5 @@ export default function Post({
 				/>
 			</div>
 		</>
-	);
-}
-
-function PostLayout({ children }: { children: React.ReactNode }) {
-	return <>{children}</>;
-}
-
-function GalleryLayout({ children }: { children: React.ReactNode }) {
-	return (
-		// spread the children to the grid horizontally
-		<div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
 	);
 }
