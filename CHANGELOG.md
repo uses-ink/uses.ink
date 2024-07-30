@@ -1,3 +1,15 @@
+## v0.3.7 (2024-07-30)
+
+### Fix
+
+- try to find a workaround for typst
+- maybe we do need the patch after all
+
+### Refactor
+
+- don't need the patch anymore
+- no need for the typst patch
+
 ## v0.3.6 (2024-07-30)
 
 ### Feat
