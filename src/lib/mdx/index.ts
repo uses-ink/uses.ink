@@ -1,13 +1,11 @@
-import { compile, runSync } from "@mdx-js/mdx";
+import { compile } from "@mdx-js/mdx";
 import {
 	transformerNotationDiff,
 	transformerNotationErrorLevel,
 	transformerNotationFocus,
 } from "@shikijs/transformers";
-// @ts-ignore
-import * as runtime from "react/jsx-runtime";
-import type { readingTime as getReadingTime } from "reading-time-estimator";
-import rehypeKatex from "rehype-katex";
+
+// import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
@@ -21,12 +19,12 @@ import { type MdxUrlResolvers, getMdxUrl } from "./url";
 import { rehypeTwemoji, type RehypeTwemojiOptions } from "rehype-twemoji";
 import remarkEmoji from "remark-emoji";
 import rehypePrettyCode from "rehype-pretty-code";
-import { MetaSchema } from "../types";
 import rehypeMetaString from "./meta";
 import { getShiki } from "./shiki";
 import remarkToc from "remark-toc";
 import rehypeCallouts from "rehype-callouts";
 import remarSuperSub from "remark-supersub";
+import rehypeTypst from "./typst";
 
 const DEBUG_TREE = false;
 
@@ -109,7 +107,8 @@ export async function compileMDX(
 			],
 			makeDebug("after pretty code"),
 
-			[rehypeKatex, { throwOnError: false, output: "htmlAndMathml" }],
+			// [rehypeKatex, { throwOnError: false, output: "htmlAndMathml" }],
+			rehypeTypst,
 			rehypeSlug,
 			[
 				rehypeTwemoji,
@@ -128,21 +127,4 @@ export async function compileMDX(
 		},
 	});
 	return result.toString();
-}
-
-export function runMDX(code: string) {
-	// Need to run sync so the server build also has full html
-	const mdx = runSync(code, runtime as any);
-
-	const { default: Content, matter, readingTime } = mdx;
-	console.log("runMDX -> readingTime", readingTime);
-	console.log("runMDX -> matter", matter);
-	const meta = MetaSchema.safeParse(matter ?? {});
-	console.log("runMDX -> meta", meta);
-
-	return {
-		Content,
-		meta,
-		readingTime: (readingTime as ReturnType<typeof getReadingTime>) ?? {},
-	};
 }

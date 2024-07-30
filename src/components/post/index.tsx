@@ -4,7 +4,7 @@ import { GalleryImage, mdxComponents } from "@/lib/mdx/components";
 import type { CommitResponse, ConfigSchema } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ChevronUp } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Moment from "react-moment";
 import type { z } from "zod";
 import { Loading } from "../loading";

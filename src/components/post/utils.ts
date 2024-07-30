@@ -1,4 +1,4 @@
-import { runMDX } from "@/lib/mdx";
+import { runMDX } from "@/lib/mdx/run";
 import { mdxComponents } from "@/lib/mdx/components";
 import { useState, useEffect } from "react";
 

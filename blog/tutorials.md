@@ -171,34 +171,16 @@ An example of a table of contents is shown at the [beginning of this document](#
 
 ## Math
 
-Math is rendered using [KaTeX](https://katex.org/):
+Math is rendered using [typst](https://github.com/typst/typst)
 
-```latex
+```typ
 $$
-\text{Given a matrix } A = \begin{pmatrix}
-a_{11} & a_{12} & \cdots & a_{1n} \\
-a_{21} & a_{22} & \cdots & a_{2n} \\
-\vdots & \vdots & \ddots & \vdots \\
-a_{m1} & a_{m2} & \cdots & a_{mn}
-\end{pmatrix}
-$$
-
-$$
-\det(A) = \sum_{k=1}^{n} (-1)^{k+1} a_{1k} \det(A_{1k})
+det(A) = sum_(k=1)^n (-1)^(k+1) a_1k det(A_1k) 
 $$
 ```
 
 $$
-\text{Given a matrix } A = \begin{pmatrix}
-a_{11} & a_{12} & \cdots & a_{1n} \\
-a_{21} & a_{22} & \cdots & a_{2n} \\
-\vdots & \vdots & \ddots & \vdots \\
-a_{m1} & a_{m2} & \cdots & a_{mn}
-\end{pmatrix}
-$$
-
-$$
-\det(A) = \sum_{k=1}^{n} (-1)^{k+1} a_{1k} \det(A_{1k})
+det(A) = sum_(k=1)^n (-1)^(k+1) a_1k det(A_1k)
 $$
 
 ## Super- and Subscripts
