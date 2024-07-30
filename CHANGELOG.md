@@ -1,3 +1,17 @@
+## v0.3.6 (2024-07-30)
+
+### Feat
+
+- control table of contents with comments
+- render math with typst instead of katex
+
+### Fix
+
+- **deps**: update dependency redis to v4.7.0 (#26)
+- **deps**: update dependency cache-manager to v5.7.4 (#25)
+- **deps**: update dependency lucide-react to ^0.417.0 (#24)
+- hydration warning because of timezones
+
 ## v0.3.5 (2024-07-28)
 
 ### Feat
