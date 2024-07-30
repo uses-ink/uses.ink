@@ -81,16 +81,18 @@ export default function Post({
 		);
 	}
 
-	document
-		.querySelector('meta[name="description"]')
-		?.setAttribute("content", meta.data.description ?? "");
+	useEffect(() => {
+		document
+			.querySelector('meta[name="description"]')
+			?.setAttribute("content", meta.data.description ?? "");
 
-	if (Content) {
-		document.title =
-			meta.data.title ??
-			resolveTitle(Content) ??
-			(filename ? capitalizeFileName(filename) : "uses.ink");
-	}
+		if (Content) {
+			document.title =
+				meta.data.title ??
+				resolveTitle(Content) ??
+				(filename ? capitalizeFileName(filename) : "uses.ink");
+		}
+	}, [Content, meta.data, filename]);
 
 	const { layout } = meta.data;
 
