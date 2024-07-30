@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@myriaddreamin/typst-ts-node-compiler@0.5.0-rc6':
-    hash: povqjikedeezty5l7qvkdhs5ve
+    hash: nwsun6xicijncp5majcnkzakam
     path: patches/@myriaddreamin__typst-ts-node-compiler@0.5.0-rc6.patch
   hast-util-sanitize@5.0.1:
     hash: y6of5vp7hv72ft3iw2hgqh5l4q
@@ -24,7 +24,7 @@ importers:
         version: 3.0.1
       '@myriaddreamin/typst-ts-node-compiler':
         specifier: 0.5.0-rc6
-        version: 0.5.0-rc6(patch_hash=povqjikedeezty5l7qvkdhs5ve)
+        version: 0.5.0-rc6(patch_hash=nwsun6xicijncp5majcnkzakam)
       '@octokit/openapi-types':
         specifier: ^22.2.0
         version: 22.2.0
@@ -4908,7 +4908,7 @@ snapshots:
   '@myriaddreamin/typst-ts-node-compiler-win32-x64-msvc@0.5.0-rc6':
     optional: true
 
-  '@myriaddreamin/typst-ts-node-compiler@0.5.0-rc6(patch_hash=povqjikedeezty5l7qvkdhs5ve)':
+  '@myriaddreamin/typst-ts-node-compiler@0.5.0-rc6(patch_hash=nwsun6xicijncp5majcnkzakam)':
     optionalDependencies:
       '@myriaddreamin/typst-ts-node-compiler-android-arm-eabi': 0.5.0-rc6
       '@myriaddreamin/typst-ts-node-compiler-android-arm64': 0.5.0-rc6
