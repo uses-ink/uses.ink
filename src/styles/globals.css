@@ -52,3 +52,7 @@ h6#user-content-no-anchor a.anchor {
 [data-twemoji] {
 	@apply size-[1.2em] inline-block align-text-bottom;
 }
+
+.typst-text {
+	@apply fill-foreground;
+}
