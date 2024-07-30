@@ -1,3 +1,14 @@
+## v0.3.8 (2024-07-31)
+
+### Fix
+
+- access document on mount
+- typst text color didn't match the current theme
+
+### Refactor
+
+- do not rely on react hooks for running as it is sync
+
 ## v0.3.7 (2024-07-30)
 
 ### Fix
