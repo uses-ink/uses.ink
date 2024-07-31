@@ -1,6 +1,6 @@
 "use client"; // Error components must be Client Components
 
-import type { getRepoRequest } from "@/lib/client/repo-request";
+import type { getRepoRequest, RepoRequest } from "@/lib/client/repo-request";
 import { useEffect } from "react";
 
 const ErrorPage = ({
@@ -8,7 +8,7 @@ const ErrorPage = ({
 	error,
 	reset,
 }: {
-	repoData: ReturnType<typeof getRepoRequest>;
+	repoData: RepoRequest;
 	error: string | (Error & { digest?: string });
 	reset?: () => void;
 }) => {

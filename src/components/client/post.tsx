@@ -22,6 +22,7 @@ import {
 	resolveTitle,
 	userContentHash,
 } from "@/lib/client/utils";
+import Head from "next/head";
 
 export default function Post({
 	filename,
@@ -30,6 +31,7 @@ export default function Post({
 	config,
 	meta,
 	request,
+	url,
 }: {
 	filename?: string;
 	runnable: string;
@@ -37,6 +39,7 @@ export default function Post({
 	config: z.infer<typeof ConfigSchema> | null;
 	meta: z.infer<typeof MetaSchema>;
 	request: RepoRequest;
+	url: string;
 }) {
 	const [canScroll, setCanScroll] = useState(false);
 
@@ -101,6 +104,15 @@ export default function Post({
 
 	return (
 		<>
+			<Head>
+				<meta name="description" content={meta.description ?? ""} />
+				<meta property="og:title" content={meta.title} />
+				<meta property="og:description" content={meta.description ?? ""} />
+				<meta property="og:type" content="article" />
+				<meta property="og:url" content={url} />
+				<meta property="og:image" content={meta.image} />
+				<meta property="og:site_name" content={"uses.ink"} />
+			</Head>
 			{meta.nav && <Navbar routes={meta.nav} />}
 			{!(config?.hideTop ?? meta.hideTop) && (
 				<header className="mb-8">

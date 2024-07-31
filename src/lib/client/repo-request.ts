@@ -7,16 +7,12 @@ export type RepoRequest = {
 	path?: string;
 };
 
-export const getRepoRequest = (): RepoRequest => {
+export const getRepoRequest = (): { req: RepoRequest; url: string } => {
 	const headersList = headers();
 	const host = headersList.get("host");
-	const url = headersList.get("x-url");
-	console.log("host", host);
+	// biome-ignore lint/style/noNonNullAssertion:  This is set in the middleware
+	const url = headersList.get("x-url")!;
 	console.log("url", url);
-	if (!url) {
-		console.error("No url found in headers");
-		return {};
-	}
 	const isLocalhost = host?.includes("localhost");
 	const parts = host?.split(".") ?? [];
 	let owner = undefined;
@@ -56,9 +52,12 @@ export const getRepoRequest = (): RepoRequest => {
 	// cestef.uses.ink/notes@master/2021-09-01
 
 	return {
-		owner: owner,
-		repo: repo,
-		branch: branch,
-		path: folder || undefined,
+		req: {
+			owner: owner,
+			repo: repo,
+			branch: branch,
+			path: folder || undefined,
+		},
+		url,
 	};
 };

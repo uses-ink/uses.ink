@@ -20,7 +20,7 @@ import { ZodError } from "zod";
 import ErrorPage from "./error";
 
 const Page: NextPage = async () => {
-	const repoRequest = getRepoRequest();
+	const { req: repoRequest, url } = getRepoRequest();
 	console.log("repoRequest", JSON.stringify(repoRequest));
 
 	const isRemote = !!repoRequest.owner;
@@ -91,6 +91,7 @@ const Page: NextPage = async () => {
 						filename={repoRequest.path}
 						config={config}
 						request={repoRequest}
+						url={url}
 					/>
 				)}
 			</Article>
