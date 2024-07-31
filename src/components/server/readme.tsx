@@ -1,8 +1,7 @@
 import { DEFAULT_REPO, IS_DEV, SHOW_DEV_TOOLS } from "@/lib/constants";
 import { RepoDevTools } from "./repo";
-import { Footer } from "./footer";
-import type { RepoRequest } from "@/lib/repo-request";
-import type { GithubTree } from "@/lib/github/tree";
+import type { RepoRequest } from "@/lib/client/repo-request";
+import type { GithubTree } from "@/lib/server/github/tree";
 import Article from "./article";
 
 const Readme = ({

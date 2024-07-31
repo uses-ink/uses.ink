@@ -1,5 +1,4 @@
 import { runSync } from "@mdx-js/mdx";
-import { MetaSchema } from "../types";
 // @ts-ignore
 import * as runtime from "react/jsx-runtime";
 import type { readingTime as getReadingTime } from "reading-time-estimator";

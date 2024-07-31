@@ -1,5 +1,4 @@
-import type { GitHubContent, GitHubRequest, GithubCommit } from "../types";
-
+import type { GitHubContent, GitHubRequest } from "@/lib/types";
 import { getGitHubCache, setGitHubCache } from "../cache";
 import { getOctokit } from "../octokit";
 import { isErrorHasStatus } from "../utils";

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, type ComponentType } from "react";
 import Mark from "mark.js";
 import { ChevronDownIcon, ChevronUpIcon, SearchIcon } from "lucide-react";
-import { Input } from "./ui/input";
-import { cn } from "@/lib/utils";
+import { Input } from "../ui/input";
+import { cn } from "@/lib/client/utils";
 
 interface ContentComponentProps {
 	[key: string]: any;

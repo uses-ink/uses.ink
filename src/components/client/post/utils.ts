@@ -1,4 +1,4 @@
-import { mdxComponents } from "@/lib/mdx/components";
+import { mdxComponents } from "@/lib/client/mdx/components";
 
 export const resolveTitle = (Content: (props: any) => any): string | null => {
 	const content = Content({ components: mdxComponents })?.props.children ?? [];

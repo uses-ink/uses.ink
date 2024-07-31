@@ -1,4 +1,4 @@
-import type { getRepoRequest } from "@/lib/repo-request";
+import type { getRepoRequest } from "@/lib/client/repo-request";
 
 export const RepoDevTools = (repoData: ReturnType<typeof getRepoRequest>) => {
 	return (

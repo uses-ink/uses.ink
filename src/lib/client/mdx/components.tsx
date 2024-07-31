@@ -1,4 +1,4 @@
-import Pre from "@/components/pre";
+import Pre from "@/components/client/pre";
 import Head from "next/head";
 import Link from "next/link";
 import { cn } from "../utils";

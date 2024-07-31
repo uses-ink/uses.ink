@@ -1,9 +1,9 @@
+import { DEFAULT_BRANCH } from "@/lib/constants";
+import type { GitHubRequest } from "@/lib/types";
 import type { operations } from "@octokit/openapi-types";
-import type { GitHubRequest } from "../types";
 import { getGitHubCache, setGitHubCache } from "../cache";
-import { DEFAULT_BRANCH } from "../constants";
-import { isErrorHasStatus } from "../utils";
 import { getOctokit } from "../octokit";
+import { isErrorHasStatus } from "../utils";
 
 export type GithubTree =
 	operations["git/get-tree"]["responses"]["200"]["content"]["application/json"];

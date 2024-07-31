@@ -1,10 +1,10 @@
-import ThemeSelect from "./theme-select";
+import ThemeSelect from "../client/theme-select";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "./ui/tooltip";
+} from "../ui/tooltip";
 
 export const Footer = ({
 	auto,

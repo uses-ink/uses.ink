@@ -1,23 +1,23 @@
 "use client";
 
-import { runMDX } from "@/lib/mdx/run";
-import type { CommitResponse, ConfigSchema, MetaSchema } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { ChevronUp } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import Moment from "react-moment";
-import type { z } from "zod";
-import { getLayout } from "../layouts";
-import { Navbar } from "../navbar";
-import SearchableContent from "../search";
+import { getLayout } from "@/components/layouts";
+import { Navbar } from "@/components/server/navbar";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "../ui/tooltip";
+} from "@/components/ui/tooltip";
+import { runMDX } from "@/lib/client/mdx/run";
+import type { RepoRequest } from "@/lib/client/repo-request";
+import { cn } from "@/lib/client/utils";
+import type { CommitResponse, ConfigSchema, MetaSchema } from "@/lib/types";
+import { ChevronUp } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import Moment from "react-moment";
+import type { z } from "zod";
+import SearchableContent from "../search";
 import { capitalizeFileName, resolveTitle, userContentHash } from "./utils";
-import type { RepoRequest } from "@/lib/repo-request";
 
 export default function Post({
 	filename,

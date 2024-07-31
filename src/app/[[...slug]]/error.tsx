@@ -1,6 +1,6 @@
 "use client"; // Error components must be Client Components
 
-import type { getRepoRequest } from "@/lib/repo-request";
+import type { getRepoRequest } from "@/lib/client/repo-request";
 import { useEffect } from "react";
 
 const ErrorPage = ({

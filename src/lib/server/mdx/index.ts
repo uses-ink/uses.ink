@@ -28,7 +28,7 @@ import { remarkReadingTime } from "./read-time";
 import { getShiki } from "./shiki";
 import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
-import { MetaSchema } from "../types";
+import { MetaSchema } from "../../types";
 
 const DEBUG_TREE = false;
 

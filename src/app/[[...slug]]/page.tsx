@@ -1,24 +1,23 @@
-import { Footer } from "@/components/footer";
-import Post from "@/components/post";
-import { RepoDevTools } from "@/components/repo";
+import Post from "@/components/client/post";
+import Article from "@/components/server/article";
+import Readme from "@/components/server/readme";
+import { RepoDevTools } from "@/components/server/repo";
+import { getRepoRequest } from "@/lib/client/repo-request";
 import {
 	DEFAULT_REPO,
 	EXTENSIONS,
 	IS_DEV,
 	SHOW_DEV_TOOLS,
 } from "@/lib/constants";
-import { fetchConfig, fetchData, fetchLocalData } from "@/lib/fetch";
-import { compileMDX } from "@/lib/mdx";
-import { getRepoRequest } from "@/lib/repo-request";
+import { FetchError } from "@/lib/errors";
+import { fetchConfig, fetchData, fetchLocalData } from "@/lib/server/fetch";
+import { fetchGithubTree } from "@/lib/server/github/tree";
+import { compileMDX } from "@/lib/server/mdx";
 import type { GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
 import { dirname, join } from "node:path";
 import { ZodError } from "zod";
 import ErrorPage from "./error";
-import { FetchError } from "@/lib/errors";
-import { fetchGithubTree } from "@/lib/github/tree";
-import Readme from "@/components/readme";
-import Article from "@/components/article";
 
 const Page: NextPage = async () => {
 	const repoRequest = getRepoRequest();

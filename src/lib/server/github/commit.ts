@@ -1,6 +1,6 @@
+import type { GitHubRequest, GithubCommit } from "@/lib/types";
 import { getGitHubCache, setGitHubCache } from "../cache";
 import { getOctokit } from "../octokit";
-import type { GithubCommit, GitHubRequest } from "../types";
 import { isErrorHasStatus } from "../utils";
 
 export type GithubLastCommit = {

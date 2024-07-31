@@ -1,4 +1,4 @@
-import { GalleryImage, mdxComponents } from "@/lib/mdx/components";
+import { GalleryImage, mdxComponents } from "@/lib/client/mdx/components";
 import { GalleryLayout } from "./gallery";
 import { PostLayout } from "./post";
 

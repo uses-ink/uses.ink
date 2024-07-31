@@ -1,6 +1,6 @@
 import type { OctokitResponse } from "@octokit/types";
-import { CACHE_TTL } from "./constants";
-import type { GitHubContent, GitHubRequest } from "./types";
+import { CACHE_TTL } from "../constants";
+import type { GitHubContent, GitHubRequest } from "../types";
 import { Redis } from "ioredis";
 
 const cache: { current: Redis | null } = {
