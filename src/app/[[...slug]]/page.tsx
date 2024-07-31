@@ -1,7 +1,12 @@
 import { Footer } from "@/components/footer";
 import Post from "@/components/post";
 import { RepoDevTools } from "@/components/repo";
-import { DEFAULT_REPO, EXTENSIONS, SHOW_DEV_TOOLS } from "@/lib/constants";
+import {
+	DEFAULT_REPO,
+	EXTENSIONS,
+	IS_DEV,
+	SHOW_DEV_TOOLS,
+} from "@/lib/constants";
 import { fetchConfig, fetchData, fetchLocalData } from "@/lib/fetch";
 import { compileMDX } from "@/lib/mdx";
 import { getRepoRequest } from "@/lib/repo-request";
@@ -12,8 +17,7 @@ import { ZodError } from "zod";
 import ErrorPage from "./error";
 import { FetchError } from "@/lib/errors";
 import { fetchGithubTree } from "@/lib/github/tree";
-
-const isDev = process.env.NODE_ENV === "development";
+import Readme from "@/components/readme";
 
 const Page: NextPage = async () => {
 	const repoRequest = getRepoRequest();
@@ -76,7 +80,7 @@ const Page: NextPage = async () => {
 				className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
 				dir="ltr"
 			>
-				{isDev && SHOW_DEV_TOOLS && repoRequest !== null && (
+				{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
 					<RepoDevTools {...repoRequest} />
 				)}
 
@@ -125,68 +129,9 @@ const Page: NextPage = async () => {
 				});
 				console.log("filteredTree", filteredTree);
 				return (
-					<article
-						className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
-						dir="ltr"
-					>
-						{isDev && SHOW_DEV_TOOLS && repoRequest !== null && (
-							<RepoDevTools {...repoRequest} />
-						)}
-						<h1 className="text-xl font-bold">
-							<a
-								href={`https://github.com/${repoRequest.owner}`}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="no-underline font-bold hover:underline"
-							>
-								<img
-									src={`https://github.com/${repoRequest.owner}.png`}
-									alt={`${repoRequest.owner}'s avatar`}
-									className="w-12 h-12 rounded-full inline-block mr-4 align-middle border border-muted-foreground"
-								/>
-							</a>
-							<a href={"/"} className="no-underline font-bold hover:underline">
-								{repoRequest.owner}
-							</a>
-							<span className="text-muted-foreground mx-1">/</span>
-							<a
-								href={`/${repoRequest.repo ?? DEFAULT_REPO}${
-									repoRequest.branch ? `@${repoRequest.branch}` : ""
-								}`}
-								className="no-underline font-bold hover:underline"
-							>
-								{repoRequest.repo}
-							</a>
-							{repoRequest.path && (
-								<>
-									<span className="text-muted-foreground mx-1">/</span>
-									<span>{repoRequest.path}</span>
-								</>
-							)}
-						</h1>
-						<ul className="list-disc pl-6">
-							{filteredTree.length > 0 ? (
-								filteredTree.map((file) => (
-									<li key={file.path}>
-										<h2>
-											<a
-												href={`/${repoRequest.repo ?? DEFAULT_REPO}${
-													repoRequest.branch ? `@${repoRequest.branch}` : ""
-												}/${file.path}`}
-												className="text-blue-500 dark:text-blue-400"
-											>
-												{file.path?.replace(`${path}/`, "")}
-											</a>
-										</h2>
-									</li>
-								))
-							) : (
-								<li>No markdown files found in this directory</li>
-							)}
-						</ul>
-						<hr className="!mb-4" />
-						<Footer auto />
-					</article>
+					<Readme
+						{...{ repoRequest, filteredTree, path: repoRequest.path ?? "" }}
+					/>
 				);
 			}
 			return <ErrorPage repoData={repoRequest} error={error.message} />;

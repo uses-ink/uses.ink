@@ -13,3 +13,5 @@ export const CACHE_TTL = 60; // 60 seconds
 export const SHOW_DEV_TOOLS = false;
 
 export const CONFIG_FILE = "uses.ink.json";
+
+export const IS_DEV = process.env.NODE_ENV === "development";
