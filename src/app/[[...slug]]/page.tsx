@@ -1,7 +1,7 @@
 import { Footer } from "@/components/footer";
 import Post from "@/components/post";
 import { RepoDevTools } from "@/components/repo";
-import { DEFAULT_REPO, SHOW_DEV_TOOLS } from "@/lib/constants";
+import { DEFAULT_REPO, EXTENSIONS, SHOW_DEV_TOOLS } from "@/lib/constants";
 import { fetchConfig, fetchData, fetchLocalData } from "@/lib/fetch";
 import { compileMDX } from "@/lib/mdx";
 import { getRepoRequest } from "@/lib/repo-request";
@@ -34,6 +34,12 @@ const Page: NextPage = async () => {
 		return <ErrorPage repoData={repoRequest} error={error} />;
 	}
 
+	const extension = fileName.split(".").pop() ?? "md";
+
+	if (EXTENSIONS.indexOf(extension) === -1) {
+		return <ErrorPage repoData={repoRequest} error="File type not supported" />;
+	}
+
 	const config = isRemote
 		? await fetchConfig({
 				...repoRequest,
@@ -43,12 +49,6 @@ const Page: NextPage = async () => {
 		: null;
 
 	console.log("config", config);
-
-	const extension = fileName.split(".").pop() ?? "md";
-
-	if (extension !== "md") {
-		return <ErrorPage repoData={repoRequest} error="File type not supported" />;
-	}
 
 	const res = await compileMDX(content, {
 		asset: (url) => {
