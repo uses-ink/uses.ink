@@ -29,7 +29,7 @@
 		--chart-5: 27 87% 67%;
 
 		--shiki-foreground: #24292e;
-		--shiki-background: #fff;
+		--shiki-background: transparent;
 		--shiki-token-constant: #005cc5;
 		--shiki-token-string: #032f62;
 		--shiki-token-comment: #6a737d;
@@ -102,7 +102,7 @@
 		--chart-5: 340 75% 55%;
 
 		--shiki-foreground: #e1e4e8;
-		--shiki-background: #24292e;
+		--shiki-background: transparent;
 		--shiki-token-constant: #79b8ff;
 		--shiki-token-string: #9ecbff;
 		--shiki-token-comment: #6a737d;

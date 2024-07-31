@@ -83,7 +83,7 @@ span[data-rehype-pretty-code-figure] {
 	@apply px-0;
 }
 
-[data-rehype-pretty-code-figure] code {
+code {
 	@apply text-[0.8571429em] md:text-sm;
 }
 
