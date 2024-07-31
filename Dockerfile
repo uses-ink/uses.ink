@@ -32,7 +32,7 @@ RUN pnpm run build
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
-COPY blog ./blog
+COPY docs ./docs
 
 ENV NODE_ENV=production
 
