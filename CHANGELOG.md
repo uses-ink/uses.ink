@@ -1,3 +1,23 @@
+## v0.3.11 (2024-08-01)
+
+### Feat
+
+- add opengraph headers to posts
+
+### Fix
+
+- change blog to docs in dockerfile
+- more consistent theme color for code blocks
+- **deps**: update dependency lucide-react to ^0.418.0 (#27)
+
+### Refactor
+
+- more client code splitting
+- move blog to docs
+- split between client and server code
+- modularize further
+- move readme to component
+
 ## v0.3.10 (2024-07-31)
 
 ### Fix
