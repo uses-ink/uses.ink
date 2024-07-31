@@ -1,3 +1,27 @@
+## v0.3.9 (2024-07-31)
+
+### Feat
+
+- automatic readme generation
+- add noHighlight to prevent highlighting
+- support both typst and latex rendering for math
+
+### Fix
+
+- url again
+- url for frontmatter doc
+- hydration error on theme selector
+- hacky way to correctly display badges
+- correctly parse meta
+- add offset to anchor scrolling
+
+### Refactor
+
+- throw errors on fail
+- return earlier if filename is not supported
+- move zod parsing to compile
+- reorganise files + start adding git tree features
+
 ## v0.3.8 (2024-07-31)
 
 ### Fix
