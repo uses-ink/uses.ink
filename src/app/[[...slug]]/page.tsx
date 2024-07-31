@@ -72,7 +72,7 @@ const Page: NextPage = async () => {
 		},
 	});
 
-	const parsedMeta = MetaSchema.safeParse(meta);
+	const parsedMeta = MetaSchema.safeParse(meta.data);
 
 	return (
 		<article
