@@ -1,5 +1,5 @@
 import type { components } from "@octokit/openapi-types";
-import { fetchGitHubContent, fetchGithubLastCommit } from "./github";
+import { fetchGitHubContent, fetchGithubLastCommit } from "./github/content";
 import type { GitHubRequest } from "./types";
 
 export const fetchPost = async (request: GitHubRequest) => {

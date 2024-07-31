@@ -1,28 +1,18 @@
-import type { GitHubContent, GitHubRequest, GithubCommit } from "./types";
+import { getGitHubCache, setGitHubCache } from "../cache";
+import { getOctokit } from "../octokit";
+import type { GithubCommit, GitHubRequest } from "../types";
+import { isErrorHasStatus } from "../utils";
 
-import { getGitHubCache, setGitHubCache } from "./cache";
-import { getOctokit } from "./octokit";
+export type GithubLastCommit = {
+	date: string;
+	author: GithubAuthor;
+	link: string;
+};
 
-export const fetchGitHubContent = async (
-	request: GitHubRequest,
-): Promise<GitHubContent> => {
-	const { owner, path, repo } = request;
-	const cached = await getGitHubCache(request);
-	try {
-		const response = await getOctokit().rest.repos.getContent({
-			...{ owner, path, repo },
-			headers: { "If-None-Match": cached?.headers.etag },
-			mediaType: { format: "json" },
-		});
-		setGitHubCache(request, response);
-		return response.data;
-	} catch (error) {
-		// Return cache
-		if (!isErrorHasStatus(error)) throw error;
-		if (error.status !== 304) throw error;
-		if (cached === null) throw Error("No cache but 304");
-		return cached.data;
-	}
+export type GithubAuthor = {
+	name: string;
+	login: string;
+	avatar: string;
 };
 
 export const fetchGithubLastCommit = async (
@@ -72,17 +62,4 @@ export const fetchGithubLastCommit = async (
 			return null;
 		return { date, author: author as any, link };
 	}
-};
-
-export const isErrorHasStatus = (
-	raw: unknown,
-): raw is {
-	status: number;
-} => {
-	if (typeof raw !== "object") return false;
-	if (raw === null) throw raw;
-	if ("status" in raw) {
-		return typeof (raw as { status: number }).status === "number";
-	}
-	return false;
 };

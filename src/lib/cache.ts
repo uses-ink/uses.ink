@@ -30,11 +30,11 @@ const getKey = (request: GitHubRequest, type: CacheType): string => {
 	return key;
 };
 
-type CacheType = "content" | "commit";
+type CacheType = "content" | "commit" | "tree";
 
 export const getGitHubCache = async <R = GitHubContent>(
 	request: GitHubRequest,
-	type: "content" | "commit" = "content",
+	type: CacheType = "content",
 ): Promise<OctokitResponse<R> | null> => {
 	console.log("getGitHubCache");
 	const cache = await getCache();

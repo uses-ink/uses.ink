@@ -6,52 +6,53 @@ import { RepoDevTools } from "@/components/repo";
 import { DEFAULT_REPO, SHOW_DEV_TOOLS } from "@/lib/constants";
 import { fetchConfig, fetchData, fetchLocalData } from "@/lib/fetch";
 import { compileMDX } from "@/lib/mdx";
-import { getRepo } from "@/lib/repo";
+import { getRepoRequest } from "@/lib/repo-request";
 import { MetaSchema, type GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
 const Page: NextPage = async () => {
-	const repoData = getRepo();
-	console.log("repoData", JSON.stringify(repoData));
+	const repoRequest = getRepoRequest();
+	console.log("repoRequest", JSON.stringify(repoRequest));
 
-	const { content, lastCommit, error, fileName } =
-		repoData.owner !== null
-			? await fetchData({
-					...repoData,
-					repo: repoData.repo ?? DEFAULT_REPO,
-					path: repoData.path ?? "",
-				} as GitHubRequest)
-			: await fetchLocalData(repoData.path ?? "README.md");
+	const isRemote = !!repoRequest.owner;
+
+	const { content, lastCommit, error, fileName } = isRemote
+		? await fetchData({
+				...repoRequest,
+				repo: repoRequest.repo ?? DEFAULT_REPO,
+				path: repoRequest.path ?? "",
+			} as GitHubRequest)
+		: await fetchLocalData(repoRequest.path ?? "README.md");
 
 	if (error !== undefined) {
 		console.log("Error", error);
-		console.log("repoData", repoData);
+		console.log("repoData", repoRequest);
 
-		return <ErrorPage repoData={repoData} error={error} />;
+		return <ErrorPage repoData={repoRequest} error={error} />;
 	}
-	const config =
-		repoData.owner !== null
-			? await fetchConfig({
-					...repoData,
-					repo: repoData.repo ?? DEFAULT_REPO,
-					path: repoData.path ?? "",
-				} as GitHubRequest)
-			: null;
+
+	const config = isRemote
+		? await fetchConfig({
+				...repoRequest,
+				repo: repoRequest.repo ?? DEFAULT_REPO,
+				path: repoRequest.path ?? "",
+			} as GitHubRequest)
+		: null;
 
 	console.log("config", config);
 
 	const extension = fileName.split(".").pop() ?? "md";
 
 	if (extension !== "md") {
-		return <ErrorPage repoData={repoData} error="File type not supported" />;
+		return <ErrorPage repoData={repoRequest} error="File type not supported" />;
 	}
 
 	const { runnable, meta } = await compileMDX(content, {
 		asset: (url) => {
-			if (repoData.owner) {
-				const { owner, repo, path, branch } = repoData;
+			if (repoRequest.owner) {
+				const { owner, repo, path, branch } = repoRequest;
 				const dir = dirname(path ?? "");
 				const assetPath = join(dir, url);
 				const origin = "https://raw.githubusercontent.com";
@@ -60,8 +61,8 @@ const Page: NextPage = async () => {
 			return url;
 		},
 		link: (url) => {
-			if (repoData.owner) {
-				const { repo, path, branch } = repoData;
+			if (repoRequest.owner) {
+				const { repo, path, branch } = repoRequest;
 				const dir = dirname(path ?? "");
 				const assetPath = join(dir, url);
 				return `/${repo ?? DEFAULT_REPO}${branch ? `@${branch}` : ""}/${assetPath}`;
@@ -78,15 +79,15 @@ const Page: NextPage = async () => {
 			className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
 			dir="ltr"
 		>
-			{isDev && SHOW_DEV_TOOLS && repoData !== null && (
-				<RepoDevTools {...repoData} />
+			{isDev && SHOW_DEV_TOOLS && repoRequest !== null && (
+				<RepoDevTools {...repoRequest} />
 			)}
 
 			<Post
 				runnable={runnable}
 				meta={parsedMeta}
 				lastCommit={lastCommit}
-				filename={repoData.path}
+				filename={repoRequest.path}
 				config={config}
 			/>
 			<hr className="!mb-4" />

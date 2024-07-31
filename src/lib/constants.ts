@@ -1,4 +1,5 @@
 export const DEFAULT_REPO = "blog";
+export const DEFAULT_BRANCH = "main";
 
 export const EXTENSIONS = ["md"];
 

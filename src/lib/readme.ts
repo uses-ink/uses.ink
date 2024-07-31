@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { components } from "@octokit/openapi-types";
 import { README_FILES } from "./constants";
-import { fetchGitHubContent, fetchGithubLastCommit } from "./github";
+import { fetchGitHubContent, fetchGithubLastCommit } from "./github/content";
 import type { GitHubFile, GitHubRequest } from "./types";
 
 export const fetchReadme = async (request: GitHubRequest) => {

@@ -8,7 +8,6 @@ import {
 // import rehypeKatex from "rehype-katex";
 import matter from "gray-matter";
 import rehypeCallouts from "rehype-callouts";
-import rehypeMathjax from "rehype-mathjax/chtml";
 import rehypeKatex from "rehype-katex";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeRaw from "rehype-raw";
@@ -28,6 +27,7 @@ import { remarkReadingTime } from "./read-time";
 import { getShiki } from "./shiki";
 import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
+import { MathEngineSchema } from "../types";
 
 const DEBUG_TREE = false;
 
@@ -42,10 +42,9 @@ export async function compileMDX(
 ) {
 	const meta = matter(content);
 
-	const mathEngine = z
-		.enum(["katex", "mathjax", "typst"])
-		.default("typst")
-		.parse(meta.data.mathEngine);
+	const mathEngine = MathEngineSchema.safeParse(
+		meta.data.mathEngine ?? "typst",
+	);
 
 	const result = await compile(meta.content, {
 		format: "md",
@@ -121,26 +120,13 @@ export async function compileMDX(
 				},
 			],
 			makeDebug("after pretty code"),
-
-			// [rehypeKatex, { throwOnError: false, output: "htmlAndMathml" }],
-			// rehypeTypst,
-
-			match(mathEngine)
+			match(mathEngine.data)
 				.with("katex", () => [
 					rehypeKatex,
 					{ throwOnError: false, output: "html" },
 				])
-				.with("mathjax", () => [
-					rehypeMathjax,
-					{
-						chtml: {
-							fontURL:
-								"https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2",
-						},
-					},
-				])
-				.with("typst", () => [rehypeTypst, undefined])
-				.exhaustive() as any,
+				// Use typst as default
+				.otherwise(() => [rehypeTypst, undefined]) as any,
 
 			rehypeSlug,
 			[

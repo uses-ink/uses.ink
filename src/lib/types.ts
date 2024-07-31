@@ -8,6 +8,8 @@ export interface GitHubRequest {
 	repo: string;
 	/** E.g. "dir/foo", "dir/foo/hello.md", "" when at repo root */
 	path: string;
+	/** E.g. "main", "feature/branch" */
+	branch?: string;
 }
 
 export type GitHubContent =
@@ -67,3 +69,5 @@ export const ConfigSchema = z.object({
 
 // Utility type to get the type of a promise
 export type PromiseOf<T> = T extends Promise<infer U> ? U : T;
+
+export const MathEngineSchema = z.enum(["katex", "typst"]).default("typst");

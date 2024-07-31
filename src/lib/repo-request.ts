@@ -1,21 +1,25 @@
 import { headers } from "next/headers";
 
-export const getRepo = () => {
+export type RepoRequest = {
+	owner?: string;
+	repo?: string;
+	branch?: string;
+	path?: string;
+};
+
+export const getRepoRequest = (): RepoRequest => {
 	const headersList = headers();
 	const host = headersList.get("host");
 	const url = headersList.get("x-url");
-	if (!url) {
-		return {
-			owner: null,
-			repo: null,
-			branch: null,
-		};
-	}
 	console.log("host", host);
 	console.log("url", url);
+	if (!url) {
+		console.error("No url found in headers");
+		return {};
+	}
 	const isLocalhost = host?.includes("localhost");
 	const parts = host?.split(".") ?? [];
-	let owner = null;
+	let owner = undefined;
 	if (isLocalhost) {
 		if (parts.length > 1) {
 			owner = parts[0];

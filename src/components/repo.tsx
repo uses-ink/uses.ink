@@ -1,6 +1,6 @@
-import type { getRepo } from "@/lib/repo";
+import type { getRepoRequest } from "@/lib/repo-request";
 
-export const RepoDevTools = (repoData: ReturnType<typeof getRepo>) => {
+export const RepoDevTools = (repoData: ReturnType<typeof getRepoRequest>) => {
 	return (
 		<div className="absolute top-4 right-4 p-3 bg-red-500 text-white rounded-md">
 			<h1>
