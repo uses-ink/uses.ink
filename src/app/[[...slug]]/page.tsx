@@ -10,6 +10,8 @@ import type { NextPage } from "next";
 import { dirname, join } from "node:path";
 import { ZodError } from "zod";
 import ErrorPage from "./error";
+import { FetchError } from "@/lib/errors";
+import { fetchGithubTree } from "@/lib/github/tree";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -79,30 +81,7 @@ const Page: NextPage = async () => {
 				)}
 
 				{res instanceof ZodError ? (
-					<div className="flex w-screen justify-center items-center prose max-w-full dark:prose-invert">
-						<div className="text-center flex gap-2 flex-col items-center">
-							<h1 className="text-4xl">
-								An error occured when parsing your frontmatter.
-							</h1>
-							<pre className="text-left language-json">
-								{JSON.stringify(res.errors, null, 2)}
-							</pre>
-							<p className="text-lg dark:text-gray-400 text-gray-600">
-								See the{" "}
-								<a
-									href="https://uses.ink/docs/frontmatter"
-									target="_blank"
-									rel="noreferrer"
-								>
-									frontmatter documentation
-								</a>{" "}
-								for more information.
-							</p>
-							<h3>
-								<a href="https://uses.ink">Back to uses.ink</a>
-							</h3>
-						</div>
-					</div>
+					<FrontmatterError errors={res.errors} />
 				) : (
 					<Post
 						runnable={res.runnable}
@@ -110,6 +89,7 @@ const Page: NextPage = async () => {
 						lastCommit={lastCommit}
 						filename={repoRequest.path}
 						config={config}
+						request={repoRequest}
 					/>
 				)}
 				<hr className="!mb-4" />
@@ -120,7 +100,95 @@ const Page: NextPage = async () => {
 		console.log("Error", error);
 		console.log("repoData", repoRequest);
 
-		if (error instanceof Error) {
+		if (error instanceof FetchError) {
+			const isReadmeRequest =
+				!repoRequest.path ||
+				!EXTENSIONS.includes(repoRequest.path.split(".").pop() ?? "");
+			console.log("isReadmeRequest", isReadmeRequest);
+			if (error.name === "NOT_FOUND" && isReadmeRequest && isRemote) {
+				// Try to generate a README ourselves
+				const { owner, repo, branch, path } = repoRequest;
+				const tree = await fetchGithubTree({
+					// biome-ignore lint/style/noNonNullAssertion: this has been checked above
+					owner: owner!,
+					repo: repo ?? DEFAULT_REPO,
+					path: path ?? "",
+					branch,
+				});
+				// Filter markdown files in current directory
+				const filteredTree = tree.tree.filter((file) => {
+					const path = repoRequest.path ?? "";
+					const isFile = file.type === "blob";
+					const isMarkdown = file.path?.endsWith(".md");
+					const isCurrentDir = dirname(file.path ?? "") === path;
+					return isFile && isMarkdown && isCurrentDir;
+				});
+				console.log("filteredTree", filteredTree);
+				return (
+					<article
+						className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
+						dir="ltr"
+					>
+						{isDev && SHOW_DEV_TOOLS && repoRequest !== null && (
+							<RepoDevTools {...repoRequest} />
+						)}
+						<h1 className="text-xl font-bold">
+							<a
+								href={`https://github.com/${repoRequest.owner}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="no-underline font-bold hover:underline"
+							>
+								<img
+									src={`https://github.com/${repoRequest.owner}.png`}
+									alt={`${repoRequest.owner}'s avatar`}
+									className="w-12 h-12 rounded-full inline-block mr-4 align-middle border border-muted-foreground"
+								/>
+							</a>
+							<a href={"/"} className="no-underline font-bold hover:underline">
+								{repoRequest.owner}
+							</a>
+							<span className="text-muted-foreground mx-1">/</span>
+							<a
+								href={`/${repoRequest.repo ?? DEFAULT_REPO}${
+									repoRequest.branch ? `@${repoRequest.branch}` : ""
+								}`}
+								className="no-underline font-bold hover:underline"
+							>
+								{repoRequest.repo}
+							</a>
+							{repoRequest.path && (
+								<>
+									<span className="text-muted-foreground mx-1">/</span>
+									<span>{repoRequest.path}</span>
+								</>
+							)}
+						</h1>
+						<ul className="list-disc pl-6">
+							{filteredTree.length > 0 ? (
+								filteredTree.map((file) => (
+									<li key={file.path}>
+										<h2>
+											<a
+												href={`/${repoRequest.repo ?? DEFAULT_REPO}${
+													repoRequest.branch ? `@${repoRequest.branch}` : ""
+												}/${file.path}`}
+												className="text-blue-500 dark:text-blue-400"
+											>
+												{file.path?.replace(`${path}/`, "")}
+											</a>
+										</h2>
+									</li>
+								))
+							) : (
+								<li>No markdown files found in this directory</li>
+							)}
+						</ul>
+						<hr className="!mb-4" />
+						<Footer auto />
+					</article>
+				);
+			}
 			return <ErrorPage repoData={repoRequest} error={error.message} />;
 		}
 

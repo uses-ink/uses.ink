@@ -7,9 +7,12 @@ export class FetchError extends Error {
 	) {
 		const message =
 			typeof ErrorMessages[name] === "function"
-				? ErrorMessages[name](status!)
+				? // biome-ignore lint/style/noNonNullAssertion: <explanation>
+					ErrorMessages[name](status!)
 				: ErrorMessages[name];
 		super(message);
+		this.message = message;
+		this.name = name;
 	}
 }
 

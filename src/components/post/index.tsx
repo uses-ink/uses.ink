@@ -17,6 +17,7 @@ import {
 	TooltipTrigger,
 } from "../ui/tooltip";
 import { capitalizeFileName, resolveTitle, userContentHash } from "./utils";
+import type { RepoRequest } from "@/lib/repo-request";
 
 export default function Post({
 	filename,
@@ -24,12 +25,14 @@ export default function Post({
 	lastCommit,
 	config,
 	meta,
+	request,
 }: {
 	filename?: string;
 	runnable: string;
 	lastCommit: CommitResponse | null;
 	config: z.infer<typeof ConfigSchema> | null;
 	meta: z.infer<typeof MetaSchema>;
+	request: RepoRequest;
 }) {
 	const [canScroll, setCanScroll] = useState(false);
 
@@ -65,9 +68,18 @@ export default function Post({
 			document.title =
 				meta.title ??
 				resolveTitle(Content) ??
-				(filename ? capitalizeFileName(filename) : "uses.ink");
+				(filename
+					? capitalizeFileName(filename)
+					: `${request.owner}/${request.repo}`);
 		}
-	}, [Content, meta, filename]);
+	}, [
+		Content,
+		meta.title,
+		meta.description,
+		filename,
+		request.owner,
+		request.repo,
+	]);
 
 	const { layout } = meta;
 

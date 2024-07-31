@@ -6,7 +6,11 @@ import {
 	TooltipTrigger,
 } from "./ui/tooltip";
 
-export const Footer = () => {
+export const Footer = ({
+	auto,
+}: {
+	auto?: boolean;
+}) => {
 	return (
 		<div className="flex justify-center mb-12 text-xs">
 			<div className="flex gap-4 items-center justify-between">
@@ -42,6 +46,16 @@ export const Footer = () => {
 						</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>
+				{auto && (
+					<a
+						href="https://uses.ink/features#auto-readme"
+						className="whitespace-nowrap !text-muted-foreground not-prose"
+					>
+						<p className="whitespace-nowrap !text-muted-foreground">
+							Automatically generated
+						</p>
+					</a>
+				)}
 			</div>
 		</div>
 	);

@@ -51,11 +51,9 @@ export const fetchConfig = async (request: GitHubRequest) => {
 			const config = ConfigSchema.parse(JSON.parse(parsed));
 			return config;
 		} catch (error) {
-			console.error("Error parsing config", error);
 			return null;
 		}
 	} catch (error: any) {
-		console.error("Error fetching config", error);
 		if (isErrorHasStatus(error)) {
 			switch (error.status) {
 				case 404:

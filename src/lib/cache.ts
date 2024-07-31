@@ -50,11 +50,9 @@ export const getGitHubCache = async <R = GitHubContent>(
 		const parsedData = data
 			? JSON.parse(Buffer.from(data, "base64").toString())
 			: null;
-
-		console.log("data", parsedData);
+		console.log(`cache hit for ${key}`);
 		return parsedData;
 	} catch (error) {
-		console.log("error", error);
 		return null;
 	}
 };
