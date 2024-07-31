@@ -1,5 +1,4 @@
-// Based on https://github.com/facebook/docusaurus/blob/ed9d2a26f5a7b8096804ae1b3a4fffc504f8f90d/packages/docusaurus-theme-classic/src/theme/CodeBlock/index.tsx
-// which is under MIT License as per the banner
+"use client";
 
 import { cn } from "@/lib/client/utils";
 import { Check, Clipboard, WrapText } from "lucide-react";

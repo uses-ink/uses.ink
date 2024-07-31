@@ -16,8 +16,12 @@ import { ChevronUp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import Moment from "react-moment";
 import type { z } from "zod";
-import SearchableContent from "../search";
-import { capitalizeFileName, resolveTitle, userContentHash } from "./utils";
+import SearchableContent from "./search";
+import {
+	capitalizeFileName,
+	resolveTitle,
+	userContentHash,
+} from "@/lib/client/utils";
 
 export default function Post({
 	filename,

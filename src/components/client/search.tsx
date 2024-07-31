@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useRef, useEffect, type ComponentType } from "react";
 import Mark from "mark.js";
 import { ChevronDownIcon, ChevronUpIcon, SearchIcon } from "lucide-react";

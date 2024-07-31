@@ -228,7 +228,7 @@ An example of a table of contents is shown at the [beginning of this document](#
 
 ## Super- and Subscripts
 
-You can add super- and subscripts using the `^` and `_` characters:
+You can add super- and subscripts using the `^` and `~` characters:
 
 ```markdown
 H~2~O
