@@ -6,7 +6,7 @@ import {
 } from "@shikijs/transformers";
 
 // import rehypeKatex from "rehype-katex";
-import matter from "gray-matter";
+import parseMatter from "gray-matter";
 import rehypeCallouts from "rehype-callouts";
 import rehypeKatex from "rehype-katex";
 import rehypePrettyCode from "rehype-pretty-code";
@@ -27,7 +27,7 @@ import { remarkReadingTime } from "./read-time";
 import { getShiki } from "./shiki";
 import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
-import { MathEngineSchema } from "../types";
+import { MetaSchema } from "../types";
 
 const DEBUG_TREE = false;
 
@@ -40,13 +40,11 @@ export async function compileMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
 ) {
-	const meta = matter(content);
+	const matter = parseMatter(content);
 
-	const mathEngine = MathEngineSchema.safeParse(
-		meta.data.mathEngine ?? "typst",
-	);
+	const meta = MetaSchema.safeParse(matter.data);
 
-	const result = await compile(meta.content, {
+	const result = await compile(matter.content, {
 		format: "md",
 		outputFormat: "function-body",
 		remarkPlugins: [
@@ -107,20 +105,22 @@ export async function compileMDX(
 				},
 			],
 			makeDebug("after sanitize"),
-			[
-				rehypePrettyCode,
-				{
-					getHighlighter: getShiki,
-					theme: "default",
-					transformers: [
-						transformerNotationDiff(),
-						transformerNotationFocus(),
-						transformerNotationErrorLevel(),
+			meta.data?.noHighlight ?? false
+				? []
+				: [
+						rehypePrettyCode,
+						{
+							getHighlighter: getShiki,
+							theme: "default",
+							transformers: [
+								transformerNotationDiff(),
+								transformerNotationFocus(),
+								transformerNotationErrorLevel(),
+							],
+						},
 					],
-				},
-			],
 			makeDebug("after pretty code"),
-			match(mathEngine.data)
+			match(meta.data?.mathEngine)
 				.with("katex", () => [
 					rehypeKatex,
 					{ throwOnError: false, output: "html" },

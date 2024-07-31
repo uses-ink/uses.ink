@@ -50,6 +50,9 @@ export type AuthorResponse = {
 	avatar: string;
 };
 
+export const MathEngineSchema = z.enum(["katex", "typst"]).default("typst");
+export const LayoutSchema = z.enum(["post", "gallery"]).default("post");
+
 export const MetaSchema = z.object({
 	title: z.string().optional(),
 	description: z.string().optional(),
@@ -59,7 +62,9 @@ export const MetaSchema = z.object({
 	readingTime: z.boolean().default(true),
 	image: z.string().optional(),
 	nav: z.record(z.string()).optional(),
-	layout: z.enum(["post", "gallery"]).default("post"),
+	layout: LayoutSchema,
+	mathEngine: MathEngineSchema,
+	noHighlight: z.boolean().optional(),
 });
 
 export const ConfigSchema = z.object({
@@ -69,5 +74,3 @@ export const ConfigSchema = z.object({
 
 // Utility type to get the type of a promise
 export type PromiseOf<T> = T extends Promise<infer U> ? U : T;
-
-export const MathEngineSchema = z.enum(["katex", "typst"]).default("typst");
