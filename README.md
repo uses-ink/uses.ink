@@ -34,6 +34,12 @@ docker compose --profile prod up -d
 
 You can now access the platform at [`http://localhost:8765`](http://localhost:8765).
 
+In case you want to use the latest commit from the repository, you can build the image locally with the `dev` profile:
+
+```bash
+docker compose --profile dev up -d
+```
+
 ## Development
 
 This project uses [`pnpm`](https://pnpm.io) as the package manager. It is needed to properly install and patch the dependencies (See [Patches](#patches)).
