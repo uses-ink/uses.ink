@@ -24,19 +24,11 @@ export type GitHubDir = components["schemas"]["content-directory"];
 
 export type GitHubEntry = GitHubDir[number];
 
-export type DataResponse =
-	| {
-			content: string;
-			lastCommit: CommitResponse | null;
-			fileName: string;
-			error: undefined;
-	  }
-	| {
-			content: null;
-			lastCommit: null;
-			fileName: null;
-			error: string;
-	  };
+export type DataResponse = {
+	content: string;
+	lastCommit: CommitResponse | null;
+	fileName: string;
+};
 
 export type CommitResponse = {
 	date: string;

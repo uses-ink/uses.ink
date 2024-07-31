@@ -7,6 +7,7 @@ import { fetchPost } from "./post";
 import { fetchReadme } from "./readme";
 import { ConfigSchema, type DataResponse, type GitHubRequest } from "./types";
 import { isErrorHasStatus } from "./utils";
+import { FetchError } from "./errors";
 
 export const fetchData = async (
 	request: GitHubRequest,
@@ -19,33 +20,18 @@ export const fetchData = async (
 			? fetchPost
 			: fetchReadme)(request);
 
-		return { content, lastCommit, error: undefined, fileName };
+		return { content, lastCommit, fileName };
 	} catch (error: any) {
 		console.error("Error fetching data", error);
 		if (isErrorHasStatus(error)) {
 			switch (error.status) {
 				case 404:
-					return {
-						content: null,
-						lastCommit: null,
-						error: "Not found",
-						fileName: null,
-					};
+					throw new FetchError("NOT_FOUND", 404);
 				default:
-					return {
-						content: null,
-						lastCommit: null,
-						fileName: null,
-						error: `Error status ${error.status}`,
-					};
+					throw new FetchError("ERROR_STATUS", error.status);
 			}
 		}
-		return {
-			content: null,
-			lastCommit: null,
-			error: error.toString(),
-			fileName: null,
-		};
+		throw new FetchError("UNKNOWN");
 	}
 };
 
@@ -101,15 +87,12 @@ export const fetchLocalData = async (path: string): Promise<DataResponse> => {
 				link: null,
 			},
 			fileName: trimmedPath,
-			error: undefined,
 		};
 	} catch (error: any) {
 		const is404 = error.code === "ENOENT";
-		return {
-			content: null,
-			lastCommit: null,
-			error: is404 ? "Not found" : error.toString(),
-			fileName: null,
-		};
+		if (is404) {
+			throw new FetchError("NOT_FOUND", 404);
+		}
+		throw new FetchError("UNKNOWN");
 	}
 };
