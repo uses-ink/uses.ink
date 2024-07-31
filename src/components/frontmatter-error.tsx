@@ -14,7 +14,7 @@ const FrontmatterError = ({
 			<p className="text-lg dark:text-gray-400 text-gray-600">
 				See the{" "}
 				<a
-					href="https://uses.ink/features#metadata"
+					href="https://uses.ink/features.md#metadata"
 					target="_blank"
 					rel="noreferrer"
 				>
