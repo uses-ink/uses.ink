@@ -18,6 +18,7 @@ import ErrorPage from "./error";
 import { FetchError } from "@/lib/errors";
 import { fetchGithubTree } from "@/lib/github/tree";
 import Readme from "@/components/readme";
+import Article from "@/components/article";
 
 const Page: NextPage = async () => {
 	const repoRequest = getRepoRequest();
@@ -76,10 +77,7 @@ const Page: NextPage = async () => {
 		});
 
 		return (
-			<article
-				className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
-				dir="ltr"
-			>
+			<Article>
 				{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
 					<RepoDevTools {...repoRequest} />
 				)}
@@ -96,9 +94,7 @@ const Page: NextPage = async () => {
 						request={repoRequest}
 					/>
 				)}
-				<hr className="!mb-4" />
-				<Footer />
-			</article>
+			</Article>
 		);
 	} catch (error) {
 		console.log("Error", error);

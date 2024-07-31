@@ -3,6 +3,7 @@ import { RepoDevTools } from "./repo";
 import { Footer } from "./footer";
 import type { RepoRequest } from "@/lib/repo-request";
 import type { GithubTree } from "@/lib/github/tree";
+import Article from "./article";
 
 const Readme = ({
 	repoRequest,
@@ -13,10 +14,7 @@ const Readme = ({
 	filteredTree: GithubTree["tree"];
 	path: string;
 }) => (
-	<article
-		className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
-		dir="ltr"
-	>
+	<Article auto>
 		{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
 			<RepoDevTools {...repoRequest} />
 		)}
@@ -69,9 +67,7 @@ const Readme = ({
 				<li>No markdown files found in this directory</li>
 			)}
 		</ul>
-		<hr className="!mb-4" />
-		<Footer auto />
-	</article>
+	</Article>
 );
 
 export default Readme;
