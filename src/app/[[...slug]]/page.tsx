@@ -1,5 +1,3 @@
-import { dirname, join } from "node:path";
-import ErrorPage from "./error";
 import { Footer } from "@/components/footer";
 import Post from "@/components/post";
 import { RepoDevTools } from "@/components/repo";
@@ -7,8 +5,11 @@ import { DEFAULT_REPO, SHOW_DEV_TOOLS } from "@/lib/constants";
 import { fetchConfig, fetchData, fetchLocalData } from "@/lib/fetch";
 import { compileMDX } from "@/lib/mdx";
 import { getRepoRequest } from "@/lib/repo-request";
-import { MetaSchema, type GitHubRequest } from "@/lib/types";
+import type { GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
+import { dirname, join } from "node:path";
+import { ZodError } from "zod";
+import ErrorPage from "./error";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -49,7 +50,7 @@ const Page: NextPage = async () => {
 		return <ErrorPage repoData={repoRequest} error="File type not supported" />;
 	}
 
-	const { runnable, meta } = await compileMDX(content, {
+	const res = await compileMDX(content, {
 		asset: (url) => {
 			if (repoRequest.owner) {
 				const { owner, repo, path, branch } = repoRequest;
@@ -72,8 +73,6 @@ const Page: NextPage = async () => {
 		},
 	});
 
-	const parsedMeta = MetaSchema.safeParse(meta.data);
-
 	return (
 		<article
 			className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
@@ -83,13 +82,40 @@ const Page: NextPage = async () => {
 				<RepoDevTools {...repoRequest} />
 			)}
 
-			<Post
-				runnable={runnable}
-				meta={parsedMeta}
-				lastCommit={lastCommit}
-				filename={repoRequest.path}
-				config={config}
-			/>
+			{res instanceof ZodError ? (
+				<div className="flex w-screen justify-center items-center prose max-w-full dark:prose-invert">
+					<div className="text-center flex gap-2 flex-col items-center">
+						<h1 className="text-4xl">
+							An error occured when parsing your frontmatter.
+						</h1>
+						<pre className="text-left language-json">
+							{JSON.stringify(res.errors, null, 2)}
+						</pre>
+						<p className="text-lg dark:text-gray-400 text-gray-600">
+							See the{" "}
+							<a
+								href="https://uses.ink/docs/frontmatter"
+								target="_blank"
+								rel="noreferrer"
+							>
+								frontmatter documentation
+							</a>{" "}
+							for more information.
+						</p>
+						<h3>
+							<a href="https://uses.ink">Back to uses.ink</a>
+						</h3>
+					</div>
+				</div>
+			) : (
+				<Post
+					runnable={res.runnable}
+					meta={res.meta}
+					lastCommit={lastCommit}
+					filename={repoRequest.path}
+					config={config}
+				/>
+			)}
 			<hr className="!mb-4" />
 			<Footer />
 		</article>

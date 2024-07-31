@@ -29,10 +29,7 @@ export default function Post({
 	runnable: string;
 	lastCommit: CommitResponse | null;
 	config: z.infer<typeof ConfigSchema> | null;
-	meta: z.SafeParseReturnType<
-		z.input<typeof MetaSchema>,
-		z.output<typeof MetaSchema>
-	>;
+	meta: z.infer<typeof MetaSchema>;
 }) {
 	const [canScroll, setCanScroll] = useState(false);
 
@@ -59,51 +56,24 @@ export default function Post({
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	}, []);
 
-	if (!meta.success) {
-		return (
-			<div className="flex w-screen justify-center items-center prose max-w-full dark:prose-invert">
-				<div className="text-center flex gap-2 flex-col items-center">
-					<h1 className="text-4xl">
-						An error occured when parsing your frontmatter.
-					</h1>
-					<pre className="text-left language-json">{meta.error.message}</pre>
-					<p className="text-lg dark:text-gray-400 text-gray-600">
-						See the{" "}
-						<a
-							href="https://uses.ink/docs/frontmatter"
-							target="_blank"
-							rel="noreferrer"
-						>
-							frontmatter documentation
-						</a>{" "}
-						for more information.
-					</p>
-					<h3>
-						<a href="https://uses.ink">Back to uses.ink</a>
-					</h3>
-				</div>
-			</div>
-		);
-	}
-
 	useEffect(() => {
 		document
 			.querySelector('meta[name="description"]')
-			?.setAttribute("content", meta.data.description ?? "");
+			?.setAttribute("content", meta.description ?? "");
 
 		if (Content) {
 			document.title =
-				meta.data.title ??
+				meta.title ??
 				resolveTitle(Content) ??
 				(filename ? capitalizeFileName(filename) : "uses.ink");
 		}
-	}, [Content, meta.data, filename]);
+	}, [Content, meta, filename]);
 
-	const { layout } = meta.data;
+	const { layout } = meta;
 
 	const Layout = getLayout(layout, Content);
 
-	const resolvedDate = meta.data.date ?? lastCommit?.date;
+	const resolvedDate = meta.date ?? lastCommit?.date;
 
 	const { resolvedAuthor, link, avatar } = lastCommit?.author
 		? {
@@ -111,14 +81,14 @@ export default function Post({
 				link: `https://github.com/${lastCommit.author.login}`,
 				avatar: lastCommit.author.avatar,
 			}
-		: { resolvedAuthor: meta.data.author, link: null, avatar: null };
+		: { resolvedAuthor: meta.author, link: null, avatar: null };
 
 	return (
 		<>
-			{meta.data.nav && <Navbar routes={meta.data.nav} />}
-			{!(config?.hideTop ?? meta.data.hideTop) && (
+			{meta.nav && <Navbar routes={meta.nav} />}
+			{!(config?.hideTop ?? meta.hideTop) && (
 				<header className="mb-8">
-					<h1>{meta.data.title}</h1>
+					<h1>{meta.title}</h1>
 
 					<p className="text-sm text-gray-500">
 						{resolvedAuthor && (
@@ -168,9 +138,9 @@ export default function Post({
 								</Tooltip>
 							)}
 							{resolvedDate &&
-								(config?.readingTime ?? meta.data.readingTime) &&
+								(config?.readingTime ?? meta.readingTime) &&
 								" • "}
-							{(config?.readingTime ?? meta.data.readingTime) && (
+							{(config?.readingTime ?? meta.readingTime) && (
 								<Tooltip>
 									<TooltipTrigger>
 										<span>{readingTime.text}</span>

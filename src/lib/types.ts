@@ -64,7 +64,7 @@ export const MetaSchema = z.object({
 	nav: z.record(z.string()).optional(),
 	layout: LayoutSchema,
 	mathEngine: MathEngineSchema,
-	noHighlight: z.boolean().optional(),
+	noHighlight: z.boolean().default(false),
 });
 
 export const ConfigSchema = z.object({

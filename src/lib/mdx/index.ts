@@ -1,4 +1,5 @@
 import { compile } from "@mdx-js/mdx";
+
 import {
 	transformerNotationDiff,
 	transformerNotationErrorLevel,
@@ -21,7 +22,7 @@ import remarSuperSub from "remark-supersub";
 import remarkToc from "remark-toc";
 import { match } from "ts-pattern";
 import { inspect } from "unist-util-inspect";
-import { z } from "zod";
+import type { z, ZodError } from "zod";
 import rehypeMetaString from "./meta";
 import { remarkReadingTime } from "./read-time";
 import { getShiki } from "./shiki";
@@ -39,10 +40,20 @@ const makeDebug = (name: string) =>
 export async function compileMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
-) {
+): Promise<
+	| {
+			meta: z.infer<typeof MetaSchema>;
+			runnable: string;
+	  }
+	| ZodError<z.output<typeof MetaSchema>>
+> {
 	const matter = parseMatter(content);
 
 	const meta = MetaSchema.safeParse(matter.data);
+
+	if (!meta.success) {
+		return meta.error;
+	}
 
 	const result = await compile(matter.content, {
 		format: "md",
@@ -50,7 +61,7 @@ export async function compileMDX(
 		remarkPlugins: [
 			[remarkGfm, { singleTilde: false }],
 			remarkMath,
-			remarkReadingTime,
+			...(meta.data.readingTime ? [remarkReadingTime] : []),
 			[
 				remarkToc,
 				{
@@ -105,7 +116,7 @@ export async function compileMDX(
 				},
 			],
 			makeDebug("after sanitize"),
-			meta.data?.noHighlight ?? false
+			meta.data.noHighlight
 				? []
 				: [
 						rehypePrettyCode,
@@ -145,5 +156,5 @@ export async function compileMDX(
 			clobberPrefix: "",
 		},
 	});
-	return { meta, runnable: result.toString() };
+	return { meta: meta.data, runnable: result.toString() };
 }
