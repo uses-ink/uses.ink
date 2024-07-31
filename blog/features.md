@@ -37,6 +37,29 @@ nav:
   Blog: /blog        
 ``` 
 
+
+## Math
+
+Math is rendered by default using [typst](https://github.com/typst/typst)
+
+```typ
+$$
+det(A) = sum_(k=1)^n (-1)^(k+1) a_1k det(A_1k) 
+$$
+```
+
+$$
+det(A) = sum_(k=1)^n (-1)^(k+1) a_1k det(A_1k)
+$$
+
+You may ask why we use `typst` instead of `LaTeX` ? I personally find `typst`'s syntax to be more markdown-ish and easier to use. If you don't like it, you can always use another engine by setting the `mathEngine` property in the metadata block:
+
+```yaml
+---
+mathEngine: katex # for LaTeX rendering
+---
+```
+
 ## Callouts
 
 You can add callouts by using the following syntax:
@@ -134,6 +157,26 @@ print("Hello, World!")
 print("Hello, World!")
 ```
 
+## Footnotes
+
+Footnotes can be added using the following syntax:
+
+```markdown
+Here is a footnote reference,[^1] and another.[^longnote]
+
+[^1]: Here is the footnote.
+[^longnote]: Here's one with multiple blocks.
+
+    Subsequent paragraphs are indented to show that they belong to the previous footnote.
+```
+
+Here is a footnote reference,[^1] and another.[^longnote]
+
+[^1]: Here is the footnote.
+[^longnote]: Here's one with multiple blocks.
+
+    Subsequent paragraphs are indented to show that they belong to the previous footnote.
+
 ## Tables
 
 Tables are rendered with GitHub Flavored Markdown:
@@ -162,6 +205,7 @@ Shortcodes for emojis are supported:
 
 Emojis are rendered using [Twemoji](https://twemoji.twitter.com/).
 
+
 ## Tables of Contents
 
 If a heading matching `/^.*<!--( ?)toc( ?)-->$/i{:regex}` is present in the markdown file, a table of contents will be generated.
@@ -175,20 +219,6 @@ In case you want to remove particular headings from the table of contents, you c
 
 An example of a table of contents is shown at the [beginning of this document](#table-of-contents).
 
-## Math
-
-Math is rendered using [typst](https://github.com/typst/typst)
-
-```typ
-$$
-det(A) = sum_(k=1)^n (-1)^(k+1) a_1k det(A_1k) 
-$$
-```
-
-$$
-det(A) = sum_(k=1)^n (-1)^(k+1) a_1k det(A_1k)
-$$
-
 ## Super- and Subscripts
 
 You can add super- and subscripts using the `^` and `_` characters:
@@ -200,23 +230,3 @@ H~2~O
 
 H~2~O
 21^st^ century
-
-## Footnotes
-
-Footnotes can be added using the following syntax:
-
-```markdown
-Here is a footnote reference,[^1] and another.[^longnote]
-
-[^1]: Here is the footnote.
-[^longnote]: Here's one with multiple blocks.
-
-    Subsequent paragraphs are indented to show that they belong to the previous footnote.
-```
-
-Here is a footnote reference,[^1] and another.[^longnote]
-
-[^1]: Here is the footnote.
-[^longnote]: Here's one with multiple blocks.
-
-    Subsequent paragraphs are indented to show that they belong to the previous footnote.

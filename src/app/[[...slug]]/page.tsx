@@ -7,7 +7,7 @@ import { DEFAULT_REPO, SHOW_DEV_TOOLS } from "@/lib/constants";
 import { fetchConfig, fetchData, fetchLocalData } from "@/lib/fetch";
 import { compileMDX } from "@/lib/mdx";
 import { getRepo } from "@/lib/repo";
-import type { GitHubRequest } from "@/lib/types";
+import { MetaSchema, type GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -48,7 +48,7 @@ const Page: NextPage = async () => {
 		return <ErrorPage repoData={repoData} error="File type not supported" />;
 	}
 
-	const mdx = await compileMDX(content, {
+	const { runnable, meta } = await compileMDX(content, {
 		asset: (url) => {
 			if (repoData.owner) {
 				const { owner, repo, path, branch } = repoData;
@@ -71,6 +71,8 @@ const Page: NextPage = async () => {
 		},
 	});
 
+	const parsedMeta = MetaSchema.safeParse(meta);
+
 	return (
 		<article
 			className="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert"
@@ -81,7 +83,8 @@ const Page: NextPage = async () => {
 			)}
 
 			<Post
-				content={mdx}
+				runnable={runnable}
+				meta={parsedMeta}
 				lastCommit={lastCommit}
 				filename={repoData.path}
 				config={config}

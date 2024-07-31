@@ -1,7 +1,7 @@
 "use client";
 
 import { runMDX } from "@/lib/mdx/run";
-import type { CommitResponse, ConfigSchema } from "@/lib/types";
+import type { CommitResponse, ConfigSchema, MetaSchema } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ChevronUp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -20,18 +20,23 @@ import { capitalizeFileName, resolveTitle, userContentHash } from "./utils";
 
 export default function Post({
 	filename,
-	content,
+	runnable,
 	lastCommit,
 	config,
+	meta,
 }: {
 	filename?: string;
-	content: string;
+	runnable: string;
 	lastCommit: CommitResponse | null;
 	config: z.infer<typeof ConfigSchema> | null;
+	meta: z.SafeParseReturnType<
+		z.input<typeof MetaSchema>,
+		z.output<typeof MetaSchema>
+	>;
 }) {
 	const [canScroll, setCanScroll] = useState(false);
 
-	const { meta, readingTime, Content } = runMDX(content);
+	const { readingTime, Content } = runMDX(runnable);
 
 	useEffect(() => {
 		const handleScroll = () => {

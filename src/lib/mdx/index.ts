@@ -6,25 +6,28 @@ import {
 } from "@shikijs/transformers";
 
 // import rehypeKatex from "rehype-katex";
+import matter from "gray-matter";
+import rehypeCallouts from "rehype-callouts";
+import rehypeMathjax from "rehype-mathjax/chtml";
+import rehypeKatex from "rehype-katex";
+import rehypePrettyCode from "rehype-pretty-code";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
-import remarkFrontmatter from "remark-frontmatter";
+import { type RehypeTwemojiOptions, rehypeTwemoji } from "rehype-twemoji";
+import remarkEmoji from "remark-emoji";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import remarkMdxFrontmatter from "remark-mdx-frontmatter";
-import { inspect } from "unist-util-inspect";
-import { remarkReadingTime } from "./read-time";
-import { type MdxUrlResolvers, getMdxUrl } from "./url";
-import { rehypeTwemoji, type RehypeTwemojiOptions } from "rehype-twemoji";
-import remarkEmoji from "remark-emoji";
-import rehypePrettyCode from "rehype-pretty-code";
-import rehypeMetaString from "./meta";
-import { getShiki } from "./shiki";
-import remarkToc from "remark-toc";
-import rehypeCallouts from "rehype-callouts";
 import remarSuperSub from "remark-supersub";
+import remarkToc from "remark-toc";
+import { match } from "ts-pattern";
+import { inspect } from "unist-util-inspect";
+import { z } from "zod";
+import rehypeMetaString from "./meta";
+import { remarkReadingTime } from "./read-time";
+import { getShiki } from "./shiki";
 import rehypeTypst from "./typst";
+import { type MdxUrlResolvers, getMdxUrl } from "./url";
 
 const DEBUG_TREE = false;
 
@@ -37,13 +40,18 @@ export async function compileMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
 ) {
-	const result = await compile(content, {
+	const meta = matter(content);
+
+	const mathEngine = z
+		.enum(["katex", "mathjax", "typst"])
+		.default("typst")
+		.parse(meta.data.mathEngine);
+
+	const result = await compile(meta.content, {
 		format: "md",
 		outputFormat: "function-body",
 		remarkPlugins: [
 			[remarkGfm, { singleTilde: false }],
-			[remarkFrontmatter, { marker: "-", type: "yaml" }],
-			[remarkMdxFrontmatter, { name: "matter" }],
 			remarkMath,
 			remarkReadingTime,
 			[
@@ -115,7 +123,25 @@ export async function compileMDX(
 			makeDebug("after pretty code"),
 
 			// [rehypeKatex, { throwOnError: false, output: "htmlAndMathml" }],
-			rehypeTypst,
+			// rehypeTypst,
+
+			match(mathEngine)
+				.with("katex", () => [
+					rehypeKatex,
+					{ throwOnError: false, output: "html" },
+				])
+				.with("mathjax", () => [
+					rehypeMathjax,
+					{
+						chtml: {
+							fontURL:
+								"https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2",
+						},
+					},
+				])
+				.with("typst", () => [rehypeTypst, undefined])
+				.exhaustive() as any,
+
 			rehypeSlug,
 			[
 				rehypeTwemoji,
@@ -133,5 +159,5 @@ export async function compileMDX(
 			clobberPrefix: "",
 		},
 	});
-	return result.toString();
+	return { meta, runnable: result.toString() };
 }
