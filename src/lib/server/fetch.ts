@@ -73,7 +73,7 @@ export const fetchLocalData = async (path: string): Promise<DataResponse> => {
 		const trimmedPath =
 			(path.startsWith("/") ? path.slice(1) : path) || "README.md";
 		console.log("trimmedPath", trimmedPath);
-		const toRead = join(process.cwd(), "blog", trimmedPath);
+		const toRead = join(process.cwd(), "docs", trimmedPath);
 		console.log("toRead", toRead);
 		const content = await fs.readFile(toRead, "utf-8");
 		const lastModified = (await fs.stat(toRead)).mtime;
