@@ -1,6 +1,7 @@
 import Pre from "@/components/pre";
 import Head from "next/head";
 import Link from "next/link";
+import { cn } from "../utils";
 
 // To have client-side routing
 const CustomLink = (props: any) =>
@@ -14,6 +15,15 @@ export const mdxComponents = {
 	// https://github.com/mdx-js/mdx/discussions/1921
 	head: Head as any,
 	pre: Pre as any,
+	// biome-ignore lint/a11y/useAltText: This will (maybe) be provided by the user
+	img: (props: any) => (
+		<img
+			{...props}
+			className={cn({
+				"!inline": props.src.includes("img.shields.io"),
+			})}
+		/>
+	),
 	h1: ({ children, ...props }: any) => (
 		<h1 {...props} className="group">
 			{children}
