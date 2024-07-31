@@ -131,7 +131,7 @@ export async function compileMDX(
 						},
 					],
 			makeDebug("after pretty code"),
-			match(meta.data?.mathEngine)
+			match(meta.data.mathEngine)
 				.with("katex", () => [
 					rehypeKatex,
 					{ throwOnError: false, output: "html" },

@@ -7,6 +7,12 @@ author: cstef
 
 ## Overview <!-- toc -->
 
+## Auto-Generated README
+
+In case you don't have a `README.md` file at the root of the current directory, `uses.ink` will generate one for you. The README will contain a list of all the markdown files in the current directory. 
+
+You can see an example of this at [`cestef.uses.ink/blog/posts`](https://cestef.uses.ink/blog/posts)
+
 ## Metadata
 
 You can add metadata to your markdown files by adding a YAML front matter block at the top of the file. This block must be the first thing in the file and must take the form of a valid YAML object. The metadata block is separated from the rest of the content by a line of three dashes.
@@ -36,7 +42,8 @@ nav:
   Home: /
   Blog: /blog        
 ``` 
-
+- `mathEngine`: The math rendering engine to use. This can be `typst` or `katex`.
+- `noHighlight`: Set to `true` to disable syntax highlighting in code blocks.
 
 ## Math
 
