@@ -2,11 +2,20 @@ import Pre from "@/components/client/pre";
 import Head from "next/head";
 import Link from "next/link";
 import { cn } from "../utils";
+import { useTheme } from "next-themes";
 
 // To have client-side routing
 const CustomLink = (props: any) =>
 	props.href.startsWith("#") ? <a {...props} /> : <Link {...props} />;
 
+const BADGES_HOSTS = ["img.shields.io", "badgen.net", "forthebadge.com"];
+const DARK_HASHES = ["#dark", "#dark-mode", "#darkmode", "#gh-dark-mode-only"];
+const LIGHT_HASHES = [
+	"#light",
+	"#light-mode",
+	"#lightmode",
+	"#gh-light-mode-only",
+];
 /**
  * Use Next's components in MDX (e.g. Head)
  */
@@ -15,15 +24,26 @@ export const mdxComponents = {
 	// https://github.com/mdx-js/mdx/discussions/1921
 	head: Head as any,
 	pre: Pre as any,
-	// biome-ignore lint/a11y/useAltText: This will (maybe) be provided by the user
-	img: (props: any) => (
-		<img
-			{...props}
-			className={cn({
-				"!inline": props.src.includes("img.shields.io"),
-			})}
-		/>
-	),
+	img: (props: any) => {
+		const src = new URL(props.src);
+		const isBadge = BADGES_HOSTS.includes(src.hostname);
+		const { resolvedTheme } = useTheme();
+		const themeRestriction = src.hash
+			? (resolvedTheme === "dark" ? DARK_HASHES : LIGHT_HASHES).includes(
+					src.hash,
+				)
+			: false;
+		return (
+			// biome-ignore lint/a11y/useAltText: This will (maybe) be provided by the user
+			<img
+				{...props}
+				className={cn({
+					"!inline": isBadge,
+					hidden: themeRestriction,
+				})}
+			/>
+		);
+	},
 	h1: ({ children, ...props }: any) => (
 		<h1 {...props} className="group">
 			{children}
