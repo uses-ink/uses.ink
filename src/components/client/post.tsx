@@ -10,14 +10,13 @@ import {
 } from "@/components/ui/tooltip";
 import { runMDX } from "@/lib/client/mdx/run";
 import { cn, userContentHash } from "@/lib/client/utils";
+import type { ResolvedMetadata } from "@/lib/server/utils";
 import type { CommitResponse, ConfigSchema, MetaSchema } from "@/lib/types";
 import { ChevronUp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import Moment from "react-moment";
 import type { z } from "zod";
 import SearchableContent from "./search";
-import type { ResolvedMetadata } from "@/lib/server/utils";
-import type { GithubLastCommit } from "@/lib/server/github/commit";
 
 export default function Post({
 	runnable,
