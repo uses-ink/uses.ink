@@ -3,6 +3,7 @@ import type { CommitResponse, GitHubRequest, MetaSchema } from "../types";
 import type { GithubLastCommit } from "./github/commit";
 import { capitalizeFileName, resolveTitle } from "../client/utils";
 import type { RepoRequest } from "./repo-request";
+import { README_FILES } from "../constants";
 
 export const isErrorHasStatus = (
 	raw: unknown,
@@ -45,7 +46,11 @@ export const resolveMetadata = (
 		meta.title ??
 		// resolveTitle(Content) ??
 		(filename
-			? capitalizeFileName(filename)
+			? README_FILES.map((e) => e.toLowerCase()).includes(
+					filename.toLowerCase(),
+				)
+				? `${request.owner}/${request.repo}`
+				: capitalizeFileName(filename)
 			: `${request.owner}/${request.repo}`);
 
 	const description = meta.description;
