@@ -40,6 +40,14 @@ In case you want to use the latest commit from the repository, you can build the
 docker compose --profile dev up -d
 ```
 
+> [!IMPORTANT]
+> When stopping the platform, make sure to stop the containers with the appropriate profile:
+> ```bash
+> docker compose --profile prod down # or --profile dev
+> ```
+> In case you're having trouble recreating the containers, use the `--force-recreate` flag.
+
+
 ## Development
 
 This project uses [`pnpm`](https://pnpm.io) as the package manager. It is needed to properly install and patch the dependencies (See [Patches](#patches)).
