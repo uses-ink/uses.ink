@@ -63,8 +63,7 @@ const Page: NextPage = async () => {
 					const { owner, repo, path, branch } = repoRequest;
 					const dir = dirname(path ?? "");
 					const assetPath = join(dir, url);
-					const origin = "https://raw.githubusercontent.com";
-					return `${origin}/${owner}/${repo ?? DEFAULT_REPO}/${branch ?? "HEAD"}/${assetPath}`;
+					return `https://raw.githubusercontent.com"/${owner}/${repo ?? DEFAULT_REPO}/${branch ?? "HEAD"}/${assetPath}`;
 				}
 				return url;
 			},
@@ -115,6 +114,11 @@ const Page: NextPage = async () => {
 						: []),
 			],
 		};
+		metadata.metadataBase = new URL(
+			repoRequest.owner
+				? `https://raw.githubusercontent.com"/${repoRequest.owner}/${repoRequest.repo ?? DEFAULT_REPO}/${repoRequest.branch ?? "HEAD"}`
+				: "https://uses.ink",
+		);
 
 		return (
 			<Article>
