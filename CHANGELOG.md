@@ -1,3 +1,21 @@
+## v0.3.12 (2024-08-02)
+
+### Feat
+
+- switch to logging with pino
+
+### Fix
+
+- correct metadata url
+- move metadata to head tags
+- add metadataBase in metadata
+- remove remaining console.log's
+
+### Refactor
+
+- delay config fetching a bit for faster metadata resolving
+- metadata parsing and setting on the server
+
 ## v0.3.11 (2024-08-01)
 
 ### Feat
