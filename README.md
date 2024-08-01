@@ -1,5 +1,6 @@
 <p align="center">
-    <img src="assets/light.png" width="70%"/>
+    <img src="assets/light.png#gh-light-mode-only" width="70%"/>
+    <img src="assets/dark.png#gh-dark-mode-only" width="70%"/>
 </p>
 
 This is a minimalistic blog platform for developers. It's based on markdown files and uses GitHub as a storage.
