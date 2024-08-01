@@ -29,13 +29,16 @@ import { getShiki } from "./shiki";
 import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
 import { MetaSchema } from "../../types";
+import { serverLogger } from "../logger";
 
 const DEBUG_TREE = false;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
 
 const makeDebug = (name: string) =>
-	DEBUG_TREE ? () => (tree: any) => console.log(name, inspect(tree)) : () => {};
+	DEBUG_TREE
+		? () => (tree: any) => serverLogger.debug(inspect(tree))
+		: () => {};
 
 export async function compileMDX(
 	content: string,
@@ -93,7 +96,7 @@ export async function compileMDX(
 					// @ts-ignore
 					unknownNodeHandler: (state, node) => {
 						if (DEBUG_TREE) {
-							console.log("Unknown node", node);
+							serverLogger.debug("Unknown node", node);
 						}
 						if (ALLOWED_NODES.includes(node.type)) {
 							return node;

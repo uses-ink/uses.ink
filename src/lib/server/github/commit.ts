@@ -2,6 +2,7 @@ import type { GitHubRequest, GithubCommit } from "@/lib/types";
 import { getGitHubCache, setGitHubCache } from "../cache";
 import { getOctokit } from "../octokit";
 import { isErrorHasStatus } from "../utils";
+import { serverLogger } from "../logger";
 
 export type GithubLastCommit = {
 	date: string;
@@ -35,7 +36,7 @@ export const fetchGithubLastCommit = async (
 			mediaType: { format: "json" },
 		});
 		setGitHubCache(request, response, "commit");
-		console.log("res", response.data[0]);
+		serverLogger.debug({ commit: response.data });
 		const date = response.data[0].commit.author?.date;
 		const author = {
 			name: response.data[0].commit.author?.name,
