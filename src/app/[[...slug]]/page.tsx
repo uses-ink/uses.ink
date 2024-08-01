@@ -20,8 +20,6 @@ import AutoReadme from "@/components/server/auto-readme";
 import { serverLogger } from "@/lib/server/logger";
 import { resolveMetadata } from "@/lib/server/utils";
 
-export const metadata: Metadata = {};
-
 const Page: NextPage = async () => {
 	const { req: repoRequest, url } = getRepoRequest();
 	serverLogger.info({ repoRequest, url });
@@ -44,18 +42,17 @@ const Page: NextPage = async () => {
 				<ErrorPage repoData={repoRequest} error="File type not supported" />
 			);
 		}
-
-		const res = await compileMDX(content, {
-			asset: (url) => {
+		const urlResolvers = {
+			asset: (url: string) => {
 				if (repoRequest.owner) {
 					const { owner, repo, path, branch } = repoRequest;
 					const dir = dirname(path ?? "");
 					const assetPath = join(dir, url);
-					return `https://raw.githubusercontent.com"/${owner}/${repo ?? DEFAULT_REPO}/${branch ?? "HEAD"}/${assetPath}`;
+					return `https://raw.githubusercontent.com/${owner}/${repo ?? DEFAULT_REPO}/${branch ?? "HEAD"}/${assetPath}`;
 				}
 				return url;
 			},
-			link: (url) => {
+			link: (url: string) => {
 				if (repoRequest.owner) {
 					const { repo, path, branch } = repoRequest;
 					const dir = dirname(path ?? "");
@@ -65,7 +62,8 @@ const Page: NextPage = async () => {
 
 				return url;
 			},
-		});
+		};
+		const res = await compileMDX(content, urlResolvers);
 
 		if (res instanceof ZodError) {
 			return (
@@ -83,31 +81,6 @@ const Page: NextPage = async () => {
 			fileName,
 		);
 
-		metadata.title = resolvedMeta.title;
-		metadata.description = resolvedMeta.description;
-		metadata.openGraph = {
-			title: resolvedMeta.title,
-			description: resolvedMeta.description,
-			type: "website",
-			url: url,
-			images: [
-				...(res.meta.image
-					? [
-							{
-								url: res.meta.image,
-							},
-						]
-					: resolvedMeta.author.avatar
-						? [{ url: resolvedMeta.author.avatar }]
-						: []),
-			],
-		};
-		metadata.metadataBase = new URL(
-			repoRequest.owner
-				? `https://raw.githubusercontent.com"/${repoRequest.owner}/${repoRequest.repo ?? DEFAULT_REPO}/${repoRequest.branch ?? "HEAD"}`
-				: "https://uses.ink",
-		);
-
 		const config = isRemote
 			? await fetchConfig({
 					...repoRequest,
@@ -116,21 +89,42 @@ const Page: NextPage = async () => {
 				} as GitHubRequest)
 			: null;
 
-		serverLogger.debug({ config });
 		return (
-			<Article>
-				{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
-					<RepoDevTools {...repoRequest} />
-				)}
+			<>
+				{/* This gets automatically added to the <head> */}
+				<title>{resolvedMeta.title}</title>
+				<meta name="description" content={resolvedMeta.description} />
+				<meta property="og:title" content={resolvedMeta.title} />
+				<meta property="og:description" content={resolvedMeta.description} />
+				<meta property="og:type" content="website" />
+				<meta property="og:url" content={url} />
+				{res.meta.image ? (
+					<meta
+						property="og:image"
+						content={
+							/^(https?:)?\/\//.test(res.meta.image)
+								? res.meta.image
+								: urlResolvers.asset(res.meta.image)
+						}
+					/>
+				) : resolvedMeta.author.avatar ? (
+					<meta property="og:image" content={resolvedMeta.author.avatar} />
+				) : null}
 
-				<Post
-					runnable={res.runnable}
-					meta={res.meta}
-					lastCommit={lastCommit}
-					config={config}
-					resolvedMeta={resolvedMeta}
-				/>
-			</Article>
+				<Article>
+					{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
+						<RepoDevTools {...repoRequest} />
+					)}
+
+					<Post
+						runnable={res.runnable}
+						meta={res.meta}
+						lastCommit={lastCommit}
+						config={config}
+						resolvedMeta={resolvedMeta}
+					/>
+				</Article>
+			</>
 		);
 	} catch (error) {
 		if (error instanceof FetchError) {
