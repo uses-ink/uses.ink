@@ -1,3 +1,22 @@
+## v0.3.13 (2024-08-02)
+
+### Feat
+
+- add support for`#gh-dark-mode-only`
+
+### Fix
+
+- do not restrict non-theme-restricted images
+- move image to client component
+- invert theme restriction method
+- button styling matches the shiki background
+- do not show the filename if it's a readme
+- add little margin to the wrap text button
+
+### Refactor
+
+- use undefined instead of null
+
 ## v0.3.12 (2024-08-02)
 
 ### Feat
