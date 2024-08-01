@@ -89,7 +89,7 @@ const Pre = ({
 				<button
 					type="button"
 					aria-label={"Copy code to clipboard"}
-					className="md:hidden mr-1 group-hover:opacity-100 appearance-none border dark:border-gray-700 border-gray-200 cursor-pointer dark:bg-[--shiki-background] rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 transition-opacity duration-200 ease-in-out bg-white text-gray-800"
+					className="md:hidden mr-1 group-hover:opacity-100 appearance-none border dark:border-gray-700 border-gray-200 cursor-pointer bg-[--shiki-background] rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 transition-opacity duration-200 ease-in-out text-gray-800"
 					onClick={toggleWordWrap}
 				>
 					<WrapText className="w-4 h-4" />
@@ -97,7 +97,7 @@ const Pre = ({
 				<button
 					type="button"
 					aria-label={"Copy code to clipboard"}
-					className="group-hover:opacity-100 appearance-none border dark:border-gray-700 border-gray-200 cursor-pointer dark:bg-[--shiki-background] rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 transition-opacity duration-200 ease-in-out bg-white text-gray-800"
+					className="group-hover:opacity-100 appearance-none border dark:border-gray-700 border-gray-200 cursor-pointer bg-[--shiki-background] rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 transition-opacity duration-200 ease-in-out text-gray-800"
 					onClick={handleCopyCode}
 				>
 					{showCopied ? (
