@@ -39,7 +39,7 @@ export const mdxComponents = {
 				{...props}
 				className={cn({
 					"!inline": isBadge,
-					hidden: themeRestriction,
+					hidden: !themeRestriction,
 				})}
 			/>
 		);
