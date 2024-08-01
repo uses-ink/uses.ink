@@ -9,7 +9,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { runMDX } from "@/lib/client/mdx/run";
-import type { RepoRequest } from "@/lib/client/repo-request";
+import type { RepoRequest } from "@/lib/server/repo-request";
 import { cn } from "@/lib/client/utils";
 import type { CommitResponse, ConfigSchema, MetaSchema } from "@/lib/types";
 import { ChevronUp } from "lucide-react";

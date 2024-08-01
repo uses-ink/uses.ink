@@ -2,13 +2,14 @@ import type { OctokitResponse } from "@octokit/types";
 import { CACHE_TTL } from "../constants";
 import type { GitHubContent, GitHubRequest } from "../types";
 import { Redis } from "ioredis";
+import { serverLogger } from "./logger";
 
 const cache: { current: Redis | null } = {
 	current: null,
 };
 
 const makeCache = async () => {
-	console.log("makeCache");
+	serverLogger.debug("makeCache");
 	if (!process.env.REDIS_URL) {
 		throw new Error("REDIS_URL is not defined");
 	}
@@ -36,21 +37,21 @@ export const getGitHubCache = async <R = GitHubContent>(
 	request: GitHubRequest,
 	type: CacheType = "content",
 ): Promise<OctokitResponse<R> | null> => {
-	console.log("getGitHubCache");
+	serverLogger.debug("getGitHubCache");
 	const cache = await getCache();
 	if (cache === null) {
-		console.log("cache is null");
+		serverLogger.debug("cache is null");
 		return null;
 	}
 	const key = getKey(request, type);
-	console.log("key", key);
+	serverLogger.debug({ key });
 
 	try {
 		const data = await cache.get(key);
 		const parsedData = data
 			? JSON.parse(Buffer.from(data, "base64").toString())
 			: null;
-		console.log(`cache hit for ${key}`);
+		serverLogger.debug(`cache hit for ${key}`);
 		return parsedData;
 	} catch (error) {
 		return null;
@@ -69,6 +70,6 @@ export const setGitHubCache = async <R = GitHubContent>(
 	try {
 		await cache.set(key, toSet, "EX", CACHE_TTL);
 	} catch (error) {
-		console.log("error", error);
+		serverLogger.error({ error, where: "setGitHubCache" });
 	}
 };

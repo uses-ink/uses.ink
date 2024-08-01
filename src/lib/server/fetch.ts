@@ -8,6 +8,7 @@ import { fetchReadme } from "./readme";
 import { ConfigSchema, type DataResponse, type GitHubRequest } from "../types";
 import { isErrorHasStatus } from "./utils";
 import { FetchError } from "../errors";
+import { serverLogger } from "./logger";
 
 export const fetchData = async (
 	request: GitHubRequest,
@@ -22,7 +23,7 @@ export const fetchData = async (
 
 		return { content, lastCommit, fileName };
 	} catch (error: any) {
-		console.error("Error fetching data", error);
+		serverLogger.error({ error, where: "fetchData" });
 		if (isErrorHasStatus(error)) {
 			switch (error.status) {
 				case 404:
@@ -37,7 +38,7 @@ export const fetchData = async (
 
 export const fetchConfig = async (request: GitHubRequest) => {
 	const configPath = join(dirname(request.path), CONFIG_FILE);
-	console.log("configPath", configPath);
+	serverLogger.debug({ configPath });
 	try {
 		const raw = await fetchGitHubContent({ ...request, path: configPath });
 		if (Array.isArray(raw)) throw Error("Post should not be a dir");
@@ -46,7 +47,7 @@ export const fetchConfig = async (request: GitHubRequest) => {
 
 		const { content } = raw as components["schemas"]["content-file"];
 		const parsed = Buffer.from(content, "base64").toString("utf-8");
-		console.log("parsed", parsed);
+		serverLogger.debug({ parsed });
 		try {
 			const config = ConfigSchema.parse(JSON.parse(parsed));
 			return config;
@@ -68,13 +69,13 @@ export const fetchConfig = async (request: GitHubRequest) => {
 
 export const fetchLocalData = async (path: string): Promise<DataResponse> => {
 	try {
-		console.log("path", path);
+		serverLogger.debug({ path });
 		// Remove leading slash
 		const trimmedPath =
 			(path.startsWith("/") ? path.slice(1) : path) || "README.md";
-		console.log("trimmedPath", trimmedPath);
+		serverLogger.debug({ trimmedPath });
 		const toRead = join(process.cwd(), "docs", trimmedPath);
-		console.log("toRead", toRead);
+		serverLogger.debug({ toRead });
 		const content = await fs.readFile(toRead, "utf-8");
 		const lastModified = (await fs.stat(toRead)).mtime;
 		return {

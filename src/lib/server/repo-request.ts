@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { serverLogger } from "./logger";
 
 export type RepoRequest = {
 	owner?: string;
@@ -12,7 +13,7 @@ export const getRepoRequest = (): { req: RepoRequest; url: string } => {
 	const host = headersList.get("host");
 	// biome-ignore lint/style/noNonNullAssertion:  This is set in the middleware
 	const url = headersList.get("x-url")!;
-	console.log("url", url);
+	serverLogger.debug({ host, url });
 	const isLocalhost = host?.includes("localhost");
 	const parts = host?.split(".") ?? [];
 	let owner = undefined;
@@ -28,11 +29,11 @@ export const getRepoRequest = (): { req: RepoRequest; url: string } => {
 	let folder = undefined;
 
 	const path = url.split(/https?:\/\/[^/]+/)[1];
-	console.log("path", path);
+	serverLogger.debug({ path });
 	const pathParts = path.split("/").filter(Boolean);
 	if (owner) {
 		repo = pathParts.shift();
-		console.log("repo", repo);
+		serverLogger.debug({ repo });
 
 		if (repo?.includes("@")) {
 			const [repoPart, branchPart] = repo.split("@");

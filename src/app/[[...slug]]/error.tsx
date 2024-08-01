@@ -1,6 +1,7 @@
 "use client"; // Error components must be Client Components
 
-import type { getRepoRequest, RepoRequest } from "@/lib/client/repo-request";
+import { clientLogger } from "@/lib/client/logger";
+import type { RepoRequest } from "@/lib/server/repo-request";
 import { useEffect } from "react";
 
 const ErrorPage = ({
@@ -13,7 +14,7 @@ const ErrorPage = ({
 	reset?: () => void;
 }) => {
 	useEffect(() => {
-		console.error(error);
+		clientLogger.error(error);
 	}, [error]);
 
 	// const is404 =

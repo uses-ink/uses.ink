@@ -4,6 +4,7 @@ import { fromHtmlIsomorphic } from "hast-util-from-html-isomorphic";
 import { toText } from "hast-util-to-text";
 import { SKIP, visitParents } from "unist-util-visit-parents";
 import { NodeCompiler } from "@myriaddreamin/typst-ts-node-compiler";
+import { serverLogger } from "../logger";
 interface Options {
 	errorColor?: string;
 }
@@ -215,7 +216,7 @@ async function renderToSVGString_(
 			return {};
 		}
 		const diags = $typst.fetchDiagnostics(taken);
-		console.error("typst error", diags);
+		serverLogger.error({ diags, where: "typst -> renderToSVGString" });
 		return {};
 	}
 	const doc = docRes.result;

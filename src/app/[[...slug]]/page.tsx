@@ -2,7 +2,7 @@ import Post from "@/components/client/post";
 import Article from "@/components/server/article";
 import Readme from "@/components/server/readme";
 import { RepoDevTools } from "@/components/server/repo";
-import { getRepoRequest } from "@/lib/client/repo-request";
+import { getRepoRequest } from "@/lib/server/repo-request";
 import {
 	DEFAULT_REPO,
 	EXTENSIONS,
@@ -18,10 +18,12 @@ import type { NextPage } from "next";
 import { dirname, join } from "node:path";
 import { ZodError } from "zod";
 import ErrorPage from "./error";
+import AutoReadme from "@/components/server/auto-readme";
+import { serverLogger } from "@/lib/server/logger";
 
 const Page: NextPage = async () => {
 	const { req: repoRequest, url } = getRepoRequest();
-	console.log("repoRequest", JSON.stringify(repoRequest));
+	serverLogger.info({ repoRequest, url });
 
 	const isRemote = !!repoRequest.owner;
 
@@ -50,7 +52,7 @@ const Page: NextPage = async () => {
 				} as GitHubRequest)
 			: null;
 
-		console.log("config", config);
+		serverLogger.debug({ config });
 
 		const res = await compileMDX(content, {
 			asset: (url) => {
@@ -97,41 +99,19 @@ const Page: NextPage = async () => {
 			</Article>
 		);
 	} catch (error) {
-		console.log("Error", error);
-		console.log("repoData", repoRequest);
-
 		if (error instanceof FetchError) {
 			const isReadmeRequest =
 				!repoRequest.path ||
 				!EXTENSIONS.includes(repoRequest.path.split(".").pop() ?? "");
-			console.log("isReadmeRequest", isReadmeRequest);
+			serverLogger.debug({ isReadmeRequest });
 			if (error.name === "NOT_FOUND" && isReadmeRequest && isRemote) {
-				// Try to generate a README ourselves
-				const { owner, repo, branch, path } = repoRequest;
-				const tree = await fetchGithubTree({
-					// biome-ignore lint/style/noNonNullAssertion: this has been checked above
-					owner: owner!,
-					repo: repo ?? DEFAULT_REPO,
-					path: path ?? "",
-					branch,
-				});
-				// Filter markdown files in current directory
-				const filteredTree = tree.tree.filter((file) => {
-					const path = repoRequest.path ?? "";
-					const isFile = file.type === "blob";
-					const isMarkdown = file.path?.endsWith(".md");
-					const isCurrentDir = dirname(file.path ?? "") === path;
-					return isFile && isMarkdown && isCurrentDir;
-				});
-				console.log("filteredTree", filteredTree);
-				return (
-					<Readme
-						{...{ repoRequest, filteredTree, path: repoRequest.path ?? "" }}
-					/>
-				);
+				// Generate a readme from the current directory
+				return <AutoReadme repoRequest={repoRequest} />;
 			}
+			serverLogger.error({ error, where: "Page" });
 			return <ErrorPage repoData={repoRequest} error={error.message} />;
 		}
+		serverLogger.error({ error, where: "Page" });
 
 		return <ErrorPage repoData={repoRequest} error="Unknown error" />;
 	}

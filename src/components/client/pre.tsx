@@ -5,6 +5,7 @@ import { Check, Clipboard, WrapText } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { icons } from "../icons";
+import { clientLogger } from "@/lib/client/logger";
 
 const Pre = ({
 	children,
@@ -22,10 +23,10 @@ const Pre = ({
 			)
 				.map((el) => el.textContent)
 				.join("\n");
-			console.log("handleCopyCode -> content", content);
+			clientLogger.debug("handleCopyCode -> content", content);
 			await navigator.clipboard.writeText(content);
 		} else {
-			console.error("pre.current is null");
+			clientLogger.error("pre.current is null");
 			return;
 		}
 		setShowCopied(true);
@@ -58,9 +59,9 @@ const Pre = ({
 			if (element.children.length === 0) {
 				const language = element.getAttribute("data-language") || "";
 				const Icon = icons[language as keyof typeof icons];
-				console.log(Icon, language, icons);
+				clientLogger.debug("pre -> title icon", Icon, language, icons);
 				if (!Icon) {
-					console.error(`No icon found for language: ${language}`);
+					clientLogger.error(`No icon found for language: ${language}`);
 					return;
 				}
 				const iconElement = <Icon className="w-6 h-6 mr-2" />;

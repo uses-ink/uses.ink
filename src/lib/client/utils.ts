@@ -6,6 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 import { mdxComponents } from "@/lib/client/mdx/components";
+import { clientLogger } from "./logger";
 
 export const resolveTitle = (Content: (props: any) => any): string | null => {
 	const content = Content({ components: mdxComponents })?.props.children ?? [];
@@ -34,7 +35,7 @@ export const userContentHash = () => {
 		try {
 			hash = decodeURIComponent(location.hash.slice(1)).toLowerCase();
 		} catch (e) {
-			console.warn("Error decoding hash", e);
+			clientLogger.warn("Error decoding hash", e);
 			return;
 		}
 
@@ -45,13 +46,13 @@ export const userContentHash = () => {
 			document.getElementById(hash);
 
 		if (target) {
-			console.log("Post -> target", target);
+			clientLogger.debug("Post -> target", target);
 
 			const offset = 100;
 			const y = target.getBoundingClientRect().top + window.scrollY - offset;
 			window.scrollTo({ top: y, behavior: "smooth" });
 		} else {
-			console.warn("No anchor found for:", hash);
+			clientLogger.warn("No anchor found for:", hash);
 		}
 	};
 	const handleClick = (event: MouseEvent) => {
