@@ -1,6 +1,5 @@
 import Post from "@/components/client/post";
 import Article from "@/components/server/article";
-import Readme from "@/components/server/readme";
 import { RepoDevTools } from "@/components/server/repo";
 import { getRepoRequest } from "@/lib/server/repo-request";
 import {
@@ -11,7 +10,6 @@ import {
 } from "@/lib/constants";
 import { FetchError } from "@/lib/errors";
 import { fetchConfig, fetchData, fetchLocalData } from "@/lib/server/fetch";
-import { fetchGithubTree } from "@/lib/server/github/tree";
 import { compileMDX } from "@/lib/server/mdx";
 import type { GitHubRequest } from "@/lib/types";
 import type { Metadata, NextPage } from "next";
@@ -46,16 +44,6 @@ const Page: NextPage = async () => {
 				<ErrorPage repoData={repoRequest} error="File type not supported" />
 			);
 		}
-
-		const config = isRemote
-			? await fetchConfig({
-					...repoRequest,
-					repo: repoRequest.repo ?? DEFAULT_REPO,
-					path: repoRequest.path ?? "",
-				} as GitHubRequest)
-			: null;
-
-		serverLogger.debug({ config });
 
 		const res = await compileMDX(content, {
 			asset: (url) => {
@@ -120,6 +108,15 @@ const Page: NextPage = async () => {
 				: "https://uses.ink",
 		);
 
+		const config = isRemote
+			? await fetchConfig({
+					...repoRequest,
+					repo: repoRequest.repo ?? DEFAULT_REPO,
+					path: repoRequest.path ?? "",
+				} as GitHubRequest)
+			: null;
+
+		serverLogger.debug({ config });
 		return (
 			<Article>
 				{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
