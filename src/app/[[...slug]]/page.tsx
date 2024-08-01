@@ -12,7 +12,7 @@ import { FetchError } from "@/lib/errors";
 import { fetchConfig, fetchData, fetchLocalData } from "@/lib/server/fetch";
 import { compileMDX } from "@/lib/server/mdx";
 import type { GitHubRequest } from "@/lib/types";
-import type { Metadata, NextPage } from "next";
+import type { NextPage } from "next";
 import { dirname, join } from "node:path";
 import { ZodError } from "zod";
 import ErrorPage from "./error";
@@ -21,8 +21,8 @@ import { serverLogger } from "@/lib/server/logger";
 import { resolveMetadata } from "@/lib/server/utils";
 
 const Page: NextPage = async () => {
-	const { req: repoRequest, url } = getRepoRequest();
-	serverLogger.info({ repoRequest, url });
+	const { req: repoRequest, url, host } = getRepoRequest();
+	serverLogger.info({ repoRequest, url, host });
 
 	const isRemote = !!repoRequest.owner;
 
@@ -97,7 +97,7 @@ const Page: NextPage = async () => {
 				<meta property="og:title" content={resolvedMeta.title} />
 				<meta property="og:description" content={resolvedMeta.description} />
 				<meta property="og:type" content="website" />
-				<meta property="og:url" content={url} />
+				<meta property="og:url" content={`https://${host}${url.pathname}`} />
 				{res.meta.image ? (
 					<meta
 						property="og:image"

@@ -8,11 +8,15 @@ export type RepoRequest = {
 	path?: string;
 };
 
-export const getRepoRequest = (): { req: RepoRequest; url: string } => {
+export const getRepoRequest = (): {
+	req: RepoRequest;
+	host?: string;
+	url: URL;
+} => {
 	const headersList = headers();
 	const host = headersList.get("host");
 	// biome-ignore lint/style/noNonNullAssertion:  This is set in the middleware
-	const url = headersList.get("x-url")!;
+	const url = new URL(headersList.get("x-url")!);
 	serverLogger.debug({ host, url });
 	const isLocalhost = host?.includes("localhost");
 	const parts = host?.split(".") ?? [];
@@ -28,7 +32,7 @@ export const getRepoRequest = (): { req: RepoRequest; url: string } => {
 	let branch = undefined;
 	let folder = undefined;
 
-	const path = url.split(/https?:\/\/[^/]+/)[1];
+	const path = url.pathname.replace(/^\//, "");
 	serverLogger.debug({ path });
 	const pathParts = path.split("/").filter(Boolean);
 	if (owner) {
@@ -59,6 +63,7 @@ export const getRepoRequest = (): { req: RepoRequest; url: string } => {
 			branch: branch,
 			path: folder || undefined,
 		},
+		host: host ?? undefined,
 		url,
 	};
 };
