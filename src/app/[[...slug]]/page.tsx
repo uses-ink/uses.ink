@@ -14,12 +14,15 @@ import { fetchConfig, fetchData, fetchLocalData } from "@/lib/server/fetch";
 import { fetchGithubTree } from "@/lib/server/github/tree";
 import { compileMDX } from "@/lib/server/mdx";
 import type { GitHubRequest } from "@/lib/types";
-import type { NextPage } from "next";
+import type { Metadata, NextPage } from "next";
 import { dirname, join } from "node:path";
 import { ZodError } from "zod";
 import ErrorPage from "./error";
 import AutoReadme from "@/components/server/auto-readme";
 import { serverLogger } from "@/lib/server/logger";
+import { resolveMetadata } from "@/lib/server/utils";
+
+export const metadata: Metadata = {};
 
 const Page: NextPage = async () => {
 	const { req: repoRequest, url } = getRepoRequest();
@@ -77,25 +80,55 @@ const Page: NextPage = async () => {
 			},
 		});
 
+		if (res instanceof ZodError) {
+			return (
+				<Article>
+					<FrontmatterError errors={res.errors} />
+				</Article>
+			);
+		}
+
+		const resolvedMeta = resolveMetadata(
+			res.meta,
+			// res.runnable,
+			repoRequest,
+			lastCommit,
+			fileName,
+		);
+
+		metadata.title = resolvedMeta.title;
+		metadata.description = resolvedMeta.description;
+		metadata.openGraph = {
+			title: resolvedMeta.title,
+			description: resolvedMeta.description,
+			type: "website",
+			url: url,
+			images: [
+				...(res.meta.image
+					? [
+							{
+								url: res.meta.image,
+							},
+						]
+					: resolvedMeta.author.avatar
+						? [{ url: resolvedMeta.author.avatar }]
+						: []),
+			],
+		};
+
 		return (
 			<Article>
 				{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
 					<RepoDevTools {...repoRequest} />
 				)}
 
-				{res instanceof ZodError ? (
-					<FrontmatterError errors={res.errors} />
-				) : (
-					<Post
-						runnable={res.runnable}
-						meta={res.meta}
-						lastCommit={lastCommit}
-						filename={repoRequest.path}
-						config={config}
-						request={repoRequest}
-						url={url}
-					/>
-				)}
+				<Post
+					runnable={res.runnable}
+					meta={res.meta}
+					lastCommit={lastCommit}
+					config={config}
+					resolvedMeta={resolvedMeta}
+				/>
 			</Article>
 		);
 	} catch (error) {

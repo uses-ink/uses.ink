@@ -26,14 +26,14 @@ export type GitHubEntry = GitHubDir[number];
 
 export type DataResponse = {
 	content: string;
-	lastCommit: CommitResponse | null;
+	lastCommit?: CommitResponse;
 	fileName: string;
 };
 
 export type CommitResponse = {
 	date: string;
-	author: AuthorResponse | null;
-	link: string | null;
+	author?: AuthorResponse;
+	link?: string;
 };
 
 export type AuthorResponse = {

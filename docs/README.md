@@ -2,6 +2,7 @@
 hideTop: true
 title: Welcome to uses.ink !
 description: A minimalistic open-source blog platform for anyone to use.
+image: https://uses.ink/og.png
 ---
 
 <h1 id="no-anchor">Welcome to uses.ink !</h1>

@@ -81,9 +81,7 @@ export const fetchLocalData = async (path: string): Promise<DataResponse> => {
 		return {
 			content,
 			lastCommit: {
-				author: null,
 				date: lastModified.toISOString(),
-				link: null,
 			},
 			fileName: trimmedPath,
 		};
