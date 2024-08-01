@@ -87,7 +87,7 @@ const Page: NextPage = async () => {
 					repo: repoRequest.repo ?? DEFAULT_REPO,
 					path: repoRequest.path ?? "",
 				} as GitHubRequest)
-			: null;
+			: undefined;
 
 		return (
 			<>
@@ -112,9 +112,7 @@ const Page: NextPage = async () => {
 				) : null}
 
 				<Article>
-					{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
-						<RepoDevTools {...repoRequest} />
-					)}
+					{IS_DEV && SHOW_DEV_TOOLS && <RepoDevTools {...repoRequest} />}
 
 					<Post
 						runnable={res.runnable}

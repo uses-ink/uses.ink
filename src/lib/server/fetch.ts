@@ -9,6 +9,7 @@ import { ConfigSchema, type DataResponse, type GitHubRequest } from "../types";
 import { isErrorHasStatus } from "./utils";
 import { FetchError } from "../errors";
 import { serverLogger } from "./logger";
+import type { z } from "zod";
 
 export const fetchData = async (
 	request: GitHubRequest,
@@ -36,7 +37,9 @@ export const fetchData = async (
 	}
 };
 
-export const fetchConfig = async (request: GitHubRequest) => {
+export const fetchConfig = async (
+	request: GitHubRequest,
+): Promise<z.infer<typeof ConfigSchema> | undefined> => {
 	const configPath = join(dirname(request.path), CONFIG_FILE);
 	serverLogger.debug({ configPath });
 	try {
@@ -52,13 +55,13 @@ export const fetchConfig = async (request: GitHubRequest) => {
 			const config = ConfigSchema.parse(JSON.parse(parsed));
 			return config;
 		} catch (error) {
-			return null;
+			return;
 		}
 	} catch (error: any) {
 		if (isErrorHasStatus(error)) {
 			switch (error.status) {
 				case 404:
-					return null;
+					return;
 				default:
 					throw error;
 			}

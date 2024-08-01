@@ -1,9 +1,8 @@
 import type { z } from "zod";
-import type { CommitResponse, GitHubRequest, MetaSchema } from "../types";
-import type { GithubLastCommit } from "./github/commit";
-import { capitalizeFileName, resolveTitle } from "../client/utils";
-import type { RepoRequest } from "./repo-request";
+import { capitalizeFileName } from "../client/utils";
 import { README_FILES } from "../constants";
+import type { CommitResponse, MetaSchema } from "../types";
+import type { RepoRequest } from "./repo-request";
 
 export const isErrorHasStatus = (
 	raw: unknown,

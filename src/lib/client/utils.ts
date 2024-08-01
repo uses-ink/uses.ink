@@ -8,7 +8,9 @@ export function cn(...inputs: ClassValue[]) {
 import { mdxComponents } from "@/lib/client/mdx/components";
 import { clientLogger } from "./logger";
 
-export const resolveTitle = (Content: (props: any) => any): string | null => {
+export const resolveTitle = (
+	Content: (props: any) => any,
+): string | undefined => {
 	const content = Content({ components: mdxComponents })?.props.children ?? [];
 	if (Symbol.iterator in Object(content)) {
 		for (const child of content) {
@@ -25,7 +27,7 @@ export const resolveTitle = (Content: (props: any) => any): string | null => {
 			}
 		}
 	}
-	return null;
+	return;
 };
 
 export const userContentHash = () => {

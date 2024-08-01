@@ -26,10 +26,10 @@ export default function Post({
 	lastCommit,
 }: {
 	runnable: string;
-	config: z.infer<typeof ConfigSchema> | null;
+	config?: z.infer<typeof ConfigSchema>;
 	meta: z.infer<typeof MetaSchema>;
 	resolvedMeta: ResolvedMetadata;
-	lastCommit?: CommitResponse | null;
+	lastCommit?: CommitResponse;
 }) {
 	const [canScroll, setCanScroll] = useState(false);
 
