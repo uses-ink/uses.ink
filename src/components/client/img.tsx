@@ -32,7 +32,7 @@ const Img = (props: any) => {
 			// 	"!inline": isBadge,
 			// 	hidden: !themeRestriction || !isLoaded,
 			// })}
-			className={`${isBadge ? "!inline" : ""} ${!themeRestriction || !isLoaded ? "hidden" : ""}`}
+			className={`${isBadge ? "!inline" : ""} ${!themeRestriction && !isLoaded ? "hidden" : ""}`}
 			{...props}
 		/>
 	);
