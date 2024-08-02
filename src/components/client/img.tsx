@@ -18,7 +18,7 @@ const Img = (props: any) => {
 	const { resolvedTheme } = useTheme();
 	const themeRestriction = src.hash
 		? (resolvedTheme === "dark" ? DARK_HASHES : LIGHT_HASHES).includes(src.hash)
-		: false;
+		: undefined;
 	const [isLoaded, setIsLoaded] = useState(false);
 
 	useEffect(() => {
@@ -28,11 +28,7 @@ const Img = (props: any) => {
 	return (
 		// biome-ignore lint/a11y/useAltText: This will (maybe) be provided by the user
 		<img
-			// className={cn({
-			// 	"!inline": isBadge,
-			// 	hidden: !themeRestriction || !isLoaded,
-			// })}
-			className={`${isBadge ? "!inline" : ""} ${!themeRestriction && !isLoaded ? "hidden" : ""}`}
+			className={`${isBadge ? "!inline" : ""} ${(themeRestriction === undefined ? false : !themeRestriction || !isLoaded) ? "hidden" : ""}`}
 			{...props}
 		/>
 	);
