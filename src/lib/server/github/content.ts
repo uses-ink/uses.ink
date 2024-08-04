@@ -7,14 +7,14 @@ export const fetchGitHubContent = async (
 	request: GitHubRequest,
 ): Promise<GitHubContent> => {
 	const { owner, path, repo } = request;
-	const cached = await getGitHubCache(request);
+	const cached = await getGitHubCache(request, "content");
 	try {
 		const response = await getOctokit().rest.repos.getContent({
-			...{ owner, path, repo },
+			...{ owner, path, repo, ref: request.ref ?? "HEAD" },
 			headers: { "If-None-Match": cached?.headers.etag },
 			mediaType: { format: "json" },
 		});
-		setGitHubCache(request, response);
+		setGitHubCache(request, response, "content");
 		return response.data;
 	} catch (error) {
 		// Return cache

@@ -10,13 +10,13 @@ const AutoReadme = async ({
 }: {
 	repoRequest: RepoRequest;
 }) => {
-	const { owner, repo, branch, path } = repoRequest;
+	const { owner, repo, ref, path } = repoRequest;
 	const tree = await fetchGithubTree({
 		// biome-ignore lint/style/noNonNullAssertion: this has been checked above
 		owner: owner!,
 		repo: repo ?? DEFAULT_REPO,
 		path: path ?? "",
-		branch,
+		ref: ref ?? "HEAD",
 	});
 	// Filter markdown files in current directory
 	const filteredTree = tree.tree.filter((file) => {

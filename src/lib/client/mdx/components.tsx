@@ -1,6 +1,5 @@
 import Img from "@/components/client/img";
 import Pre from "@/components/client/pre";
-import Head from "next/head";
 import Link from "next/link";
 
 // To have client-side routing
@@ -13,7 +12,6 @@ const CustomLink = (props: any) =>
 export const mdxComponents = {
 	a: CustomLink,
 	// https://github.com/mdx-js/mdx/discussions/1921
-	head: Head as any,
 	pre: Pre as any,
 	img: Img as any,
 	h1: ({ children, ...props }: any) => (

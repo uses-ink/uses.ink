@@ -28,7 +28,7 @@ import { remarkReadingTime } from "./read-time";
 import { getShiki } from "./shiki";
 import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
-import { MetaSchema } from "../../types";
+import { type ConfigSchema, MetaSchema } from "../../types";
 import { serverLogger } from "../logger";
 
 const DEBUG_TREE = false;
@@ -43,6 +43,7 @@ const makeDebug = (name: string) =>
 export async function compileMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
+	config?: z.infer<typeof ConfigSchema>,
 ): Promise<
 	| {
 			meta: z.infer<typeof MetaSchema>;
@@ -57,6 +58,11 @@ export async function compileMDX(
 	if (!meta.success) {
 		return meta.error;
 	}
+
+	meta.data = {
+		...config,
+		...meta.data,
+	};
 
 	const result = await compile(matter.content, {
 		format: "md",

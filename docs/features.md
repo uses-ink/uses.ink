@@ -42,8 +42,42 @@ nav:
   Home: /
   Blog: /blog        
 ``` 
-- `mathEngine`: The math rendering engine to use. This can be `typst` or `katex`.
+- `mathEngine`: The math rendering engine to use. This can be `typst` (default) or `katex`.
 - `noHighlight`: Set to `true` to disable syntax highlighting in code blocks.
+
+Most of these fields are automatically populated based on the git commit information or file content. You can override them by setting the corresponding property in the metadata block.
+
+## Configuration files
+
+in case you want to configure further the rendering of your markdown files, you can add a `uses.ink.json` file. This fille will override the default configuration for the current directory. This means you need to add a `uses.ink.json` file in each directory you want to configure.
+
+Here is an example of a `uses.ink.json` file:
+
+```json title="uses.ink.json"
+{
+    "hideTop": true,
+    "readingTime": false,
+    "mathEngine": "katex",
+    "noHighlight": true,
+    "layout": "gallery",
+    "nav": {
+        "Home": "/",
+        "Blog": "/blog"
+    }
+}
+```
+
+
+### Github user-wise configuration
+
+You can also add a `uses.ink.json` file at your "special" repository to configure the rendering of your markdown files. This file will be used as the default configuration for all your repositories.
+
+If not already done, create a repository with the same name as your Github username. For example, if your username is `cstef`, create a repository named `cstef`. Then, add a `uses.ink.json` file to this repository.
+
+This configuration takes the same properties as the `uses.ink.json` file at the root of your repository, and can have the following properties in addition:
+
+- `defaultRepo`: The default repository to use when none is specified. This needs to be the name of the repository (e.g., `uses.ink`).
+- `defaultBranch`: The default branch/ref to use when none is specified. This is usually `main` or `master`.
 
 ## Math
 

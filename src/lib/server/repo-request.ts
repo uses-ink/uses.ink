@@ -4,7 +4,7 @@ import { serverLogger } from "./logger";
 export type RepoRequest = {
 	owner?: string;
 	repo?: string;
-	branch?: string;
+	ref?: string;
 	path?: string;
 };
 
@@ -29,7 +29,7 @@ export const getRepoRequest = (): {
 		owner = parts[0];
 	}
 	let repo = undefined;
-	let branch = undefined;
+	let ref = undefined;
 	let folder = undefined;
 
 	const path = url.pathname.replace(/^\//, "");
@@ -40,18 +40,18 @@ export const getRepoRequest = (): {
 		serverLogger.debug({ repo });
 
 		if (repo?.includes("@")) {
-			const [repoPart, branchPart] = repo.split("@");
+			const [repoPart, refPart] = repo.split("@");
 
 			repo = repoPart;
-			branch = branchPart;
+			ref = refPart;
 		}
 		folder = pathParts.join("/");
 	} else {
-		// If the owner is not defined, we ignre the repo and branch, and just use the path
+		// If the owner is not defined, we ignore the repo and ref, and just use the path
 		folder = path;
 	}
 
-	// <username>.uses.ink/[repo]@[branch]/[folder]
+	// <username>.uses.ink/[repo]@[ref]/[folder]
 	// cestef.uses.ink/notes@main
 	// cestef.uses.ink/notes/2021-09-01
 	// cestef.uses.ink/notes@master/2021-09-01
@@ -60,7 +60,7 @@ export const getRepoRequest = (): {
 		req: {
 			owner: owner,
 			repo: repo,
-			branch: branch,
+			ref: ref,
 			path: folder || undefined,
 		},
 		host: host ?? undefined,

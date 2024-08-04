@@ -35,7 +35,7 @@ const ErrorPage = ({
 					<p className="text-2xl dark:text-gray-400 text-gray-600">
 						{repoData?.owner ? (
 							<a
-								href={`https://github.com/${repoData.owner}/${repoData.repo}/tree/${repoData.branch}/${repoData.path}`}
+								href={`https://github.com/${repoData.owner}/${repoData.repo}/tree/${repoData.ref}/${repoData.path}`}
 								target="_blank"
 								rel="noreferrer"
 							>

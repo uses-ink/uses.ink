@@ -1,4 +1,3 @@
-import { DEFAULT_BRANCH } from "@/lib/constants";
 import type { GitHubRequest } from "@/lib/types";
 import type { operations } from "@octokit/openapi-types";
 import { getGitHubCache, setGitHubCache } from "../cache";
@@ -11,11 +10,11 @@ export type GithubTree =
 export const fetchGithubTree = async (
 	request: GitHubRequest,
 ): Promise<GithubTree> => {
-	const { owner, repo, branch } = request;
+	const { owner, repo, ref } = request;
 	const cached = await getGitHubCache<GithubTree>(request, "tree");
 	try {
 		const response = await getOctokit().rest.git.getTree({
-			...{ owner, repo, tree_sha: branch ?? DEFAULT_BRANCH },
+			...{ owner, repo, tree_sha: ref ?? "HEAD" },
 			recursive: "true",
 			headers: { "If-None-Match": cached?.headers.etag },
 			mediaType: { format: "json" },

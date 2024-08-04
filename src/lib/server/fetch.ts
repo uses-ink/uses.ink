@@ -5,7 +5,12 @@ import { CONFIG_FILE, EXTENSIONS } from "../constants";
 import { fetchGitHubContent } from "./github/content";
 import { fetchPost } from "./post";
 import { fetchReadme } from "./readme";
-import { ConfigSchema, type DataResponse, type GitHubRequest } from "../types";
+import {
+	ConfigSchema,
+	UserConfigSchema,
+	type DataResponse,
+	type GitHubRequest,
+} from "../types";
 import { isErrorHasStatus } from "./utils";
 import { FetchError } from "../errors";
 import { serverLogger } from "./logger";
@@ -53,6 +58,45 @@ export const fetchConfig = async (
 		serverLogger.debug({ parsed });
 		try {
 			const config = ConfigSchema.parse(JSON.parse(parsed));
+			return config;
+		} catch (error) {
+			return;
+		}
+	} catch (error: any) {
+		if (isErrorHasStatus(error)) {
+			switch (error.status) {
+				case 404:
+					return;
+				default:
+					throw error;
+			}
+		}
+		throw error;
+	}
+};
+// Search config at repo: <user>/<user> path: CONFIG_FILE
+export const fetchUserConfig = async (
+	owner: string,
+): Promise<z.infer<typeof UserConfigSchema> | undefined> => {
+	const userConfigRequest = {
+		path: "",
+		repo: owner,
+		owner,
+	} satisfies GitHubRequest;
+	serverLogger.debug({ userConfigRequest });
+
+	// Fetch config from user's repo
+	try {
+		const raw = await fetchGitHubContent(userConfigRequest);
+		if (Array.isArray(raw)) throw Error("Post should not be a dir");
+		if (typeof raw === "string") throw Error("Response should be in json");
+		if (raw.type !== "file") throw Error(`Unknown type "${raw.type}"`);
+
+		const { content } = raw as components["schemas"]["content-file"];
+		const parsed = Buffer.from(content, "base64").toString("utf-8");
+		serverLogger.debug({ parsed });
+		try {
+			const config = UserConfigSchema.parse(JSON.parse(parsed));
 			return config;
 		} catch (error) {
 			return;

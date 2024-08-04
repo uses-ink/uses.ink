@@ -16,7 +16,7 @@ export const RepoDevTools = (repoData: RepoRequest) => {
 				</a>
 			</h1>
 			<h1>
-				Branch: <b>{repoData.branch}</b>
+				Branch: <b>{repoData.ref}</b>
 			</h1>
 			<h1>
 				Path: <b>{repoData.path}</b>

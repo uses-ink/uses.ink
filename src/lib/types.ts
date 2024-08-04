@@ -9,7 +9,7 @@ export interface GitHubRequest {
 	/** E.g. "dir/foo", "dir/foo/hello.md", "" when at repo root */
 	path: string;
 	/** E.g. "main", "feature/branch" */
-	branch?: string;
+	ref?: string;
 }
 
 export type GitHubContent =
@@ -45,24 +45,29 @@ export type AuthorResponse = {
 export const MathEngineSchema = z.enum(["katex", "typst"]).default("typst");
 export const LayoutSchema = z.enum(["post", "gallery"]).default("post");
 
+export const ConfigSchema = z.object({
+	hideTop: z.boolean().optional(),
+	readingTime: z.boolean().optional(),
+	mathEngine: MathEngineSchema.optional(),
+	noHighlight: z.boolean().optional(),
+	layout: LayoutSchema.optional(),
+	nav: z.record(z.string()).optional(),
+});
+
 export const MetaSchema = z.object({
 	title: z.string().optional(),
 	description: z.string().optional(),
 	date: z.string().optional(),
 	author: z.string().optional(),
-	hideTop: z.boolean().default(false),
-	readingTime: z.boolean().default(true),
 	image: z.string().optional(),
-	nav: z.record(z.string()).optional(),
-	layout: LayoutSchema,
-	mathEngine: MathEngineSchema,
-	noHighlight: z.boolean().default(false),
-});
-
-export const ConfigSchema = z.object({
-	hideTop: z.boolean().optional(),
-	readingTime: z.boolean().optional(),
+	...ConfigSchema.shape,
 });
 
 // Utility type to get the type of a promise
 export type PromiseOf<T> = T extends Promise<infer U> ? U : T;
+
+export const UserConfigSchema = z.object({
+	defaultRepo: z.string().optional(),
+	defaultBranch: z.string().optional(),
+	...ConfigSchema.shape,
+});

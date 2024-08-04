@@ -36,7 +36,7 @@ const Readme = ({
 			<span className="text-muted-foreground mx-1">/</span>
 			<a
 				href={`/${repoRequest.repo ?? DEFAULT_REPO}${
-					repoRequest.branch ? `@${repoRequest.branch}` : ""
+					repoRequest.ref ? `@${repoRequest.ref}` : ""
 				}`}
 				className="no-underline font-bold hover:underline"
 			>
@@ -55,7 +55,7 @@ const Readme = ({
 					<li key={file.path}>
 						<a
 							href={`/${repoRequest.repo ?? DEFAULT_REPO}${
-								repoRequest.branch ? `@${repoRequest.branch}` : ""
+								repoRequest.ref ? `@${repoRequest.ref}` : ""
 							}/${file.path}`}
 						>
 							<h2>{file.path?.replace(`${path}/`, "")}</h2>

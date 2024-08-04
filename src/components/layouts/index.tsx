@@ -9,6 +9,7 @@ export const getLayout = (layout: string, Content: React.FC<any>) => {
 		case "gallery":
 			Layout = GalleryLayout;
 			break;
+
 		default:
 			Layout = PostLayout;
 	}

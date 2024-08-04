@@ -9,7 +9,12 @@ import {
 	SHOW_DEV_TOOLS,
 } from "@/lib/constants";
 import { FetchError } from "@/lib/errors";
-import { fetchConfig, fetchData, fetchLocalData } from "@/lib/server/fetch";
+import {
+	fetchConfig,
+	fetchData,
+	fetchLocalData,
+	fetchUserConfig,
+} from "@/lib/server/fetch";
 import { compileMDX } from "@/lib/server/mdx";
 import type { GitHubRequest } from "@/lib/types";
 import type { NextPage } from "next";
@@ -27,10 +32,14 @@ const Page: NextPage = async () => {
 	const isRemote = !!repoRequest.owner;
 
 	try {
+		const userConfig = isRemote
+			? await fetchUserConfig(repoRequest.owner as string)
+			: undefined;
 		const { content, lastCommit, fileName } = isRemote
 			? await fetchData({
 					...repoRequest,
-					repo: repoRequest.repo ?? DEFAULT_REPO,
+					repo: repoRequest.repo ?? userConfig?.defaultRepo ?? DEFAULT_REPO,
+					ref: repoRequest.ref ?? userConfig?.defaultBranch ?? "HEAD",
 					path: repoRequest.path ?? "",
 				} as GitHubRequest)
 			: await fetchLocalData(repoRequest.path ?? "README.md");
@@ -45,25 +54,39 @@ const Page: NextPage = async () => {
 		const urlResolvers = {
 			asset: (url: string) => {
 				if (repoRequest.owner) {
-					const { owner, repo, path, branch } = repoRequest;
+					const { owner, repo, path, ref } = repoRequest;
 					const dir = dirname(path ?? "");
 					const assetPath = join(dir, url);
-					return `https://raw.githubusercontent.com/${owner}/${repo ?? DEFAULT_REPO}/${branch ?? "HEAD"}/${assetPath}`;
+					return `https://raw.githubusercontent.com/${owner}/${repo ?? DEFAULT_REPO}/${ref ?? "HEAD"}/${assetPath}`;
 				}
 				return url;
 			},
 			link: (url: string) => {
 				if (repoRequest.owner) {
-					const { repo, path, branch } = repoRequest;
+					const { repo, path, ref } = repoRequest;
 					const dir = dirname(path ?? "");
 					const assetPath = join(dir, url);
-					return `/${repo ?? DEFAULT_REPO}${branch ? `@${branch}` : ""}/${assetPath}`;
+					return `/${repo ?? DEFAULT_REPO}${ref ? `@${ref}` : ""}/${assetPath}`;
 				}
 
 				return url;
 			},
 		};
-		const res = await compileMDX(content, urlResolvers);
+
+		const repoConfig = isRemote
+			? await fetchConfig({
+					...repoRequest,
+					repo: repoRequest.repo ?? DEFAULT_REPO,
+					path: repoRequest.path ?? "",
+				} as GitHubRequest)
+			: undefined;
+
+		const config = {
+			...userConfig,
+			...repoConfig,
+		};
+
+		const res = await compileMDX(content, urlResolvers, config);
 
 		if (res instanceof ZodError) {
 			return (
@@ -80,14 +103,6 @@ const Page: NextPage = async () => {
 			lastCommit,
 			fileName,
 		);
-
-		const config = isRemote
-			? await fetchConfig({
-					...repoRequest,
-					repo: repoRequest.repo ?? DEFAULT_REPO,
-					path: repoRequest.path ?? "",
-				} as GitHubRequest)
-			: undefined;
 
 		return (
 			<>
@@ -118,7 +133,7 @@ const Page: NextPage = async () => {
 						runnable={res.runnable}
 						meta={res.meta}
 						lastCommit={lastCommit}
-						config={config}
+						config={repoConfig}
 						resolvedMeta={resolvedMeta}
 					/>
 				</Article>

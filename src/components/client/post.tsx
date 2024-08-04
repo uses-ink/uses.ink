@@ -58,7 +58,7 @@ export default function Post({
 
 	const { layout } = meta;
 
-	const Layout = getLayout(layout, Content);
+	const Layout = getLayout(layout ?? "post", Content);
 
 	return (
 		<>
