@@ -30,6 +30,7 @@ import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
 import { type ConfigSchema, MetaSchema } from "../../types";
 import { serverLogger } from "../logger";
+import rehypeMermaid from "rehype-mermaid";
 
 const DEBUG_TREE = false;
 
@@ -125,6 +126,7 @@ export async function compileMDX(
 				},
 			],
 			makeDebug("after sanitize"),
+			[rehypeMermaid, { strategy: "img-svg", dark: true }],
 			meta.data.noHighlight
 				? []
 				: [

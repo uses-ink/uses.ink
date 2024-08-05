@@ -9,7 +9,10 @@ const __dirname = path.dirname(__filename); // get the name of the directory
 const nextConfig = {
 	output: "standalone",
 	experimental: {
-		serverComponentsExternalPackages: ["@myriaddreamin/typst-ts-node-compiler"],
+		serverComponentsExternalPackages: [
+			"@myriaddreamin/typst-ts-node-compiler",
+			"rehype-mermaid",
+		],
 	},
 	webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
 		config.module.rules.push({

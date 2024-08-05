@@ -271,7 +271,7 @@ In case you want to remove particular headings from the table of contents, you c
 ## Heading 2
 ```
 
-An example of a table of contents is shown at the [beginning of this document](#table-of-contents).
+An example of a table of contents is shown at the [beginning of this document](#overview).
 
 ## Super- and Subscripts
 
@@ -284,3 +284,26 @@ H~2~O
 
 H~2~O
 21^st^ century
+
+## Mermaid Diagrams
+
+You can add Mermaid diagrams to your markdown files. The diagram will be rendered as an SVG image.
+
+~~~markdown
+```mermaid
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+```
+~~~
+
+```mermaid
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+```
+
