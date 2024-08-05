@@ -1,3 +1,16 @@
+## v0.3.15 (2024-08-05)
+
+### Feat
+
+- support for mermaid diagrams
+- add support for user-config at `<user>/<user>`
+
+### Fix
+
+- **deps**: update dependency lucide-react to ^0.424.0 (#31)
+- **deps**: update dependency lucide-react to ^0.419.0 (#29)
+- **deps**: update shiki monorepo to v1.12.1 (#28)
+
 ## v0.3.14 (2024-08-02)
 
 ### Fix
