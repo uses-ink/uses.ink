@@ -113,7 +113,14 @@ You can add callouts by using the following syntax:
 > [!note]
 > This is a note
 
+
+
+
+<details>
+
+<summary>
 The following callouts are available:
+</summary>
 
 - `[!info]{:md}`
 - `[!note]{:md}`
@@ -128,6 +135,8 @@ The following callouts are available:
 - `[!bug]{:md}`
 - `[!example]{:md}`
 - `[!quote]{:md}`  `[!cite]{:md}`
+
+</details>
 
 Callouts can also be foldable:
 
@@ -250,6 +259,10 @@ Emojis are rendered using [Twemoji](https://twemoji.twitter.com/).
 ## Tables of Contents
 
 If a heading matching `/^.*<!--( ?)toc( ?)-->$/i{:regex}` is present in the markdown file, a table of contents will be generated.
+
+```markdown
+## Table of Contents <!-- toc -->
+```
 
 In case you want to remove particular headings from the table of contents, you can add a `<!-- no-toc -->` comment after the heading:
 
