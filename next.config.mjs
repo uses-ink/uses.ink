@@ -12,6 +12,7 @@ const nextConfig = {
 		serverComponentsExternalPackages: [
 			"@myriaddreamin/typst-ts-node-compiler",
 			"rehype-mermaid",
+			"playwright-core",
 		],
 	},
 	webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {

@@ -32,6 +32,8 @@ import { type ConfigSchema, MetaSchema } from "../../types";
 import { serverLogger } from "../logger";
 import rehypeMermaid from "rehype-mermaid";
 
+import { chromium } from "playwright-core";
+
 const DEBUG_TREE = false;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
@@ -126,7 +128,7 @@ export async function compileMDX(
 				},
 			],
 			makeDebug("after sanitize"),
-			[rehypeMermaid, { strategy: "img-svg", dark: true }],
+			[rehypeMermaid, { strategy: "img-svg", dark: true, browser: chromium }],
 			meta.data.noHighlight
 				? []
 				: [
