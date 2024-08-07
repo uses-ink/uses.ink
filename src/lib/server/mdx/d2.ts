@@ -6,26 +6,44 @@ import { join } from "node:path";
 import { brotliDecompressSync } from "node:zlib";
 
 import "../wasm_exec";
-const wasmPath = join(process.cwd(), "public", "wasm", "d2.wasm.br");
-const wasmCompressedBuffer = readFileSync(wasmPath);
-// console.log(
-// 	"wasmCompressedBuffer",
-// 	`${(wasmCompressedBuffer.length / 1024 / 1024).toFixed(1)}MB`,
-// );
-const wasmBuffer = brotliDecompressSync(wasmCompressedBuffer);
-// console.log("wasmBuffer", `${(wasmBuffer.length / 1024 / 1024).toFixed(1)}MB`);
+
+const current = {
+	instanciated: false,
+};
+
+const loadWasm = async () => {
+	if (current.instanciated) {
+		console.log("WASM already instanciated");
+		return;
+	}
+	const wasmPath = join(process.cwd(), "public", "wasm", "d2.wasm.br");
+	const wasmCompressedBuffer = readFileSync(wasmPath);
+	console.log(
+		"wasmCompressedBuffer",
+		`${(wasmCompressedBuffer.length / 1024 / 1024).toFixed(1)}MB`,
+	);
+	const wasmBuffer = brotliDecompressSync(wasmCompressedBuffer);
+	console.log(
+		"wasmBuffer",
+		`${(wasmBuffer.length / 1024 / 1024).toFixed(1)}MB`,
+	);
+	// @ts-expect-error
+	const go = new Go();
+
+	const instance = new WebAssembly.Instance(
+		new WebAssembly.Module(wasmBuffer),
+		go.importObject,
+	);
+
+	go.run(instance);
+	console.log("WASM instanciated");
+	current.instanciated = true;
+};
 
 type Meta = Record<string, string | boolean | number>;
 
 const d2Svg = async (code: string, meta: Meta, className?: string) => {
-	// @ts-expect-error
-	const go = new Go();
-
-	const { instance } = await WebAssembly.instantiate(
-		wasmBuffer,
-		go.importObject,
-	);
-	go.run(instance);
+	await loadWasm();
 
 	// @ts-expect-error
 	const { d2RenderSVG } = globalThis;
