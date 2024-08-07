@@ -285,25 +285,34 @@ H~2~O
 H~2~O
 21^st^ century
 
-## Mermaid Diagrams
+## Diagrams
 
-You can add Mermaid diagrams to your markdown files. The diagram will be rendered as an SVG image.
+### D2
 
-~~~markdown
-```mermaid
-graph TD;
-    A-->B;
-    A-->C;
-    B-->D;
-    C-->D;
+~~~d2 sketch doNotRender
+```d2 sketch
+server
+# Declares a shape inside of another shape
+server.process
+
+# Can declare the container and child in same line
+im a parent.im a child
+
+# Since connections can also declare keys, this works too
+apartment.Bedroom.Bathroom -> office.Spare Room.Bathroom: Portal
 ```
 ~~~
 
-```mermaid
-graph TD;
-    A-->B;
-    A-->C;
-    B-->D;
-    C-->D;
+```d2 sketch
+server
+server.process
+im a parent.im a child
+apartment.Bedroom.Bathroom -> office.Spare Room.Bathroom: Portal
 ```
 
+### Mermaid
+
+We do not support Mermaid diagrams because they need to be either:
+
+- Rendered on the client side, and we want to avoid as much as possible client-side rendering to keep the website fast.
+- Rendered on the server side via a headless browser, which would require [playwright](https://playwright.dev/) or [puppeteer](https://pptr.dev/). This is in my opinion an overkill for a simple feature.

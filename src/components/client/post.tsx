@@ -17,41 +17,6 @@ import { useCallback, useEffect, useState } from "react";
 import Moment from "react-moment";
 import type { z } from "zod";
 import SearchableContent from "./search";
-import { clientLogger } from "@/lib/client/logger";
-
-function flipImageSource(theme: string) {
-	// biome-ignore lint/complexity/noForEach: cannot iterate over NodeList
-	document.querySelectorAll("picture").forEach((element) => {
-		const img = element.querySelector("img");
-		const darkSource = element.querySelector(
-			"source[media='(prefers-color-scheme: dark)']",
-		) as HTMLSourceElement | undefined;
-		clientLogger.debug({ darkSource, img });
-		if (!darkSource || !img) {
-			clientLogger.error("darkSource or img is undefined");
-			return;
-		}
-
-		let lightSource = element.querySelector(
-			"source[media='(prefers-color-scheme: light)']",
-		) as HTMLSourceElement | undefined;
-		if (!lightSource) {
-			clientLogger.debug("creating lightSource");
-			lightSource = document.createElement("source");
-			lightSource.media = "(prefers-color-scheme: light)";
-			lightSource.srcset = img.src;
-			lightSource.width = img.width;
-			lightSource.height = img.height;
-			element.prepend(lightSource);
-		}
-
-		if (theme === "dark") {
-			img.src = darkSource.srcset;
-		} else {
-			img.src = lightSource.srcset;
-		}
-	});
-}
 
 export default function Post({
 	runnable,
@@ -77,32 +42,32 @@ export default function Post({
 
 		const { handleClick, handleHashChange } = userContentHash();
 
-		const onThemeChange = (theme: string) => {
-			flipImageSource(theme);
-		};
+		// const onThemeChange = (theme: string) => {
+		// 	flipImageSource(theme);
+		// };
 
-		// Observe the html element for class changes
-		const observer = new MutationObserver((mutations) => {
-			for (const mutation of mutations) {
-				if (mutation.attributeName === "class") {
-					const theme = document.documentElement.classList.contains("dark")
-						? "dark"
-						: "light";
-					onThemeChange(theme);
-				}
-			}
-		});
+		// // Observe the html element for class changes
+		// const observer = new MutationObserver((mutations) => {
+		// 	for (const mutation of mutations) {
+		// 		if (mutation.attributeName === "class") {
+		// 			const theme = document.documentElement.classList.contains("dark")
+		// 				? "dark"
+		// 				: "light";
+		// 			onThemeChange(theme);
+		// 		}
+		// 	}
+		// });
 
-		observer.observe(document.documentElement, {
-			attributes: true,
-		});
+		// observer.observe(document.documentElement, {
+		// 	attributes: true,
+		// });
 
-		// Check the current theme
-		const theme = document.documentElement.classList.contains("dark")
-			? "dark"
-			: "light";
+		// // Check the current theme
+		// const theme = document.documentElement.classList.contains("dark")
+		// 	? "dark"
+		// 	: "light";
 
-		onThemeChange(theme);
+		// onThemeChange(theme);
 
 		window.addEventListener("scroll", handleScroll);
 		window.addEventListener("hashchange", handleHashChange);
@@ -111,7 +76,7 @@ export default function Post({
 			window.removeEventListener("scroll", handleScroll);
 			window.removeEventListener("hashchange", handleHashChange);
 			document.removeEventListener("click", handleClick);
-			observer.disconnect();
+			// observer.disconnect();
 		};
 	}, []);
 

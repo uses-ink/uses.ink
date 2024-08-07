@@ -11,8 +11,8 @@ const nextConfig = {
 	experimental: {
 		serverComponentsExternalPackages: [
 			"@myriaddreamin/typst-ts-node-compiler",
-			"rehype-mermaid",
-			"playwright-core",
+			"@pintora/cli",
+			"global-jsdom",
 		],
 	},
 	webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
@@ -32,7 +32,7 @@ const nextConfig = {
 			dir: __dirname,
 		}),
 	},
-	transpilePackages: ["shiki"],
+	transpilePackages: ["shiki", "astro-d2"],
 };
 
 export default nextConfig;

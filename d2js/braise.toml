@@ -1,0 +1,2 @@
+[build]
+cmd = "GOOS=js GOARCH=wasm go build -ldflags='-s -w' -trimpath -o {env(OUTPUT:../public/wasm/d2.wasm)} ./"

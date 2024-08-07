@@ -30,9 +30,9 @@ import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
 import { type ConfigSchema, MetaSchema } from "../../types";
 import { serverLogger } from "../logger";
-import rehypeMermaid from "rehype-mermaid";
-
-import { chromium } from "playwright-core";
+import rehypePintora from "./pintora";
+import rehypePenrose from "./penrose";
+import rehypeD2 from "./d2";
 
 const DEBUG_TREE = false;
 
@@ -128,7 +128,9 @@ export async function compileMDX(
 				},
 			],
 			makeDebug("after sanitize"),
-			[rehypeMermaid, { strategy: "img-svg", dark: true, browser: chromium }],
+			// [rehypePintora, { class: "pintora" }],
+			// [rehypePenrose, { class: "penrose" }],
+			rehypeD2,
 			meta.data.noHighlight
 				? []
 				: [

@@ -5,6 +5,7 @@ import {
 } from "shiki/core";
 
 import { bundledLanguages } from "shiki/langs";
+import d2Lang from "@/../syntaxes/d2.tmLanguage.json";
 
 const shikiInstance: {
 	current: HighlighterCore | null;
@@ -26,7 +27,7 @@ export const getShiki = async () => {
 
 	const highlighter = await createHighlighterCore({
 		themes: [theme],
-		langs: Object.values(bundledLanguages),
+		langs: [...Object.values(bundledLanguages), d2Lang as any],
 		loadWasm: import("shiki/wasm"),
 	});
 

@@ -56,3 +56,25 @@ h6#user-content-no-anchor a.anchor {
 .typst-text {
 	@apply fill-foreground;
 }
+
+.pintora {
+	@apply w-fit mx-auto;
+}
+
+/* hide the .d2-dark class on light mode */
+html.dark .d2-light {
+	display: none;
+}
+
+html.light .d2-dark {
+	display: none;
+}
+
+.d2.div,
+.d2 {
+	@apply w-fit mx-auto;
+}
+
+.d2 figcaption {
+	@apply text-center text-sm text-gray-500;
+}

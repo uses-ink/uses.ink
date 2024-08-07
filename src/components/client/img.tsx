@@ -13,6 +13,9 @@ const LIGHT_HASHES = [
 ];
 
 const Img = (props: any) => {
+	if (typeof props.src !== "string") {
+		return <img {...props} />;
+	}
 	const src = new URL(props.src);
 	const isBadge = BADGES_HOSTS.includes(src.hostname);
 	const { resolvedTheme } = useTheme();

@@ -7,7 +7,51 @@ export function cn(...inputs: ClassValue[]) {
 
 import { mdxComponents } from "@/lib/client/mdx/components";
 import { clientLogger } from "./logger";
+export function flipImageSource(theme: string) {
+	console.log("theme -> flipImageSource", theme);
+	console.log(
+		"document.querySelectorAll(picture)",
+		document.querySelectorAll("picture"),
+	);
 
+	// biome-ignore lint/complexity/noForEach: cannot iterate over NodeList
+	document.querySelectorAll("picture").forEach((element) => {
+		const img = element.querySelector("img");
+		const darkSource = element.querySelector(
+			"source[media='(prefers-color-scheme: dark)']",
+		) as HTMLSourceElement | undefined;
+		console.log({ darkSource, img });
+		if (!darkSource || !img) {
+			console.error("darkSource or img is undefined");
+			return;
+		}
+
+		let lightSource = element.querySelector(
+			"source[media='(prefers-color-scheme: light)']",
+		) as HTMLSourceElement | undefined;
+		if (!lightSource) {
+			console.log("creating lightSource");
+			lightSource = document.createElement("source");
+			lightSource.media = "(prefers-color-scheme: light)";
+			lightSource.srcset = img.src;
+			lightSource.width = img.width;
+			lightSource.height = img.height;
+			element.prepend(lightSource);
+		} else {
+			console.log("lightSource already exists");
+		}
+
+		if (theme === "dark") {
+			console.log("dark theme");
+			img.src = darkSource.srcset;
+			img.className = "d2-dark";
+		} else {
+			console.log("light theme");
+			img.src = lightSource.srcset;
+			img.className = "d2-light";
+		}
+	});
+}
 export const resolveTitle = (
 	Content: (props: any) => any,
 ): string | undefined => {
