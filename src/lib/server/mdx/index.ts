@@ -30,8 +30,7 @@ import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
 import { type ConfigSchema, MetaSchema } from "../../types";
 import { serverLogger } from "../logger";
-import rehypePintora from "./pintora";
-import rehypePenrose from "./penrose";
+
 import rehypeD2 from "./d2";
 
 const DEBUG_TREE = false;
