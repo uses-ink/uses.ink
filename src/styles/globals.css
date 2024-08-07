@@ -71,8 +71,9 @@ html.light .d2-dark {
 }
 
 .d2.div,
-.d2 {
-	@apply w-fit mx-auto;
+.d2,
+.d2 svg {
+	@apply w-fit mx-auto max-w-full;
 }
 
 .d2 figcaption {

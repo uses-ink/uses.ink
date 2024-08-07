@@ -3,10 +3,17 @@ import type { Root } from "hast";
 import { rehypeCodeHook, type MapLike } from "@beoe/rehype-code-hook";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { brotliDecompressSync } from "node:zlib";
 
 import "../wasm_exec";
-const wasmPath = join(process.cwd(), "public", "wasm", "d2.wasm");
-const wasmBuffer = readFileSync(wasmPath);
+const wasmPath = join(process.cwd(), "public", "wasm", "d2.wasm.br");
+const wasmCompressedBuffer = readFileSync(wasmPath);
+// console.log(
+// 	"wasmCompressedBuffer",
+// 	`${(wasmCompressedBuffer.length / 1024 / 1024).toFixed(1)}MB`,
+// );
+const wasmBuffer = brotliDecompressSync(wasmCompressedBuffer);
+// console.log("wasmBuffer", `${(wasmBuffer.length / 1024 / 1024).toFixed(1)}MB`);
 
 type Meta = Record<string, string | boolean | number>;
 
@@ -78,7 +85,7 @@ const d2Svg = async (code: string, meta: Meta, className?: string) => {
 	//     <div class="d2-light">${lightSvg}</div>
 	// </div>`;
 	//// FIGURES
-	return `<figure class="d2 ${className ?? ""}">
+	return `<figure class="d2 not-prose ${className ?? ""}">
         <div class="d2-dark">${darkSvg}</div>
         <div class="d2-light">${lightSvg}</div>
         <figcaption>${meta.title ?? ""}</figcaption>

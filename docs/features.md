@@ -289,6 +289,8 @@ H~2~O
 
 ### D2
 
+Currently, we support [d2](https://d2lang.com/) diagrams. You can add a d2 diagram by using the following syntax:
+
 ~~~d2 sketch doNotRender
 ```d2 sketch
 server
@@ -309,6 +311,8 @@ server.process
 im a parent.im a child
 apartment.Bedroom.Bathroom -> office.Spare Room.Bathroom: Portal
 ```
+
+Because d2 is written in Go, we need to either use it as a cli or compile it to WebAssembly. We chose the latter to avoid the headache of running a cli on the server. You can find the source code for the WebAssembly version [here](https://github.com/uses-ink/d2wasm).
 
 ### Mermaid
 
