@@ -3,6 +3,11 @@ module d2js
 go 1.22.5
 
 require (
+	oss.terrastruct.com/d2 v0.6.6
+	oss.terrastruct.com/util-go v0.0.0-20231101220827-55b3812542c2
+)
+
+require (
 	cdr.dev/slog v1.4.2-0.20221206192828-e4803b10ae17 // indirect
 	github.com/PuerkitoBio/goquery v1.8.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
@@ -24,13 +29,11 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.16.0 // indirect
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
-	golang.org/x/image v0.14.0 // indirect
+	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	gonum.org/v1/plot v0.14.0 // indirect
-	oss.terrastruct.com/d2 v0.6.6 // indirect
-	oss.terrastruct.com/util-go v0.0.0-20231101220827-55b3812542c2 // indirect
 )
