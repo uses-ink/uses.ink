@@ -1,3 +1,13 @@
+## v0.4.2 (2024-08-08)
+
+### Fix
+
+- search the config file correctly
+
+### Refactor
+
+- switch to cli version of d2
+
 ## v0.4.1 (2024-08-07)
 
 ### Fix
