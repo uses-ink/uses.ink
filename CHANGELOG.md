@@ -1,3 +1,9 @@
+## v0.5.0 (2024-08-07)
+
+### Fix
+
+- only instanciate the wasm module once
+
 ## v0.4.0 (2024-08-07)
 
 ### Feat
