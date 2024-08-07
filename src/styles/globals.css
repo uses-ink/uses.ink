@@ -1,6 +1,7 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("https://fonts.googleapis.com/css2?family=Fuzzy+Bubbles:wght@400;700&display=swap");
 @import "rehype-callouts/theme/vitepress";
 @import "katex/dist/katex.min.css";
 /* @import "./callout.css"; */
@@ -73,9 +74,17 @@ html.light .d2-dark {
 .d2.div,
 .d2,
 .d2 svg {
-	@apply w-fit mx-auto max-w-full;
+	@apply mx-auto max-w-full;
 }
 
 .d2 figcaption {
 	@apply text-center text-sm text-gray-500;
+}
+
+.d2.sketch text {
+	font-family: "Fuzzy Bubbles", sans-serif !important;
+}
+
+.d2:not(.sketch) text {
+	font-family: "Source Sans 3" !important;
 }

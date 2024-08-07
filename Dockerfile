@@ -5,7 +5,10 @@ FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
-RUN apk add --no-cache bash git curl
+RUN apk add --no-cache bash git curl make
+RUN curl -fsSL https://d2lang.com/install.sh | sh -s --
+# Check if d2 has been installed
+RUN d2 --version
 
 # Install dependencies only when needed
 FROM base AS deps

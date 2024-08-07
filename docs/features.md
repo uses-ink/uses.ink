@@ -312,7 +312,9 @@ im a parent.im a child
 apartment.Bedroom.Bathroom -> office.Spare Room.Bathroom: Portal
 ```
 
-Because d2 is written in Go, we need to either use it as a cli or compile it to WebAssembly. We chose the latter to avoid the headache of running a cli on the server. You can find the source code for the WebAssembly version [here](https://github.com/uses-ink/d2wasm).
+Because d2 is written in Go, we need to either use it as a cli or compile it to WebAssembly. We are currently using the former because WebAssembly does not produce good results at the moment (**~750ms** to render a diagram + **6MB** brotli-compressed `.wasm`).
+
+You can find the source code for the WebAssembly version [here](https://github.com/uses-ink/d2wasm).
 
 ### Mermaid
 

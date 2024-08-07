@@ -31,7 +31,8 @@ import { type MdxUrlResolvers, getMdxUrl } from "./url";
 import { type ConfigSchema, MetaSchema } from "../../types";
 import { serverLogger } from "../logger";
 
-import rehypeD2 from "./d2";
+import type { D2UserConfig } from "./d2/config";
+import { rehypeD2CLI, rehypeD2Wasm } from "./d2";
 
 const DEBUG_TREE = false;
 
@@ -129,7 +130,8 @@ export async function compileMDX(
 			makeDebug("after sanitize"),
 			// [rehypePintora, { class: "pintora" }],
 			// [rehypePenrose, { class: "penrose" }],
-			rehypeD2,
+			rehypeD2CLI,
+			// rehypeD2Wasm,
 			meta.data.noHighlight
 				? []
 				: [
