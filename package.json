@@ -6,7 +6,8 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"lint": "next lint"
+		"lint": "next lint",
+		"update-d2wasm": "./scripts/update-d2wasm.sh"
 	},
 	"dependencies": {
 		"@beoe/rehype-code-hook": "^0.0.1",

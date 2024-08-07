@@ -61,9 +61,24 @@ pnpm install
 pnpm dev
 ```
 
-## Patches
+## Miscellaneous dependencies
+
+### Patches
 
 This project uses a patched version of [`hast-util-sanitize@5.0.1`](patches/hast-util-sanitize@5.0.1.patch) to allow unknown nodes to be processed through an `unknownNodeHandler` function. We need this to allow plugins such as [`remark-frontmatter`](https://github.com/remarkjs/remark-frontmatter) to pass declarations.
+
+### d2wasm
+
+This project uses [`d2`](https://d2lang.com) to render diagrams. The diagrams are rendered using WebAssembly on the server. The WebAssembly module comes from the [`d2wasm`](https://github.com/uses-ink/d2wasm) repository. The wasm module can be found in the [`public/wasm`](public/wasm/) directory.
+
+To update the wasm module, run the following command:
+
+```bash
+pnpm update-d2wasm
+```
+
+This will grab the latest version of the wasm module and place it in its appropriate directory.
+
 
 ## License
 
