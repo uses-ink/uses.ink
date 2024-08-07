@@ -1,3 +1,18 @@
+## v0.4.0 (2024-08-07)
+
+### Feat
+
+- add d2 support for diagrams
+
+### Fix
+
+- **deps**: update dependency cache-manager to v5.7.6 (#33)
+- use latest version of chromium
+
+### Refactor
+
+- use brotli-compressed wasm
+
 ## v0.3.15 (2024-08-05)
 
 ### Feat
