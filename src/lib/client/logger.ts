@@ -1,3 +1,6 @@
 import pino from "pino";
+import { IS_DEV } from "../constants";
 
-export const clientLogger = pino().child({ type: "client" });
+const level = IS_DEV ? "debug" : "info";
+
+export const clientLogger = pino({ level }).child({ type: "client" });
