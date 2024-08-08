@@ -67,7 +67,7 @@ export function getAttributes(attributesStr: string | null | undefined) {
 	return AttributesSchema.parse(parseAttributes(attributesStr));
 }
 
-function parseAttributes(attributesStr: string | null | undefined) {
+export function parseAttributes(attributesStr: string | null | undefined) {
 	if (!attributesStr) {
 		return {};
 	}

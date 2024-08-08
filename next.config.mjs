@@ -11,8 +11,8 @@ const nextConfig = {
 	experimental: {
 		serverComponentsExternalPackages: [
 			"@myriaddreamin/typst-ts-node-compiler",
-			"@pintora/cli",
 			"global-jsdom",
+			"pikchr-wasm",
 		],
 	},
 	webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {

@@ -287,9 +287,57 @@ H~2~O
 
 ## Diagrams
 
+### Pikchr
+
+We recommend using [Pikchr](https://pikchr.org/) as the primary diagramming tool for `uses.ink` due to its blazing speed and compatibility with markdown-like syntax.
+
+~~~pikchr doNotRender
+```pikchr
+        arrow "source" "code"
+LA:     box "lexical" "analyzer"
+        arrow "tokens" above
+P:      box "parser"
+        arrow "intermediate" "code" wid 200%
+Sem:    box "semantic" "checker"
+        arrow
+        arrow <-> up from top of LA
+LC:     box "lexical" "corrector"
+        arrow <-> up from top of P
+Syn:    box "syntactic" "corrector"
+        arrow up
+DMP:    box "diagnostic" "message" "printer"
+        arrow <-> right  from east of DMP
+ST:     box "symbol" "table"
+        arrow from LC.ne to DMP.sw
+        arrow from Sem.nw to DMP.se
+        arrow <-> from Sem.top to ST.bot
+```
+~~~
+
+```pikchr
+        arrow "source" "code"
+LA:     box "lexical" "analyzer"
+        arrow "tokens" above
+P:      box "parser"
+        arrow "intermediate" "code" wid 200%
+Sem:    box "semantic" "checker"
+        arrow
+        arrow <-> up from top of LA
+LC:     box "lexical" "corrector"
+        arrow <-> up from top of P
+Syn:    box "syntactic" "corrector"
+        arrow up
+DMP:    box "diagnostic" "message" "printer"
+        arrow <-> right  from east of DMP
+ST:     box "symbol" "table"
+        arrow from LC.ne to DMP.sw
+        arrow from Sem.nw to DMP.se
+        arrow <-> from Sem.top to ST.bot
+```
+
 ### D2
 
-Currently, we support [d2](https://d2lang.com/) diagrams. You can add a d2 diagram by using the following syntax:
+However, if you need it, we also support [d2](https://d2lang.com/) diagrams. To add a d2 diagram, use the following syntax:
 
 ~~~d2 sketch doNotRender
 ```d2 sketch
@@ -312,9 +360,7 @@ im a parent.im a child
 apartment.Bedroom.Bathroom -> office.Spare Room.Bathroom: Portal
 ```
 
-Because d2 is written in Go, we need to either use it as a cli or compile it to WebAssembly. We are currently using the former because WebAssembly does not produce good results at the moment (**~750ms** to render a diagram + **6MB** brotli-compressed `.wasm`).
-
-You can find the source code for the WebAssembly version [here](https://github.com/uses-ink/d2wasm).
+Since d2 is written in Go, it requires either a CLI or WebAssembly compilation. We currently use the CLI, as the WebAssembly version is slower (**~750ms** to render a diagram + **6MB** brotli-compressed `.wasm` file). You can find the source code for the WebAssembly version [here](https://github.com/uses-ink/d2wasm).
 
 ### Mermaid
 

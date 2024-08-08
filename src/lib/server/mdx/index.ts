@@ -33,6 +33,7 @@ import { serverLogger } from "../logger";
 
 import type { D2UserConfig } from "./d2/config";
 import { rehypeD2CLI, rehypeD2Wasm } from "./d2";
+import { rehypePikchr } from "./pikchr";
 
 const DEBUG_TREE = false;
 
@@ -131,6 +132,7 @@ export async function compileMDX(
 			// [rehypePintora, { class: "pintora" }],
 			// [rehypePenrose, { class: "penrose" }],
 			rehypeD2CLI,
+			rehypePikchr,
 			// rehypeD2Wasm,
 			meta.data.noHighlight
 				? []

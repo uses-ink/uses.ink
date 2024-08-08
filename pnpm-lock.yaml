@@ -139,6 +139,9 @@ importers:
       octokit:
         specifier: ^4.0.2
         version: 4.0.2
+      pikchr-wasm:
+        specifier: ^2.0.1
+        version: 2.0.1
       pino:
         specifier: ^9.3.2
         version: 9.3.2
@@ -2489,6 +2492,9 @@ packages:
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
 
+  function-once@3.0.0:
+    resolution: {integrity: sha512-WEhgu9PE55sHFf+SBg3lI8+CWpsqReLcsp3g12XhwSJJgnodpSpHk6StvpeVcKuHAFCAdttLrslJRFDSdLDf4g==}
+
   gauge@3.0.2:
     resolution: {integrity: sha512-+5J6MS/5XksCuXq++uFRsnUd7Ovu1XenbeuIuNRJxYWjgQbPuFhT14lAvsWfqfAmnwluf1OwMjz39HjfLPci0Q==}
     engines: {node: '>=10'}
@@ -3477,6 +3483,9 @@ packages:
   pify@2.3.0:
     resolution: {integrity: sha512-udgsAY+fTnvv7kI7aaxbqwWNb0AHiB0qBO89PZKPkoTmGOgdbrHDKD+0B2X4uTfJ/FT1R09r9gTsjUjNJotuog==}
     engines: {node: '>=0.10.0'}
+
+  pikchr-wasm@2.0.1:
+    resolution: {integrity: sha512-OvK14La37v6qwFGkdd/4g6VT/0xoS/tv9a3qsoJYbMUpSuwnh6iu38gsen5CagEt3QRZZ3zGTfP0m52gEAsWGg==}
 
   pinkie-promise@2.0.1:
     resolution: {integrity: sha512-0Gni6D4UcLTbv9c57DfxDGdr41XfgUjqWZu492f0cIGr16zDU06BWP/RAEvOuo7CQ0CNjHaLlM59YJJFm3NWlw==}
@@ -6826,6 +6835,8 @@ snapshots:
 
   function-bind@1.1.2: {}
 
+  function-once@3.0.0: {}
+
   gauge@3.0.2:
     dependencies:
       aproba: 2.0.0
@@ -8241,6 +8252,10 @@ snapshots:
   picomatch@2.3.1: {}
 
   pify@2.3.0: {}
+
+  pikchr-wasm@2.0.1:
+    dependencies:
+      function-once: 3.0.0
 
   pinkie-promise@2.0.1:
     dependencies:

@@ -63,11 +63,13 @@ h6#user-content-no-anchor a.anchor {
 }
 
 /* hide the .d2-dark class on light mode */
-html.dark .d2-light {
+html.dark .d2-light,
+html.dark .pikchr-light {
 	display: none;
 }
 
-html.light .d2-dark {
+html.light .d2-dark,
+html.light .pikchr-dark {
 	display: none;
 }
 
