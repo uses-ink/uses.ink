@@ -1,3 +1,18 @@
+## v0.4.3 (2024-08-08)
+
+### Feat
+
+- add render caching
+- add pikchr diagrams rendering
+
+### Fix
+
+- correctly set loggers levels in dev
+
+### Refactor
+
+- switch to consola for logging
+
 ## v0.4.2 (2024-08-08)
 
 ### Fix
