@@ -88,7 +88,7 @@ export const fetchUserConfig = async (
 	// Fetch config from user's repo
 	try {
 		const raw = await fetchGitHubContent(userConfigRequest);
-		console.log(raw);
+
 		if (Array.isArray(raw)) throw Error("Post should not be a dir");
 		if (typeof raw === "string") throw Error("Response should be in json");
 		if (raw.type !== "file") throw Error(`Unknown type "${raw.type}"`);

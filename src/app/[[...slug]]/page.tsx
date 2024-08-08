@@ -152,7 +152,7 @@ const Page: NextPage = async () => {
 			serverLogger.error({ error, where: "Page" });
 			return <ErrorPage repoData={repoRequest} error={error.message} />;
 		}
-		console.log(error);
+		serverLogger.error(error);
 
 		return <ErrorPage repoData={repoRequest} error="Unknown error" />;
 	}

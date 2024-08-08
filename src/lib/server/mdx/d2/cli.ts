@@ -1,3 +1,4 @@
+import { serverLogger } from "../../logger";
 import type { DiagramAttributes } from "./attributes";
 import type { D2Config } from "./config";
 import { exec } from "./exec";
@@ -46,7 +47,7 @@ export async function generateD2Diagram(
 			],
 			input,
 		);
-		console.log("Generated D2 diagram in", Date.now() - start, "ms");
+		serverLogger.info("Generated D2 diagram in", Date.now() - start, "ms");
 		return {
 			size: await getD2DiagramSize(res.join("\n")),
 			svg: res.join("\n"),

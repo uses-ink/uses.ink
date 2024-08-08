@@ -4,6 +4,7 @@ import type { Plugin } from "unified";
 import { z } from "zod";
 import { parseAttributes } from "./d2/attributes";
 import pikchr from "pikchr-wasm";
+import { serverLogger } from "../logger";
 
 export type PikchrConfig = {
 	cache?: MapLike;
@@ -55,7 +56,11 @@ export const rehypePikchr: Plugin<[PikchrConfig?], Root> = (options = {}) => {
 			if (!current.instanciated) {
 				const start = performance.now();
 				await pikchr.loadWASM();
-				console.log("Pikchr WASM loaded in", performance.now() - start, "ms");
+				serverLogger.info(
+					"Pikchr WASM loaded in",
+					performance.now() - start,
+					"ms",
+				);
 				current.instanciated = true;
 			}
 			const attributes = PikchrAttributesSchema.parse(parseAttributes(meta));
@@ -67,7 +72,7 @@ export const rehypePikchr: Plugin<[PikchrConfig?], Root> = (options = {}) => {
 			const start = performance.now();
 			const light = pikchr.render(code);
 			const dark = pikchr.render(code, undefined, PikchrFlags.PIKCHR_DARK_MODE);
-			console.log("Pikchr rendered in", performance.now() - start, "ms");
+			serverLogger.info("Pikchr rendered in", performance.now() - start, "ms");
 			return `<figure class="pikchr not-prose ${options.class ?? ""}"><div class="pikchr-light">${light}</div><div class="pikchr-dark">${dark}</div></figure>`;
 		},
 	});

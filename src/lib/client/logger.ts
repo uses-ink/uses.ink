@@ -1,6 +1,6 @@
-import pino from "pino";
+import { createConsola, LogLevels } from "consola";
 import { IS_DEV } from "../constants";
 
-const level = IS_DEV ? "debug" : "info";
+const level = IS_DEV ? LogLevels.debug : LogLevels.info;
 
-export const clientLogger = pino({ level }).child({ type: "client" });
+export const clientLogger = createConsola({ level }).withTag("client");

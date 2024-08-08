@@ -69,7 +69,7 @@ export async function compileMDX(
 	const start = performance.now();
 	const cached = await getCompileCache(content);
 	if (cached) {
-		serverLogger.debug(`Cache hit for in ${performance.now() - start}ms`);
+		serverLogger.debug(`Cache hit in ${performance.now() - start}ms`);
 		return cached;
 	}
 	serverLogger.debug("Cache miss for");

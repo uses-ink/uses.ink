@@ -8,11 +8,11 @@ export function cn(...inputs: ClassValue[]) {
 import { mdxComponents } from "@/lib/client/mdx/components";
 import { clientLogger } from "./logger";
 export function flipImageSource(theme: string) {
-	console.log("theme -> flipImageSource", theme);
-	console.log(
-		"document.querySelectorAll(picture)",
-		document.querySelectorAll("picture"),
-	);
+	clientLogger.log("theme -> flipImageSource", theme);
+	// clientLogger.debug(
+	// 	"document.querySelectorAll(picture)",
+	// 	document.querySelectorAll("picture"),
+	// );
 
 	// biome-ignore lint/complexity/noForEach: cannot iterate over NodeList
 	document.querySelectorAll("picture").forEach((element) => {
@@ -20,7 +20,7 @@ export function flipImageSource(theme: string) {
 		const darkSource = element.querySelector(
 			"source[media='(prefers-color-scheme: dark)']",
 		) as HTMLSourceElement | undefined;
-		console.log({ darkSource, img });
+		clientLogger.debug({ darkSource, img });
 		if (!darkSource || !img) {
 			console.error("darkSource or img is undefined");
 			return;
@@ -30,7 +30,7 @@ export function flipImageSource(theme: string) {
 			"source[media='(prefers-color-scheme: light)']",
 		) as HTMLSourceElement | undefined;
 		if (!lightSource) {
-			console.log("creating lightSource");
+			clientLogger.debug("creating lightSource");
 			lightSource = document.createElement("source");
 			lightSource.media = "(prefers-color-scheme: light)";
 			lightSource.srcset = img.src;
@@ -38,15 +38,15 @@ export function flipImageSource(theme: string) {
 			lightSource.height = img.height;
 			element.prepend(lightSource);
 		} else {
-			console.log("lightSource already exists");
+			clientLogger.debug("lightSource already exists");
 		}
 
 		if (theme === "dark") {
-			console.log("dark theme");
+			clientLogger.debug("dark theme");
 			img.src = darkSource.srcset;
 			img.className = "d2-dark";
 		} else {
-			console.log("light theme");
+			clientLogger.debug("light theme");
 			img.src = lightSource.srcset;
 			img.className = "d2-light";
 		}
