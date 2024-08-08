@@ -1,3 +1,5 @@
 import pino from "pino";
 
-export const serverLogger = pino().child({ type: "server" });
+const level = process.env.NODE_ENV === "production" ? "info" : "debug";
+
+export const serverLogger = pino({ level }).child({ type: "server" });

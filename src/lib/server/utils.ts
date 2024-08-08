@@ -2,7 +2,7 @@ import type { z } from "zod";
 import { capitalizeFileName } from "../client/utils";
 import { README_FILES } from "../constants";
 import type { CommitResponse, MetaSchema } from "../types";
-import type { RepoRequest } from "./repo-request";
+import type { RepoRequest } from "../types";
 
 export const isErrorHasStatus = (
 	raw: unknown,

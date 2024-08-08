@@ -1,4 +1,4 @@
-import type { RepoRequest } from "@/lib/server/repo-request";
+import type { RepoRequest } from "@/lib/types";
 import { DEFAULT_REPO } from "@/lib/constants";
 import { fetchGithubTree } from "@/lib/server/github/tree";
 import { dirname } from "node:path";

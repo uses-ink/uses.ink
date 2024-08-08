@@ -1,12 +1,6 @@
 import { headers } from "next/headers";
 import { serverLogger } from "./logger";
-
-export type RepoRequest = {
-	owner?: string;
-	repo?: string;
-	ref?: string;
-	path?: string;
-};
+import type { RepoRequest } from "../types";
 
 export const getRepoRequest = (): {
 	req: RepoRequest;

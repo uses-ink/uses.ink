@@ -12,6 +12,13 @@ export interface GitHubRequest {
 	ref?: string;
 }
 
+export type RepoRequest = {
+	owner?: string;
+	repo?: string;
+	ref?: string;
+	path?: string;
+};
+
 export type GitHubContent =
 	operations["repos/get-content"]["responses"]["200"]["content"]["application/json"];
 

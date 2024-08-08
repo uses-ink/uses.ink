@@ -1,6 +1,6 @@
 import { DEFAULT_REPO, IS_DEV, SHOW_DEV_TOOLS } from "@/lib/constants";
 import { RepoDevTools } from "./repo";
-import type { RepoRequest } from "@/lib/server/repo-request";
+import type { RepoRequest } from "@/lib/types";
 import type { GithubTree } from "@/lib/server/github/tree";
 import Article from "./article";
 

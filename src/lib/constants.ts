@@ -9,7 +9,8 @@ export const README_FILES = ["README", "index"].reduce(
 	[] as string[],
 );
 
-export const CACHE_TTL = 60; // 60 seconds
+export const GITHUB_CACHE_TTL = 60; // 60 seconds
+export const RENDER_CACHE_TTL = 60 * 60 * 24; // 24 hours
 export const SHOW_DEV_TOOLS = false;
 
 export const CONFIG_FILE = "uses.ink.json";

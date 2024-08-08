@@ -23,16 +23,16 @@ import remarkToc from "remark-toc";
 import { match } from "ts-pattern";
 import { inspect } from "unist-util-inspect";
 import type { z, ZodError } from "zod";
+import { type ConfigSchema, MetaSchema } from "../../types";
+import { serverLogger } from "../logger";
 import rehypeMetaString from "./meta";
 import { remarkReadingTime } from "./read-time";
 import { getShiki } from "./shiki";
 import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
-import { type ConfigSchema, MetaSchema } from "../../types";
-import { serverLogger } from "../logger";
 
-import type { D2UserConfig } from "./d2/config";
-import { rehypeD2CLI, rehypeD2Wasm } from "./d2";
+import { getCompileCache, setCompileCache } from "../cache";
+import { rehypeD2CLI } from "./d2";
 import { rehypePikchr } from "./pikchr";
 
 const DEBUG_TREE = false;
@@ -44,17 +44,16 @@ const makeDebug = (name: string) =>
 		? () => (tree: any) => serverLogger.debug(inspect(tree))
 		: () => {};
 
+export type CompileResult = {
+	meta: z.infer<typeof MetaSchema>;
+	runnable: string;
+};
+
 export async function compileMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
 	config?: z.infer<typeof ConfigSchema>,
-): Promise<
-	| {
-			meta: z.infer<typeof MetaSchema>;
-			runnable: string;
-	  }
-	| ZodError<z.output<typeof MetaSchema>>
-> {
+): Promise<CompileResult | ZodError<z.output<typeof MetaSchema>>> {
 	const matter = parseMatter(content);
 
 	const meta = MetaSchema.safeParse(matter.data);
@@ -67,7 +66,13 @@ export async function compileMDX(
 		...config,
 		...meta.data,
 	};
-
+	const start = performance.now();
+	const cached = await getCompileCache(content);
+	if (cached) {
+		serverLogger.debug(`Cache hit for in ${performance.now() - start}ms`);
+		return cached;
+	}
+	serverLogger.debug("Cache miss for");
 	const result = await compile(matter.content, {
 		format: "md",
 		outputFormat: "function-body",
@@ -174,5 +179,8 @@ export async function compileMDX(
 			clobberPrefix: "",
 		},
 	});
-	return { meta: meta.data, runnable: result.toString() };
+	serverLogger.debug(`Compiled in ${performance.now() - start}ms`);
+	const compiled = { meta: meta.data, runnable: result.toString() };
+	await setCompileCache(content, compiled);
+	return compiled;
 }
