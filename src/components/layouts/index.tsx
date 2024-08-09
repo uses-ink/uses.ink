@@ -15,7 +15,7 @@ export const getLayout = (layout: string, Content: React.FC<any>) => {
 	}
 
 	clientLogger.debug("getLayout -> Layout", Layout);
-	clientLogger.info("getLayout -> Content", Content);
+	clientLogger.debug("getLayout -> Content", Content);
 
 	return () => (
 		<Layout>

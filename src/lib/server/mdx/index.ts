@@ -35,14 +35,12 @@ import { getCompileCache, setCompileCache } from "../cache";
 import { rehypeD2CLI } from "./d2";
 import { rehypePikchr } from "./pikchr";
 
+import { IS_DEV } from "@/lib/constants";
+
 const DEBUG_TREE = false;
+const DISABLE_CACHE = true;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
-
-const makeDebug = (name: string) =>
-	DEBUG_TREE
-		? () => (tree: any) => serverLogger.debug(inspect(tree))
-		: () => {};
 
 export type CompileResult = {
 	meta: z.infer<typeof MetaSchema>;
@@ -55,7 +53,8 @@ export async function compileMDX(
 	config?: z.infer<typeof ConfigSchema>,
 ): Promise<CompileResult | ZodError<z.output<typeof MetaSchema>>> {
 	const start = performance.now();
-	const cached = await getCompileCache(content);
+	const cached =
+		IS_DEV && DISABLE_CACHE ? undefined : await getCompileCache(content);
 	if (cached) {
 		serverLogger.debug(`Cache hit in ${performance.now() - start}ms`);
 		return cached;
@@ -72,7 +71,19 @@ export async function compileMDX(
 		...config,
 		...meta.data,
 	};
-	serverLogger.debug("Cache miss for");
+	serverLogger.debug("Cache miss");
+
+	let lastTimestamp = performance.now();
+	const makeDebug = (name: string) =>
+		DEBUG_TREE
+			? () => (tree: any) => serverLogger.debug(inspect(tree))
+			: IS_DEV
+				? () => (tree: any) => {
+						const now = performance.now();
+						serverLogger.debug(name, now - lastTimestamp, "ms");
+						lastTimestamp = now;
+					}
+				: () => () => {};
 	const result = await compile(matter.content, {
 		format: "md",
 		outputFormat: "function-body",
@@ -96,14 +107,14 @@ export async function compileMDX(
 			// Moves `data.meta` to `properties.metastring` for the `code` element node
 			// Because `rehype-raw` strips `data` from all nodes, which may contain useful information.
 			rehypeMetaString,
-			makeDebug("after metastring"),
+			makeDebug("metastring"),
 			[
 				rehypeRaw,
 				{
 					passThrough: ALLOWED_NODES,
 				},
 			],
-			makeDebug("after raw"),
+			makeDebug("raw"),
 			[
 				rehypeSanitize,
 				{
@@ -133,11 +144,13 @@ export async function compileMDX(
 					},
 				},
 			],
-			makeDebug("after sanitize"),
+			makeDebug("sanitize"),
 			// [rehypePintora, { class: "pintora" }],
 			// [rehypePenrose, { class: "penrose" }],
 			rehypeD2CLI,
+			makeDebug("d2cli"),
 			rehypePikchr,
+			makeDebug("pikchr"),
 			// rehypeD2Wasm,
 			meta.data.noHighlight
 				? []
@@ -153,7 +166,7 @@ export async function compileMDX(
 							],
 						},
 					],
-			makeDebug("after pretty code"),
+			makeDebug("pretty code"),
 			match(meta.data.mathEngine)
 				.with("katex", () => [
 					rehypeKatex,
@@ -161,8 +174,9 @@ export async function compileMDX(
 				])
 				// Use typst as default
 				.otherwise(() => [rehypeTypst, undefined]) as any,
-
+			makeDebug("math"),
 			rehypeSlug,
+			makeDebug("slug"),
 			[
 				rehypeTwemoji,
 				{
@@ -170,9 +184,11 @@ export async function compileMDX(
 					source: "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest",
 				} satisfies RehypeTwemojiOptions,
 			],
+			makeDebug("twemoji"),
 			[rehypeCallouts, { theme: "vitepress" }],
+			makeDebug("callouts"),
 			...getMdxUrl({ resolvers: urlResolvers }),
-			makeDebug("after url"),
+			makeDebug("url"),
 		],
 		remarkRehypeOptions: {
 			allowDangerousHtml: true,
