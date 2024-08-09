@@ -52,7 +52,23 @@ docker compose --profile dev up -d
 ## Development
 
 This project uses [`pnpm`](https://pnpm.io) as the package manager. It is needed to properly install and patch the dependencies (See [Patches](#patches)).
-To start the development server, run the following command:
+
+Make sure to have a `redis` server running somewhere. You can use the following command to quicly spin up a redis server with docker:
+
+```bash
+docker run -d --name redis -p 6379:6379 redis
+```
+
+Populate the `.env` file with the required values:
+
+```bash
+cp .env.example .env
+```
+
+> [!NOTE]
+> You don't need to set a `GITHUB_TOKEN` for development. The platform will work without it.
+
+To start the development server, run the following commands:
 
 ```bash
 # Install dependencies
@@ -69,6 +85,9 @@ This project uses a patched version of [`hast-util-sanitize@5.0.1`](patches/hast
 
 ### d2wasm
 
+> [!NOTE]
+> This section is currently not relevant because the platform uses the `d2` CLI because of the slow performance of the wasm module. Documentation is kept for future reference. 
+
 This project uses [`d2`](https://d2lang.com) to render diagrams. The diagrams are rendered using WebAssembly on the server. The WebAssembly module comes from the [`d2wasm`](https://github.com/uses-ink/d2wasm) repository. The wasm module can be found in the [`public/wasm`](public/wasm/) directory.
 
 To update the wasm module, run the following command:
@@ -79,6 +98,13 @@ pnpm update-d2wasm
 
 This will grab the latest version of the wasm module and place it in its appropriate directory.
 
+## Contributing
+
+Contributions are welcome! Feel free to open an [issue](https://github.com/uses-ink/uses.ink/issues) or a [pull request](https://github.com/uses-ink/uses.ink/pulls).
+
+I am currently looking for help with the following:
+
+- [ ] Improve the [`d2wasm`](https://github.com/uses-ink/d2wasm) WebAssembly module performance / size.
 
 ## License
 
