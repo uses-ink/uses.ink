@@ -44,6 +44,7 @@ nav:
 ``` 
 - `mathEngine`: The math rendering engine to use. This can be `typst` (default) or `katex`.
 - `noHighlight`: Set to `true` to disable syntax highlighting in code blocks.
+- `defaultCopy`: Whether to enable by default the copy button for code blocks. This can be `true` or `false` (default).
 
 Most of these fields are automatically populated based on the git commit information or file content. You can override them by setting the corresponding property in the metadata block.
 
@@ -53,7 +54,7 @@ in case you want to configure further the rendering of your markdown files, you 
 
 Here is an example of a `uses.ink.json` file:
 
-```json title="uses.ink.json"
+```json title="uses.ink.json" copy
 {
     "hideTop": true,
     "readingTime": false,
@@ -63,10 +64,10 @@ Here is an example of a `uses.ink.json` file:
     "nav": {
         "Home": "/",
         "Blog": "/blog"
-    }
+    },
+    "defaultCopy": true
 }
 ```
-
 
 ### Github user-wise configuration
 

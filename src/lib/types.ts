@@ -59,6 +59,7 @@ export const ConfigSchema = z.object({
 	noHighlight: z.boolean().optional(),
 	layout: LayoutSchema.optional(),
 	nav: z.record(z.string()).optional(),
+	defaultCopy: z.boolean().optional(),
 });
 
 export const MetaSchema = z.object({

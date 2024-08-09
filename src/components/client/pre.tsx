@@ -99,6 +99,7 @@ const Pre = ({
 					aria-label={"Copy code to clipboard"}
 					className="group-hover:opacity-100 appearance-none border dark:border-gray-700 border-gray-200 cursor-pointer bg-[--shiki-background] rounded-md dark:text-gray-400 opacity-0 select-none py-2 px-2 transition-opacity duration-200 ease-in-out text-gray-800"
 					onClick={handleCopyCode}
+					id="copy-code"
 				>
 					{showCopied ? (
 						<Check className="w-4 h-4" />

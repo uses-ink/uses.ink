@@ -124,3 +124,7 @@ code {
 [data-rehype-pretty-code-figure] [data-chars-id] {
 	@apply border-b-2 p-1 shadow-none;
 }
+
+[data-rehype-pretty-code-figure]:not([data-copy="true"]) #copy-code {
+	@apply hidden;
+}

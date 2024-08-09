@@ -36,6 +36,7 @@ import { rehypeD2CLI } from "./d2";
 import { rehypePikchr } from "./pikchr";
 
 import { IS_DEV } from "@/lib/constants";
+import rehypeCopy from "./copy";
 
 const DEBUG_TREE = false;
 const DISABLE_CACHE = true;
@@ -152,6 +153,8 @@ export async function compileMDX(
 			rehypePikchr,
 			makeDebug("pikchr"),
 			// rehypeD2Wasm,
+
+			[rehypeCopy, { defaultCopy: meta.data.defaultCopy }],
 			meta.data.noHighlight
 				? []
 				: [
