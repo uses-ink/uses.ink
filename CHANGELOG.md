@@ -1,3 +1,18 @@
+## v0.5.1 (2024-08-09)
+
+### Feat
+
+- add `copy` meta for codeblocks + `defaultCopy` config
+
+### Fix
+
+- **deps**: update dependency lucide-react to ^0.426.0 (#38)
+
+### Refactor
+
+- disable render cache for dev mode
+- do not parse matter before checking cache
+
 ## v0.4.3 (2024-08-08)
 
 ### Feat
