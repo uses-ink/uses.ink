@@ -54,6 +54,12 @@ export async function compileMDX(
 	urlResolvers: MdxUrlResolvers,
 	config?: z.infer<typeof ConfigSchema>,
 ): Promise<CompileResult | ZodError<z.output<typeof MetaSchema>>> {
+	const start = performance.now();
+	const cached = await getCompileCache(content);
+	if (cached) {
+		serverLogger.debug(`Cache hit in ${performance.now() - start}ms`);
+		return cached;
+	}
 	const matter = parseMatter(content);
 
 	const meta = MetaSchema.safeParse(matter.data);
@@ -66,12 +72,6 @@ export async function compileMDX(
 		...config,
 		...meta.data,
 	};
-	const start = performance.now();
-	const cached = await getCompileCache(content);
-	if (cached) {
-		serverLogger.debug(`Cache hit in ${performance.now() - start}ms`);
-		return cached;
-	}
 	serverLogger.debug("Cache miss for");
 	const result = await compile(matter.content, {
 		format: "md",
