@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { capitalizeFileName } from "../client/utils";
-import { README_FILES } from "../constants";
+import { DEFAULT_REPO, README_FILES } from "../constants";
 import type { CommitResponse, MetaSchema } from "../types";
 import type { RepoRequest } from "../types";
 
@@ -48,9 +48,9 @@ export const resolveMetadata = (
 			? README_FILES.map((e) => e.toLowerCase()).includes(
 					filename.toLowerCase(),
 				)
-				? `${request.owner}/${request.repo}`
+				? `${request.owner}/${request.repo ?? DEFAULT_REPO}`
 				: capitalizeFileName(filename)
-			: `${request.owner}/${request.repo}`);
+			: `${request.owner}/${request.repo ?? DEFAULT_REPO}`);
 
 	const description = meta.description;
 
