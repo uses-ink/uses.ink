@@ -39,7 +39,7 @@ import { IS_DEV } from "@/lib/constants";
 import rehypeCopy from "./copy";
 
 const DEBUG_TREE = false;
-const DISABLE_CACHE = true;
+const DISABLE_CACHE_DEV = true;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
 
@@ -55,7 +55,7 @@ export async function compileMDX(
 ): Promise<CompileResult | ZodError<z.output<typeof MetaSchema>>> {
 	const start = performance.now();
 	const cached =
-		IS_DEV && DISABLE_CACHE ? undefined : await getCompileCache(content);
+		IS_DEV && DISABLE_CACHE_DEV ? undefined : await getCompileCache(content);
 	if (cached) {
 		serverLogger.debug(`Cache hit in ${performance.now() - start}ms`);
 		return cached;

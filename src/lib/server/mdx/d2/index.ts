@@ -5,6 +5,8 @@ import { loadWasm } from "./wasm";
 import { type D2Config, D2ConfigSchema, type D2UserConfig } from "./config";
 import { type D2Size, generateD2Diagram } from "./cli";
 import { type DiagramAttributes, getAttributes } from "./attributes";
+import { getD2Cache, setD2Cache } from "../../cache";
+import { serverLogger } from "../../logger";
 
 export type RenderOptions = {
 	dsl: string;
@@ -140,12 +142,18 @@ export const rehypeD2Wasm: Plugin<[RehypeD2WasmConfig?], Root> = (
 	});
 };
 
+export type D2RenderResult = {
+	svg: string;
+	size: D2Size;
+};
+
 const renderSVG = async (
 	config: D2Config,
 	attributes: DiagramAttributes,
 	code: string,
 	dark: boolean,
 ) => {
+	const start = performance.now();
 	let dsl = code;
 	const darkConfig = `
 vars: {
@@ -170,17 +178,26 @@ vars: {
 	if (dark) {
 		dsl = `${darkConfig}\n\n${code}`;
 	}
+	const cached = await getD2Cache({ attributes, code: dsl, config });
+	if (cached) {
+		serverLogger.debug(`d2 cache hit in ${performance.now() - start}ms`);
+		return cached;
+	}
 	let { svg, size } = await generateD2Diagram(config, attributes, dsl, dark);
+	serverLogger.debug(`d2 render in ${performance.now() - start}ms`);
 
 	svg = removeBackground(svg);
 	if (dark) {
 		svg = darkifySVG(svg);
 	}
 
-	return {
+	const res = {
 		svg: `<div class="d2-${dark ? "dark" : "light"}" style="width:100%;">${svg}</div>`,
 		size,
 	};
+	setD2Cache({ attributes, code: dsl, config }, res);
+
+	return res;
 };
 
 export const rehypeD2CLI: Plugin<[D2UserConfig?], Root> = (options = {}) => {
@@ -191,16 +208,22 @@ export const rehypeD2CLI: Plugin<[D2UserConfig?], Root> = (options = {}) => {
 		...options,
 		language: "d2",
 		code: async ({ code, meta }) => {
+			const start = performance.now();
 			const attributes = getAttributes(meta);
+			serverLogger.debug(`parsed attributes in ${performance.now() - start}ms`);
 			if (attributes.doNotRender) {
 				return undefined;
 			}
+
 			const { svg: darkSVG } = await renderSVG(config, attributes, code, true);
 			const { svg: lightSVG } = await renderSVG(
 				config,
 				attributes,
 				code,
 				false,
+			);
+			serverLogger.debug(
+				`d2 rendered both light+dark in ${performance.now() - start}ms`,
 			);
 
 			return `<figure class="d2 not-prose ${attributes.sketch ?? config.sketch ? "sketch" : ""}">${darkSVG}${lightSVG}<figcaption>${attributes.title ?? ""}</figcaption></figure>`;

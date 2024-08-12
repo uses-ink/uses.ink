@@ -7,6 +7,7 @@ import {
 import { bundledLanguages } from "shiki/langs";
 import d2Lang from "@/../syntaxes/d2.tmLanguage.json";
 import pikchrLang from "@/../syntaxes/pikchr.tmLanguage.json";
+import { serverLogger } from "../logger";
 
 const shikiInstance: {
 	current: HighlighterCore | null;
@@ -15,7 +16,9 @@ const shikiInstance: {
 };
 
 export const getShiki = async () => {
+	const start = performance.now();
 	if (shikiInstance.current) {
+		serverLogger.debug("shiki instance already created");
 		return shikiInstance.current;
 	}
 
@@ -33,6 +36,6 @@ export const getShiki = async () => {
 	});
 
 	shikiInstance.current = highlighter;
-
+	serverLogger.debug(`loaded shiki in ${performance.now() - start}`);
 	return highlighter;
 };

@@ -25,4 +25,6 @@ export const getCache = async () => {
 export type CacheType = "content" | "commit" | "tree" | "render";
 
 export { getGitHubCache, setGitHubCache } from "./github";
-export { getCompileCache, setCompileCache } from "./render";
+export { getCompileCache, setCompileCache } from "./compile";
+export { getTypstCache, setTypstCache } from "./typst";
+export { getD2Cache, setD2Cache } from "./d2";

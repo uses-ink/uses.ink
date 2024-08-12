@@ -5,6 +5,7 @@ import { toText } from "hast-util-to-text";
 import { SKIP, visitParents } from "unist-util-visit-parents";
 import { NodeCompiler } from "@myriaddreamin/typst-ts-node-compiler";
 import { serverLogger } from "../logger";
+import { getTypstCache, setTypstCache } from "../cache";
 interface Options {
 	errorColor?: string;
 }
@@ -29,6 +30,7 @@ export default function rehypeTypst(
 			element: any,
 			parents: any[],
 		): Promise<typeof SKIP | undefined> => {
+			const start = performance.now();
 			const classes = Array.isArray(element.properties.className)
 				? element.properties.className
 				: emptyClasses;
@@ -64,7 +66,19 @@ export default function rehypeTypst(
 			let result: Array<ElementContent> | string | undefined;
 
 			try {
-				result = await renderToSVGString(value, displayMode);
+				const cached = await getTypstCache({ code: value, displayMode });
+				if (cached) {
+					serverLogger.debug(
+						`typst cache hit in ${performance.now() - start}ms`,
+					);
+					result = cached;
+				} else {
+					result = await renderToSVGString(value, displayMode);
+					serverLogger.debug(
+						`rendered typst in ${performance.now() - start}ms`,
+					);
+					setTypstCache({ code: value, displayMode }, result as any);
+				}
 			} catch (error) {
 				const cause = error as Error;
 				file.message("Could not render math with typst", {
