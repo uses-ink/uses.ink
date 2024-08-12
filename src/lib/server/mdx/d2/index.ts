@@ -52,7 +52,7 @@ const d2SvgWasm = async (code: string, meta: Meta, className?: string) => {
 
 	const { render } = await loadWasm();
 
-	console.log("WASM loaded in", Date.now() - start, "ms");
+	serverLogger.debug("WASM loaded in", Date.now() - start, "ms");
 
 	// disable output from the wasm module
 	// @ts-expect-error

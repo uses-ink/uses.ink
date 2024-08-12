@@ -16,7 +16,7 @@ check_command wget
 check_command curl
 
 
-default_location="public/wasm/d2.wasm.br"
+default_location="wasm/d2.wasm.br"
 download_location=${1:-$default_location}
 
 mkdir -p $(dirname $download_location)

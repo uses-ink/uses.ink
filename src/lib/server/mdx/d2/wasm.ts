@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { brotliDecompressSync } from "node:zlib";
 import type { RenderOptions, RenderResult } from ".";
 import "../../wasm_exec";
+import { serverLogger } from "../../logger";
 
 const current = {
 	instanciated: false,
@@ -10,7 +11,7 @@ const current = {
 
 export const loadWasm = async () => {
 	if (current.instanciated) {
-		console.log("WASM already instanciated");
+		serverLogger.debug("WASM already instanciated");
 		return {
 			// @ts-expect-error
 			render: globalThis.d2RenderSVG as (
@@ -18,14 +19,14 @@ export const loadWasm = async () => {
 			) => RenderResult,
 		};
 	}
-	const wasmPath = join(process.cwd(), "public", "wasm", "d2.wasm.br");
+	const wasmPath = join(process.cwd(),  "wasm", "d2.wasm.br");
 	const wasmCompressedBuffer = readFileSync(wasmPath);
-	console.log(
+	serverLogger.debug(
 		"wasmCompressedBuffer",
 		`${(wasmCompressedBuffer.length / 1024 / 1024).toFixed(1)}MB`,
 	);
 	const wasmBuffer = brotliDecompressSync(wasmCompressedBuffer);
-	console.log(
+	serverLogger.debug(
 		"wasmBuffer",
 		`${(wasmBuffer.length / 1024 / 1024).toFixed(1)}MB`,
 	);
@@ -38,7 +39,7 @@ export const loadWasm = async () => {
 	);
 
 	go.run(instance);
-	console.log("WASM instanciated");
+	serverLogger.debug("WASM instanciated");
 	current.instanciated = true;
 	return {
 		render: (options: RenderOptions) => {
