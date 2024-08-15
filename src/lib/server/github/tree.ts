@@ -24,6 +24,7 @@ export const fetchGithubTree = async (
 	} catch (error) {
 		// Return cache
 		if (!isErrorHasStatus(error)) throw error;
+		if (error.status === 404) throw Error(`No repo found at ${owner}/${repo}`);
 		if (error.status !== 304) throw error;
 		if (cached === null) throw Error("No cache but 304");
 		return cached.data;
