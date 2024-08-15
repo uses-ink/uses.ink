@@ -47,14 +47,17 @@ export const Footer = ({
 					</Tooltip>
 				</TooltipProvider>
 				{auto && (
-					<a
-						href="https://uses.ink/features.md#auto-generated-readme"
-						className="whitespace-nowrap !text-muted-foreground not-prose"
-					>
-						<p className="whitespace-nowrap !text-muted-foreground">
-							Automatically generated
-						</p>
-					</a>
+					<>
+						<p className="whitespace-nowrap !text-muted-foreground">·</p>
+						<a
+							href="https://uses.ink/features.md#auto-generated-readme"
+							className="whitespace-nowrap !text-muted-foreground not-prose"
+						>
+							<p className="whitespace-nowrap !text-muted-foreground">
+								Automatically generated
+							</p>
+						</a>
+					</>
 				)}
 			</div>
 		</div>
