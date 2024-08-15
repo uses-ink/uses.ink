@@ -1,3 +1,26 @@
+## v0.5.2 (2024-08-15)
+
+### Feat
+
+- implement caching for smaller portions of the rendering
+
+### Fix
+
+- **deps**: update dependency tailwind-merge to v2.5.2 (#48)
+- **deps**: update dependency ts-pattern to v5.3.1 (#42)
+- **deps**: update dependency tailwind-merge to v2.5.2 (#43)
+- **deps**: update shiki monorepo to v1.13.0 (#47)
+- add separator for auto-generated label
+- nicer error message for repo not found in auto-generated readme
+- auto-generated readme should generate correctly
+- **deps**: update dependency tailwind-merge to v2.5.0 (#41)
+- add default repo in page name
+- **deps**: update dependency lucide-react to ^0.427.0 (#39)
+
+### Refactor
+
+- move d2.wasm.br out of the public directory because this is used on the server
+
 ## v0.5.1 (2024-08-09)
 
 ### Feat
