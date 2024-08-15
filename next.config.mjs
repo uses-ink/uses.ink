@@ -11,7 +11,6 @@ const nextConfig = {
 	experimental: {
 		serverComponentsExternalPackages: [
 			"@myriaddreamin/typst-ts-node-compiler",
-			"global-jsdom",
 			"pikchr-wasm",
 		],
 	},
