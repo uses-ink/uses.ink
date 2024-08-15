@@ -56,7 +56,7 @@ export const getRepoRequest = (): {
 			owner: owner,
 			repo: repo,
 			ref: ref,
-			path: folder || undefined,
+			path: decodeURIComponent(folder) || undefined,
 		},
 		host: host ?? undefined,
 		url,

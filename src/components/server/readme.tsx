@@ -3,6 +3,7 @@ import { RepoDevTools } from "./repo";
 import type { RepoRequest } from "@/lib/types";
 import type { GithubTree } from "@/lib/server/github/tree";
 import Article from "./article";
+import React from "react";
 
 const Readme = ({
 	repoRequest,
@@ -17,7 +18,7 @@ const Readme = ({
 		{IS_DEV && SHOW_DEV_TOOLS && repoRequest !== null && (
 			<RepoDevTools {...repoRequest} />
 		)}
-		<h1 className="text-xl font-bold">
+		<h1 className="text-xl font-bold flex flex-wrap gap-y-4 gap-x-1">
 			<a
 				href={`https://github.com/${repoRequest.owner}`}
 				target="_blank"
@@ -42,12 +43,23 @@ const Readme = ({
 			>
 				{repoRequest.repo}
 			</a>
-			{repoRequest.path && (
-				<>
+			{repoRequest.path?.split("/").map((part, index, parts) => (
+				<React.Fragment key={part}>
 					<span className="text-muted-foreground mx-1">/</span>
-					<span>{repoRequest.path}</span>
-				</>
-			)}
+					{index === parts.length - 1 ? (
+						<span className="font-bold">{part}</span>
+					) : (
+						<a
+							href={`/${repoRequest.repo ?? DEFAULT_REPO}${
+								repoRequest.ref ? `@${repoRequest.ref}` : ""
+							}/${parts.slice(0, index + 1).join("/")}`}
+							className="no-underline font-bold hover:underline"
+						>
+							{part}
+						</a>
+					)}
+				</React.Fragment>
+			))}
 		</h1>
 		<ul className="list-disc pl-6">
 			{filteredTree.length > 0 ? (

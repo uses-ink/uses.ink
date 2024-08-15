@@ -20,11 +20,13 @@ const AutoReadme = async ({
 	});
 	// Filter markdown files in current directory
 	const filteredTree = tree.tree.filter((file) => {
-		const path = repoRequest.path ?? "";
+		const path = repoRequest.path ?? ".";
 		const isFile = file.type === "blob";
+		const isDirectory = file.type === "tree";
 		const isMarkdown = file.path?.endsWith(".md");
-		const isCurrentDir = dirname(file.path ?? "") === path;
-		return isFile && isMarkdown && isCurrentDir;
+
+		const isCurrentDir = dirname(file.path ?? ".") === path;
+		return ((isFile && isMarkdown) || isDirectory) && isCurrentDir;
 	});
 	serverLogger.debug({ filteredTree });
 	return (

@@ -9,7 +9,7 @@ author: cstef
 
 ## Auto-Generated README
 
-In case you don't have a `README.md` file at the root of the current directory, `uses.ink` will generate one for you. The README will contain a list of all the markdown files in the current directory. 
+In case you don't have a `README.md` file at the root of the current directory, `uses.ink` will generate one for you. The README will contain a list of all the markdown files and directories in the current path. 
 
 You can see an example of this at [`cestef.uses.ink/blog/posts`](https://cestef.uses.ink/blog/posts)
 
