@@ -162,7 +162,8 @@ export default function Post({
 				</header>
 			)}
 
-			<SearchableContent ContentComponent={Layout} contentProps={{}} />
+			{/* <SearchableContent ContentComponent={Layout} contentProps={{}} /> */}
+			<Layout />
 
 			<div className="fixed sm:bottom-8 sm:right-8 bottom-4 right-4">
 				<ChevronUp
