@@ -1,4 +1,4 @@
-import { GITHUB_CACHE_TTL } from "@/lib/constants";
+import { DEFAULT_REF, GITHUB_CACHE_TTL } from "@/lib/constants";
 import type { GitHubContent, GitHubRequest } from "@/lib/types";
 import type { OctokitResponse } from "@octokit/types";
 import { type CacheType, getCache } from ".";
@@ -50,6 +50,6 @@ export const getGithubKey = (
 	type: CacheType,
 ): string => {
 	const { owner, path, repo, ref } = request;
-	const key = `${owner}/${repo}/${path}/${ref}@${type}`;
+	const key = `${owner}/${repo}/${path}/${ref ?? DEFAULT_REF}/${type}`;
 	return key;
 };

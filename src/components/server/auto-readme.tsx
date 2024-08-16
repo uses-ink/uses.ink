@@ -1,5 +1,5 @@
 import type { RepoRequest } from "@/lib/types";
-import { DEFAULT_REPO } from "@/lib/constants";
+import { DEFAULT_REF, DEFAULT_REPO } from "@/lib/constants";
 import { fetchGithubTree } from "@/lib/server/github/tree";
 import { dirname } from "node:path";
 import Readme from "./readme";
@@ -18,7 +18,7 @@ const AutoReadme = async ({
 		owner: owner!,
 		repo: repo ?? DEFAULT_REPO,
 		path: path ?? "",
-		ref: ref ?? "HEAD",
+		ref: ref ?? DEFAULT_REF,
 	}).catch((error) => {
 		serverLogger.error(error);
 		return null;

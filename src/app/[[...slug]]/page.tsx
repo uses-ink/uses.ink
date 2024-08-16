@@ -3,6 +3,7 @@ import Article from "@/components/server/article";
 import { RepoDevTools } from "@/components/server/repo";
 import { getRepoRequest } from "@/lib/server/repo-request";
 import {
+	DEFAULT_REF,
 	DEFAULT_REPO,
 	EXTENSIONS,
 	IS_DEV,
@@ -39,7 +40,7 @@ const Page: NextPage = async () => {
 			? await fetchData({
 					...repoRequest,
 					repo: repoRequest.repo ?? userConfig?.defaultRepo ?? DEFAULT_REPO,
-					ref: repoRequest.ref ?? userConfig?.defaultBranch ?? "HEAD",
+					ref: repoRequest.ref ?? userConfig?.defaultBranch ?? DEFAULT_REF,
 					path: repoRequest.path ?? "",
 				} as GitHubRequest)
 			: await fetchLocalData(repoRequest.path ?? "README.md");
@@ -57,7 +58,7 @@ const Page: NextPage = async () => {
 					const { owner, repo, path, ref } = repoRequest;
 					const dir = dirname(path ?? "");
 					const assetPath = join(dir, url);
-					return `https://raw.githubusercontent.com/${owner}/${repo ?? DEFAULT_REPO}/${ref ?? "HEAD"}/${assetPath}`;
+					return `https://raw.githubusercontent.com/${owner}/${repo ?? DEFAULT_REPO}/${ref ?? DEFAULT_REF}/${assetPath}`;
 				}
 				return url;
 			},

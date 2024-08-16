@@ -1,9 +1,9 @@
 export const DEFAULT_REPO = "blog";
-export const DEFAULT_BRANCH = "main";
+export const DEFAULT_REF = "HEAD";
 
 export const EXTENSIONS = ["md", "markdown"];
 
-export const README_FILES = ["README", "index"].reduce(
+export const README_FILES = ["README", "index", "readme", "INDEX"].reduce(
 	// biome-ignore lint/performance/noAccumulatingSpread: <explanation>
 	(acc, file) => [...acc, ...EXTENSIONS.map((ext) => `${file}.${ext}`)],
 	[] as string[],

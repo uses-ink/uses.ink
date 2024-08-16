@@ -2,6 +2,7 @@ import type { GitHubContent, GitHubRequest } from "@/lib/types";
 import { getGitHubCache, setGitHubCache } from "../cache";
 import { getOctokit } from "../octokit";
 import { isErrorHasStatus } from "../utils";
+import { DEFAULT_REF } from "@/lib/constants";
 
 export const fetchGitHubContent = async (
 	request: GitHubRequest,
@@ -10,7 +11,7 @@ export const fetchGitHubContent = async (
 	const cached = await getGitHubCache(request, "content");
 	try {
 		const response = await getOctokit().rest.repos.getContent({
-			...{ owner, path, repo, ref: request.ref ?? "HEAD" },
+			...{ owner, path, repo, ref: request.ref ?? DEFAULT_REF },
 			headers: { "If-None-Match": cached?.headers.etag },
 			mediaType: { format: "json" },
 		});
