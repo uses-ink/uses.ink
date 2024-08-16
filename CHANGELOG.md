@@ -1,3 +1,16 @@
+## v0.5.3 (2024-08-17)
+
+### Fix
+
+- try all the readme patterns
+- weird list layout on firefox
+- rework error handling for page not found
+
+### Refactor
+
+- fetch the tree instead of trying each readme
+- remove search functionality
+
 ## v0.5.2 (2024-08-15)
 
 ### Feat
