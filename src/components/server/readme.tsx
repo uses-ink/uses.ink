@@ -64,15 +64,17 @@ const Readme = ({
 		<ul className="list-disc pl-6">
 			{filteredTree.length > 0 ? (
 				filteredTree.map((file) => (
-					<li key={file.path}>
-						<a
-							href={`/${repoRequest.repo ?? DEFAULT_REPO}${
-								repoRequest.ref ? `@${repoRequest.ref}` : ""
-							}/${file.path}`}
-						>
-							<h2>{file.path?.replace(`${path}/`, "")}</h2>
-						</a>
-					</li>
+					<h2 key={file.path}>
+						<li>
+							<a
+								href={`/${repoRequest.repo ?? DEFAULT_REPO}${
+									repoRequest.ref ? `@${repoRequest.ref}` : ""
+								}/${file.path}`}
+							>
+								{file.path?.replace(`${path}/`, "")}
+							</a>
+						</li>
+					</h2>
 				))
 			) : (
 				<li>No markdown files found in this directory</li>
