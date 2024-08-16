@@ -35,7 +35,7 @@
     "hast-util-to-text": "^4.0.2",
     "ioredis": "^5.4.1",
     "katex": "^0.16.11",
-    "lucide-react": "^0.427.0",
+    "lucide-react": "^0.428.0",
     "mark.js": "^8.11.1",
     "mdast-util-to-string": "^4.0.0",
     "next": "14.2.5",
