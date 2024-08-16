@@ -4,6 +4,8 @@ import { fetchGithubTree } from "@/lib/server/github/tree";
 import { dirname } from "node:path";
 import Readme from "./readme";
 import { serverLogger } from "@/lib/server/logger";
+import ErrorPage from "@/app/[[...slug]]/error";
+import GetStartedPage from "./get-started";
 
 const AutoReadme = async ({
 	repoRequest,
@@ -17,7 +19,14 @@ const AutoReadme = async ({
 		repo: repo ?? DEFAULT_REPO,
 		path: path ?? "",
 		ref: ref ?? "HEAD",
+	}).catch((error) => {
+		serverLogger.error(error);
+		return null;
 	});
+
+	if (!tree) {
+		return <GetStartedPage {...{ repoRequest }} />;
+	}
 	// Filter markdown files in current directory
 	const filteredTree = tree.tree.filter((file) => {
 		const path = repoRequest.path ?? ".";
