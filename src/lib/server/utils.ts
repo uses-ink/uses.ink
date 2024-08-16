@@ -3,6 +3,7 @@ import { capitalizeFileName } from "../client/utils";
 import { DEFAULT_REPO, README_FILES } from "../constants";
 import type { CommitResponse, MetaSchema } from "../types";
 import type { RepoRequest } from "../types";
+import { basename } from "node:path";
 
 export const isErrorHasStatus = (
 	raw: unknown,
@@ -45,9 +46,7 @@ export const resolveMetadata = (
 		meta.title ??
 		// resolveTitle(Content) ??
 		(filename
-			? README_FILES.map((e) => e.toLowerCase()).includes(
-					filename.toLowerCase(),
-				)
+			? README_FILES.includes(basename(filename.toLowerCase()))
 				? `${request.owner}/${request.repo ?? DEFAULT_REPO}`
 				: capitalizeFileName(filename)
 			: `${request.owner}/${request.repo ?? DEFAULT_REPO}`);

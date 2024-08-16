@@ -1,6 +1,6 @@
 import type { RepoRequest } from "@/lib/types";
 import { DEFAULT_REF, DEFAULT_REPO } from "@/lib/constants";
-import { fetchGithubTree } from "@/lib/server/github/tree";
+import { fetchGithubTree, type GithubTree } from "@/lib/server/github/tree";
 import { dirname } from "node:path";
 import Readme from "./readme";
 import { serverLogger } from "@/lib/server/logger";
@@ -9,27 +9,17 @@ import GetStartedPage from "./get-started";
 
 const AutoReadme = async ({
 	repoRequest,
+	tree,
 }: {
 	repoRequest: RepoRequest;
+	tree?: GithubTree;
 }) => {
-	const { owner, repo, ref, path } = repoRequest;
-	const tree = await fetchGithubTree({
-		// biome-ignore lint/style/noNonNullAssertion: this has been checked above
-		owner: owner!,
-		repo: repo ?? DEFAULT_REPO,
-		path: path ?? "",
-		ref: ref ?? DEFAULT_REF,
-	}).catch((error) => {
-		serverLogger.error(error);
-		return null;
-	});
-
 	if (!tree) {
 		return <GetStartedPage {...{ repoRequest }} />;
 	}
 	// Filter markdown files in current directory
+	const path = repoRequest.path?.trim() || ".";
 	const filteredTree = tree.tree.filter((file) => {
-		const path = repoRequest.path ?? ".";
 		const isFile = file.type === "blob";
 		const isDirectory = file.type === "tree";
 		const isMarkdown = file.path?.endsWith(".md");

@@ -4,6 +4,7 @@ import { getGitHubCache, setGitHubCache } from "../cache";
 import { getOctokit } from "../octokit";
 import { isErrorHasStatus } from "../utils";
 import { DEFAULT_REF } from "@/lib/constants";
+import { FetchError } from "@/lib/errors";
 
 export type GithubTree =
 	operations["git/get-tree"]["responses"]["200"]["content"]["application/json"];
@@ -25,7 +26,7 @@ export const fetchGithubTree = async (
 	} catch (error) {
 		// Return cache
 		if (!isErrorHasStatus(error)) throw error;
-		if (error.status === 404) throw Error(`No repo found at ${owner}/${repo}`);
+		if (error.status === 404) throw new FetchError("NOT_FOUND", 404);
 		if (error.status !== 304) throw error;
 		if (cached === null) throw Error("No cache but 304");
 		return cached.data;

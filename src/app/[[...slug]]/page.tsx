@@ -25,24 +25,32 @@ import ErrorPage from "./error";
 import AutoReadme from "@/components/server/auto-readme";
 import { serverLogger } from "@/lib/server/logger";
 import { resolveMetadata } from "@/lib/server/utils";
+import { fetchGithubTree } from "@/lib/server/github/tree";
 
 const Page: NextPage = async () => {
 	const { req: repoRequest, url, host } = getRepoRequest();
 	serverLogger.info({ repoRequest, url, host });
 
 	const isRemote = !!repoRequest.owner;
-
+	let tree = undefined;
 	try {
 		const userConfig = isRemote
 			? await fetchUserConfig(repoRequest.owner as string)
 			: undefined;
+		const githubRequest = {
+			...repoRequest,
+			repo: repoRequest.repo ?? userConfig?.defaultRepo ?? DEFAULT_REPO,
+			ref: repoRequest.ref ?? userConfig?.defaultBranch ?? DEFAULT_REF,
+			path: repoRequest.path ?? "",
+		} as GitHubRequest;
+		tree = isRemote ? await fetchGithubTree(githubRequest) : undefined;
+
 		const { content, lastCommit, fileName } = isRemote
-			? await fetchData({
-					...repoRequest,
-					repo: repoRequest.repo ?? userConfig?.defaultRepo ?? DEFAULT_REPO,
-					ref: repoRequest.ref ?? userConfig?.defaultBranch ?? DEFAULT_REF,
-					path: repoRequest.path ?? "",
-				} as GitHubRequest)
+			? await fetchData(
+					githubRequest,
+					// biome-ignore lint/style/noNonNullAssertion: This is a valid check
+					tree!,
+				)
 			: await fetchLocalData(repoRequest.path ?? "README.md");
 
 		const extension = fileName.split(".").pop() ?? "md";
@@ -52,6 +60,7 @@ const Page: NextPage = async () => {
 				<ErrorPage repoData={repoRequest} error="File type not supported" />
 			);
 		}
+
 		const urlResolvers = {
 			asset: (url: string) => {
 				if (repoRequest.owner) {
@@ -146,9 +155,11 @@ const Page: NextPage = async () => {
 				!repoRequest.path ||
 				!EXTENSIONS.includes(repoRequest.path.split(".").pop() ?? "");
 			serverLogger.debug({ isReadmeRequest });
-			if (error.name === "NOT_FOUND" && isReadmeRequest && isRemote) {
-				// Generate a readme from the current directory
-				return <AutoReadme repoRequest={repoRequest} />;
+			if (error.name === "NOT_FOUND") {
+				if (isReadmeRequest && isRemote)
+					// Generate a readme from the current directory
+					return <AutoReadme repoRequest={repoRequest} tree={tree} />;
+				return <ErrorPage repoData={repoRequest} error="Not found" />;
 			}
 			serverLogger.error({ error, where: "Page" });
 			return <ErrorPage repoData={repoRequest} error={error.message} />;

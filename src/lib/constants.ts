@@ -3,7 +3,7 @@ export const DEFAULT_REF = "HEAD";
 
 export const EXTENSIONS = ["md", "markdown"];
 
-export const README_FILES = ["README", "index", "readme", "INDEX"].reduce(
+export const README_FILES = ["README", "index"].reduce(
 	// biome-ignore lint/performance/noAccumulatingSpread: <explanation>
 	(acc, file) => [...acc, ...EXTENSIONS.map((ext) => `${file}.${ext}`)],
 	[] as string[],

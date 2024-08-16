@@ -1,6 +1,7 @@
 "use client"; // Error components must be Client Components
 
 import { clientLogger } from "@/lib/client/logger";
+import { DEFAULT_REF, DEFAULT_REPO } from "@/lib/constants";
 import type { RepoRequest } from "@/lib/types";
 import { useEffect } from "react";
 
@@ -35,7 +36,7 @@ const ErrorPage = ({
 					<p className="text-2xl dark:text-gray-400 text-gray-600">
 						{repoData?.owner ? (
 							<a
-								href={`https://github.com/${repoData.owner}/${repoData.repo}/tree/${repoData.ref}/${repoData.path}`}
+								href={`https://github.com/${repoData.owner}/${repoData.repo ?? DEFAULT_REPO}/tree/${repoData.ref ?? DEFAULT_REF}/${repoData.path ?? ""}`}
 								target="_blank"
 								rel="noreferrer"
 							>

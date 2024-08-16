@@ -15,9 +15,11 @@ import { isErrorHasStatus } from "./utils";
 import { FetchError } from "../errors";
 import { serverLogger } from "./logger";
 import type { z } from "zod";
+import type { GithubTree } from "./github/tree";
 
 export const fetchData = async (
 	request: GitHubRequest,
+	tree: GithubTree,
 ): Promise<DataResponse> => {
 	try {
 		const { content, lastCommit, fileName } = await ([
@@ -25,7 +27,7 @@ export const fetchData = async (
 			"json",
 		].includes(request.path.split(".").pop() ?? "")
 			? fetchPost
-			: fetchReadme)(request);
+			: fetchReadme)(request, tree);
 
 		return { content, lastCommit, fileName };
 	} catch (error: any) {
