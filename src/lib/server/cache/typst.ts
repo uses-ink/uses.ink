@@ -1,7 +1,7 @@
 import { RENDER_CACHE_TTL } from "@/lib/constants";
-import { getCache } from ".";
+import { getCache, hashObject } from ".";
 import { serverLogger } from "../logger";
-import crypto from "node:crypto";
+import { pack } from "msgpackr";
 
 export type TypstContent = {
 	code: string;
@@ -38,7 +38,7 @@ export const setTypstCache = async (
 	const cache = await getCache();
 	if (cache === null) return;
 	const key = getTypstKey(content);
-	const toSet = Buffer.from(JSON.stringify(rendered)).toString("base64");
+	const toSet = pack(rendered);
 	try {
 		await cache.set(key, toSet, "EX", RENDER_CACHE_TTL);
 	} catch (error) {
@@ -46,8 +46,5 @@ export const setTypstCache = async (
 	}
 };
 
-export const getTypstKey = (content: TypstContent): string => {
-	const hash = crypto.createHash("sha256");
-	hash.update(content.code);
-	return `typst/${hash.digest("hex")}/${content.displayMode}`;
-};
+export const getTypstKey = (content: TypstContent): string =>
+	`typst/${hashObject(content)}`;

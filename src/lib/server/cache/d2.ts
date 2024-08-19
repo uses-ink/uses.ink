@@ -1,10 +1,10 @@
 import { RENDER_CACHE_TTL } from "@/lib/constants";
-import { getCache } from ".";
+import { getCache, hashObject } from ".";
 import { serverLogger } from "../logger";
-import crypto from "node:crypto";
-import type { D2Config } from "../mdx/d2/config";
-import type { DiagramAttributes } from "../mdx/d2/attributes";
 import type { D2RenderResult } from "../mdx/d2";
+import type { DiagramAttributes } from "../mdx/d2/attributes";
+import type { D2Config } from "../mdx/d2/config";
+import { pack } from "msgpackr";
 
 export type D2Content = {
 	code: string;
@@ -42,7 +42,7 @@ export const setD2Cache = async (
 	const cache = await getCache();
 	if (cache === null) return;
 	const key = getD2Key(content);
-	const toSet = Buffer.from(JSON.stringify(rendered)).toString("base64");
+	const toSet = pack(rendered);
 	try {
 		await cache.set(key, toSet, "EX", RENDER_CACHE_TTL);
 	} catch (error) {
@@ -50,8 +50,5 @@ export const setD2Cache = async (
 	}
 };
 
-export const getD2Key = (content: D2Content): string => {
-	const hash = crypto.createHash("sha256");
-	hash.update(JSON.stringify(content));
-	return `d2/${hash.digest("hex")}`;
-};
+export const getD2Key = (content: D2Content): string =>
+	`d2/${hashObject(content)}`;

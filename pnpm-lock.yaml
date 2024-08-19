@@ -25,6 +25,9 @@ importers:
       '@myriaddreamin/typst-ts-node-compiler':
         specifier: 0.5.0-rc6
         version: 0.5.0-rc6
+      '@node-rs/xxhash':
+        specifier: ^1.7.3
+        version: 1.7.3
       '@octokit/openapi-types':
         specifier: ^22.2.0
         version: 22.2.0
@@ -94,6 +97,9 @@ importers:
       mdast-util-to-string:
         specifier: ^4.0.0
         version: 4.0.0
+      msgpackr:
+        specifier: ^1.11.0
+        version: 1.11.0
       next:
         specifier: 14.2.5
         version: 14.2.5(@babel/core@7.24.9)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -924,6 +930,15 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@emnapi/core@1.2.0':
+    resolution: {integrity: sha512-E7Vgw78I93we4ZWdYCb4DGAwRROGkMIXk7/y87UmANR+J6qsWusmC3gLt0H+O0KOt5e6O38U8oJamgbudrES/w==}
+
+  '@emnapi/runtime@1.2.0':
+    resolution: {integrity: sha512-bV21/9LQmcQeCPEg3BDFtvwL6cwiTMksYNWQQ4KOxCZikEGalWtenoZ0wCiukJINlGCIi2KXx01g4FoH/LxpzQ==}
+
+  '@emnapi/wasi-threads@1.0.1':
+    resolution: {integrity: sha512-iIBu7mwkq4UQGeMEM8bLwNK962nXdhodeScX4slfQnRhEMMzvYivHhutCIk8uojvmASXXPC2WNEjwxFWk72Oqw==}
+
   '@floating-ui/core@1.6.4':
     resolution: {integrity: sha512-a4IowK4QkXl4SCWTGUR0INAfEOX3wtsYw3rKK5InQEHMGObkR8Xk44qYQD9P4r6HHw0iIfK6GUKECmY8sTkqRA==}
 
@@ -970,6 +985,36 @@ packages:
 
   '@mdx-js/mdx@3.0.1':
     resolution: {integrity: sha512-eIQ4QTrOWyL3LWEe/bu6Taqzq2HQvHcyTMaOrI95P2/LmJE7AsfPfgJGuFLPVqBUE1BC1rik3VIhU+s9u72arA==}
+
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
+    resolution: {integrity: sha512-QZHtlVgbAdy2zAqNA9Gu1UpIuI8Xvsd1v8ic6B2pZmeFnFcMWiPLfWXh7TVw4eGEZ/C9TH281KwhVoeQUKbyjw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.3':
+    resolution: {integrity: sha512-mdzd3AVzYKuUmiWOQ8GNhl64/IoFGol569zNRdkLReh6LRLHOXxU4U8eq0JwaD8iFHdVGqSy4IjFL4reoWCDFw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.3':
+    resolution: {integrity: sha512-YxQL+ax0XqBJDZiKimS2XQaf+2wDGVa1enVRGzEvLLVFeqa5kx2bWbtcSXgsxjQB7nRqqIGFIcLteF/sHeVtQg==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.3':
+    resolution: {integrity: sha512-fg0uy/dG/nZEXfYilKoRe7yALaNmHoYeIoJuJ7KJ+YyU2bvY8vPv27f7UKhGRpY6euFYqEVhxCFZgAUNQBM3nw==}
+    cpu: [arm]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.3':
+    resolution: {integrity: sha512-cvwNfbP07pKUfq1uH+S6KJ7dT9K8WOE4ZiAcsrSes+UY55E/0jLYc+vq+DO7jlmqRb5zAggExKm0H7O/CBaesg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
+    resolution: {integrity: sha512-x0fWaQtYp4E6sktbsdAqnehxDgEc/VwM7uLsRCYWaiGu0ykYdZPiS8zCWdnjHwyiumousxfBm4SO31eXqwEZhQ==}
+    cpu: [x64]
+    os: [win32]
 
   '@myriaddreamin/typst-ts-node-compiler-android-arm-eabi@0.5.0-rc6':
     resolution: {integrity: sha512-iRIHbIzDt2sCPCYcOC57ayGFh6jUpibKxoQeoWCd0OlPu0fFSCVs2GuLCFb6BswQoEtgWNF2nVTUpPalmZ0DQQ==}
@@ -1041,6 +1086,9 @@ packages:
     resolution: {integrity: sha512-GE4j5dizqSBzmRCMgVQJp4Nq75ynPeYLm8cBwM8JYzArN8Hw6vu1gv8qg3zX+ls6zelSDxjUsFHKSnXUS9untg==}
     engines: {node: '>= 10'}
 
+  '@napi-rs/wasm-runtime@0.2.4':
+    resolution: {integrity: sha512-9zESzOO5aDByvhIAsOy9TbpZ0Ur2AJbUI7UT73kcUTS2mxAMHOBaa1st/jAymNoCtvrit99kkzT1FZuXVcgfIQ==}
+
   '@next/env@14.2.5':
     resolution: {integrity: sha512-/zZGkrTOsraVfYjGP8uM0p6r0BDT6xWpkjdVbcz66PJVSpwXX3yNiRycxAuDfBKGWBrZBXRuK/YVlkNgxHGwmA==}
 
@@ -1097,6 +1145,93 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@node-rs/xxhash-android-arm-eabi@1.7.3':
+    resolution: {integrity: sha512-BQTZxzBwmQg23G38X0ysjbw91cKXYBF/35j6bywEZjBvbn8QwT8rpmYVmNqQ28QtIO3/P6/LJqYm6rRbY6EzvA==}
+    engines: {node: '>= 12'}
+    cpu: [arm]
+    os: [android]
+
+  '@node-rs/xxhash-android-arm64@1.7.3':
+    resolution: {integrity: sha512-3ifUgdNzZTPHtg4FWaQ3XTlsIMN6GSWbcH6UUx4xe4hZyeZs865m/1Id5ur4HqFSTRCqq1J5JG2sf8vRb8zJxw==}
+    engines: {node: '>= 12'}
+    cpu: [arm64]
+    os: [android]
+
+  '@node-rs/xxhash-darwin-arm64@1.7.3':
+    resolution: {integrity: sha512-xsXlhRrMOvVnnMey3LuutVULv5UcHZiimdXv98V4wmTXCJqnP4lu+svB283NVY2Sgm0hTAq3IvIQ2vbFLkthzA==}
+    engines: {node: '>= 12'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@node-rs/xxhash-darwin-x64@1.7.3':
+    resolution: {integrity: sha512-b9UAR8JwiZIamfdlplGlArAb/O1FpZgIdOI2ujBXfsevkPWsl6bxgghsNzWCQiBjCAagSzfzwZ/YunJnNv+1dw==}
+    engines: {node: '>= 12'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@node-rs/xxhash-freebsd-x64@1.7.3':
+    resolution: {integrity: sha512-WPZIcF4k4reQF0w+JTKRhfVTO9Xh418uI1UDva7p+K8h/BxKd2z43BzAsnLgnnsH7JTOcGcsNeajHLoXeSYExw==}
+    engines: {node: '>= 12'}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@node-rs/xxhash-linux-arm-gnueabihf@1.7.3':
+    resolution: {integrity: sha512-XHZknt9apzBkGWp1Kz4Q9/GmgcTEj/VGnGcSJVuU+mvPqrOnFxi5wJzE4yw6w3Vl72jTMI0N2tx+jIHT0G7k4g==}
+    engines: {node: '>= 12'}
+    cpu: [arm]
+    os: [linux]
+
+  '@node-rs/xxhash-linux-arm64-gnu@1.7.3':
+    resolution: {integrity: sha512-jNYenmfb7r44o3ihuF3tG3YKqe5wn6jGp/4dkiF0e5s1A9Eyjx3tUn8NxAaONEJKE8qKtPns0Z4bnvQQDHa1Sw==}
+    engines: {node: '>= 12'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@node-rs/xxhash-linux-arm64-musl@1.7.3':
+    resolution: {integrity: sha512-sxEDrMdZDxYTo++VElmC34FZKSkNte7o2fCLq6falb9mx+1kMJa8QbF+Gk5wcVabjnbMgcLTiBez8LF0SRLSew==}
+    engines: {node: '>= 12'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@node-rs/xxhash-linux-x64-gnu@1.7.3':
+    resolution: {integrity: sha512-Aw61p+EiDEuVHYATEvsxb0kKJryiRUiKxjmDHH4s7Z6lpXcSyNQemGkbZUr+CX5+plnMXIIuzNinBbVQl2NRvQ==}
+    engines: {node: '>= 12'}
+    cpu: [x64]
+    os: [linux]
+
+  '@node-rs/xxhash-linux-x64-musl@1.7.3':
+    resolution: {integrity: sha512-cvolPw1xfUkHAObcaRDu8tRjm4/q2ei3AGGwkfoYKsCI3pAU0vkDqr9SIju3xjNom7XCKCkLkD1EYJ4dBdHdvQ==}
+    engines: {node: '>= 12'}
+    cpu: [x64]
+    os: [linux]
+
+  '@node-rs/xxhash-wasm32-wasi@1.7.3':
+    resolution: {integrity: sha512-xUvXOaGOyUcc892k+mrMA9hkUIdUu2KUuoYOx7FoWlOLvlo+nNGXUazTWfS9tjzypAW0jB80lA/uMwGZr9ncWA==}
+    engines: {node: '>=14.0.0'}
+    cpu: [wasm32]
+
+  '@node-rs/xxhash-win32-arm64-msvc@1.7.3':
+    resolution: {integrity: sha512-J90MJoVGoHNJj8RxYoAupAZijZ/Jui8szJ9KIHGPOD/g4jXlmNo4oBQMwbEWZDX0oYftNvRxA6MJWwet6mz6ow==}
+    engines: {node: '>= 12'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@node-rs/xxhash-win32-ia32-msvc@1.7.3':
+    resolution: {integrity: sha512-oaAkcgfHWUgrNGZzKXv+vOfs3xFxNwH4SAhETz40U+42XrgHx3m7aPoPrMiiTnWxiNOd2mIiioYUjh3QHwuktA==}
+    engines: {node: '>= 12'}
+    cpu: [ia32]
+    os: [win32]
+
+  '@node-rs/xxhash-win32-x64-msvc@1.7.3':
+    resolution: {integrity: sha512-53v0vgPzE3oogIQJzK7D7lzEapWQZrhI5+aNnIq18tYawixXUIyPLmx8U7S461i/kkqVF7IzQy4hbcW7NzzHxw==}
+    engines: {node: '>= 12'}
+    cpu: [x64]
+    os: [win32]
+
+  '@node-rs/xxhash@1.7.3':
+    resolution: {integrity: sha512-uK06Hw0hDxQcfKsCAYJlIirQHO74KfuGp9+/q+Pc1sBFITsA7+UOj4dM71jV9z59+qktNVmp/m9bEjZ8fRrWLQ==}
+    engines: {node: '>= 12'}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -1637,6 +1772,9 @@ packages:
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
     engines: {node: '>=10.13.0'}
 
+  '@tybys/wasm-util@0.9.0':
+    resolution: {integrity: sha512-6+7nlbMVX/PVDCwaIQ8nTOPveOcFLSt8GcXdx8hD0bt39uWxYT88uXzqTd4fTvqta7oeUJqudepapKNt2DYJFw==}
+
   '@types/acorn@4.0.6':
     resolution: {integrity: sha512-veQTnWP+1D/xbxVrPC3zHnCZRjSrKfhbMUlEA43iMZLu7EsnTtkJklIuwrCPbOi8YkvDQAiW05VQQFvvz9oieQ==}
 
@@ -1971,6 +2109,10 @@ packages:
   dequal@2.0.3:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
+
+  detect-libc@2.0.3:
+    resolution: {integrity: sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw==}
+    engines: {node: '>=8'}
 
   detect-node-es@1.1.0:
     resolution: {integrity: sha512-ypdmJU/TbBby2Dxibuv7ZLW3Bs1QEmM7nHjEANfohJLvE0XVujisn1qPJcZxg+qDucsr+bP6fLD1rPS3AhJ7EQ==}
@@ -2586,6 +2728,13 @@ packages:
   ms@2.1.2:
     resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
 
+  msgpackr-extract@3.0.3:
+    resolution: {integrity: sha512-P0efT1C9jIdVRefqjzOQ9Xml57zpOXnIuS+csaB4MdZbTdmGDLo8XhzBG1N7aO11gKDDkJvBLULeFTo46wwreA==}
+    hasBin: true
+
+  msgpackr@1.11.0:
+    resolution: {integrity: sha512-I8qXuuALqJe5laEBYoFykChhSXLikZmUhccjGsPuSJ/7uPip2TJ7lwdIQwWSAi0jGZDXv4WOP8Qg65QZRuXxXw==}
+
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
@@ -2628,6 +2777,10 @@ packages:
   node-emoji@2.1.3:
     resolution: {integrity: sha512-E2WEOVsgs7O16zsURJ/eH8BqhF029wGpEOnv7Urwdo2wmQanOACwJQh0devF9D9RhoZru0+9JXIS0dBXIAz+lA==}
     engines: {node: '>=18'}
+
+  node-gyp-build-optional-packages@5.2.2:
+    resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
+    hasBin: true
 
   node-releases@2.0.18:
     resolution: {integrity: sha512-d9VeXT4SJ7ZeOqGX6R5EM022wpL+eWPooLI+5UpWn2jCT1aosUQEhQP214x33Wkwx3JQMvIm+tIoVOdodFS40g==}
@@ -4149,6 +4302,22 @@ snapshots:
   '@biomejs/cli-win32-x64@1.8.3':
     optional: true
 
+  '@emnapi/core@1.2.0':
+    dependencies:
+      '@emnapi/wasi-threads': 1.0.1
+      tslib: 2.6.3
+    optional: true
+
+  '@emnapi/runtime@1.2.0':
+    dependencies:
+      tslib: 2.6.3
+    optional: true
+
+  '@emnapi/wasi-threads@1.0.1':
+    dependencies:
+      tslib: 2.6.3
+    optional: true
+
   '@floating-ui/core@1.6.4':
     dependencies:
       '@floating-ui/utils': 0.2.4
@@ -4227,6 +4396,24 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
+    optional: true
+
   '@myriaddreamin/typst-ts-node-compiler-android-arm-eabi@0.5.0-rc6':
     optional: true
 
@@ -4274,6 +4461,13 @@ snapshots:
       '@myriaddreamin/typst-ts-node-compiler-win32-arm64-msvc': 0.5.0-rc6
       '@myriaddreamin/typst-ts-node-compiler-win32-x64-msvc': 0.5.0-rc6
 
+  '@napi-rs/wasm-runtime@0.2.4':
+    dependencies:
+      '@emnapi/core': 1.2.0
+      '@emnapi/runtime': 1.2.0
+      '@tybys/wasm-util': 0.9.0
+    optional: true
+
   '@next/env@14.2.5': {}
 
   '@next/swc-darwin-arm64@14.2.5':
@@ -4302,6 +4496,67 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@14.2.5':
     optional: true
+
+  '@node-rs/xxhash-android-arm-eabi@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-android-arm64@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-darwin-arm64@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-darwin-x64@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-freebsd-x64@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-linux-arm-gnueabihf@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-linux-arm64-gnu@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-linux-arm64-musl@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-linux-x64-gnu@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-linux-x64-musl@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-wasm32-wasi@1.7.3':
+    dependencies:
+      '@napi-rs/wasm-runtime': 0.2.4
+    optional: true
+
+  '@node-rs/xxhash-win32-arm64-msvc@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-win32-ia32-msvc@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash-win32-x64-msvc@1.7.3':
+    optional: true
+
+  '@node-rs/xxhash@1.7.3':
+    optionalDependencies:
+      '@node-rs/xxhash-android-arm-eabi': 1.7.3
+      '@node-rs/xxhash-android-arm64': 1.7.3
+      '@node-rs/xxhash-darwin-arm64': 1.7.3
+      '@node-rs/xxhash-darwin-x64': 1.7.3
+      '@node-rs/xxhash-freebsd-x64': 1.7.3
+      '@node-rs/xxhash-linux-arm-gnueabihf': 1.7.3
+      '@node-rs/xxhash-linux-arm64-gnu': 1.7.3
+      '@node-rs/xxhash-linux-arm64-musl': 1.7.3
+      '@node-rs/xxhash-linux-x64-gnu': 1.7.3
+      '@node-rs/xxhash-linux-x64-musl': 1.7.3
+      '@node-rs/xxhash-wasm32-wasi': 1.7.3
+      '@node-rs/xxhash-win32-arm64-msvc': 1.7.3
+      '@node-rs/xxhash-win32-ia32-msvc': 1.7.3
+      '@node-rs/xxhash-win32-x64-msvc': 1.7.3
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -4886,6 +5141,11 @@ snapshots:
 
   '@trysound/sax@0.2.0': {}
 
+  '@tybys/wasm-util@0.9.0':
+    dependencies:
+      tslib: 2.6.3
+    optional: true
+
   '@types/acorn@4.0.6':
     dependencies:
       '@types/estree': 1.0.5
@@ -5183,6 +5443,9 @@ snapshots:
   denque@2.1.0: {}
 
   dequal@2.0.3: {}
+
+  detect-libc@2.0.3:
+    optional: true
 
   detect-node-es@1.1.0: {}
 
@@ -6158,6 +6421,22 @@ snapshots:
 
   ms@2.1.2: {}
 
+  msgpackr-extract@3.0.3:
+    dependencies:
+      node-gyp-build-optional-packages: 5.2.2
+    optionalDependencies:
+      '@msgpackr-extract/msgpackr-extract-darwin-arm64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-darwin-x64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-arm': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-arm64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.3
+    optional: true
+
+  msgpackr@1.11.0:
+    optionalDependencies:
+      msgpackr-extract: 3.0.3
+
   mz@2.7.0:
     dependencies:
       any-promise: 1.3.0
@@ -6209,6 +6488,11 @@ snapshots:
       char-regex: 1.0.2
       emojilib: 2.4.0
       skin-tone: 2.0.0
+
+  node-gyp-build-optional-packages@5.2.2:
+    dependencies:
+      detect-libc: 2.0.3
+    optional: true
 
   node-releases@2.0.18: {}
 

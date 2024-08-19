@@ -1,8 +1,9 @@
 import { RENDER_CACHE_TTL } from "@/lib/constants";
+import { xxh64 } from "@node-rs/xxhash";
 import { getCache } from ".";
 import { serverLogger } from "../logger";
-import crypto from "node:crypto";
 import type { CompileResult } from "../mdx";
+import { pack } from "msgpackr";
 
 export const getCompileCache = async (
 	content: string,
@@ -34,7 +35,7 @@ export const setCompileCache = async (
 	const cache = await getCache();
 	if (cache === null) return;
 	const key = getCompileKey(content);
-	const toSet = Buffer.from(JSON.stringify(compiled)).toString("base64");
+	const toSet = pack(compiled);
 	try {
 		await cache.set(key, toSet, "EX", RENDER_CACHE_TTL);
 	} catch (error) {
@@ -42,8 +43,5 @@ export const setCompileCache = async (
 	}
 };
 
-export const getCompileKey = (content: string): string => {
-	const hash = crypto.createHash("sha256");
-	hash.update(content);
-	return `compile/${hash.digest("hex")}`;
-};
+export const getCompileKey = (content: string): string =>
+	`compile/${xxh64(content).toString(36)}`;
