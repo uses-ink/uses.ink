@@ -88,7 +88,7 @@ This project uses a patched version of [`hast-util-sanitize@5.0.1`](patches/hast
 > [!NOTE]
 > This section is currently not relevant because the platform uses the `d2` CLI due to the poor performance of the wasm module. Documentation is kept for future reference. 
 
-This project uses [`d2`](https://d2lang.com) to render diagrams. The diagrams are rendered using WebAssembly on the server. The WebAssembly module comes from the [`d2wasm`](https://github.com/uses-ink/d2wasm) repository. The wasm module can be found in the [`public/wasm`](public/wasm/) directory.
+This project uses [`d2`](https://d2lang.com) to render diagrams. The diagrams are rendered using WebAssembly on the server. The module comes from the [`d2wasm`](https://github.com/uses-ink/d2wasm) repository. It can be found in the [`wasm`](wasm/) directory.
 
 To update the wasm module, run the following command:
 
