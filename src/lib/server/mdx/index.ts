@@ -39,7 +39,7 @@ import { IS_DEV } from "@/lib/constants";
 import rehypeCopy from "./copy";
 
 const DEBUG_TREE = false;
-const DISABLE_CACHE_DEV = true;
+const DISABLE_CACHE_DEV = false;
 
 const ALLOWED_NODES = ["mdxjsEsm", "mdxJsxFlowElement"];
 

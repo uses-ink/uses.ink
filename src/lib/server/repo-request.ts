@@ -11,8 +11,6 @@ export const getRepoRequest = (): {
 	const host = headersList.get("host");
 	// biome-ignore lint/style/noNonNullAssertion:  This is set in the middleware
 	const url = new URL(headersList.get("x-url")!);
-	serverLogger.debug("host", host);
-	serverLogger.debug("url", url);
 	const isLocalhost = host?.includes("localhost");
 	const parts = host?.split(".") ?? [];
 	let owner = undefined;

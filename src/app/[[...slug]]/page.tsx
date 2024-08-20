@@ -29,7 +29,13 @@ import { fetchGithubTree } from "@/lib/server/github/tree";
 
 const Page: NextPage = async () => {
 	const { req: repoRequest, url, host } = getRepoRequest();
-	serverLogger.info({ repoRequest, url, host });
+	serverLogger.info({
+		repoRequest: Object.fromEntries(
+			Object.entries(repoRequest).filter(([_, v]) => v),
+		),
+		url: url.toString(),
+		host,
+	});
 
 	const isRemote = !!repoRequest.owner;
 	let tree = undefined;

@@ -14,12 +14,18 @@ export const getCompileCache = async (
 		serverLogger.debug("cache is null");
 		return null;
 	}
+	const start = performance.now();
 	const key = getCompileKey(content);
-	serverLogger.debug({ key });
+	serverLogger.debug(
+		`getCompileKey took ${performance.now() - start}ms for ${content.length} bytes`,
+	);
 
 	try {
+		const start = performance.now();
 		const data = await cache.getBuffer(key);
-		serverLogger.debug(`cache hit for ${key}`);
+		serverLogger.debug(
+			`cache.getBuffer took ${performance.now() - start}ms for ${key}`,
+		);
 		return data ? unpack(data) : null;
 	} catch (error) {
 		return null;
