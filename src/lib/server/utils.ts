@@ -1,9 +1,16 @@
+import { basename, dirname, join } from "node:path";
 import type { z } from "zod";
 import { capitalizeFileName } from "../client/utils";
-import { DEFAULT_REPO, README_FILES } from "../constants";
-import type { CommitResponse, MetaSchema } from "../types";
-import type { RepoRequest } from "../types";
-import { basename } from "node:path";
+import { DEFAULT_REPO, EXTENSIONS, README_FILES } from "../constants";
+import type {
+	CommitResponse,
+	GitHubRequest,
+	MetaSchema,
+	RepoRequest,
+} from "../types";
+import type { GithubTree } from "./github/tree";
+import { serverLogger } from "./logger";
+import { FetchError } from "../errors";
 
 export const isErrorHasStatus = (
 	raw: unknown,
@@ -60,3 +67,51 @@ export const resolveMetadata = (
 		date,
 	};
 };
+
+export const validateRequestAgainstTree = (
+	request: GitHubRequest,
+	{ tree }: GithubTree,
+): string => {
+	const path = request.path.trim() || ".";
+	const filteredTree = filterTree(tree, path);
+
+	serverLogger.debug({ filteredTree: filteredTree.map((t) => t.path) });
+	if (isReadmeRequest(request)) {
+		const readme = filteredTree.find((file) =>
+			README_FILES.some(
+				(f) => basename(file.path ?? "").toLowerCase() === f.toLowerCase(),
+			),
+		);
+		if (!readme) {
+			throw new FetchError("NOT_FOUND_PREFETCH", 404);
+		}
+		return readme.path ?? join(path, "README.md");
+	}
+	const file = filteredTree.find(
+		(file) =>
+			basename(file.path ?? "").toLowerCase() ===
+			basename(request.path).toLowerCase(),
+	);
+	if (!file) {
+		throw new FetchError("NOT_FOUND_PREFETCH", 404);
+	}
+	return file.path ?? join(path, request.path);
+};
+
+export const filterTree = (
+	tree: GithubTree["tree"],
+	basePath: string,
+	extensions: string[] = EXTENSIONS,
+) =>
+	tree.filter((file) => {
+		const isFile = file.type === "blob";
+		const isFileType = extensions.some((ext) => file.path?.endsWith(`.${ext}`));
+
+		const isCurrentDir = dirname(file.path ?? ".") === basePath;
+		return isFile && isFileType && isCurrentDir;
+	});
+
+export const isReadmeRequest = (request: RepoRequest) =>
+	!request.path ||
+	request.path === "." ||
+	!EXTENSIONS.includes(request.path.split(".").pop() ?? "");

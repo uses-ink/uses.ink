@@ -6,30 +6,13 @@ import type { GitHubRequest } from "../types";
 import { fetchGithubLastCommit } from "./github/commit";
 import { fetchGitHubContent } from "./github/content";
 import type { GithubTree } from "./github/tree";
+import { filterTree } from "./utils";
 
-export const fetchReadme = async (request: GitHubRequest, tree: GithubTree) => {
-	const path = request.path.trim() || ".";
-	const filteredTree = tree.tree.filter((file) => {
-		const isFile = file.type === "blob";
-		const isMarkdown = file.path?.endsWith(".md");
-
-		const isCurrentDir = dirname(file.path ?? ".") === path;
-		return isFile && isMarkdown && isCurrentDir;
-	});
-	const readme = filteredTree.find((file) =>
-		README_FILES.some(
-			(f) => basename(file.path ?? "").toLowerCase() === f.toLowerCase(),
-		),
-	);
-
-	if (!readme) {
-		throw new FetchError("NOT_FOUND", 404);
-	}
-
-	const raw = await fetchGitHubContent({
-		...request,
-		path: readme.path ?? join(path, "README.md"),
-	});
+export const fetchReadme = async (
+	request: GitHubRequest,
+	{ tree }: GithubTree,
+) => {
+	const raw = await fetchGitHubContent(request);
 
 	// Exceptions
 	if (Array.isArray(raw)) throw Error("README should not be a dir");

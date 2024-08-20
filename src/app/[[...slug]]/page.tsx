@@ -28,7 +28,11 @@ import { ZodError } from "zod";
 import ErrorPage from "./error";
 import AutoReadme from "@/components/server/auto-readme";
 import { serverLogger } from "@/lib/server/logger";
-import { resolveMetadata } from "@/lib/server/utils";
+import {
+	isReadmeRequest,
+	resolveMetadata,
+	validateRequestAgainstTree,
+} from "@/lib/server/utils";
 import { fetchGithubTree } from "@/lib/server/github/tree";
 import { compileTypst } from "@/lib/server/typst";
 
@@ -55,7 +59,12 @@ const Page: NextPage = async () => {
 			path: repoRequest.path ?? "",
 		} as GitHubRequest;
 		tree = isRemote ? await fetchGithubTree(githubRequest) : undefined;
-
+		if (isRemote) {
+			// biome-ignore lint/style/noNonNullAssertion: This is a valid check
+			const validatedPath = validateRequestAgainstTree(githubRequest, tree!);
+			serverLogger.debug({ validated: validatedPath });
+			githubRequest.path = validatedPath;
+		}
 		const { content, lastCommit, fileName } = isRemote
 			? await fetchData(
 					githubRequest,
@@ -214,12 +223,8 @@ const Page: NextPage = async () => {
 		);
 	} catch (error) {
 		if (error instanceof FetchError) {
-			const isReadmeRequest =
-				!repoRequest.path ||
-				!EXTENSIONS.includes(repoRequest.path.split(".").pop() ?? "");
-			serverLogger.debug({ isReadmeRequest });
-			if (error.name === "NOT_FOUND") {
-				if (isReadmeRequest && isRemote)
+			if (error.name === "NOT_FOUND" || error.name === "NOT_FOUND_PREFETCH") {
+				if (isReadmeRequest(repoRequest) && isRemote)
 					// Generate a readme from the current directory
 					return <AutoReadme repoRequest={repoRequest} tree={tree} />;
 				return <ErrorPage repoData={repoRequest} error="Not found" />;

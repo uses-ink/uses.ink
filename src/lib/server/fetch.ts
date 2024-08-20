@@ -11,7 +11,7 @@ import {
 	type DataResponse,
 	type GitHubRequest,
 } from "../types";
-import { isErrorHasStatus } from "./utils";
+import { isErrorHasStatus, isReadmeRequest } from "./utils";
 import { FetchError } from "../errors";
 import { serverLogger } from "./logger";
 import type { z } from "zod";
@@ -22,10 +22,7 @@ export const fetchData = async (
 	tree: GithubTree,
 ): Promise<DataResponse> => {
 	try {
-		const { content, lastCommit, fileName } = await ([
-			...EXTENSIONS,
-			"json",
-		].includes(request.path.split(".").pop() ?? "")
+		const { content, lastCommit, fileName } = await (isReadmeRequest(request)
 			? fetchPost
 			: fetchReadme)(request, tree);
 

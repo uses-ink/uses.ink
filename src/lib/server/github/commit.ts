@@ -39,7 +39,7 @@ export const fetchGithubLastCommit = async (
 			mediaType: { format: "json" },
 		});
 		setGitHubCache(request, response, "commit");
-		serverLogger.debug({ commit: response.data });
+		// serverLogger.debug({ commit: response.data });
 		const date = response.data[0].commit.author?.date;
 		const author = {
 			name: response.data[0].commit.author?.name,
