@@ -1,7 +1,7 @@
 {
 	"version": "0.5.3",
-	
-    "pnpm": {
+
+	"pnpm": {
 		"patchedDependencies": {
 			"hast-util-sanitize@5.0.1": "patches/hast-util-sanitize@5.0.1.patch"
 		}
@@ -10,7 +10,9 @@
 	"scripts": {
 		"update-d2wasm": "./scripts/update-d2wasm.sh",
 		"clear-cache": "./scripts/clear-cache.sh",
-        "dev": "pnpm run --filter=web dev"
+		"dev": "pnpm run --filter=web dev",
+		"build": "pnpm run --filter=web build",
+		"start": "pnpm run --filter=web start"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.8.3"

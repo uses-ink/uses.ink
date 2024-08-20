@@ -20,6 +20,7 @@
 		"@uses.ink/render": "workspace:*",
 		"@uses.ink/types": "workspace:*",
 		"clsx": "^2.1.1",
+		"katex": "^0.16.11",
 		"lucide-react": "^0.428.0",
 		"mark.js": "^8.11.1",
 		"next": "14.2.5",
@@ -29,6 +30,7 @@
 		"react": "^18",
 		"react-dom": "^18",
 		"react-moment": "^1.1.3",
+		"rehype-callouts": "^1.0.3",
 		"tailwind-merge": "^2.4.0",
 		"zod": "^3.23.8"
 	},

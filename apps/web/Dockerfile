@@ -1,6 +1,6 @@
 # syntax=docker.io/docker/dockerfile:1.9-labs
-
 FROM node:20-alpine AS base
+
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -12,21 +12,15 @@ RUN d2 --version
 
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-
-# Install dependencies based on the preferred package manager
-COPY package.json pnpm-lock.yaml* ./
-COPY patches ./patches
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm i --frozen-lockfile
-
-
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --exclude=docker-entrypoint.sh --exclude=.env.production . .
+
+COPY . .
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm i --frozen-lockfile
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -35,7 +29,6 @@ RUN pnpm run build
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
-COPY docs ./docs
 
 ENV NODE_ENV=production
 
@@ -55,8 +48,8 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-COPY docker-entrypoint.sh .
-COPY .env.production .
+COPY apps/web/docker-entrypoint.sh .
+COPY apps/web/.env.production .
 
 RUN ["chmod", "755", "./docker-entrypoint.sh"]
 ENTRYPOINT ["./docker-entrypoint.sh"]
