@@ -4,7 +4,7 @@ import { serverLogger } from "../logger";
 import type { D2RenderResult } from "../mdx/d2";
 import type { DiagramAttributes } from "../mdx/d2/attributes";
 import type { D2Config } from "../mdx/d2/config";
-import { pack } from "msgpackr";
+import { pack, unpack } from "msgpackr";
 
 export type D2Content = {
 	code: string;
@@ -25,11 +25,9 @@ export const getD2Cache = async (
 	serverLogger.debug({ key });
 
 	try {
-		const data = await cache.get(key);
+		const data = await cache.getBuffer(key);
 		serverLogger.debug(`cache hit for ${key}`);
-		if (!data) return null;
-		const parsedData = Buffer.from(data, "base64").toString();
-		return JSON.parse(parsedData);
+		return data ? unpack(data) : null;
 	} catch (error) {
 		return null;
 	}
@@ -42,9 +40,8 @@ export const setD2Cache = async (
 	const cache = await getCache();
 	if (cache === null) return;
 	const key = getD2Key(content);
-	const toSet = pack(rendered);
 	try {
-		await cache.set(key, toSet, "EX", RENDER_CACHE_TTL);
+		await cache.set(key, pack(rendered), "EX", RENDER_CACHE_TTL);
 	} catch (error) {
 		serverLogger.error({ error, where: "setD2Cache" });
 	}

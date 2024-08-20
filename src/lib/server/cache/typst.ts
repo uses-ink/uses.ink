@@ -1,7 +1,7 @@
 import { RENDER_CACHE_TTL } from "@/lib/constants";
 import { getCache, hashObject } from ".";
 import { serverLogger } from "../logger";
-import { pack } from "msgpackr";
+import { pack, unpack } from "msgpackr";
 
 export type TypstContent = {
 	code: string;
@@ -21,11 +21,9 @@ export const getTypstCache = async (
 	serverLogger.debug({ key });
 
 	try {
-		const data = await cache.get(key);
+		const data = await cache.getBuffer(key);
 		serverLogger.debug(`cache hit for ${key}`);
-		if (!data) return null;
-		const parsedData = Buffer.from(data, "base64").toString();
-		return JSON.parse(parsedData);
+		return data ? unpack(data) : null;
 	} catch (error) {
 		return null;
 	}
@@ -38,9 +36,8 @@ export const setTypstCache = async (
 	const cache = await getCache();
 	if (cache === null) return;
 	const key = getTypstKey(content);
-	const toSet = pack(rendered);
 	try {
-		await cache.set(key, toSet, "EX", RENDER_CACHE_TTL);
+		await cache.set(key, pack(rendered), "EX", RENDER_CACHE_TTL);
 	} catch (error) {
 		serverLogger.error({ error, where: "setTypstCache" });
 	}

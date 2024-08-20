@@ -3,7 +3,7 @@ import type { GitHubContent, GitHubRequest } from "@/lib/types";
 import type { OctokitResponse } from "@octokit/types";
 import { type CacheType, getCache } from ".";
 import { serverLogger } from "../logger";
-import { pack } from "msgpackr";
+import { pack, unpack } from "msgpackr";
 
 export const getGitHubCache = async <R = GitHubContent>(
 	request: GitHubRequest,
@@ -19,12 +19,8 @@ export const getGitHubCache = async <R = GitHubContent>(
 	serverLogger.debug({ key });
 
 	try {
-		const data = await cache.get(key);
-		const parsedData = data
-			? JSON.parse(Buffer.from(data, "base64").toString())
-			: null;
-		serverLogger.debug(`cache hit for ${key}`);
-		return parsedData;
+		const data = await cache.getBuffer(key);
+		return data ? unpack(data) : null;
 	} catch (error) {
 		return null;
 	}
@@ -38,9 +34,8 @@ export const setGitHubCache = async <R = GitHubContent>(
 	const cache = await getCache();
 	if (cache === null) return;
 	const key = getGithubKey(request, type);
-	const toSet = pack(response);
 	try {
-		await cache.set(key, toSet, "EX", GITHUB_CACHE_TTL);
+		await cache.set(key, pack(response), "EX", GITHUB_CACHE_TTL);
 	} catch (error) {
 		serverLogger.error({ error, where: "setGitHubCache" });
 	}

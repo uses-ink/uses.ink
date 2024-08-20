@@ -3,7 +3,7 @@ import { xxh64 } from "@node-rs/xxhash";
 import { getCache } from ".";
 import { serverLogger } from "../logger";
 import type { CompileResult } from "../mdx";
-import { pack } from "msgpackr";
+import { pack, unpack } from "msgpackr";
 
 export const getCompileCache = async (
 	content: string,
@@ -18,11 +18,9 @@ export const getCompileCache = async (
 	serverLogger.debug({ key });
 
 	try {
-		const data = await cache.get(key);
+		const data = await cache.getBuffer(key);
 		serverLogger.debug(`cache hit for ${key}`);
-		if (!data) return null;
-		const parsedData = Buffer.from(data, "base64").toString();
-		return JSON.parse(parsedData);
+		return data ? unpack(data) : null;
 	} catch (error) {
 		return null;
 	}
@@ -35,9 +33,8 @@ export const setCompileCache = async (
 	const cache = await getCache();
 	if (cache === null) return;
 	const key = getCompileKey(content);
-	const toSet = pack(compiled);
 	try {
-		await cache.set(key, toSet, "EX", RENDER_CACHE_TTL);
+		await cache.set(key, pack(compiled), "EX", RENDER_CACHE_TTL);
 	} catch (error) {
 		serverLogger.error({ error, where: "setCompileCache" });
 	}
