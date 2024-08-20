@@ -1,6 +1,6 @@
 {
+	"name": "uses.ink",
 	"version": "0.5.3",
-
 	"pnpm": {
 		"patchedDependencies": {
 			"hast-util-sanitize@5.0.1": "patches/hast-util-sanitize@5.0.1.patch"

@@ -2,8 +2,8 @@ import { RENDER_CACHE_TTL } from "@uses.ink/constants";
 import { xxh64 } from "@node-rs/xxhash";
 import { getCache } from "..";
 import { serverLogger } from "@uses.ink/logger";
-import type { CompileResult } from "@uses.ink/render/mdx";
 import { pack, unpack } from "msgpackr";
+import type { CompileResult } from "@uses.ink/types";
 
 export const getCompileCache = async (
 	content: string,

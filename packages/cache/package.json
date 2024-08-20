@@ -2,11 +2,11 @@
 	"name": "@uses.ink/cache",
 	"private": true,
 	"main": "src/index.ts",
-    "exports": {
-        ".": {
-            "default": "./src/index.ts"
-        }
-    },
+	"exports": {
+		".": {
+			"default": "./src/index.ts"
+		}
+	},
 	"dependencies": {
 		"@node-rs/xxhash": "^1.7.3",
 		"@uses.ink/constants": "workspace:*",
@@ -16,7 +16,6 @@
 	},
 	"devDependencies": {
 		"@uses.ink/types": "workspace:*",
-		"@uses.ink/render": "workspace:*",
 		"@octokit/types": "^13.5.0"
 	}
 }

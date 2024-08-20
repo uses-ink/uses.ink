@@ -7,6 +7,13 @@ import {
 } from "@shikijs/transformers";
 
 // import rehypeKatex from "rehype-katex";
+import { serverLogger } from "@uses.ink/logger";
+import {
+	type CompileResult,
+	type ConfigSchema,
+	type Meta,
+	MetaSchema,
+} from "@uses.ink/types";
 import parseMatter from "gray-matter";
 import rehypeCallouts from "rehype-callouts";
 import rehypeKatex from "rehype-katex";
@@ -23,8 +30,6 @@ import remarkToc from "remark-toc";
 import { match } from "ts-pattern";
 import { inspect } from "unist-util-inspect";
 import type { z, ZodError } from "zod";
-import { type ConfigSchema, MetaSchema } from "@uses.ink/types";
-import { serverLogger } from "@uses.ink/logger";
 import rehypeMetaString from "./meta";
 import { remarkReadingTime } from "./read-time";
 import { getShiki } from "./shiki";
@@ -36,23 +41,18 @@ import { rehypeD2CLI } from "./d2";
 import { rehypePikchr } from "./pikchr";
 
 import {
-	IS_DEV,
-	DISABLE_CACHE_DEV,
 	ALLOWED_NODES,
 	DEBUG_TREE,
+	DISABLE_CACHE_DEV,
+	IS_DEV,
 } from "@uses.ink/constants";
 import rehypeCopy from "./copy";
-
-export type CompileResult = {
-	meta: z.infer<typeof MetaSchema>;
-	runnable: string;
-};
 
 export async function compileMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
 	config?: z.infer<typeof ConfigSchema>,
-): Promise<CompileResult | ZodError<z.output<typeof MetaSchema>>> {
+): Promise<CompileResult | ZodError<Meta>> {
 	const start = performance.now();
 	const cached =
 		IS_DEV && DISABLE_CACHE_DEV ? undefined : await getCompileCache(content);

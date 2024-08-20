@@ -1,4 +1,5 @@
 import type { components, operations } from "@octokit/openapi-types";
+import type { Meta } from "./schemas";
 
 export type GithubTree =
 	operations["git/get-tree"]["responses"]["200"]["content"]["application/json"];
@@ -69,6 +70,10 @@ export const fileTypeFromExtension = (extension: string) => {
 		default:
 			return null;
 	}
+};
+export type CompileResult = {
+	meta: Meta;
+	runnable: string;
 };
 
 export * from "./schemas";
