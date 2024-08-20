@@ -1,0 +1,11 @@
+{
+	"name": "@uses.ink/types",
+	"main": "src/index.ts",
+	"private": true,
+	"devDependencies": {
+		"@octokit/openapi-types": "^22.2.0"
+	},
+	"dependencies": {
+		"zod": "^3.23.8"
+	}
+}

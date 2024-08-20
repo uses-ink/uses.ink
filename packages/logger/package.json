@@ -1,0 +1,9 @@
+{
+	"name": "@uses.ink/logger",
+	"private": true,
+	"main": "src/index.ts",
+	"dependencies": {
+		"consola": "^3.2.3",
+		"@uses.ink/constants": "workspace:*"
+	}
+}
