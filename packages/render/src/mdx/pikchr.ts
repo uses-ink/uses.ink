@@ -3,7 +3,8 @@ import type { Root } from "hast";
 import type { Plugin } from "unified";
 import { z } from "zod";
 import { parseAttributes } from "./d2/attributes";
-import pikchr from "pikchr-wasm";
+
+import pikchr from "pikchr-wasm/speed";
 import { serverLogger } from "@uses.ink/logger";
 
 export type PikchrConfig = {

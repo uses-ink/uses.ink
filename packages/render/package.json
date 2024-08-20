@@ -1,5 +1,5 @@
 {
-	"name": "@uses.ink/renderers",
+	"name": "@uses.ink/render",
 	"main": "src/index.ts",
 	"exports": {
 		".": {

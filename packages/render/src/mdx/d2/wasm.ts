@@ -3,7 +3,7 @@ import "../../../../../wasm/wasm_exec.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { brotliDecompressSync } from "node:zlib";
-import type { RenderOptions, RenderResult } from ".";
+import type { RenderOptions, RenderResult } from "./index.js";
 import { serverLogger } from "@uses.ink/logger";
 
 const current = {

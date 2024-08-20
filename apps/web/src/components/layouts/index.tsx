@@ -1,7 +1,7 @@
 import { GalleryImage, mdxComponents } from "@/lib/client/mdx/components";
 import { GalleryLayout } from "./gallery";
 import { PostLayout } from "./post";
-import { clientLogger } from "@/lib/client/logger";
+import { clientLogger } from "@uses.ink/logger";
 
 export const getLayout = (layout: string, Content: React.FC<any>) => {
 	let Layout = PostLayout;

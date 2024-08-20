@@ -2,26 +2,26 @@ import MarkdownPost from "@/components/client/md-post";
 import Article from "@/components/server/article";
 import { RepoDevTools } from "@/components/server/repo";
 import {
-    fetchConfig,
-    fetchData,
-    fetchLocalData,
-    fetchUserConfig,
+	fetchConfig,
+	fetchData,
+	fetchLocalData,
+	fetchUserConfig,
 } from "@/lib/server/fetch";
 import { getRepoRequest } from "@/lib/server/repo-request";
 import {
-    DEFAULT_REF,
-    DEFAULT_REPO,
-    EXTENSIONS,
-    IS_DEV,
-    SHOW_DEV_TOOLS,
+	DEFAULT_REF,
+	DEFAULT_REPO,
+	EXTENSIONS,
+	IS_DEV,
+	SHOW_DEV_TOOLS,
 } from "@uses.ink/constants";
 import { FetchError } from "@uses.ink/errors";
-import { compileMDX } from "@uses.ink/renderers";
+import { compileMDX, compileTypst } from "@uses.ink/render";
 import {
-    FileType,
-    fileTypeFromExtension,
-    GithubTree,
-    type GitHubRequest,
+	FileType,
+	fileTypeFromExtension,
+	type GithubTree,
+	type GitHubRequest,
 } from "@uses.ink/types";
 import type { NextPage } from "next";
 import { dirname, join } from "node:path";
@@ -29,12 +29,11 @@ import { ZodError } from "zod";
 import AutoReadme from "@/components/server/auto-readme";
 import { fetchGithubTree } from "@/lib/server/github/tree";
 import {
-    isReadmeRequest,
-    resolveMetadata,
-    validateRequestAgainstTree,
+	isReadmeRequest,
+	resolveMetadata,
+	validateRequestAgainstTree,
 } from "@/lib/server/utils";
 import { serverLogger } from "@uses.ink/logger";
-import { compileTypst } from "@uses.ink/renderers/typst";
 import ErrorPage from "./error";
 
 const Page: NextPage = async () => {

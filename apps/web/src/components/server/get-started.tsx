@@ -1,5 +1,5 @@
-import { DEFAULT_REPO } from "@/lib/constants";
-import type { RepoRequest } from "@/lib/types";
+import { DEFAULT_REPO } from "@uses.ink/constants";
+import type { RepoRequest } from "@uses.ink/types";
 
 const GITHUB_URL = "https://github.com";
 

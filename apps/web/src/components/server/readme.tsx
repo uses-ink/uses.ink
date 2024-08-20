@@ -1,7 +1,7 @@
-import { DEFAULT_REPO, IS_DEV, SHOW_DEV_TOOLS } from "@/lib/constants";
+import { DEFAULT_REPO, IS_DEV, SHOW_DEV_TOOLS } from "@uses.ink/constants";
 import { RepoDevTools } from "./repo";
-import type { RepoRequest } from "@/lib/types";
-import type { GithubTree } from "@/lib/server/github/tree";
+import type { GithubTree, RepoRequest } from "@uses.ink/types";
+
 import Article from "./article";
 import React from "react";
 

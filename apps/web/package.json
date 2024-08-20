@@ -1,14 +1,11 @@
 {
-	"name": "uses.ink",
-	"version": "0.5.3",
+	"name": "web",
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"lint": "next lint",
-		"update-d2wasm": "./scripts/update-d2wasm.sh",
-		"clear-cache": "./scripts/clear-cache.sh"
+		"lint": "next lint"
 	},
 	"dependencies": {
 		"@mdx-js/mdx": "^3.0.1",
@@ -16,12 +13,11 @@
 		"@radix-ui/react-icons": "^1.3.0",
 		"@radix-ui/react-select": "^2.1.1",
 		"@radix-ui/react-tooltip": "^1.1.2",
-		"@types/mark.js": "^8.11.12",
 		"@uses.ink/cache": "workspace:*",
 		"@uses.ink/constants": "workspace:*",
 		"@uses.ink/errors": "workspace:*",
 		"@uses.ink/logger": "workspace:*",
-		"@uses.ink/renderers": "workspace:*",
+		"@uses.ink/render": "workspace:*",
 		"@uses.ink/types": "workspace:*",
 		"clsx": "^2.1.1",
 		"lucide-react": "^0.428.0",
@@ -37,16 +33,17 @@
 		"zod": "^3.23.8"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.8.3",
 		"@svgr/webpack": "^8.1.0",
 		"@tailwindcss/typography": "^0.5.13",
-		"@types/node": "^20",
+		"@types/mark.js": "^8.11.12",
+		"@types/node": "^22.4.1",
 		"@types/react": "^18",
 		"@types/react-dom": "^18",
 		"@types/webpack-env": "^1.18.5",
 		"postcss": "^8",
 		"reading-time-estimator": "^1.11.0",
 		"tailwindcss": "^3.4.1",
+		"tailwindcss-animate": "^1.0.7",
 		"typescript": "^5"
 	}
 }

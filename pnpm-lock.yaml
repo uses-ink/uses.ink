@@ -11,7 +11,11 @@ patchedDependencies:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.8.3
+        version: 1.8.3
 
   apps/web:
     dependencies:
@@ -30,9 +34,6 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@types/mark.js':
-        specifier: ^8.11.12
-        version: 8.11.12
       '@uses.ink/cache':
         specifier: workspace:*
         version: link:../../packages/cache
@@ -45,9 +46,9 @@ importers:
       '@uses.ink/logger':
         specifier: workspace:*
         version: link:../../packages/logger
-      '@uses.ink/renderers':
+      '@uses.ink/render':
         specifier: workspace:*
-        version: link:../../packages/renderers
+        version: link:../../packages/render
       '@uses.ink/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -88,18 +89,18 @@ importers:
         specifier: ^3.23.8
         version: 3.23.8
     devDependencies:
-      '@biomejs/biome':
-        specifier: ^1.8.3
-        version: 1.8.3
       '@svgr/webpack':
         specifier: ^8.1.0
         version: 8.1.0(typescript@5.5.4)
       '@tailwindcss/typography':
         specifier: ^0.5.13
         version: 0.5.14(tailwindcss@3.4.10)
+      '@types/mark.js':
+        specifier: ^8.11.12
+        version: 8.11.12
       '@types/node':
-        specifier: ^20
-        version: 20.16.0
+        specifier: ^22.4.1
+        version: 22.4.1
       '@types/react':
         specifier: ^18
         version: 18.3.3
@@ -118,6 +119,9 @@ importers:
       tailwindcss:
         specifier: ^3.4.1
         version: 3.4.10
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@3.4.10)
       typescript:
         specifier: ^5
         version: 5.5.4
@@ -143,9 +147,9 @@ importers:
       '@octokit/types':
         specifier: ^13.5.0
         version: 13.5.0
-      '@uses.ink/renderers':
+      '@uses.ink/render':
         specifier: workspace:*
-        version: link:../renderers
+        version: link:../render
       '@uses.ink/types':
         specifier: workspace:*
         version: link:../types
@@ -163,7 +167,7 @@ importers:
         specifier: ^3.2.3
         version: 3.2.3
 
-  packages/renderers:
+  packages/render:
     dependencies:
       '@beoe/rehype-code-hook':
         specifier: ^0.0.1
@@ -1886,8 +1890,8 @@ packages:
   '@types/ms@0.7.34':
     resolution: {integrity: sha512-nG96G3Wp6acyAgJqGasjODb+acrI7KltPiRxzHPXnP3NgI28bpQDRv53olbqGXbfcgF5aiiHmO3xpwEpS5Ld9g==}
 
-  '@types/node@20.16.0':
-    resolution: {integrity: sha512-vDxceJcoZhIVh67S568bm1UGZO0DX0hpplJZxzeXMKwIPLn190ec5RRxQ69BKhX44SUGIxxgMdDY557lGLKprQ==}
+  '@types/node@22.4.1':
+    resolution: {integrity: sha512-1tbpb9325+gPnKK0dMm+/LMriX0vKxf6RnB0SZUqfyVkQ4fMgUSySqhxE/y8Jvs4NyF1yHzTfG9KlnkIODxPKg==}
 
   '@types/prop-types@15.7.12':
     resolution: {integrity: sha512-5zvhXYtRNRluoE/jAp4GVsSduVUzNWKkOZrCDBWYtE7biZywwdC2AcEzg+cSMLFRfVgeAFqpfNabiPjxFddV1Q==}
@@ -3353,6 +3357,11 @@ packages:
 
   tailwind-merge@2.5.2:
     resolution: {integrity: sha512-kjEBm+pvD+6eAwzJL2Bi+02/9LFLal1Gs61+QB7HvTfQQ0aXwC5LGT8PEt1gS0CWKktKe6ysPTAy3cBC5MeiIg==}
+
+  tailwindcss-animate@1.0.7:
+    resolution: {integrity: sha512-bl6mpH3T7I3UFxuvDEXLxy/VuFxBk5bbzplh7tXI68mwMokNYd1t9qPBHlnyTwfa4JGC4zP516I1hYYtQ/vspA==}
+    peerDependencies:
+      tailwindcss: '>=3.0.0 || insiders'
 
   tailwindcss@3.4.10:
     resolution: {integrity: sha512-KWZkVPm7yJRhdu4SRSl9d4AK2wM3a50UsvgHZO7xY77NQr2V+fIrEuoDGQcbvswWvFGbS2f6e+jC/6WJm1Dl0w==}
@@ -5354,7 +5363,7 @@ snapshots:
 
   '@types/ms@0.7.34': {}
 
-  '@types/node@20.16.0':
+  '@types/node@22.4.1':
     dependencies:
       undici-types: 6.19.6
 
@@ -7245,6 +7254,10 @@ snapshots:
       picocolors: 1.0.1
 
   tailwind-merge@2.5.2: {}
+
+  tailwindcss-animate@1.0.7(tailwindcss@3.4.10):
+    dependencies:
+      tailwindcss: 3.4.10
 
   tailwindcss@3.4.10:
     dependencies:
