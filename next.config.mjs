@@ -12,6 +12,7 @@ const nextConfig = {
 		serverComponentsExternalPackages: [
 			"@myriaddreamin/typst-ts-node-compiler",
 			"pikchr-wasm",
+			"@node-rs/xxhash",
 		],
 	},
 	webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
