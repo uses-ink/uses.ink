@@ -1,4 +1,4 @@
-import type { RepoRequest } from "@/lib/types";
+import type { RepoRequest } from "@uses.ink/types";
 
 export const RepoDevTools = (repoData: RepoRequest) => {
 	return (

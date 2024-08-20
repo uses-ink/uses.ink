@@ -1,11 +1,7 @@
-import type { RepoRequest } from "@/lib/types";
-import { DEFAULT_REF, DEFAULT_REPO } from "@/lib/constants";
-import { fetchGithubTree, type GithubTree } from "@/lib/server/github/tree";
 import { dirname } from "node:path";
-import Readme from "./readme";
-import { serverLogger } from "@/lib/server/logger";
-import ErrorPage from "@/app/[[...slug]]/error";
 import GetStartedPage from "./get-started";
+import Readme from "./readme";
+import type { RepoRequest, GithubTree } from "@uses.ink/types";
 
 const AutoReadme = async ({
 	repoRequest,
