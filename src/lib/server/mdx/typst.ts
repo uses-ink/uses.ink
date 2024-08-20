@@ -6,6 +6,7 @@ import { SKIP, visitParents } from "unist-util-visit-parents";
 import { NodeCompiler } from "@myriaddreamin/typst-ts-node-compiler";
 import { serverLogger } from "../logger";
 import { getTypstCache, setTypstCache } from "../cache";
+import { compilerIns } from "../typst";
 
 interface Options {
 	errorColor?: string;
@@ -177,16 +178,14 @@ export default function rehypeTypst(
 	};
 }
 
-let compilerIns: NodeCompiler;
-
 export async function renderToSVGString(
 	code: string,
 	displayMode: boolean,
 ): Promise<any> {
-	if (!compilerIns) {
-		compilerIns = NodeCompiler.create();
+	if (!compilerIns.current) {
+		compilerIns.current = NodeCompiler.create();
 	}
-	const $typst = compilerIns;
+	const $typst = compilerIns.current;
 	const res = renderToSVGString_($typst, code, displayMode);
 	$typst.evictCache(10);
 	return res;

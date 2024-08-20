@@ -4,7 +4,7 @@ import { getTypstCache, setTypstCache } from "../cache";
 import type { z } from "zod";
 import type { ConfigSchema } from "@/lib/types";
 
-const compilerIns: { current: NodeCompiler | null } = { current: null };
+export const compilerIns: { current: NodeCompiler | null } = { current: null };
 
 export async function renderToSVGString(code: string): Promise<any> {
 	if (!compilerIns.current) {
