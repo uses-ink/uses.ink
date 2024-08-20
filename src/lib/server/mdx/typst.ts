@@ -6,6 +6,7 @@ import { SKIP, visitParents } from "unist-util-visit-parents";
 import { NodeCompiler } from "@myriaddreamin/typst-ts-node-compiler";
 import { serverLogger } from "../logger";
 import { getTypstCache, setTypstCache } from "../cache";
+
 interface Options {
 	errorColor?: string;
 }
@@ -178,7 +179,7 @@ export default function rehypeTypst(
 
 let compilerIns: NodeCompiler;
 
-async function renderToSVGString(
+export async function renderToSVGString(
 	code: string,
 	displayMode: boolean,
 ): Promise<any> {

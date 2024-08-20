@@ -5,7 +5,7 @@ import { pack, unpack } from "msgpackr";
 
 export type TypstContent = {
 	code: string;
-	displayMode: boolean;
+	displayMode?: boolean;
 };
 
 export const getTypstCache = async (

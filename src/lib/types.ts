@@ -79,3 +79,20 @@ export const UserConfigSchema = z.object({
 	defaultBranch: z.string().optional(),
 	...ConfigSchema.shape,
 });
+
+export enum FileType {
+	Typst = "typst",
+	Markdown = "markdown",
+}
+export const fileTypeFromExtension = (extension: string) => {
+	switch (extension.toLowerCase().trim()) {
+		case "md":
+		case "markdown":
+			return FileType.Markdown;
+		case "typ":
+		case "typst":
+			return FileType.Typst;
+		default:
+			return null;
+	}
+};

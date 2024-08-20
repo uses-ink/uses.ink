@@ -1,4 +1,4 @@
-import Post from "@/components/client/post";
+import MarkdownPost from "@/components/client/md-post";
 import Article from "@/components/server/article";
 import { RepoDevTools } from "@/components/server/repo";
 import { getRepoRequest } from "@/lib/server/repo-request";
@@ -16,8 +16,12 @@ import {
 	fetchLocalData,
 	fetchUserConfig,
 } from "@/lib/server/fetch";
-import { compileMDX } from "@/lib/server/mdx";
-import type { GitHubRequest } from "@/lib/types";
+import { compileMDX, CompileResult } from "@/lib/server/mdx";
+import {
+	FileType,
+	fileTypeFromExtension,
+	type GitHubRequest,
+} from "@/lib/types";
 import type { NextPage } from "next";
 import { dirname, join } from "node:path";
 import { ZodError } from "zod";
@@ -26,6 +30,7 @@ import AutoReadme from "@/components/server/auto-readme";
 import { serverLogger } from "@/lib/server/logger";
 import { resolveMetadata } from "@/lib/server/utils";
 import { fetchGithubTree } from "@/lib/server/github/tree";
+import { compileTypst } from "@/lib/server/typst";
 
 const Page: NextPage = async () => {
 	const { req: repoRequest, url, host } = getRepoRequest();
@@ -60,10 +65,13 @@ const Page: NextPage = async () => {
 			: await fetchLocalData(repoRequest.path ?? "README.md");
 
 		const extension = fileName.split(".").pop() ?? "md";
-
-		if (EXTENSIONS.indexOf(extension) === -1) {
+		const fileType = fileTypeFromExtension(extension);
+		if (EXTENSIONS.indexOf(extension) === -1 || fileType === null) {
 			return (
-				<ErrorPage repoData={repoRequest} error="File type not supported" />
+				<ErrorPage
+					repoData={repoRequest}
+					error={`Unsupported file type: ${extension}`}
+				/>
 			);
 		}
 
@@ -102,56 +110,105 @@ const Page: NextPage = async () => {
 			...repoConfig,
 		};
 
-		const res = await compileMDX(content, urlResolvers, config);
+		let renderedContent = {} as { Head: React.FC; Post: React.FC };
+		switch (fileType) {
+			case FileType.Markdown: {
+				const res = await compileMDX(content, urlResolvers, config);
+				if (res instanceof ZodError) {
+					return (
+						<Article>
+							<FrontmatterError errors={res.errors} />
+						</Article>
+					);
+				}
 
-		if (res instanceof ZodError) {
-			return (
-				<Article>
-					<FrontmatterError errors={res.errors} />
-				</Article>
-			);
-		}
+				const resolvedMeta = resolveMetadata(
+					res.meta,
+					// res.runnable,
+					repoRequest,
+					lastCommit,
+					fileName,
+				);
 
-		const resolvedMeta = resolveMetadata(
-			res.meta,
-			// res.runnable,
-			repoRequest,
-			lastCommit,
-			fileName,
-		);
+				const Head = () => (
+					<>
+						<title>{resolvedMeta.title}</title>
+						<meta name="description" content={resolvedMeta.description} />
+						<meta property="og:title" content={resolvedMeta.title} />
+						<meta
+							property="og:description"
+							content={resolvedMeta.description}
+						/>
+						<meta property="og:type" content="website" />
+						<meta
+							property="og:url"
+							content={`https://${host}${url.pathname}`}
+						/>
+						{res.meta.image ? (
+							<meta
+								property="og:image"
+								content={
+									/^(https?:)?\/\//.test(res.meta.image)
+										? res.meta.image
+										: urlResolvers.asset(res.meta.image)
+								}
+							/>
+						) : resolvedMeta.author.avatar ? (
+							<meta property="og:image" content={resolvedMeta.author.avatar} />
+						) : null}
+					</>
+				);
 
-		return (
-			<>
-				{/* This gets automatically added to the <head> */}
-				<title>{resolvedMeta.title}</title>
-				<meta name="description" content={resolvedMeta.description} />
-				<meta property="og:title" content={resolvedMeta.title} />
-				<meta property="og:description" content={resolvedMeta.description} />
-				<meta property="og:type" content="website" />
-				<meta property="og:url" content={`https://${host}${url.pathname}`} />
-				{res.meta.image ? (
-					<meta
-						property="og:image"
-						content={
-							/^(https?:)?\/\//.test(res.meta.image)
-								? res.meta.image
-								: urlResolvers.asset(res.meta.image)
-						}
-					/>
-				) : resolvedMeta.author.avatar ? (
-					<meta property="og:image" content={resolvedMeta.author.avatar} />
-				) : null}
-
-				<Article>
-					{IS_DEV && SHOW_DEV_TOOLS && <RepoDevTools {...repoRequest} />}
-
-					<Post
+				const Post = () => (
+					<MarkdownPost
 						runnable={res.runnable}
 						meta={res.meta}
 						lastCommit={lastCommit}
 						config={repoConfig}
 						resolvedMeta={resolvedMeta}
 					/>
+				);
+
+				renderedContent = { Head, Post };
+
+				break;
+			}
+			case FileType.Typst: {
+				const svg = await compileTypst(content, config);
+				if (svg === null) {
+					return (
+						<ErrorPage
+							repoData={repoRequest}
+							error="Typst compilation failed"
+						/>
+					);
+				}
+				renderedContent = {
+					Head: () => (
+						<>
+							<title>{fileName}</title>
+							<meta name="description" content="Typst diagram" />
+						</>
+					),
+					Post: () => (
+						<div
+							// biome-ignore lint/security/noDangerouslySetInnerHtml: Whatever
+							dangerouslySetInnerHTML={{ __html: svg }}
+							style={{ width: "100%", height: "100%" }}
+						/>
+					),
+				};
+				break;
+			}
+		}
+		const { Head, Post } = renderedContent;
+		return (
+			<>
+				{/* This gets automatically added to the <head> */}
+				<Head />
+				<Article>
+					{IS_DEV && SHOW_DEV_TOOLS && <RepoDevTools {...repoRequest} />}
+					<Post />
 				</Article>
 			</>
 		);

@@ -18,7 +18,7 @@ import Moment from "react-moment";
 import type { z } from "zod";
 import SearchableContent from "./search";
 
-export default function Post({
+export default function MarkdownPost({
 	runnable,
 	config,
 	meta,

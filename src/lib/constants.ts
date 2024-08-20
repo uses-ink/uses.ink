@@ -1,7 +1,7 @@
 export const DEFAULT_REPO = "blog";
 export const DEFAULT_REF = "HEAD";
 
-export const EXTENSIONS = ["md", "markdown"];
+export const EXTENSIONS = ["md", "markdown", "typ"];
 
 export const README_FILES = ["README", "index"].reduce(
 	// biome-ignore lint/performance/noAccumulatingSpread: <explanation>
