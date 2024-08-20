@@ -27,7 +27,7 @@ const AutoReadme = async ({
 		const isCurrentDir = dirname(file.path ?? ".") === path;
 		return ((isFile && isMarkdown) || isDirectory) && isCurrentDir;
 	});
-	serverLogger.debug({ filteredTree });
+	// serverLogger.debug({ filteredTree });
 	return (
 		<Readme {...{ repoRequest, filteredTree, path: repoRequest.path ?? "" }} />
 	);

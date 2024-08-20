@@ -33,7 +33,7 @@ import {
 	resolveMetadata,
 	validateRequestAgainstTree,
 } from "@/lib/server/utils";
-import { fetchGithubTree } from "@/lib/server/github/tree";
+import { fetchGithubTree, type GithubTree } from "@/lib/server/github/tree";
 import { compileTypst } from "@/lib/server/typst";
 
 const Page: NextPage = async () => {
@@ -47,7 +47,7 @@ const Page: NextPage = async () => {
 	});
 
 	const isRemote = !!repoRequest.owner;
-	let tree = undefined;
+	let tree: GithubTree | undefined = undefined;
 	try {
 		const userConfig = isRemote
 			? await fetchUserConfig(repoRequest.owner as string)
