@@ -115,7 +115,7 @@ importers:
         version: 8.11.12
       '@types/node':
         specifier: ^22.4.1
-        version: 22.4.1
+        version: 22.5.0
       '@types/react':
         specifier: ^18
         version: 18.3.3
@@ -176,7 +176,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.4.1
-        version: 22.4.1
+        version: 22.5.0
       '@uses.ink/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -198,7 +198,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.4.1
-        version: 22.4.1
+        version: 22.5.0
       '@uses.ink/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -1934,8 +1934,8 @@ packages:
   '@types/ms@0.7.34':
     resolution: {integrity: sha512-nG96G3Wp6acyAgJqGasjODb+acrI7KltPiRxzHPXnP3NgI28bpQDRv53olbqGXbfcgF5aiiHmO3xpwEpS5Ld9g==}
 
-  '@types/node@22.4.1':
-    resolution: {integrity: sha512-1tbpb9325+gPnKK0dMm+/LMriX0vKxf6RnB0SZUqfyVkQ4fMgUSySqhxE/y8Jvs4NyF1yHzTfG9KlnkIODxPKg==}
+  '@types/node@22.5.0':
+    resolution: {integrity: sha512-DkFrJOe+rfdHTqqMg0bSNlGlQ85hSoh2TPzZyhHsXnMtligRWpxUySiyw8FY14ITt24HVCiQPWxS3KO/QlGmWg==}
 
   '@types/prop-types@15.7.12':
     resolution: {integrity: sha512-5zvhXYtRNRluoE/jAp4GVsSduVUzNWKkOZrCDBWYtE7biZywwdC2AcEzg+cSMLFRfVgeAFqpfNabiPjxFddV1Q==}
@@ -3500,8 +3500,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  undici-types@6.19.6:
-    resolution: {integrity: sha512-e/vggGopEfTKSvj4ihnOLTsqhrKRN3LeO6qSN/GxohhuRv8qH9bNQ4B8W7e/vFL+0XTnmHPB4/kegunZGA4Org==}
+  undici-types@6.19.8:
+    resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
   unicode-canonical-property-names-ecmascript@2.0.0:
     resolution: {integrity: sha512-yY5PpDlfVIU5+y/BSCxAJRBIS1Zc2dDG3Ujq+sR0U+JjUevW2JhocOF+soROYDSaAezOzOKuyyixhD6mBknSmQ==}
@@ -5446,9 +5446,9 @@ snapshots:
 
   '@types/ms@0.7.34': {}
 
-  '@types/node@22.4.1':
+  '@types/node@22.5.0':
     dependencies:
-      undici-types: 6.19.6
+      undici-types: 6.19.8
 
   '@types/prop-types@15.7.12': {}
 
@@ -7441,7 +7441,7 @@ snapshots:
 
   typescript@5.5.4: {}
 
-  undici-types@6.19.6: {}
+  undici-types@6.19.8: {}
 
   unicode-canonical-property-names-ecmascript@2.0.0: {}
 
