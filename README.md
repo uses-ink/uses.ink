@@ -3,6 +3,9 @@
     <img src="assets/dark.png#gh-dark-mode-only" width="70%"/>
 </p>
 
+> [!WARNING]
+> A rewrite of this project with [`astro`](https://astro.build) is in progress. It is located in the [`astro branch`](https://github.com/uses-ink/uses.ink/tree/astro). The main branch will be updated with the new codebase once it is ready.
+
 This is a minimalistic blog platform for developers. It's based on markdown files and uses GitHub as a storage.
 
 <p align="center">
