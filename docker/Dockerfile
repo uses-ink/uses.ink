@@ -10,22 +10,24 @@ RUN curl -fsSL https://d2lang.com/install.sh | sh -s --
 # Check if d2 has been installed
 RUN d2 --version
 
+FROM base as turbo
+RUN apk add --no-cache jq
+WORKDIR /app
+COPY package.json .
+RUN TURBO_VERSION=$(jq -r '.devDependencies.turbo' package.json)
+RUN pnpm install -g "turbo@$TURBO_VERSION"
+
+
 ###########################
 #    BUILDER CONTAINER    #
 ###########################
-FROM base AS builder
+FROM turbo AS builder
 
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
-RUN apk add --no-cache jq
 WORKDIR /app
 
 COPY . .
-
-# Get the turbo version from package.json
-RUN TURBO_VERSION=$(jq -r '.devDependencies.turbo' package.json)
-
-RUN pnpm install -g "turbo@$TURBO_VERSION"
 
 # Outputs to the /out folder
 # source: https://turbo.build/repo/docs/reference/command-line-reference/prune#--docker
@@ -34,11 +36,10 @@ RUN turbo prune --scope=@uses.ink/web --docker
 ###########################
 #   INSTALLER CONTAINER   #
 ###########################
-FROM base AS installer
+FROM turbo AS installer
 
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
-RUN apk add --no-cache jq
 # Required for node_modules/aws-crt
 RUN apk add --no-cache make cmake g++
 
@@ -56,14 +57,11 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm i --frozen-lockfile
 
 # Then copy all the source code (as it changes more often)
 COPY --from=builder /app/out/full/ .
+COPY --from=builder /app/.git/ .git
 # Finally copy the turbo.json file so that we can run turbo commands
 COPY turbo.json turbo.json
 
-RUN TURBO_VERSION=$(jq -r '.devDependencies.turbo' package.json)
-
-RUN pnpm install -g "turbo@$TURBO_VERSION"
-
-RUN turbo run build --filter=@uses.ink/web...
+RUN turbo build
 
 ###########################
 #     RUNNER CONTAINER    #

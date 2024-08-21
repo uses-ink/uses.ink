@@ -1,9 +1,19 @@
 {
 	"name": "@uses.ink/types",
-	"main": "src/index.ts",
 	"private": true,
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc -w"
+	},
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./dist/index.js"
+		}
+	},
 	"devDependencies": {
-		"@octokit/openapi-types": "^22.2.0"
+		"@octokit/openapi-types": "^22.2.0",
+		"@uses.ink/tsconfig": "workspace:*"
 	},
 	"dependencies": {
 		"zod": "^3.23.8"

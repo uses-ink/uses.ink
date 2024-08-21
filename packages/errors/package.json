@@ -1,5 +1,15 @@
 {
 	"name": "@uses.ink/errors",
 	"private": true,
-	"main": "src/index.ts"
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc -w"
+	},
+	"devDependencies": { "@uses.ink/tsconfig": "workspace:*" }
 }

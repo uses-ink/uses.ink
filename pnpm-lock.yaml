@@ -19,6 +19,9 @@ importers:
       turbo:
         specifier: ^2.0.14
         version: 2.0.14
+      typescript:
+        specifier: latest
+        version: 5.5.4
 
   apps/web:
     dependencies:
@@ -58,6 +61,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      is-docker:
+        specifier: ^3.0.0
+        version: 3.0.0
       katex:
         specifier: ^0.16.11
         version: 0.16.11
@@ -119,6 +125,9 @@ importers:
       '@types/webpack-env':
         specifier: ^1.18.5
         version: 1.18.5
+      '@uses.ink/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
       postcss:
         specifier: ^8
         version: 8.4.41
@@ -156,13 +165,27 @@ importers:
       '@octokit/types':
         specifier: ^13.5.0
         version: 13.5.0
+      '@uses.ink/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       '@uses.ink/types':
         specifier: workspace:*
         version: link:../types
 
-  packages/constants: {}
+  packages/constants:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.4.1
+        version: 22.4.1
+      '@uses.ink/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
-  packages/errors: {}
+  packages/errors:
+    devDependencies:
+      '@uses.ink/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
   packages/logger:
     dependencies:
@@ -172,6 +195,13 @@ importers:
       consola:
         specifier: ^3.2.3
         version: 3.2.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.4.1
+        version: 22.4.1
+      '@uses.ink/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
   packages/render:
     dependencies:
@@ -299,9 +329,14 @@ importers:
       '@types/hast':
         specifier: ^3.0.4
         version: 3.0.4
+      '@uses.ink/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       vfile:
         specifier: ^6.0.2
         version: 6.0.2
+
+  packages/tsconfig: {}
 
   packages/types:
     dependencies:
@@ -312,6 +347,9 @@ importers:
       '@octokit/openapi-types':
         specifier: ^22.2.0
         version: 22.2.0
+      '@uses.ink/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
 packages:
 
@@ -2535,6 +2573,11 @@ packages:
 
   is-decimal@2.0.1:
     resolution: {integrity: sha512-AAB9hiomQs5DXWcRB1rqsxGUstbRroFOPPVAomNk/3XHR5JyEZChOyTWe2oayKnsSsr/kcGqF+z6yuH6HHpN0A==}
+
+  is-docker@3.0.0:
+    resolution: {integrity: sha512-eljcgEDlEns/7AXFosB5K/2nCM4P7FQPkGc/DWLy5rmFEWvZayGrik1d9/QIY5nJ4f9YsVvBkA6kJpHn9rISdQ==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    hasBin: true
 
   is-extendable@0.1.1:
     resolution: {integrity: sha512-5BMULNob1vgFX6EjQw5izWDxrecWK9AM72rugNr0TFldMOi0fj6Jk+zeKIt0xGj4cEfQIJth4w3OKWOJ4f+AFw==}
@@ -6109,6 +6152,8 @@ snapshots:
       hasown: 2.0.2
 
   is-decimal@2.0.1: {}
+
+  is-docker@3.0.0: {}
 
   is-extendable@0.1.1: {}
 

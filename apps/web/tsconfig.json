@@ -1,14 +1,15 @@
 {
-	"extends": "../../tsconfig.base.json",
+	"extends": "@uses.ink/tsconfig/base.json",
 	"compilerOptions": {
 		"plugins": [
 			{
 				"name": "next"
 			}
 		],
-        "paths": {
+		"paths": {
 			"@/*": ["./src/*"]
-		}
+		},
+		"noEmit": true
 	},
 	"include": [
 		"apps/web/next-env.d.ts",

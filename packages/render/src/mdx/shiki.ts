@@ -5,8 +5,8 @@ import {
 } from "shiki/core";
 
 import { bundledLanguages } from "shiki/langs";
-import d2Lang from "../../../../syntaxes/d2.tmLanguage.json";
-import pikchrLang from "../../../../syntaxes/pikchr.tmLanguage.json";
+import d2Lang from "../../syntaxes/d2.tmLanguage.json";
+import pikchrLang from "../../syntaxes/pikchr.tmLanguage.json";
 import { serverLogger } from "@uses.ink/logger";
 
 const shikiInstance: {

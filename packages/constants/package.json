@@ -1,5 +1,18 @@
 {
 	"name": "@uses.ink/constants",
 	"private": true,
-	"main": "src/index.ts"
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc -w"
+	},
+	"devDependencies": {
+		"@uses.ink/tsconfig": "workspace:*",
+		"@types/node": "^22.4.1"
+	}
 }

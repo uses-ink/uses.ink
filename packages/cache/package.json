@@ -21,6 +21,6 @@
 	"devDependencies": {
 		"@uses.ink/types": "workspace:*",
 		"@octokit/types": "^13.5.0",
-		"typescript": "latest"
+		"@uses.ink/tsconfig": "workspace:*"
 	}
 }

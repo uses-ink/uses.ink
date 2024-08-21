@@ -5,15 +5,11 @@ export type FetchErrorName =
 	| "NOT_FOUND_PREFETCH";
 
 export class FetchError extends Error {
-	constructor(
-		public name: FetchErrorName,
-		public status?: number,
-	) {
+	constructor(name: FetchErrorName, ...args: any[]) {
 		const message =
 			typeof ErrorMessages[name] === "function"
-				? // biome-ignore lint/style/noNonNullAssertion: <explanation>
-					ErrorMessages[name](status!)
-				: ErrorMessages[name];
+				? (ErrorMessages[name] as (...args: any) => string)(...args)
+				: (ErrorMessages[name] as string);
 		super(message);
 		this.message = message;
 		this.name = name;

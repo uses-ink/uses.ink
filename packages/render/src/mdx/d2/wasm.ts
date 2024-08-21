@@ -1,4 +1,4 @@
-import "../../../../../wasm/wasm_exec.js";
+import "../../../wasm/wasm_exec.js";
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

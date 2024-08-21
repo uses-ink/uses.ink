@@ -1,9 +1,22 @@
 {
 	"name": "@uses.ink/logger",
 	"private": true,
-	"main": "src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc -w"
+	},
 	"dependencies": {
-		"consola": "^3.2.3",
-		"@uses.ink/constants": "workspace:*"
+		"@uses.ink/constants": "workspace:*",
+		"consola": "^3.2.3"
+	},
+	"devDependencies": {
+		"@types/node": "^22.4.1",
+		"@uses.ink/tsconfig": "workspace:*"
 	}
 }

@@ -1,16 +1,22 @@
 {
 	"name": "@uses.ink/render",
-	"main": "src/index.ts",
 	"exports": {
 		".": {
-			"default": "./src/index.ts"
+			"types": "./src/index.ts",
+			"default": "./dist/src/index.js"
 		},
 		"./mdx": {
-			"default": "./src/mdx/index.ts"
+			"types": "./src/mdx/index.ts",
+			"default": "./dist/src/mdx/index.js"
 		},
 		"./typst": {
-			"default": "./src/typst/index.ts"
+			"types": "./src/typst/index.ts",
+			"default": "./dist/src/typst/index.js"
 		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc -w"
 	},
 	"private": true,
 	"dependencies": {
@@ -57,6 +63,7 @@
 	},
 	"devDependencies": {
 		"@types/hast": "^3.0.4",
-		"vfile": "^6.0.2"
+		"vfile": "^6.0.2",
+		"@uses.ink/tsconfig": "workspace:*"
 	}
 }

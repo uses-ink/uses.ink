@@ -1,13 +1,13 @@
 import nextBuildId from "next-build-id";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
+import isDocker from "is-docker";
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-	output: "standalone",
+	output: isDocker() ? "standalone" : undefined,
 	experimental: {
 		serverComponentsExternalPackages: [
 			"@myriaddreamin/typst-ts-node-compiler",
