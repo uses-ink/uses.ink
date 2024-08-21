@@ -1,0 +1,70 @@
+@import url("https://fonts.googleapis.com/css2?family=Fuzzy+Bubbles:wght@400;700&display=swap");
+@import "./d2.css";
+@import "rehype-callouts/theme/vitepress";
+@import "katex/dist/katex.min.css";
+@import "./colors.css";
+@import "./code.css";
+
+@tailwind components;
+@tailwind utilities;
+
+body {
+	padding-left: 1rem;
+	padding-right: 1rem;
+	@apply bg-background text-foreground;
+}
+
+article {
+	padding-top: 5rem;
+	padding-bottom: 3rem;
+	display: block;
+}
+
+article,
+article img {
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 0px !important;
+	margin-bottom: 0px !important;
+}
+
+article img {
+	@apply rounded-lg;
+}
+
+h1#user-content-no-anchor a.anchor,
+h2#user-content-no-anchor a.anchor,
+h3#user-content-no-anchor a.anchor,
+h4#user-content-no-anchor a.anchor,
+h5#user-content-no-anchor a.anchor,
+h6#user-content-no-anchor a.anchor {
+	@apply hidden;
+}
+
+.remove-arrow::-webkit-inner-spin-button,
+.remove-arrow::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+.remove-arrow {
+	-moz-appearance: textfield;
+}
+
+[data-twemoji] {
+	@apply size-[1.2em] inline-block align-text-bottom;
+}
+
+.typst-text {
+	@apply fill-foreground;
+}
+
+/* hide the .d2-dark class on light mode */
+html.dark .d2-light,
+html.dark .pikchr-light {
+	display: none;
+}
+
+html.light .d2-dark,
+html.light .pikchr-dark {
+	display: none;
+}

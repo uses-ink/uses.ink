@@ -1,0 +1,7 @@
+{
+	"name": "@uses.ink/errors",
+	"exports": {
+		".": "./src/index.js",
+		"./*": "./src/*"
+	}
+}

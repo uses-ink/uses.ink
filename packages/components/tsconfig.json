@@ -1,0 +1,12 @@
+{
+	"extends": "@uses.ink/ts-config/react-library.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"@uses.ink/components/*": ["./src/*"],
+			"@uses.ink/components": ["./src/"]
+		}
+	},
+	"include": ["src"],
+	"exclude": ["node_modules"]
+}

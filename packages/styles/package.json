@@ -1,0 +1,7 @@
+{
+	"name": "@uses.ink/styles",
+	"devDependencies": {
+		"rehype-callouts": "^1.0.3",
+		"katex": "^0.16.11"
+	}
+}

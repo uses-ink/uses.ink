@@ -1,0 +1,15 @@
+{
+	"name": "@uses.ink/client",
+	"exports": {
+		"./*": "./src/*",
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@mdx-js/mdx": "^3.0.1",
+		"@uses.ink/client-logger": "workspace:*",
+		"reading-time-estimator": "^1.11.0"
+	},
+	"devDependencies": {
+		"@uses.ink/types": "workspace:*"
+	}
+}

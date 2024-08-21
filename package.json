@@ -1,0 +1,15 @@
+{
+	"name": "uses.ink",
+	"description": "Astro + TailwindCSS based monorepo template with PNPM workspaces",
+	"version": "0.5.3",
+	"private": true,
+	"scripts": {
+		"dev": "pnpm --filter web dev",
+		"start": "pnpm --filter web dev",
+		"build": "pnpm --filter web build",
+		"preview": "pnpm --filter web preview"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.8.3"
+	}
+}

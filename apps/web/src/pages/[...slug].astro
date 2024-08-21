@@ -1,0 +1,23 @@
+---
+import PostLayout from "@/layouts/PostLayout.astro";
+import RootLayout from "@/layouts/RootLayout.astro";
+import { getRepoRequest, renderContent } from "@uses.ink/server";
+
+import { logger } from "@uses.ink/server-logger";
+import Rendered from "@uses.ink/components/Rendered.astro";
+
+const repoRequest = getRepoRequest(
+	Astro.request.headers.get("host"),
+	Astro.request.url,
+);
+
+logger.info("repoRequest", repoRequest);
+
+const rendered = await renderContent(repoRequest);
+---
+
+<RootLayout>
+    <PostLayout>
+        <Rendered rendered={rendered} />
+    </PostLayout>
+</RootLayout>

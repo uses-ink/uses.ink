@@ -1,0 +1,7 @@
+{
+	"name": "@uses.ink/constants",
+	"exports": {
+		".": "./src/index.js",
+		"./*": "./src/*"
+	}
+}

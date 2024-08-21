@@ -1,0 +1,6 @@
+{
+	"name": "@uses.ink/syntaxes",
+	"exports": {
+		"./*": "./src/*"
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"name": "@uses.ink/client-logger",
+	"exports": {
+		"./*": "./src/*",
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"consola": "^3.2.3"
+	}
+}

@@ -1,0 +1,4 @@
+{
+	"name": "@uses.ink/ts-config",
+	"files": ["base.json", "react-library.json"]
+}

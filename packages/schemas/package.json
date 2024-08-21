@@ -1,0 +1,10 @@
+{
+	"name": "@uses.ink/schemas",
+	"exports": {
+		"./*": "./src/*",
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"zod": "^3.23.8"
+	}
+}
