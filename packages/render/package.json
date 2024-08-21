@@ -8,9 +8,6 @@
 		"./mdx": {
 			"default": "./src/mdx/index.ts"
 		},
-		"./mdx/d2": {
-			"default": "./src/mdx/d2/index.ts"
-		},
 		"./typst": {
 			"default": "./src/typst/index.ts"
 		}

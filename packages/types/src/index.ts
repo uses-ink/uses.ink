@@ -76,4 +76,15 @@ export type CompileResult = {
 	runnable: string;
 };
 
+export type D2RenderResult = {
+	svg: string;
+	size: D2Size;
+};
+export type D2Size =
+	| {
+			height: number;
+			width: number;
+	  }
+	| undefined;
+
 export * from "./schemas";

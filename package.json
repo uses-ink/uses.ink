@@ -9,12 +9,10 @@
 	"packageManager": "pnpm@9.7.1",
 	"scripts": {
 		"update-d2wasm": "./scripts/update-d2wasm.sh",
-		"clear-cache": "./scripts/clear-cache.sh",
-		"dev": "pnpm run --filter=web dev",
-		"build": "pnpm run --filter=web build",
-		"start": "pnpm run --filter=web start"
+		"clear-cache": "./scripts/clear-cache.sh"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.8.3"
+		"@biomejs/biome": "^1.8.3",
+		"turbo": "^2.0.14"
 	}
 }

@@ -2,13 +2,14 @@ import { rehypeCodeHook, type MapLike } from "@beoe/rehype-code-hook";
 import type { Root } from "hast";
 import type { Plugin } from "unified";
 import { loadWasm } from "./wasm";
-import { type D2Size, generateD2Diagram } from "./cli";
+import { generateD2Diagram } from "./cli";
 import { getAttributes } from "./attributes";
 import { getD2Cache, setD2Cache } from "@uses.ink/cache";
 import { serverLogger } from "@uses.ink/logger";
 import type {
 	D2Config,
 	D2DiagramAttributes,
+	D2Size,
 	D2UserConfig,
 } from "@uses.ink/types";
 import { D2ConfigSchema } from "@uses.ink/types";
@@ -145,11 +146,6 @@ export const rehypeD2Wasm: Plugin<[RehypeD2WasmConfig?], Root> = (
 			return d2SvgWasm(code, parsedMeta ?? {}, options.class);
 		},
 	});
-};
-
-export type D2RenderResult = {
-	svg: string;
-	size: D2Size;
 };
 
 const renderSVG = async (

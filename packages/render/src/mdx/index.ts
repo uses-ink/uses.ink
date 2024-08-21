@@ -203,3 +203,5 @@ export async function compileMDX(
 	await setCompileCache(content, compiled);
 	return compiled;
 }
+
+export * from "./d2";

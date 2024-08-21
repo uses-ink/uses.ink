@@ -39,7 +39,16 @@ const nextConfig = {
 			dir: __dirname,
 		}),
 	},
-	transpilePackages: ["shiki", "astro-d2"],
+	transpilePackages: [
+		"shiki",
+		"astro-d2",
+		"@uses.ink/cache",
+		"@uses.ink/render",
+		"@uses.ink/types",
+		"@uses.ink/constants",
+		"@uses.ink/logger",
+		"@uses.ink/errors",
+	],
 };
 
 export default nextConfig;

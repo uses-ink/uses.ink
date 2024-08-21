@@ -1,6 +1,6 @@
 import { RENDER_CACHE_TTL } from "@uses.ink/constants";
 import { xxh64 } from "@node-rs/xxhash";
-import { getCache } from "..";
+import { getCache } from ".";
 import { serverLogger } from "@uses.ink/logger";
 import { pack, unpack } from "msgpackr";
 import type { CompileResult } from "@uses.ink/types";

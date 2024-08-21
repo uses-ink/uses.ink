@@ -1,7 +1,7 @@
 import { DEFAULT_REF, GITHUB_CACHE_TTL } from "@uses.ink/constants";
 import type { GitHubContent, GitHubRequest } from "@uses.ink/types";
 import type { OctokitResponse } from "@octokit/types";
-import { type CacheType, getCache } from "..";
+import { type CacheType, getCache } from ".";
 import { serverLogger } from "@uses.ink/logger";
 import { pack, unpack } from "msgpackr";
 

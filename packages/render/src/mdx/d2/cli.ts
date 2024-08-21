@@ -1,5 +1,5 @@
 import { serverLogger } from "@uses.ink/logger";
-import type { D2Config, D2DiagramAttributes } from "@uses.ink/types";
+import type { D2Config, D2DiagramAttributes, D2Size } from "@uses.ink/types";
 import { exec } from "./exec";
 
 const viewBoxRegex = /viewBox="\d+ \d+ (?<width>\d+) (?<height>\d+)"/;
@@ -89,10 +89,3 @@ async function getD2Version() {
 		throw new Error("Failed to get D2 version.", { cause: error });
 	}
 }
-
-export type D2Size =
-	| {
-			height: number;
-			width: number;
-	  }
-	| undefined;

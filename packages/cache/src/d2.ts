@@ -1,10 +1,13 @@
 import { RENDER_CACHE_TTL } from "@uses.ink/constants";
-import { getCache, hashObject } from "..";
+import { getCache, hashObject } from ".";
 import { serverLogger } from "@uses.ink/logger";
 
 import { pack, unpack } from "msgpackr";
-import type { D2Config, D2DiagramAttributes } from "@uses.ink/types";
-import type { D2RenderResult } from "@uses.ink/render/mdx/d2";
+import type {
+	D2Config,
+	D2DiagramAttributes,
+	D2RenderResult,
+} from "@uses.ink/types";
 
 export type D2Content = {
 	code: string;

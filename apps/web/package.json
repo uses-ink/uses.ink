@@ -1,5 +1,5 @@
 {
-	"name": "web",
+	"name": "@uses.ink/web",
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
