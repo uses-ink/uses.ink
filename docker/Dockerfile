@@ -1,4 +1,4 @@
-FROM node:lts-alpine AS base
+FROM oven/bun:canary-alpine AS base
 RUN apk add --no-cache bash git curl make jq
 
 WORKDIR /app
@@ -16,7 +16,7 @@ COPY package.json package-lock.json ./pruned/
 
 WORKDIR /app/pruned
 
-RUN npm install --omit=dev
+RUN bun install --frozen-lockfile --production
 
 FROM base AS build-deps
 
@@ -25,7 +25,7 @@ COPY package.json package-lock.json ./pruned/
 
 WORKDIR /app/pruned
 
-RUN npm install
+RUN bun install --frozen-lockfile
 
 FROM base AS build
 

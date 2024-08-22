@@ -8,8 +8,8 @@
 	"dependencies": {
 		"@radix-ui/react-dropdown-menu": "^2.1.1",
 		"@radix-ui/react-slot": "^1.1.0",
-		"@uses.ink/client": "*",
-		"@uses.ink/tailwind-config": "*",
+		"@uses.ink/client": "workspace:*",
+		"@uses.ink/tailwind-config": "workspace:*",
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.1.1",
 		"lucide-react": "^0.429.0",
@@ -19,7 +19,7 @@
 	},
 	"devDependencies": {
 		"@types/react": "^18.3.4",
-		"@uses.ink/ts-config": "*",
-		"@uses.ink/types": "*"
+		"@uses.ink/ts-config": "workspace:*",
+		"@uses.ink/types": "workspace:*"
 	}
 }

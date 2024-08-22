@@ -6,13 +6,13 @@
 	},
 	"dependencies": {
 		"@node-rs/xxhash": "^1.7.3",
-		"@uses.ink/server-logger": "*",
-		"@uses.ink/constants": "*",
+		"@uses.ink/server-logger": "workspace:*",
+		"@uses.ink/constants": "workspace:*",
 		"ioredis": "^5.4.1",
 		"msgpackr": "^1.11.0"
 	},
 	"devDependencies": {
 		"@octokit/types": "^13.5.0",
-		"@uses.ink/types": "*"
+		"@uses.ink/types": "workspace:*"
 	}
 }
