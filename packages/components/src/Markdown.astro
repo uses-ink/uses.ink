@@ -1,0 +1,12 @@
+---
+import { runMDX } from "@uses.ink/client";
+import type { MarkdownCompileResult } from "@uses.ink/types";
+
+const { meta, runnable,readingTime }: MarkdownCompileResult = Astro.props.result;
+const Content = runMDX(runnable);
+---
+
+<div>
+    <p>Reading time: {readingTime?.text}</p>
+    <Content />
+</div>

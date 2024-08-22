@@ -1,0 +1,7 @@
+---
+import type { TypstCompileResult } from "@uses.ink/types";
+
+const { html }:TypstCompileResult = Astro.props.result;
+---
+
+<div set:html={html} class="w-full h-full flex flex-col items-center justify-center" />

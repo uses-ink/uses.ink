@@ -33,6 +33,10 @@ export type MarkdownCompileResult = {
 	readingTime?: ReadingTime;
 };
 
+export type TypstCompileResult = {
+	html: string;
+};
+
 export type D2Size =
 	| {
 			height: number;
@@ -47,9 +51,7 @@ export type D2RenderResult = {
 export type RenderResult =
 	| {
 			type: "typst";
-			result: {
-				html: string;
-			};
+			result: TypstCompileResult;
 	  }
 	| {
 			type: "markdown";

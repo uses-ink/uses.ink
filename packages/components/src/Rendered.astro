@@ -1,24 +1,14 @@
 ---
-import { runMDX } from "@uses.ink/client";
+import Markdown from "@uses.ink/components/Markdown.astro";
+import Typst from "@uses.ink/components/Typst.astro";
 import type { RenderResult } from "@uses.ink/types";
 import { match } from "ts-pattern";
 const rendered: RenderResult = Astro.props.rendered;
-
 ---
 
 {
     match(rendered)
-        .with({ type: "markdown" }, ({ result: {runnable, readingTime, meta} }) => {
-            const Content = runMDX(runnable)
-            return (
-                <div>
-                    <p>Reading time: {readingTime?.text}</p>
-                    <Content />
-                </div>
-            )
-        })
-        .with({ type: "typst" }, ({ result: {html} }) => (
-            <div set:html={html} style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;" />
-        ))
+        .with({ type: "markdown" }, ({ result }) => <Markdown result={result} />)
+        .with({ type: "typst" }, ({ result }) => <Typst result={result} />)
         .exhaustive()
 }
