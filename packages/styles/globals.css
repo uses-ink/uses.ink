@@ -68,3 +68,7 @@ html.light .d2-dark,
 html.light .pikchr-dark {
 	display: none;
 }
+
+body {
+	@apply !transition-colors duration-300;
+}
