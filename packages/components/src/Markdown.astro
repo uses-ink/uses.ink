@@ -2,7 +2,7 @@
 import { runMDX } from "@uses.ink/client";
 import type { MarkdownCompileResult } from "@uses.ink/types";
 import { mdxComponents } from "./mdx";
-const { meta, runnable,readingTime }: MarkdownCompileResult = Astro.props.result;
+const { meta, runnable, readingTime }: MarkdownCompileResult = Astro.props.result;
 const Content = await runMDX(runnable);
 ---
 
@@ -12,3 +12,17 @@ const Content = await runMDX(runnable);
 </div>
 
 <script src="./lib/pre-utils.ts" />
+<script define:vars={{ meta }}>
+    const PROSE_THEMES = {
+        default: "prose-neutral",
+        gruvbox: "prose-gruvbox",
+        solarized: "prose-solarized",
+        nord: "prose-nord",
+        monokai: "prose-monokai",
+    }
+    const theme = meta.theme || "default";
+    document.documentElement.dataset.theme = theme;
+    const rootArticle = document.getElementById("root-article");
+    rootArticle.classList.remove(...Object.values(PROSE_THEMES));
+    rootArticle.classList.add(PROSE_THEMES[theme] || PROSE_THEMES.default);
+</script>

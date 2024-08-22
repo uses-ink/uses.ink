@@ -1,7 +1,7 @@
+// Disclaimer: If you got hurt reading this, it's not my fault.
 export const MESSAGES_404 = [
-	"Oops! Looks like you've wandered off the path of wisdom. Try again when you're feeling a bit more... accurate.",
+	"Oops! Try again when you're feeling a bit more... accurate.",
 	"The page you're looking for is so secret, even we don't know where it is.",
-	"You must have taken a wrong turn at Awesome Town because this ain't it.",
 	"This page left. It was tired of your indecision.",
 	"If this was a treasure map, you’d be standing in the ocean.",
 	"Oh, you wanted something here? Too bad, we’re fresh out of that.",

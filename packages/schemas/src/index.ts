@@ -86,7 +86,9 @@ export const D2ConfigSchema = z
 
 export const MathEngineSchema = z.enum(["katex", "typst"]).default("typst");
 export const LayoutSchema = z.enum(["post", "gallery"]).default("post");
-
+export const ThemeSchema = z
+	.enum(["default", "gruvbox", "solarized", "nord", "monokai"])
+	.default("default");
 export const RepoConfigSchema = z.object({
 	hideTop: z.boolean().optional(),
 	readingTime: z.boolean().optional(),
@@ -103,6 +105,7 @@ export const MetaSchema = z.object({
 	date: z.string().optional(),
 	author: z.string().optional(),
 	image: z.string().optional(),
+	theme: ThemeSchema.optional(),
 	...RepoConfigSchema.shape,
 });
 

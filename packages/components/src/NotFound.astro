@@ -1,17 +1,22 @@
 ---
 import type { GithubRequest } from "@uses.ink/types";
-import { DEFAULT_REPO } from "@uses.ink/constants";
+import { DEFAULT_REF, DEFAULT_REPO } from "@uses.ink/constants";
 import { getRandom404Message } from "./lib/404";
 
-const { request } = Astro.props as { request: GithubRequest };
+const { request } = Astro.props as { request: GithubRequest; };
 const { owner, repo, path } = request;
 const [filename, ...folders] = path?.split("/").reverse() ?? [];
 
-const repoUrl = `https://github.com/${owner}/${repo}`;
+const query = new URLSearchParams({ filename: path });
+
+// Hacky way to get the branch name, we could also just us the API to get the default branch
+const branch = request.ref === DEFAULT_REF ? "main" : request.ref;
+
+const repoUrl = `https://github.com/${owner}/${repo}/new/${branch}?${query}`;
 ---
 
 <article class="prose dark:prose-invert">
-    <h1 class="not-prose font-extrabold lg:text-[30rem] md:text-[20rem] text-[10rem] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-muted-foreground opacity-5 -z-10">
+    <h1 class="not-prose font-extrabold lg:text-[30rem] md:text-[20rem] text-[10rem] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-foreground opacity-5 -z-10">
         404 
     </h1>
     <h1 class="lg:!text-6xl md:!text-5xl sm:!text-4xl text-3xl">{getRandom404Message()}</h1>
