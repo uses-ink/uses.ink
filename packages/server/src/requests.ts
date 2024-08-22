@@ -97,3 +97,29 @@ export const validateRequestAgainstTree = (
 	}
 	return file.path ?? join(path, request.path);
 };
+
+export const validateRequestAgainstFiles = (
+	request: RepoRequest,
+	files: string[],
+): string => {
+	if (isReadmeRequest(request)) {
+		const readme = files.find((file) =>
+			README_FILES.some(
+				(f) => basename(file).toLowerCase() === f.toLowerCase(),
+			),
+		);
+		if (!readme) {
+			throw new FetchError("NOT_FOUND_PREFETCH", 404);
+		}
+		return readme;
+	}
+	const path = request.path?.trim() || ".";
+
+	const file = files.find(
+		(file) => basename(file).toLowerCase() === basename(path).toLowerCase(),
+	);
+	if (!file) {
+		throw new FetchError("NOT_FOUND_PREFETCH", 404);
+	}
+	return file;
+};

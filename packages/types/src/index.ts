@@ -7,9 +7,9 @@ export enum FileType {
 export type RepoRequest =
 	| { owner: string; repo?: string; ref?: string; path?: string; remote: true }
 	| {
-			owner: undefined;
-			repo: undefined;
-			ref: undefined;
+			owner?: undefined;
+			repo?: undefined;
+			ref?: undefined;
 			path: string;
 			remote: false;
 	  };

@@ -4,10 +4,8 @@
 	"version": "0.5.3",
 	"private": true,
 	"scripts": {
-		"dev": "pnpm --filter web dev",
-		"start": "pnpm --filter web dev",
-		"build": "pnpm --filter web build",
-		"preview": "pnpm --filter web preview"
+		"dev": "npm run dev --workspaces",
+		"build": "npm run build --workspaces"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.8.3"
@@ -17,6 +15,5 @@
 			"hast-util-sanitize@5.0.1": "patches/hast-util-sanitize@5.0.1.patch"
 		}
 	},
-	"packageManager": "pnpm@9.7.1",
 	"workspaces": ["apps/*", "packages/*"]
 }

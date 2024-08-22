@@ -5,7 +5,11 @@ import type {
 	RenderResult,
 } from "@uses.ink/types";
 import { FileType } from "@uses.ink/types";
-import { forgeGithubRequest, validateRequestAgainstTree } from "./requests";
+import {
+	forgeGithubRequest,
+	validateRequestAgainstFiles,
+	validateRequestAgainstTree,
+} from "./requests";
 import { fetchRepoConfig, fetchUserConfig } from "./configs";
 import { fetchGithubTree } from "./github/tree";
 import { fetchGithubRaw } from "./fetch";
@@ -13,6 +17,8 @@ import { EXTENSIONS } from "@uses.ink/constants";
 import { fileTypeFromExtension, forgeUrlResolvers } from "./utils";
 import { logger } from "@uses.ink/server-logger";
 import { compileMarkdown } from "@uses.ink/render";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export const renderContent = async (
 	repoRequest: RepoRequest,
@@ -25,7 +31,7 @@ export const renderContent = async (
 		return renderRemote(githubRequest);
 	}
 	// Else render local
-	return renderLocal(repoRequest.path);
+	return renderLocal(repoRequest);
 };
 
 export const renderRemote = async (
@@ -62,22 +68,39 @@ export const renderRemote = async (
 	// Merge the user config with the repo config
 	const mergedConfig: RepoConfig = { ...userConfig, ...repoConfig };
 	// Render the content
-	return renderContentByType(content, fileType, mergedConfig, request);
+	return renderContentByType(content, fileType, request, mergedConfig);
 };
-export const renderLocal = async (path: string): Promise<RenderResult> => {
-	// TODO: Implement local rendering
-	return {} as any;
+export const renderLocal = async (
+	request: RepoRequest,
+): Promise<RenderResult> => {
+	const files = await readdir(join(process.cwd(), "docs"));
+	logger.debug("files", files);
+	const resolvedPath = validateRequestAgainstFiles(request, files);
+	const extension = resolvedPath.split(".").pop() ?? "md";
+	const fileType = fileTypeFromExtension(extension);
+
+	// Check if the content is supported
+	if (EXTENSIONS.indexOf(extension) === -1 || fileType === null) {
+		throw new Error(`File type not supported: ${request.path}`);
+	}
+
+	const content = await readFile(
+		join(process.cwd(), "docs", resolvedPath),
+		"utf-8",
+	);
+
+	return renderContentByType(content, fileType, request);
 };
 
 export const renderContentByType = (
 	content: string,
 	fileType: FileType,
-	config: RepoConfig,
 	request: RepoRequest | GithubRequest,
+	config?: RepoConfig,
 ): Promise<RenderResult> => {
 	switch (fileType) {
 		case FileType.Markdown:
-			return renderMarkdown(content, config, request);
+			return renderMarkdown(content, request, config);
 		case FileType.Typst:
 			return renderTypst(content, config);
 	}
@@ -85,8 +108,8 @@ export const renderContentByType = (
 
 export const renderMarkdown = async (
 	content: string,
-	config: RepoConfig,
 	request: RepoRequest | GithubRequest,
+	config?: RepoConfig,
 ): Promise<RenderResult> => {
 	const urlResolvers = forgeUrlResolvers(request);
 	const result = await compileMarkdown(content, urlResolvers, config);
@@ -95,7 +118,7 @@ export const renderMarkdown = async (
 
 export const renderTypst = async (
 	content: string,
-	config: RepoConfig,
+	config?: RepoConfig,
 ): Promise<RenderResult> => {
 	//TODO: Implement Typst rendering
 	return {} as any;
