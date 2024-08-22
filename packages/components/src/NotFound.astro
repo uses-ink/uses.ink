@@ -6,13 +6,8 @@ import { getRandom404Message } from "./lib/404";
 const { request } = Astro.props as { request: GithubRequest };
 const { owner, repo, path } = request;
 const [filename, ...folders] = path?.split("/").reverse() ?? [];
-const params = new URLSearchParams({
-    name: repo ?? DEFAULT_REPO,
-    owner: owner ?? "@me",
-    description: "My very own blog!",
-    visibility: "public",
-});
-const repoUrl = `https://github.com/new?${params}`;
+
+const repoUrl = `https://github.com/${owner}/${repo}`;
 ---
 
 <article class="prose dark:prose-invert">
