@@ -145,7 +145,7 @@ export async function compileMarkdown(
 			makeDebug("sanitize"),
 			// [rehypePintora, { class: "pintora" }],
 			// [rehypePenrose, { class: "penrose" }],
-			rehypeD2CLI,
+			// rehypeD2CLI,
 			makeDebug("d2cli"),
 			rehypePikchr,
 			makeDebug("pikchr"),

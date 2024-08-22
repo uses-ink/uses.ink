@@ -338,7 +338,9 @@ ST:     box "symbol" "table"
 
 ### D2
 
-However, if you need it, we also support [d2](https://d2lang.com/) diagrams. To add a d2 diagram, use the following syntax:
+D2 diagrams are currently disabled due to performance/security reasons. I am working on a solution to make them available again.
+
+<!-- However, if you need it, we also support [d2](https://d2lang.com/) diagrams. To add a d2 diagram, use the following syntax:
 
 ~~~d2 sketch doNotRender
 ```d2 sketch
@@ -361,7 +363,7 @@ im a parent.im a child
 apartment.Bedroom.Bathroom -> office.Spare Room.Bathroom: Portal
 ```
 
-Since d2 is written in Go, it requires either a CLI or WebAssembly compilation. We currently use the CLI, as the WebAssembly version is slower (**~750ms** to render a diagram + **6MB** brotli-compressed `.wasm` file). You can find the source code for the WebAssembly version [here](https://github.com/uses-ink/d2wasm).
+Since d2 is written in Go, it requires either a CLI or WebAssembly compilation. We currently use the CLI, as the WebAssembly version is slower (**~750ms** to render a diagram + **6MB** brotli-compressed `.wasm` file). You can find the source code for the WebAssembly version [here](https://github.com/uses-ink/d2wasm). -->
 
 ### Mermaid
 
