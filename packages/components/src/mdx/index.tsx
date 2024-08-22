@@ -1,9 +1,9 @@
 import Img from "./img";
-// import Pre from "@/components/client/pre";
+import Pre from "./pre";
 
 export const mdxComponents = {
 	// a: CustomLink,
-	// pre: Pre as any,
+	pre: Pre as any,
 	img: Img as any,
 	h1: ({ children, ...props }: any) => (
 		<h1 {...props} className="group">

@@ -11,6 +11,7 @@ const LIGHT_HASHES = [
 
 const Img = (props: any) => {
 	if (typeof props.src !== "string") {
+		// biome-ignore lint/a11y/useAltText: This will (maybe) be provided by the user
 		return <img {...props} />;
 	}
 	const src = new URL(props.src);
