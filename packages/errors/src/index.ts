@@ -2,10 +2,13 @@ export type FetchErrorName =
 	| "NOT_FOUND"
 	| "UNKNOWN"
 	| "ERROR_STATUS"
-	| "NOT_FOUND_PREFETCH";
+	| "NO_TREE";
 
 export class FetchError extends Error {
-	constructor(name: FetchErrorName, ...args: any[]) {
+	constructor(
+		public name: FetchErrorName,
+		...args: any[]
+	) {
 		const message =
 			typeof ErrorMessages[name] === "function"
 				? (ErrorMessages[name] as (...args: any) => string)(...args)
@@ -18,10 +21,10 @@ export class FetchError extends Error {
 
 const ErrorMessages: Record<
 	FetchErrorName,
-	string | ((status: number) => string)
+	string | ((...args: any) => string)
 > = {
 	NOT_FOUND: (path) => `Not found${path ? `: ${path}` : ""}`,
+	NO_TREE: (repo) => `No tree found${repo ? `: ${repo}` : ""}`,
 	UNKNOWN: "Unknown error",
 	ERROR_STATUS: (status) => `Error status ${status}`,
-	NOT_FOUND_PREFETCH: "Not found during prefetch",
 };

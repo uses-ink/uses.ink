@@ -1,0 +1,39 @@
+---
+import type { RepoRequest } from "@uses.ink/types";
+import { DEFAULT_REPO } from "@uses.ink/constants";
+const { repoRequest } = Astro.props as { repoRequest: RepoRequest };
+const { owner, repo, path } = repoRequest;
+const [filename, ...folders] = path?.split("/").reverse() ?? [];
+const params = new URLSearchParams({
+    name: repo ?? DEFAULT_REPO,
+    owner: owner ?? "@me",
+    description: "My very own blog!",
+    visibility: "public",
+});
+const createRepoUrl = `https://github.com/new?${params}`;
+---
+
+<article class="prose dark:prose-invert">
+    <h1 class="text-5xl">
+        Welcome to <a href="https://uses.ink">uses.ink</a>
+    </h1>
+    <p class="text-2xl text-muted-foreground">
+        There is nothing here <b>(yet!)</b>.
+    </p>
+
+    <p class="text-2xl text-muted-foreground">
+        To get started, create a{" "}
+        <a href={createRepoUrl} target="_blank" rel="noreferrer">
+            GitHub repository
+        </a>{" "}
+        named <code>{repo ?? DEFAULT_REPO}</code> and add a file named{" "}
+        <code>{filename ?? "README.md"}</code>{folders.length > 0 ? <> in the folder <code>{folders.join("/")}</code></> : ""}.
+    </p>
+    <p class="text-2xl text-muted-foreground">
+        You can also use the following URL to use another repository:
+        <code>{"<owner>.uses.ink/<repo>"}</code>
+    </p>
+    <h3>
+        <a href="https://uses.ink">Back to uses.ink</a>
+    </h3>
+</article>

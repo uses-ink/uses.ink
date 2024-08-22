@@ -7,27 +7,15 @@ import { join, dirname } from "node:path";
 
 export const fetchUserConfig = async (
 	request: GithubRequest,
-): Promise<UserConfig> => {
-	try {
-		return await fetchGithubJSON(
-			{ ...request, repo: request.owner, path: CONFIG_FILE },
-			UserConfigSchema,
-		);
-	} catch (error) {
-		// logger.error({ error, where: "fetchUserConfig" });
-		return {};
-	}
-};
+): Promise<UserConfig> =>
+	await fetchGithubJSON(
+		{ ...request, repo: request.owner, path: CONFIG_FILE },
+		UserConfigSchema,
+	);
 export const fetchRepoConfig = async (
 	request: GithubRequest,
-): Promise<UserConfig> => {
-	try {
-		return await fetchGithubJSON(
-			{ ...request, path: join(dirname(request.path), CONFIG_FILE) },
-			RepoConfigSchema,
-		);
-	} catch (error) {
-		// logger.error({ error, where: "fetchRepoConfig" });
-		return {};
-	}
-};
+): Promise<UserConfig> =>
+	await fetchGithubJSON(
+		{ ...request, path: join(dirname(request.path), CONFIG_FILE) },
+		RepoConfigSchema,
+	);

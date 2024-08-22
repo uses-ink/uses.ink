@@ -3,6 +3,7 @@ import { getGitHubCache, setGitHubCache } from "@uses.ink/cache";
 import { getOctokit } from "../octokit";
 import { isErrorHasStatus } from "../utils";
 import { DEFAULT_REF } from "@uses.ink/constants";
+import { FetchError } from "@uses.ink/errors";
 // import { logger } from "@uses.ink/server-logger/index.js";
 
 export const fetchGitHubContent = async (
@@ -24,7 +25,10 @@ export const fetchGitHubContent = async (
 		// Return cache
 		if (!isErrorHasStatus(error)) throw error;
 		if (error.status === 404)
-			throw Error(`Not found: ${owner}/${repo}${ref ? `@${ref}` : ""}/${path}`);
+			throw new FetchError(
+				"NOT_FOUND",
+				`${owner}/${repo}${ref ? `@${ref}` : ""}/${path}`,
+			);
 		if (error.status !== 304) throw error;
 		if (cached === null) throw Error("No cache but 304");
 		return cached.data;

@@ -1,4 +1,6 @@
+import type { GithubRequest, GithubTree } from "./github";
 import type { Meta } from "./schemas";
+import type { FetchError } from "@uses.ink/errors";
 
 export enum FileType {
 	Typst = "typst",
@@ -51,11 +53,26 @@ export type D2RenderResult = {
 export type RenderResult =
 	| {
 			type: "typst";
-			result: TypstCompileResult;
+			payload: TypstCompileResult;
 	  }
 	| {
 			type: "markdown";
-			result: MarkdownCompileResult;
+			payload: MarkdownCompileResult;
+	  }
+	| {
+			type: "readme";
+			payload: {
+				tree: GithubTree["tree"];
+				request: GithubRequest;
+			};
+	  }
+	| {
+			type: "get-started";
+			payload: GithubRequest;
+	  }
+	| {
+			type: "error";
+			payload: FetchError | Error;
 	  };
 
 export * from "./github";

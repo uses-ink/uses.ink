@@ -17,7 +17,7 @@ export const fetchGithubJSON = async (
 		if (error instanceof ZodError) {
 			throw error;
 		}
-		throw Error("Invalid JSON");
+		throw new Error("Invalid JSON");
 	}
 };
 

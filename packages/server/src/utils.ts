@@ -30,15 +30,27 @@ export const filterTree = (
 		const isFile = file.type === "blob";
 		const isFileType = extensions.some((ext) => file.path?.endsWith(`.${ext}`));
 
-		const isCurrentDir = dirname(file.path ?? ".") === dirname(basePath);
+		const isCurrentDir = dirname(file.path ?? ".") === dirname(basePath || ".");
+		// logger.debug("filterTree", {
+		// 	isFile,
+		// 	isFileType,
+		// 	isCurrentDir,
+		// 	basePath,
+		// 	at: file.path,
+		// });
+		return isFile && isFileType && isCurrentDir;
+	});
+
+export const filterTreeByPath = (tree: GithubTree["tree"], basePath: string) =>
+	tree.filter((file) => {
+		const isCurrentDir = dirname(file.path ?? ".") === (basePath || ".");
 		logger.debug("filterTree", {
-			isFile,
-			isFileType,
 			isCurrentDir,
 			basePath,
 			at: file.path,
+			atDir: dirname(file.path ?? "."),
 		});
-		return isFile && isFileType && isCurrentDir;
+		return isCurrentDir;
 	});
 
 export const isReadmeRequest = (request: RepoRequest | GithubRequest) =>
@@ -80,3 +92,34 @@ export const forgeUrlResolvers = (request: RepoRequest | GithubRequest) => ({
 		return url;
 	},
 });
+
+export const safeAsync = async <T, E extends Error = Error>(
+	fnOrPromise: (() => Promise<T>) | Promise<T>,
+): Promise<[T, null] | [null, E]> => {
+	try {
+		const result = await (typeof fnOrPromise === "function"
+			? fnOrPromise()
+			: fnOrPromise);
+		return [result, null];
+	} catch (error) {
+		if (error instanceof Error) {
+			return [null, error as E];
+		}
+		return [null, new Error("Unknown error occurred") as E];
+	}
+};
+
+export const safeSync = <T, E extends Error = Error>(
+	fnOrValue: (() => T) | T,
+): [T, null] | [null, E] => {
+	try {
+		const result =
+			typeof fnOrValue === "function" ? (fnOrValue as () => T)() : fnOrValue;
+		return [result, null];
+	} catch (error) {
+		if (error instanceof Error) {
+			return [null, error as E];
+		}
+		return [null, new Error("Unknown error occurred") as E];
+	}
+};

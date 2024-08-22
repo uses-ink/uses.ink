@@ -74,8 +74,7 @@ export const validateRequestAgainstTree = (
 ): string => {
 	const path = request.path.trim() || ".";
 	const filteredTree = filterTree(tree, path);
-
-	logger.debug({ filteredTree: filteredTree.map((t) => t.path) });
+	// logger.debug({ filteredTree: filteredTree.map((t) => t.path) });
 	if (isReadmeRequest(request)) {
 		const readme = filteredTree.find((file) =>
 			README_FILES.some(
@@ -83,7 +82,7 @@ export const validateRequestAgainstTree = (
 			),
 		);
 		if (!readme) {
-			throw new FetchError("NOT_FOUND_PREFETCH", 404);
+			throw new FetchError("NOT_FOUND", path);
 		}
 		return readme.path ?? join(path, "README.md");
 	}
@@ -93,7 +92,7 @@ export const validateRequestAgainstTree = (
 			basename(request.path).toLowerCase(),
 	);
 	if (!file) {
-		throw new FetchError("NOT_FOUND_PREFETCH", 404);
+		throw new FetchError("NOT_FOUND", path);
 	}
 	return file.path ?? join(path, request.path);
 };
@@ -109,7 +108,7 @@ export const validateRequestAgainstFiles = <T>(
 			),
 		);
 		if (!readme) {
-			throw new FetchError("NOT_FOUND_PREFETCH", 404);
+			throw new FetchError("NOT_FOUND", request.path);
 		}
 		return readme;
 	}
@@ -119,7 +118,7 @@ export const validateRequestAgainstFiles = <T>(
 		([file]) => basename(file).toLowerCase() === basename(path).toLowerCase(),
 	);
 	if (!file) {
-		throw new FetchError("NOT_FOUND_PREFETCH", 404);
+		throw new FetchError("NOT_FOUND", path);
 	}
 	return file;
 };

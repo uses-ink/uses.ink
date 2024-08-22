@@ -1,0 +1,68 @@
+---
+import { DEFAULT_REF, DEFAULT_REPO } from "@uses.ink/constants";
+import type { RenderResult } from "@uses.ink/types";
+
+const { request, tree } = Astro.props as (RenderResult & { type: "readme" })["payload"];
+---
+<h1 class="text-xl font-bold flex flex-wrap gap-y-4 gap-x-1">
+    <a
+        href={`https://github.com/${request.owner}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="no-underline font-bold hover:underline"
+    >
+        <img
+            src={`https://github.com/${request.owner}.png`}
+            alt={`${request.owner}'s avatar`}
+            class="w-12 h-12 rounded-full inline-block mr-4 align-middle border border-muted-foreground"
+        />
+    </a>
+    <a href={"/"} class="no-underline font-bold hover:underline">
+        {request.owner}
+    </a>
+    <span class="text-muted-foreground mx-1">/</span>
+    <a
+        href={`/${request.repo ?? DEFAULT_REPO}${
+            (request.ref && request.ref !== DEFAULT_REF) ? `@${request.ref}` : ""
+        }`}
+        class="no-underline font-bold hover:underline"
+    >
+        {request.repo}
+    </a>
+    {request.path?.split("/").map((part, index, parts) => (
+        <>
+            <span class="text-muted-foreground mx-1">/</span>
+            {index === parts.length - 1 ? (
+                <span class="font-bold">{part}</span>
+            ) : (
+                <a
+                    href={`/${request.repo ?? DEFAULT_REPO}${
+                        (request.ref && request.ref !== DEFAULT_REF) ? `@${request.ref}` : ""
+                    }/${parts.slice(0, index + 1).join("/")}`}
+                    class="no-underline font-bold hover:underline"
+                >
+                    {part}
+                </a>
+            )}
+        </>
+    ))}
+</h1>
+<ul class="list-disc pl-6">
+    {tree.length > 0 ? (
+        tree.map((file) => (
+            <h2>
+                <li>
+                    <a
+                        href={`/${request.repo ?? DEFAULT_REPO}${
+                            (request.ref && request.ref !== DEFAULT_REF) ? `@${request.ref}` : ""
+                        }/${file.path}`}
+                    >
+                        {file.path?.replace(`${request.path}/`, "")}
+                    </a>
+                </li>
+            </h2>
+        ))
+    ) : (
+        <li>No markdown files found in this directory</li>
+    )}
+</ul>

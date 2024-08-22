@@ -5,6 +5,7 @@ import { getRepoRequest, renderContent } from "@uses.ink/server";
 
 import { logger } from "@uses.ink/server-logger";
 import Rendered from "@uses.ink/components/Rendered.astro";
+import { FetchError } from "@uses.ink/errors";
 
 const repoRequest = getRepoRequest(
 	Astro.request.headers.get("host"),
@@ -12,12 +13,18 @@ const repoRequest = getRepoRequest(
 );
 
 logger.info("repoRequest", repoRequest);
-
-const rendered = await renderContent(repoRequest);
+let rendered = null;
+try {
+    rendered = await renderContent(repoRequest);
+} catch (e) {
+    logger.error(e);
+    Astro.response.status = 500;
+    Astro.response.statusText = "Internal Server Error";
+}
 ---
 
 <RootLayout>
     <PostLayout>
-        <Rendered rendered={rendered} />
+        <Rendered rendered={rendered} repoRequest={repoRequest} />
     </PostLayout>
 </RootLayout>
