@@ -25,4 +25,14 @@ const Content = await runMDX(runnable);
     const rootArticle = document.getElementById("root-article");
     rootArticle.classList.remove(...Object.values(PROSE_THEMES));
     rootArticle.classList.add(PROSE_THEMES[theme] || PROSE_THEMES.default);
+
+    const FONTS = {
+        sans: "font-sans",
+        serif: "font-serif",
+        mono: "font-mono",
+    }
+
+    const font = meta.font || "sans";
+    rootArticle.classList.remove(...Object.values(FONTS));
+    rootArticle.classList.add(FONTS[font] || FONTS.sans);
 </script>

@@ -89,6 +89,8 @@ export const LayoutSchema = z.enum(["post", "gallery"]).default("post");
 export const ThemeSchema = z
 	.enum(["default", "gruvbox", "solarized", "nord", "monokai"])
 	.default("default");
+export const FontSchema = z.enum(["sans", "serif", "mono"]).default("sans");
+
 export const RepoConfigSchema = z.object({
 	hideTop: z.boolean().optional(),
 	readingTime: z.boolean().optional(),
@@ -97,6 +99,8 @@ export const RepoConfigSchema = z.object({
 	layout: LayoutSchema.optional(),
 	nav: z.record(z.string()).optional(),
 	defaultCopy: z.boolean().optional(),
+	theme: ThemeSchema.optional(),
+	font: FontSchema.optional(),
 });
 
 export const MetaSchema = z.object({
@@ -105,7 +109,6 @@ export const MetaSchema = z.object({
 	date: z.string().optional(),
 	author: z.string().optional(),
 	image: z.string().optional(),
-	theme: ThemeSchema.optional(),
 	...RepoConfigSchema.shape,
 });
 
