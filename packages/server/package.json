@@ -5,17 +5,17 @@
 		".": "./src/index.ts"
 	},
 	"dependencies": {
-		"@uses.ink/cache": "workspace:*",
-		"@uses.ink/constants": "workspace:*",
-		"@uses.ink/errors": "workspace:*",
-		"@uses.ink/render": "workspace:*",
-		"@uses.ink/schemas": "workspace:*",
-		"@uses.ink/server-logger": "workspace:*",
+		"@uses.ink/cache": "*",
+		"@uses.ink/constants": "*",
+		"@uses.ink/errors": "*",
+		"@uses.ink/render": "*",
+		"@uses.ink/schemas": "*",
+		"@uses.ink/server-logger": "*",
 		"octokit": "^4.0.2"
 	},
 	"devDependencies": {
 		"@types/node": "^22.5.0",
-		"@uses.ink/types": "workspace:*",
+		"@uses.ink/types": "*",
 		"zod": "^3.23.8"
 	}
 }

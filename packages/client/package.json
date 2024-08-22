@@ -6,10 +6,10 @@
 	},
 	"dependencies": {
 		"@mdx-js/mdx": "^3.0.1",
-		"@uses.ink/client-logger": "workspace:*",
+		"@uses.ink/client-logger": "*",
 		"reading-time-estimator": "^1.11.0"
 	},
 	"devDependencies": {
-		"@uses.ink/types": "workspace:*"
+		"@uses.ink/types": "*"
 	}
 }

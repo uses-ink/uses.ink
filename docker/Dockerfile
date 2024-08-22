@@ -1,30 +1,47 @@
 FROM node:lts-alpine AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
-RUN apk add --no-cache bash git curl make
+RUN apk add --no-cache bash git curl make jq
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml patches/ ./
+FROM base AS prune
 
-FROM base AS prod-deps
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm i --frozen-lockfile --prod
+COPY . .
+
+RUN ./scripts/prune.sh
+
+FROM base as prod-deps
+
+COPY --from=prune /app/pruned/ ./pruned/
+COPY package.json package-lock.json ./pruned/
+
+WORKDIR /app/pruned
+
+RUN npm install --omit=dev
 
 FROM base AS build-deps
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm i --frozen-lockfile
 
-FROM build-deps AS build
+COPY --from=prune /app/pruned/ ./pruned
+COPY package.json package-lock.json ./pruned/
+
+WORKDIR /app/pruned
+
+RUN npm install
+
+FROM base AS build
+
 COPY . .
-RUN pnpm run build
+
+COPY --from=build-deps /app/pruned/node_modules ./node_modules
+
+RUN ["npm", "run", "build", "-w", "apps/web"]
 
 FROM base AS runtime
-COPY --from=prod-deps /app/apps/web/node_modules ./node_modules
+COPY --from=prod-deps /app/pruned/node_modules ./node_modules
 COPY --from=build /app/apps/web/dist ./dist
 
 ENV HOST=0.0.0.0
-ENV PORT=4321
+ENV PORT=8765
 
-EXPOSE 4321
+EXPOSE 8765
 
 CMD node ./dist/server/entry.mjs

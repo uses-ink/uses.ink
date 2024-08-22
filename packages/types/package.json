@@ -7,6 +7,6 @@
 	"devDependencies": {
 		"@octokit/openapi-types": "^22.2.0",
 		"zod": "^3.23.8",
-		"@uses.ink/schemas": "workspace:*"
+		"@uses.ink/schemas": "*"
 	}
 }
