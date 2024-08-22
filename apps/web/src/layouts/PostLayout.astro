@@ -2,7 +2,7 @@
 import { ScrollBack } from "@uses.ink/components/ui/scroll-back.tsx";
 ---
 
-<article class="prose lg:prose-xl dark:prose-invert">
+<article class="container mx-auto xl:prose-lg prose max-md:prose-sm dark:prose-invert">
     <slot />
-    <ScrollBack />
+    <ScrollBack client:only/>
 </article>

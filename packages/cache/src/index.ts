@@ -10,14 +10,14 @@ const cache: { current: Redis | null; hasWarned: boolean } = {
 
 const makeCache = async () => {
 	logger.debug("makeCache");
-	if (!process.env.REDIS_URL) {
+	if (!import.meta.env.REDIS_URL) {
 		if (!cache.hasWarned) {
 			cache.hasWarned = true;
 			logger.warn("REDIS_URL is not set");
 		}
 		return null;
 	}
-	const redis = new Redis(process.env.REDIS_URL);
+	const redis = new Redis(import.meta.env.REDIS_URL);
 
 	return redis;
 };

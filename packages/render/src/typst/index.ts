@@ -43,5 +43,10 @@ ${code}`;
 	const doc = docRes.result;
 
 	const svg = $typst.svg(doc);
-	return svg;
+	// Replace width="...." height="...." with width="100%" height="100%"
+	// to make the svg responsive
+
+	return svg
+		.replace(/width="[^"]*"/, 'width="100%"')
+		.replace(/height="[^"]*"/, 'height="100%"');
 }

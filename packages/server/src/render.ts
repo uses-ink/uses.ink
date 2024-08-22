@@ -16,7 +16,7 @@ import { fetchGithubRaw } from "./fetch";
 import { EXTENSIONS } from "@uses.ink/constants";
 import { fileTypeFromExtension, forgeUrlResolvers } from "./utils";
 import { logger } from "@uses.ink/server-logger";
-import { compileMarkdown } from "@uses.ink/render";
+import { compileMarkdown, compileTypst } from "@uses.ink/render";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -120,6 +120,7 @@ export const renderTypst = async (
 	content: string,
 	config?: RepoConfig,
 ): Promise<RenderResult> => {
-	//TODO: Implement Typst rendering
-	return {} as any;
+	const result = await compileTypst(content, config);
+
+	return { type: "typst", result: { html: result } };
 };
