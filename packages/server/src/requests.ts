@@ -98,12 +98,12 @@ export const validateRequestAgainstTree = (
 	return file.path ?? join(path, request.path);
 };
 
-export const validateRequestAgainstFiles = (
+export const validateRequestAgainstFiles = <T>(
 	request: RepoRequest,
-	files: string[],
-): string => {
+	files: Record<string, T>,
+): [string, T] => {
 	if (isReadmeRequest(request)) {
-		const readme = files.find((file) =>
+		const readme = Object.entries(files).find(([file]) =>
 			README_FILES.some(
 				(f) => basename(file).toLowerCase() === f.toLowerCase(),
 			),
@@ -115,8 +115,8 @@ export const validateRequestAgainstFiles = (
 	}
 	const path = request.path?.trim() || ".";
 
-	const file = files.find(
-		(file) => basename(file).toLowerCase() === basename(path).toLowerCase(),
+	const file = Object.entries(files).find(
+		([file]) => basename(file).toLowerCase() === basename(path).toLowerCase(),
 	);
 	if (!file) {
 		throw new FetchError("NOT_FOUND_PREFETCH", 404);

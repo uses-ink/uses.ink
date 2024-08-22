@@ -70,12 +70,17 @@ export const renderRemote = async (
 	// Render the content
 	return renderContentByType(content, fileType, request, mergedConfig);
 };
+
 export const renderLocal = async (
 	request: RepoRequest,
 ): Promise<RenderResult> => {
-	const files = await readdir(join(process.cwd(), "docs"));
+	const files = import.meta.glob(
+		"../../../apps/web/docs/**/*.{md,markdown,typ}",
+		{ query: "raw", import: "default" },
+	);
 	logger.debug("files", files);
-	const resolvedPath = validateRequestAgainstFiles(request, files);
+	const [resolvedPath, read] = validateRequestAgainstFiles(request, files);
+	logger.debug("resolvedPath", resolvedPath);
 	const extension = resolvedPath.split(".").pop() ?? "md";
 	const fileType = fileTypeFromExtension(extension);
 
@@ -84,10 +89,7 @@ export const renderLocal = async (
 		throw new Error(`File type not supported: ${request.path}`);
 	}
 
-	const content = await readFile(
-		join(process.cwd(), "docs", resolvedPath),
-		"utf-8",
-	);
+	const content = (await read()) as string;
 
 	return renderContentByType(content, fileType, request);
 };
