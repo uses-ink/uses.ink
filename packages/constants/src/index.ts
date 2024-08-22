@@ -39,3 +39,5 @@ export const LIGHT_HASHES = [
 	"#lightmode",
 	"#gh-light-mode-only",
 ];
+
+export * from "./404.ts";

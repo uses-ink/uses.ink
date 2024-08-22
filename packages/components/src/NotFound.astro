@@ -1,6 +1,8 @@
 ---
 import type { GithubRequest } from "@uses.ink/types";
 import { DEFAULT_REPO } from "@uses.ink/constants";
+import { getRandom404Message } from "./lib/404";
+
 const { request } = Astro.props as { request: GithubRequest };
 const { owner, repo, path } = request;
 const [filename, ...folders] = path?.split("/").reverse() ?? [];
@@ -10,28 +12,25 @@ const params = new URLSearchParams({
     description: "My very own blog!",
     visibility: "public",
 });
-const createRepoUrl = `https://github.com/new?${params}`;
+const repoUrl = `https://github.com/new?${params}`;
 ---
 
 <article class="prose dark:prose-invert">
-    <h1 class="text-5xl">
-        Welcome to <a href="https://uses.ink">uses.ink</a>
+    <h1 class="not-prose font-extrabold text-[30rem] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-muted-foreground opacity-5 -z-10">
+        404 
     </h1>
+    <h1 class="text-6xl">{getRandom404Message()}</h1>
     <p class="text-2xl text-muted-foreground">
-        There is nothing here <b>(yet!)</b>.
+        No file named <code>{filename ?? "README.md"}</code> found.
     </p>
 
     <p class="text-2xl text-muted-foreground">
-        To get started, create a{" "}
-        <a href={createRepoUrl} target="_blank" rel="noreferrer">
+        To get started, go to your{" "}
+        <a href={repoUrl} target="_blank" rel="noreferrer">
             GitHub repository
         </a>{" "}
         named <code>{repo ?? DEFAULT_REPO}</code> and add a file named{" "}
         <code>{filename ?? "README.md"}</code>{folders.length > 0 ? <> in the folder <code>{folders.join("/")}</code></> : ""}.
-    </p>
-    <p class="text-2xl text-muted-foreground">
-        You can also use the following URL to use another repository:
-        <code>{"<owner>.uses.ink/<repo>"}</code>
     </p>
     <h3>
         <a href="https://uses.ink">Back to uses.ink</a>

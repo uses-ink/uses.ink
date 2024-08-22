@@ -21,6 +21,7 @@ import {
 	filterTree,
 	filterTreeByPath,
 	forgeUrlResolvers,
+	isReadmeRequest,
 	safeAsync,
 	safeSync,
 } from "./utils";
@@ -69,6 +70,9 @@ export const renderRemote = async (
 	);
 
 	if (validateError) {
+		if (!isReadmeRequest(request)) {
+			return { type: "not-found", payload: request };
+		}
 		logger.debug("validateError", validateError.name);
 		logger.debug("rquest.path", request.path);
 		const filteredTree = filterTreeByPath(githubTree.tree, request.path);

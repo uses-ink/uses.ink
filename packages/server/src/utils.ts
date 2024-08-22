@@ -6,7 +6,7 @@ import {
 	type GithubTree,
 	type RepoRequest,
 } from "@uses.ink/types";
-import { dirname, join } from "node:path";
+import { dirname, join, extname } from "node:path";
 
 export const isErrorHasStatus = (
 	raw: unknown,
@@ -56,7 +56,7 @@ export const filterTreeByPath = (tree: GithubTree["tree"], basePath: string) =>
 export const isReadmeRequest = (request: RepoRequest | GithubRequest) =>
 	!request.path ||
 	request.path === "." ||
-	!EXTENSIONS.includes(request.path.split(".").pop() ?? "");
+	!EXTENSIONS.includes(extname(request.path).slice(1));
 
 export const fileTypeFromExtension = (extension: string) => {
 	switch (extension.toLowerCase().trim()) {

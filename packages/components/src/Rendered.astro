@@ -2,18 +2,23 @@
 import Markdown from "@uses.ink/components/Markdown.astro";
 import Typst from "@uses.ink/components/Typst.astro";
 import GetStarted from "@uses.ink/components/GetStarted.astro";
+import NotFound from "@uses.ink/components/NotFound.astro";
 import Readme from "@uses.ink/components/Readme.astro";
 import type { RenderResult } from "@uses.ink/types";
 import { match } from "ts-pattern";
+import { logger } from "@uses.ink/client-logger/index.js";
 
 const { rendered } = Astro.props as { rendered: RenderResult };
+
+logger.info("Rendered", rendered);
 ---
 
 {
     match(rendered)
         .with({ type: "markdown" }, ({ payload }) => <Markdown result={payload} />)
         .with({ type: "typst" }, ({ payload }) => <Typst result={payload} />)
-        .with({ type: "get-started" }, ({ payload }) => <GetStarted repoRequest={payload} />)
+        .with({ type: "get-started" }, ({ payload }) => <GetStarted request={payload} />)
+        .with({ type: "not-found" }, ({ payload }) => <NotFound request={payload} />)
         .with({ type: "error" }, ({ payload }) => <div>{payload.message}</div>)
         .with({ type: "readme" }, ({ payload }) => <Readme {...payload} />)
         .otherwise(() => <div>Unknown type</div>)

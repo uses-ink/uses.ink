@@ -3,9 +3,8 @@ import PostLayout from "@/layouts/PostLayout.astro";
 import RootLayout from "@/layouts/RootLayout.astro";
 import { getRepoRequest, renderContent } from "@uses.ink/server";
 
-import { logger } from "@uses.ink/server-logger";
 import Rendered from "@uses.ink/components/Rendered.astro";
-import { FetchError } from "@uses.ink/errors";
+import { logger } from "@uses.ink/server-logger";
 
 const repoRequest = getRepoRequest(
 	Astro.request.headers.get("host"),
