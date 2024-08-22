@@ -1,22 +1,18 @@
 {
-  "name": "uses.ink",
-  "description": "Astro + TailwindCSS based monorepo template with PNPM workspaces",
-  "version": "0.6.0",
-  "private": true,
-  "scripts": {
-    "dev": "npm run dev --workspaces",
-    "build": "npm run build --workspaces"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^1.8.3"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "hast-util-sanitize@5.0.1": "patches/hast-util-sanitize@5.0.1.patch"
-    }
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+	"name": "uses.ink",
+	"version": "0.6.0",
+	"private": true,
+	"scripts": {
+		"dev": "npm run dev --workspaces",
+		"build": "npm run build --workspaces"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.8.3"
+	},
+	"pnpm": {
+		"patchedDependencies": {
+			"hast-util-sanitize@5.0.1": "patches/hast-util-sanitize@5.0.1.patch"
+		}
+	},
+	"workspaces": ["apps/*", "packages/*"]
 }
