@@ -1,0 +1,31 @@
+---
+import { ModeToggle } from "./ui/mode-toggle";
+import { Footer as FooterPart } from "./ui/footer"
+
+const buildCommit = __COMMIT_HASH__;
+const buildVersion = __VERSION__;
+const buildTime = __BUILD_TIME__;
+
+const { auto } = Astro.props;
+---
+<div class="flex justify-center mb-12 text-xs">
+    <div class="flex gap-4 items-center justify-between">
+        <ModeToggle client:load />
+        <FooterPart client:load version={buildVersion} commit={buildCommit} time={buildTime} />
+        {auto && (
+            <>
+                <p class="whitespace-nowrap !text-muted-foreground">·</p>
+                <a
+                    href="https://uses.ink/features.md#auto-generated-readme"
+                    class="whitespace-nowrap !text-muted-foreground not-prose"
+                >
+                    <p class="whitespace-nowrap !text-muted-foreground">
+                        Automatically generated
+                    </p>
+                </a>
+            </>
+        )}
+    </div>
+</div>
+
+
