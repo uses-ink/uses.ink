@@ -1,7 +1,7 @@
 ---
 import type { GithubRequest } from "@uses.ink/types";
 import { DEFAULT_REF, DEFAULT_REPO } from "@uses.ink/constants";
-import { getRandom404Message } from "./lib/404";
+import { getRandom404Message } from "./lib/errors";
 
 const { request } = Astro.props as { request: GithubRequest; };
 const { owner, repo, path } = request;

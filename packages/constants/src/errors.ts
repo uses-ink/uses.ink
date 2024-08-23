@@ -20,3 +20,26 @@ export const MESSAGES_404 = [
 	"No page here, but plenty of room for your imagination!",
 	"This page got bored and left. We don't blame it.",
 ];
+
+export const MESSAGES_500 = [
+	"Oops! The server took a nap. Try waking it up.",
+	"Something broke. We're blaming it on the gremlins.",
+	"Our server is feeling a bit under the weather. Please be patient.",
+	"The server ran into a wall. It's recovering... slowly.",
+	"Well, this is awkward... The server messed up big time.",
+	"We pressed the wrong button. Now everything’s on fire.",
+	"Our server is on a coffee break. It may be a while.",
+	"Whoops! The server tripped over a cable again.",
+	"The server encountered an existential crisis. It’s working through it.",
+	"Please hold... Our server is rebooting its life choices.",
+	"Something went wrong, but we swear it wasn’t us!",
+	"Looks like the server got a little too excited. Let’s try again.",
+	"The server needs a timeout. It's in the corner thinking about what it did.",
+	"Server’s on strike! We're negotiating snacks.",
+	"It’s not you, it’s the server. Promise.",
+	"The server is having a bad day. Aren't we all?",
+	"Server took a detour. We’re trying to bring it back on track.",
+	"Our server is acting like it’s Monday. We’re fixing that.",
+	"The server is stuck in a loop of bad decisions.",
+	"Our server’s brain froze. It’s rebooting… slowly.",
+];

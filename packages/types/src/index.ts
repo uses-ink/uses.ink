@@ -72,7 +72,10 @@ export type RenderResult =
 	  }
 	| {
 			type: "error";
-			payload: FetchError | Error;
+			payload: {
+				error: FetchError | Error;
+				request: RepoRequest | GithubRequest;
+			};
 	  }
 	| {
 			type: "not-found";

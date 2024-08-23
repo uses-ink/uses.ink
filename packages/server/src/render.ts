@@ -45,7 +45,20 @@ export const renderRemote = async (
 	githubRequest: GithubRequest,
 ): Promise<RenderResult> => {
 	// Get user config
-	const [userConfig] = await safeAsync(fetchUserConfig(githubRequest));
+	const [userConfig, userConfigError] = await safeAsync(
+		fetchUserConfig(githubRequest),
+	);
+
+	if (userConfigError) {
+		logger.debug("userConfigError", userConfigError);
+		if (userConfigError instanceof ZodError) {
+			return {
+				type: "error",
+				payload: { error: userConfigError, request: githubRequest },
+			};
+		}
+	}
+
 	logger.debug("userConfig", userConfig);
 	// Merge github request with user config
 	const request: GithubRequest = {
@@ -61,7 +74,7 @@ export const renderRemote = async (
 		if (treeError.name === "NOT_FOUND") {
 			return { type: "get-started", payload: request };
 		}
-		return { type: "error", payload: treeError };
+		return { type: "error", payload: { error: treeError, request } };
 	}
 
 	// Validate the request against the tree
@@ -107,7 +120,7 @@ export const renderRemote = async (
 		if (repoConfigError.name === "NOT_FOUND") {
 			logger.debug("repoConfigError", repoConfigError.message);
 		} else if (repoConfigError instanceof ZodError) {
-			return { type: "error", payload: repoConfigError };
+			return { type: "error", payload: { error: repoConfigError, request } };
 		} else {
 			logger.warn("unknown repoConfigError", repoConfigError.name);
 			throw repoConfigError;
@@ -163,7 +176,15 @@ export const renderMarkdown = async (
 	config?: RepoConfig,
 ): Promise<RenderResult> => {
 	const urlResolvers = forgeUrlResolvers(request);
-	const result = await compileMarkdown(content, urlResolvers, config);
+	const [result, resultError] = await safeAsync(
+		compileMarkdown(content, urlResolvers, config),
+	);
+	if (resultError) {
+		if (resultError instanceof ZodError) {
+			return { type: "error", payload: { error: resultError, request } };
+		}
+		throw resultError;
+	}
 	return { type: "markdown", payload: result };
 };
 

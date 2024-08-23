@@ -1,0 +1,37 @@
+---
+import type { GithubRequest, RepoRequest } from "@uses.ink/types";
+import { Clipboard, Check } from "lucide-react"
+import { getRandom500Message } from "./lib/errors";
+import { syntaxHighlightJSON } from "./lib/utils";
+
+const { error, request } = Astro.props as { error: any; request: RepoRequest | GithubRequest };
+const isRemote = !!request.owner || ("remote" in request && request.remote);
+
+const json = JSON.stringify(error, null, 4);
+const highlighted = syntaxHighlightJSON(json);
+---
+
+<article class="prose dark:prose-invert">
+    <h1 class="not-prose font-extrabold lg:text-[30rem] md:text-[20rem] text-[10rem] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-foreground opacity-5 -z-10">
+        500 
+    </h1>
+    <h1 class="lg:!text-6xl md:!text-5xl sm:!text-4xl text-3xl">{getRandom500Message()}</h1>
+    <p class="text-2xl text-muted-foreground">
+        Something went wrong while processing your request for {isRemote ? <span>the repository <code>{request.owner}/{request.repo}</code></span> : <span>the file <code>{request.path}</code></span>}.
+    </p>
+
+    <div class="relative">
+        <pre set:html={highlighted} class="bg-background/60" />
+        <button
+            class="absolute top-2 right-2 p-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+            onclick={"navigator.clipboard.writeText(`" + json + "`); const check = document.getElementById('check'); const clip = document.getElementById('clip'); clip.classList.add('hidden'); check.classList.remove('hidden'); setTimeout(() => { check.classList.add('hidden'); clip.classList.remove('hidden'); }, 3000);"}
+        >
+            <Clipboard size={24} id="clip"/>
+            <Check size={24} className="hidden" id="check"/>
+        </button>
+    </div>
+
+    <h3>
+        <a href="https://uses.ink">Back to uses.ink</a>
+    </h3>
+</article>
