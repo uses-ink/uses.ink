@@ -31,7 +31,7 @@ export const getCache = async () => {
 
 export type CacheType = "content" | "commit" | "tree" | "render";
 
-export * from "./compile";
+export * from "./markdown";
 export * from "./d2";
 export * from "./github";
 export * from "./typst";

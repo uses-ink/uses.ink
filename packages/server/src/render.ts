@@ -1,5 +1,10 @@
 import { EXTENSIONS } from "@uses.ink/constants";
-import { compileMarkdown, compileTypst } from "@uses.ink/render";
+import {
+	compileMarkdownMDX,
+	compileTypst,
+	compileMarkdownMarked,
+	compileMarkdownIt,
+} from "@uses.ink/render";
 import { logger } from "@uses.ink/server-logger";
 import type {
 	GithubRequest,
@@ -8,6 +13,7 @@ import type {
 	RepoRequest,
 } from "@uses.ink/types";
 import { FileType } from "@uses.ink/types";
+import { ZodError } from "zod";
 import { fetchRepoConfig, fetchUserConfig } from "./configs";
 import { fetchGithubRaw } from "./fetch";
 import { fetchGithubTree } from "./github/tree";
@@ -18,14 +24,12 @@ import {
 } from "./requests";
 import {
 	fileTypeFromExtension,
-	filterTree,
 	filterTreeByPath,
 	forgeUrlResolvers,
 	isReadmeRequest,
 	safeAsync,
 	safeSync,
 } from "./utils";
-import { ZodError } from "zod";
 
 export const renderContent = async (
 	repoRequest: RepoRequest,
@@ -156,28 +160,44 @@ export const renderLocal = async (
 	return renderContentByType(content, fileType, request);
 };
 
-export const renderContentByType = (
+export const renderContentByType = async (
 	content: string,
 	fileType: FileType,
 	request: RepoRequest | GithubRequest,
 	config?: RepoConfig,
 ): Promise<RenderResult> => {
 	switch (fileType) {
-		case FileType.Markdown:
-			return renderMarkdown(content, request, config);
+		case FileType.Markdown: {
+			// return renderMDX(content, request, config);
+			// return renderMarked(content, request, config);
+			// return renderMarkdownIt(content, request, config);
+			// const renderers = [
+			// 	{ name: "MDX", fn: renderMDX },
+			// 	{ name: "Marked", fn: renderMarked },
+			// 	{ name: "MarkdownIt", fn: renderMarkdownIt },
+			// ];
+			// const timings: { name: string; time: number }[] = [];
+			// for (const renderer of renderers) {
+			// 	const start = performance.now();
+			// 	await renderer.fn(content, request, config);
+			// 	timings.push({ name: renderer.name, time: performance.now() - start });
+			// }
+			// logger.debug("timings", timings);
+			return renderMDX(content, request, config);
+		}
 		case FileType.Typst:
 			return renderTypst(content, config);
 	}
 };
 
-export const renderMarkdown = async (
+export const renderMDX = async (
 	content: string,
 	request: RepoRequest | GithubRequest,
 	config?: RepoConfig,
 ): Promise<RenderResult> => {
 	const urlResolvers = forgeUrlResolvers(request);
 	const [result, resultError] = await safeAsync(
-		compileMarkdown(content, urlResolvers, config),
+		compileMarkdownMDX(content, urlResolvers, config),
 	);
 	if (resultError) {
 		if (resultError instanceof ZodError) {
@@ -185,7 +205,41 @@ export const renderMarkdown = async (
 		}
 		throw resultError;
 	}
-	return { type: "markdown", payload: result };
+	return { type: "mdx", payload: result };
+};
+
+export const renderMarked = async (
+	content: string,
+	request: RepoRequest | GithubRequest,
+	config?: RepoConfig,
+): Promise<RenderResult> => {
+	const [result, resultError] = await safeAsync(
+		compileMarkdownMarked(content, config),
+	);
+	if (resultError) {
+		if (resultError instanceof ZodError) {
+			return { type: "error", payload: { error: resultError, request } };
+		}
+		throw resultError;
+	}
+	return { type: "raw", payload: result };
+};
+
+export const renderMarkdownIt = async (
+	content: string,
+	request: RepoRequest | GithubRequest,
+	config?: RepoConfig,
+): Promise<RenderResult> => {
+	const [result, resultError] = await safeAsync(
+		compileMarkdownIt(content, config),
+	);
+	if (resultError) {
+		if (resultError instanceof ZodError) {
+			return { type: "error", payload: { error: resultError, request } };
+		}
+		throw resultError;
+	}
+	return { type: "raw", payload: result };
 };
 
 export const renderTypst = async (

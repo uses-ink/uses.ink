@@ -1,5 +1,6 @@
 ---
-import Markdown from "@uses.ink/components/Markdown.astro";
+import MarkdownMDX from "@uses.ink/components/MarkdownMDX.astro";
+import MarkdownRaw from "@uses.ink/components/MarkdownRaw.astro";
 import Typst from "@uses.ink/components/Typst.astro";
 import GetStarted from "@uses.ink/components/GetStarted.astro";
 import NotFound from "@uses.ink/components/NotFound.astro";
@@ -16,7 +17,8 @@ logger.info("Rendered", rendered.type);
 
 {
     match(rendered)
-        .with({ type: "markdown" }, ({ payload }) => <Markdown result={payload} />)
+        .with({ type: "mdx" }, ({ payload }) => <MarkdownMDX result={payload} />)
+        .with({ type: "raw" }, ({ payload }) => <MarkdownRaw result={payload} />)
         .with({ type: "typst" }, ({ payload }) => <Typst result={payload} />)
         .with({ type: "get-started" }, ({ payload }) => <GetStarted request={payload} />)
         .with({ type: "not-found" }, ({ payload }) => <NotFound request={payload} />)

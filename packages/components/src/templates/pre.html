@@ -1,0 +1,71 @@
+<div class="relative group not-prose" id="code-parent">
+	%s
+	<div class="absolute right-2 top-2">
+		<button
+			type="button"
+			aria-label="Toggle word wrap"
+			class="md:hidden mr-1 group-hover:opacity-100 appearance-none border dark:border-gray-700 border-gray-200 cursor-pointer bg-[--shiki-background] rounded-md opacity-0 select-none py-2 px-2 transition-opacity duration-200 ease-in-out"
+			id="toggle-wrap"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="lucide lucide-wrap-text stroke-muted-foreground w-4 h-4"
+				width="24"
+				height="24"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				id="toggle-wrap"
+			>
+				<line x1="3" x2="21" y1="6" y2="6" />
+				<path d="M3 12h15a3 3 0 1 1 0 6h-4" />
+				<polyline points="16 16 14 18 16 20" />
+				<line x1="3" x2="10" y1="18" y2="18" />
+			</svg>
+		</button>
+		<button
+			type="button"
+			aria-label="Copy code to clipboard"
+			class="group-hover:opacity-100 appearance-none border dark:border-gray-700 border-gray-200 cursor-pointer bg-[--shiki-background] rounded-md opacity-0 select-none py-2 px-2 transition-opacity duration-200 ease-in-out"
+			id="copy-code"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="lucide lucide-check w-4 h-4 stroke-muted-foreground"
+				width="24"
+				height="24"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				id="check"
+			>
+				<path d="M20 6 9 17l-5-5" />
+			</svg>
+
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="lucide lucide-clipboard w-4 h-4 stroke-muted-foreground"
+				width="24"
+				height="24"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				id="clip"
+			>
+				<rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+				<path
+					d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+				/>
+			</svg>
+		</button>
+	</div>
+</div>

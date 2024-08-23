@@ -9,6 +9,7 @@
 		"@jsdevtools/rehype-url-inspector": "^2.0.2",
 		"@mdx-js/mdx": "^3.0.1",
 		"@myriaddreamin/typst-ts-node-compiler": "0.5.0-rc6",
+		"@shikijs/markdown-it": "^1.14.1",
 		"@shikijs/transformers": "^1.10.3",
 		"@uses.ink/cache": "workspace:*",
 		"@uses.ink/constants": "workspace:*",
@@ -20,7 +21,12 @@
 		"hast-util-from-html-isomorphic": "^2.0.0",
 		"hast-util-to-text": "^4.0.2",
 		"inspect": "^0.0.2",
+		"isomorphic-dompurify": "^2.14.0",
+		"markdown-it": "^14.1.0",
+		"marked-footnote": "^1.2.2",
+		"marked-shiki": "^1.1.0",
 		"mdast-util-to-string": "^4.0.0",
+		"node-emoji": "^2.1.3",
 		"pikchr-wasm": "^2.0.1",
 		"reading-time-estimator": "^1.11.0",
 		"rehype-callouts": "^1.0.3",
@@ -39,6 +45,7 @@
 		"shiki": "^1.10.3",
 		"toc": "^0.4.0",
 		"ts-pattern": "^5.2.0",
+		"twemoji": "^14.0.2",
 		"unified": "^11.0.5",
 		"unist": "^0.0.1",
 		"unist-util-inspect": "^8.1.0",
@@ -47,8 +54,9 @@
 		"util": "^0.12.5"
 	},
 	"devDependencies": {
-		"@uses.ink/types": "workspace:*",
 		"@types/hast": "^3.0.4",
+		"@types/markdown-it": "^14.1.2",
+		"@uses.ink/types": "workspace:*",
 		"vfile": "^6.0.2",
 		"zod": "^3.23.8"
 	}

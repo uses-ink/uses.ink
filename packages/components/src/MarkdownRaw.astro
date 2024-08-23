@@ -1,25 +1,20 @@
 ---
-import { runMDX } from "@uses.ink/client";
-import type { MarkdownCompileResult } from "@uses.ink/types";
-import { mdxComponents } from "./mdx";
-const { meta, runnable, readingTime }: MarkdownCompileResult = Astro.props.result;
-const Content = await runMDX(runnable);
+import type { MarkdownRawCompileResult } from "@uses.ink/types";
+
+const { meta, html }: MarkdownRawCompileResult = Astro.props.result;
 ---
 
-<div>
-    <p>Reading time: {readingTime?.text}</p>
-    <Content components={mdxComponents} />
-</div>
+<div set:html={html}>
 
 <script src="./lib/pre-utils.ts" />
-<script define:vars={{ meta }}>
+<script is:inline define:vars={{ meta }}>
     const PROSE_THEMES = {
         default: "prose-neutral",
         gruvbox: "prose-gruvbox",
         solarized: "prose-solarized",
         nord: "prose-nord",
         monokai: "prose-monokai",
-    }
+    };
     const theme = meta.theme || "default";
     document.documentElement.dataset.theme = theme;
     const rootArticle = document.getElementById("root-article");
@@ -30,7 +25,7 @@ const Content = await runMDX(runnable);
         sans: "font-sans",
         serif: "font-serif",
         mono: "font-mono",
-    }
+    };
 
     const font = meta.font || "sans";
     rootArticle.classList.remove(...Object.values(FONTS));

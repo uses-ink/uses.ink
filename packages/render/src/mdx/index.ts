@@ -7,7 +7,7 @@ import {
 } from "@shikijs/transformers";
 import { logger } from "@uses.ink/server-logger";
 // import rehypeKatex from "rehype-katex";
-import type { MarkdownCompileResult, RepoConfig, Meta } from "@uses.ink/types";
+import type { MDXCompileResult, RepoConfig, Meta } from "@uses.ink/types";
 import { MetaSchema } from "@uses.ink/schemas";
 import parseMatter from "gray-matter";
 import rehypeCallouts from "rehype-callouts";
@@ -44,14 +44,16 @@ import {
 import rehypeCopy from "./copy";
 import { readingTime as rT } from "reading-time-estimator";
 
-export async function compileMarkdown(
+export async function compileMarkdownMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
 	config?: RepoConfig,
-): Promise<MarkdownCompileResult> {
+): Promise<MDXCompileResult> {
 	const start = performance.now();
 	const cached =
-		IS_DEV && DISABLE_CACHE_DEV ? undefined : await getCompileCache(content);
+		IS_DEV && DISABLE_CACHE_DEV
+			? undefined
+			: await getCompileCache(content, "mdx");
 	if (cached) {
 		logger.debug(`Cache hit in ${performance.now() - start}ms`);
 		return cached;
@@ -66,7 +68,7 @@ export async function compileMarkdown(
 		...meta,
 	};
 
-	const readingTime = meta.readingTime ? rT(content) : undefined;
+	const readingTime = meta.readingTime ? rT(matter.content) : undefined;
 
 	logger.debug("meta", meta);
 	logger.debug("Cache miss");
@@ -197,7 +199,7 @@ export async function compileMarkdown(
 	});
 	logger.debug(`Compiled in ${performance.now() - start}ms`);
 	const compiled = { meta: meta, runnable: result.toString(), readingTime };
-	await setCompileCache(content, compiled);
+	await setCompileCache(content, compiled, "mdx");
 	return compiled;
 }
 

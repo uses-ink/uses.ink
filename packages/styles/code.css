@@ -1,3 +1,7 @@
+div pre {
+	@apply my-4;
+}
+
 pre.with-title .copy-button {
 	@apply top-4;
 }

@@ -1,14 +1,18 @@
 const copyButtons = document.querySelectorAll("#copy-code");
 // biome-ignore lint/complexity/noForEach: <explanation>
 copyButtons.forEach((button) => {
+	const parent = button.closest("#code-parent");
+	if (!parent) return;
+	const clip = parent.querySelector("#clip") as HTMLElement;
+	const code = parent.querySelector("code") as HTMLElement;
+	const check = parent.querySelector("#check") as HTMLElement;
+	if (!code || !check || !clip) return;
+
+	clip.style.display = "block";
+	check.style.display = "none";
+
 	button.addEventListener("click", () => {
 		// Get the closest #code-parent element
-		const parent = button.closest("#code-parent");
-		if (!parent) return;
-		const code = parent.querySelector("code") as HTMLElement;
-		const check = parent.querySelector("#check") as HTMLElement;
-		const clip = parent.querySelector("#clip") as HTMLElement;
-		if (!code || !check || !clip) return;
 		check.style.display = "block";
 		clip.style.display = "none";
 		setTimeout(() => {

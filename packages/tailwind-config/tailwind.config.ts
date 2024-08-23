@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 import tailwindTypography from "@tailwindcss/typography";
+
 const hexToRgb = (h: string) => {
 	let hex = h;
 	hex = hex.replace("#", "");
@@ -14,8 +15,8 @@ const hexToRgb = (h: string) => {
 export default {
 	darkMode: ["class"],
 	content: [
-		"./src/**/*.{astro,jsx,ts,tsx}",
-		"../../packages/components/src/**/*.{astro,jsx,ts,tsx}",
+		"./src/**/*.{astro,jsx,ts,tsx,html}",
+		"../../packages/components/src/**/*.{astro,jsx,ts,tsx,html}",
 	],
 	theme: {
 		container: {

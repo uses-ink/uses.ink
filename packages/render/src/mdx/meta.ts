@@ -1,3 +1,4 @@
+import type { MarkedCompileResult, RepoConfig } from "@uses.ink/types";
 import { visit } from "unist-util-visit";
 
 /**

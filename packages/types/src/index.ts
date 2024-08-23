@@ -29,10 +29,15 @@ type ReadingTime = {
 	 */
 	readonly text: string;
 };
-export type MarkdownCompileResult = {
+export type MDXCompileResult = {
 	meta: Meta;
 	runnable: string;
 	readingTime?: ReadingTime;
+};
+
+export type MarkdownRawCompileResult = {
+	meta: Meta;
+	html: string;
 };
 
 export type TypstCompileResult = {
@@ -56,8 +61,12 @@ export type RenderResult =
 			payload: TypstCompileResult;
 	  }
 	| {
-			type: "markdown";
-			payload: MarkdownCompileResult;
+			type: "mdx";
+			payload: MDXCompileResult;
+	  }
+	| {
+			type: "raw";
+			payload: MarkdownRawCompileResult;
 	  }
 	| {
 			type: "readme";

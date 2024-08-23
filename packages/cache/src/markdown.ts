@@ -3,11 +3,24 @@ import { xxh64 } from "@node-rs/xxhash";
 import { getCache } from ".";
 import { logger } from "@uses.ink/server-logger";
 import { pack, unpack } from "msgpackr";
-import type { MarkdownCompileResult } from "@uses.ink/types";
+import type {
+	MDXCompileResult,
+	MarkdownRawCompileResult,
+} from "@uses.ink/types";
 
-export const getCompileCache = async (
+export type MarkdownEngines = "mdx" | "marked" | "markdownIt";
+
+export type MarkdownResults = {
+	mdx: MDXCompileResult;
+	marked: MarkdownRawCompileResult;
+	markdownIt: MarkdownRawCompileResult;
+};
+
+// Use a mapped type to infer the correct result type based on the engine
+export const getCompileCache = async <T extends MarkdownEngines>(
 	content: string,
-): Promise<MarkdownCompileResult | null> => {
+	type: T,
+): Promise<MarkdownResults[T] | null> => {
 	logger.debug("getCompileCache");
 	const cache = await getCache();
 	if (cache === null) {
@@ -15,7 +28,7 @@ export const getCompileCache = async (
 		return null;
 	}
 	const start = performance.now();
-	const key = getCompileKey(content);
+	const key = getCompileKey(content, type);
 	logger.debug(
 		`getCompileKey took ${performance.now() - start}ms for ${content.length} bytes`,
 	);
@@ -32,13 +45,16 @@ export const getCompileCache = async (
 	}
 };
 
-export const setCompileCache = async (
+export const setCompileCache = async <T extends MarkdownEngines>(
 	content: string,
-	compiled: MarkdownCompileResult,
+	compiled: MarkdownResults[T],
+	type: T,
 ): Promise<void> => {
 	const cache = await getCache();
 	if (cache === null) return;
-	const key = getCompileKey(content);
+
+	const key = getCompileKey(content, type);
+
 	try {
 		await cache.set(key, pack(compiled), "EX", RENDER_CACHE_TTL);
 	} catch (error) {
@@ -46,5 +62,5 @@ export const setCompileCache = async (
 	}
 };
 
-export const getCompileKey = (content: string): string =>
-	`compile/${xxh64(content).toString(36)}`;
+export const getCompileKey = (content: string, type: MarkdownEngines): string =>
+	`compile/${xxh64(content).toString(36)}/${type}`;
