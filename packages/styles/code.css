@@ -2,6 +2,12 @@ div pre {
 	@apply my-4;
 }
 
+figure[data-rehype-pretty-code-figure]:has(> figcaption[data-rehype-pretty-code-title])
+	> div
+	> pre {
+	@apply rounded-t-none mt-0 border-t-0;
+}
+
 pre.with-title .copy-button {
 	@apply top-4;
 }
