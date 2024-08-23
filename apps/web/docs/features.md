@@ -1,7 +1,6 @@
 ---
 title: Features
 author: cstef
-font: aldfjsljsk
 ---
 
 `uses.ink` comes with a lot of features out of the box. No configuration needed. You push and we render.
