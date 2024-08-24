@@ -1,17 +1,23 @@
 {
-  "name": "uses.ink",
-  "version": "0.6.0",
-  "private": true,
-  "scripts": {
-    "dev": "bun --filter \"*\" dev",
-    "build": "bun --filter \"*\" build"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^1.8.3"
-  },
-  "workspaces": ["apps/*", "packages/*"],
-  "trustedDependencies": ["@biomejs/biome", "esbuild", "msgpackr-extract", "sharp"],
-  "patchedDependencies": {
-    "hast-util-sanitize@5.0.1": "patches/hast-util-sanitize@5.0.1.patch"
-  }
+	"name": "uses.ink",
+	"version": "0.6.0",
+	"private": true,
+	"scripts": {
+		"dev": "bun --filter \"*\" dev",
+		"build": "bun --filter \"*\" build",
+		"postinstall": "./scripts/postinstall.sh"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.8.3"
+	},
+	"workspaces": ["apps/*", "packages/*"],
+	"trustedDependencies": [
+		"@biomejs/biome",
+		"esbuild",
+		"msgpackr-extract",
+		"sharp"
+	],
+	"patchedDependencies": {
+		"hast-util-sanitize@5.0.1": "patches/hast-util-sanitize@5.0.1.patch"
+	}
 }
