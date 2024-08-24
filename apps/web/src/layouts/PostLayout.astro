@@ -10,3 +10,60 @@ import Footer from "@uses.ink/components/Footer.astro";
     <Footer time={Astro.props.time}/>
     <ScrollBack client:load />
 </article>
+
+<script>
+    const handleHashChange = () => {
+		let hash;
+
+		try {
+			hash = decodeURIComponent(location.hash.slice(1)).toLowerCase();
+		} catch (e) {
+            console.error(e);
+			return;
+		}
+
+		const name = `user-content-${hash}`;
+		const target =
+			document.getElementById(name) ||
+			document.getElementsByName(name)[0] ||
+			document.getElementById(hash);
+
+        console.log("hash", hash);
+        console.log(target);
+
+		if (target) {
+			const offset = 100;
+			const y = target.getBoundingClientRect().top + window.scrollY - offset;
+			window.scrollTo({ top: y, behavior: "smooth" });
+		}
+	};
+	const handleClick = (event: MouseEvent) => {
+        // @ts-ignore
+        const selectedTarget = event.target ? event.target instanceof HTMLAnchorElement ? event.target : event.target.parentElement instanceof HTMLAnchorElement ? event.target.parentElement : null : null;
+		console.log("selectedTarget", selectedTarget);
+        if (
+			selectedTarget &&
+			location.hash.length > 1
+		) {
+            location.href = selectedTarget.href;
+            if (!event.defaultPrevented) {
+                console.log("click");
+				handleHashChange();
+			} else {
+                console.log("default prevented");
+            }
+		} else {
+            console.log("else");
+        }
+	};
+
+	(async () => {
+        await new Promise((resolve) => {
+            setTimeout(resolve, 0);
+        });
+        handleHashChange();
+    })();
+
+    window.addEventListener("hashchange", handleHashChange);
+	document.addEventListener("click", handleClick);
+</script>
