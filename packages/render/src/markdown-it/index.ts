@@ -1,20 +1,17 @@
-import { getCompileCache, setCompileCache } from "@uses.ink/cache";
-import { DEFAULT_META, DISABLE_CACHE_DEV, IS_DEV } from "@uses.ink/constants";
-import { MetaSchema } from "@uses.ink/schemas";
-import { logger } from "@uses.ink/server-logger";
-import type { MarkdownRawCompileResult, RepoConfig } from "@uses.ink/types";
-import parseMatter from "gray-matter";
-import { readingTime as rT } from "reading-time-estimator";
-import MarkdownIt from "markdown-it";
-import DOMPurify from "isomorphic-dompurify";
 import { fromHighlighter } from "@shikijs/markdown-it/core";
+import { getCompileCache, setCompileCache } from "@uses.ink/cache";
+import { DISABLE_CACHE_DEV, IS_DEV } from "@uses.ink/constants";
+import { logger } from "@uses.ink/server-logger";
+import d2Lang from "@uses.ink/syntaxes/d2.tmLanguage.json";
+import pikchrLang from "@uses.ink/syntaxes/pikchr.tmLanguage.json";
+import type { Meta } from "@uses.ink/types";
+import DOMPurify from "isomorphic-dompurify";
+import MarkdownIt from "markdown-it";
 import {
 	bundledLanguages,
 	createCssVariablesTheme,
 	getSingletonHighlighter,
 } from "shiki";
-import d2Lang from "@uses.ink/syntaxes/d2.tmLanguage.json";
-import pikchrLang from "@uses.ink/syntaxes/pikchr.tmLanguage.json";
 
 const instance: { current: MarkdownIt | null } = { current: null };
 
@@ -50,8 +47,8 @@ export async function getMarkdownIt() {
 
 export async function compileMarkdownIt(
 	content: string,
-	config?: RepoConfig,
-): Promise<MarkdownRawCompileResult> {
+	meta: Meta,
+): Promise<string> {
 	const start = performance.now();
 	const cached =
 		IS_DEV && DISABLE_CACHE_DEV
@@ -61,33 +58,15 @@ export async function compileMarkdownIt(
 		logger.debug(`Cache hit in ${performance.now() - start}ms`);
 		return cached;
 	}
-	const matter = parseMatter(content);
-
-	let meta = MetaSchema.parse(matter.data);
-
-	meta = {
-		...DEFAULT_META,
-		...config,
-		...meta,
-	};
-
-	const readingTime = meta.readingTime ? rT(matter.content) : undefined;
-
 	logger.debug("meta", meta);
 	logger.debug("Cache miss");
 
 	const markdownit = await getMarkdownIt();
-	const html = markdownit.render(matter.content);
+	const html = markdownit.render(content);
 
 	const sanitized = DOMPurify.sanitize(html);
 
-	const result = {
-		meta,
-		html: sanitized,
-		readingTime,
-	};
+	await setCompileCache(content, sanitized, "markdownIt");
 
-	await setCompileCache(content, result, "markdownIt");
-
-	return result;
+	return sanitized;
 }

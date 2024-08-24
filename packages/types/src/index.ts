@@ -1,4 +1,4 @@
-import type { GithubRequest, GithubTree } from "./github";
+import type { GithubRequest, GithubTree, ParsedGithubCommit } from "./github";
 import type { Meta } from "./schemas";
 import type { FetchError } from "@uses.ink/errors";
 
@@ -15,7 +15,7 @@ export type RepoRequest =
 			path: string;
 			remote: false;
 	  };
-type ReadingTime = {
+export type ReadingTime = {
 	/**
 	 * Number of minutes to read the text
 	 */
@@ -37,6 +37,7 @@ export type MDXCompileResult = {
 
 export type MarkdownRawCompileResult = {
 	meta: Meta;
+	readingTime?: ReadingTime;
 	html: string;
 };
 
@@ -55,7 +56,15 @@ export type D2RenderResult = {
 	size: D2Size;
 };
 
-export type RenderResult =
+export type HeadingMeta = {
+	title: string;
+	description?: string;
+	author: { name?: string; link?: string; avatar?: string };
+	date?: string;
+	dateLink?: string;
+};
+
+export type RenderResult = (
 	| {
 			type: "typst";
 			payload: TypstCompileResult;
@@ -89,7 +98,8 @@ export type RenderResult =
 	| {
 			type: "not-found";
 			payload: GithubRequest | RepoRequest;
-	  };
+	  }
+) & { commit?: ParsedGithubCommit };
 
 export * from "./github";
 export * from "./schemas";

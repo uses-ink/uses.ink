@@ -1,17 +1,14 @@
 import { getCompileCache, setCompileCache } from "@uses.ink/cache";
-import { IS_DEV, DISABLE_CACHE_DEV, DEFAULT_META } from "@uses.ink/constants";
-import { MetaSchema } from "@uses.ink/schemas";
+import { DISABLE_CACHE_DEV, IS_DEV } from "@uses.ink/constants";
 import { logger } from "@uses.ink/server-logger";
-import type { MarkdownRawCompileResult, RepoConfig } from "@uses.ink/types";
+import type { Meta } from "@uses.ink/types";
 import { Marked } from "marked";
-import parseMatter from "gray-matter";
-import { readingTime as rT } from "reading-time-estimator";
-import markedShiki from "marked-shiki";
 import markedFootnote from "marked-footnote";
+import markedShiki from "marked-shiki";
 
-import markedTypst from "./typst";
-import { getShiki } from "../mdx/shiki";
 import DOMPurify from "isomorphic-dompurify";
+import { getShiki } from "../mdx/shiki";
+import markedTypst from "./typst";
 // @ts-ignore
 import preTemplate from "@uses.ink/components/templates/pre.html?raw";
 import markedTwemoji from "./twemoji";
@@ -48,8 +45,8 @@ export async function getMarked() {
 
 export async function compileMarkdownMarked(
 	content: string,
-	config?: RepoConfig,
-): Promise<MarkdownRawCompileResult> {
+	meta?: Meta,
+): Promise<string> {
 	const start = performance.now();
 	const cached =
 		IS_DEV && DISABLE_CACHE_DEV
@@ -59,33 +56,16 @@ export async function compileMarkdownMarked(
 		logger.debug(`Cache hit in ${performance.now() - start}ms`);
 		return cached;
 	}
-	const matter = parseMatter(content);
-
-	let meta = MetaSchema.parse(matter.data);
-
-	meta = {
-		...DEFAULT_META,
-		...config,
-		...meta,
-	};
-
-	const readingTime = meta.readingTime ? rT(matter.content) : undefined;
 
 	logger.debug("meta", meta);
 	logger.debug("Cache miss");
 
 	const marked = await getMarked();
-	const html = await marked.parse(matter.content);
+	const html = await marked.parse(content);
 
 	const sanitized = DOMPurify.sanitize(html);
 
-	const result = {
-		meta,
-		html: sanitized,
-		readingTime,
-	};
+	await setCompileCache(content, sanitized, "marked");
 
-	await setCompileCache(content, result, "marked");
-
-	return result;
+	return sanitized;
 }

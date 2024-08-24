@@ -1,15 +1,35 @@
 ---
 import { runMDX } from "@uses.ink/client";
+import { forgeUrlResolvers, resolveMeta } from "@uses.ink/server";
 import type { MDXCompileResult } from "@uses.ink/types";
 import { mdxComponents } from "./mdx";
+import { MarkdownHeader } from "./MarkdownHeader";
 const { meta, runnable, readingTime }: MDXCompileResult = Astro.props.result;
+const { commit, request } = Astro.props;
+const headingMeta = resolveMeta(meta, request, commit);
 const Content = await runMDX(runnable);
+const urlResolvers = forgeUrlResolvers(request)
 ---
 
-<div>
-    <p>Reading time: {readingTime?.text}</p>
+<>
+    <title slot="head">{headingMeta.title}</title>
+    <meta slot="head" name="description" content={headingMeta.description} />
+    <meta slot="head" name="og:title" content={headingMeta.title} />
+    <meta slot="head" name="og:description" content={headingMeta.description} />
+    {meta.image ? (
+        <meta
+            slot="head"
+            property="og:image"
+            content={urlResolvers.asset(meta.image)}
+        />
+    ) : headingMeta.author.avatar ? (
+        <meta slot="head" property="og:image" content={headingMeta.author.avatar} />
+    ) : null}
+
+    <MarkdownHeader {...{ headingMeta, meta, readingTime }} client:load />
+    
     <Content components={mdxComponents} />
-</div>
+</h>
 
 <script src="./lib/pre-utils.ts" />
 <script is:inline define:vars={{ meta }}>

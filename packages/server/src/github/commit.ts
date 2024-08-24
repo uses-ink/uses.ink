@@ -1,5 +1,9 @@
 import { getGitHubCache, setGitHubCache } from "@uses.ink/cache";
-import type { GitHubRequest, GithubCommit } from "@uses.ink/types";
+import type {
+	GithubRequest,
+	GithubCommit,
+	ParsedGithubCommit,
+} from "@uses.ink/types";
 import { getOctokit } from "../octokit";
 import { isErrorHasStatus } from "../utils";
 
@@ -16,19 +20,8 @@ export type GithubAuthor = {
 };
 
 export const fetchGithubLastCommit = async (
-	request: GitHubRequest,
-): Promise<
-	| {
-			date: string;
-			author: {
-				name: string;
-				login: string;
-				avatar: string;
-			};
-			link: string;
-	  }
-	| undefined
-> => {
+	request: GithubRequest,
+): Promise<ParsedGithubCommit | undefined> => {
 	const { owner, path, repo } = request;
 	const cached = await getGitHubCache<GithubCommit>(request, "commit");
 	try {
@@ -48,7 +41,7 @@ export const fetchGithubLastCommit = async (
 		const link = response.data[0].html_url;
 		if (!date || !author.name || !author.login || !author.avatar || !link)
 			return;
-		return { date, author: author as any, link };
+		return { date, user: author as any, link };
 	} catch (error) {
 		// Return cache
 		if (!isErrorHasStatus(error)) throw error;
@@ -63,6 +56,6 @@ export const fetchGithubLastCommit = async (
 		const link = cached.data[0].html_url;
 		if (!date || !author.name || !author.login || !author.avatar || !link)
 			return;
-		return { date, author: author as any, link };
+		return { date, user: author as any, link };
 	}
 };

@@ -1,12 +1,20 @@
-import { DEFAULT_REF, DEFAULT_REPO, EXTENSIONS } from "@uses.ink/constants";
-import { logger } from "@uses.ink/server-logger/index.js";
 import {
-	FileType,
-	type GithubRequest,
-	type GithubTree,
-	type RepoRequest,
+	DEFAULT_REF,
+	DEFAULT_REPO,
+	EXTENSIONS,
+	README_FILES,
+} from "@uses.ink/constants";
+import { logger } from "@uses.ink/server-logger/index.js";
+import type {
+	HeadingMeta,
+	Meta,
+	GithubRequest,
+	GithubTree,
+	RepoRequest,
+	ParsedGithubCommit,
 } from "@uses.ink/types";
-import { dirname, join, extname } from "node:path";
+import { FileType } from "@uses.ink/types";
+import { dirname, join, extname, basename } from "node:path";
 
 export const isErrorHasStatus = (
 	raw: unknown,
@@ -44,12 +52,12 @@ export const filterTree = (
 export const filterTreeByPath = (tree: GithubTree["tree"], basePath: string) =>
 	tree.filter((file) => {
 		const isCurrentDir = dirname(file.path ?? ".") === (basePath || ".");
-		logger.debug("filterTree", {
-			isCurrentDir,
-			basePath,
-			at: file.path,
-			atDir: dirname(file.path ?? "."),
-		});
+		// logger.debug("filterTree", {
+		// 	isCurrentDir,
+		// 	basePath,
+		// 	at: file.path,
+		// 	atDir: dirname(file.path ?? "."),
+		// });
 		return isCurrentDir;
 	});
 
@@ -73,6 +81,7 @@ export const fileTypeFromExtension = (extension: string) => {
 
 export const forgeUrlResolvers = (request: RepoRequest | GithubRequest) => ({
 	asset: (url: string) => {
+		logger.debug("forgeUrlResolvers.asset", { url, request });
 		if (request.owner) {
 			const { owner, repo, path, ref } = request;
 			const dir = dirname(path ?? "");
@@ -86,6 +95,12 @@ export const forgeUrlResolvers = (request: RepoRequest | GithubRequest) => ({
 			const { repo, path, ref } = request;
 			const dir = dirname(path ?? "");
 			const assetPath = join(dir, url);
+			const isSupported =
+				EXTENSIONS.includes(extname(assetPath).slice(1)) ||
+				isReadmeRequest(request);
+			if (!isSupported) {
+				return `https://raw.githubusercontent.com/${request.owner}/${repo ?? DEFAULT_REPO}/${ref ?? DEFAULT_REF}/${assetPath}`;
+			}
 			return `/${repo ?? DEFAULT_REPO}${ref && ref !== DEFAULT_REF ? `@${ref}` : ""}/${assetPath}`;
 		}
 
@@ -122,4 +137,45 @@ export const safeSync = <T, E extends Error = Error>(
 		}
 		return [null, new Error("Unknown error occurred") as E];
 	}
+};
+
+export const resolveMeta = (
+	meta: Meta,
+	request: RepoRequest,
+	lastCommit?: ParsedGithubCommit,
+	filename?: string,
+): HeadingMeta => {
+	const date = meta.date ?? lastCommit?.date;
+
+	const author = lastCommit?.user
+		? {
+				name: lastCommit.user.name,
+				link: `https://github.com/${lastCommit.user.login}`,
+				avatar: lastCommit.user.avatar,
+			}
+		: { name: meta.author ?? request.owner };
+
+	const title =
+		meta.title ??
+		(filename
+			? README_FILES.includes(basename(filename.toLowerCase()))
+				? `${request.owner}/${request.repo ?? DEFAULT_REPO}`
+				: capitalizeFileName(filename)
+			: `${request.owner}/${request.repo ?? DEFAULT_REPO}`);
+
+	const description = meta.description;
+
+	return {
+		title,
+		description,
+		author,
+		date,
+	};
+};
+
+export const capitalizeFileName = (filename: string): string => {
+	return filename
+		.split(/[-_ ]/)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
 };

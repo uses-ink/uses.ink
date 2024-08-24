@@ -1,4 +1,4 @@
-import { EXTENSIONS } from "@uses.ink/constants";
+import { DEFAULT_META, EXTENSIONS } from "@uses.ink/constants";
 import {
 	compileMarkdownMDX,
 	compileTypst,
@@ -8,6 +8,8 @@ import {
 import { logger } from "@uses.ink/server-logger";
 import type {
 	GithubRequest,
+	Meta,
+	ReadingTime,
 	RenderResult,
 	RepoConfig,
 	RepoRequest,
@@ -30,6 +32,10 @@ import {
 	safeAsync,
 	safeSync,
 } from "./utils";
+import { fetchGithubLastCommit } from "./github/commit";
+import { MetaSchema } from "@uses.ink/schemas/index.js";
+import { readingTime as rT } from "reading-time-estimator";
+import parseMatter from "gray-matter";
 
 export const renderContent = async (
 	repoRequest: RepoRequest,
@@ -133,8 +139,19 @@ export const renderRemote = async (
 
 	// Merge the user config with the repo config
 	const mergedConfig: RepoConfig = { ...userConfig, ...repoConfig };
+	const res = await renderContentByType(
+		content,
+		fileType,
+		request,
+		mergedConfig,
+	);
+	const commit = await fetchGithubLastCommit(request);
+	logger.debug("commit", commit);
 	// Render the content
-	return renderContentByType(content, fileType, request, mergedConfig);
+	return {
+		...res,
+		commit,
+	};
 };
 
 export const renderLocal = async (
@@ -157,7 +174,7 @@ export const renderLocal = async (
 
 	const content = (await read()) as string;
 
-	return renderContentByType(content, fileType, request);
+	return await renderContentByType(content, fileType, request);
 };
 
 export const renderContentByType = async (
@@ -168,22 +185,30 @@ export const renderContentByType = async (
 ): Promise<RenderResult> => {
 	switch (fileType) {
 		case FileType.Markdown: {
-			// return renderMDX(content, request, config);
-			// return renderMarked(content, request, config);
-			// return renderMarkdownIt(content, request, config);
-			// const renderers = [
-			// 	{ name: "MDX", fn: renderMDX },
-			// 	{ name: "Marked", fn: renderMarked },
-			// 	{ name: "MarkdownIt", fn: renderMarkdownIt },
-			// ];
-			// const timings: { name: string; time: number }[] = [];
-			// for (const renderer of renderers) {
-			// 	const start = performance.now();
-			// 	await renderer.fn(content, request, config);
-			// 	timings.push({ name: renderer.name, time: performance.now() - start });
-			// }
-			// logger.debug("timings", timings);
-			return renderMDX(content, request, config);
+			const matter = parseMatter(content);
+
+			let [meta, metaError] = safeSync(() => MetaSchema.parse(matter.data));
+			if (metaError) {
+				logger.debug("metaError", metaError);
+			}
+
+			meta = {
+				...DEFAULT_META,
+				...config,
+				...meta,
+			};
+
+			const readingTime = meta.readingTime ? rT(matter.content) : undefined;
+			let renderer = renderMDX;
+			switch (meta.renderer) {
+				case "marked":
+					renderer = renderMarked;
+					break;
+				case "markdown-it":
+					renderer = renderMarkdownIt;
+					break;
+			}
+			return await renderer(matter.content, request, meta, readingTime);
 		}
 		case FileType.Typst:
 			return renderTypst(content, config);
@@ -193,11 +218,12 @@ export const renderContentByType = async (
 export const renderMDX = async (
 	content: string,
 	request: RepoRequest | GithubRequest,
-	config?: RepoConfig,
+	meta: Meta,
+	readingTime?: ReadingTime,
 ): Promise<RenderResult> => {
 	const urlResolvers = forgeUrlResolvers(request);
-	const [result, resultError] = await safeAsync(
-		compileMarkdownMDX(content, urlResolvers, config),
+	const [runnable, resultError] = await safeAsync(
+		compileMarkdownMDX(content, urlResolvers, meta),
 	);
 	if (resultError) {
 		if (resultError instanceof ZodError) {
@@ -205,16 +231,17 @@ export const renderMDX = async (
 		}
 		throw resultError;
 	}
-	return { type: "mdx", payload: result };
+	return { type: "mdx", payload: { runnable, meta, readingTime } };
 };
 
 export const renderMarked = async (
 	content: string,
 	request: RepoRequest | GithubRequest,
-	config?: RepoConfig,
+	meta: Meta,
+	readingTime?: ReadingTime,
 ): Promise<RenderResult> => {
 	const [result, resultError] = await safeAsync(
-		compileMarkdownMarked(content, config),
+		compileMarkdownMarked(content, meta),
 	);
 	if (resultError) {
 		if (resultError instanceof ZodError) {
@@ -222,16 +249,17 @@ export const renderMarked = async (
 		}
 		throw resultError;
 	}
-	return { type: "raw", payload: result };
+	return { type: "raw", payload: { html: result, meta, readingTime } };
 };
 
 export const renderMarkdownIt = async (
 	content: string,
 	request: RepoRequest | GithubRequest,
-	config?: RepoConfig,
+	meta: Meta,
+	readingTime?: ReadingTime,
 ): Promise<RenderResult> => {
 	const [result, resultError] = await safeAsync(
-		compileMarkdownIt(content, config),
+		compileMarkdownIt(content, meta),
 	);
 	if (resultError) {
 		if (resultError instanceof ZodError) {
@@ -239,7 +267,7 @@ export const renderMarkdownIt = async (
 		}
 		throw resultError;
 	}
-	return { type: "raw", payload: result };
+	return { type: "raw", payload: { html: result, meta, readingTime } };
 };
 
 export const renderTypst = async (

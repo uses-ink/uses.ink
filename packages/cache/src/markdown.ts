@@ -11,9 +11,9 @@ import type {
 export type MarkdownEngines = "mdx" | "marked" | "markdownIt";
 
 export type MarkdownResults = {
-	mdx: MDXCompileResult;
-	marked: MarkdownRawCompileResult;
-	markdownIt: MarkdownRawCompileResult;
+	mdx: string;
+	marked: string;
+	markdownIt: string;
 };
 
 // Use a mapped type to infer the correct result type based on the engine

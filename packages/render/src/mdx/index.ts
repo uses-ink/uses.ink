@@ -7,9 +7,7 @@ import {
 } from "@shikijs/transformers";
 import { logger } from "@uses.ink/server-logger";
 // import rehypeKatex from "rehype-katex";
-import type { MDXCompileResult, RepoConfig, Meta } from "@uses.ink/types";
-import { MetaSchema } from "@uses.ink/schemas";
-import parseMatter from "gray-matter";
+import type { MDXCompileResult, Meta } from "@uses.ink/types";
 import rehypeCallouts from "rehype-callouts";
 import rehypeKatex from "rehype-katex";
 import rehypePrettyCode from "rehype-pretty-code";
@@ -31,24 +29,21 @@ import rehypeTypst from "./typst";
 import { type MdxUrlResolvers, getMdxUrl } from "./url";
 
 import { getCompileCache, setCompileCache } from "@uses.ink/cache";
-import { rehypeD2CLI } from "./d2";
 import { rehypePikchr } from "./pikchr";
 
 import {
 	ALLOWED_NODES,
 	DEBUG_TREE,
-	DEFAULT_META,
 	DISABLE_CACHE_DEV,
 	IS_DEV,
 } from "@uses.ink/constants";
 import rehypeCopy from "./copy";
-import { readingTime as rT } from "reading-time-estimator";
 
 export async function compileMarkdownMDX(
 	content: string,
 	urlResolvers: MdxUrlResolvers,
-	config?: RepoConfig,
-): Promise<MDXCompileResult> {
+	meta: Meta,
+): Promise<string> {
 	const start = performance.now();
 	const cached =
 		IS_DEV && DISABLE_CACHE_DEV
@@ -58,17 +53,6 @@ export async function compileMarkdownMDX(
 		logger.debug(`Cache hit in ${performance.now() - start}ms`);
 		return cached;
 	}
-	const matter = parseMatter(content);
-
-	let meta = MetaSchema.parse(matter.data);
-
-	meta = {
-		...DEFAULT_META,
-		...config,
-		...meta,
-	};
-
-	const readingTime = meta.readingTime ? rT(matter.content) : undefined;
 
 	logger.debug("meta", meta);
 	logger.debug("Cache miss");
@@ -84,7 +68,7 @@ export async function compileMarkdownMDX(
 						lastTimestamp = now;
 					}
 				: () => () => {};
-	const result = await compile(matter.content, {
+	const result = await compile(content, {
 		format: "md",
 		outputFormat: "function-body",
 		remarkPlugins: [
@@ -198,9 +182,9 @@ export async function compileMarkdownMDX(
 		},
 	});
 	logger.debug(`Compiled in ${performance.now() - start}ms`);
-	const compiled = { meta: meta, runnable: result.toString(), readingTime };
-	await setCompileCache(content, compiled, "mdx");
-	return compiled;
+	const runnable = result.toString();
+	await setCompileCache(content, runnable, "mdx");
+	return runnable;
 }
 
 export * from "./d2";

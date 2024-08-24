@@ -6,18 +6,18 @@ import GetStarted from "@uses.ink/components/GetStarted.astro";
 import NotFound from "@uses.ink/components/NotFound.astro";
 import Readme from "@uses.ink/components/Readme.astro";
 import ErrorPage from "@uses.ink/components/Error.astro";
-import type { RenderResult } from "@uses.ink/types";
+import type { RenderResult, RepoRequest } from "@uses.ink/types";
 import { match } from "ts-pattern";
 import { logger } from "@uses.ink/client-logger/index.js";
 
-const { rendered, time } = Astro.props as { rendered: RenderResult; time: number };
+const { rendered, time, repoRequest } = Astro.props as { rendered: RenderResult; time: number; repoRequest: RepoRequest; };
 
 logger.info("Rendered", rendered.type);
 ---
 
 {
     match(rendered)
-        .with({ type: "mdx" }, ({ payload }) => <MarkdownMDX result={payload} />)
+        .with({ type: "mdx" }, ({ payload, commit }) => <MarkdownMDX result={payload} commit={commit} request={repoRequest}/>)
         .with({ type: "raw" }, ({ payload }) => <MarkdownRaw result={payload} />)
         .with({ type: "typst" }, ({ payload }) => <Typst result={payload} />)
         .with({ type: "get-started" }, ({ payload }) => <GetStarted request={payload} />)

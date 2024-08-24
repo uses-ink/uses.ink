@@ -17,6 +17,18 @@ export type GithubContent =
 
 export type GithubCommit = components["schemas"]["commit"];
 
+export type ParsedGithubCommit = {
+	date: string;
+	user?: ParsedGithubUser;
+	link?: string;
+};
+
+export type ParsedGithubUser = {
+	name: string;
+	login: string;
+	avatar: string;
+};
+
 export type GithubFile = components["schemas"]["content-file"];
 
 export type GithubDir = components["schemas"]["content-directory"];

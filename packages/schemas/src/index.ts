@@ -101,6 +101,7 @@ export const RepoConfigSchema = z.object({
 	defaultCopy: z.boolean().optional(),
 	theme: ThemeSchema.optional(),
 	font: FontSchema.optional(),
+	renderer: z.enum(["mdx", "marked", "markdown-it"]).optional(),
 });
 
 export const MetaSchema = z.object({
