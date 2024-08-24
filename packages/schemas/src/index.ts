@@ -94,7 +94,7 @@ export const FontSchema = z.enum(["sans", "serif", "mono"]).default("sans");
 export const RepoConfigSchema = z.object({
 	hideTop: z.boolean().optional(),
 	readingTime: z.boolean().optional(),
-	mathEngine: MathEngineSchema.optional(),
+	math: MathEngineSchema.optional(),
 	noHighlight: z.boolean().optional(),
 	layout: LayoutSchema.optional(),
 	nav: z.record(z.string()).optional(),

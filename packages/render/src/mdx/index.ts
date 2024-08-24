@@ -169,7 +169,7 @@ export async function compileMarkdownMDX(
 						},
 					],
 			makeDebug("pretty code"),
-			match(meta.mathEngine)
+			match(meta.math)
 				.with("katex", () => [
 					rehypeKatex,
 					{ throwOnError: false, output: "html" },

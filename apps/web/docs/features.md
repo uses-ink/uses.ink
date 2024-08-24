@@ -1,6 +1,8 @@
 ---
 title: Features
 author: cstef
+theme: gruvbox
+font: sans
 ---
 
 `uses.ink` comes with a lot of features out of the box. No configuration needed. You push and we render.
@@ -42,7 +44,7 @@ nav:
   Home: /
   Blog: /blog        
 ``` 
-- `mathEngine`: The math rendering engine to use. This can be `typst` (default) or `katex`.
+- `math`: The math rendering engine to use. This can be `typst` (default) or `katex`.
 - `noHighlight`: Set to `true` to disable syntax highlighting in code blocks.
 - `defaultCopy`: Whether to enable by default the copy button for code blocks. This can be `true` or `false` (default).
 
@@ -58,7 +60,7 @@ Here is an example of a `uses.ink.json` file:
 {
     "hideTop": true,
     "readingTime": false,
-    "mathEngine": "katex",
+    "math": "katex",
     "noHighlight": true,
     "layout": "gallery",
     "nav": {
@@ -94,11 +96,11 @@ $$
 det(A) = sum_(k=1)^n (-1)^(k+1) a_1k det(A_1k)
 $$
 
-You may ask why we use `typst` instead of `LaTeX` ? I personally find `typst`'s syntax to be more markdown-ish and easier to use. If you don't like it, you can always use another engine by setting the `mathEngine` property in the metadata block:
+You may ask why we use `typst` instead of `LaTeX` ? I personally find `typst`'s syntax to be more markdown-ish and easier to use. If you don't like it, you can always use another engine by setting the `math` property in the metadata block:
 
 ```yaml
 ---
-mathEngine: katex # for LaTeX rendering
+math: katex # for LaTeX rendering
 ---
 ```
 

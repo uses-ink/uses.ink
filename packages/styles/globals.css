@@ -63,7 +63,13 @@ h6#user-content-no-anchor a.anchor {
 }
 
 .typst-text {
-	@apply fill-foreground;
+	@apply fill-[--tw-prose-body];
+}
+
+.pikchr text,
+.pikchr path,
+.pikchr polygon {
+	@apply !stroke-[--tw-prose-body];
 }
 
 /* hide the .d2-dark class on light mode */
