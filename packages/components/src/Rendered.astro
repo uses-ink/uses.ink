@@ -10,7 +10,7 @@ import type { RenderResult } from "@uses.ink/types";
 import { match } from "ts-pattern";
 import { logger } from "@uses.ink/client-logger/index.js";
 
-const { rendered } = Astro.props as { rendered: RenderResult };
+const { rendered, time } = Astro.props as { rendered: RenderResult; time: number };
 
 logger.info("Rendered", rendered.type);
 ---

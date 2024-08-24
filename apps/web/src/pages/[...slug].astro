@@ -14,8 +14,11 @@ const repoRequest = getRepoRequest(
 
 logger.info("repoRequest", repoRequest);
 let rendered: RenderResult | null = null;
+let time: number | null = null;
 try {
+    const start = performance.now();
     rendered = await renderContent(repoRequest);
+    time = performance.now() - start;
 } catch (e) {
     logger.error(e);
     Astro.response.status = 500;
@@ -25,7 +28,7 @@ try {
 ---
 
 <RootLayout>
-    <PostLayout>
-        <Rendered rendered={rendered} repoRequest={repoRequest} />
+    <PostLayout time={time}>
+        <Rendered rendered={rendered} repoRequest={repoRequest}  />
     </PostLayout>
 </RootLayout>

@@ -11,10 +11,12 @@ export const Footer = ({
 	version,
 	commit,
 	time,
+	date,
 }: {
 	version: string;
 	commit: string;
-	time: string;
+	date: string;
+	time: number;
 }) => {
 	const [isAltDown, setIsAltDown] = useState(false);
 
@@ -52,6 +54,10 @@ export const Footer = ({
 					</p>
 				</TooltipTrigger>
 				<TooltipContent className="border-border">
+					<span className="whitespace-nowrap !text-muted-foreground">
+						{time.toFixed(2)}ms
+					</span>{" "}
+					·{" "}
 					<a
 						href={
 							version?.includes(commit?.slice(0, 7) ?? "")
@@ -63,16 +69,13 @@ export const Footer = ({
 						className="not-prose"
 					>
 						{version ?? "v0.0.0"}{" "}
-						<span className="dark:text-gray-500 text-gray-300">
-							({commit?.slice(0, 7) ?? "00000000"})
-						</span>
 						<span
 							className={cn("text-gray-400 transition-all duration-500", {
 								"opacity-0 hidden": !isAltDown,
 							})}
 						>
 							{" "}
-							- {new Date(time).toLocaleString()}
+							- {new Date(date).toLocaleString()}
 						</span>
 					</a>
 				</TooltipContent>

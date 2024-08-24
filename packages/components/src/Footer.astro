@@ -3,14 +3,14 @@ import { ModeToggle } from "./ui/mode-toggle";
 import { Footer as FooterPart } from "./ui/footer"
 
 // @ts-ignore: Astro config
-const buildCommit = __COMMIT_HASH__; const buildVersion = __VERSION__; const buildTime = __BUILD_TIME__;
+const buildCommit = __COMMIT_HASH__; const buildVersion = __VERSION__; const buildDate = __BUILD_TIME__;
 
-const { auto } = Astro.props;
+const { auto, time } = Astro.props;
 ---
 <div class="flex justify-center mb-12 text-xs">
     <div class="flex gap-4 items-center justify-between">
         <ModeToggle />
-        <FooterPart client:load version={buildVersion} commit={buildCommit} time={buildTime} />
+        <FooterPart client:load version={buildVersion} commit={buildCommit} date={buildDate} time={time} />
         {auto && (
             <>
                 <p class="whitespace-nowrap !text-muted-foreground">·</p>
