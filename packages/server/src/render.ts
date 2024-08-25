@@ -96,18 +96,24 @@ export const renderContent = async (
 export const renderRemote = async (
 	githubRequest: GithubRequest,
 ): Promise<RenderResult> => {
+	const userConfigStart = performance.now();
 	const [userConfig, userConfigError] = await safeAsync(
 		fetchUserConfig(githubRequest),
 	);
-	if (userConfigError) return handleError(userConfigError, githubRequest);
+	logger.debug(`fetchUserConfig took ${performance.now() - userConfigStart}ms`);
+	if (userConfigError) {
+		logger.debug("userConfigError", userConfigError.message);
+	}
 
 	const request = {
 		...githubRequest,
 		...(userConfig?.defaultRepo && { repo: userConfig.defaultRepo }),
 		...(userConfig?.defaultRef && { ref: userConfig.defaultRef }),
 	};
-
+	const treeStart = performance.now();
 	const [githubTree, treeError] = await safeAsync(fetchGithubTree(request));
+	logger.debug(`fetchGithubTree took ${performance.now() - treeStart}ms`);
+
 	if (treeError) {
 		return treeError.name === "NOT_FOUND"
 			? { type: "get-started", payload: request }

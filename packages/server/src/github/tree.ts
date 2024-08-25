@@ -10,11 +10,13 @@ export const fetchGithubTree = async (
 ): Promise<GithubTree> => {
 	const { owner, repo, ref } = request;
 	const cached = await getGitHubCache<GithubTree>(request, "tree");
+	if (cached) {
+		return cached.data;
+	}
 	try {
 		const response = await getOctokit().rest.git.getTree({
 			...{ owner, repo, tree_sha: ref ?? DEFAULT_REF },
 			recursive: "true",
-			headers: { "If-None-Match": cached?.headers.etag },
 			mediaType: { format: "json" },
 		});
 		setGitHubCache(request, response, "tree");
@@ -27,8 +29,6 @@ export const fetchGithubTree = async (
 				"NOT_FOUND",
 				`${owner}/${repo}${ref ? `@${ref}` : ""}`,
 			);
-		if (error.status !== 304) throw error;
-		if (cached === null) throw Error("No cache but 304");
-		return cached.data;
 	}
+	throw new Error("Unknown error");
 };

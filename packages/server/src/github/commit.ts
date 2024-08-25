@@ -6,6 +6,7 @@ import type {
 } from "@uses.ink/types";
 import { getOctokit } from "../octokit";
 import { isErrorHasStatus } from "../utils";
+import { logger } from "@uses.ink/server-logger/index.js";
 
 export type GithubLastCommit = {
 	date: string;
@@ -19,43 +20,47 @@ export type GithubAuthor = {
 	avatar: string;
 };
 
+const parseGithubCommit = ({
+	commit,
+	html_url,
+	author,
+}: GithubCommit): ParsedGithubCommit => {
+	const date = commit.author?.date;
+	if (!date) throw new Error("No date found in commit");
+	if (!author) throw new Error("No author found in commit");
+
+	return {
+		date,
+		user: {
+			name: author.name ?? author.login,
+			login: author.login,
+			avatar: author.avatar_url,
+		},
+		link: html_url,
+	};
+};
+
 export const fetchGithubLastCommit = async (
 	request: GithubRequest,
 ): Promise<ParsedGithubCommit | undefined> => {
 	const { owner, path, repo } = request;
-	const cached = await getGitHubCache<GithubCommit>(request, "commit");
+	const cached = await getGitHubCache<GithubCommit[]>(request, "commit");
+	if (cached?.data) {
+		logger.debug("fetchGithubLastCommit: cache hit");
+		return parseGithubCommit(cached.data[0]);
+	}
 	try {
 		const response = await getOctokit().rest.repos.listCommits({
 			...{ owner, path, repo },
-			headers: { "If-None-Match": cached?.headers.etag },
 			mediaType: { format: "json" },
 		});
+		if (!response.data[0]) return undefined;
 		setGitHubCache(request, response, "commit");
-		// logger.debug({ commit: response.data });
-		const date = response.data[0].commit.author?.date;
-		const author = {
-			name: response.data[0].commit.author?.name,
-			login: response.data[0].author?.login,
-			avatar: response.data[0].author?.avatar_url,
-		};
-		const link = response.data[0].html_url;
-		if (!date || !author.name || !author.login || !author.avatar || !link)
-			return;
-		return { date, user: author as any, link };
+		return parseGithubCommit(response.data[0]);
 	} catch (error) {
 		// Return cache
 		if (!isErrorHasStatus(error)) throw error;
-		if (error.status !== 304) throw error;
-		if (cached === null) throw Error("No cache but 304");
-		const date = cached.data[0].commit.author?.date;
-		const author = {
-			name: cached.data[0].commit.author?.name,
-			login: cached.data[0].author?.login,
-			avatar: cached.data[0].author?.avatar_url,
-		};
-		const link = cached.data[0].html_url;
-		if (!date || !author.name || !author.login || !author.avatar || !link)
-			return;
-		return { date, user: author as any, link };
+		if (error.status === 404) return undefined;
 	}
+	return undefined;
 };

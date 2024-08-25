@@ -1,1 +1,3 @@
-export * from "@uses.ink/tailwind-config/postcss.config.mjs";
+import config from "@uses.ink/tailwind-config/postcss.config.mjs";
+
+export default config;

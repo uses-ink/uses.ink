@@ -3,8 +3,6 @@
 	"version": "0.6.0",
 	"private": true,
 	"scripts": {
-		"dev": "bun --filter \"*\" dev",
-		"build": "bun --filter \"*\" build",
 		"postinstall": "./scripts/postinstall.sh"
 	},
 	"devDependencies": {

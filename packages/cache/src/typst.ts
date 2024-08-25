@@ -18,7 +18,7 @@ export const getTypstCache = async (
 		return null;
 	}
 	const key = getTypstKey(content);
-	logger.debug({ key });
+	// logger.debug({ key });
 
 	try {
 		const data = await cache.getBuffer(key);

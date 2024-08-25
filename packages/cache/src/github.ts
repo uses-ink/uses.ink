@@ -10,14 +10,14 @@ export const getGitHubCache = async <R = GithubContent>(
 	request: GithubRequest,
 	type: CacheType = "content",
 ): Promise<OctokitResponse<R> | null> => {
-	logger.debug("getGitHubCache");
+	// logger.debug("getGitHubCache");
 	const cache = await getCache();
 	if (cache === null) {
 		logger.debug("cache is null");
 		return null;
 	}
 	const key = getGithubKey(request, type);
-	logger.debug({ key });
+	// logger.debug({ key });
 
 	try {
 		const data = await cache.getBuffer(key);
@@ -29,7 +29,7 @@ export const getGitHubCache = async <R = GithubContent>(
 
 export const setGitHubCache = async <R = GithubContent>(
 	request: GithubRequest,
-	response: OctokitResponse<R>,
+	response: OctokitResponse<R> | undefined,
 	type: CacheType = "content",
 ): Promise<void> => {
 	const cache = await getCache();

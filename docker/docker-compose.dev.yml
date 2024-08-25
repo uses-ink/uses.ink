@@ -1,0 +1,11 @@
+services:
+    cache:
+        image: redis:alpine
+        ports:
+            - "6379:6379"
+    astro:
+        build:
+            context: ../
+            dockerfile: ./docker/Dockerfile
+        ports:
+            - "8765:8765"

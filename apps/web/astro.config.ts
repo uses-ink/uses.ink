@@ -29,7 +29,6 @@ export default defineConfig({
 			__VERSION__: JSON.stringify(version),
 			__BUILD_TIME__: JSON.stringify(buildTime),
 		},
-		envDir: "../../env",
 	},
 	experimental: {
 		env: {

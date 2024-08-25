@@ -4,33 +4,42 @@ import { getOctokit } from "../octokit";
 import { isErrorHasStatus } from "../utils";
 import { DEFAULT_REF } from "@uses.ink/constants";
 import { FetchError } from "@uses.ink/errors";
-// import { logger } from "@uses.ink/server-logger/index.js";
+import { logger } from "@uses.ink/server-logger";
 
 export const fetchGitHubContent = async (
 	request: GithubRequest,
 ): Promise<GithubContent> => {
 	const { owner, path, repo, ref } = request;
 	const cached = await getGitHubCache(request, "content");
-	// logger.debug("cached", cached);
+	if (cached !== null) {
+		if (cached?.data === undefined)
+			throw new FetchError(
+				"NOT_FOUND",
+				`${owner}/${repo}${ref ? `@${ref}` : ""}/${path} (cached)`,
+			);
+		logger.debug("fetchGitHubContent: cache hit");
+		return cached.data;
+	}
+	const start = performance.now();
 	try {
 		const response = await getOctokit().rest.repos.getContent({
 			...{ owner, path, repo, ref: ref ?? DEFAULT_REF },
-			headers: { "If-None-Match": cached?.headers.etag },
 			mediaType: { format: "json" },
 		});
+
 		setGitHubCache(request, response, "content");
 		return response.data;
 	} catch (error) {
-		// logger.error({ error, where: "fetchGitHubContent" });
-		// Return cache
+		setGitHubCache(request, undefined, "content");
 		if (!isErrorHasStatus(error)) throw error;
 		if (error.status === 404)
 			throw new FetchError(
 				"NOT_FOUND",
 				`${owner}/${repo}${ref ? `@${ref}` : ""}/${path}`,
 			);
-		if (error.status !== 304) throw error;
-		if (cached === null) throw Error("No cache but 304");
-		return cached.data;
+	} finally {
+		const end = performance.now();
+		logger.debug(`fetchGitHubContent ${end - start}ms`);
 	}
+	throw new Error("Unknown error");
 };

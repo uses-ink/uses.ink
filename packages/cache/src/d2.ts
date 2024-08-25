@@ -26,7 +26,7 @@ export const getD2Cache = async (
 		return null;
 	}
 	const key = getD2Key(content);
-	logger.debug({ key });
+	// logger.debug({ key });
 
 	try {
 		const data = await cache.getBuffer(key);

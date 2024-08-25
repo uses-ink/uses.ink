@@ -55,7 +55,7 @@ export const Footer = ({
 				</TooltipTrigger>
 				<TooltipContent className="border-border">
 					<span className="whitespace-nowrap !text-muted-foreground">
-						{time.toFixed(2)}ms
+						{time?.toFixed(2) ?? "???"}ms
 					</span>{" "}
 					·{" "}
 					<a
