@@ -14,7 +14,7 @@
     "@beoe/rehype-code-hook": "^0.0.1",
     "@jsdevtools/rehype-url-inspector": "^2.0.2",
     "@mdx-js/mdx": "^3.0.1",
-    "@myriaddreamin/typst-ts-node-compiler": "0.5.0-rc6",
+    "@myriaddreamin/typst-ts-node-compiler": "0.5.0-rc7",
     "@node-rs/xxhash": "^1.7.3",
     "@octokit/openapi-types": "^22.2.0",
     "@octokit/types": "^13.5.0",
