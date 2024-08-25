@@ -2,6 +2,7 @@
 	"name": "@uses.ink/web",
 	"type": "module",
 	"version": "0.0.1",
+	"files": ["tsconfig.json"],
 	"scripts": {
 		"dev": "astro dev",
 		"start": "astro dev",

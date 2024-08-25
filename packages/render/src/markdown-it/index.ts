@@ -49,24 +49,10 @@ export async function compileMarkdownIt(
 	content: string,
 	meta: Meta,
 ): Promise<string> {
-	const start = performance.now();
-	const cached =
-		IS_DEV && DISABLE_CACHE_DEV
-			? undefined
-			: await getCompileCache(content, "markdownIt");
-	if (cached) {
-		logger.debug(`Cache hit in ${performance.now() - start}ms`);
-		return cached;
-	}
-	logger.debug("meta", meta);
-	logger.debug("Cache miss");
-
 	const markdownit = await getMarkdownIt();
 	const html = markdownit.render(content);
 
 	const sanitized = DOMPurify.sanitize(html);
-
-	await setCompileCache(content, sanitized, "markdownIt");
 
 	return sanitized;
 }

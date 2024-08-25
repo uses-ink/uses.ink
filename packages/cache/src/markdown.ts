@@ -1,12 +1,10 @@
-import { RENDER_CACHE_TTL } from "@uses.ink/constants";
+import { RENDER_CACHE_TTL } from "astro:env/server";
+
 import { xxh64 } from "@node-rs/xxhash";
-import { getCache } from ".";
 import { logger } from "@uses.ink/server-logger";
+import type { RepoConfig } from "@uses.ink/types";
 import { pack, unpack } from "msgpackr";
-import type {
-	MDXCompileResult,
-	MarkdownRawCompileResult,
-} from "@uses.ink/types";
+import { getCache } from ".";
 
 export type MarkdownEngines = "mdx" | "marked" | "markdownIt";
 
@@ -16,9 +14,14 @@ export type MarkdownResults = {
 	markdownIt: string;
 };
 
+export type CacheContent = {
+	content: string;
+	config?: RepoConfig;
+};
+
 // Use a mapped type to infer the correct result type based on the engine
 export const getCompileCache = async <T extends MarkdownEngines>(
-	content: string,
+	content: CacheContent,
 	type: T,
 ): Promise<MarkdownResults[T] | null> => {
 	logger.debug("getCompileCache");
@@ -29,9 +32,7 @@ export const getCompileCache = async <T extends MarkdownEngines>(
 	}
 	const start = performance.now();
 	const key = getCompileKey(content, type);
-	logger.debug(
-		`getCompileKey took ${performance.now() - start}ms for ${content.length} bytes`,
-	);
+	logger.debug(`getCompileKey took ${performance.now() - start}ms`);
 
 	try {
 		const start = performance.now();
@@ -46,7 +47,7 @@ export const getCompileCache = async <T extends MarkdownEngines>(
 };
 
 export const setCompileCache = async <T extends MarkdownEngines>(
-	content: string,
+	content: CacheContent,
 	compiled: MarkdownResults[T],
 	type: T,
 ): Promise<void> => {
@@ -62,5 +63,7 @@ export const setCompileCache = async <T extends MarkdownEngines>(
 	}
 };
 
-export const getCompileKey = (content: string, type: MarkdownEngines): string =>
-	`compile/${xxh64(content).toString(36)}/${type}`;
+export const getCompileKey = (
+	content: CacheContent,
+	type: MarkdownEngines,
+): string => `compile/${xxh64(pack(content)).toString(36)}/${type}`;

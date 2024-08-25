@@ -1,4 +1,5 @@
 import { DEFAULT_META, EXTENSIONS } from "@uses.ink/constants";
+import { RENDERER } from "astro:env/server";
 import {
 	compileMarkdownMDX,
 	compileTypst,
@@ -36,122 +37,116 @@ import { fetchGithubLastCommit } from "./github/commit";
 import { MetaSchema } from "@uses.ink/schemas/index.js";
 import { readingTime as rT } from "reading-time-estimator";
 import parseMatter from "gray-matter";
+import {
+	getCompileCache,
+	setCompileCache,
+	type MarkdownEngines,
+} from "@uses.ink/cache";
+
+// Helper function for merging configs
+const mergeConfigs = (
+	userConfig: RepoConfig | null,
+	repoConfig: RepoConfig | null,
+) => ({
+	...userConfig,
+	...repoConfig,
+});
+
+// Helper function to handle async errors and return formatted result
+const handleError = (error: any, request: GithubRequest): RenderResult => {
+	if (error instanceof ZodError) {
+		return { type: "error", payload: { error, request } };
+	}
+	throw error;
+};
+
+// Common renderer handler
+const renderRawWithCache = async (
+	content: string,
+	cacheKey: MarkdownEngines,
+	renderFn: () => Promise<string>,
+	meta: Meta,
+	readingTime?: ReadingTime,
+): Promise<RenderResult> => {
+	const cached = await getCompileCache({ content, config: meta }, cacheKey);
+	return {
+		type: "raw",
+		payload: {
+			html:
+				cached ||
+				(await (async () => {
+					const res = await renderFn();
+					setCompileCache({ content, config: meta }, res, cacheKey);
+					return res;
+				})()),
+			meta,
+			readingTime,
+		},
+	};
+};
 
 export const renderContent = async (
 	repoRequest: RepoRequest,
 ): Promise<RenderResult> => {
-	// If the request is remote, render remote
-	if (repoRequest.remote) {
-		// Forge github request
-		const githubRequest = forgeGithubRequest(repoRequest);
-		logger.debug("githubRequest", githubRequest);
-		return await renderRemote(githubRequest);
-	}
-	// Else render local
-	return await renderLocal(repoRequest);
+	return repoRequest.remote
+		? renderRemote(forgeGithubRequest(repoRequest))
+		: renderLocal(repoRequest);
 };
 
 export const renderRemote = async (
 	githubRequest: GithubRequest,
 ): Promise<RenderResult> => {
-	// Get user config
 	const [userConfig, userConfigError] = await safeAsync(
 		fetchUserConfig(githubRequest),
 	);
+	if (userConfigError) return handleError(userConfigError, githubRequest);
 
-	if (userConfigError) {
-		logger.debug("userConfigError", userConfigError);
-		if (userConfigError instanceof ZodError) {
-			return {
-				type: "error",
-				payload: { error: userConfigError, request: githubRequest },
-			};
-		}
-	}
-
-	logger.debug("userConfig", userConfig);
-	// Merge github request with user config
-	const request: GithubRequest = {
+	const request = {
 		...githubRequest,
 		...(userConfig?.defaultRepo && { repo: userConfig.defaultRepo }),
 		...(userConfig?.defaultRef && { ref: userConfig.defaultRef }),
 	};
-	// Fetch github tree
-	const [githubTree, treeError] = await safeAsync(fetchGithubTree(request));
 
+	const [githubTree, treeError] = await safeAsync(fetchGithubTree(request));
 	if (treeError) {
-		logger.debug("treeError", treeError);
-		if (treeError.name === "NOT_FOUND") {
-			return { type: "get-started", payload: request };
-		}
-		return { type: "error", payload: { error: treeError, request } };
+		return treeError.name === "NOT_FOUND"
+			? { type: "get-started", payload: request }
+			: handleError(treeError, request);
 	}
 
-	// Validate the request against the tree
 	const [resolvedPath, validateError] = safeSync(() =>
 		validateRequestAgainstTree(request, githubTree.tree),
 	);
-
 	if (validateError) {
-		if (!isReadmeRequest(request)) {
+		if (!isReadmeRequest(request))
 			return { type: "not-found", payload: request };
-		}
-		logger.debug("validateError", validateError.name);
-		logger.debug("rquest.path", request.path);
 		const filteredTree = filterTreeByPath(githubTree.tree, request.path);
-		logger.debug("filteredTree", filteredTree);
-		return {
-			type: "readme",
-			payload: {
-				tree: filteredTree,
-				request,
-			},
-		};
-	}
-
-	const extension = resolvedPath.split(".").pop() ?? "md";
-	const fileType = fileTypeFromExtension(extension);
-
-	// Check if the content is supported
-	if (EXTENSIONS.indexOf(extension) === -1 || fileType === null) {
-		throw new Error(`File type not supported: ${resolvedPath}`);
+		return { type: "readme", payload: { tree: filteredTree, request } };
 	}
 
 	request.path = resolvedPath;
+	const fileType = fileTypeFromExtension(resolvedPath.split(".").pop() ?? "md");
 
-	// Fetch the content
+	if (!EXTENSIONS.includes(fileType!))
+		throw new Error(`File type not supported: ${resolvedPath}`);
+
 	const content = await fetchGithubRaw(request);
-	// Fetch the repo config
 	const [repoConfig, repoConfigError] = await safeAsync(
 		fetchRepoConfig(request),
 	);
 
-	if (repoConfigError) {
-		if (repoConfigError.name === "NOT_FOUND") {
-			logger.debug("repoConfigError", repoConfigError.message);
-		} else if (repoConfigError instanceof ZodError) {
-			return { type: "error", payload: { error: repoConfigError, request } };
-		} else {
-			logger.warn("unknown repoConfigError", repoConfigError.name);
-			throw repoConfigError;
-		}
-	}
+	if (repoConfigError) logger.debug("repoConfigError", repoConfigError.message);
 
-	// Merge the user config with the repo config
-	const mergedConfig: RepoConfig = { ...userConfig, ...repoConfig };
+	const mergedConfig = mergeConfigs(userConfig, repoConfig);
 	const res = await renderContentByType(
 		content,
-		fileType,
+		fileType!,
 		request,
 		mergedConfig,
 	);
 	const commit = await fetchGithubLastCommit(request);
-	logger.debug("commit", commit);
-	// Render the content
-	return {
-		...res,
-		commit,
-	};
+
+	return { ...res, commit };
 };
 
 export const renderLocal = async (
@@ -161,20 +156,14 @@ export const renderLocal = async (
 		"../../../apps/web/docs/**/*.{md,markdown,typ}",
 		{ query: "raw", import: "default" },
 	);
-	logger.debug("files", files);
 	const [resolvedPath, read] = validateRequestAgainstFiles(request, files);
-	logger.debug("resolvedPath", resolvedPath);
-	const extension = resolvedPath.split(".").pop() ?? "md";
-	const fileType = fileTypeFromExtension(extension);
 
-	// Check if the content is supported
-	if (EXTENSIONS.indexOf(extension) === -1 || fileType === null) {
+	const fileType = fileTypeFromExtension(resolvedPath.split(".").pop() ?? "md");
+	if (!EXTENSIONS.includes(fileType!))
 		throw new Error(`File type not supported: ${request.path}`);
-	}
 
 	const content = (await read()) as string;
-
-	return await renderContentByType(content, fileType, request);
+	return renderContentByType(content, fileType!, request);
 };
 
 export const renderContentByType = async (
@@ -184,97 +173,96 @@ export const renderContentByType = async (
 	config?: RepoConfig,
 ): Promise<RenderResult> => {
 	switch (fileType) {
-		case FileType.Markdown: {
-			const matter = parseMatter(content);
-
-			let [meta, metaError] = safeSync(() => MetaSchema.parse(matter.data));
-			if (metaError) {
-				logger.debug("metaError", metaError);
-			}
-
-			meta = {
-				...DEFAULT_META,
-				...config,
-				...meta,
-			};
-
-			const readingTime = meta.readingTime ? rT(matter.content) : undefined;
-			let renderer = renderMDX;
-			switch (meta.renderer) {
-				case "marked":
-					renderer = renderMarked;
-					break;
-				case "markdown-it":
-					renderer = renderMarkdownIt;
-					break;
-			}
-			return await renderer(matter.content, request, meta, readingTime);
-		}
+		case FileType.Markdown:
+			return renderMarkdown(content, request, config);
 		case FileType.Typst:
 			return renderTypst(content, config);
 	}
 };
 
-export const renderMDX = async (
+const renderMarkdown = async (
+	content: string,
+	request: RepoRequest | GithubRequest,
+	config?: RepoConfig,
+): Promise<RenderResult> => {
+	const matter = parseMatter(content);
+	let [meta, metaError] = safeSync(() => MetaSchema.parse(matter.data));
+	if (metaError) logger.debug("metaError", metaError);
+
+	meta = { ...DEFAULT_META, ...config, ...meta };
+	const readingTime = meta.readingTime ? rT(matter.content) : undefined;
+
+	const renderMap = {
+		marked: renderMarked,
+		markdownIt: renderMarkdownIt,
+		mdx: renderMDX,
+	};
+	const renderer = renderMap[RENDERER] || null;
+	if (!renderer) throw new Error(`Unknown renderer: ${RENDERER}`);
+
+	return renderer(matter.content, request, meta, readingTime);
+};
+
+const renderMDX = async (
 	content: string,
 	request: RepoRequest | GithubRequest,
 	meta: Meta,
 	readingTime?: ReadingTime,
 ): Promise<RenderResult> => {
-	const urlResolvers = forgeUrlResolvers(request);
-	const [runnable, resultError] = await safeAsync(
-		compileMarkdownMDX(content, urlResolvers, meta),
-	);
-	if (resultError) {
-		if (resultError instanceof ZodError) {
-			return { type: "error", payload: { error: resultError, request } };
-		}
-		throw resultError;
-	}
-	return { type: "mdx", payload: { runnable, meta, readingTime } };
+	const cached = await getCompileCache({ content, config: meta }, "mdx");
+	return {
+		type: "mdx",
+		payload: {
+			runnable:
+				cached ||
+				(await (async () => {
+					const res = await compileMarkdownMDX(
+						content,
+						forgeUrlResolvers(request),
+						meta,
+					);
+					setCompileCache({ content, config: meta }, res, "mdx");
+					return res;
+				})()),
+			meta,
+			readingTime,
+		},
+	};
 };
 
-export const renderMarked = async (
+const renderMarked = async (
 	content: string,
 	request: RepoRequest | GithubRequest,
 	meta: Meta,
 	readingTime?: ReadingTime,
-): Promise<RenderResult> => {
-	const [result, resultError] = await safeAsync(
-		compileMarkdownMarked(content, meta),
+): Promise<RenderResult> =>
+	renderRawWithCache(
+		content,
+		"marked",
+		() => compileMarkdownMarked(content, meta),
+		meta,
+		readingTime,
 	);
-	if (resultError) {
-		if (resultError instanceof ZodError) {
-			return { type: "error", payload: { error: resultError, request } };
-		}
-		throw resultError;
-	}
-	return { type: "raw", payload: { html: result, meta, readingTime } };
-};
 
-export const renderMarkdownIt = async (
+const renderMarkdownIt = async (
 	content: string,
 	request: RepoRequest | GithubRequest,
 	meta: Meta,
 	readingTime?: ReadingTime,
-): Promise<RenderResult> => {
-	const [result, resultError] = await safeAsync(
-		compileMarkdownIt(content, meta),
+): Promise<RenderResult> =>
+	renderRawWithCache(
+		content,
+		"markdownIt",
+		() => compileMarkdownIt(content, meta),
+		meta,
+		readingTime,
 	);
-	if (resultError) {
-		if (resultError instanceof ZodError) {
-			return { type: "error", payload: { error: resultError, request } };
-		}
-		throw resultError;
-	}
-	return { type: "raw", payload: { html: result, meta, readingTime } };
-};
 
+//TODO: Implement cache for typst
 export const renderTypst = async (
 	content: string,
 	config?: RepoConfig,
-): Promise<RenderResult> => {
-	const result = await compileTypst(content, config);
-
-	return { type: "typst", payload: { html: result } };
-};
+): Promise<RenderResult> => ({
+	type: "typst",
+	payload: { html: await compileTypst(content, config) },
+});

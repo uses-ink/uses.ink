@@ -2,6 +2,7 @@ import { xxh64 } from "@node-rs/xxhash";
 import { Redis } from "ioredis";
 import { pack } from "msgpackr";
 import { logger } from "@uses.ink/server-logger";
+import { REDIS_URL } from "astro:env/server";
 
 const cache: { current: Redis | null; hasWarned: boolean } = {
 	current: null,
@@ -10,14 +11,14 @@ const cache: { current: Redis | null; hasWarned: boolean } = {
 
 const makeCache = async () => {
 	logger.debug("makeCache");
-	if (!import.meta.env.REDIS_URL) {
+	if (!REDIS_URL) {
 		if (!cache.hasWarned) {
 			cache.hasWarned = true;
 			logger.warn("REDIS_URL is not set");
 		}
 		return null;
 	}
-	const redis = new Redis(import.meta.env.REDIS_URL);
+	const redis = new Redis(REDIS_URL);
 
 	return redis;
 };

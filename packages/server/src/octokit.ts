@@ -1,5 +1,6 @@
 import { logger } from "@uses.ink/server-logger";
 import { Octokit } from "octokit";
+import { GITHUB_TOKEN } from "astro:env/server";
 
 const octokit: { current: Octokit | null; hasWarned: boolean } = {
 	current: null,
@@ -8,15 +9,14 @@ const octokit: { current: Octokit | null; hasWarned: boolean } = {
 
 export const getOctokit = (): Octokit => {
 	if (octokit.current === null) {
-		const auth = import.meta.env.GITHUB_TOKEN;
-		if (!auth) {
+		if (!GITHUB_TOKEN) {
 			if (!octokit.hasWarned) {
 				octokit.hasWarned = true;
 				logger.warn("GITHUB_TOKEN is not set");
 			}
 		}
 		octokit.current = new Octokit({
-			auth,
+			auth: GITHUB_TOKEN,
 		});
 	}
 	return octokit.current;

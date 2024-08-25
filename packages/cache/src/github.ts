@@ -1,4 +1,5 @@
-import { DEFAULT_REF, GITHUB_CACHE_TTL } from "@uses.ink/constants";
+import { DEFAULT_REF } from "@uses.ink/constants";
+import { GITHUB_CACHE_TTL } from "astro:env/server";
 import type { GithubContent, GithubRequest } from "@uses.ink/types";
 import type { OctokitResponse } from "@octokit/types";
 import { type CacheType, getCache } from ".";

@@ -1,4 +1,4 @@
-import { defineConfig } from "astro/config";
+import { defineConfig, envField } from "astro/config";
 import tailwind from "@astrojs/tailwind";
 import react from "@astrojs/react";
 import { execSync } from "node:child_process";
@@ -28,6 +28,49 @@ export default defineConfig({
 			__COMMIT_HASH__: JSON.stringify(commitHash),
 			__VERSION__: JSON.stringify(version),
 			__BUILD_TIME__: JSON.stringify(buildTime),
+		},
+	},
+	experimental: {
+		env: {
+			schema: {
+				GITHUB_TOKEN: envField.string({
+					context: "server",
+					access: "secret",
+					optional: true,
+				}),
+				REDIS_URL: envField.string({
+					context: "server",
+					access: "secret",
+					optional: true,
+				}),
+				RENDERER: envField.enum({
+					access: "public",
+					context: "server",
+					values: ["mdx", "marked", "markdownIt"],
+					default: "mdx",
+				}),
+				GITHUB_CACHE_TTL: envField.number({
+					access: "public",
+					context: "server",
+					default: 60, // 60 seconds
+				}),
+				RENDER_CACHE_TTL: envField.number({
+					access: "public",
+					context: "server",
+					default: 60 * 60 * 24, // 24 hours
+				}),
+				DEBUG_TREE: envField.boolean({
+					access: "public",
+					context: "server",
+					default: false,
+				}),
+				DISABLE_CACHE_DEV: envField.boolean({
+					access: "public",
+					context: "server",
+					default: true,
+				}),
+			},
+			validateSecrets: true,
 		},
 	},
 });

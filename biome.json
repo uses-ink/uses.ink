@@ -7,7 +7,10 @@
 		"enabled": true,
 		"rules": {
 			"recommended": true,
-			"suspicious": { "noExplicitAny": "off" }
+			"suspicious": { "noExplicitAny": "off" },
+			"style": {
+				"noNonNullAssertion": "off"
+			}
 		}
 	}
 }

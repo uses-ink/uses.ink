@@ -1,4 +1,4 @@
-import { RENDER_CACHE_TTL } from "@uses.ink/constants";
+import { RENDER_CACHE_TTL } from "astro:env/server";
 import { getCache, hashObject } from ".";
 import { logger } from "@uses.ink/server-logger";
 import { pack, unpack } from "msgpackr";
