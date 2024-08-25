@@ -1,5 +1,5 @@
 FROM oven/bun:canary-alpine AS base
-RUN apk add --no-cache bash git curl make jq
+RUN apk add --no-cache bash git curl make jq tini
 
 WORKDIR /app
 
@@ -43,5 +43,7 @@ ENV HOST=0.0.0.0
 ENV PORT=8765
 
 EXPOSE 8765
+
+ENTRYPOINT ["/sbin/tini", "--"]
 
 CMD node ./dist/server/entry.mjs
