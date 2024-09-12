@@ -40,7 +40,7 @@
     "mark.js": "^8.11.1",
     "mdast-util-to-string": "^4.0.0",
     "msgpackr": "^1.11.0",
-    "next": "14.2.5",
+    "next": "14.2.11",
     "next-build-id": "^3.0.0",
     "next-themes": "^0.3.0",
     "octokit": "^4.0.2",
