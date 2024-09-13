@@ -10,7 +10,7 @@ export const getRepoRequest = (
 	urlString: string,
 ): RepoRequest => {
 	const url = new URL(urlString);
-	const isLocalhost = host?.includes("localhost");
+	const isLocalhost = host?.includes("localhost") || host?.includes("127.0.0.1") || host?.endsWith(".local");
 	const parts = host?.split(".") ?? [];
 	let owner: string | undefined = undefined;
 	if (isLocalhost) {

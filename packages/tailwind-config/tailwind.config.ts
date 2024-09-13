@@ -77,6 +77,7 @@ export default {
 			fontFamily: {
 				mono: ["Fira Code", "monospace"],
 				serif: ["Merriweather", "serif"],
+                sans: ["Inter", "sans-serif"],
 			},
 		},
 	},
