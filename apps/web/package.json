@@ -15,7 +15,7 @@
 		"@astrojs/node": "^8.3.3",
 		"@astrojs/react": "^3.6.2",
 		"@astrojs/tailwind": "^5.1.0",
-		"@types/react": "^18.3.4",
+		"@types/react": "^18.3.5",
 		"@types/react-dom": "^18.3.0",
 		"@uses.ink/client": "workspace:*",
 		"@uses.ink/client-logger": "workspace:*",
@@ -24,15 +24,15 @@
 		"@uses.ink/server-logger": "workspace:*",
 		"@uses.ink/styles": "workspace:*",
 		"@uses.ink/tailwind-config": "workspace:*",
-		"astro": "^4.14.3",
-		"marked": "^14.0.0",
+		"astro": "^4.15.4",
+		"marked": "^14.1.2",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
-		"ts-pattern": "^5.2.0",
-		"typescript": "^5.5.4"
+		"ts-pattern": "^5.3.1",
+		"typescript": "^5.6.2"
 	},
 	"devDependencies": {
 		"@uses.ink/types": "workspace:*",
-		"vite": "^5.4.2"
+		"vite": "^5.4.4"
 	}
 }
