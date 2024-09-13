@@ -18,43 +18,22 @@ This is a minimalistic blog platform for developers. It's based on markdown file
 
 ## Self-hosting
 
-You can easily self-host this platform with Docker. Start by copying the `.env.example` file to `.env` and fill in the required values.
+### Quick and easy  
 
-> [!WARNING]
-> Do NOT touch `.env.production` as it is used as a template for the production environment.
-
-```bash
-cp .env.example .env
-```
-
-> [!NOTE]
-> The `REDIS_URL` value may seem a bit confusing (`redis://redis:6379`). This is because docker compose automatically creates a network for the services and uses the service name as the hostname. This is why we can use `redis` as the hostname.
-
-Then, run the following command to start the platform:
+You can copy the [`docker-compose.yml`](docker-compose.yml) file and use the [Docker image](https://github.com/uses-ink/uses.ink/pkgs/container/uses.ink) to quickly spin up a self-hosted instance of the platform.
 
 ```bash
-docker compose --profile prod up -d
+curl -o docker-compose.yml https://raw.githubusercontent.com/uses-ink/uses.ink/main/docker-compose.yml
+docker compose up -d
 ```
 
-You can now access the platform at [`http://localhost:8765`](http://localhost:8765).
+### I want to do it myself
 
-In case you want to use the latest commit from the repository, you can build the image locally with the `dev` profile:
-
-```bash
-docker compose --profile dev up -d
-```
-
-> [!IMPORTANT]
-> When stopping the platform, make sure to stop the containers with the appropriate profile:
-> ```bash
-> docker compose --profile prod down # or --profile dev
-> ```
-> In case you're having trouble recreating the containers, use the `--force-recreate` flag.
-
+You can either build the Docker image yourself (why would you do that?) or run the platform directly on your machine, see the [Development](#development) and [Building](#building) sections.
 
 ## Development
 
-This project uses [`pnpm`](https://pnpm.io) as the package manager. It is needed to properly install and patch the dependencies (See [Patches](#patches)).
+This project uses [`bun`](https://bun.sh) as the package manager. It is needed to properly install and patch the dependencies (See [Patches](#patches)).
 
 Make sure to have a `redis` server running somewhere. You can use the following command to quicly spin up a redis server with docker:
 
@@ -62,10 +41,10 @@ Make sure to have a `redis` server running somewhere. You can use the following 
 docker run -d --name redis -p 6379:6379 redis
 ```
 
-Populate the `.env` file with the required values:
+Populate the `apps/web/.env` file with the required values:
 
 ```bash
-cp .env.example .env
+cp apps/web/.env.example apps/web/.env
 ```
 
 > [!NOTE]
@@ -75,10 +54,32 @@ To start the development server, run the following commands:
 
 ```bash
 # Install dependencies
-pnpm install
+bun install
 # Start the development server
-pnpm dev
+bun --cwd apps/web dev
 ```
+
+## Building
+
+<details>
+<summary>Docker</summary>
+
+To build the Docker image, run the following command:
+
+```bash
+docker build -f docker/Dockerfile -t uses.ink .
+```
+</details>
+<details>
+<summary>Local</summary>
+
+To build the project, run the following command:
+
+```bash
+bun build
+```
+</details>
+
 
 ## Miscellaneous dependencies
 
