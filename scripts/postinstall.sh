@@ -3,13 +3,18 @@
 # But we only need one of them, so we remove the other one to save space
 
 # Check if we have both files
-if [ -f node_modules/@myriaddreamin/typst-ts-node-compiler/typst-ts-node-compiler.linux-arm64-musl.node ] && [ -f node_modules/@myriaddreamin/typst-ts-node-compiler/typst-ts-node-compiler-linux-arm64-gnu.node ]; then
-    echo "Both typst-ts-node-compiler.linux-arm64-musl.node and typst-ts-node-compiler-linux-arm64-gnu.node found"
-else
-    echo "Both typst-ts-node-compiler.linux-arm64-musl.node and typst-ts-node-compiler-linux-arm64-gnu.node not found"
+BASEPATH=$(pwd)
+cd node_modules/@myriaddreamin
+MUSL_PATH=$(find . -name "typst-ts-node-compiler-linux-arm64-musl")
+GNU_PATH=$(find . -name "typst-ts-node-compiler-linux-arm64-gnu")
+
+if [ -z "$MUSL_PATH" ] || [ -z "$GNU_PATH" ]; then
+    echo "No musl and gnu files found, skipping ($MUSL_PATH, $GNU_PATH)"
     exit 0
 fi
 
-rm -rf node_modules/@myriaddreamin/typst-ts-node-compiler-linux-arm64-gnu
+echo "Both musl and gnu files found, removing gnu file"
+
+rm -rf $GNU_PATH
 
 echo "Done"
