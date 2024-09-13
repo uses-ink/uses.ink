@@ -5,7 +5,7 @@ import { execSync } from "node:child_process";
 import node from "@astrojs/node";
 
 const commitHash = execSync("git rev-parse --short HEAD").toString().trim();
-const version = execSync("git describe --tags").toString().trim();
+const version = execSync("git describe --tags --always").toString().trim();
 const buildTime = new Date().toISOString();
 
 // https://astro.build/config
