@@ -23,7 +23,7 @@ This is a minimalistic blog platform for developers. It's based on markdown file
 You can copy the [`docker-compose.yml`](docker-compose.yml) file and use the [Docker image](https://github.com/uses-ink/uses.ink/pkgs/container/uses.ink) to quickly spin up a self-hosted instance of the platform.
 
 ```bash
-curl -o docker-compose.yml https://raw.githubusercontent.com/uses-ink/uses.ink/main/docker-compose.yml
+curl -o docker-compose.yml https://raw.githubusercontent.com/uses-ink/uses.ink/main/docker/docker-compose.prod.yml
 docker compose up -d
 ```
 
@@ -80,34 +80,12 @@ bun build
 ```
 </details>
 
-
-## Miscellaneous dependencies
-
-### Patches
+## Patches
 This project uses a patched version of [`hast-util-sanitize@5.0.1`](patches/hast-util-sanitize@5.0.1.patch) to allow unknown nodes to be processed through an `unknownNodeHandler` function. We need this to allow plugins such as [`remark-frontmatter`](https://github.com/remarkjs/remark-frontmatter) to pass declarations.
-
-### d2wasm
-
-> [!NOTE]
-> This section is currently not relevant because the platform uses the `d2` CLI due to the poor performance of the wasm module. Documentation is kept for future reference. 
-
-This project uses [`d2`](https://d2lang.com) to render diagrams. The diagrams are rendered using WebAssembly on the server. The module comes from the [`d2wasm`](https://github.com/uses-ink/d2wasm) repository. It can be found in the [`wasm`](wasm/) directory.
-
-To update the wasm module, run the following command:
-
-```bash
-pnpm update-d2wasm
-```
-
-This will grab the latest version of the wasm module and place it in its appropriate directory.
 
 ## Contributing
 
 Contributions are welcome! Feel free to open an [issue](https://github.com/uses-ink/uses.ink/issues) or a [pull request](https://github.com/uses-ink/uses.ink/pulls).
-
-I am currently looking for help with the following:
-
-- [ ] Improve the [`d2wasm`](https://github.com/uses-ink/d2wasm) WebAssembly module performance / size.
 
 ## License
 
