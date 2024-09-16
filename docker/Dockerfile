@@ -9,7 +9,7 @@ COPY . .
 
 RUN ./scripts/prune.sh
 
-FROM base as prod-deps
+FROM base AS prod-deps
 
 COPY --from=prune /app/pruned/ ./pruned/
 COPY package.json bun.lockb ./pruned/

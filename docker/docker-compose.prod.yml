@@ -4,8 +4,9 @@ services:
         ports:
             - "6379:6379"
     astro:
-        build:
-            context: ../
-            dockerfile: ./docker/Dockerfile
+        image: ghcr.io/uses-ink/uses.ink:latest
+        environment:
+            - REDIS_URL=redis://cache:6379
+            # - GITHUB_TOKEN=YOUR_GITHUB_TOKEN
         ports:
             - "8765:8765"
