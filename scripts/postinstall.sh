@@ -16,9 +16,52 @@ if [ -z "$MUSL_PATH" ] || [ -z "$GNU_PATH" ]; then
     exit 0
 fi
 
+
+isFileMusl() {
+    local f=$1
+    if [[ $f == *"libc.musl-"* || $f == *"ld-musl-"* ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+isMuslFromFilesystem() {
+    if [[ -f "/usr/bin/ldd" ]]; then
+        if grep -q "musl" "/usr/bin/ldd"; then
+            return 0
+        else
+            return 1
+        fi
+    else
+        return 2
+    fi
+}
+
+isMuslFromChildProcess() {
+    if ldd --version | grep -q "musl"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+
+musl=false
+if [[ $(uname -s) == "Linux" ]]; then
+    isMuslFromFilesystem
+    result=$?
+    if [[ $result == 2 ]]; then
+        isMuslFromChildProcess
+        result=$?
+    fi
+    if [[ $result == 0 ]]; then
+        musl=true
+    fi
+fi
+
 # Determine which one to remove
-# Are we running on musl?
-if ldd --version | grep -q musl; then
+if $musl == true; then
     echo "Running on musl"
     REMOVE_PATH=$GNU_PATH
 else
