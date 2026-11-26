@@ -1,0 +1,155 @@
+---
+source: cli/tests/site.rs
+---
+# exit 0
+# result
+{"schema":"uses.build/v1","deploy":"f8836e788ef7e73670b2d0ab92eb7747648bf9b10119b9be79ff15ffdc3d5d0c","out":"<out>","entries":8}
+# files
+.ink-manifest.json
+404.html
+code.css
+guide/install/index.html
+guide/use/index.html
+index.html
+robots.txt
+sitemap.xml
+style.css
+## 404.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found - Handbook</title>
+<meta name="description" content="Start with installing, then use it.">
+<link rel="canonical" href="https://ink.example/404">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Page not found">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="Handbook">
+<meta name="og:url" content="https://ink.example/404">
+<meta name="og:description" content="Start with installing, then use it.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Handbook</a>
+</header>
+<main>
+<article>
+<h1>Page not found</h1>
+<p>There is no page at this address.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Handbook</p>
+</footer>
+</div>
+</body>
+</html>
+## guide/install/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install - Handbook</title>
+<meta name="description" content="Download the binary and put it on your path.">
+<link rel="canonical" href="https://ink.example/guide/install">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Install">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="Handbook">
+<meta name="og:url" content="https://ink.example/guide/install">
+<meta name="og:description" content="Download the binary and put it on your path.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Handbook</a>
+</header>
+<main>
+<article>
+<h1 id="install">Install<a class="quiet-anchor" href="#install" aria-label="Link to this section">#</a>
+</h1>
+<p>Download the binary and put it on your path.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Handbook</p>
+</footer>
+</div>
+</body>
+</html>
+## guide/use/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Use - Handbook</title>
+<meta name="description" content="Run it in a folder. Back to installing.">
+<link rel="canonical" href="https://ink.example/guide/use">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Use">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="Handbook">
+<meta name="og:url" content="https://ink.example/guide/use">
+<meta name="og:description" content="Run it in a folder. Back to installing.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Handbook</a>
+</header>
+<main>
+<article>
+<h1 id="use">Use<a class="quiet-anchor" href="#use" aria-label="Link to this section">#</a>
+</h1>
+<p>Run it in a folder. Back to <a href="/guide/install">installing</a>.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Handbook</p>
+</footer>
+</div>
+</body>
+</html>
+## index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Handbook</title>
+<meta name="description" content="Start with installing, then use it.">
+<link rel="canonical" href="https://ink.example/">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Handbook">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="Handbook">
+<meta name="og:url" content="https://ink.example/">
+<meta name="og:description" content="Start with installing, then use it.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Handbook</a>
+</header>
+<main>
+<article>
+<h1 id="handbook">Handbook<a class="quiet-anchor" href="#handbook" aria-label="Link to this section">#</a>
+</h1>
+<p>Start with <a href="/guide/install">installing</a>, then <a href="/guide/use">use it</a>.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Handbook</p>
+</footer>
+</div>
+</body>
+</html>

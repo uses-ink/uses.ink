@@ -1,0 +1,105 @@
+//! Why a folder was not read. Each refusal becomes a [`Diagnostic`] with a catalog code at the
+//! boundary.
+
+use std::fmt;
+use std::path::PathBuf;
+
+use model::{Bytes, ContentPath, Diagnostic, PathError, Problem, SnapshotError, Subject};
+
+use crate::blob::StoreError;
+
+/// A folder that could not be read as a snapshot. Nothing is read in part: a refusal stops the
+/// read.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Refused {
+    /// The folder itself could not be opened.
+    Root { path: PathBuf, source: std::io::Error },
+    /// A file or folder inside could not be read.
+    Unreadable { path: ContentPath, source: std::io::Error },
+    /// A name that is not UTF-8.
+    Encoding { path: PathBuf },
+    /// A UTF-8 name that is no [`ContentPath`], such as one holding `\`.
+    Name { written: String, source: PathError },
+    /// A link whose target is outside the folder.
+    Outside { path: ContentPath, target: PathBuf },
+    /// A link to a folder that holds the link.
+    Cycle { path: ContentPath, target: PathBuf },
+    /// Neither a file nor a folder: a socket, a pipe, a device.
+    Special { path: ContentPath },
+    /// More files than the budget.
+    Files { count: u64, limit: u64 },
+    /// One file larger than the budget.
+    File { path: ContentPath, size: Bytes, limit: Bytes },
+    /// All files together larger than the budget.
+    Total { size: Bytes, limit: Bytes },
+    /// A file's bytes could not be stored.
+    Store(StoreError),
+    /// The files do not make a snapshot.
+    Snapshot(SnapshotError),
+}
+
+impl fmt::Display for Refused {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Root { path, .. } => write!(out, "the folder {} could not be read", path.display()),
+            Self::Unreadable { path, .. } => write!(out, "{path} could not be read"),
+            Self::Encoding { path } => write!(out, "the name of {} is not UTF-8", path.display()),
+            Self::Name { written, .. } => write!(out, "`{written}` is not a name a site can hold"),
+            Self::Outside { path, target } => write!(out, "{path} links outside the folder, to {}", target.display()),
+            Self::Cycle { path, target } => write!(out, "{path} links to {}, a folder that holds it", target.display()),
+            Self::Special { path } => write!(out, "{path} is neither a file nor a folder"),
+            Self::Files { count, limit } => write!(out, "the folder holds {count} files; a site may hold {limit}"),
+            Self::File { path, size, limit } => write!(out, "{path} is {size}; a file may be {limit}"),
+            Self::Total { size, limit } => write!(out, "the folder holds {size}; a site may hold {limit}"),
+            Self::Store(_) => write!(out, "a file's bytes could not be stored"),
+            Self::Snapshot(_) => write!(out, "the files do not make a snapshot"),
+        }
+    }
+}
+
+impl std::error::Error for Refused {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Root { source, .. } | Self::Unreadable { source, .. } => Some(source),
+            Self::Name { source, .. } => Some(source),
+            Self::Store(source) => Some(source),
+            Self::Snapshot(source) => Some(source),
+            Self::Encoding { .. }
+            | Self::Outside { .. }
+            | Self::Cycle { .. }
+            | Self::Special { .. }
+            | Self::Files { .. }
+            | Self::File { .. }
+            | Self::Total { .. } => None,
+        }
+    }
+}
+
+impl From<&Refused> for Diagnostic {
+    /// The refusal as the author or operator sees it. An I/O cause is erased to its text here,
+    /// at the edge of the host: the catalog's `reason` field.
+    fn from(refused: &Refused) -> Self {
+        let on = |path: &ContentPath| Subject::File(path.clone());
+        match refused {
+            Refused::Root { source, .. } => Self::new(Problem::SourceRootUnreadable { reason: source.to_string() }),
+            Refused::Unreadable { path, source } => {
+                Self::new(Problem::SourceFileUnreadable { path: path.clone(), reason: source.to_string() }).on(on(path))
+            }
+            Refused::Encoding { path } => {
+                Self::new(Problem::SourceNameInvalid { written: path.to_string_lossy().into_owned() })
+            }
+            Refused::Name { written, .. } => Self::new(Problem::SourceNameInvalid { written: written.clone() }),
+            Refused::Outside { path, .. } => Self::new(Problem::SourceLinkOutside { path: path.clone() }).on(on(path)),
+            Refused::Cycle { path, .. } => Self::new(Problem::SourceLinkCycle { path: path.clone() }).on(on(path)),
+            Refused::Special { path } => Self::new(Problem::SourceFileSpecial { path: path.clone() }).on(on(path)),
+            Refused::Files { count, limit } => Self::new(Problem::SourceBudgetFiles { count: *count, limit: *limit }),
+            Refused::File { path, size, limit } => {
+                Self::new(Problem::SourceBudgetFile { path: path.clone(), size: *size, limit: *limit }).on(on(path))
+            }
+            Refused::Total { size, limit } => Self::new(Problem::SourceBudgetBytes { size: *size, limit: *limit }),
+            Refused::Store(error) => Self::new(Problem::SourceBlobUnwritable { reason: error.to_string() }),
+            Refused::Snapshot(error) => Self::new(Problem::SourceRootUnreadable { reason: error.to_string() }),
+        }
+    }
+}

@@ -1,0 +1,34 @@
+[package]
+name = "uses-ink-cli"
+description = "The `ink` command: build, check, explain and preview a site from a folder"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "ink"
+path = "src/main.rs"
+
+[dependencies]
+annotate-snippets.workspace = true
+axum.workspace = true
+clap.workspace = true
+config.workspace = true
+diag.workspace = true
+engine.workspace = true
+format-markdown.workspace = true
+host-native.workspace = true
+model.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+theme-quiet.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+
+[lints]
+workspace = true

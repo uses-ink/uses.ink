@@ -15,6 +15,13 @@ exceptions = [
     { crate = "comrak", allow = ["BSD-2-Clause"] },
     { crate = "encoding_rs", allow = ["BSD-3-Clause"] },
     { crate = "finl_unicode", allow = ["Unicode-DFS-2016"] },
+    # highlighting (libraries.md): EUPL-1.2 is compatible with the AGPL; its grammar dump is zstd
+    { crate = "giallo", allow = ["EUPL-1.2"] },
+    { crate = "zstd", allow = ["BSD-3-Clause"] },
+    { crate = "zstd-safe", allow = ["BSD-3-Clause"] },
+    { crate = "zstd-sys", allow = ["BSD-3-Clause", "BSD-2-Clause"] },
+    # axum's router, for `ink preview`
+    { crate = "matchit", allow = ["BSD-3-Clause"] },
 ]
 
 [bans]

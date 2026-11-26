@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["config", "diag", "engine", "fixture", "freehand", "freehand-web", "model", "plugin/format/markdown", "token", "xtask"]
+members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "xtask"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -16,20 +16,31 @@ publish = false
 config = { package = "uses-ink-config", path = "config" }
 # test-only: a dev-dependency of any crate, a normal dependency of none
 fixture = { package = "uses-ink-fixture", path = "fixture" }
+diag = { package = "uses-ink-diag", path = "diag" }
 engine = { package = "uses-ink-engine", path = "engine" }
+format-markdown = { package = "uses-ink-format-markdown", path = "plugin/format/markdown" }
 freehand = { path = "freehand" }
+host-native = { package = "uses-ink-host-native", path = "host/native" }
 model = { package = "uses-ink-model", path = "model" }
+theme-quiet = { package = "uses-ink-theme-quiet", path = "plugin/theme/quiet" }
 token = { package = "uses-ink-token", path = "token" }
+annotate-snippets = "0.12.18"
+axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 blake3 = "1.8.7"
+clap = { version = "4.6.9", features = ["derive"] }
 comrak = { version = "1.2.0", default-features = false }
 insta = { version = "1.49.0", features = ["glob"] }
 jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"] }
+# the built-in grammars and themes need `dump`
+giallo = { version = "0.6.0", features = ["dump"] }
 libm = "0.2.16"
+math-core = "0.9.0"
 proptest = "1.12.0"
 quick-xml = "0.42.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 serde-saphyr = { version = "2.2.0", default-features = false, features = ["deserialize"] }
+tokio = { version = "1.54.1", features = ["rt", "net"] }
 toml = "1.2.3"
 toml_edit = "0.25.21"
 unspliced = "0.1.1"
@@ -43,7 +54,8 @@ syn = { version = "3.0.10", features = ["full"] }
 # Dependencies build optimized and without debug assertions, so tests stay fast; `"*"` matches
 # no workspace member, so our crates keep debug assertions (docs/conventions.md, Tests).
 [profile.dev.package."*"]
-opt-level = 2
+# 3, not 2: giallo's grammars must load inside a test's 100 ms budget
+opt-level = 3
 debug-assertions = false
 
 [workspace.lints.rust]
@@ -74,4 +86,5 @@ allow_attributes_without_reason = "deny"
 module_name_repetitions = "allow"
 must_use_candidate = "allow"
 missing_errors_doc = "allow"
+
 

@@ -1,0 +1,198 @@
+---
+source: cli/tests/site.rs
+---
+# exit 0
+# result
+{"schema":"uses.build/v1","deploy":"c43506f888a9deb49daa650a7f97294cdc77f5afb201557e26a3365746a4c918","out":"<out>","entries":8}
+# files
+.ink-manifest.json
+404.html
+code.css
+index.html
+kettle/index.html
+robots.txt
+sitemap.xml
+style.css
+tea/index.html
+## 404.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found - notes</title>
+<link rel="canonical" href="https://ink.example/404">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Page not found">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="notes">
+<meta name="og:url" content="https://ink.example/404">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">notes</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/kettle">Kettle</a>
+</li>
+<li>
+<a href="/tea">Tea</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Page not found</h1>
+<p>There is no page at this address.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>notes</p>
+</footer>
+</div>
+</body>
+</html>
+## index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>notes</title>
+<link rel="canonical" href="https://ink.example/">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="notes">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="notes">
+<meta name="og:url" content="https://ink.example/">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">notes</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/kettle">Kettle</a>
+</li>
+<li>
+<a href="/tea">Tea</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>notes</h1>
+</article>
+<h2>Pages</h2>
+<ul class="quiet-listing">
+<li>
+<a href="/kettle">Kettle</a>
+</li>
+<li>
+<a href="/tea">Tea</a>
+</li>
+</ul>
+</main>
+<footer class="quiet-foot">
+<p>notes</p>
+</footer>
+</div>
+</body>
+</html>
+## kettle/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kettle - notes</title>
+<meta name="description" content="Descale it with vinegar. Related: tea.">
+<link rel="canonical" href="https://ink.example/kettle">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Kettle">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="notes">
+<meta name="og:url" content="https://ink.example/kettle">
+<meta name="og:description" content="Descale it with vinegar. Related: tea.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">notes</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/kettle">Kettle</a>
+</li>
+<li>
+<a href="/tea">Tea</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1 id="kettle">Kettle<a class="quiet-anchor" href="#kettle" aria-label="Link to this section">#</a>
+</h1>
+<p>Descale it with vinegar. Related: <a href="/tea">tea</a>.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>notes</p>
+</footer>
+</div>
+</body>
+</html>
+## tea/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tea - notes</title>
+<meta name="description" content="Water just off the boil. See kettle.">
+<link rel="canonical" href="https://ink.example/tea">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Tea">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="notes">
+<meta name="og:url" content="https://ink.example/tea">
+<meta name="og:description" content="Water just off the boil. See kettle.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">notes</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/kettle">Kettle</a>
+</li>
+<li>
+<a href="/tea">Tea</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1 id="tea">Tea<a class="quiet-anchor" href="#tea" aria-label="Link to this section">#</a>
+</h1>
+<p>Water just off the boil. See <a href="/kettle">kettle</a>.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>notes</p>
+</footer>
+</div>
+</body>
+</html>

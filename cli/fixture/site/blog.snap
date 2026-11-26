@@ -1,0 +1,357 @@
+---
+source: cli/tests/site.rs
+---
+# exit 0
+# result
+{"schema":"uses.build/v1","deploy":"5a624627432c332396b9e7a14dd3e7c96d589155e31995b884291c87eb5a98eb","out":"<out>","entries":12}
+# files
+.ink-manifest.json
+404.html
+about/index.html
+code.css
+feed.xml
+index.html
+posts/first-steps/index.html
+posts/nib.svg
+posts/second/index.html
+robots.txt
+rss.xml
+sitemap.xml
+style.css
+## 404.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found - Ink and paper</title>
+<meta name="description" content="Welcome. The newest posts are below; the first one is where it started.">
+<link rel="canonical" href="https://ink.example/404">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
+<link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
+<meta name="og:title" content="Page not found">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="Ink and paper">
+<meta name="og:url" content="https://ink.example/404">
+<meta name="og:description" content="Welcome. The newest posts are below; the first one is where it started.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Ink and paper</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/about">About</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Page not found</h1>
+<p>There is no page at this address.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Ink and paper</p>
+</footer>
+</div>
+</body>
+</html>
+## about/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About - Ink and paper</title>
+<meta name="description" content="Who writes here, and why it is all about ink.">
+<link rel="canonical" href="https://ink.example/about">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
+<link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
+<meta name="og:title" content="About">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="Ink and paper">
+<meta name="og:url" content="https://ink.example/about">
+<meta name="og:description" content="Who writes here, and why it is all about ink.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Ink and paper</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/about">About</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1 id="about">About<a class="quiet-anchor" href="#about" aria-label="Link to this section">#</a>
+</h1>
+<p>Who writes here, and why it is all about ink.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Ink and paper</p>
+</footer>
+</div>
+</body>
+</html>
+## index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ink and paper</title>
+<meta name="description" content="Welcome. The newest posts are below; the first one is where it started.">
+<link rel="canonical" href="https://ink.example/">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
+<link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
+<meta name="og:title" content="Ink and paper">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="Ink and paper">
+<meta name="og:url" content="https://ink.example/">
+<meta name="og:description" content="Welcome. The newest posts are below; the first one is where it started.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Ink and paper</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/about">About</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Ink and paper</h1>
+<p>Welcome. The newest posts are below; <a href="/posts/first-steps">the first one</a> is where
+it started.</p>
+</article>
+<h2>Posts</h2>
+<ul class="quiet-listing">
+<li>
+<time datetime="2024-04-02">2024-04-02</time> <a href="/posts/second">Paper weight</a>
+</li>
+<li>
+<time datetime="2024-03-01">2024-03-01</time> <a href="/posts/first-steps">First steps</a>
+</li>
+</ul>
+</main>
+<footer class="quiet-foot">
+<p>Ink and paper</p>
+</footer>
+</div>
+</body>
+</html>
+## posts/first-steps/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First steps - Ink and paper</title>
+<meta name="description" content="A fountain pen needs ink, patience and luck practice. The flow rate is roughly q = k \cdot w for a nib of width w.">
+<link rel="canonical" href="https://ink.example/posts/first-steps">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
+<link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
+<meta name="og:title" content="First steps">
+<meta name="og:type" content="article">
+<meta name="og:site_name" content="Ink and paper">
+<meta name="og:url" content="https://ink.example/posts/first-steps">
+<meta name="og:description" content="A fountain pen needs ink, patience and luck practice. The flow rate is roughly q = k \cdot w for a nib of width w.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Ink and paper</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/about">About</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<div class="quiet-meta">
+<time datetime="2024-03-01">2024-03-01</time>
+<ul class="quiet-tags" aria-label="Tags">
+<li>#ink</li>
+<li>#pens</li>
+</ul>
+</div>
+<h1 id="first-steps">First steps<a class="quiet-anchor" href="#first-steps" aria-label="Link to this section">#</a>
+</h1>
+<p>A fountain pen needs <strong>ink</strong>, <em>patience</em> and <s>luck</s> practice.<sup>
+<a id="ref:flow" href="#fn:flow">1</a>
+</sup> The flow rate is roughly
+<math>
+<mi>q</mi>
+<mo>=</mo>
+<mi>k</mi>
+<mo lspace="0.2222em" rspace="0.2222em">⋅</mo>
+<mi>w</mi>
+</math> for a nib of width <math>
+<mi>w</mi>
+</math>.</p>
+<div class="quiet-math">
+<math display="block">
+<msubsup>
+<mo lspace="0">∫</mo>
+<mn>0</mn>
+<mn>1</mn>
+</msubsup>
+<msup>
+<mi>x</mi>
+<mn>2</mn>
+</msup>
+<mspace width="0.16666667em"/>
+<mi>d</mi>
+<mi>x</mi>
+<mo>=</mo>
+<mfrac>
+<mn>1</mn>
+<mn>3</mn>
+</mfrac>
+</math>
+</div>
+<p>
+<img src="/posts/nib.svg" alt="the nib">
+</p>
+<h2 id="what-to-buy">What to buy<a class="quiet-anchor" href="#what-to-buy" aria-label="Link to this section">#</a>
+</h2>
+<ul>
+<li class="quiet-task">
+<input type="checkbox" disabled checked>a converter</li>
+<li class="quiet-task">
+<input type="checkbox" disabled>a bottle of ink</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th class="quiet-left">Ink</th>
+<th class="quiet-right">Dries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="quiet-left">iron gall</td>
+<td class="quiet-right">slow</td>
+</tr>
+<tr>
+<td class="quiet-left">dye</td>
+<td class="quiet-right">fast</td>
+</tr>
+</tbody>
+</table>
+<aside class="quiet-callout quiet-tip">
+<p class="quiet-label">Tip</p>
+<p>Flush the pen every month.</p>
+</aside>
+<pre class="giallo hl-l-code hl-d-code" >
+<code data-lang="rust">
+<span class="giallo-l">
+<span class="hl-l-8 hl-d-10">fn</span>
+<span class="hl-l-6 hl-d-7"> main</span>
+<span>(</span>
+<span>)</span>
+<span> {</span>
+</span>
+<span class="giallo-l">
+<span class="hl-l-6 hl-d-7">    println!</span>
+<span>(</span>
+<span class="hl-l-2 hl-d-6">&quot;</span>
+<span class="hl-l-2 hl-d-6">fill the pen</span>
+<span class="hl-l-2 hl-d-6">&quot;</span>
+<span>)</span>
+<span>;</span>
+</span>
+<span class="giallo-l">
+<span>}</span>
+</span>
+</code>
+</pre>
+<section class="quiet-notes" aria-label="Footnotes">
+<ol>
+<li id="fn:flow">
+<p>Too much flow and the line feathers.</p>
+<a class="quiet-back" href="#ref:flow" aria-label="Back to the text">↩</a>
+</li>
+</ol>
+</section>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Ink and paper</p>
+</footer>
+</div>
+</body>
+</html>
+## posts/second/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper weight - Ink and paper</title>
+<meta name="description" content="Heavier paper takes wetter nibs. See the first post.">
+<link rel="canonical" href="https://ink.example/posts/second">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
+<link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
+<meta name="og:title" content="Paper weight">
+<meta name="og:type" content="article">
+<meta name="og:site_name" content="Ink and paper">
+<meta name="og:url" content="https://ink.example/posts/second">
+<meta name="og:description" content="Heavier paper takes wetter nibs. See the first post.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Ink and paper</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/about">About</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<div class="quiet-meta">
+<time datetime="2024-04-02">2024-04-02</time>
+<ul class="quiet-tags" aria-label="Tags">
+<li>#paper</li>
+</ul>
+</div>
+<h1 id="paper-weight">Paper weight<a class="quiet-anchor" href="#paper-weight" aria-label="Link to this section">#</a>
+</h1>
+<p>Heavier paper takes wetter nibs. See <a href="/posts/first-steps#what-to-buy">the first post</a>.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Ink and paper</p>
+</footer>
+</div>
+</body>
+</html>

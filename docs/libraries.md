@@ -16,6 +16,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Hashing | `blake3` 1.8 | reference implementation |
 | HTML safety | own allowlist; `ammonia` 4.2 behind an escape hatch only | smallest XSS surface (0027) |
 | Highlighting | `giallo` 0.6 | VS Code grammars, classed spans, pure Rust; EUPL-1.2 is compatible with our AGPL |
+| Highlighting grammars | `giallo` 0.6 `dump`, with `zstd` 0.14 | the built-in grammars and themes are a zstd dump, so this pulls `zstd-sys` (C) and loads in about 40 ms, once per process; the theme writes `code.css` ahead of time so a build without code never loads it. A C dependency in a theme that becomes a wasm component is to be settled then |
 | Math | `math-core` 0.9 | LaTeX to MathML Core, no JS for readers |
 | Images | `image` 0.25, `fast_image_resize` 6.2, `ravif` 0.13, `jpeg-encoder` 0.7, `imagesize` 0.15, `img-parts` 0.4, vendored thumbhash | pure Rust AVIF and JPEG, no C |
 | Fonts | `harfrust` 0.16, `skrifa` 0.50, `subsetter` 0.2, `ttf2woff2` 0.14 | maintained successors of rustybuzz and ttf-parser; pure Rust WOFF2 |
@@ -24,6 +25,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Text | `unicode-segmentation`, `unicode-normalization` | reading time, slugs |
 | Plugins | `wasmtime` 51 (component model, fuel, epochs, pooling, `.cwasm`); `wit-bindgen` 0.63 for guests | component model is Tier 1 |
 | CLI | `clap` 4.6, `annotate-snippets` 0.12, `tracing`, `notify` 9, `notify-debouncer-full` 0.8, `indicatif` 0.18 | rustc's diagnostic renderer over our own `Diagnostic` |
+| Preview server | `axum` 0.8 (`http1`, `tokio` only), `tokio` 1 (`rt`, `net`) | `ink preview` serves the manifest with its statuses and headers on a one-thread runtime; the same router stack `ink serve` will use, so no second HTTP crate |
 | Dates | `jiff` 1.0 | chrono is unmaintained (0028) |
 | Serialization | `serde` 1, `serde_json` 1 | typed JSON for `--json`, events and `cargo metadata` |
 | Tests | `insta`, `proptest`, `similar`, `scraper`, `cargo-deny` | snapshots, properties, licence and advisory gates |

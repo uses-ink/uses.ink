@@ -1,3 +1,9 @@
 [profile.default]
 # A test over 100 ms is a bug (docs/conventions.md, Tests).
 slow-timeout = { period = "100ms", terminate-after = 1 }
+
+# Loading giallo's built-in grammars takes about 70 ms, once per process: the one test per crate
+# that highlights code has `highlight` in its name and this budget instead.
+[[profile.default.overrides]]
+filter = "test(/highlight/)"
+slow-timeout = { period = "250ms", terminate-after = 1 }

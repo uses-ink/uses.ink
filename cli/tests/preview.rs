@@ -1,0 +1,35 @@
+//! `ink preview` serves a deploy with the manifest's statuses and headers.
+
+#![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
+
+extern crate uses_ink_cli as cli;
+
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::path::Path;
+
+fn get(port: u16, path: &str) -> String {
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    write!(stream, "GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n").unwrap();
+    let mut response = String::new();
+    stream.read_to_string(&mut response).unwrap();
+    response
+}
+
+#[test]
+fn serves_pages_with_their_headers_and_404() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixture/site/notes");
+    let preview = cli::Preview::of(&dir, "http://127.0.0.1:4000").unwrap().unwrap();
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || preview.serve(listener));
+    let tea = get(port, "/tea").to_ascii_lowercase();
+    assert!(tea.starts_with("http/1.1 200"), "{tea}");
+    assert!(tea.contains("content-type: text/html; charset=utf-8"), "{tea}");
+    assert!(tea.contains("content-security-policy: default-src 'none'"), "{tea}");
+    assert!(tea.contains("<h1"), "{tea}");
+    let missing = get(port, "/no/such/page");
+    assert!(missing.starts_with("HTTP/1.1 404"), "{missing}");
+    assert!(missing.contains("Page not found"), "{missing}");
+    assert!(get(port, "/style.css").contains("text/css"));
+}

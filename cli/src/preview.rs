@@ -1,0 +1,115 @@
+//! `ink preview <dir>`: the site built in memory and served on 127.0.0.1 with the manifest's
+//! statuses and headers, through axum on a one-thread tokio runtime.
+
+use std::path::Path;
+use std::sync::Arc;
+
+use axum::Router;
+use axum::body::Body;
+use axum::http::{HeaderName, HeaderValue, Request, Response, StatusCode, header};
+use engine::Blobs;
+use host_native::Memory;
+use model::{Manifest, Route, Served};
+
+use crate::args;
+use crate::error::Error;
+use crate::exit::Exit;
+use crate::output::{Io, Strict};
+use crate::report::Texts;
+use crate::site::{Address, Loaded, Rendering, Source};
+
+/// A deploy held in memory, ready to serve.
+#[derive(Clone, Debug)]
+pub struct Preview {
+    manifest: Arc<Manifest>,
+    blobs: Arc<Memory>,
+}
+
+impl args::Preview {
+    pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
+        let address = format!("http://127.0.0.1:{}", self.port);
+        let address = Address { chosen: None, ..Address::from_flag(Some(&address))? };
+        let loaded = Source::new(&self.dir).load()?;
+        let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
+        let rendered = loaded.render(&address);
+        let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
+        let Some(preview) = Preview::assemble(loaded, rendered) else { return Ok(Exit::Content) };
+        let listener =
+            std::net::TcpListener::bind(("127.0.0.1", self.port)).map_err(|source| Error::Serve { source })?;
+        io.line(&address.base)?;
+        preview.serve(listener)?;
+        Ok(tally.exit(Strict::Off))
+    }
+}
+
+impl Preview {
+    /// The site in `dir` built for `base`, or `None` when it has errors. What the build said is
+    /// not reported: `ink preview` reports it.
+    pub fn of(dir: &Path, base: &str) -> Result<Option<Self>, Error> {
+        let address = Address::from_flag(Some(base))?;
+        let loaded = Source::new(dir).load()?;
+        let rendered = loaded.render(&address);
+        Ok(Self::assemble(loaded, rendered))
+    }
+
+    fn assemble(loaded: Loaded, rendered: Rendering) -> Option<Self> {
+        let errors = rendered.diagnostics.iter().any(|d| d.severity() == model::Severity::Error);
+        let manifest = rendered.deploy.filter(|_| !errors)?;
+        let mut blobs = loaded.store;
+        blobs.extend(rendered.blobs.into_values());
+        Some(Self { manifest: Arc::new(manifest), blobs: Arc::new(blobs) })
+    }
+
+    /// Serves on `listener` until the process ends.
+    pub fn serve(self, listener: std::net::TcpListener) -> Result<(), Error> {
+        let serve = |source| Error::Serve { source };
+        listener.set_nonblocking(true).map_err(serve)?;
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_io().build().map_err(serve)?;
+        runtime.block_on(async move {
+            let listener = tokio::net::TcpListener::from_std(listener).map_err(serve)?;
+            let router = Router::new().fallback(move |request: Request<Body>| {
+                let preview = self.clone();
+                async move { preview.respond(request.uri().path()) }
+            });
+            axum::serve(listener, router).await.map_err(serve)
+        })
+    }
+
+    /// The deploy as the edge would serve it: an entry with its status and headers, or the
+    /// not-found page with 404.
+    fn respond(&self, path: &str) -> Response<Body> {
+        let trimmed = if path.len() > 1 { path.trim_end_matches('/') } else { path };
+        let route: Option<Route> = trimmed.parse().ok();
+        let found = route.as_ref().and_then(|route| self.manifest.entry(route));
+        let not_found = || "/404".parse::<Route>().ok().and_then(|route| self.manifest.entry(&route));
+        match found.or_else(not_found) {
+            Some(entry) => self.entry(entry, found.is_some()),
+            None => Self::status(StatusCode::NOT_FOUND),
+        }
+    }
+
+    fn entry(&self, entry: &Served, found: bool) -> Response<Body> {
+        let Ok(bytes) = self.blobs.read(&entry.blob()) else { return Self::status(StatusCode::INTERNAL_SERVER_ERROR) };
+        let status = if found { entry.status().code() } else { StatusCode::NOT_FOUND.as_u16() };
+        let mut response = Response::new(Body::from(bytes.into_owned()));
+        *response.status_mut() = StatusCode::from_u16(status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let headers = response.headers_mut();
+        if let Ok(value) = HeaderValue::from_str(&entry.media().to_string()) {
+            headers.insert(header::CONTENT_TYPE, value);
+        }
+        for served in entry.headers() {
+            if let (Ok(name), Ok(value)) =
+                (HeaderName::from_bytes(served.name.name().as_bytes()), HeaderValue::from_str(served.value.as_str()))
+            {
+                headers.append(name, value);
+            }
+        }
+        response
+    }
+
+    fn status(status: StatusCode) -> Response<Body> {
+        let mut response = Response::new(Body::empty());
+        *response.status_mut() = status;
+        response
+    }
+}

@@ -1,0 +1,140 @@
+---
+source: cli/tests/site.rs
+---
+# exit 0
+# result
+{"schema":"uses.build/v1","deploy":"dabba171abbdea1bc679a0b1831c70fc486f67798598ad6d750a04cb43adfa0c","out":"<out>","entries":7}
+# files
+.ink-manifest.json
+404.html
+code.css
+index.html
+robots.txt
+sitemap.xml
+style.css
+usage/index.html
+## 404.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found - My tool</title>
+<meta name="description" content="It does one thing. See usage.">
+<link rel="canonical" href="https://ink.example/404">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Page not found">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="My tool">
+<meta name="og:url" content="https://ink.example/404">
+<meta name="og:description" content="It does one thing. See usage.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">My tool</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/usage">Usage</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Page not found</h1>
+<p>There is no page at this address.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>My tool</p>
+</footer>
+</div>
+</body>
+</html>
+## index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My tool</title>
+<meta name="description" content="It does one thing. See usage.">
+<link rel="canonical" href="https://ink.example/">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="My tool">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="My tool">
+<meta name="og:url" content="https://ink.example/">
+<meta name="og:description" content="It does one thing. See usage.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">My tool</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/usage">Usage</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1 id="my-tool">My tool<a class="quiet-anchor" href="#my-tool" aria-label="Link to this section">#</a>
+</h1>
+<p>It does one thing. See <a href="/usage">usage</a>.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>My tool</p>
+</footer>
+</div>
+</body>
+</html>
+## usage/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage - My tool</title>
+<meta name="description" content="Run my-tool --help.">
+<link rel="canonical" href="https://ink.example/usage">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta name="og:title" content="Usage">
+<meta name="og:type" content="website">
+<meta name="og:site_name" content="My tool">
+<meta name="og:url" content="https://ink.example/usage">
+<meta name="og:description" content="Run my-tool --help.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">My tool</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/usage">Usage</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1 id="usage">Usage<a class="quiet-anchor" href="#usage" aria-label="Link to this section">#</a>
+</h1>
+<p>Run <code>my-tool --help</code>.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>My tool</p>
+</footer>
+</div>
+</body>
+</html>

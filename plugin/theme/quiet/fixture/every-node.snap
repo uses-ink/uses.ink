@@ -1,0 +1,225 @@
+---
+source: plugin/theme/quiet/tests/render.rs
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>
+Every node - Ink</title>
+<meta name="description" content="All of it.">
+<link rel="canonical" href="https://ink.uses.ink/posts/a">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<link rel="alternate" type="application/atom+xml" title="Ink" href="/feed.xml">
+<link rel="alternate" type="application/rss+xml" title="Ink" href="/rss.xml">
+<meta name="og:title" content="Every node">
+<meta name="og:type" content="article">
+<meta name="og:site_name" content="Ink">
+<meta name="og:url" content="https://ink.uses.ink/posts/a">
+<meta name="og:description" content="All of it.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">
+Ink</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/usage">
+Usage</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>
+Every node</h1>
+<div class="quiet-meta">
+<time datetime="2024-03-01">
+2024-03-01</time>
+<ul class="quiet-tags" aria-label="Tags">
+<li>
+#ink</li>
+<li>
+#Pens</li>
+</ul>
+</div>
+<h2 id="every-node">
+Every node<a class="quiet-anchor" href="#every-node" aria-label="Link to this section">
+#</a>
+</h2>
+<p>
+Plain, <em>
+em</em>
+<strong>
+strong</strong>
+<s>
+gone</s>
+<code>
+x &lt; y</code>
+<mark>
+marked</mark>
+<sup>
+2</sup>
+<sub>
+i</sub>
+<kbd>
+Ctrl</kbd>
+
+<br>
+<math>
+<msup>
+<mi>
+x</mi>
+<mn>
+2</mn>
+</msup>
+</math>
+<code class="quiet-unparsed">
+\frac{</code>
+<sup>
+<a id="ref:one" href="#fn:one">
+1</a>
+</sup>
+<sup>
+<a id="ref:one:2" href="#fn:one">
+1</a>
+</sup>
+</p>
+<p>
+<a href="/usage#install">
+other</a>
+<a href="#every-node">
+up</a>
+<a href="https://uses.ink">
+out</a>
+nowhere<img src="/posts/nib.png" alt="a nib">
+lost</p>
+<ul>
+<li class="quiet-task">
+<input type="checkbox" disabled checked>
+done</li>
+<li class="quiet-task">
+<input type="checkbox" disabled>
+open</li>
+</ul>
+<ol start="3">
+<li>
+third</li>
+</ol>
+<blockquote>
+<p>
+quoted</p>
+</blockquote>
+<pre class="giallo hl-l-code hl-d-code" >
+<code data-lang="rust">
+<span class="giallo-l">
+<span class="hl-l-8 hl-d-10">
+fn</span>
+<span class="hl-l-6 hl-d-7">
+ main</span>
+<span>
+(</span>
+<span>
+)</span>
+<span>
+ {</span>
+<span>
+}</span>
+</span>
+</code>
+</pre>
+<pre>
+
+<code>
+&lt;plain&gt;
+</code>
+</pre>
+<pre>
+
+<code>
+bare
+</code>
+</pre>
+<hr>
+<table>
+<thead>
+<tr>
+<th class="quiet-left">
+a</th>
+<th class="quiet-right">
+b</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="quiet-left">
+1</td>
+<td class="quiet-right">
+2</td>
+</tr>
+</tbody>
+</table>
+<aside class="quiet-callout quiet-warning">
+<p class="quiet-label">
+Warning</p>
+<p>
+careful</p>
+</aside>
+<aside class="quiet-callout">
+<p class="quiet-label">
+Titled</p>
+<p>
+noted</p>
+</aside>
+<div class="quiet-math">
+<math display="block">
+<munder>
+<mo lspace="0">
+∑</mo>
+<mi>
+i</mi>
+</munder>
+<mi>
+i</mi>
+</math>
+</div>
+<dl>
+<dt>
+term</dt>
+<dd>
+<p>
+meaning</p>
+</dd>
+</dl>
+<details>
+<summary>
+more</summary>
+<p>
+hidden</p>
+</details>
+<section class="quiet-notes" aria-label="Footnotes">
+<ol>
+<li id="fn:one">
+<p>
+A note.</p>
+<a class="quiet-back" href="#ref:one" aria-label="Back to the text">
+↩</a>
+<a class="quiet-back" href="#ref:one:2" aria-label="Back to the text">
+↩</a>
+</li>
+</ol>
+</section>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>
+Ink</p>
+</footer>
+</div>
+</body>
+</html>

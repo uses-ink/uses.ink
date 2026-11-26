@@ -1,0 +1,16 @@
+[package]
+name = "uses-ink-host-native"
+description = "The builder's capabilities on a local disk: a folder read into a snapshot, and blob stores"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+engine.workspace = true
+model.workspace = true
+
+[lints]
+workspace = true
