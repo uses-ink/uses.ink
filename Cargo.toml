@@ -66,6 +66,7 @@ rust_2018_idioms = { level = "warn", priority = -1 }
 unused_must_use = "deny"
 missing_debug_implementations = "warn"
 unreachable_pub = "warn"
+missing_docs = "warn"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
