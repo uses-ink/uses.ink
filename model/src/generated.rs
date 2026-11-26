@@ -116,6 +116,30 @@ pub enum Problem {
     /// `engine.date.unrepresentable`: {date} has no instant a feed can write
     #[serde(rename = "engine.date.unrepresentable")]
     EngineDateUnrepresentable { date: String },
+    /// `source.budget.bytes`: the source holds {size}; a site may hold {limit}
+    #[serde(rename = "source.budget.bytes")]
+    SourceBudgetBytes { size: Bytes, limit: Bytes },
+    /// `source.link.outside`: {path} links to a place outside the folder, which is never read
+    #[serde(rename = "source.link.outside")]
+    SourceLinkOutside { path: ContentPath },
+    /// `source.link.cycle`: {path} links to a folder that holds it, so reading it would never end
+    #[serde(rename = "source.link.cycle")]
+    SourceLinkCycle { path: ContentPath },
+    /// `source.name.invalid`: `{written}` is not a name a site can hold
+    #[serde(rename = "source.name.invalid")]
+    SourceNameInvalid { written: String },
+    /// `source.file.special`: {path} is neither a file nor a folder, so it cannot be read
+    #[serde(rename = "source.file.special")]
+    SourceFileSpecial { path: ContentPath },
+    /// `source.root.unreadable`: the folder could not be read: {reason}
+    #[serde(rename = "source.root.unreadable")]
+    SourceRootUnreadable { reason: String },
+    /// `source.blob.unwritable`: a file's bytes could not be stored: {reason}
+    #[serde(rename = "source.blob.unwritable")]
+    SourceBlobUnwritable { reason: String },
+    /// `math.syntax.invalid`: the math `{tex}` does not parse, so it is shown as written: {reason}
+    #[serde(rename = "math.syntax.invalid")]
+    MathSyntaxInvalid { tex: String, reason: String },
 }
 impl Problem {
     /// Every code, in catalog order.
@@ -156,6 +180,14 @@ impl Problem {
         "engine.site.refused",
         "engine.xml.unwritten",
         "engine.date.unrepresentable",
+        "source.budget.bytes",
+        "source.link.outside",
+        "source.link.cycle",
+        "source.name.invalid",
+        "source.file.special",
+        "source.root.unreadable",
+        "source.blob.unwritable",
+        "math.syntax.invalid",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -196,6 +228,14 @@ impl Problem {
             Self::EngineSiteRefused => "engine.site.refused",
             Self::EngineXmlUnwritten { .. } => "engine.xml.unwritten",
             Self::EngineDateUnrepresentable { .. } => "engine.date.unrepresentable",
+            Self::SourceBudgetBytes { .. } => "source.budget.bytes",
+            Self::SourceLinkOutside { .. } => "source.link.outside",
+            Self::SourceLinkCycle { .. } => "source.link.cycle",
+            Self::SourceNameInvalid { .. } => "source.name.invalid",
+            Self::SourceFileSpecial { .. } => "source.file.special",
+            Self::SourceRootUnreadable { .. } => "source.root.unreadable",
+            Self::SourceBlobUnwritable { .. } => "source.blob.unwritable",
+            Self::MathSyntaxInvalid { .. } => "math.syntax.invalid",
         }
     }
     pub const fn severity(&self) -> Severity {
@@ -236,6 +276,14 @@ impl Problem {
             Self::EngineSiteRefused => Severity::Error,
             Self::EngineXmlUnwritten { .. } => Severity::Error,
             Self::EngineDateUnrepresentable { .. } => Severity::Error,
+            Self::SourceBudgetBytes { .. } => Severity::Error,
+            Self::SourceLinkOutside { .. } => Severity::Error,
+            Self::SourceLinkCycle { .. } => Severity::Error,
+            Self::SourceNameInvalid { .. } => Severity::Error,
+            Self::SourceFileSpecial { .. } => Severity::Error,
+            Self::SourceRootUnreadable { .. } => Severity::Error,
+            Self::SourceBlobUnwritable { .. } => Severity::Error,
+            Self::MathSyntaxInvalid { .. } => Severity::Warning,
         }
     }
     /// Whose move it is to fix it.
@@ -277,6 +325,14 @@ impl Problem {
             Self::EngineSiteRefused => Fault::Ours,
             Self::EngineXmlUnwritten { .. } => Fault::Ours,
             Self::EngineDateUnrepresentable { .. } => Fault::Ours,
+            Self::SourceBudgetBytes { .. } => Fault::Author,
+            Self::SourceLinkOutside { .. } => Fault::Author,
+            Self::SourceLinkCycle { .. } => Fault::Author,
+            Self::SourceNameInvalid { .. } => Fault::Author,
+            Self::SourceFileSpecial { .. } => Fault::Author,
+            Self::SourceRootUnreadable { .. } => Fault::Operator,
+            Self::SourceBlobUnwritable { .. } => Fault::Operator,
+            Self::MathSyntaxInvalid { .. } => Fault::Author,
         }
     }
 }
@@ -307,6 +363,15 @@ pub enum Announcement {
     /// `feed.post.none`: the site has no dated posts, so it has no feeds
     #[serde(rename = "feed.post.none")]
     FeedPostNone,
+    /// `source.output.skipped`: {path} holds the build's own output, so it is not read
+    #[serde(rename = "source.output.skipped")]
+    SourceOutputSkipped { path: ContentPath },
+    /// `build.address.default`: no address was given, so feeds, the sitemap and canonical links use {address}
+    #[serde(rename = "build.address.default")]
+    BuildAddressDefault { address: String },
+    /// `code.language.unknown`: no grammar knows the language `{language}`, so its code is shown without highlighting
+    #[serde(rename = "code.language.unknown")]
+    CodeLanguageUnknown { language: String },
 }
 impl Announcement {
     /// Every code, in catalog order.
@@ -319,6 +384,9 @@ impl Announcement {
         "fact.date.bound",
         "feed.post.undated",
         "feed.post.none",
+        "source.output.skipped",
+        "build.address.default",
+        "code.language.unknown",
     ];
     pub const fn code(&self) -> &'static str {
         match self {
@@ -330,6 +398,9 @@ impl Announcement {
             Self::FactDateBound { .. } => "fact.date.bound",
             Self::FeedPostUndated => "feed.post.undated",
             Self::FeedPostNone => "feed.post.none",
+            Self::SourceOutputSkipped { .. } => "source.output.skipped",
+            Self::BuildAddressDefault { .. } => "build.address.default",
+            Self::CodeLanguageUnknown { .. } => "code.language.unknown",
         }
     }
 }

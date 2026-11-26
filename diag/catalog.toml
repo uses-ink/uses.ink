@@ -253,6 +253,60 @@ fields = { date = "text" }
 message = "{date} has no instant a feed can write"
 fix = "report it: this is a bug in uses.ink"
 
+[diagnostic."source.budget.bytes"]
+severity = "error"
+fault = "author"
+fields = { size = "bytes", limit = "bytes" }
+message = "the source holds {size}; a site may hold {limit}"
+fix = "move large files that are not part of the site out of the folder"
+
+[diagnostic."source.link.outside"]
+severity = "error"
+fault = "author"
+fields = { path = "path" }
+message = "{path} links to a place outside the folder, which is never read"
+fix = "copy what it links to into the folder"
+
+[diagnostic."source.link.cycle"]
+severity = "error"
+fault = "author"
+fields = { path = "path" }
+message = "{path} links to a folder that holds it, so reading it would never end"
+fix = "remove the link"
+
+[diagnostic."source.name.invalid"]
+severity = "error"
+fault = "author"
+fields = { written = "text" }
+message = "`{written}` is not a name a site can hold"
+fix = "rename it: a name is UTF-8 text without `\\`"
+
+[diagnostic."source.file.special"]
+severity = "error"
+fault = "author"
+fields = { path = "path" }
+message = "{path} is neither a file nor a folder, so it cannot be read"
+fix = "move it out of the folder"
+
+[diagnostic."source.root.unreadable"]
+severity = "error"
+fault = "operator"
+fields = { reason = "text" }
+message = "the folder could not be read: {reason}"
+
+[diagnostic."source.blob.unwritable"]
+severity = "error"
+fault = "operator"
+fields = { reason = "text" }
+message = "a file's bytes could not be stored: {reason}"
+
+[diagnostic."math.syntax.invalid"]
+severity = "warning"
+fault = "author"
+fields = { tex = "text", reason = "text" }
+message = "the math `{tex}` does not parse, so it is shown as written: {reason}"
+fix = "fix the TeX between the `$` signs"
+
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"
@@ -285,3 +339,17 @@ fix = "write `date:` in its frontmatter, or pin `page.date`"
 
 [notice."feed.post.none"]
 message = "the site has no dated posts, so it has no feeds"
+
+[notice."source.output.skipped"]
+fields = { path = "path" }
+message = "{path} holds the build's own output, so it is not read"
+
+[notice."build.address.default"]
+fields = { address = "text" }
+message = "no address was given, so feeds, the sitemap and canonical links use {address}"
+fix = "pass `--base <url>` with the address the site is served at"
+
+[notice."code.language.unknown"]
+fields = { language = "text" }
+message = "no grammar knows the language `{language}`, so its code is shown without highlighting"
+fix = "write a language the highlighter knows after the opening fence, such as `rust` or `toml`"

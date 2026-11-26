@@ -116,6 +116,30 @@ impl Message<'_> {
             Problem::EngineDateUnrepresentable { date, .. } => {
                 write!(out, "{date} has no instant a feed can write")
             }
+            Problem::SourceBudgetBytes { size, limit, .. } => {
+                write!(out, "the source holds {size}; a site may hold {limit}")
+            }
+            Problem::SourceLinkOutside { path, .. } => {
+                write!(out, "{path} links to a place outside the folder, which is never read")
+            }
+            Problem::SourceLinkCycle { path, .. } => {
+                write!(out, "{path} links to a folder that holds it, so reading it would never end")
+            }
+            Problem::SourceNameInvalid { written, .. } => {
+                write!(out, "`{written}` is not a name a site can hold")
+            }
+            Problem::SourceFileSpecial { path, .. } => {
+                write!(out, "{path} is neither a file nor a folder, so it cannot be read")
+            }
+            Problem::SourceRootUnreadable { reason, .. } => {
+                write!(out, "the folder could not be read: {reason}")
+            }
+            Problem::SourceBlobUnwritable { reason, .. } => {
+                write!(out, "a file's bytes could not be stored: {reason}")
+            }
+            Problem::MathSyntaxInvalid { tex, reason, .. } => {
+                write!(out, "the math `{tex}` does not parse, so it is shown as written: {reason}")
+            }
         }
     }
     pub(crate) fn announcement(announcement: &Announcement, out: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -143,6 +167,15 @@ impl Message<'_> {
             }
             Announcement::FeedPostNone => {
                 write!(out, "the site has no dated posts, so it has no feeds")
+            }
+            Announcement::SourceOutputSkipped { path, .. } => {
+                write!(out, "{path} holds the build's own output, so it is not read")
+            }
+            Announcement::BuildAddressDefault { address, .. } => {
+                write!(out, "no address was given, so feeds, the sitemap and canonical links use {address}")
+            }
+            Announcement::CodeLanguageUnknown { language, .. } => {
+                write!(out, "no grammar knows the language `{language}`, so its code is shown without highlighting")
             }
         }
     }
@@ -186,6 +219,14 @@ impl Fix<'_> {
             Problem::EngineSiteRefused => true,
             Problem::EngineXmlUnwritten { .. } => true,
             Problem::EngineDateUnrepresentable { .. } => true,
+            Problem::SourceBudgetBytes { .. } => true,
+            Problem::SourceLinkOutside { .. } => true,
+            Problem::SourceLinkCycle { .. } => true,
+            Problem::SourceNameInvalid { .. } => true,
+            Problem::SourceFileSpecial { .. } => true,
+            Problem::SourceRootUnreadable { .. } => false,
+            Problem::SourceBlobUnwritable { .. } => false,
+            Problem::MathSyntaxInvalid { .. } => true,
         }
     }
     pub(crate) const fn announcement_has(announcement: &Announcement) -> bool {
@@ -198,6 +239,9 @@ impl Fix<'_> {
             Announcement::FactDateBound { .. } => true,
             Announcement::FeedPostUndated => true,
             Announcement::FeedPostNone => false,
+            Announcement::SourceOutputSkipped { .. } => false,
+            Announcement::BuildAddressDefault { .. } => true,
+            Announcement::CodeLanguageUnknown { .. } => true,
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.
@@ -295,6 +339,22 @@ impl Fix<'_> {
             Problem::EngineDateUnrepresentable { .. } => {
                 write!(out, "report it: this is a bug in uses.ink")
             }
+            Problem::SourceBudgetBytes { .. } => {
+                write!(out, "move large files that are not part of the site out of the folder")
+            }
+            Problem::SourceLinkOutside { .. } => {
+                write!(out, "copy what it links to into the folder")
+            }
+            Problem::SourceLinkCycle { .. } => write!(out, "remove the link"),
+            Problem::SourceNameInvalid { .. } => {
+                write!(out, "rename it: a name is UTF-8 text without `\\`")
+            }
+            Problem::SourceFileSpecial { .. } => write!(out, "move it out of the folder"),
+            Problem::SourceRootUnreadable { .. } => Ok(()),
+            Problem::SourceBlobUnwritable { .. } => Ok(()),
+            Problem::MathSyntaxInvalid { .. } => {
+                write!(out, "fix the TeX between the `$` signs")
+            }
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.
@@ -316,6 +376,13 @@ impl Fix<'_> {
                 write!(out, "write `date:` in its frontmatter, or pin `page.date`")
             }
             Announcement::FeedPostNone => Ok(()),
+            Announcement::SourceOutputSkipped { .. } => Ok(()),
+            Announcement::BuildAddressDefault { .. } => {
+                write!(out, "pass `--base <url>` with the address the site is served at")
+            }
+            Announcement::CodeLanguageUnknown { .. } => {
+                write!(out, "write a language the highlighter knows after the opening fence, such as `rust` or `toml`")
+            }
         }
     }
 }
