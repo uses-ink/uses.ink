@@ -1,7 +1,7 @@
 //! Rendering: the same site twice is the same deploy; the engine's headers, feeds, sitemap,
 //! `robots.txt` and not-found page; theme files that collide are refused.
 
-use engine::{File, Rendered};
+use engine::{Engine, File, NoPins, Rendered};
 use model::{HeaderName, MediaType, Route, Status};
 
 use crate::support::{Pinned, Plain, Tree, settings};
@@ -18,7 +18,7 @@ fn blog() -> Tree {
 
 fn rendered(tree: &Tree, theme: &Plain) -> Rendered {
     let site = tree.understand(&Pinned::none()).site.unwrap();
-    engine::render(&site, theme, &settings())
+    Engine::new((), NoPins, (), theme).render(&site, &settings())
 }
 
 fn route(text: &str) -> Route {

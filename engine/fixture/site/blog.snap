@@ -1,56 +1,55 @@
 ---
-source: engine/tests/engine/fixture.rs
-input_file: engine/fixture/site/blog
+source: fixture/src/lib.rs
 ---
 # decisions
-{"decided":{"root":"top"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"layout":"blog"},"subject":"site","evidence":{"marker":{"path":"posts"}},"rejected":[{"decided":{"layout":"blog"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
-{"decided":{"ignored":true},"subject":{"file":".github/ci.md"},"evidence":{"filename":{"path":".github/ci.md"}},"rejected":[]}
-{"decided":{"ignored":true},"subject":{"file":"LICENSE"},"evidence":{"filename":{"path":"LICENSE"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"posts/later.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"posts/nib.svg"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"publish":true},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"kind":"page"},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"title":"About"},"subject":{"file":"about.md"},"evidence":{"heading":{"path":"about.md","span":[0,8]}},"rejected":[]}
-{"decided":{"date":null},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"about"},"subject":{"file":"about.md"},"evidence":{"filename":{"path":"about.md"}},"rejected":[]}
-{"decided":{"tags":[]},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"summary":"Who writes here."},"subject":{"file":"about.md"},"evidence":{"body":{"path":"about.md"}},"rejected":[]}
-{"decided":{"publish":true},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"kind":"page"},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"title":"Ink and paper"},"subject":{"file":"index.md"},"evidence":{"frontmatter":{"path":"index.md","span":[4,25]}},"rejected":[]}
-{"decided":{"date":null},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"index"},"subject":{"file":"index.md"},"evidence":{"filename":{"path":"index.md"}},"rejected":[]}
-{"decided":{"tags":[]},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"summary":"Notes on pens."},"subject":{"file":"index.md"},"evidence":{"frontmatter":{"path":"index.md","span":[25,53]}},"rejected":[{"decided":{"summary":"Welcome."},"evidence":{"body":{"path":"index.md"}},"because":"outranked"}]}
-{"decided":{"publish":true},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"kind":"post"},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[{"decided":{"kind":"post"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
-{"decided":{"title":"First steps"},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
-{"decided":{"date":{"day":"2024-03-01"}},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"first-steps"},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
-{"decided":{"tags":[{"slug":"pens","written":"pens"},{"slug":"ink","written":"ink"}]},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"frontmatter":{"path":"posts/2024-03-01-first-steps.md","span":[4,20]}},"rejected":[]}
-{"decided":{"summary":"The first post."},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"body":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
-{"decided":{"publish":false},"subject":{"file":"posts/later.md"},"evidence":{"frontmatter":{"path":"posts/later.md","span":[4,16]}},"rejected":[]}
-{"decided":{"kind":"post"},"subject":{"file":"posts/later.md"},"evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
-{"decided":{"title":"Later"},"subject":{"file":"posts/later.md"},"evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
-{"decided":{"date":null},"subject":{"file":"posts/later.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"posts/later.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"later"},"subject":{"file":"posts/later.md"},"evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
-{"decided":{"tags":[]},"subject":{"file":"posts/later.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"summary":"Not yet."},"subject":{"file":"posts/later.md"},"evidence":{"body":{"path":"posts/later.md"}},"rejected":[]}
-{"decided":{"publish":true},"subject":{"file":"posts/nib.svg"},"evidence":{"marker":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
-{"decided":{"home":"index.md"},"subject":"site","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
-{"decided":{"site-title":"Ink and paper"},"subject":"site","evidence":{"frontmatter":{"path":"index.md","span":[4,25]}},"rejected":[]}
-{"decided":{"description":"Notes on pens."},"subject":"site","evidence":{"frontmatter":{"path":"index.md","span":[25,53]}},"rejected":[]}
-{"decided":{"authors":[]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"language":"en"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"nav":["about.md"]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.root","subject":"site","value":"top","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.layout","subject":"site","value":"blog","evidence":{"marker":{"path":"posts"}},"rejected":[{"value":"blog","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
+{"code":"file.ignore","subject":{"file":".github/ci.md"},"value":true,"evidence":{"filename":{"path":".github/ci.md"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"LICENSE"},"value":true,"evidence":{"filename":{"path":"LICENSE"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"about.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"index.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"posts/later.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"posts/nib.svg"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"about.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"about.md"},"value":"page","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.title","subject":{"file":"about.md"},"value":"About","evidence":{"heading":{"path":"about.md","span":[0,8]}},"rejected":[]}
+{"code":"page.date","subject":{"file":"about.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"about.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"about.md"},"value":"about","evidence":{"filename":{"path":"about.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"about.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"about.md"},"value":"Who writes here.","evidence":{"body":{"path":"about.md"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"index.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"index.md"},"value":"page","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.title","subject":{"file":"index.md"},"value":"Ink and paper","evidence":{"frontmatter":{"path":"index.md","span":[4,25]}},"rejected":[]}
+{"code":"page.date","subject":{"file":"index.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"index.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"index.md"},"value":"index","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"index.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"index.md"},"value":"Notes on pens.","evidence":{"frontmatter":{"path":"index.md","span":[25,53]}},"rejected":[{"value":"Welcome.","evidence":{"body":{"path":"index.md"}},"because":"outranked"}]}
+{"code":"page.publish","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":"post","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[{"value":"post","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
+{"code":"page.title","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":"First steps","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"code":"page.date","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":{"day":"2024-03-01"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":"first-steps","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":[{"slug":"pens","written":"pens"},{"slug":"ink","written":"ink"}],"evidence":{"frontmatter":{"path":"posts/2024-03-01-first-steps.md","span":[4,20]}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":"The first post.","evidence":{"body":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"posts/later.md"},"value":false,"evidence":{"frontmatter":{"path":"posts/later.md","span":[4,16]}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"posts/later.md"},"value":"post","evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
+{"code":"page.title","subject":{"file":"posts/later.md"},"value":"Later","evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
+{"code":"page.date","subject":{"file":"posts/later.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"posts/later.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"posts/later.md"},"value":"later","evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"posts/later.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"posts/later.md"},"value":"Not yet.","evidence":{"body":{"path":"posts/later.md"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"posts/nib.svg"},"value":true,"evidence":{"marker":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"code":"site.home","subject":"site","value":"index.md","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
+{"code":"site.title","subject":"site","value":"Ink and paper","evidence":{"frontmatter":{"path":"index.md","span":[4,25]}},"rejected":[]}
+{"code":"site.description","subject":"site","value":"Notes on pens.","evidence":{"frontmatter":{"path":"index.md","span":[25,53]}},"rejected":[]}
+{"code":"site.authors","subject":"site","value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.language","subject":"site","value":"en","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.nav","subject":"site","value":["about.md"],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
 # diagnostics and notices
 notice.default.chosen on the site
 notice.default.chosen on about.md

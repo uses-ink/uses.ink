@@ -5,11 +5,13 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use engine::{BlobMissing, Blobs, File, Format, Html, Pin, Pins, RenderSettings, Theme, Understood};
+use engine::{BlobMissing, Blobs, Engine, File, Format, Html, Patterns, Pin, Pins, RenderSettings, Theme, Understood};
+use model::code::{AnyDecision, Code};
+use model::decision::{self, Decision};
 use model::{
-    Ability, Block, Bytes, ContentPath, Decided, DecisionCode, Diagnostic, Document, Entry, FileFacts, Front, Hash,
-    ImageSource, Inline, Known, Level, LinkTarget, Observed, Page, PageKind, Problem, Read, Site, Snapshot, Span,
-    Spanned, Subject, Tag, UnknownReason, Version, When,
+    Ability, Block, Bytes, ContentPath, Diagnostic, Document, Entry, Evidence, FileFacts, Front, Hash, ImageSource,
+    Inline, Known, Level, LinkTarget, Observed, Page, PageKind, Problem, Read, Site, Snapshot, Span, Spanned, Subject,
+    Tag, UnknownReason, Version, When,
 };
 
 /// A snapshot written file by file.
@@ -66,8 +68,13 @@ impl Tree {
     }
 
     pub fn understand(&self, pins: &Pinned) -> Understood {
+        self.read_with(pins, Lines)
+    }
+
+    /// Interprets the tree through `format`.
+    pub fn read_with(&self, pins: &impl Pins, format: impl Format) -> Understood {
         let (snapshot, store) = self.snapshot();
-        engine::interpret(&snapshot, &store, pins, &[&Lines])
+        Engine::new(&store, pins, (format,), ()).interpret(&snapshot)
     }
 }
 
@@ -81,10 +88,11 @@ impl Blobs for Store {
     }
 }
 
-/// Pins, includes and excludes, held in lists. A pattern matches a path it prefixes.
+/// Pins, includes and excludes, held in lists, the pins erased as storage holds them. A pattern
+/// matches a path it prefixes.
 #[derive(Debug, Default)]
 pub struct Pinned {
-    pins: Vec<(DecisionCode, Subject, Decided)>,
+    pins: Vec<AnyDecision>,
     include: Vec<String>,
     exclude: Vec<String>,
 }
@@ -98,13 +106,18 @@ impl Pinned {
         Self::default()
     }
 
-    pub fn pin(mut self, subject: Subject, decided: Decided) -> Self {
-        self.pins.push((decided.code(), subject, decided));
+    pub fn pin<C: Code>(mut self, subject: C::Subject, value: C::Value) -> Self {
+        let decision = Decision::<C>::new(subject, value, Evidence::Config { span: span() });
+        self.pins.push(decision.into());
         self
     }
 
-    pub fn file(self, path: &str, decided: Decided) -> Self {
-        self.pin(Subject::File(path.parse().unwrap()), decided)
+    pub fn site<C: Code<Subject = decision::Site>>(self, value: C::Value) -> Self {
+        self.pin::<C>(decision::Site, value)
+    }
+
+    pub fn file<C: Code<Subject = decision::File>>(self, path: &str, value: C::Value) -> Self {
+        self.pin::<C>(decision::File(path.parse().unwrap()), value)
     }
 
     pub fn include(mut self, prefix: &str) -> Self {
@@ -119,11 +132,13 @@ impl Pinned {
 }
 
 impl Pins for Pinned {
-    fn pin(&self, code: DecisionCode, subject: &Subject) -> Option<Pin> {
-        let (_, _, decided) = self.pins.iter().find(|(c, s, _)| *c == code && s == subject)?;
-        Some(Pin { decided: decided.clone(), span: span() })
+    fn pin<C: Code>(&self, subject: &C::Subject) -> Option<Pin<C::Value>> {
+        let found = self.pins.iter().find_map(|d| d.get::<C>().filter(|d| &d.subject == subject))?;
+        Some(Pin { value: found.value.clone(), span: span() })
     }
+}
 
+impl Patterns for Pinned {
     fn included(&self, path: &ContentPath) -> Option<Span> {
         self.include.iter().any(|p| path.as_str().starts_with(p.as_str())).then(span)
     }
@@ -283,7 +298,17 @@ pub fn codes(understood: &Understood) -> Vec<&'static str> {
     understood.diagnostics.iter().map(Diagnostic::code).collect()
 }
 
-/// The decided value of `code` on `subject`.
-pub fn decided<'a>(understood: &'a Understood, code: DecisionCode, subject: &Subject) -> &'a model::Decision {
-    understood.decisions.iter().find(|d| d.code() == code && &d.subject == subject).unwrap()
+/// The decision of `C` on `subject`.
+pub fn decided<C: Code>(understood: &Understood, subject: &C::Subject) -> Decision<C> {
+    understood.decisions.iter().find_map(|d| d.get::<C>().filter(|d| &d.subject == subject)).cloned().unwrap()
+}
+
+/// The decision of `C` on the file at `path`.
+pub fn on<C: Code<Subject = decision::File>>(understood: &Understood, path: &str) -> Decision<C> {
+    decided::<C>(understood, &decision::File(self::path(path)))
+}
+
+/// The decision of `C` on the site.
+pub fn site<C: Code<Subject = decision::Site>>(understood: &Understood) -> Decision<C> {
+    decided::<C>(understood, &decision::Site)
 }

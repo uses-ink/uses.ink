@@ -1585,10 +1585,11 @@ dependencies = [
 name = "uses-ink-engine"
 version = "0.0.0"
 dependencies = [
- "insta",
  "jiff",
  "quick-xml",
  "serde_json",
+ "uses-ink-diag",
+ "uses-ink-fixture",
  "uses-ink-model",
 ]
 

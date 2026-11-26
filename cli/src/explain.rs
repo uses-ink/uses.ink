@@ -50,7 +50,9 @@ impl Explain {
             }
             return Ok(tally.exit(Strict::Off));
         }
-        let decisions = engine::explain(understood, subject.as_ref());
+        // HACK(the CLI is ported onto typed decisions, roadmap phase 3): `Line` and the JSON
+        // still read the untyped decision, converted from the erased one without loss.
+        let decisions: Vec<Decision> = understood.explain(subject.as_ref()).cloned().map(Decision::from).collect();
         let mut current: Option<&Subject> = None;
         for decision in &decisions {
             if current != Some(&decision.subject) {
@@ -59,7 +61,7 @@ impl Explain {
             }
             io.line(Line(decision))?;
         }
-        io.json(&Explained { schema: "uses.explain/v1", decisions })?;
+        io.json(&Explained { schema: "uses.explain/v1", decisions: decisions.iter().collect() })?;
         Ok(tally.exit(Strict::Off))
     }
 }

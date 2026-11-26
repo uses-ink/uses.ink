@@ -1,55 +1,32 @@
-//! `file.ignore`: files under the root that are never part of the site.
+//! The stage deciding `file.ignore`: files under the root that are never part of the site.
 
-use model::{ContentPath, DefaultReason, Evidence};
+use model::decision::File;
 
-use crate::interpret::file::scope::{InRoot, Scope};
-use crate::interpret::ladder::{Ladder, code};
-use crate::interpret::record::Record;
-use crate::pins::Pins;
+use crate::Pins;
+use crate::interpret::decide::precedence;
+use crate::interpret::journal::Journal;
+use crate::interpret::stage::Stage;
+use crate::interpret::tree::{InRoot, Scope};
 
-/// Stems of files about the repository, not the site, when they sit at the top of the root.
-const REPOSITORY: &[&str] = &["license", "licence", "changelog", "contributing", "code_of_conduct", "security"];
+/// Decides which files under the root are kept.
+#[derive(Debug)]
+pub(crate) struct Files<'a, P> {
+    pub(crate) pins: &'a P,
+}
 
-/// Folders of other tools' dependencies.
-const VENDORED: &[&str] = &["node_modules"];
+impl<'s, P: Pins> Stage<&Scope<'s>> for Files<'_, P> {
+    /// The files kept, in path order.
+    type Out = Vec<InRoot<'s>>;
 
-/// The config file, at the top of the snapshot.
-const CONFIG: &str = "ink.toml";
-
-/// Pin, then an `exclude` pattern, then an `include` pattern, then the rules (dotfiles and dot
-/// folders, vendored folders, repository files, `ink.toml`), then kept. Returns the files kept.
-pub(crate) fn decide<'a>(scope: &Scope<'a>, pins: &impl Pins, record: &mut Record) -> Vec<InRoot<'a>> {
-    let mut kept = Vec::new();
-    for file in &scope.inside {
-        let ruled = is_ruled_out(file).then(|| (true, Evidence::Filename { path: file.path().clone() }));
-        let ignored = Ladder::<code::Ignored>::new(file.subject(), pins, record)
-            .rung(pins.excluded(file.path()).map(|span| (true, Evidence::Config { span })))
-            .rung(pins.included(file.path()).map(|span| (false, Evidence::Config { span })))
-            .rung(ruled)
-            .or_default(false, DefaultReason::NothingMatched, record);
-        if !ignored {
-            kept.push(file.clone());
+    fn run(&self, scope: &Scope<'s>, journal: &mut Journal) -> Vec<InRoot<'s>> {
+        let ladder = precedence::Ignored::default();
+        let mut kept = Vec::new();
+        for file in &scope.inside {
+            let subject = File(file.entry.path.clone());
+            if ladder.record(&subject, file, self.pins, journal) == Some(false) {
+                kept.push(file.clone());
+            }
         }
+        kept
     }
-    kept
-}
-
-fn is_ruled_out(file: &InRoot<'_>) -> bool {
-    let relative = &file.relative;
-    relative.segments().any(|segment| segment.starts_with('.') || VENDORED.contains(&segment))
-        || (relative.parent().is_none() && is_repository_name(relative))
-        || file.path().as_str() == CONFIG
-}
-
-fn is_repository_name(path: &ContentPath) -> bool {
-    let stem = path.stem().to_ascii_lowercase();
-    REPOSITORY.iter().any(|name| stem.starts_with(name))
-}
-
-/// Whether a snapshot path is about the repository rather than any site in it: a dotfile, or a
-/// README or repository file at the top. `site.root` looks past these.
-pub(crate) fn is_repository_file(path: &ContentPath) -> bool {
-    let top = path.parent().is_none();
-    path.segments().any(|segment| segment.starts_with('.'))
-        || (top && (is_repository_name(path) || path.stem().eq_ignore_ascii_case("readme")))
 }

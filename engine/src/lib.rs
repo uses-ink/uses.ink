@@ -1,95 +1,46 @@
-//! Interpret and render.
+//! Interpret and render, generic over the host (docs/code.md, sections 2, 3 and 5).
 //!
-//! [`interpret`] turns a [`Snapshot`](model::Snapshot) into a [`Site`](model::Site) through an
-//! ordered list of inferrers (architecture.md section 9). Each inferrer records
-//! [`Decision`](model::Decision)s with their evidence and the alternatives they beat, and the
-//! site is assembled only from those decisions. [`render`] turns a site into a
-//! [`Manifest`](model::Manifest) and the bytes behind it, through a [`Theme`].
+//! An [`Engine`] holds what the host gives it: [`Blobs`] for a snapshot's bytes, [`Pins`] for
+//! `ink.toml`, [`Formats`] for reading files and a [`Theme`] for writing pages. Nothing in the
+//! engine names a concrete one.
 //!
-//! Pure: nothing here reads a clock, the environment, the filesystem or randomness. Bytes come
-//! through [`Blobs`], configuration through [`Pins`], file formats through [`Format`].
+//! [`Engine::interpret`] turns a [`Snapshot`](model::Snapshot) into a [`Site`](model::Site)
+//! through composed stages, each recording into one journal. Every decision is a ladder of
+//! witnesses: the first that testifies wins, every later one is a rejected alternative. The site
+//! is assembled only from the decisions. [`Engine::render`] turns a site into a
+//! [`Manifest`](model::Manifest) and the bytes behind it, through a list of artifacts: the
+//! theme's pages and files, the feeds, the sitemap, `robots.txt` and the not-found page.
+//!
+//! Pure: nothing here reads a clock, the environment, the filesystem or randomness.
 
 mod error;
+mod host;
 mod interpret;
-mod pins;
 mod render;
 
-use std::borrow::Cow;
-use std::fmt;
+pub use error::Error;
+pub use host::{BlobMissing, Blobs, File, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Theme};
+pub use interpret::Understood;
+pub use render::{BaseUrl, BaseUrlError, Generated, RenderSettings, Rendered, Reserved};
 
-pub use interpret::{Understood, explain, interpret};
-pub use pins::{NoPins, Pin, Pins};
-pub use render::{BaseUrl, BaseUrlError, RenderSettings, Rendered, render};
-
-/// Where the engine reads a snapshot's bytes from.
-pub trait Blobs {
-    /// The bytes whose hash is `hash`.
-    fn read(&self, hash: &model::Hash) -> Result<Cow<'_, [u8]>, BlobMissing>;
+/// The engine over one host: where bytes come from (`B`), what `ink.toml` pins (`P`), which
+/// formats read files (`F`) and which theme writes pages (`T`). Interpreting needs the first
+/// three, rendering the theme, so a part a call does not use can be `()`.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Engine<B, P, F, T> {
+    /// A snapshot's bytes.
+    pub blobs: B,
+    /// The author's pins and patterns.
+    pub pins: P,
+    /// The formats, in the order they are asked.
+    pub formats: F,
+    /// The theme.
+    pub theme: T,
 }
 
-/// A blob the store does not hold.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct BlobMissing {
-    /// The hash asked for.
-    pub hash: model::Hash,
-}
-
-impl fmt::Display for BlobMissing {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "the blob store holds no blob {}", self.hash)
-    }
-}
-
-impl std::error::Error for BlobMissing {}
-
-/// A format plugin: reads one file's bytes into a document and its frontmatter.
-pub trait Format {
-    /// Whether this format reads the file at `path`.
-    fn handles(&self, path: &model::ContentPath) -> bool;
-    /// The file at `path`, read. It resolves nothing: links to other files stay as written.
-    fn read(&self, path: &model::ContentPath, bytes: &[u8]) -> model::Read;
-}
-
-/// A theme plugin: renders each page, and gives the files every page shares.
-pub trait Theme {
-    /// Its name, as diagnostics show it.
-    fn name(&self) -> &str;
-    /// CSS, fonts and images, asked for once per build.
-    fn assets(&self) -> Vec<File>;
-    /// One page's HTML. `site` is the whole site, for navigation and links.
-    #[expect(clippy::result_large_err, reason = "the theme contract returns the model's diagnostic as is (0014)")]
-    fn render(&self, page: &model::Page, site: &model::Site) -> Result<Html, model::Diagnostic>;
-}
-
-/// One file a theme serves as is.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct File {
-    /// Where it is served.
-    pub route: model::Route,
-    /// What it is.
-    pub media: model::MediaType,
-    /// Its bytes.
-    pub bytes: Vec<u8>,
-}
-
-/// A page as a theme rendered it. The engine adds nothing inside it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Html(String);
-
-impl From<String> for Html {
-    fn from(html: String) -> Self {
-        Self(html)
-    }
-}
-
-impl AsRef<str> for Html {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<Html> for Vec<u8> {
-    fn from(html: Html) -> Self {
-        html.0.into_bytes()
+impl<B, P, F, T> Engine<B, P, F, T> {
+    /// The engine over these parts.
+    pub const fn new(blobs: B, pins: P, formats: F, theme: T) -> Self {
+        Self { blobs, pins, formats, theme }
     }
 }

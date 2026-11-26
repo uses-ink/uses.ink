@@ -1,43 +1,42 @@
 ---
-source: engine/tests/engine/fixture.rs
-input_file: engine/fixture/site/ambiguous
+source: fixture/src/lib.rs
 ---
 # decisions
-{"decided":{"root":"top"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"layout":"flat"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"one/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"two/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"publish":true},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"kind":"page"},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"title":"Index"},"subject":{"file":"index.md"},"evidence":{"filename":{"path":"index.md"}},"rejected":[]}
-{"decided":{"date":null},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"index"},"subject":{"file":"index.md"},"evidence":{"filename":{"path":"index.md"}},"rejected":[]}
-{"decided":{"tags":[]},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"summary":"Note"},"subject":{"file":"index.md"},"evidence":{"body":{"path":"index.md"}},"rejected":[]}
-{"decided":{"publish":true},"subject":{"file":"one/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"kind":"page"},"subject":{"file":"one/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"title":"Note"},"subject":{"file":"one/Note.md"},"evidence":{"filename":{"path":"one/Note.md"}},"rejected":[]}
-{"decided":{"date":null},"subject":{"file":"one/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"one/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"note"},"subject":{"file":"one/Note.md"},"evidence":{"filename":{"path":"one/Note.md"}},"rejected":[]}
-{"decided":{"tags":[]},"subject":{"file":"one/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"summary":"one"},"subject":{"file":"one/Note.md"},"evidence":{"body":{"path":"one/Note.md"}},"rejected":[]}
-{"decided":{"publish":true},"subject":{"file":"two/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"kind":"page"},"subject":{"file":"two/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"title":"Note"},"subject":{"file":"two/Note.md"},"evidence":{"filename":{"path":"two/Note.md"}},"rejected":[]}
-{"decided":{"date":null},"subject":{"file":"two/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"two/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"note"},"subject":{"file":"two/Note.md"},"evidence":{"filename":{"path":"two/Note.md"}},"rejected":[]}
-{"decided":{"tags":[]},"subject":{"file":"two/Note.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"summary":"two"},"subject":{"file":"two/Note.md"},"evidence":{"body":{"path":"two/Note.md"}},"rejected":[]}
-{"decided":{"home":"index.md"},"subject":"site","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
-{"decided":{"site-title":"Index"},"subject":"site","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
-{"decided":{"description":"Note"},"subject":"site","evidence":{"body":{"path":"index.md"}},"rejected":[]}
-{"decided":{"authors":[]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"language":"en"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"nav":[]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.root","subject":"site","value":"top","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.layout","subject":"site","value":"flat","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"index.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"one/Note.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"two/Note.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"index.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"index.md"},"value":"page","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.title","subject":{"file":"index.md"},"value":"Index","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
+{"code":"page.date","subject":{"file":"index.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"index.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"index.md"},"value":"index","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"index.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"index.md"},"value":"Note","evidence":{"body":{"path":"index.md"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"one/Note.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"one/Note.md"},"value":"page","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.title","subject":{"file":"one/Note.md"},"value":"Note","evidence":{"filename":{"path":"one/Note.md"}},"rejected":[]}
+{"code":"page.date","subject":{"file":"one/Note.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"one/Note.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"one/Note.md"},"value":"note","evidence":{"filename":{"path":"one/Note.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"one/Note.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"one/Note.md"},"value":"one","evidence":{"body":{"path":"one/Note.md"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"two/Note.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"two/Note.md"},"value":"page","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.title","subject":{"file":"two/Note.md"},"value":"Note","evidence":{"filename":{"path":"two/Note.md"}},"rejected":[]}
+{"code":"page.date","subject":{"file":"two/Note.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"two/Note.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"two/Note.md"},"value":"note","evidence":{"filename":{"path":"two/Note.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"two/Note.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"two/Note.md"},"value":"two","evidence":{"body":{"path":"two/Note.md"}},"rejected":[]}
+{"code":"site.home","subject":"site","value":"index.md","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
+{"code":"site.title","subject":"site","value":"Index","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
+{"code":"site.description","subject":"site","value":"Note","evidence":{"body":{"path":"index.md"}},"rejected":[]}
+{"code":"site.authors","subject":"site","value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.language","subject":"site","value":"en","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.nav","subject":"site","value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
 # diagnostics and notices
 link.target.ambiguous on index.md
 notice.default.chosen on the site

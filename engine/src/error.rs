@@ -1,58 +1,121 @@
-//! The engine's own failures: rules of its own that did not hold. Each is typed until it leaves
-//! the engine as a [`Diagnostic`] with a catalog code.
+//! The engine's own failures: rules of its own, or of whoever implements its traits, that did
+//! not hold. Each leaves the engine as a [`Diagnostic`] with a catalog code; its words are the
+//! catalog's, so none are written here.
 
 use std::fmt;
 
-use model::{DecisionCode, Diagnostic, HeaderName, HeaderValueError, Problem, Route, RouteError, Subject, When};
+use model::code::AnyCode;
+use model::{Diagnostic, HeaderName, HeaderValueError, LanguageError, PathError, Problem, Route, RouteError};
+use model::{SiteError, Subject, When};
 
-/// A bug in the engine, or in whoever implements its traits.
+use crate::render::{Generated, Reserved};
+
+/// A bug in the engine, or in a host trait's implementation.
 #[derive(Debug)]
-pub(crate) enum Broken {
+#[non_exhaustive]
+pub enum Error {
     /// A decision was recorded twice for one code and subject.
-    Repeated { decision: DecisionCode, subject: Subject },
-    /// The assembly needed a decision no inferrer made.
-    Missing { decision: DecisionCode, subject: Subject },
-    /// A pin held a value of another code.
-    Mismatched { decision: DecisionCode, found: DecisionCode, subject: Subject },
+    Repeated {
+        /// The code.
+        code: AnyCode,
+        /// What it was about.
+        subject: Subject,
+    },
+    /// A decision was needed that no ladder made.
+    Missing {
+        /// The code.
+        code: AnyCode,
+        /// What it would be about.
+        subject: Subject,
+    },
     /// One of the engine's header values does not parse.
-    Header { name: HeaderName, source: HeaderValueError },
-    /// One of the engine's routes does not parse.
-    Route { written: &'static str, source: RouteError },
-    /// One of the engine's paths does not parse.
-    Path { written: &'static str, source: model::PathError },
-    /// The engine's default language does not parse.
-    Language { written: &'static str, source: model::LanguageError },
+    Header {
+        /// The header.
+        name: HeaderName,
+        /// Why its value does not parse.
+        source: HeaderValueError,
+    },
+    /// One of the routes the engine serves does not parse.
+    Route {
+        /// The route.
+        reserved: Reserved,
+        /// Why it does not parse.
+        source: RouteError,
+    },
+    /// The file of a page the engine makes does not parse.
+    Path {
+        /// The page.
+        page: Generated,
+        /// Why its file does not parse.
+        source: PathError,
+    },
+    /// The language a site is taken to be in does not parse.
+    Language {
+        /// The language as written.
+        written: &'static str,
+        /// Why it does not parse.
+        source: LanguageError,
+    },
     /// Two outputs for one route.
-    RouteRepeated { route: Route },
-    /// The site refused parts the inferrers had checked.
-    Site { source: model::SiteError },
+    Served {
+        /// The route.
+        route: Route,
+    },
+    /// The site refused parts the ladders had checked.
+    Site {
+        /// Why.
+        source: SiteError,
+    },
     /// Writing XML into memory failed.
-    Xml { route: Route, source: std::io::Error },
+    Xml {
+        /// The route being written.
+        route: Route,
+        /// Why.
+        source: std::io::Error,
+    },
     /// A date with no instant in range.
-    Date { when: When, source: jiff::Error },
+    Date {
+        /// The date.
+        when: When,
+        /// Why it has no instant.
+        source: jiff::Error,
+    },
 }
 
-impl fmt::Display for Broken {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Error {
+    /// The catalog's problem it is.
+    pub fn problem(&self) -> Problem {
         match self {
-            Self::Repeated { decision, subject } => write!(out, "`{decision}` was decided twice for {subject}"),
-            Self::Missing { decision, subject } => write!(out, "`{decision}` was never decided for {subject}"),
-            Self::Mismatched { decision, found, subject } => {
-                write!(out, "the pin of `{decision}` on {subject} holds a value of `{found}`")
-            }
-            Self::Header { name, .. } => write!(out, "the `{name}` header value does not parse"),
-            Self::Route { written, .. } => write!(out, "the route `{written}` does not parse"),
-            Self::Path { written, .. } => write!(out, "the path `{written}` does not parse"),
-            Self::Language { written, .. } => write!(out, "the language `{written}` does not parse"),
-            Self::RouteRepeated { route } => write!(out, "{route} is served twice"),
-            Self::Site { .. } => write!(out, "the site refused its parts"),
-            Self::Xml { route, .. } => write!(out, "{route} could not be written"),
-            Self::Date { when, .. } => write!(out, "{when} has no instant"),
+            Self::Repeated { code, .. } => Problem::EngineDecisionRepeated { decision: (*code).into() },
+            Self::Missing { code, .. } => Problem::EngineDecisionMissing { decision: (*code).into() },
+            Self::Header { name, .. } => Problem::EngineHeaderInvalid { header: name.name().to_owned() },
+            Self::Route { reserved, .. } => Problem::EngineRouteInvalid { written: reserved.as_ref().to_owned() },
+            Self::Path { page, .. } => Problem::EnginePathInvalid { written: page.as_ref().to_owned() },
+            Self::Language { written, .. } => Problem::EngineLanguageInvalid { written: (*written).to_owned() },
+            Self::Served { route } => Problem::EngineRouteRepeated { route: route.clone() },
+            Self::Site { .. } => Problem::EngineSiteRefused,
+            Self::Xml { route, .. } => Problem::EngineXmlUnwritten { route: route.clone() },
+            Self::Date { when, .. } => Problem::EngineDateUnrepresentable { date: when.to_string() },
+        }
+    }
+
+    /// What it is about, when it is about a decision's subject.
+    pub fn subject(&self) -> Option<&Subject> {
+        match self {
+            Self::Repeated { subject, .. } | Self::Missing { subject, .. } => Some(subject),
+            _ => None,
         }
     }
 }
 
-impl std::error::Error for Broken {
+impl fmt::Display for Error {
+    /// The catalog's message.
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&diag::Message::from(&self.problem()), out)
+    }
+}
+
+impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Header { source, .. } => Some(source),
@@ -62,31 +125,17 @@ impl std::error::Error for Broken {
             Self::Site { source } => Some(source),
             Self::Xml { source, .. } => Some(source),
             Self::Date { source, .. } => Some(source),
-            Self::Repeated { .. } | Self::Missing { .. } | Self::Mismatched { .. } | Self::RouteRepeated { .. } => None,
+            Self::Repeated { .. } | Self::Missing { .. } | Self::Served { .. } => None,
         }
     }
 }
 
-impl From<Broken> for Diagnostic {
-    fn from(broken: Broken) -> Self {
-        match broken {
-            Broken::Repeated { decision, subject } => {
-                Self::new(Problem::EngineDecisionRepeated { decision }).on(subject)
-            }
-            Broken::Missing { decision, subject } => Self::new(Problem::EngineDecisionMissing { decision }).on(subject),
-            Broken::Mismatched { decision, found, subject } => {
-                Self::new(Problem::EnginePinMismatched { decision, found }).on(subject)
-            }
-            Broken::Header { name, .. } => Self::new(Problem::EngineHeaderInvalid { header: name.name().to_owned() }),
-            Broken::Route { written, .. } => Self::new(Problem::EngineRouteInvalid { written: written.to_owned() }),
-            Broken::Path { written, .. } => Self::new(Problem::EnginePathInvalid { written: written.to_owned() }),
-            Broken::Language { written, .. } => {
-                Self::new(Problem::EngineLanguageInvalid { written: written.to_owned() })
-            }
-            Broken::RouteRepeated { route } => Self::new(Problem::EngineRouteRepeated { route }),
-            Broken::Site { .. } => Self::new(Problem::EngineSiteRefused),
-            Broken::Xml { route, .. } => Self::new(Problem::EngineXmlUnwritten { route }),
-            Broken::Date { when, .. } => Self::new(Problem::EngineDateUnrepresentable { date: when.to_string() }),
+impl From<Error> for Diagnostic {
+    fn from(error: Error) -> Self {
+        let diagnostic = Self::new(error.problem());
+        match error.subject() {
+            Some(subject) => diagnostic.on(subject.clone()),
+            None => diagnostic,
         }
     }
 }

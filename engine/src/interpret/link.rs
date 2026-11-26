@@ -1,0 +1,138 @@
+//! The stage resolving links. Formats leave links to files as written; once every page is
+//! decided, each published page is folded, its links and images pointed at pages, anchors and
+//! assets. A link that names nothing, an unpublished file, a plain file, or several files stays
+//! as written and says why: nothing from an unpublished file reaches a published page.
+
+mod target;
+
+use model::{
+    Anchor, ContentPath, Diagnostic, ExternalUrl, Fold, ImageSource, Inline, LinkTarget, PageId, Problem, Slug,
+};
+
+pub(crate) use target::Targets;
+use target::{Found, Written};
+
+use crate::interpret::file::asset::Uses;
+use crate::interpret::file::read::Source;
+use crate::interpret::journal::Journal;
+use crate::interpret::stage::Stage;
+
+/// Resolves every link of every published page, in its body and its footnotes.
+#[derive(Debug)]
+pub(crate) struct Links<'a> {
+    pub(crate) targets: &'a Targets<'a>,
+}
+
+impl Stage<&mut [Source]> for Links<'_> {
+    /// Each plain file a published page shows as an image, with the first page that does.
+    type Out = Uses;
+
+    fn run(&self, sources: &mut [Source], journal: &mut Journal) -> Uses {
+        let mut used = Uses::new();
+        for source in sources.iter_mut().filter(|source| self.targets.published.contains(&source.path)) {
+            let mut resolve =
+                Resolve { from: &source.path, targets: self.targets, problems: Vec::new(), used: &mut used };
+            let document = std::mem::take(&mut source.read.document);
+            let document = resolve.document(document);
+            let problems = resolve.problems;
+            source.read.document = document;
+            for problem in problems {
+                journal.diagnose(Diagnostic::new(problem).on(source.subject().into()));
+            }
+        }
+        used
+    }
+}
+
+/// One page's links being resolved.
+#[derive(Debug)]
+struct Resolve<'a, 'b> {
+    from: &'a ContentPath,
+    targets: &'a Targets<'b>,
+    problems: Vec<Problem>,
+    used: &'a mut Uses,
+}
+
+impl Fold for Resolve<'_, '_> {
+    fn link(&mut self, target: LinkTarget, children: Vec<Inline>) -> Inline {
+        let target = match target {
+            LinkTarget::Unresolved { written } => {
+                self.target(Written(&written)).unwrap_or(LinkTarget::Unresolved { written })
+            }
+            resolved => resolved,
+        };
+        Inline::Link { target, children: self.inlines(children) }
+    }
+
+    fn image(&mut self, source: ImageSource, alt: String) -> Inline {
+        let source = match source {
+            ImageSource::Unresolved { written } => {
+                self.picture(Written(&written)).unwrap_or(ImageSource::Unresolved { written })
+            }
+            resolved => resolved,
+        };
+        Inline::Image { source, alt }
+    }
+}
+
+impl Resolve<'_, '_> {
+    /// What a link points at: an anchor of this page, a link out, or a published page.
+    fn target(&mut self, written: Written<'_>) -> Option<LinkTarget> {
+        let (path, anchor) = written.split();
+        let anchor = anchor.and_then(|anchor| Slug::from_text(anchor).ok()).map(Anchor::new);
+        if path.is_empty() {
+            return self.missing(written, anchor.map(LinkTarget::Anchor));
+        }
+        if Written(path).is_external() {
+            return self.missing(written, ExternalUrl::parse(written.0).ok().map(LinkTarget::External));
+        }
+        match self.targets.find(self.from, Written(path)) {
+            Found::Page(page) => Some(LinkTarget::Page { id: PageId::of(&page), anchor }),
+            Found::File(target) => self.refuse(Problem::LinkTargetAsset { written: written.into(), target }),
+            found => self.unfound(written, found),
+        }
+    }
+
+    /// What an image shows: a link out, or a plain file, which a page showing it publishes.
+    fn picture(&mut self, written: Written<'_>) -> Option<ImageSource> {
+        if written.is_external() {
+            return self.missing(written, ExternalUrl::parse(written.0).ok().map(ImageSource::External));
+        }
+        let (path, _) = written.split();
+        match self.targets.find(self.from, Written(path)) {
+            Found::File(file) => {
+                self.used.entry(file.clone()).or_insert_with(|| self.from.clone());
+                Some(ImageSource::Asset(file))
+            }
+            Found::Page(_) => self.missing(written, None),
+            found => self.unfound(written, found),
+        }
+    }
+
+    /// The problem of a link that names no file it can show, or several.
+    fn unfound<T>(&mut self, written: Written<'_>, found: Found) -> Option<T> {
+        match found {
+            Found::Unpublished(target) => {
+                self.refuse(Problem::LinkTargetUnpublished { written: written.into(), target })
+            }
+            Found::Ambiguous(candidates) => {
+                self.refuse(Problem::LinkTargetAmbiguous { written: written.into(), candidates })
+            }
+            Found::Missing | Found::Page(_) | Found::File(_) => self.missing(written, None),
+        }
+    }
+
+    /// `resolved`, or `link.target.missing` when there is none.
+    fn missing<T>(&mut self, written: Written<'_>, resolved: Option<T>) -> Option<T> {
+        if resolved.is_none() {
+            self.problems.push(Problem::LinkTargetMissing { written: written.into() });
+        }
+        resolved
+    }
+
+    /// Nothing, with `problem` said.
+    fn refuse<T>(&mut self, problem: Problem) -> Option<T> {
+        self.problems.push(problem);
+        None
+    }
+}

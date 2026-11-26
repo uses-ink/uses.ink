@@ -1,9 +1,10 @@
 //! Link resolution: relative paths, anchors, ambiguity, missing and unpublished targets, and
 //! images that make assets.
 
-use model::{Block, DecisionCode, ImageSource, Inline, LinkTarget, PageId, Problem};
+use model::code;
+use model::{Block, ImageSource, Inline, LinkTarget, PageId, Problem};
 
-use crate::support::{Pinned, Tree, codes, decided, path, subject};
+use crate::support::{Pinned, Tree, codes, on, path};
 
 /// The first inline of each paragraph of the page at `file`.
 fn inlines(site: &model::Site, file: &str) -> Vec<Inline> {
@@ -96,8 +97,7 @@ fn only_images_a_published_page_shows_are_published() {
     assert!(
         matches!(image, Inline::Image { source: ImageSource::Asset(p), .. } if p.as_str() == "img/Ferris Photo.PNG")
     );
-    let secret = decided(&u, DecisionCode::Publish, &subject("img/secret.png"));
-    assert_eq!(secret.decided, model::Decided::Publish(false));
+    assert!(!on::<code::Publish>(&u, "img/secret.png").value);
     assert!(site.excluded().iter().any(|e| e.path.as_str() == "img/secret.png"));
 }
 
@@ -126,8 +126,7 @@ fn links_in_list_items_and_footnotes_are_resolved() {
     let name = model::FootnoteName::from(model::Slug::parse("n").unwrap());
     let document =
         model::Document::new(vec![list]).with_footnotes(vec![model::Footnote::new(name, vec![link("lost.md")])]);
-    let (snapshot, store) = Tree::new().file("a.md", "").snapshot();
-    let u = engine::interpret(&snapshot, &store, &Pinned::none(), &[&Fixed(document)]);
+    let u = Tree::new().file("a.md", "").read_with(&Pinned::none(), Fixed(document));
     let written: Vec<&str> = u
         .diagnostics
         .iter()

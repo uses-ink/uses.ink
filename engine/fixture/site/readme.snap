@@ -1,34 +1,33 @@
 ---
-source: engine/tests/engine/fixture.rs
-input_file: engine/fixture/site/readme
+source: fixture/src/lib.rs
 ---
 # decisions
-{"decided":{"root":"top"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"layout":"flat"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"ignored":false},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"publish":true},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"kind":"page"},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"title":"My tool"},"subject":{"file":"README.md"},"evidence":{"heading":{"path":"README.md","span":[0,10]}},"rejected":[]}
-{"decided":{"date":null},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"readme"},"subject":{"file":"README.md"},"evidence":{"filename":{"path":"README.md"}},"rejected":[]}
-{"decided":{"tags":[]},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"summary":"It does one thing."},"subject":{"file":"README.md"},"evidence":{"body":{"path":"README.md"}},"rejected":[]}
-{"decided":{"publish":true},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"kind":"page"},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"title":"Usage"},"subject":{"file":"usage.md"},"evidence":{"heading":{"path":"usage.md","span":[0,8]}},"rejected":[]}
-{"decided":{"date":null},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"updated":null},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"slug":"usage"},"subject":{"file":"usage.md"},"evidence":{"filename":{"path":"usage.md"}},"rejected":[]}
-{"decided":{"tags":[]},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"summary":"## Install"},"subject":{"file":"usage.md"},"evidence":{"body":{"path":"usage.md"}},"rejected":[]}
-{"decided":{"home":"README.md"},"subject":"site","evidence":{"filename":{"path":"README.md"}},"rejected":[]}
-{"decided":{"site-title":"My tool"},"subject":"site","evidence":{"heading":{"path":"README.md","span":[0,10]}},"rejected":[]}
-{"decided":{"description":"It does one thing."},"subject":"site","evidence":{"body":{"path":"README.md"}},"rejected":[]}
-{"decided":{"authors":[]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"language":"en"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"decided":{"nav":["usage.md"]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.root","subject":"site","value":"top","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.layout","subject":"site","value":"flat","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"README.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":"usage.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"README.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"README.md"},"value":"page","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.title","subject":{"file":"README.md"},"value":"My tool","evidence":{"heading":{"path":"README.md","span":[0,10]}},"rejected":[]}
+{"code":"page.date","subject":{"file":"README.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"README.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"README.md"},"value":"readme","evidence":{"filename":{"path":"README.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"README.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"README.md"},"value":"It does one thing.","evidence":{"body":{"path":"README.md"}},"rejected":[]}
+{"code":"page.publish","subject":{"file":"usage.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"usage.md"},"value":"page","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.title","subject":{"file":"usage.md"},"value":"Usage","evidence":{"heading":{"path":"usage.md","span":[0,8]}},"rejected":[]}
+{"code":"page.date","subject":{"file":"usage.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.updated","subject":{"file":"usage.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.slug","subject":{"file":"usage.md"},"value":"usage","evidence":{"filename":{"path":"usage.md"}},"rejected":[]}
+{"code":"page.tags","subject":{"file":"usage.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"page.summary","subject":{"file":"usage.md"},"value":"## Install","evidence":{"body":{"path":"usage.md"}},"rejected":[]}
+{"code":"site.home","subject":"site","value":"README.md","evidence":{"filename":{"path":"README.md"}},"rejected":[]}
+{"code":"site.title","subject":"site","value":"My tool","evidence":{"heading":{"path":"README.md","span":[0,10]}},"rejected":[]}
+{"code":"site.description","subject":"site","value":"It does one thing.","evidence":{"body":{"path":"README.md"}},"rejected":[]}
+{"code":"site.authors","subject":"site","value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.language","subject":"site","value":"en","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"code":"site.nav","subject":"site","value":["usage.md"],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
 # diagnostics and notices
 notice.default.chosen on the site
 notice.default.chosen on the site

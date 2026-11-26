@@ -1,23 +1,15 @@
-//! Every `fixture/site/<name>/` folder interpreted and rendered, compared with
-//! `fixture/site/<name>.snap`: the decisions, the diagnostics and notices, the manifest, and the
-//! bytes of every text entry. A changed or missing golden is written beside it as `.snap.new`
-//! and the run fails; `cargo insta review` (or `INSTA_UPDATE=always`) accepts it once read.
+//! Every `fixture/site/<name>/` folder interpreted and rendered, compared through the shared
+//! harness with `fixture/site/<name>.snap`: the decisions, the diagnostics and notices, the
+//! manifest, and the bytes of every text entry.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
+use engine::{Engine, NoPins};
+
 use crate::support::{Pinned, Plain, Tree, settings};
 
-fn root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("fixture/site")
-}
-
-fn sites() -> Vec<PathBuf> {
-    let mut sites: Vec<PathBuf> =
-        std::fs::read_dir(root()).unwrap().map(|e| e.unwrap().path()).filter(|p| p.is_dir()).collect();
-    sites.sort();
-    sites
-}
+const SITES: &str = "fixture/site";
 
 /// Every file under `dir`, as `(path below the site, text)`.
 fn files(dir: &Path, base: &Path, out: &mut Vec<(String, String)>) {
@@ -54,7 +46,7 @@ fn report(site: &Path) -> String {
         let _infallible = writeln!(out, "{} on {}", notice.code(), on(notice.subject.as_ref()));
     }
     let Some(site) = understood.site else { return out };
-    let rendered = engine::render(&site, &Plain::default(), &settings());
+    let rendered = Engine::new((), NoPins, (), Plain::default()).render(&site, &settings());
     let _infallible = writeln!(out, "# deploy {}", rendered.manifest.id());
     for entry in rendered.manifest.entries() {
         let _infallible =
@@ -70,27 +62,9 @@ fn report(site: &Path) -> String {
 
 #[test]
 fn sites_render_as_expected() {
-    let sites = sites();
-    assert!(!sites.is_empty(), "no site fixtures under {}", root().display());
-    for site in sites {
-        let name = site.file_name().unwrap().to_str().unwrap().to_owned();
-        let mut settings = insta::Settings::clone_current();
-        settings.set_snapshot_path(root());
-        settings.set_prepend_module_to_snapshot(false);
-        settings.set_omit_expression(true);
-        settings.set_input_file(&site);
-        settings.bind(|| insta::assert_snapshot!(name, report(&site)));
-    }
-}
-
-/// A golden whose site folder is gone fails, so no stale golden stays behind.
-#[test]
-fn every_golden_has_a_site() {
-    let orphans: Vec<PathBuf> = std::fs::read_dir(root())
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .filter(|p| !p.is_dir())
-        .filter(|p| p.extension().is_none_or(|e| e != "snap") || !p.with_extension("").is_dir())
-        .collect();
-    assert!(orphans.is_empty(), "files in fixture/site/ that are not a site's golden: {orphans:?}");
+    let mut sites: Vec<PathBuf> =
+        std::fs::read_dir(SITES).unwrap().map(|e| e.unwrap().path()).filter(|p| p.is_dir()).collect();
+    sites.sort();
+    let cases = sites.iter().map(|site| (site.file_name().unwrap().to_str().unwrap().to_owned(), report(site)));
+    fixture::cases(SITES, cases);
 }

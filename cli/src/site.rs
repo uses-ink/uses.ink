@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use config::{Config, Parsed};
-use engine::{BaseUrl, Blobs, RenderSettings, Understood};
+use engine::{BaseUrl, Blobs, Engine, NoPins, RenderSettings, Understood};
 use host_native::{Folder, Memory};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject};
 use theme_quiet::Quiet;
@@ -72,7 +72,7 @@ impl<'a> Source<'a> {
             }
         }
         let Parsed { config, diagnostics } = parsed;
-        let mut understood = engine::interpret(&snapshot, &store, &Configured(&config), &[&Markdown]);
+        let mut understood = Engine::new(&store, Configured(&config), (Markdown,), ()).interpret(&snapshot);
         let stops = diagnostics.iter().any(|d| d.severity() == model::Severity::Error);
         understood.diagnostics.splice(0..0, diagnostics);
         if stops {
@@ -130,7 +130,8 @@ impl Loaded {
             return Rendering { deploy: None, blobs: BTreeMap::new(), diagnostics, notices };
         };
         let theme = Quiet::new(address.base.clone());
-        let rendered = engine::render(site, &theme, &RenderSettings { base: address.base.clone() });
+        let engine = Engine::new(&self.store, NoPins, (Markdown,), &theme);
+        let rendered = engine.render(site, &RenderSettings { base: address.base.clone() });
         let said = theme.said();
         diagnostics.extend(rendered.diagnostics);
         diagnostics.extend(said.diagnostics);

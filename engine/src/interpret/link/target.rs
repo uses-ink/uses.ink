@@ -6,8 +6,61 @@ use std::collections::BTreeSet;
 
 use model::{ContentPath, Entry};
 
+use crate::interpret::decide::Filed;
 use crate::interpret::file::name::Name;
-use crate::interpret::file::scope::{InRoot, Scope};
+use crate::interpret::tree::Scope;
+
+/// A link's target as the author wrote it.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Written<'a>(pub(crate) &'a str);
+
+impl<'a> Written<'a> {
+    /// The path and the anchor after a `#`, if there is one.
+    pub(crate) fn split(self) -> (&'a str, Option<&'a str>) {
+        self.0.split_once('#').map_or((self.0, None), |(path, anchor)| (path, Some(anchor)))
+    }
+
+    /// Whether it starts with a URL scheme (`https:`, `mailto:`, `javascript:`), so it is never
+    /// a path.
+    pub(crate) fn is_external(self) -> bool {
+        self.0.split_once(':').is_some_and(|(scheme, _)| {
+            let mut chars = scheme.chars();
+            chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+                && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+        })
+    }
+
+    /// `%XX` escapes decoded, as links to names with spaces are written. Text whose escapes do
+    /// not decode to UTF-8 is taken as written.
+    fn decoded(self) -> String {
+        let bytes = self.0.as_bytes();
+        let mut out = Vec::with_capacity(bytes.len());
+        let mut at = 0;
+        while let Some(&byte) = bytes.get(at) {
+            let escape = bytes
+                .get(at + 1..at + 3)
+                .filter(|hex| hex.iter().all(u8::is_ascii_hexdigit))
+                .and_then(|hex| std::str::from_utf8(hex).ok());
+            match escape.and_then(|hex| u8::from_str_radix(hex, 16).ok()) {
+                Some(decoded) if byte == b'%' => {
+                    out.push(decoded);
+                    at += 3;
+                }
+                _ => {
+                    out.push(byte);
+                    at += 1;
+                }
+            }
+        }
+        String::from_utf8(out).unwrap_or_else(|_| self.0.to_owned())
+    }
+}
+
+impl From<Written<'_>> for String {
+    fn from(written: Written<'_>) -> Self {
+        written.0.to_owned()
+    }
+}
 
 /// What a link's path names.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,6 +71,7 @@ pub(crate) enum Found {
     File(ContentPath),
     /// A page that is not published, or a file that is ignored or outside the root.
     Unpublished(ContentPath),
+    /// Nothing.
     Missing,
     /// Every file it could name, in path order.
     Ambiguous(Vec<ContentPath>),
@@ -26,7 +80,6 @@ pub(crate) enum Found {
 /// Everything a link can point at.
 #[derive(Debug)]
 pub(crate) struct Targets<'a> {
-    pub(crate) tree: &'a [Entry],
     pub(crate) scope: &'a Scope<'a>,
     /// Files under the root that are not ignored.
     pub(crate) kept: BTreeSet<ContentPath>,
@@ -37,14 +90,14 @@ pub(crate) struct Targets<'a> {
 
 impl Targets<'_> {
     /// The file `written`, a link's path without its anchor, names from the page at `from`.
-    pub(crate) fn find(&self, from: &ContentPath, written: &str) -> Found {
-        let decoded = decode(written);
+    pub(crate) fn find(&self, from: &ContentPath, written: Written<'_>) -> Found {
+        let decoded = written.decoded();
         let Some(target) = self.join(from, &decoded) else { return Found::Missing };
         if self.holds(&target) {
             return self.classify(target);
         }
         let mut found: Vec<ContentPath> = self
-            .tree
+            .tree()
             .iter()
             .map(|entry| &entry.path)
             .filter(|path| {
@@ -55,7 +108,7 @@ impl Targets<'_> {
             .cloned()
             .collect();
         if found.is_empty() && !decoded.contains('/') {
-            found = self.by_name(&decoded);
+            found = self.named(&decoded);
         }
         match found.len() {
             0 => Found::Missing,
@@ -64,10 +117,14 @@ impl Targets<'_> {
         }
     }
 
+    fn tree(&self) -> &[Entry] {
+        self.scope.snapshot.tree()
+    }
+
     /// `written` against the page's folder, or against the root after a leading `/`.
     fn join(&self, from: &ContentPath, written: &str) -> Option<ContentPath> {
         let base = match written.strip_prefix('/') {
-            Some(_) => self.scope.absolute_folder(),
+            Some(_) => self.scope.folder().cloned(),
             None => from.parent(),
         };
         let mut segments: Vec<&str> = base.as_ref().map_or_else(Vec::new, |base| base.segments().collect());
@@ -84,15 +141,15 @@ impl Targets<'_> {
     }
 
     fn holds(&self, path: &ContentPath) -> bool {
-        self.tree.binary_search_by(|entry| entry.path.cmp(path)).is_ok()
+        self.tree().binary_search_by(|entry| entry.path.cmp(path)).is_ok()
     }
 
     /// Files under the root whose name or stem is `name`.
-    fn by_name(&self, name: &str) -> Vec<ContentPath> {
+    fn named(&self, name: &str) -> Vec<ContentPath> {
         self.scope
             .inside
             .iter()
-            .map(InRoot::path)
+            .map(Filed::path)
             .filter(|path| path.file_name() == name || path.stem() == name)
             .cloned()
             .collect()
@@ -107,29 +164,4 @@ impl Targets<'_> {
             Found::File(path)
         }
     }
-}
-
-/// `%XX` escapes decoded, as links to names with spaces are written. Text whose escapes do not
-/// decode to UTF-8 is taken as written.
-fn decode(written: &str) -> String {
-    let bytes = written.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut at = 0;
-    while let Some(&byte) = bytes.get(at) {
-        let escape = bytes
-            .get(at + 1..at + 3)
-            .filter(|hex| hex.iter().all(u8::is_ascii_hexdigit))
-            .and_then(|hex| std::str::from_utf8(hex).ok());
-        match escape.and_then(|hex| u8::from_str_radix(hex, 16).ok()) {
-            Some(decoded) if byte == b'%' => {
-                out.push(decoded);
-                at += 3;
-            }
-            _ => {
-                out.push(byte);
-                at += 1;
-            }
-        }
-    }
-    String::from_utf8(out).unwrap_or_else(|_| written.to_owned())
 }

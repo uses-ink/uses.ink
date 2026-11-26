@@ -2,12 +2,12 @@
 //! name beats a default; and the defaults say so.
 
 use jiff::civil::date;
+use model::code::{self, AnyCode};
 use model::{
-    Decided, DecisionCode, DefaultReason, Evidence, Known, Layout, PageKind, Provenance, Rejection, Root, Slug,
-    Subject, Timestamp, When,
+    DefaultReason, Evidence, Known, Layout, PageKind, Provenance, Rejection, Root, Slug, Subject, Timestamp, When,
 };
 
-use crate::support::{Pinned, Tree, codes, decided, path, subject};
+use crate::support::{Pinned, Tree, codes, on, path, site, subject};
 
 fn instant(text: &str) -> Timestamp {
     text.parse().unwrap()
@@ -20,21 +20,21 @@ fn title_pin_beats_frontmatter_beats_heading_beats_file_name() {
         .file("b.md", "# Heading\n")
         .file("on-shelves.md", "text\n");
     let none = tree.understand(&Pinned::none());
-    let title = |u, p| decided(u, DecisionCode::Title, &subject(p)).clone();
+    let title = |u, p| on::<code::Title>(u, p);
     let a = title(&none, "a.md");
-    assert_eq!(a.decided, Decided::Title("Front".into()));
+    assert_eq!(a.value, "Front");
     assert!(matches!(a.evidence, Evidence::Frontmatter { .. }));
     assert!(a.rejected.iter().all(|alt| alt.because == Rejection::Outranked));
     assert!(matches!(a.rejected[0].evidence, Evidence::Heading { .. }));
     assert!(matches!(title(&none, "b.md").evidence, Evidence::Heading { .. }));
     let named = title(&none, "on-shelves.md");
     assert_eq!(
-        (named.decided, named.evidence),
-        (Decided::Title("On shelves".into()), Evidence::Filename { path: path("on-shelves.md") })
+        (named.value, named.evidence),
+        ("On shelves".to_owned(), Evidence::Filename { path: path("on-shelves.md") })
     );
-    let pinned = tree.understand(&Pinned::none().file("a.md", Decided::Title("Pinned".into())));
+    let pinned = tree.understand(&Pinned::none().file::<code::Title>("a.md", "Pinned".into()));
     let a = title(&pinned, "a.md");
-    assert_eq!(a.decided, Decided::Title("Pinned".into()));
+    assert_eq!(a.value, "Pinned");
     assert!(matches!(a.evidence, Evidence::Config { .. }));
     assert_eq!(a.rejected.len(), 2);
 }
@@ -48,14 +48,14 @@ fn date_takes_frontmatter_then_file_name_then_exact_history() {
         .file("posts/c.md", "x\n")
         .created("posts/c.md", Known::Exact { value: instant("2023-05-06T07:08:09Z"), from: commit.clone() });
     let u = tree.understand(&Pinned::none());
-    let date_of = |p| decided(&u, DecisionCode::Date, &subject(p)).decided.clone();
-    assert_eq!(date_of("posts/2024-01-02-a.md"), Decided::Date(Some(When::Day(date(2024, 3, 1)))));
-    assert_eq!(date_of("posts/2024-01-02-b.md"), Decided::Date(Some(When::Day(date(2024, 1, 2)))));
-    assert_eq!(date_of("posts/c.md"), Decided::Date(Some(When::Instant(instant("2023-05-06T07:08:09Z")))));
-    assert!(matches!(decided(&u, DecisionCode::Date, &subject("posts/c.md")).evidence, Evidence::History { .. }));
-    let pinned = tree.understand(&Pinned::none().file("posts/2024-01-02-a.md", Decided::Date(None)));
-    let a = decided(&pinned, DecisionCode::Date, &subject("posts/2024-01-02-a.md"));
-    assert_eq!(a.decided, Decided::Date(None));
+    let date_of = |p| on::<code::Date>(&u, p).value;
+    assert_eq!(date_of("posts/2024-01-02-a.md"), Some(When::Day(date(2024, 3, 1))));
+    assert_eq!(date_of("posts/2024-01-02-b.md"), Some(When::Day(date(2024, 1, 2))));
+    assert_eq!(date_of("posts/c.md"), Some(When::Instant(instant("2023-05-06T07:08:09Z"))));
+    assert!(matches!(on::<code::Date>(&u, "posts/c.md").evidence, Evidence::History { .. }));
+    let pinned = tree.understand(&Pinned::none().file::<code::Date>("posts/2024-01-02-a.md", None));
+    let a = on::<code::Date>(&pinned, "posts/2024-01-02-a.md");
+    assert_eq!(a.value, None);
     assert_eq!(a.rejected.len(), 2);
 }
 
@@ -63,8 +63,8 @@ fn date_takes_frontmatter_then_file_name_then_exact_history() {
 fn a_bound_is_never_a_date() {
     let bound = Known::NotAfter { value: instant("2023-05-06T07:08:09Z"), from: Provenance::Filesystem };
     let u = Tree::new().file("posts/c.md", "x\n").created("posts/c.md", bound).understand(&Pinned::none());
-    let c = decided(&u, DecisionCode::Date, &subject("posts/c.md"));
-    assert_eq!(c.decided, Decided::Date(None));
+    let c = on::<code::Date>(&u, "posts/c.md");
+    assert_eq!(c.value, None);
     assert_eq!(c.evidence, Evidence::Default { reason: DefaultReason::OnlyBound });
     assert_eq!(c.rejected[0].because, Rejection::OnlyBound);
     assert!(u.notices.iter().any(|n| n.code() == "fact.date.bound"));
@@ -78,11 +78,11 @@ fn kind_takes_type_then_folder_then_date() {
         .file("c.md", "---\ndate: 2024-03-01\n---\n")
         .file("d.md", "x\n")
         .understand(&Pinned::none());
-    let kind = |p| decided(&u, DecisionCode::Kind, &subject(p)).decided.clone();
-    assert_eq!(kind("posts/a.md"), Decided::Kind(PageKind::Page));
-    assert_eq!(kind("posts/b.md"), Decided::Kind(PageKind::Post));
-    assert_eq!(kind("c.md"), Decided::Kind(PageKind::Post));
-    assert_eq!(kind("d.md"), Decided::Kind(PageKind::Page));
+    let kind = |p| on::<code::Kind>(&u, p).value;
+    assert_eq!(kind("posts/a.md"), PageKind::Page);
+    assert_eq!(kind("posts/b.md"), PageKind::Post);
+    assert_eq!(kind("c.md"), PageKind::Post);
+    assert_eq!(kind("d.md"), PageKind::Page);
     assert!(u.notices.iter().any(|n| n.code() == "notice.default.chosen" && n.subject == Some(subject("d.md"))));
 }
 
@@ -94,13 +94,13 @@ fn publish_takes_frontmatter_then_drafts_then_the_default() {
         .file("drafts/c.md", "---\npublish: true\n---\n")
         .file("_d.md", "x\n")
         .file("e.md", "x\n");
-    let u = tree.understand(&Pinned::none().file("e.md", Decided::Publish(false)));
-    let publish = |p| decided(&u, DecisionCode::Publish, &subject(p)).decided.clone();
-    assert_eq!(publish("a.md"), Decided::Publish(false));
-    assert_eq!(publish("drafts/b.md"), Decided::Publish(false));
-    assert_eq!(publish("drafts/c.md"), Decided::Publish(true));
-    assert_eq!(publish("_d.md"), Decided::Publish(false));
-    assert_eq!(publish("e.md"), Decided::Publish(false));
+    let u = tree.understand(&Pinned::none().file::<code::Publish>("e.md", false));
+    let publish = |p| on::<code::Publish>(&u, p).value;
+    assert!(!publish("a.md"));
+    assert!(!publish("drafts/b.md"));
+    assert!(publish("drafts/c.md"));
+    assert!(!publish("_d.md"));
+    assert!(!publish("e.md"));
     let site = u.site.unwrap();
     assert_eq!(site.pages().iter().map(|p| p.file.as_str()).collect::<Vec<_>>(), ["drafts/c.md"]);
 }
@@ -113,8 +113,8 @@ fn a_vault_publishes_only_what_is_selected() {
         .file("Private/b.md", "x\n")
         .file("c.md", "---\npublish: true\n---\n");
     let u = tree.understand(&Pinned::none().include("Public/"));
-    assert_eq!(decided(&u, DecisionCode::Layout, &Subject::Site).decided, Decided::Layout(Layout::Vault));
-    let b = decided(&u, DecisionCode::Publish, &subject("Private/b.md"));
+    assert_eq!(site::<code::Layout>(&u).value, Layout::Vault);
+    let b = on::<code::Publish>(&u, "Private/b.md");
     assert_eq!(b.evidence, Evidence::Default { reason: DefaultReason::NotSelected });
     let files: Vec<&str> = u.site.as_ref().unwrap().pages().iter().map(|p| p.file.as_str()).collect();
     assert_eq!(files, ["c.md", "Public/a.md"]);
@@ -132,26 +132,26 @@ fn ignore_takes_exclude_then_include_then_rules() {
         .file(".well/kept.md", "x\n")
         .file("a.md", "x\n");
     let u = tree.understand(&Pinned::none().exclude("notes/").include(".well/"));
-    let ignored = |p| decided(&u, DecisionCode::Ignored, &subject(p)).decided.clone();
+    let ignored = |p| on::<code::Ignored>(&u, p).value;
     for p in [".github/x.md", "LICENSE.md", "node_modules/y.md", "notes/private.md"] {
-        assert_eq!(ignored(p), Decided::Ignored(true), "{p}");
+        assert!(ignored(p), "{p}");
     }
-    assert_eq!(ignored(".well/kept.md"), Decided::Ignored(false));
-    assert_eq!(ignored("a.md"), Decided::Ignored(false));
-    let excluded = u.site.unwrap().excluded().iter().filter(|e| e.because == DecisionCode::Ignored).count();
+    assert!(!ignored(".well/kept.md"));
+    assert!(!ignored("a.md"));
+    let because = AnyCode::Ignored.into();
+    let excluded = u.site.unwrap().excluded().iter().filter(|e| e.because == because).count();
     assert_eq!(excluded, 4);
 }
 
 #[test]
 fn root_moves_into_the_only_content_folder() {
     let u = Tree::new().file("README.md", "x\n").file("content/a.md", "x\n").understand(&Pinned::none());
-    let root = decided(&u, DecisionCode::Root, &Subject::Site);
-    assert_eq!(root.decided, Decided::Root(Root::Folder(path("content"))));
-    let site = u.site.unwrap();
-    assert_eq!(site.pages()[0].route.as_str(), "/a");
-    assert_eq!(site.excluded()[0].because, DecisionCode::Root);
+    assert_eq!(site::<code::Root>(&u).value, Root::Folder(path("content")));
+    let built = u.site.unwrap();
+    assert_eq!(built.pages()[0].route.as_str(), "/a");
+    assert_eq!(built.excluded()[0].because, AnyCode::Root.into());
     let top = Tree::new().file("about.md", "x\n").file("content/a.md", "x\n").understand(&Pinned::none());
-    assert_eq!(decided(&top, DecisionCode::Root, &Subject::Site).decided, Decided::Root(Root::Top));
+    assert_eq!(site::<code::Root>(&top).value, Root::Top);
     assert!(top.notices.iter().any(|n| n.code() == "notice.default.chosen" && n.subject == Some(Subject::Site)));
 }
 
@@ -177,22 +177,20 @@ fn slug_and_route_follow_the_name() {
     assert_eq!(site.home().unwrap().kind, PageKind::Home);
     let pinned = Tree::new()
         .file("a.md", "x\n")
-        .understand(&Pinned::none().file("a.md", Decided::Slug(Slug::parse("z").unwrap())));
+        .understand(&Pinned::none().file::<code::Slug>("a.md", Slug::parse("z").unwrap()));
     assert_eq!(pinned.site.unwrap().pages()[0].route.as_str(), "/z");
 }
 
 #[test]
 fn home_takes_the_first_named_page_or_generates_a_listing() {
     let u = Tree::new().file("README.md", "x\n").file("index.md", "x\n").understand(&Pinned::none());
-    let home = decided(&u, DecisionCode::Home, &Subject::Site);
-    assert_eq!(home.decided, Decided::Home(Some(path("index.md"))));
+    let home = site::<code::Home>(&u);
+    assert_eq!(home.value, Some(path("index.md")));
     assert_eq!(home.rejected.len(), 1);
     let none = Tree::new().file("a.md", "x\n").understand(&Pinned::none());
     assert!(none.site.as_ref().unwrap().home().is_none());
     assert!(none.notices.iter().any(|n| n.code() == "site.home.generated"));
-    let pinned = Tree::new()
-        .file("a.md", "x\n")
-        .understand(&Pinned::none().pin(Subject::Site, Decided::Home(Some(path("b.md")))));
+    let pinned = Tree::new().file("a.md", "x\n").understand(&Pinned::none().site::<code::Home>(Some(path("b.md"))));
     assert_eq!(codes(&pinned), ["pin.target.unpublished"]);
     assert!(pinned.site.is_none());
 }
@@ -206,8 +204,7 @@ fn nav_lists_top_pages_that_are_not_posts_by_title() {
         .file("posts/p.md", "x\n")
         .file("deep/d.md", "x\n")
         .understand(&Pinned::none());
-    let nav = decided(&u, DecisionCode::Nav, &Subject::Site);
-    assert_eq!(nav.decided, Decided::Nav(vec![path("zeta.md"), path("alpha.md")]));
+    assert_eq!(site::<code::Nav>(&u).value, vec![path("zeta.md"), path("alpha.md")]);
     assert_eq!(u.site.unwrap().nav().len(), 2);
 }
 
@@ -236,37 +233,12 @@ fn a_format_problem_names_its_file() {
     assert!(u.site.is_some());
 }
 
-/// Pins whose `page.title` holds a slug.
-struct Mismatched;
-
-impl engine::Pins for Mismatched {
-    fn pin(&self, code: DecisionCode, _: &Subject) -> Option<engine::Pin> {
-        let decided = Decided::Slug(Slug::parse("x").unwrap());
-        (code == DecisionCode::Title).then(|| engine::Pin { decided, span: crate::support::span() })
-    }
-
-    fn included(&self, _: &model::ContentPath) -> Option<model::Span> {
-        None
-    }
-
-    fn excluded(&self, _: &model::ContentPath) -> Option<model::Span> {
-        None
-    }
-}
-
-#[test]
-fn a_pin_of_another_code_is_a_bug_said_aloud() {
-    let (snapshot, store) = Tree::new().file("a.md", "x\n").snapshot();
-    let u = engine::interpret(&snapshot, &store, &Mismatched, &[&crate::support::Lines]);
-    assert_eq!(codes(&u), ["engine.pin.mismatched"]);
-    assert!(u.site.is_none());
-}
-
 #[test]
 fn explain_filters_by_subject() {
     let u = Tree::new().file("a.md", "x\n").file("b.md", "x\n").understand(&Pinned::none());
-    let a = engine::explain(&u, Some(&subject("a.md")));
+    let a_md = subject("a.md");
+    let a: Vec<_> = u.explain(Some(&a_md)).collect();
     assert_ne!(a.len(), 0);
-    assert!(a.iter().all(|d| d.subject == subject("a.md")));
-    assert_eq!(engine::explain(&u, None).len(), u.decisions.len());
+    assert!(a.iter().all(|d| d.subject() == subject("a.md")));
+    assert_eq!(u.explain(None).count(), u.decisions.len());
 }
