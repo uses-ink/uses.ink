@@ -8,6 +8,7 @@
 //!   [`Fold`].
 //! - Highlighting: the [`highlight::Highlight`] capability a theme asks for a code block's
 //!   classed runs.
+//! - Images: the [`Picture`] the engine prepares from a raster asset, for a theme to show.
 //! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`].
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
 //!   `cargo xtask diag` generates from `diag/catalog.toml`.
@@ -26,6 +27,7 @@ pub mod highlight;
 mod language;
 mod manifest;
 mod path;
+mod picture;
 mod route;
 mod site;
 mod size;
@@ -52,6 +54,7 @@ pub use manifest::{
     Served, Status,
 };
 pub use path::{ContentPath, PathError};
+pub use picture::{Dimensions, Picture, Variant};
 pub use route::{Route, RouteError, Slug, SlugError};
 pub use site::{
     Asset, Author, EmptyAuthor, Excluded, Identity, Layout, Page, PageId, PageKind, Root, Site, SiteError, SiteParts,

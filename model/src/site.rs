@@ -4,7 +4,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{AnyCode, ContentPath, Document, Hash, Language, Route, Slug, When};
+use crate::{AnyCode, ContentPath, Document, Hash, Language, Picture, Route, Slug, When};
 
 /// Where a site's content starts in the snapshot.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -268,12 +268,15 @@ pub struct Asset {
     pub route: Route,
     /// The hash of its bytes.
     pub blob: Hash,
+    /// What the engine prepared from it when it is a raster image, once rendering has begun;
+    /// `None` before, and for every other file.
+    pub picture: Option<Picture>,
 }
 
 impl Asset {
-    /// `file`, served at `route` with the bytes of `blob`.
+    /// `file`, served at `route` with the bytes of `blob`, not yet prepared.
     pub fn new(file: ContentPath, route: Route, blob: Hash) -> Self {
-        Self { file, route, blob }
+        Self { file, route, blob, picture: None }
     }
 }
 
@@ -458,6 +461,15 @@ impl Site {
     /// Every file left out, sorted by path.
     pub fn excluded(&self) -> &[Excluded] {
         &self.excluded
+    }
+
+    /// The same site, each asset given what `prepared` says of it.
+    #[must_use]
+    pub fn pictured(mut self, mut prepared: impl FnMut(&Asset) -> Option<Picture>) -> Self {
+        for asset in &mut self.assets {
+            asset.picture = prepared(asset);
+        }
+        self
     }
 
     /// The page `id`, if the site holds it.
