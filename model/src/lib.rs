@@ -1,7 +1,10 @@
 //! The types every part of uses.ink speaks.
 //!
 //! - Content: [`Hash`], [`ContentPath`], [`Snapshot`] and the facts a source knows.
-//! - Interpretation: [`Decision`] and [`Decided`], one variant per decision code.
+//! - Interpretation: typed decision codes ([`code`]) and their [`decision::Decision`], erased
+//!   as [`AnyDecision`] for storage and the wire; the untyped [`Decision`] and [`Decided`] stay
+//!   until every crate is ported, and convert to and from [`AnyDecision`] without loss.
+//! - Values: [`Value`], what a decision can decide.
 //! - The result: [`Site`], [`Page`], [`Document`].
 //! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`].
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
@@ -9,7 +12,8 @@
 //!
 //! Nothing here reads a clock, the environment or a file: these are values.
 
-mod decision;
+pub mod code;
+pub mod decision;
 mod diagnostic;
 mod document;
 mod format;
@@ -24,12 +28,14 @@ mod site;
 mod size;
 mod snapshot;
 mod span;
+mod subject;
 mod time;
 mod url;
+mod value;
 
-pub use decision::{
-    Alternative, Decided, Decision, DecisionCode, DefaultReason, Evidence, Rejection, Root, Subject, UnknownDecision,
-};
+pub use code::{AnyCode, AnyDecision, Code, UnknownDecision};
+pub use decision::decided::{Alternative, Decided, Decision, DecisionCode};
+pub use decision::{DefaultReason, Evidence, Rejection};
 pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
 pub use document::{
     Alignment, Anchor, Block, CalloutKind, Definition, Document, Footnote, FootnoteName, ImageSource, Inline, Item,
@@ -45,7 +51,8 @@ pub use manifest::{
 pub use path::{ContentPath, PathError};
 pub use route::{Route, RouteError, Slug, SlugError};
 pub use site::{
-    Asset, Author, EmptyAuthor, Excluded, Identity, Layout, Page, PageId, PageKind, Site, SiteError, SiteParts, Tag,
+    Asset, Author, EmptyAuthor, Excluded, Identity, Layout, Page, PageId, PageKind, Root, Site, SiteError, SiteParts,
+    Tag, TagError,
 };
 pub use size::Bytes;
 pub use snapshot::{
@@ -53,5 +60,7 @@ pub use snapshot::{
     UploadId, Version, VersionError,
 };
 pub use span::{Backwards, Span};
+pub use subject::Subject;
 pub use time::{Timestamp, When};
 pub use url::{ExternalUrl, UrlError};
+pub use value::{Shown, Value};

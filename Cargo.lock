@@ -1629,6 +1629,7 @@ dependencies = [
  "jiff",
  "proptest",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

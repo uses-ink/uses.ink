@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{Bytes, ContentPath, DecisionCode, Hash, Timestamp};
 
@@ -81,7 +81,7 @@ impl<T> Known<T> {
 }
 
 /// Where a fact came from.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Provenance {
