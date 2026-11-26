@@ -7,8 +7,9 @@
 //! - Headings get their anchor as `id` and a `#` link to it.
 //! - Task items are `<input type="checkbox" disabled>`: shown, never changed, no script.
 //! - Links to pages go through the site's routes; a link that resolved to nothing is its text.
-//! - Images of the snapshot go through their asset route; one that resolved to nothing is its
-//!   alt text.
+//! - Images of the snapshot are shown as the engine prepared them ([`picture`]): AVIF and a
+//!   fallback at each width, with their size and a placeholder; one that resolved to nothing is
+//!   its alt text.
 //! - Footnotes are numbered in order of first reference and listed at the end, each with a link
 //!   back to every reference ([`note`]).
 //! - Code is highlighted by the host when a grammar knows its language
@@ -18,6 +19,7 @@
 mod code;
 mod math;
 mod note;
+mod picture;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -32,6 +34,7 @@ use unspliced::html::{attr, tag};
 use unspliced::{Class, HERE, Halt, Id, Marks, Render, Sink, Split, Url, html};
 
 use math::Placement;
+use picture::Shown;
 
 use crate::style::quiet;
 
@@ -307,6 +310,12 @@ impl<H: Highlight, R: Record + ?Sized> Visit for Writer<'_, H, R> {
     }
 
     fn image(&mut self, source: &ImageSource, alt: &str) {
+        if let ImageSource::Asset(path) = source
+            && let Some(asset) = self.source.site.assets().iter().find(|asset| &asset.file == path)
+            && let Some(picture) = &asset.picture
+        {
+            return self.put(Shown { asset, picture, alt });
+        }
         let src = match source {
             ImageSource::Asset(path) => {
                 self.source.site.assets().iter().find(|asset| &asset.file == path).map(|asset| asset.route.to_string())

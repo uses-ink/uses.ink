@@ -50,6 +50,8 @@ unspliced::css! {
     kbd { padding: 0 0.3rem; border: 1px solid var(--line); border-radius: 4px; }
     mark { padding: 0 0.15rem; }
     img { max-width: 100%; height: auto; }
+    .picture { display: inline-grid; vertical-align: top; }
+    .picture > * { grid-row: 1; grid-column: 1; }
     hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
     table { border-collapse: collapse; margin: 1.5rem 0; display: block; overflow-x: auto; }
     th, td { padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--line); }

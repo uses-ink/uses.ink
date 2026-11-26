@@ -270,3 +270,52 @@ fn math_holds_only_mathml() {
     let codes: Vec<&str> = said.diagnostics.iter().map(model::Diagnostic::code).collect();
     assert_eq!(codes, ["math.syntax.invalid", "math.syntax.invalid"]);
 }
+
+/// A page showing `photo.jpg` and `anim.gif`, prepared as the engine would.
+fn pictured() -> String {
+    let route = |text: &str| text.parse::<Route>().unwrap();
+    let dimensions = model::Dimensions::new(1600, 1200);
+    let variant =
+        |media, width, at: &str| model::Variant::new(media, model::Dimensions::new(width, width * 3 / 4), route(at));
+    let photo = model::Picture::new(
+        dimensions,
+        vec![
+            variant(model::MediaType::Avif, 960, "/photo.960.b.avif"),
+            variant(model::MediaType::Jpeg, 480, "/photo.480.c.jpeg"),
+            variant(model::MediaType::Avif, 480, "/photo.480.a.avif"),
+            variant(model::MediaType::Jpeg, 960, "/photo.960.d.jpeg"),
+        ],
+        Some(route("/photo.placeholder.e.png")),
+    );
+    let kept = model::Picture::new(model::Dimensions::new(16, 16), Vec::new(), None);
+    let image =
+        |file: &str| Inline::Image { source: ImageSource::Asset(file.parse().unwrap()), alt: "a <photo>".to_owned() };
+    let body = Document::new(vec![para(vec![image("photo.jpg"), image("anim.gif")])]);
+    let page = Page::new("a.md".parse().unwrap(), "/a".parse().unwrap(), PageKind::Page, "A").holding(body);
+    let mut parts =
+        SiteParts::new(model::Identity::new("Ink", "en".parse().unwrap()), model::Root::Top, model::Layout::Flat);
+    parts.pages = vec![page];
+    parts.assets = vec![
+        Asset::new("photo.jpg".parse().unwrap(), route("/photo.jpg"), model::Hash::of(b"photo")),
+        Asset::new("anim.gif".parse().unwrap(), route("/anim.gif"), model::Hash::of(b"anim")),
+    ];
+    let site = Site::new(parts).unwrap().pictured(|asset| match asset.file.as_str() {
+        "photo.jpg" => Some(photo.clone()),
+        _ => Some(kept.clone()),
+    });
+    let html = quiet().render(&site.pages()[0], &site, &mut Said::default()).unwrap();
+    let html = html.as_ref();
+    let start = html.find("<p>").unwrap();
+    html[start..html[start..].find("</p>").unwrap() + start + 4].to_owned()
+}
+
+#[test]
+fn a_prepared_image_is_a_picture_with_its_size_and_placeholder() {
+    let expected = concat!(
+        r#"<p><span class="quiet-picture"><img src="/photo.placeholder.e.png" alt="" width="1600" height="1200">"#,
+        r#"<picture><source type="image/avif" srcset="/photo.480.a.avif 480w, /photo.960.b.avif 960w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">"#,
+        r#"<img src="/photo.960.d.jpeg" srcset="/photo.480.c.jpeg 480w, /photo.960.d.jpeg 960w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="1600" height="1200" alt="a &lt;photo&gt;" loading="lazy" decoding="async"></picture></span>"#,
+        r#"<img src="/anim.gif" alt="a &lt;photo&gt;" width="16" height="16" loading="lazy" decoding="async"></p>"#,
+    );
+    assert_eq!(pictured(), expected);
+}
