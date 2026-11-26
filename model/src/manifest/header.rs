@@ -15,6 +15,8 @@ pub enum HeaderName {
     ContentSecurityPolicy,
     /// `cross-origin-opener-policy`.
     CrossOriginOpenerPolicy,
+    /// `cross-origin-resource-policy`.
+    CrossOriginResourcePolicy,
     /// `link`.
     Link,
     /// `permissions-policy`.
@@ -36,6 +38,7 @@ impl HeaderName {
             Self::CacheControl => "cache-control",
             Self::ContentSecurityPolicy => "content-security-policy",
             Self::CrossOriginOpenerPolicy => "cross-origin-opener-policy",
+            Self::CrossOriginResourcePolicy => "cross-origin-resource-policy",
             Self::Link => "link",
             Self::PermissionsPolicy => "permissions-policy",
             Self::ReferrerPolicy => "referrer-policy",

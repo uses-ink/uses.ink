@@ -66,10 +66,20 @@ fn every_page_carries_the_engines_headers() {
     for entry in rendered.manifest.entries().iter().filter(|e| e.media() == MediaType::Html) {
         let found = entry.headers().iter().find(|h| h.name == HeaderName::ContentSecurityPolicy).unwrap();
         assert_eq!(found.value.as_str(), csp, "{}", entry.route());
-        assert_eq!(entry.headers().len(), 6);
+        assert_eq!(entry.headers().len(), 7);
+        assert!(entry.headers().iter().any(|h| h.name == HeaderName::CrossOriginResourcePolicy));
     }
     let image = rendered.manifest.entry(&route("/posts/p.png")).unwrap();
     assert_eq!(image.media(), MediaType::Png);
+    let headers: Vec<(&str, &str)> = image.headers().iter().map(|h| (h.name.name(), h.value.as_str())).collect();
+    assert_eq!(
+        headers,
+        [
+            ("content-security-policy", "default-src 'none'; frame-ancestors 'none'; sandbox"),
+            ("cross-origin-resource-policy", "same-origin"),
+            ("x-content-type-options", "nosniff")
+        ]
+    );
     assert!(!rendered.blobs.contains_key(&image.blob()), "the snapshot holds a plain file's bytes");
 }
 

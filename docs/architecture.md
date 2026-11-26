@@ -374,7 +374,11 @@ infrastructure and route names, tombstones on rename and delete.
   dashboard is `app.uses.ink`.
 - Reader pages: no JavaScript, no cookies, no forms. CSP written by the engine into every
   manifest entry: `default-src 'none'; img-src 'self' https: data:; style-src 'self'; font-src
-  'self'; media-src 'self' https:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`.
+  'self'; media-src 'self' https:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`,
+  with `Cross-Origin-Resource-Policy: same-origin`. Every other file (an author's SVG, PDF or
+  image, the theme's stylesheet, the feeds) gets `Content-Security-Policy: default-src 'none';
+  frame-ancestors 'none'; sandbox`, `Cross-Origin-Resource-Policy: same-origin` and `nosniff`.
+  HSTS is not in the manifest: it belongs to the host name, so the edge sends it.
 - Raw HTML in content goes through our own allowlist into `Document`; every removed element is
   `html.element.stripped` with its line. Untrusted SVG is served only as a file with a sandbox CSP.
 - Builder: one build per container start, outbound only to the source host and our API with a
