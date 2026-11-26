@@ -68,6 +68,7 @@ uses.ink/
   host/                  uses-ink-host          capability traits: blob, git, http, pen, text, asset, diagnostic
   host/wasmtime/         uses-ink-host-wasmtime component loading, linking, fuel, epochs, pooling, .cwasm cache
   host/native/           uses-ink-host-native   real capabilities for the builder: gix, http client, blob store, highlighting
+  host/image/            uses-ink-host-image    the builder's image work: decode, orient, resize, AVIF and JPEG, thumbhash
   freehand/              freehand               the pen: strokes, tools, marks; native and wasm32
   freehand-web/          freehand-web           the pen as plain wasm exports, and its loader freehand.js
   measure/               (own name)             text shaping and measuring with real fonts
@@ -101,7 +102,7 @@ Dependency direction, enforced by `cargo xtask layout` (a step of `cargo xtask c
 `cargo metadata`:
 
 ```
-model <- config, diag <- engine <- host <- host/{wasmtime,native} <- cli
+model <- config, diag <- engine <- host <- host/{wasmtime,native,image} <- cli
 model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret (traits only)
 plugin/* <- plugin/sdk, wit only. Never engine, control, host/* or edge.
 freehand, measure <- nothing of ours. freehand-web <- freehand. token <- nothing of ours.
@@ -382,6 +383,11 @@ infrastructure and route names, tombstones on rename and delete.
   image, the theme's stylesheet, the feeds) gets `Content-Security-Policy: default-src 'none';
   frame-ancestors 'none'; sandbox`, `Cross-Origin-Resource-Policy: same-origin` and `nosniff`.
   HSTS is not in the manifest: it belongs to the host name, so the edge sends it.
+- Images (0040): a raster image is served only as copies the host re-encoded, so no metadata
+  (a camera's GPS position) reaches a reader; each copy's route holds the hash of its bytes and
+  is served `cache-control: public, max-age=31536000, immutable`. Its placeholder is a hashed
+  file too, so `img-src` needs no `data:` for it, and no inline style is written. A header over
+  the pixel budget (50 million) is `image.budget.pixels`, refused before a pixel is decoded.
 - Raw HTML in content goes through our own allowlist into `Document`; every removed element is
   `html.element.stripped` with its line. Untrusted SVG is served only as a file with a sandbox CSP.
 - Builder: one build per container start, outbound only to the source host and our API with a
@@ -393,6 +399,7 @@ infrastructure and route names, tombstones on rename and delete.
 | fetched source | 1 GiB | `source.budget.bytes` |
 | files in snapshot | 20,000 | `source.budget.files` |
 | one file | 25 MiB | `source.budget.file` |
+| one image | 50 million pixels | `image.budget.pixels` |
 | published output | 500 MiB | `render.budget.bytes` |
 | build wall time | 120 s | `build.budget.time` |
 | builds per handle per hour | 30 | `build.budget.rate` |

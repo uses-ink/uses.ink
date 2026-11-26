@@ -161,8 +161,11 @@ pub trait Artifact {
 `Pages<T>` (and a generated home), `NotFound<T>`, `Assets`, `Feed<S: Syndication>`, `Sitemap`,
 `Robots`, `ThemeFiles<T>`. A tuple of syndication formats is one, so `Feed<(Atom, Rss)>` gathers
 the posts and says what it leaves out once. Headers come from one `Policy`
-(`fn headers(&self, media: MediaType) -> Vec<Header>`), so the CSP lives in one type; quick-xml
-is seen only by `render::xml`. The engine's render is
+(`fn headers(&self, media: MediaType, cache: Cache) -> Vec<Header>`), so the CSP lives in one
+type; quick-xml is seen only by `render::xml`. Before the tuple runs, `Prepare` hands every
+raster asset to the host's `Images` at once and gives the site each one's `Picture`, so a theme
+knows its size and copies; `Assets` then serves the copies at hashed routes, `Cache::Immutable`
+(0040). The engine's render is
 `(Pages<T>, NotFound<T>, Assets, Feed<(Atom, Rss)>, Sitemap, Robots, ThemeFiles<T>)` run in
 order; adding an output is adding an artifact to that tuple. An artifact that fails is recorded
 and the next still runs.
@@ -204,10 +207,12 @@ pub trait Theme { fn name(&self) -> &str; fn assets(&self) -> Vec<File>; fn rend
 pub trait Record { fn diagnose(&mut self, diagnostic: Diagnostic); fn notice(&mut self, notice: Notice); }
 pub trait Blobs { fn read(&self, hash: &Hash) -> Result<Cow<'_, [u8]>, BlobMissing>; }
 pub trait Pins: Patterns { fn pin<C: Code>(&self, subject: &C::Subject) -> Option<Pin<C::Value>>; }
+pub trait Images { type Refusal: Into<Diagnostic>; fn prepare(&self, sources: &[Source<'_>]) -> Vec<Result<Prepared, Self::Refusal>>; }
 ```
 
 The engine is `Engine<B, P, F, T>`, with `interpret` needing the first three and `render` the
-theme, so a part a call does not use is `()`; the CLI picks native types, the wasmtime host picks
+blobs and the theme, so a part a call does not use is `()`; `render` also takes the host's
+`Images` (`host_image::Pixels` natively, a stand-in in tests); the CLI picks native types, the wasmtime host picks
 component adapters implementing the same traits, tests pick in-memory ones. Nothing in the engine
 names a concrete plugin. A theme says what it finds while it renders (math that does not parse,
 code in a language no grammar knows) into the `Record` it is given, the native stand-in for
