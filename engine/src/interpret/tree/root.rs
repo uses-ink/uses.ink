@@ -3,6 +3,7 @@
 use model::Snapshot;
 use model::decision::Site;
 
+use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::precedence;
 use crate::interpret::journal::Journal;
 use crate::interpret::stage::Stage;
@@ -23,7 +24,7 @@ impl<'s, F: Formats, P: Pins> Stage<&'s Snapshot> for Root<'_, F, P> {
         let readable =
             snapshot.tree().iter().map(|entry| &entry.path).filter(|path| self.formats.handles(path)).collect();
         let tree = Tree { snapshot, readable };
-        let root = precedence::Root::default().record(&Site, &tree, self.pins, journal);
+        let root = precedence::Root::default().record(About { subject: &Site, ground: &tree }, self.pins, journal);
         // A root that could not be decided is already a recorded error, which stops the build;
         // the top keeps the later stages reporting.
         Scope::new(snapshot, root.unwrap_or(model::Root::Top))

@@ -179,19 +179,37 @@ witnesses!(A 0, B 1, D 2, E 3, F 4, H 5);
 witnesses!(A 0, B 1, D 2, E 3, F 4, H 5, I 6);
 witnesses!(A 0, B 1, D 2, E 3, F 4, H 5, I 6, J 7);
 
+/// What a stage decides on: a subject, and the ground it holds about it. One per subject, for
+/// every code decided on it.
+#[derive(Debug)]
+pub(crate) struct About<'a, S, G: ?Sized> {
+    /// What is decided about.
+    pub(crate) subject: &'a S,
+    /// What the deciding stage knows.
+    pub(crate) ground: &'a G,
+}
+
+impl<S, G: ?Sized> Clone for About<'_, S, G> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<S, G: ?Sized> Copy for About<'_, S, G> {}
+
 impl<C: Explain, W> Ladder<C, W> {
-    /// Decides `C` on `subject` from what `ground` holds and what `pins` pin, and records the
+    /// Decides `C` on `about` from what its ground holds and what `pins` pin, and records the
     /// decision in `journal`. Gives back the value decided.
     pub(crate) fn record<G: ?Sized, P: Pins>(
         &self,
-        subject: &C::Subject,
-        ground: &G,
+        about: About<'_, C::Subject, G>,
         pins: &P,
         journal: &mut Journal,
     ) -> Option<C::Value>
     where
         W: Witness<C, G>,
     {
+        let About { subject, ground } = about;
         let pin = pins.pin::<C>(subject);
         let case = Case { subject, pin, patterns: pins, ground };
         journal.record(self.decide(&case))

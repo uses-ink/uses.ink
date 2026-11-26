@@ -9,7 +9,7 @@ use model::{ContentPath, Evidence, FileFacts};
 
 use crate::Pins;
 use crate::interpret::decide::Filed;
-use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::ladder::{About, Case, Testimony, Witness};
 use crate::interpret::decide::precedence;
 use crate::interpret::journal::Journal;
 use crate::interpret::stage::Stage;
@@ -69,7 +69,7 @@ impl<'s, P: Pins> Stage<&[InRoot<'s>]> for Assets<'_, P> {
         for file in files {
             let ground = Ground { file, user: self.used.get(&file.entry.path) };
             let subject = File(file.entry.path.clone());
-            if ladder.record(&subject, &ground, self.pins, journal) == Some(true) {
+            if ladder.record(About { subject: &subject, ground: &ground }, self.pins, journal) == Some(true) {
                 published.push(file.clone());
             }
         }

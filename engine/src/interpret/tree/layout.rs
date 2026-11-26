@@ -5,6 +5,7 @@ use model::decision::Site;
 use model::{Ability, Layout as Arranged};
 
 use crate::Pins;
+use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::precedence;
 use crate::interpret::journal::Journal;
 use crate::interpret::page::Selection;
@@ -22,7 +23,7 @@ impl<P: Pins> Stage<&Scope<'_>> for Layout<'_, P> {
 
     /// Vaults and private sources publish nothing until selected (decision 0017).
     fn run(&self, scope: &Scope<'_>, journal: &mut Journal) -> Selection {
-        let layout = precedence::Layout::default().record(&Site, scope, self.pins, journal);
+        let layout = precedence::Layout::default().record(About { subject: &Site, ground: scope }, self.pins, journal);
         let private = scope.snapshot.observed().has.contains(&Ability::Private);
         if layout == Some(Arranged::Vault) || private { Selection::Explicit } else { Selection::Implicit }
     }

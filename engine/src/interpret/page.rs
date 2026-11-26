@@ -9,6 +9,7 @@ use model::decision::Decision;
 use model::{Announcement, ContentPath, Evidence, FileFacts, Notice, PageKind, Rejection};
 
 use crate::Pins;
+use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::{Explain, Filed, Sourced, precedence};
 use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
@@ -77,18 +78,19 @@ impl<P: Pins> Pages<'_, P> {
     fn page(&self, source: &Source, journal: &mut Journal) -> Option<bool> {
         let ground = Ground { source, selection: self.selection };
         let subject = source.subject();
-        let published = precedence::Publish::default().record(&subject, &ground, self.pins, journal);
-        let kind = precedence::Kind::default().record(&subject, &ground, self.pins, journal);
-        precedence::Title::default().record(&subject, &ground, self.pins, journal);
-        precedence::Date::default().record(&subject, &ground, self.pins, journal);
+        let about = About { subject: &subject, ground: &ground };
+        let published = precedence::Publish::default().record(about, self.pins, journal);
+        let kind = precedence::Kind::default().record(about, self.pins, journal);
+        precedence::Title::default().record(about, self.pins, journal);
+        precedence::Date::default().record(about, self.pins, journal);
         let undated = journal.decision::<Date>(&subject).and_then(Undated::announce);
         if let Some(announcement) = undated.filter(|_| kind == Some(PageKind::Post)) {
             journal.notice(Notice::new(announcement).on(subject.clone().into()));
         }
-        precedence::Updated::default().record(&subject, &ground, self.pins, journal);
-        precedence::Slug::default().record(&subject, &ground, self.pins, journal);
-        precedence::Tags::default().record(&subject, &ground, self.pins, journal);
-        precedence::Summary::default().record(&subject, &ground, self.pins, journal);
+        precedence::Updated::default().record(about, self.pins, journal);
+        precedence::Slug::default().record(about, self.pins, journal);
+        precedence::Tags::default().record(about, self.pins, journal);
+        precedence::Summary::default().record(about, self.pins, journal);
         published
     }
 }

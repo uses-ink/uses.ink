@@ -222,7 +222,7 @@ impl Package {
         let mut tree = Tree { root, found: BTreeMap::new() };
         for target in &self.targets {
             let path = target.src_path.strip_prefix(root).unwrap_or(&target.src_path).to_path_buf();
-            tree.file(&path, target.role(), path.parent().unwrap_or(Path::new("")))?;
+            tree.file(Spot { path: &path, role: target.role(), nested: path.parent().unwrap_or(Path::new("")) })?;
         }
         let dependencies = self
             .dependencies
@@ -244,6 +244,17 @@ impl Package {
     }
 }
 
+/// Where a module's file sits in a crate's module tree.
+#[derive(Debug, Clone, Copy)]
+struct Spot<'p> {
+    /// The file, relative to the workspace root.
+    path: &'p Path,
+    /// What the modules it declares are.
+    role: Role,
+    /// The directory Rust looks in for the files of its `mod x;`.
+    nested: &'p Path,
+}
+
 /// The module tree of a crate's targets as it is found, by path relative to `root`.
 struct Tree<'a> {
     root: &'a Path,
@@ -251,9 +262,9 @@ struct Tree<'a> {
 }
 
 impl Tree<'_> {
-    /// Reads the module at `path` and every module it declares, which Rust looks for in
-    /// `nested`.
-    fn file(&mut self, path: &Path, role: Role, nested: &Path) -> Result<(), Error> {
+    /// Reads the module at `spot` and every module it declares.
+    fn file(&mut self, spot: Spot<'_>) -> Result<(), Error> {
+        let Spot { path, role, nested } = spot;
         if self.found.contains_key(path) {
             return Ok(());
         }
@@ -262,19 +273,20 @@ impl Tree<'_> {
         let syntax = syn::parse_file(&text).map_err(|source| Error::Parse { path: path.to_path_buf(), source })?;
         let generated = text.strip_prefix("// ").is_some_and(|rest| rest.starts_with(Origin::MARK));
         let role = if generated { Role::Generated } else { role };
-        self.items(&syntax.items, path, role, nested)?;
+        self.items(&syntax.items, Spot { path, role, nested })?;
         self.found.insert(path.to_path_buf(), Module { path: path.to_path_buf(), syntax, role });
         Ok(())
     }
 
-    /// Follows every `mod` among `items` of the file at `path`.
-    fn items(&mut self, items: &[syn::Item], path: &Path, role: Role, nested: &Path) -> Result<(), Error> {
+    /// Follows every `mod` among `items` of the file at `spot`.
+    fn items(&mut self, items: &[syn::Item], spot: Spot<'_>) -> Result<(), Error> {
+        let Spot { path, role, nested } = spot;
         for item in items {
             let syn::Item::Mod(module) = item else { continue };
             let role = if role == Role::Test || module.attrs.is_test() { Role::Test } else { Role::Inner };
             let name = module.ident.to_string();
             if let Some((_, inner)) = &module.content {
-                self.items(inner, path, role, &nested.join(&name))?;
+                self.items(inner, Spot { path, role, nested: &nested.join(&name) })?;
                 continue;
             }
             let here = path.parent().unwrap_or(Path::new(""));
@@ -289,7 +301,7 @@ impl Tree<'_> {
             let named = module.attrs.place().is_none() && child.file_name().is_some_and(|f| f != "mod.rs");
             let dir = child.parent().unwrap_or(Path::new("")).to_path_buf();
             let below = if named { dir.join(&name) } else { dir };
-            self.file(&child, role, &below)?;
+            self.file(Spot { path: &child, role, nested: &below })?;
         }
         Ok(())
     }

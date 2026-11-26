@@ -66,6 +66,13 @@ impl Witness<Home, Ground<'_>> for Index {
     }
 }
 
+/// The pages the site's decisions are made on: every one read, and the home once it is decided.
+#[derive(Debug, Clone, Copy)]
+struct Sources<'a> {
+    all: &'a [Source],
+    home: Option<&'a Source>,
+}
+
 /// Decides everything about the site as a whole.
 #[derive(Debug)]
 pub(crate) struct Site<'a, P> {
@@ -81,14 +88,16 @@ impl<P: Pins> Stage<&[Source]> for Site<'_, P> {
     /// A pinned home or navigation entry that is not a published page is
     /// `pin.target.unpublished`.
     fn run(&self, sources: &[Source], journal: &mut Journal) -> Option<ContentPath> {
-        let home = self.decide(&precedence::Home::default(), sources, None, journal).flatten();
+        let pages = Sources { all: sources, home: None };
+        let home = self.decide(&precedence::Home::default(), pages, journal).flatten();
         self.unpublished::<Home>(home.iter(), journal);
         let page = sources.iter().find(|source| Some(&source.path) == home.as_ref());
-        self.decide(&precedence::SiteTitle::default(), sources, page, journal);
-        self.decide(&precedence::Description::default(), sources, page, journal);
-        self.decide(&precedence::Authors::default(), sources, page, journal);
-        self.decide(&precedence::Language::default(), sources, page, journal);
-        let nav = self.decide(&precedence::Nav::default(), sources, page, journal);
+        let pages = Sources { home: page, ..pages };
+        self.decide(&precedence::SiteTitle::default(), pages, journal);
+        self.decide(&precedence::Description::default(), pages, journal);
+        self.decide(&precedence::Authors::default(), pages, journal);
+        self.decide(&precedence::Language::default(), pages, journal);
+        let nav = self.decide(&precedence::Nav::default(), pages, journal);
         self.unpublished::<Nav>(nav.iter().flatten(), journal);
         home
     }
@@ -100,10 +109,10 @@ impl<P: Pins> Site<'_, P> {
     fn decide<C: Explain<Subject = Whole>, W: for<'g> Witness<C, Ground<'g>>>(
         &self,
         ladder: &Ladder<C, W>,
-        sources: &[Source],
-        home: Option<&Source>,
+        pages: Sources<'_>,
         journal: &mut Journal,
     ) -> Option<C::Value> {
+        let Sources { all: sources, home } = pages;
         let pin = self.pins.pin::<C>(&Whole);
         let decided = {
             let ground = Ground { scope: self.scope, sources, published: self.published, home, journal };

@@ -3,6 +3,7 @@
 use model::decision::File;
 
 use crate::Pins;
+use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::precedence;
 use crate::interpret::journal::Journal;
 use crate::interpret::stage::Stage;
@@ -23,7 +24,7 @@ impl<'s, P: Pins> Stage<&Scope<'s>> for Files<'_, P> {
         let mut kept = Vec::new();
         for file in &scope.inside {
             let subject = File(file.entry.path.clone());
-            if ladder.record(&subject, file, self.pins, journal) == Some(false) {
+            if ladder.record(About { subject: &subject, ground: file }, self.pins, journal) == Some(false) {
                 kept.push(file.clone());
             }
         }

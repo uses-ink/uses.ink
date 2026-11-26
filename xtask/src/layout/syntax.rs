@@ -46,7 +46,7 @@ impl Free {
 
     /// Whether a free function `found` in `module` is allowed.
     fn allows(module: &Module, found: &Found) -> bool {
-        let entry = module.role == Role::Entry && (found.public || found.name == "main");
+        let entry = module.role == Role::Entry && (found.place == Place::Free(Reach::Public) || found.name == "main");
         let listed = Self::ALLOWED.iter().any(|e| module.path == std::path::Path::new(e.path) && e.name == found.name);
         entry || found.export || listed
     }
@@ -57,7 +57,7 @@ impl Rule for Free {
 
     fn check(&self, workspace: &Workspace, problems: &mut Problems) {
         for (krate, module, found) in Found::each(workspace) {
-            if found.place == Place::Free && !Self::allows(module, &found) {
+            if matches!(found.place, Place::Free(_)) && !Self::allows(module, &found) {
                 problems.push(Problem::Free(found.into_function(krate, module)));
             }
         }
@@ -79,7 +79,6 @@ struct Exception {
 struct Found {
     name: String,
     place: Place,
-    public: bool,
     export: bool,
 }
 
@@ -87,13 +86,31 @@ struct Found {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Place {
     /// At module level: a free function.
-    Free,
+    Free(Reach),
     /// Inside a block: a local function.
     Local,
     /// In an inherent impl.
     Method,
     /// Declared by a trait.
     Required,
+}
+
+/// Who can call a free function: a `pub` one at a target's root is an entry point.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Reach {
+    /// `pub`.
+    Public,
+    /// Anything narrower.
+    Private,
+}
+
+impl From<&syn::Visibility> for Reach {
+    fn from(visibility: &syn::Visibility) -> Self {
+        match visibility {
+            syn::Visibility::Public(_) => Self::Public,
+            _ => Self::Private,
+        }
+    }
 }
 
 impl Found {
@@ -127,9 +144,9 @@ struct Walk {
 }
 
 impl Walk {
-    fn push(&mut self, sig: &syn::Signature, place: Place, public: bool, attrs: &[syn::Attribute]) {
+    fn push(&mut self, sig: &syn::Signature, place: Place, attrs: &[syn::Attribute]) {
         let export = attrs.is_export() || sig.abi.is_some();
-        self.found.push(Found { name: sig.ident.to_string(), place, public, export });
+        self.found.push(Found { name: sig.ident.to_string(), place, export });
     }
 }
 
@@ -144,8 +161,8 @@ impl<'ast> Visit<'ast> for Walk {
         if item.attrs.is_test() {
             return;
         }
-        let place = if self.depth == 0 { Place::Free } else { Place::Local };
-        self.push(&item.sig, place, matches!(item.vis, syn::Visibility::Public(_)), &item.attrs);
+        let place = if self.depth == 0 { Place::Free(Reach::from(&item.vis)) } else { Place::Local };
+        self.push(&item.sig, place, &item.attrs);
         visit::visit_item_fn(self, item);
     }
 
@@ -163,7 +180,7 @@ impl<'ast> Visit<'ast> for Walk {
             return;
         }
         if !self.imposed {
-            self.push(&item.sig, Place::Method, false, &item.attrs);
+            self.push(&item.sig, Place::Method, &item.attrs);
         }
         visit::visit_impl_item_fn(self, item);
     }
@@ -175,7 +192,7 @@ impl<'ast> Visit<'ast> for Walk {
     }
 
     fn visit_trait_item_fn(&mut self, item: &'ast syn::TraitItemFn) {
-        self.push(&item.sig, Place::Required, false, &item.attrs);
+        self.push(&item.sig, Place::Required, &item.attrs);
         visit::visit_trait_item_fn(self, item);
     }
 
@@ -213,8 +230,12 @@ mod tests {
     fn functions_are_found_where_they_are_written() {
         let code = "fn free() { fn local() {} } impl X { fn method(&self) {} } trait T { fn required(&self); }";
         let found = walk(code);
-        let expected =
-            [("free", Place::Free), ("local", Place::Local), ("method", Place::Method), ("required", Place::Required)];
+        let expected = [
+            ("free", Place::Free(Reach::Private)),
+            ("local", Place::Local),
+            ("method", Place::Method),
+            ("required", Place::Required),
+        ];
         assert_eq!(found, expected.map(|(n, p)| (n.to_owned(), p)));
     }
 
