@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"5a624627432c332396b9e7a14dd3e7c96d589155e31995b884291c87eb5a98eb","out":"<out>","entries":12}
+{"schema":"uses.build/v1","deploy":"d03cc5bf4ad569d58452f9d37a7103354f822fba137c981e99b53d92f5c475ce","out":"<out>","entries":12}
 # files
 .ink-manifest.json
 404.html
@@ -25,7 +25,7 @@ style.css
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Page not found - Ink and paper</title>
-<meta name="description" content="Welcome. The newest posts are below; the first one is where it started.">
+<meta name="description" content="Notes on pens, nibs and the paper that takes them.">
 <link rel="canonical" href="https://ink.example/404">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
@@ -35,7 +35,7 @@ style.css
 <meta name="og:type" content="website">
 <meta name="og:site_name" content="Ink and paper">
 <meta name="og:url" content="https://ink.example/404">
-<meta name="og:description" content="Welcome. The newest posts are below; the first one is where it started.">
+<meta name="og:description" content="Notes on pens, nibs and the paper that takes them.">
 </head>
 <body>
 <div class="quiet-page">
@@ -112,7 +112,7 @@ style.css
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ink and paper</title>
-<meta name="description" content="Welcome. The newest posts are below; the first one is where it started.">
+<meta name="description" content="Notes on pens, nibs and the paper that takes them.">
 <link rel="canonical" href="https://ink.example/">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
@@ -122,7 +122,7 @@ style.css
 <meta name="og:type" content="website">
 <meta name="og:site_name" content="Ink and paper">
 <meta name="og:url" content="https://ink.example/">
-<meta name="og:description" content="Welcome. The newest posts are below; the first one is where it started.">
+<meta name="og:description" content="Notes on pens, nibs and the paper that takes them.">
 </head>
 <body>
 <div class="quiet-page">
