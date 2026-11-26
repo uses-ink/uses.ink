@@ -61,9 +61,9 @@ pub struct Check {
 /// `ink explain [--pin] [path]`.
 #[derive(Debug, Args)]
 pub struct Explain {
-    /// A file of the site, as a path in the folder; without one, every decision.
+    /// A file of the folder, as a path in it: only its decisions. Without one, every decision.
     pub path: Option<String>,
-    /// Print every decision as `ink.toml` pins instead.
+    /// Print the decisions as `ink.toml` pins instead: every one, or the file's with a path.
     #[arg(long)]
     pub pin: bool,
     /// The site's folder.

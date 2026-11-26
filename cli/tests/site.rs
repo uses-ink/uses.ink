@@ -281,6 +281,29 @@ fn a_missing_or_unlistable_folder_is_a_usage_error() {
     assert!(!missing.exists());
 }
 
+#[test]
+fn explain_refuses_a_path_that_is_no_file() {
+    let dir = fixtures().join("readme");
+    let (exit, stdout, stderr) = ink(&["explain", "-C", dir.to_str().unwrap(), "nosuch.md"]);
+    assert_eq!(exit, Exit::Usage);
+    assert_eq!(stdout, "");
+    assert_eq!(stderr, "error: nosuch.md is not a file of the folder\n");
+    let (exit, _, _) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap(), "nosuch.md"]);
+    assert_eq!(exit, Exit::Usage);
+}
+
+#[test]
+fn explain_pins_only_the_file_it_is_given() {
+    let dir = fixtures().join("readme");
+    let (exit, pins, stderr) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap(), "usage.md"]);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    let tables: Vec<&str> = pins.lines().filter(|line| line.starts_with('[')).collect();
+    assert!(!tables.is_empty(), "{pins}");
+    assert!(tables.iter().all(|table| table.contains("\"usage.md\"")), "only usage.md is pinned: {pins}");
+    let (_, every, _) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap()]);
+    assert!(every.contains("[site]"), "{every}");
+}
+
 /// A golden whose site folder is gone fails, so no stale golden stays behind.
 #[test]
 fn every_golden_has_a_site() {

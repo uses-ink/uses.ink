@@ -26,6 +26,11 @@ pub enum Error {
         /// Why it is no path.
         source: model::PathError,
     },
+    /// The path given to `ink explain` is no file of the folder.
+    Unknown {
+        /// The path.
+        path: model::ContentPath,
+    },
     /// The output folder is one `ink build` will not clear or write into.
     Output(crate::out::Refusal),
     /// An entry of the deploy has no place in the output folder.
@@ -98,6 +103,7 @@ impl fmt::Display for Error {
             Self::Refused(refused) => write!(out, "{refused}"),
             Self::Base { written, .. } => write!(out, "`{written}` is not an address a site is served at"),
             Self::Path { written, .. } => write!(out, "`{written}` is not a path in the folder"),
+            Self::Unknown { path } => write!(out, "{path} is not a file of the folder"),
             Self::Output(refusal) => write!(out, "{refusal}"),
             Self::Placed { file, .. } => write!(out, "`{file}` is not a file `ink build` can write"),
             Self::Blob { route, .. } => write!(out, "the bytes of {route} are missing"),
@@ -126,7 +132,7 @@ impl std::error::Error for Error {
             Self::Placed { source, .. } => Some(source),
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),
-            Self::Output(_) => None,
+            Self::Output(_) | Self::Unknown { .. } => None,
         }
     }
 }

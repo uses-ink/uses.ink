@@ -1,5 +1,6 @@
 //! `ink explain [--pin] [path]`: the decisions behind the site, with their evidence, or every
-//! decision as `ink.toml` pins.
+//! decision as `ink.toml` pins. With a path, only that file's decisions, shown or pinned; a path
+//! that is no file of the folder is a usage error.
 
 use std::fmt;
 
@@ -38,11 +39,16 @@ impl Explain {
             None => None,
         };
         let loaded = Source::new(&self.dir).load()?;
+        if let Some(Subject::File(path)) = &subject
+            && loaded.snapshot.entry(path).is_none()
+        {
+            return Err(Error::Unknown { path: path.clone() });
+        }
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let understood = &loaded.understood;
         let tally = io.said(&understood.diagnostics, &understood.notices, texts)?;
         if self.pin {
-            let toml = config::pins(&understood.decisions);
+            let toml = config::pins(understood.explain(subject.as_ref()));
             if io.is_json() {
                 io.json(&Pinned { schema: "uses.pin/v1", toml })?;
             } else {

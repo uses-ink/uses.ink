@@ -990,7 +990,7 @@ Binary `ink`. Output rules:
 | `ink status [<site>]` | Live deploy, latest deploy, paused or not, warnings count |
 | `ink watch` | Waits for the next deploy for the current HEAD and exits with its result |
 | `ink deploys [--limit n]` | History, newest first; reports `more` when truncated |
-| `ink explain [--pin] [--minimal] [<path>]` | The "What we understood" data; with a path, the decisions for that file |
+| `ink explain [--pin] [--minimal] [<path>]` | The "What we understood" data; with a path, the decisions for that file, and with `--pin` too, only that file's pins. A path that is no file of the folder exits 2 |
 | `ink check` | Runs Snapshot and Interpret locally, no upload; for CI and pre-commit |
 | `ink preview` | Local server rendering the working tree with the same renderer |
 | `ink rollback <deploy>` / `ink resume` | 4.4 |
