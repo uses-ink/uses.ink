@@ -22,7 +22,9 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Pen | own port of perfect-freehand, `kurbo` 0.13, `libm`, `tiny-skia` 0.12, `resvg` 0.50 | one deterministic implementation (0025); `freehand-web` is 36 KB gzipped, no `wasm-bindgen` (0034) |
 | Feeds, sitemap | `atom_syndication` 0.12, `rss` 2.1, `quick-xml` 0.42 | typed feeds; no maintained sitemap crate |
 | Text | `unicode-segmentation`, `unicode-normalization` | reading time, slugs |
-| Plugins | `wasmtime` 51 (component model, fuel, epochs, pooling, `.cwasm`); `wit-bindgen` 0.63 for guests | component model is Tier 1 |
+| Plugins | `wasmtime` 51 (`component-model`, `cranelift`, `parallel-compilation`, `runtime`, `std`; no defaults), in `host/wasmtime` only | component model is Tier 1; fuel, epochs, a resource limiter and `.cwasm` (0035, 0041) |
+| Plugin guests | `wit-bindgen` 0.63 (`macros`, `realloc`), in `plugin/sdk` and the `guest/` crates | guest bindings for `wasm32-unknown-unknown`, no WASI (0035) |
+| Wrapping guests | `wit-component` 0.263, and `anyhow` 1 for its error type, in xtask only | turns a core module into a component, the version wasmtime 51 reads; no `wasm-tools` CLI or `cargo-component` |
 | CLI | `clap` 4.6, `annotate-snippets` 0.12, `tracing`, `notify` 9, `notify-debouncer-full` 0.8, `indicatif` 0.18 | rustc's diagnostic renderer over our own `Diagnostic` |
 | Preview server | `axum` 0.8 (`http1`, `tokio` only), `tokio` 1 (`rt`, `net`) | `ink preview` serves the manifest with its statuses and headers on a one-thread runtime; the same router stack `ink serve` will use, so no second HTTP crate |
 | Dates | `jiff` 1.0 | chrono is unmaintained (0028) |

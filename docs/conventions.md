@@ -136,10 +136,11 @@ The path predicts the name and the name predicts the path.
   crates.io when it is cut.
 - A port is a directory with the trait crate at its root and one directory per adapter:
   `db/` is `uses-ink-db`, `db/d1/` and `db/sqlite/` are its adapters.
-- A plugin lives at `plugin/<slot>/<variant>/`; the slot's WIT lives at `plugin/<slot>/wit/`.
+- A plugin lives at `plugin/<slot>/<variant>/`, its wasm export in a thin `guest/` crate beside
+  its native core; every WIT package lives at `wit/<package>/` (`wit/theme/` is `ink:theme`).
   First-party plugins are laid out exactly like third-party ones.
 - `spikes/` holds throwaway experiments. Nothing depends on a spike.
-- Repo tasks are `cargo xtask <task>` (`token`, `diag`, `brand`, `layout`, `check`; `wit` when
+- Repo tasks are `cargo xtask <task>` (`token`, `diag`, `brand`, `layout`, `component`, `check`; `wit` when
   it exists). No loose scripts in `scripts/`, no generator files beside the code they generate.
 - Binaries: `ink` only. Its crate is `uses-ink-cli` at `cli/`.
 - Cut a crate when its second user appears, not before; its tests move with it. A crate useful
@@ -343,8 +344,9 @@ a doc comment.
   attribution.
 - One logical change per commit: a refactor and a behaviour change are two commits.
 - Every commit passes the checks: `cargo xtask check` runs all of them in CI's order (fmt, clippy
-  natively and on wasm32, nextest, doc tests, `cargo deny`, the pen's tests on wasm32-wasip2, the
-  browser pen's release build, then layout and generated files), every one with `--locked`. It
+  natively and on wasm32, the plugins built as components, nextest, doc tests, `cargo deny`, the
+  pen's tests on wasm32-wasip2, the browser pen's release build, `ink build --check` on every CLI
+  site fixture, then layout and generated files), every one with `--locked`. It
   runs every step and lists each failure; a missing tool fails with the command that installs it.
   CI runs that one command, so the list lives in one place (`Gate::steps` in `xtask/src/check.rs`).
   `cargo xtask layout` runs the last step alone, for a fast loop.

@@ -66,7 +66,8 @@ uses.ink/
   diag/                  uses-ink-diag          diagnostic and notice catalog (catalog.toml), wording, terminal rendering
   engine/                uses-ink-engine        interpret and render, pure, talks to host traits only
   host/                  uses-ink-host          capability traits: blob, git, http, pen, text, asset, diagnostic
-  host/wasmtime/         uses-ink-host-wasmtime component loading, linking, fuel, epochs, pooling, .cwasm cache
+  host/wasmtime/         uses-ink-host-wasmtime component loading, linking, fuel, epochs, memory limits, .cwasm cache
+    hostile/             uses-ink-host-wasmtime-hostile  a misbehaving format component for the host's tests
   host/native/           uses-ink-host-native   real capabilities for the builder: gix, http client, blob store, highlighting
   host/image/            uses-ink-host-image    the builder's image work: decode, orient, resize, AVIF and JPEG, thumbhash
   freehand/              freehand               the pen: strokes, tools, marks; native and wasm32
@@ -84,12 +85,13 @@ uses.ink/
   web/                   uses-ink-web           landing and dashboard (stack in section 14)
   cli/                   uses-ink-cli           the `ink` binary
   plugin/
-    sdk/                 uses-ink-plugin-sdk    guest-side helpers, published, MIT OR Apache-2.0
+    sdk/                 uses-ink-sdk           guest-side bindings and their conversions to the model (0041)
     source/     wit/  git/  upload/  archive/  atproto/
     authority/  wit/  github/  forgejo/  gitlab/  dns/  email/  atproto/
-    format/     wit/  markdown/  obsidian/  typst/
-    theme/      wit/  quiet/  notebook/
-  wit/host/              ink:host               capability interfaces every plugin may import
+    format/     markdown/ (its component in markdown/guest/)  obsidian/  typst/
+    theme/      quiet/ (its component in quiet/guest/)  notebook/
+  wit/                   model/ host/ format/ theme/: the WIT packages ink:model, ink:host,
+                         ink:format, ink:theme; mirror/: their conversions to the model (0041)
   migration/             plain .sql, applied by wrangler to D1 and by ink serve to SQLite
   token/                 design tokens (one TOML file) -> CSS custom properties and pen palette
   brand/                 logo stroke data, fonts and their licences
@@ -104,7 +106,8 @@ Dependency direction, enforced by `cargo xtask layout` (a step of `cargo xtask c
 ```
 model <- config, diag <- engine <- host <- host/{wasmtime,native,image} <- cli
 model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret (traits only)
-plugin/* <- plugin/sdk, wit only. Never engine, control, host/* or edge.
+plugin/* <- model, plugin/sdk, wit only, and engine for its plugin traits. Never control, host/* or edge.
+host/wasmtime <- host/native (grammars), engine (the traits its components implement).
 freehand, measure <- nothing of ours. freehand-web <- freehand. token <- nothing of ours.
 fixture <- nothing of ours; every crate may take it as a dev-dependency, none as a normal one.
 ```
@@ -163,30 +166,31 @@ Four slots. Every first-party plugin uses the public contract; there is no priva
 Authorities stay native in v1 because the edge is a Worker, which cannot host wasmtime. They use
 the same WIT types, so moving them to components later changes no type.
 
-**Host capabilities** (`wit/host/`, package `ink:host`):
+**Host capabilities** (`wit/host/`, package `ink:host`; as built, decision 0041):
 
 | Interface | Functions | Notes |
 |---|---|---|
 | `blob` | `read(hash)`, `put(bytes) -> hash` | every read is recorded; reads become render cache keys |
 | `git` | `fetch(locator, depth, grant)`, `deepen`, `log(paths)` | host-side gix; the only operation needing a real disk |
 | `http` | `fetch(request)` | allowlisted hosts per plugin manifest; no other network |
-| `pen` | `stroke`, `mark`, `palette` | section 8 |
-| `text` | `measure(font, size, text)`, `lines(font, size, text, width)` | real font shaping, so marks fit their words |
-| `highlight` | `highlight(language, code) -> result<list<run>, unhighlighted>` | classed runs from tree-sitter grammars in the host (decision 0039); natively `model::highlight::Highlight`, implemented by `host_native::Grammars` |
+| `pen` | `draw(mark, tool, hand, seed) -> list<string>` | section 8; built: every mark of `freehand::mark` with either tool |
+| `text` | `measure(font, size, text) -> result<extent, unmeasured>`, later `lines(font, size, text, width)` | real font shaping, so marks fit their words; built: refuses every font until the measurer exists |
+| `highlight` | `highlight(language, code) -> result<list<run>, unhighlighted>` | classed runs from tree-sitter grammars in the host (decision 0039); natively `model::highlight::Highlight`, implemented by `host_native::Grammars`, which `host/wasmtime` links |
 | `asset` | `theme(path)`, `slot(name)` | a theme's bundled files; a slot already rendered from the author's `theme/` override |
-| `diagnostic` | `emit(diagnostic)`, `notice(notice)` | typed; plugins never print |
+| `diagnostic` | `emit(diagnostic)`, `announce(notice)` | typed; plugins never print; natively `engine::Record` |
 
 No plugin imports a clock, randomness, environment or filesystem. A plugin's manifest declares
 the capabilities it imports; linking fails with `plugin.capability.undeclared` otherwise.
 
-**Budgets per call**: fuel and an epoch deadline per plugin call, memory per instance from the
-pooling allocator, all typed refusals (`plugin.budget.fuel`, `plugin.budget.memory`,
+**Budgets per call**: fuel and an epoch deadline per plugin call, memory per instance through a
+resource limiter, all typed refusals (`plugin.budget.fuel`, `plugin.budget.memory`,
 `plugin.budget.time`). Components are precompiled to `.cwasm` once per plugin version and cached.
 
 **Identity and loading**: a plugin is `<scope>:<slot>-<variant>` at a version, pinned by digest in
 `ink.lock` next to `ink.toml` (written by the CLI, optional for first-party defaults). v1 loads
 first-party plugins bundled in the binary and third-party ones from a URL or path pinned by
-digest. A registry is later.
+digest. A registry is later. In M1, `ink build --check --components <dir>` reads the first-party
+components from a folder (`cargo xtask component` writes `target/plugin/`).
 
 ## 7. Themes
 
@@ -214,6 +218,11 @@ world theme {
 
 `site` is a host-owned resource with methods (`pages`, `page`, `backlinks`, `tags`, `children`),
 so a theme reads only what it needs and every read is recorded into the page's cache key.
+
+As built in M1 (`wit/theme/theme.wit`, decision 0041), the world is smaller: `name`, `assets`,
+and a `pages` interface whose `renderer` resource is made from the base address and the whole
+site, as a value, and renders one page per call. `describe`, tokens, extra routes and the lazy
+`site` resource come with the first theme that needs them.
 
 **What the engine owns** and no theme can change: routes of pages, feeds (Atom and RSS), sitemap,
 `robots.txt`, image variants, the CSP and every header, link resolution, the 404 page's status.

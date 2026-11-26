@@ -73,9 +73,13 @@ MathML, as a placeholder design; the engine serves a generated
 home when a site has none; the CLI has `ink build`, `check`, `explain [--pin]` and `preview` with
 `--json`. Site fixtures (`cli/fixture/site/`: blog, flat README repo, docs folder, broken
 frontmatter, ambiguous links, a notes folder) pass the three exit tests in `cli/tests/site.rs`.
-Left: `host/wasmtime`, the WIT worlds (with `ink:host/highlight` and `ink:host/diagnostic`, whose
-native stand-ins are `model::highlight::Highlight` and `engine::Record`) and running the format
-and theme as components; `ink build --check` against wasm builds.
+Progress (2026-11-27): `wit/` holds `ink:model`, `ink:host` (pen, text, highlight, diagnostic),
+`ink:format` and `ink:theme`; `host/wasmtime` runs `ink:format-markdown` and `ink:theme-quiet` as
+components through the engine's own `Format` and `Theme` traits, with fuel, time and memory
+budgets and a `.cwasm` cache (decision 0041); `ink build --check` builds every CLI site fixture
+natively and through the components and refuses a different deploy, and `cargo xtask check`
+runs it. Left: bundling the components into `ink` instead of reading them from a folder, and
+the theme's design (owner).
 
 
 ## Code rework (closes M1)

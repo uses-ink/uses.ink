@@ -5,9 +5,7 @@ rule behind every section: a behaviour is written once, as a generic abstraction
 a type that plugs into it. Adding a decision, a witness, an output file, a mark or a repo check
 is adding a type, never editing a central `match`.
 
-Sketches below are the code as built. The one part still moving onto them is the theme: its
-HTML as a `Visit` (section 4) and the engine's `Theme` seam (section 5), roadmap "Code rework"
-phase 3.
+Sketches below are the code as built.
 
 ## 1. Decisions are typed codes
 
@@ -218,6 +216,18 @@ names a concrete plugin. A theme says what it finds while it renders (math that 
 code in a language no grammar knows) into the `Record` it is given, the native stand-in for
 `ink:host/diagnostic`: the render's output records it beside everything else, and a test passes
 an `engine::Said`.
+
+The component adapters are the same traits over a loaded component: `host_wasmtime::Component<Format>`
+implements `Format` and `Component<Theme>` implements `Theme`, so `Engine<B, P, F, T>` runs a
+component with no change and `ink build --check` builds a site both ways. A plugin keeps its
+native core; its `guest/` crate only converts and calls. The conversions between the model and its
+WIT mirror are written once in `wit/mirror/`, as `From` and `TryFrom` impls (a model variant the
+WIT lacks is `Unmirrored`, a WIT value the model refuses `Malformed`), and included by both
+`host/wasmtime` and `plugin/sdk` over their own generated types: the two generators write the
+same shapes and share no type, so inclusion is the one way to write the impls once (decision
+0041). A call that fails (a trap, a budget, a refused value) becomes the diagnostic the trait's
+signature has room for: a format's read carries it, a theme's render returns it, and what has no
+room (a theme's files) is kept aside for the caller to take.
 
 A capability a plugin imports and the engine never calls is a trait in `model`, so the plugin
 and the host that implements it meet without going through the engine. Highlighting is the first
