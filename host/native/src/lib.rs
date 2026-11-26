@@ -22,9 +22,11 @@ mod error;
 mod folder;
 mod handle;
 mod highlight;
+mod read;
 
 pub use blob::{Directory, Memory, Store, StoreError};
 pub use budget::Budget;
 pub use error::Refused;
-pub use folder::{Folder, Read, Skip, Skipped};
+pub use folder::Folder;
 pub use highlight::{GrammarError, Grammars};
+pub use read::{Read, Skip, Skipped};
