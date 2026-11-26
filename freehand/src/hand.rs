@@ -36,7 +36,12 @@ impl Hand {
     /// The line as this hand draws it: each point pushed sideways, with its pressure.
     pub fn trace(&self, line: &Centreline, chance: &mut impl Chance) -> Vec<Pressured> {
         let points = line.points();
-        let total = match line.length() {
+        // each segment's length once: summed in order it is `line.length()`, bit for bit
+        let segments: Vec<f64> = points
+            .windows(2)
+            .map(|pair| if let [a, b] = pair { libm::hypot(b.x - a.x, b.y - a.y) } else { 0.0 })
+            .collect();
+        let total = match segments.iter().sum::<f64>() {
             0.0 => 1.0,
             total => total,
         };
@@ -44,8 +49,8 @@ impl Hand {
         let mut run = 0.0;
         let mut traced = Vec::with_capacity(points.len());
         for (i, point) in points.iter().enumerate() {
-            if let Some(before) = i.checked_sub(1).and_then(|b| points.get(b)) {
-                run += libm::hypot(point.x - before.x, point.y - before.y);
+            if let Some(segment) = i.checked_sub(1).and_then(|b| segments.get(b)) {
+                run += segment;
             }
             let t = run / total;
             let normal = normal(points, i);
