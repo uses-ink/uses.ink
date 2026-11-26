@@ -9,6 +9,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+arborium.workspace = true
+arborium-theme.workspace = true
 engine.workspace = true
 model.workspace = true
 

@@ -1,5 +1,6 @@
 //! The builder's capabilities on a local disk: a folder read into a [`Snapshot`](model::Snapshot),
-//! and blob stores that implement [`engine::Blobs`].
+//! blob stores that implement [`engine::Blobs`], and [`Grammars`], which highlight code for a
+//! theme through arborium's tree-sitter grammars (decision 0039).
 //!
 //! [`Folder::read`] walks a folder in byte order of its names, so the same folder always gives
 //! the same snapshot. It skips `.git` and `.jj` and nothing else on its own: which files are part
@@ -16,8 +17,10 @@ mod blob;
 mod budget;
 mod error;
 mod folder;
+mod highlight;
 
 pub use blob::{Directory, Memory, Store, StoreError};
 pub use budget::Budget;
 pub use error::Refused;
 pub use folder::{Folder, Read, Skipped};
+pub use highlight::{GrammarError, Grammars};
