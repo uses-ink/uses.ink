@@ -1,5 +1,6 @@
 ---
 source: plugin/theme/quiet/tests/render.rs
+assertion_line: 160
 ---
 <!doctype html>
 <html lang="en">
@@ -14,11 +15,11 @@ Every node - Ink</title>
 <link rel="stylesheet" href="/code.css">
 <link rel="alternate" type="application/atom+xml" title="Ink" href="/feed.xml">
 <link rel="alternate" type="application/rss+xml" title="Ink" href="/rss.xml">
-<meta name="og:title" content="Every node">
-<meta name="og:type" content="article">
-<meta name="og:site_name" content="Ink">
-<meta name="og:url" content="https://ink.uses.ink/posts/a">
-<meta name="og:description" content="All of it.">
+<meta property="og:title" content="Every node">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Ink">
+<meta property="og:url" content="https://ink.uses.ink/posts/a">
+<meta property="og:description" content="All of it.">
 </head>
 <body>
 <div class="quiet-page">

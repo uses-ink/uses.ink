@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"9c7743169c7e4283d26081f68e3b3c38a83044dd3584bb29eff6d4ce44c6fa60","written":true,"out":"<out>","entries":8,"errors":0,"warnings":0}
+{"schema":"uses.build/v1","deploy":"69a4b0d3d99cf3087f92ca9ad2e99c21f9c770e25c0c59f0c0ee5ae05317acae","written":true,"out":"<out>","entries":8,"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
@@ -24,10 +24,10 @@ tea/index.html
 <link rel="canonical" href="https://ink.example/404">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Page not found">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="notes">
-<meta name="og:url" content="https://ink.example/404">
+<meta property="og:title" content="Page not found">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="notes">
+<meta property="og:url" content="https://ink.example/404">
 </head>
 <body>
 <div class="quiet-page">
@@ -66,10 +66,10 @@ tea/index.html
 <link rel="canonical" href="https://ink.example/">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="notes">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="notes">
-<meta name="og:url" content="https://ink.example/">
+<meta property="og:title" content="notes">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="notes">
+<meta property="og:url" content="https://ink.example/">
 </head>
 <body>
 <div class="quiet-page">
@@ -117,11 +117,11 @@ tea/index.html
 <link rel="canonical" href="https://ink.example/kettle">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Kettle">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="notes">
-<meta name="og:url" content="https://ink.example/kettle">
-<meta name="og:description" content="Descale it with vinegar. Related: tea.">
+<meta property="og:title" content="Kettle">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="notes">
+<meta property="og:url" content="https://ink.example/kettle">
+<meta property="og:description" content="Descale it with vinegar. Related: tea.">
 </head>
 <body>
 <div class="quiet-page">
@@ -162,11 +162,11 @@ tea/index.html
 <link rel="canonical" href="https://ink.example/tea">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Tea">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="notes">
-<meta name="og:url" content="https://ink.example/tea">
-<meta name="og:description" content="Water just off the boil. See kettle.">
+<meta property="og:title" content="Tea">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="notes">
+<meta property="og:url" content="https://ink.example/tea">
+<meta property="og:description" content="Water just off the boil. See kettle.">
 </head>
 <body>
 <div class="quiet-page">

@@ -1687,18 +1687,18 @@ checksum = "ca718471876992059f251e33aafc334346ada08042b7661dd1fe313a9bced557"
 
 [[package]]
 name = "unspliced"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1090a9835e9bb5febe80a283eaec1faf42104c00cff48e4709f17c31e4e743e"
+checksum = "bb8ebdd39b3f619d441a176e0ea4749560250174fae2b4a14be3c253703352d0"
 dependencies = [
  "unspliced-macros",
 ]
 
 [[package]]
 name = "unspliced-macros"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e755e87e4a1d5ea6c5a401f40c50e7d628db458196b72c0e8255801927021ace"
+checksum = "f75ac664210b227d1392435d3af31a3923420f7b2241173f4c20ae3d43680f99"
 
 [[package]]
 name = "uses-ink-cli"

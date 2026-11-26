@@ -48,7 +48,7 @@ serde-saphyr = { version = "2.2.0", default-features = false, features = ["deser
 tokio = { version = "1.54.1", features = ["rt", "net"] }
 toml = "1.2.3"
 toml_edit = "0.25.21"
-unspliced = "0.1.1"
+unspliced = "0.1.2"
 # repo tasks: generated Rust is built as tokens and printed
 heck = "0.5.0"
 prettyplease = "0.3.0"

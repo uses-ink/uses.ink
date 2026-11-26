@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"d8fad2158a57bf505859129bdfe19c294b962110e68143494736df562e25066c","written":true,"out":"<out>","entries":12,"errors":0,"warnings":0}
+{"schema":"uses.build/v1","deploy":"0901188bb3ab642b4b60b4ba250bf145de0e644f57281de834be7298374b24ef","written":true,"out":"<out>","entries":12,"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
@@ -31,11 +31,11 @@ style.css
 <link rel="stylesheet" href="/code.css">
 <link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
 <link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
-<meta name="og:title" content="Page not found">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Ink and paper">
-<meta name="og:url" content="https://ink.example/404">
-<meta name="og:description" content="Notes on pens, nibs and the paper that takes them.">
+<meta property="og:title" content="Page not found">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ink and paper">
+<meta property="og:url" content="https://ink.example/404">
+<meta property="og:description" content="Notes on pens, nibs and the paper that takes them.">
 </head>
 <body>
 <div class="quiet-page">
@@ -74,11 +74,11 @@ style.css
 <link rel="stylesheet" href="/code.css">
 <link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
 <link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
-<meta name="og:title" content="About">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Ink and paper">
-<meta name="og:url" content="https://ink.example/about">
-<meta name="og:description" content="Who writes here, and why it is all about ink.">
+<meta property="og:title" content="About">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ink and paper">
+<meta property="og:url" content="https://ink.example/about">
+<meta property="og:description" content="Who writes here, and why it is all about ink.">
 </head>
 <body>
 <div class="quiet-page">
@@ -118,11 +118,11 @@ style.css
 <link rel="stylesheet" href="/code.css">
 <link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
 <link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
-<meta name="og:title" content="Ink and paper">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Ink and paper">
-<meta name="og:url" content="https://ink.example/">
-<meta name="og:description" content="Notes on pens, nibs and the paper that takes them.">
+<meta property="og:title" content="Ink and paper">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ink and paper">
+<meta property="og:url" content="https://ink.example/">
+<meta property="og:description" content="Notes on pens, nibs and the paper that takes them.">
 </head>
 <body>
 <div class="quiet-page">
@@ -171,11 +171,11 @@ it started.</p>
 <link rel="stylesheet" href="/code.css">
 <link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
 <link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
-<meta name="og:title" content="First steps">
-<meta name="og:type" content="article">
-<meta name="og:site_name" content="Ink and paper">
-<meta name="og:url" content="https://ink.example/posts/first-steps">
-<meta name="og:description" content="A fountain pen needs ink, patience and luck practice.">
+<meta property="og:title" content="First steps">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Ink and paper">
+<meta property="og:url" content="https://ink.example/posts/first-steps">
+<meta property="og:description" content="A fountain pen needs ink, patience and luck practice.">
 </head>
 <body>
 <div class="quiet-page">
@@ -306,11 +306,11 @@ it started.</p>
 <link rel="stylesheet" href="/code.css">
 <link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
 <link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
-<meta name="og:title" content="Paper weight">
-<meta name="og:type" content="article">
-<meta name="og:site_name" content="Ink and paper">
-<meta name="og:url" content="https://ink.example/posts/second">
-<meta name="og:description" content="Heavier paper takes wetter nibs. See the first post.">
+<meta property="og:title" content="Paper weight">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Ink and paper">
+<meta property="og:url" content="https://ink.example/posts/second">
+<meta property="og:description" content="Heavier paper takes wetter nibs. See the first post.">
 </head>
 <body>
 <div class="quiet-page">

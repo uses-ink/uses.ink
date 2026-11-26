@@ -105,11 +105,11 @@ impl<H: Highlight> Layout<'_, H> {
                 link rel="alternate" type="application/atom+xml" title=(&identity.title) href=(Url::new(ATOM));
                 link rel="alternate" type="application/rss+xml" title=(&identity.title) href=(Url::new(RSS));
             }
-            meta name="og:title" content=(&page.title);
-            meta name="og:type" content=(kind);
-            meta name="og:site_name" content=(&identity.title);
-            meta name="og:url" content=(&canonical);
-            @if let Some(description) = description { meta name="og:description" content=(description); }
+            meta property="og:title" content=(&page.title);
+            meta property="og:type" content=(kind);
+            meta property="og:site_name" content=(&identity.title);
+            meta property="og:url" content=(&canonical);
+            @if let Some(description) = description { meta property="og:description" content=(description); }
         }
         }
         .render(out)

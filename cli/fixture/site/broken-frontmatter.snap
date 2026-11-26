@@ -4,7 +4,7 @@ source: cli/tests/site.rs
 # exit 0
 {"schema":"uses.event/v1","code":"frontmatter.syntax.invalid","severity":"warning","file":"odd.md","line":2,"what":"the frontmatter does not parse, so the page is built without it: unclosed bracket '[' at line 2, column 8","why":null,"fix":"fix the YAML between the `---` lines"}
 # result
-{"schema":"uses.build/v1","deploy":"e334d5141f3ff88067cc08bf36b6add4e46c7a0a48eaa8b42beabaee06c26745","written":true,"out":"<out>","entries":7,"errors":0,"warnings":1}
+{"schema":"uses.build/v1","deploy":"ba6d66d717a3d377272484873a3c7a76a6f67c72dbd6392ca521735362d6eb18","written":true,"out":"<out>","entries":7,"errors":0,"warnings":1}
 # files
 .ink-manifest.json
 404.html
@@ -25,11 +25,11 @@ style.css
 <link rel="canonical" href="https://ink.example/404">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Page not found">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Broken">
-<meta name="og:url" content="https://ink.example/404">
-<meta name="og:description" content="One page has frontmatter that does not parse: that one.">
+<meta property="og:title" content="Page not found">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Broken">
+<meta property="og:url" content="https://ink.example/404">
+<meta property="og:description" content="One page has frontmatter that does not parse: that one.">
 </head>
 <body>
 <div class="quiet-page">
@@ -66,11 +66,11 @@ style.css
 <link rel="canonical" href="https://ink.example/">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Broken">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Broken">
-<meta name="og:url" content="https://ink.example/">
-<meta name="og:description" content="One page has frontmatter that does not parse: that one.">
+<meta property="og:title" content="Broken">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Broken">
+<meta property="og:url" content="https://ink.example/">
+<meta property="og:description" content="One page has frontmatter that does not parse: that one.">
 </head>
 <body>
 <div class="quiet-page">
@@ -108,11 +108,11 @@ style.css
 <link rel="canonical" href="https://ink.example/odd">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Odd">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Broken">
-<meta name="og:url" content="https://ink.example/odd">
-<meta name="og:description" content="The page is still built, without its frontmatter.">
+<meta property="og:title" content="Odd">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Broken">
+<meta property="og:url" content="https://ink.example/odd">
+<meta property="og:description" content="The page is still built, without its frontmatter.">
 </head>
 <body>
 <div class="quiet-page">

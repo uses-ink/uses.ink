@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"59ca03a037720c9da8b0c59b5c109758e91aaa404ecd4ccb68c9a16741fd20b2","written":true,"out":"<out>","entries":7,"errors":0,"warnings":0}
+{"schema":"uses.build/v1","deploy":"71452f13bab64cea73c7474ad7cd248bd963fa0a56b44d770e4bd8c5ff9a6212","written":true,"out":"<out>","entries":7,"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
@@ -24,11 +24,11 @@ usage/index.html
 <link rel="canonical" href="https://ink.example/404">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Page not found">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="My tool">
-<meta name="og:url" content="https://ink.example/404">
-<meta name="og:description" content="It does one thing. See usage.">
+<meta property="og:title" content="Page not found">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="My tool">
+<meta property="og:url" content="https://ink.example/404">
+<meta property="og:description" content="It does one thing. See usage.">
 </head>
 <body>
 <div class="quiet-page">
@@ -65,11 +65,11 @@ usage/index.html
 <link rel="canonical" href="https://ink.example/">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="My tool">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="My tool">
-<meta name="og:url" content="https://ink.example/">
-<meta name="og:description" content="It does one thing. See usage.">
+<meta property="og:title" content="My tool">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="My tool">
+<meta property="og:url" content="https://ink.example/">
+<meta property="og:description" content="It does one thing. See usage.">
 </head>
 <body>
 <div class="quiet-page">
@@ -107,11 +107,11 @@ usage/index.html
 <link rel="canonical" href="https://ink.example/usage">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Usage">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="My tool">
-<meta name="og:url" content="https://ink.example/usage">
-<meta name="og:description" content="Run my-tool --help.">
+<meta property="og:title" content="Usage">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="My tool">
+<meta property="og:url" content="https://ink.example/usage">
+<meta property="og:description" content="Run my-tool --help.">
 </head>
 <body>
 <div class="quiet-page">

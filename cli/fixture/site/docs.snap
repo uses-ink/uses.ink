@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"b51adcb8778fba2f2cd16963add3b0da0dc301411c438229e50854884f180d5c","written":true,"out":"<out>","entries":8,"errors":0,"warnings":0}
+{"schema":"uses.build/v1","deploy":"1f3214cd873fd50bb155bb7507723e8c5d841e765acf1a7ea3668aa40ff60677","written":true,"out":"<out>","entries":8,"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
@@ -25,11 +25,11 @@ style.css
 <link rel="canonical" href="https://ink.example/404">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Page not found">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Handbook">
-<meta name="og:url" content="https://ink.example/404">
-<meta name="og:description" content="Start with installing, then use it.">
+<meta property="og:title" content="Page not found">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Handbook">
+<meta property="og:url" content="https://ink.example/404">
+<meta property="og:description" content="Start with installing, then use it.">
 </head>
 <body>
 <div class="quiet-page">
@@ -59,11 +59,11 @@ style.css
 <link rel="canonical" href="https://ink.example/guide/install">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Install">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Handbook">
-<meta name="og:url" content="https://ink.example/guide/install">
-<meta name="og:description" content="Download the binary and put it on your path.">
+<meta property="og:title" content="Install">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Handbook">
+<meta property="og:url" content="https://ink.example/guide/install">
+<meta property="og:description" content="Download the binary and put it on your path.">
 </head>
 <body>
 <div class="quiet-page">
@@ -94,11 +94,11 @@ style.css
 <link rel="canonical" href="https://ink.example/guide/use">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Use">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Handbook">
-<meta name="og:url" content="https://ink.example/guide/use">
-<meta name="og:description" content="Run it in a folder. Back to installing.">
+<meta property="og:title" content="Use">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Handbook">
+<meta property="og:url" content="https://ink.example/guide/use">
+<meta property="og:description" content="Run it in a folder. Back to installing.">
 </head>
 <body>
 <div class="quiet-page">
@@ -129,11 +129,11 @@ style.css
 <link rel="canonical" href="https://ink.example/">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
-<meta name="og:title" content="Handbook">
-<meta name="og:type" content="website">
-<meta name="og:site_name" content="Handbook">
-<meta name="og:url" content="https://ink.example/">
-<meta name="og:description" content="Start with installing, then use it.">
+<meta property="og:title" content="Handbook">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Handbook">
+<meta property="og:url" content="https://ink.example/">
+<meta property="og:description" content="Start with installing, then use it.">
 </head>
 <body>
 <div class="quiet-page">
