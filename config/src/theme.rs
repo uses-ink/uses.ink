@@ -86,12 +86,8 @@ impl FromStr for ThemeId {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         let (scope, name) = text.split_once(':').ok_or(ThemeIdError::NoScope)?;
         let variant = name.strip_prefix("theme-").ok_or(ThemeIdError::NotTheme)?;
-        if !is_kebab(scope) {
-            return Err(ThemeIdError::NotKebab(IdPart::Scope));
-        }
-        if !is_kebab(variant) {
-            return Err(ThemeIdError::NotKebab(IdPart::Variant));
-        }
+        let Kebab(scope) = Kebab::try_from(scope).map_err(|NotKebab| ThemeIdError::NotKebab(IdPart::Scope))?;
+        let Kebab(variant) = Kebab::try_from(variant).map_err(|NotKebab| ThemeIdError::NotKebab(IdPart::Variant))?;
         Ok(Self { scope: scope.to_owned(), variant: variant.to_owned() })
     }
 }
@@ -114,13 +110,26 @@ impl fmt::Display for ThemeId {
     }
 }
 
-/// Lower-case letters and digits, with single `-` inside: `theme-quiet`, `accent-2`.
-pub(crate) fn is_kebab(text: &str) -> bool {
-    !text.is_empty()
-        && !text.starts_with('-')
-        && !text.ends_with('-')
-        && !text.contains("--")
-        && text.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+/// Text that is kebab-case: lower-case letters and digits, with single `-` inside, as in
+/// `theme-quiet` and `accent-2`. A token's name and both parts of a [`ThemeId`] are.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Kebab<'a>(&'a str);
+
+/// Text that is not kebab-case.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct NotKebab;
+
+impl<'a> TryFrom<&'a str> for Kebab<'a> {
+    type Error = NotKebab;
+
+    fn try_from(text: &'a str) -> Result<Self, Self::Error> {
+        let kebab = !text.is_empty()
+            && !text.starts_with('-')
+            && !text.ends_with('-')
+            && !text.contains("--")
+            && text.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+        if kebab { Ok(Self(text)) } else { Err(NotKebab) }
+    }
 }
 
 #[cfg(test)]

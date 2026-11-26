@@ -1,16 +1,21 @@
 //! Writing decisions as pins: `ink explain --pin` and the CLI's pin commands. The only module
-//! that sees `toml_edit`. The values are written exactly as [`Config::parse`](crate::Config::parse)
+//! that sees `toml_edit`. Values are written exactly as [`Config::parse`](crate::Config::parse)
 //! reads them, so the file read back pins every decision it was written from.
 
+mod written;
+
+use std::error::Error;
 use std::fmt;
 
-use model::{Decision, DecisionCode, Subject, When};
-use toml_edit::{DocumentMut, InlineTable, Item, Table, TableLike, TomlError, Value};
+use model::decision::{Decision, Mismatch, Scope};
+use model::{AnyCode, AnyDecision, Code, Each, Span, Subject, When};
+use toml_edit::{DocumentMut, InlineTable, Item, TableLike, TomlError, Value};
 
-use crate::place::{self, KeyPath, Reach};
-use model::Span;
+pub(crate) use written::Written;
 
-mod value;
+use crate::Offsets;
+use crate::pin::{KeyPath, Place};
+use crate::value::Toml;
 
 impl fmt::Display for KeyPath<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -24,185 +29,133 @@ impl fmt::Display for KeyPath<'_> {
     }
 }
 
-/// An existing `ink.toml` that does not parse, keeping the parser's error as its source.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SyntaxError(TomlError);
-
-impl SyntaxError {
-    /// Where the parser stopped, if it says.
-    pub fn span(&self) -> Option<Span> {
-        self.0.span().map(place::span)
-    }
-}
-
-impl fmt::Display for SyntaxError {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "ink.toml does not parse")
-    }
-}
-
-impl std::error::Error for SyntaxError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.0)
-    }
-}
-
-/// A decision that cannot be written as a pin.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Unwritable {
-    /// A sitewide code on a file, or a per-file code on the site: no key pins it.
-    Subject {
-        /// The decision's code.
-        code: DecisionCode,
-        /// What it was decided on.
-        subject: Subject,
-    },
-    /// A date outside what TOML writes, years 0 to 9999.
-    When {
-        /// The decision's code.
-        code: DecisionCode,
-        /// The date.
-        at: When,
-    },
-    /// A code or a value this version of uses.ink cannot write.
-    Unknown {
-        /// The decision's code.
-        code: DecisionCode,
-    },
-}
-
-impl fmt::Display for Unwritable {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Subject { code, subject } => write!(out, "`{code}` is not pinned on {subject}"),
-            Self::When { code, at } => write!(out, "`{code}` is {at}; TOML writes years 0 to 9999"),
-            Self::Unknown { code } => write!(out, "`{code}` cannot be written as a pin yet"),
-        }
-    }
-}
-
-impl std::error::Error for Unwritable {}
-
-/// Why pins could not be written into an existing `ink.toml`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum PinsError {
-    /// The existing file does not parse.
-    Syntax(SyntaxError),
-    /// A key on the way to the pin holds something other than a table, as `site = 3` does.
-    NotTable {
-        /// The code being pinned.
-        code: DecisionCode,
-        /// What it is pinned on.
-        subject: Subject,
-    },
-    /// The decision has no pin.
-    Unwritable(Unwritable),
-}
-
-impl fmt::Display for PinsError {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Syntax(_) => write!(out, "pins cannot be written into ink.toml"),
-            Self::NotTable { code, subject } => {
-                write!(out, "`{code}` cannot be pinned on {subject}: a key on its way in ink.toml is not a table")
-            }
-            Self::Unwritable(_) => write!(out, "a decision cannot be written as a pin"),
-        }
-    }
-}
-
-impl std::error::Error for PinsError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Syntax(error) => Some(error),
-            Self::Unwritable(unwritable) => Some(unwritable),
-            Self::NotTable { .. } => None,
-        }
-    }
-}
-
-/// The comment `pins` ends with when some decisions could not be written.
-struct NotPinned(Vec<PinsError>);
-
-impl fmt::Display for NotPinned {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for error in &self.0 {
-            match error {
-                PinsError::Unwritable(unwritable) => writeln!(out, "# not pinned: {unwritable}")?,
-                other => writeln!(out, "# not pinned: {other}")?,
-            }
-        }
-        Ok(())
-    }
-}
-
-impl From<Unwritable> for PinsError {
-    fn from(unwritable: Unwritable) -> Self {
-        Self::Unwritable(unwritable)
-    }
-}
-
 /// A whole `ink.toml` that pins every decision: sitewide tables first, then the per-file tables
 /// (`[file."..."]`, then `[page."..."]`), each sorted by path, keys in decision order. A later
 /// decision with the same code and subject replaces an earlier one. A decision that cannot be
-/// written is listed in a comment at the end, never dropped.
-pub fn pins(decisions: &[Decision]) -> String {
-    let mut ordered: Vec<&Decision> = decisions.iter().collect();
-    ordered.sort_by_key(|decision| order(decision));
-    let mut document = DocumentMut::new();
-    let unwritten = NotPinned(ordered.into_iter().filter_map(|decision| put(&mut document, decision).err()).collect());
+/// written is listed in a comment at the end, with its causes, never dropped.
+pub fn pins<'a, D: Pinnable + 'a>(decisions: impl IntoIterator<Item = &'a D>) -> String {
+    let mut document = Document(DocumentMut::new());
+    let unwritten = NotPinned(document.put(decisions).into_iter().filter_map(Result::err).collect());
     if !unwritten.0.is_empty() {
-        document.set_trailing(format!("\n{unwritten}"));
+        document.0.set_trailing(format!("\n{unwritten}"));
     }
-    document.to_string()
+    document.0.to_string()
 }
 
 /// `existing` with every decision pinned in it: values already there are replaced in place,
 /// keeping their comments; new tables go after the existing ones.
-pub fn pins_into(existing: &str, decisions: &[Decision]) -> Result<String, PinsError> {
-    let mut document: DocumentMut = existing.parse().map_err(|error| PinsError::Syntax(SyntaxError(error)))?;
-    let mut ordered: Vec<&Decision> = decisions.iter().collect();
-    ordered.sort_by_key(|decision| order(decision));
-    for decision in ordered {
-        put(&mut document, decision)?;
-    }
-    Ok(document.to_string())
+pub fn pins_into<'a, D: Pinnable + 'a>(
+    existing: &str,
+    decisions: impl IntoIterator<Item = &'a D>,
+) -> Result<String, PinsError> {
+    let mut document = Document(existing.parse().map_err(|error| PinsError::Syntax(SyntaxError(error)))?);
+    document.put(decisions).into_iter().collect::<Result<(), _>>()?;
+    Ok(document.0.to_string())
 }
 
-/// Sitewide first, then by table, by file and by the code's place in the inferrer order.
-fn order(decision: &Decision) -> (bool, &'static str, Option<&str>, usize) {
-    let code = decision.code();
-    let file = match &decision.subject {
-        Subject::File(path) => Some(path.as_str()),
-        _ => None,
-    };
-    let table = place::of(code).map_or("", |(table, _)| table);
-    let rank = DecisionCode::ALL.iter().position(|c| *c == code).unwrap_or(usize::MAX);
-    (!code.is_sitewide(), table, file, rank)
+/// A decision [`pins`] can write: an [`AnyDecision`], and, until the CLI is ported onto typed
+/// decisions, the untyped [`model::Decision`].
+pub trait Pinnable {
+    /// Its code.
+    fn code(&self) -> AnyCode;
+
+    /// What it is about.
+    fn subject(&self) -> Subject;
+
+    /// The decision as code `C`, which [`Pinnable::code`] names.
+    fn typed<C: Code>(&self) -> Result<Decision<C>, Mismatch>;
 }
 
-fn put(document: &mut DocumentMut, decision: &Decision) -> Result<(), PinsError> {
-    let code = decision.code();
-    let (table, key) = place::of(code).ok_or(Unwritable::Unknown { code })?;
-    let file = match &decision.subject {
-        Subject::Site if code.is_sitewide() => None,
-        Subject::File(path) if !code.is_sitewide() => Some(path.as_str()),
-        subject => return Err(Unwritable::Subject { code, subject: subject.clone() }.into()),
-    };
-    let value = value::write(&decision.decided)?;
-    let not_table = || PinsError::NotTable { code, subject: decision.subject.clone() };
-    let holds = match Reach::from(code) {
-        Reach::Site => Holds::Pins,
-        Reach::File => Holds::Tables,
-    };
-    let (mut target, form) = open(document.as_table_mut(), Form::Header, table, holds).ok_or_else(not_table)?;
-    if let Some(file) = file {
-        (target, _) = open(target, form, file, Holds::Pins).ok_or_else(not_table)?;
+impl Pinnable for AnyDecision {
+    fn code(&self) -> AnyCode {
+        Self::code(self)
     }
-    set(target, key, value);
-    Ok(())
+
+    fn subject(&self) -> Subject {
+        Self::subject(self)
+    }
+
+    fn typed<C: Code>(&self) -> Result<Decision<C>, Mismatch> {
+        self.get::<C>().cloned().ok_or(Mismatch::Code { expected: C::CODE, found: self.code() })
+    }
+}
+
+// HACK(the engine records `AnyDecision`s and the CLI passes them, phase 3): the untyped decision
+// the CLI still has; a subject of the wrong scope is a `Mismatch`, written as a comment.
+impl Pinnable for model::Decision {
+    fn code(&self) -> AnyCode {
+        self.decided.code().into()
+    }
+
+    fn subject(&self) -> Subject {
+        self.subject.clone()
+    }
+
+    fn typed<C: Code>(&self) -> Result<Decision<C>, Mismatch> {
+        AnyDecision::try_from(self.clone())?.try_into()
+    }
+}
+
+/// The document being written.
+#[derive(Debug)]
+struct Document(DocumentMut);
+
+impl Document {
+    /// Pins each decision, in file order (sitewide first, then by table, by file and by the
+    /// code's place in decision order), and says how each went.
+    fn put<'a, D: Pinnable + 'a>(&mut self, decisions: impl IntoIterator<Item = &'a D>) -> Vec<Result<(), PinsError>> {
+        let mut ordered: Vec<(Place, Subject, &D)> = decisions
+            .into_iter()
+            .map(|decision| (Place::from(decision.code()), decision.subject(), decision))
+            .collect();
+        ordered.sort_by(|(a, a_subject, _), (b, b_subject, _)| {
+            let key = |place: &Place, subject| (place.code.scope() == Scope::File, place.table, subject, place.code);
+            key(a, a_subject).cmp(&key(b, b_subject))
+        });
+        ordered.into_iter().map(|(place, _, decision)| place.code.each(&mut Put { document: self, decision })).collect()
+    }
+
+    /// Pins `decision` at its place.
+    fn pin<C: Code<Value: Toml>>(&mut self, decision: &Decision<C>) -> Result<(), PinsError> {
+        let place = Place::from(C::CODE);
+        let subject: Subject = decision.subject.clone().into();
+        let value = match decision.value.write() {
+            Ok(Written(value)) => value,
+            Err(source) => return Err(PinsError::Value { code: C::CODE, subject, source }),
+        };
+        let holds = match C::CODE.scope() {
+            Scope::Site => Holds::Pins,
+            Scope::File => Holds::Tables,
+        };
+        let root = Table { inner: self.0.as_table_mut(), form: Form::Header };
+        let mut target = root.open(place.table, holds);
+        if let Subject::File(path) = &subject {
+            target = target.and_then(|table| table.open(path.as_str(), Holds::Pins));
+        }
+        match target {
+            Some(table) => {
+                table.set(place.key, value);
+                Ok(())
+            }
+            None => Err(PinsError::NotTable { code: C::CODE, subject }),
+        }
+    }
+}
+
+/// One decision being pinned, as its code.
+#[derive(Debug)]
+struct Put<'a, D> {
+    document: &'a mut Document,
+    decision: &'a D,
+}
+
+impl<C: Code<Value: Toml>, D: Pinnable> Each<C> for Put<'_, D> {
+    type Out = Result<(), PinsError>;
+
+    fn each(&mut self) -> Self::Out {
+        let decision = self.decision.typed::<C>().map_err(|source| PinsError::Mismatch { code: C::CODE, source })?;
+        self.document.pin(&decision)
+    }
 }
 
 /// How a table is written.
@@ -223,37 +176,159 @@ enum Holds {
     Tables,
 }
 
-/// The table at `name` in `parent` (written in `form`), made if missing, and its own form.
-/// `None` when `name` holds something other than a table.
-fn open<'a>(
-    parent: &'a mut dyn TableLike,
+/// A table of the document, and how it is written.
+struct Table<'a> {
+    inner: &'a mut dyn TableLike,
     form: Form,
-    name: &str,
-    holds: Holds,
-) -> Option<(&'a mut dyn TableLike, Form)> {
-    let item = parent.entry(name).or_insert_with(|| match form {
-        Form::Inline => Item::Value(Value::InlineTable(InlineTable::new())),
-        Form::Header => {
-            let mut table = Table::new();
-            table.set_implicit(holds == Holds::Tables);
-            Item::Table(table)
-        }
-    });
-    let form = if item.is_inline_table() { Form::Inline } else { Form::Header };
-    item.as_table_like_mut().map(|table| (table, form))
 }
 
-/// Sets `key`, keeping the key and the comments and spacing around a value already there.
-fn set(table: &mut dyn TableLike, key: &str, mut value: Value) {
-    match table.get_mut(key) {
-        Some(item) => {
-            if let Some(old) = item.as_value() {
-                *value.decor_mut() = old.decor().clone();
+impl Table<'_> {
+    /// The table at `name`, made in this table's form if missing. `None` when `name` holds
+    /// something other than a table.
+    fn open(self, name: &str, holds: Holds) -> Option<Self> {
+        let form = self.form;
+        let item = self.inner.entry(name).or_insert_with(|| match form {
+            Form::Inline => Item::Value(Value::InlineTable(InlineTable::new())),
+            Form::Header => {
+                let mut table = toml_edit::Table::new();
+                table.set_implicit(holds == Holds::Tables);
+                Item::Table(table)
             }
-            *item = Item::Value(value);
+        });
+        let form = if item.is_inline_table() { Form::Inline } else { Form::Header };
+        item.as_table_like_mut().map(|inner| Table { inner, form })
+    }
+
+    /// Sets `key`, keeping the key and the comments and spacing around a value already there.
+    fn set(self, key: &str, mut value: Value) {
+        match self.inner.get_mut(key) {
+            Some(item) => {
+                if let Some(old) = item.as_value() {
+                    *value.decor_mut() = old.decor().clone();
+                }
+                *item = Item::Value(value);
+            }
+            None => {
+                self.inner.insert(key, Item::Value(value));
+            }
         }
-        None => {
-            table.insert(key, Item::Value(value));
+    }
+}
+
+/// The comment [`pins`] ends with when some decisions could not be written: each error and its
+/// causes on a line.
+struct NotPinned(Vec<PinsError>);
+
+impl fmt::Display for NotPinned {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for error in &self.0 {
+            write!(out, "# not pinned: {error}")?;
+            let mut cause = error.source();
+            while let Some(source) = cause {
+                write!(out, ": {source}")?;
+                cause = source.source();
+            }
+            writeln!(out)?;
+        }
+        Ok(())
+    }
+}
+
+/// An existing `ink.toml` that does not parse, keeping the parser's error as its source.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SyntaxError(TomlError);
+
+impl SyntaxError {
+    /// Where the parser stopped, if it says.
+    pub fn span(&self) -> Option<Span> {
+        self.0.span().map(|range| Offsets(range).into())
+    }
+}
+
+impl fmt::Display for SyntaxError {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "ink.toml does not parse")
+    }
+}
+
+impl Error for SyntaxError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+/// A value TOML cannot hold.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Unwritable {
+    /// A date outside the years TOML writes, 0 to 9999.
+    Year(When),
+    /// A value the model added after this version of uses.ink, which it has no spelling for.
+    Unknown,
+}
+
+impl fmt::Display for Unwritable {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Year(at) => write!(out, "{at} is outside the years TOML writes, 0 to 9999"),
+            Self::Unknown => write!(out, "this version of uses.ink has no spelling for the value"),
+        }
+    }
+}
+
+impl Error for Unwritable {}
+
+/// Why a decision could not be pinned.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum PinsError {
+    /// The existing file does not parse.
+    Syntax(SyntaxError),
+    /// A key on the way to the pin holds something other than a table, as `site = 3` does.
+    NotTable {
+        /// The code being pinned.
+        code: AnyCode,
+        /// What it is pinned on.
+        subject: Subject,
+    },
+    /// The decided value cannot be written in TOML.
+    Value {
+        /// The code being pinned.
+        code: AnyCode,
+        /// What it is pinned on.
+        subject: Subject,
+        /// Why the value cannot be written.
+        source: Unwritable,
+    },
+    /// An untyped decision whose subject or value is not of its code.
+    Mismatch {
+        /// The code it says it is.
+        code: AnyCode,
+        /// What does not match.
+        source: Mismatch,
+    },
+}
+
+impl fmt::Display for PinsError {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Syntax(_) => write!(out, "pins cannot be written into ink.toml"),
+            Self::NotTable { code, subject } => {
+                write!(out, "`{code}` cannot be pinned on {subject}: a key on its way in ink.toml is not a table")
+            }
+            Self::Value { code, subject, .. } => write!(out, "`{code}` on {subject} cannot be written as a pin"),
+            Self::Mismatch { code, .. } => write!(out, "a `{code}` decision cannot be written as a pin"),
+        }
+    }
+}
+
+impl Error for PinsError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Syntax(error) => Some(error),
+            Self::Value { source, .. } => Some(source),
+            Self::Mismatch { source, .. } => Some(source),
+            Self::NotTable { .. } => None,
         }
     }
 }

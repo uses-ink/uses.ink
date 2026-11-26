@@ -17,7 +17,7 @@ toml = { workspace = true, features = ["preserve_order"] }
 toml_edit.workspace = true
 
 [dev-dependencies]
-insta.workspace = true
+fixture.workspace = true
 proptest.workspace = true
 
 [lints]

@@ -31,5 +31,4 @@ updated = 2024-03-02T09:30:00.25Z
 slug = "hello"
 tags = ["Rust", "notes on shelves"]
 
-# not pinned: `site.home` is not pinned on x.md
-# not pinned: `page.date` is -000005-01-01; TOML writes years 0 to 9999
+# not pinned: `page.date` on old.md cannot be written as a pin: -000005-01-01 is outside the years TOML writes, 0 to 9999

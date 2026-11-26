@@ -1566,11 +1566,11 @@ dependencies = [
 name = "uses-ink-config"
 version = "0.0.0"
 dependencies = [
- "insta",
  "jiff",
  "proptest",
  "toml",
  "toml_edit",
+ "uses-ink-fixture",
  "uses-ink-model",
 ]
 

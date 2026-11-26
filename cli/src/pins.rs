@@ -11,14 +11,14 @@ pub(crate) struct Configured<'a>(pub(crate) &'a Config);
 
 impl Pins for Configured<'_> {
     fn pin(&self, code: DecisionCode, subject: &Subject) -> Option<Pin> {
-        self.0.pin(code, subject).map(|pin| Pin { decided: pin.decided.clone(), span: pin.span })
+        self.0.decided(code.into(), subject).map(|(decided, span)| Pin { decided, span })
     }
 
     fn included(&self, path: &ContentPath) -> Option<Span> {
-        self.0.include().iter().find(|pattern| pattern.value.matches(path)).map(|pattern| pattern.span)
+        self.0.include().find(path).map(|pattern| pattern.span)
     }
 
     fn excluded(&self, path: &ContentPath) -> Option<Span> {
-        self.0.exclude().iter().find(|pattern| pattern.value.matches(path)).map(|pattern| pattern.span)
+        self.0.exclude().find(path).map(|pattern| pattern.span)
     }
 }

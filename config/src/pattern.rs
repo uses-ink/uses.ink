@@ -13,7 +13,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use model::ContentPath;
+use model::{ContentPath, Spanned};
 
 /// One `include` or `exclude` entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -114,21 +114,8 @@ impl Pattern {
     /// Whether it matches `path` or a folder holding it.
     pub fn matches(&self, path: &ContentPath) -> bool {
         let parts: Vec<&str> = path.segments().collect();
-        (1..=parts.len()).any(|len| parts.get(..len).is_some_and(|prefix| self.matches_whole(prefix)))
-    }
-
-    /// Whether it matches exactly these parts: the wildcard walk with `**` as the run over
-    /// parts and each other part matching one part.
-    fn matches_whole(&self, parts: &[&str]) -> bool {
-        walk(
-            &self.parts,
-            parts,
-            |part| *part == Part::Any,
-            |pattern, part| match pattern {
-                Part::Any => true,
-                Part::Glob(pieces) => glob(pieces, part),
-            },
-        )
+        (1..=parts.len())
+            .any(|len| parts.get(..len).is_some_and(|prefix| Walk { pattern: &self.parts, input: prefix }.matches()))
     }
 }
 
@@ -158,47 +145,110 @@ impl Part {
     }
 }
 
-/// Whether one part's pieces match its characters.
-fn glob(pieces: &[Piece], part: &str) -> bool {
-    let chars: Vec<char> = part.chars().collect();
-    walk(
-        pieces,
-        &chars,
-        |piece| *piece == Piece::Run,
-        |piece, c| match piece {
-            Piece::Run | Piece::One => true,
-            Piece::Char(want) => want == c,
-        },
-    )
+/// An item of a pattern that the wildcard walk matches against input items `I`: a [`Part`]
+/// against a path's parts, a [`Piece`] against one part's characters.
+trait Wild<I> {
+    /// Whether it matches any number of input items.
+    fn is_run(&self) -> bool;
+    /// Whether it matches the one input item `item`.
+    fn one(&self, item: &I) -> bool;
 }
 
-/// The linear wildcard walk. A run matches any number of input items; any other pattern item
-/// matches one input item when `one` says so. On a miss the walk goes back to the last run and
-/// lets it take one more item.
-fn walk<P, I>(pattern: &[P], input: &[I], is_run: impl Fn(&P) -> bool, one: impl Fn(&P, &I) -> bool) -> bool {
-    let (mut p, mut i) = (0, 0);
-    // the last run seen, and the input index after the items it has taken so far
-    let mut back: Option<(usize, usize)> = None;
-    while let Some(at) = input.get(i) {
-        match pattern.get(p) {
-            Some(item) if is_run(item) => {
-                back = Some((p, i));
-                p += 1;
+impl Wild<&str> for Part {
+    fn is_run(&self) -> bool {
+        *self == Self::Any
+    }
+
+    fn one(&self, part: &&str) -> bool {
+        match self {
+            Self::Any => true,
+            Self::Glob(pieces) => {
+                let chars: Vec<char> = part.chars().collect();
+                Walk { pattern: pieces, input: &chars }.matches()
             }
-            Some(item) if one(item, at) => {
-                p += 1;
-                i += 1;
-            }
-            _ => match back {
-                Some((run, taken)) => {
-                    back = Some((run, taken + 1));
-                    (p, i) = (run + 1, taken + 1);
-                }
-                None => return false,
-            },
         }
     }
-    pattern.get(p..).is_some_and(|rest| rest.iter().all(is_run))
+}
+
+impl Wild<char> for Piece {
+    fn is_run(&self) -> bool {
+        *self == Self::Run
+    }
+
+    fn one(&self, c: &char) -> bool {
+        match self {
+            Self::Run | Self::One => true,
+            Self::Char(want) => want == c,
+        }
+    }
+}
+
+/// The linear wildcard walk of a whole input. A run matches any number of input items; any
+/// other pattern item matches one input item when [`Wild::one`] says so. On a miss the walk goes
+/// back to the last run and lets it take one more item.
+#[derive(Debug)]
+struct Walk<'a, P, I> {
+    pattern: &'a [P],
+    input: &'a [I],
+}
+
+impl<P: Wild<I>, I> Walk<'_, P, I> {
+    fn matches(self) -> bool {
+        let (mut p, mut i) = (0, 0);
+        // the last run seen, and the input index after the items it has taken so far
+        let mut back: Option<(usize, usize)> = None;
+        while let Some(at) = self.input.get(i) {
+            match self.pattern.get(p) {
+                Some(item) if item.is_run() => {
+                    back = Some((p, i));
+                    p += 1;
+                }
+                Some(item) if item.one(at) => {
+                    p += 1;
+                    i += 1;
+                }
+                _ => match back {
+                    Some((run, taken)) => {
+                        back = Some((run, taken + 1));
+                        (p, i) = (run + 1, taken + 1);
+                    }
+                    None => return false,
+                },
+            }
+        }
+        self.pattern.get(p..).is_some_and(|rest| rest.iter().all(Wild::is_run))
+    }
+}
+
+/// The patterns of `include` or `exclude`, each with where it is written, in the order written.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Patterns(Vec<Spanned<Pattern>>);
+
+impl Patterns {
+    /// The first pattern that matches `path`, if one does.
+    pub fn find(&self, path: &ContentPath) -> Option<&Spanned<Pattern>> {
+        self.0.iter().find(|pattern| pattern.value.matches(path))
+    }
+
+    /// Every pattern, in the order written.
+    pub fn iter(&self) -> std::slice::Iter<'_, Spanned<Pattern>> {
+        self.0.iter()
+    }
+}
+
+impl FromIterator<Spanned<Pattern>> for Patterns {
+    fn from_iter<I: IntoIterator<Item = Spanned<Pattern>>>(patterns: I) -> Self {
+        Self(patterns.into_iter().collect())
+    }
+}
+
+impl<'a> IntoIterator for &'a Patterns {
+    type Item = &'a Spanned<Pattern>;
+    type IntoIter = std::slice::Iter<'a, Spanned<Pattern>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
 }
 
 #[cfg(test)]

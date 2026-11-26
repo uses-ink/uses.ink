@@ -1,179 +1,182 @@
 //! Reading `ink.toml` into a [`Config`]: a walk over toml's spanned tree, so every key and value
 //! keeps where it was written. The only module that sees the `toml` crate.
 
-use std::collections::BTreeMap;
-use std::ops::Range;
+mod node;
 
-use model::{ContentPath, DecisionCode, Diagnostic, Problem, Spanned};
-use toml::de::{DeTable, DeValue};
+use std::str::FromStr;
 
-use crate::place::Reach;
-use crate::place::{self, KeyPath, across, span};
-use crate::shape::Shape;
-use crate::theme::{Theme, ThemeId, Token, is_kebab};
-use crate::{Config, Parsed, Pattern, Pin};
+use model::decision::Scope;
+use model::{Code, ContentPath, Diagnostic, Each, Problem, Span, Spanned, Subject};
+use toml::de::DeTable;
 
-mod value;
+pub(crate) use node::{Key, Node, Refused, Table};
 
-type Entry<'a, 'i> = (&'a toml::Spanned<toml::de::DeString<'i>>, &'a toml::Spanned<DeValue<'i>>);
+use crate::pin::{KeyPath, Place};
+use crate::theme::{Kebab, Theme, Token};
+use crate::value::{Cause, Expected, Shape, Toml};
+use crate::{Config, Offsets, Parsed, Patterns, Pinned};
 
-pub(crate) fn parse(text: &str) -> Parsed {
-    let (root, errors) = DeTable::parse_recoverable(text);
-    if !errors.is_empty() {
-        let diagnostics = errors
-            .iter()
-            .map(|error| {
-                let problem = Problem::ConfigSyntaxInvalid { reason: error.message().to_owned() };
-                let diagnostic = Diagnostic::new(problem);
-                match error.span() {
-                    Some(range) => diagnostic.at(span(range)),
-                    None => diagnostic,
-                }
-            })
-            .collect();
-        return Parsed { config: Config::default(), diagnostics };
-    }
-    let mut reader = Reader::default();
-    for entry in root.get_ref() {
-        reader.top(entry);
-    }
-    Parsed { config: reader.config, diagnostics: reader.diagnostics }
-}
-
-#[derive(Default)]
-struct Reader {
+/// The walk: what read cleanly so far, and every problem.
+#[derive(Debug, Default)]
+pub(crate) struct Reader {
     config: Config,
     diagnostics: Vec<Diagnostic>,
 }
 
 impl Reader {
-    fn unknown(&mut self, key: &KeyPath<'_>, at: Range<usize>) {
-        self.diagnostics.push(Diagnostic::new(Problem::ConfigKeyUnknown { key: key.to_string() }).at(span(at)));
+    /// Reads all of `text`.
+    pub(crate) fn parse(text: &str) -> Parsed {
+        let (root, errors) = DeTable::parse_recoverable(text);
+        if !errors.is_empty() {
+            let diagnostics = errors
+                .iter()
+                .map(|error| {
+                    let diagnostic =
+                        Diagnostic::new(Problem::ConfigSyntaxInvalid { reason: error.message().to_owned() });
+                    match error.span() {
+                        Some(range) => diagnostic.at(Offsets(range).into()),
+                        None => diagnostic,
+                    }
+                })
+                .collect();
+            return Parsed { config: Config::default(), diagnostics };
+        }
+        let mut reader = Self::default();
+        for (key, node) in Table(root.get_ref()).entries() {
+            reader.top(key, node);
+        }
+        Parsed { config: reader.config, diagnostics: reader.diagnostics }
     }
 
-    fn invalid(&mut self, key: &KeyPath<'_>, expected: &Shape<'_>, at: Range<usize>) {
+    fn unknown(&mut self, key: &KeyPath<'_>, at: Span) {
+        self.diagnostics.push(Diagnostic::new(Problem::ConfigKeyUnknown { key: key.to_string() }).at(at));
+    }
+
+    fn invalid(&mut self, key: &KeyPath<'_>, expected: &Expected<'_>, at: Span) {
         let problem = Problem::ConfigValueInvalid { key: key.to_string(), expected: expected.to_string() };
-        self.diagnostics.push(Diagnostic::new(problem).at(span(at)));
+        self.diagnostics.push(Diagnostic::new(problem).at(at));
     }
 
-    /// The table of `value`, or a diagnostic saying `key` takes one.
-    fn table<'a, 'i>(
-        &mut self,
-        key: &KeyPath<'_>,
-        value: &'a toml::Spanned<DeValue<'i>>,
-        expected: &Shape<'_>,
-    ) -> Option<&'a DeTable<'i>> {
-        let table = value.get_ref().as_table();
+    /// The table `node` is, or a diagnostic saying `key` takes one shaped `shape`.
+    fn table<'a>(&mut self, key: &KeyPath<'_>, node: Node<'a>, shape: Shape<'_>) -> Option<Table<'a>> {
+        let table = node.table();
         if table.is_none() {
-            self.invalid(key, expected, value.span());
+            self.invalid(key, &shape.into(), node.span());
         }
         table
     }
 
-    fn top(&mut self, (key, value): Entry<'_, '_>) {
-        let name = key.get_ref().as_ref();
-        let path = KeyPath(vec![name]);
-        match name {
-            "theme" => self.theme(value),
-            "include" => self.config.include = self.patterns(&path, value),
-            "exclude" => self.config.exclude = self.patterns(&path, value),
-            _ if place::holds(name, Reach::Site) || place::holds(name, Reach::File) => {
-                let Some(table) = self.table(&path, value, &Shape::Table(name)) else { return };
-                for entry in table {
-                    self.pin_table(name, entry);
+    /// The `T` the string `node` spells, or a diagnostic saying `key` takes `shape`, with the
+    /// reason `T` gave.
+    fn parsed<T>(&mut self, key: &KeyPath<'_>, node: Node<'_>, shape: Shape<'_>) -> Option<Spanned<T>>
+    where
+        T: FromStr<Err: Into<Cause>>,
+    {
+        let expected = match node.text().map(str::parse::<T>) {
+            Ok(Ok(value)) => return Some(Spanned::new(value, node.span())),
+            Ok(Err(error)) => Expected::because(shape, error),
+            Err(_) => shape.into(),
+        };
+        self.invalid(key, &expected, node.span());
+        None
+    }
+
+    fn top(&mut self, key: Key<'_>, node: Node<'_>) {
+        let path = KeyPath(vec![key.name]);
+        match key.name {
+            "theme" => self.theme(&path, node),
+            "include" => self.config.include = self.patterns(&path, node),
+            "exclude" => self.config.exclude = self.patterns(&path, node),
+            table if Place::holds(table, Scope::Site) || Place::holds(table, Scope::File) => {
+                let Some(entries) = self.table(&path, node, Shape::Table(table)) else { return };
+                for (key, node) in entries.entries() {
+                    self.entry(table, key, node);
                 }
             }
-            _ => self.unknown(&path, key.span()),
+            _ => self.unknown(&path, key.span),
         }
     }
 
     /// One entry of a pin table: a sitewide pin, or a file's table of pins.
-    fn pin_table(&mut self, table: &str, (key, value): Entry<'_, '_>) {
-        let name = key.get_ref().as_ref();
-        let path = KeyPath(vec![table, name]);
-        if let Some(code) = place::code_at(table, name).filter(|code| code.is_sitewide()) {
-            if let Some(pin) = self.pin(&path, code, (key, value)) {
-                self.config.site.insert(code, pin);
-            }
-            return;
+    fn entry(&mut self, table: &str, key: Key<'_>, node: Node<'_>) {
+        let path = KeyPath(vec![table, key.name]);
+        if let Some(place) = Place::find(table, key.name, Scope::Site) {
+            return place.code.each(&mut Entry { reader: self, path: &path, subject: Subject::Site, key, node });
         }
-        if !place::holds(table, Reach::File) {
-            return self.unknown(&path, key.span());
+        if !Place::holds(table, Scope::File) {
+            return self.unknown(&path, key.span);
         }
-        let file = match ContentPath::parse(name) {
+        let file = match ContentPath::parse(key.name) {
             Ok(file) => file,
-            Err(error) => return self.invalid(&path, &Shape::FileKey(error), key.span()),
+            Err(error) => return self.invalid(&path, &Expected::because(Shape::FileKey, error), key.span),
         };
-        let Some(pins) = self.table(&path, value, &Shape::FileTable { table, file: &file }) else { return };
-        let mut read = BTreeMap::new();
-        for (key, value) in pins {
-            let name = key.get_ref().as_ref();
-            let path = KeyPath(vec![table, file.as_str(), name]);
-            match place::code_at(table, name).filter(|code| !code.is_sitewide()) {
-                Some(code) => {
-                    if let Some(pin) = self.pin(&path, code, (key, value)) {
-                        read.insert(code, pin);
-                    }
+        let Some(pins) = self.table(&path, node, Shape::Pins { table, file: &file }) else { return };
+        for (key, node) in pins.entries() {
+            let path = KeyPath(vec![table, file.as_str(), key.name]);
+            match Place::find(table, key.name, Scope::File) {
+                Some(place) => {
+                    let subject = Subject::File(file.clone());
+                    place.code.each(&mut Entry { reader: self, path: &path, subject, key, node });
                 }
-                None => self.unknown(&path, key.span()),
-            }
-        }
-        if !read.is_empty() {
-            self.config.files.entry(file).or_default().extend(read);
-        }
-    }
-
-    fn pin(&mut self, path: &KeyPath<'_>, code: DecisionCode, (key, value): Entry<'_, '_>) -> Option<Pin> {
-        match value::read(code, value) {
-            Ok(decided) => Some(Pin { decided, span: across(key.span(), value.span()) }),
-            Err(at) => {
-                self.invalid(path, &Shape::Pin(code), at);
-                None
+                None => self.unknown(&path, key.span),
             }
         }
     }
 
-    fn patterns(&mut self, path: &KeyPath<'_>, value: &toml::Spanned<DeValue<'_>>) -> Vec<Spanned<Pattern>> {
-        let Some(array) = value.get_ref().as_array() else {
-            self.invalid(path, &Shape::Patterns(None), value.span());
-            return Vec::new();
+    fn patterns(&mut self, path: &KeyPath<'_>, node: Node<'_>) -> Patterns {
+        let shape = Shape::Array(&Shape::Pattern);
+        let Ok(items) = node.items() else {
+            self.invalid(path, &shape.into(), node.span());
+            return Patterns::default();
         };
-        let mut patterns = Vec::new();
-        for element in array {
-            match element.get_ref().as_str().map(str::parse::<Pattern>) {
-                Some(Ok(pattern)) => patterns.push(Spanned::new(pattern, span(element.span()))),
-                Some(Err(error)) => self.invalid(path, &Shape::Patterns(Some(error)), element.span()),
-                None => self.invalid(path, &Shape::Patterns(None), element.span()),
-            }
-        }
-        patterns
+        items.filter_map(|item| self.parsed(path, item, shape)).collect()
     }
 
-    fn theme(&mut self, value: &toml::Spanned<DeValue<'_>>) {
-        let path = KeyPath(vec!["theme"]);
-        let Some(table) = self.table(&path, value, &Shape::Theme) else { return };
-        let mut theme = Theme { plugin: None, tokens: Vec::new(), span: span(value.span()) };
-        for (key, value) in table {
-            let name = key.get_ref().as_ref();
-            let path = KeyPath(vec!["theme", name]);
-            let text = value.get_ref().as_str();
-            if name == "use" {
-                match text.map(str::parse::<ThemeId>) {
-                    Some(Ok(id)) => theme.plugin = Some(Spanned::new(id, span(value.span()))),
-                    Some(Err(error)) => self.invalid(&path, &Shape::ThemeId(Some(error)), value.span()),
-                    None => self.invalid(&path, &Shape::ThemeId(None), value.span()),
-                }
-            } else if !is_kebab(name) {
-                self.unknown(&path, key.span());
-            } else if let Some(text) = text {
-                theme.tokens.push(Token {
-                    name: Spanned::new(name.to_owned(), span(key.span())),
-                    value: Spanned::new(text.to_owned(), span(value.span())),
-                });
+    fn theme(&mut self, path: &KeyPath<'_>, node: Node<'_>) {
+        let Some(table) = self.table(path, node, Shape::Theme) else { return };
+        let mut theme = Theme { plugin: None, tokens: Vec::new(), span: node.span() };
+        for (key, value) in table.entries() {
+            let path = path.and(key.name);
+            if key.name == "use" {
+                theme.plugin = self.parsed(&path, value, Shape::ThemeId);
+            } else if Kebab::try_from(key.name).is_err() {
+                self.unknown(&path, key.span);
+            } else if let Ok(text) = value.text() {
+                let name = Spanned::new(key.name.to_owned(), key.span);
+                theme.tokens.push(Token { name, value: Spanned::new(text.to_owned(), value.span()) });
             } else {
-                self.invalid(&path, &Shape::Token, value.span());
+                self.invalid(&path, &Shape::Text.into(), value.span());
             }
         }
         self.config.theme = Some(theme);
+    }
+}
+
+/// One pin being read, as the code pinned at its place.
+#[derive(Debug)]
+struct Entry<'r, 'a> {
+    reader: &'r mut Reader,
+    /// The pin's whole key, for diagnostics.
+    path: &'r KeyPath<'a>,
+    subject: Subject,
+    key: Key<'a>,
+    node: Node<'a>,
+}
+
+impl<C: Code<Value: Toml>> Each<C> for Entry<'_, '_> {
+    type Out = ();
+
+    fn each(&mut self) {
+        match C::Value::read(self.node) {
+            Ok(value) => {
+                let span = Offsets(self.key.span.start()..self.node.span().end()).into();
+                self.reader.config.insert::<C>(self.subject.clone(), Pinned { value, span });
+            }
+            Err(refused) => {
+                for at in refused {
+                    self.reader.invalid(self.path, &C::Value::SHAPE.into(), at);
+                }
+            }
+        }
     }
 }
