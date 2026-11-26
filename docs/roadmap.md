@@ -26,16 +26,17 @@ The workspace, the rules, and the three unknowns answered.
 - Submit `uses.ink` to the Public Suffix List (takes weeks; start now).
 - Push a fresh orphan `main` to `uses-ink/uses.ink` **(owner: confirm before pushing)**.
 
-Progress (2026-11-26): workspace, lints, `deny.toml`, nextest and CI workflow written;
-`cargo xtask check` checks names, dependency order, licences, banned names and generated files;
+Progress (2026-11-26): workspace, lints, `deny.toml`, nextest and CI workflow written; `cargo xtask
+check` checks names, dependency order, licences, banned names and generated files;
 `token/token.toml` generates `uses-ink-token`; `freehand` ports perfect-freehand 1.2.3 and the
 mock's pen core, with a golden fixture passing natively and on wasm32-wasip2; `cargo xtask brand`
-draws the logo, mark and favicon from `brand/figure.toml`, byte for byte the JS output (colours
-now spelled `#rrggbb`), and `gen-logo.mjs` is gone. `freehand::mark` draws the reader marks (line,
-frame, ring, patch) byte for byte the mock's, and `gen-marks.mjs` is gone. `cargo xtask token`
-also writes `token/token.css` (`--ink`, `--hand`, as the mocks name them). Left: the browser
-build that retires `pen.js` and `pen-core.js`, the three spikes, the PSL submission. Pushed as orphan `main`; old branches, tags and releases deleted from
-the remote (local mirror kept outside the repo).
+draws the logo, mark and favicon from `brand/figure.toml`, byte for byte the JS output (colours now
+spelled `#rrggbb`), and `gen-logo.mjs` is gone. `freehand::mark` draws the reader marks (line,
+frame, ring, patch) byte for byte the mock's, and `gen-marks.mjs` is gone. `cargo xtask token` also
+writes `token/token.css` (`--ink`, `--hand`, as the mocks name them). `freehand-web` is the pen in
+the browser (0034); the mock draws through it and `pen-core.js` is gone. Left: the three spikes, the
+PSL submission. Pushed as orphan `main`; old branches, tags and releases deleted from the remote
+(local mirror kept outside the repo).
 
 **Exit:** `cargo xtask check` passes in CI; the three spikes have recorded answers; the logo is
 built by the pen crate.

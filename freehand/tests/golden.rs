@@ -6,7 +6,7 @@
 
 use std::fmt::Write as _;
 
-use freehand::{Centreline, Hand, Highlighter, Mulberry, Pencil, Point, Pressured, Seed};
+use freehand::{Centreline, Hand, Highlighter, Mulberry, Pencil, Point, Pressured, Seed, mark};
 
 fn drawing() -> String {
     let mut out = String::new();
@@ -29,6 +29,13 @@ fn drawing() -> String {
     writeln!(out, "single {}", Pencil::new(3.0).outline(&one)).unwrap();
     let corners = [Point::new(4.0, 8.0), Point::new(296.0, 4.0), Point::new(294.0, 34.0), Point::new(6.0, 36.0)];
     writeln!(out, "fill {}", Highlighter::default().fill(&corners, &mut Mulberry::new(Seed::of("hl")))).unwrap();
+    writeln!(out, "underline {}", mark::underline(120.0, 20.0, 3.0, "u")).unwrap();
+    writeln!(out, "box-fill {}", mark::fill(Point::new(0.0, 0.0), Point::new(80.0, 30.0), Point::new(5.0, 4.0), "b"))
+        .unwrap();
+    let ring = Centreline::ellipse(Point::new(20.0, 20.0), Point::new(10.0, 9.0), 0.0, 1.0, 32);
+    for (i, arc) in mark::drawn(&ring, Hand::default(), 3.2, "loop").iter().enumerate() {
+        writeln!(out, "loop{i} {arc}").unwrap();
+    }
     out
 }
 

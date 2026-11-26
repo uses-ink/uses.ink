@@ -25,5 +25,5 @@ jobs:
       - run: cargo deny check
       # The pen draws the same bytes on wasm: its golden fixture runs there too.
       - run: cargo test -p freehand --target wasm32-wasip2
-      - run: cargo build -p freehand --target wasm32-unknown-unknown
+      - run: cargo build -p freehand-web --release --target wasm32-unknown-unknown
       - run: cargo xtask check

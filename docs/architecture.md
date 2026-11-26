@@ -69,6 +69,7 @@ uses.ink/
   host/wasmtime/         uses-ink-host-wasmtime component loading, linking, fuel, epochs, pooling, .cwasm cache
   host/native/           uses-ink-host-native   real capabilities for the builder: gix, http client, blob store
   freehand/              freehand               the pen: strokes, tools, marks; native and wasm32
+  freehand-web/          freehand-web           the pen as plain wasm exports, and its loader freehand.js
   measure/               (own name)             text shaping and measuring with real fonts
   control/               uses-ink-control       accounts, handles, identities, sources, builds, deploys, domains
   db/  db/d1/  db/sqlite/  db/conformance/       row port and adapters
@@ -101,7 +102,7 @@ Dependency direction, enforced by a `cargo tree` test in `xtask check`:
 model <- config, diag <- engine <- host <- host/{wasmtime,native} <- cli
 model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret (traits only)
 plugin/* <- plugin/sdk, wit only. Never engine, control, host/* or edge.
-freehand, measure <- nothing of ours. token <- nothing of ours.
+freehand, measure <- nothing of ours. freehand-web <- freehand. token <- nothing of ours.
 ```
 
 ## 5. Core types
@@ -376,7 +377,8 @@ and holds no interpretation settings; those live in `ink.toml`. Live build logs 
 page: the dashboard writes the page head, then each log line as the build's Durable Object (or
 the local builder) emits it, then the tail (`unspliced::Split`). Stack (0032): an axum router served by workers-rs hosted and by `ink serve`;
 HTML, SVG and CSS from `unspliced`; behaviour is native HTML, forms and view transitions, so
-there is no hand-written or generated JS; colours and sizes from `token/`; the pen as a wasm module.
+there is no hand-written or generated JS except the pen's loader (`freehand-web/freehand.js`, 0034);
+colours and sizes from `token/`; the pen as a wasm module.
 
 **Landing** at `uses.ink`: from `.impeccable/mocks/doodle/index.html`, served by the same web
 crate.

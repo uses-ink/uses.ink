@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["freehand", "token", "xtask"]
+members = ["freehand", "freehand-web", "token", "xtask"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -22,7 +22,9 @@ toml = "1.2.3"
 unspliced = "0.1.1"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# `deny`, not `forbid`, so `freehand-web` can expect it for its wasm exports; `xtask check`
+# allows unsafe code in no other file.
+unsafe_code = "deny"
 rust_2018_idioms = { level = "warn", priority = -1 }
 unused_must_use = "deny"
 missing_debug_implementations = "warn"

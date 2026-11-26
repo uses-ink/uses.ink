@@ -19,7 +19,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Math | `math-core` 0.9 | LaTeX to MathML Core, no JS for readers |
 | Images | `image` 0.25, `fast_image_resize` 6.2, `ravif` 0.13, `jpeg-encoder` 0.7, `imagesize` 0.15, `img-parts` 0.4, vendored thumbhash | pure Rust AVIF and JPEG, no C |
 | Fonts | `harfrust` 0.16, `skrifa` 0.50, `subsetter` 0.2, `ttf2woff2` 0.14 | maintained successors of rustybuzz and ttf-parser; pure Rust WOFF2 |
-| Pen | own port of perfect-freehand, `kurbo` 0.13, `libm`, `tiny-skia` 0.12, `resvg` 0.50, `wasm-bindgen` | one deterministic implementation (0025); 57 KB gzipped wasm in the spike |
+| Pen | own port of perfect-freehand, `kurbo` 0.13, `libm`, `tiny-skia` 0.12, `resvg` 0.50 | one deterministic implementation (0025); `freehand-web` is 36 KB gzipped, no `wasm-bindgen` (0034) |
 | Feeds, sitemap | `atom_syndication` 0.12, `rss` 2.1, `quick-xml` 0.42 | typed feeds; no maintained sitemap crate |
 | Text | `unicode-segmentation`, `unicode-normalization` | reading time, slugs |
 | Plugins | `wasmtime` 51 (component model, fuel, epochs, pooling, `.cwasm`); `wit-bindgen` 0.63 for guests | component model is Tier 1 |
@@ -63,6 +63,6 @@ Passkeys (`webauthn-rs` 0.6 builds for wasm32) come after v1. `chrono` stays in 
 |---|---|---|
 | Router | `axum` 0.8 over `worker` 0.9 hosted, tokio self-host | one router for both edges |
 | HTML, SVG, CSS, behavior | `unspliced` (own crate, 0032) | typed names, baked documents, typed CSS, streamed pages, no JS; `no_std`, zero dependencies |
-| Pen in the browser | the pen crate through `wasm-bindgen` | one pen (0025) |
+| Pen in the browser | `freehand-web`: plain wasm exports and a 40-line loader, `freehand.js` | one pen (0025), no generated JS (0034) |
 | Themes | `wit-bindgen` 0.63 guest built for `wasm32-unknown-unknown`, wrapped with `wasm-tools component new` | a small theme stays small: `unspliced` has no dependencies |
 | Slot overrides | `minijinja` in the host | 734 KB inside a theme, so it lives once in the host |
