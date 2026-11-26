@@ -49,6 +49,7 @@ pub(crate) const ENFORCED: &[&str] = &[
     "uses-ink-cli",
     "uses-ink-config",
     "uses-ink-diag",
+    "uses-ink-engine",
     "uses-ink-fixture",
     "uses-ink-format-markdown",
     "uses-ink-host-native",
