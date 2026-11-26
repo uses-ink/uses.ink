@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 /// A folder becomes a site.
 #[derive(Debug, Parser)]
@@ -34,6 +34,29 @@ pub enum Command {
     Preview(Preview),
 }
 
+/// Where a site's files are read from: the folder as it is on disk, or a git repository at
+/// one commit.
+#[derive(Clone, Debug, Default, Args)]
+pub struct Origin {
+    /// Read the files on disk (`folder`) or a commit of the repository (`git`)
+    /// [default: `git` when <dir>/.git exists, said as a notice, else `folder`].
+    #[arg(long, value_enum)]
+    pub source: Option<Kind>,
+    /// The commit to read, as `git rev-parse` takes it: a branch, a tag, an id, `HEAD~2`
+    /// [default: HEAD]. Only for a git repository.
+    #[arg(long)]
+    pub rev: Option<String>,
+}
+
+/// What kind of source a folder is read as.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum Kind {
+    /// The files on disk, uncommitted changes included, with file times as bounds.
+    Folder,
+    /// The tree of one commit, with dates from the history behind it.
+    Git,
+}
+
 /// `ink build <dir> [-o <out>]`.
 #[derive(Debug, Args)]
 pub struct Build {
@@ -48,6 +71,9 @@ pub struct Build {
     /// Exit with 6 when there are warnings, writing nothing.
     #[arg(long)]
     pub strict: bool,
+    /// Where the files are read from.
+    #[command(flatten)]
+    pub origin: Origin,
 }
 
 /// `ink check <dir>`.
@@ -58,6 +84,9 @@ pub struct Check {
     /// Exit with 6 when there are warnings.
     #[arg(long)]
     pub strict: bool,
+    /// Where the files are read from.
+    #[command(flatten)]
+    pub origin: Origin,
 }
 
 /// `ink explain [--pin] [path]`.
@@ -71,6 +100,9 @@ pub struct Explain {
     /// The site's folder.
     #[arg(short = 'C', long, default_value = ".")]
     pub dir: PathBuf,
+    /// Where the files are read from.
+    #[command(flatten)]
+    pub origin: Origin,
 }
 
 /// `ink preview <dir>`.
@@ -81,4 +113,7 @@ pub struct Preview {
     /// The port on 127.0.0.1.
     #[arg(long, default_value_t = 4000)]
     pub port: u16,
+    /// Where the files are read from.
+    #[command(flatten)]
+    pub origin: Origin,
 }

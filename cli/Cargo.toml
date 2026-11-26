@@ -29,6 +29,8 @@ tokio.workspace = true
 
 [dev-dependencies]
 fixture.workspace = true
+# test repositories are written object by object
+gix.workspace = true
 insta.workspace = true
 
 [lints]

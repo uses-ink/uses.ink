@@ -2721,6 +2721,7 @@ dependencies = [
  "annotate-snippets",
  "axum",
  "clap",
+ "gix",
  "insta",
  "serde",
  "serde_json",

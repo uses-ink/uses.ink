@@ -44,7 +44,7 @@ impl Build {
         let out = self.out.clone().unwrap_or_else(|| self.dir.join(DEFAULT_OUT));
         let folder = OutFolder::new(&out, &self.dir)?;
         folder.check()?;
-        let mut source = Source::new(&self.dir);
+        let mut source = Source::new(&self.dir, &self.origin);
         source.output.extend(folder.inside(&self.dir).filter(|inside| !source.output.contains(inside)));
         let loaded = source.load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
@@ -72,7 +72,7 @@ impl Build {
 
 impl Check {
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let loaded = Source::new(&self.dir).load()?;
+        let loaded = Source::new(&self.dir, &self.origin).load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let understood = &loaded.understood;
         let tally = io.said(&understood.diagnostics, &understood.notices, texts)?;

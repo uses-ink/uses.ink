@@ -1,6 +1,10 @@
 ---
 source: fixture/src/lib.rs
 ---
+the source
+  version            the files on disk
+  has                snapshot
+  lacks              history, so page.date is not taken from it
 the site
   site.root          the top of the snapshot  by default
   site.layout        flat                     by default

@@ -45,7 +45,7 @@ impl args::Preview {
         let port = listener.local_addr().map_err(serve)?.port();
         let address = format!("http://127.0.0.1:{port}");
         let address = Address { chosen: None, ..Address::from_flag(Some(&address))? };
-        let loaded = Source::new(&self.dir).load()?;
+        let loaded = Source::new(&self.dir, &self.origin).load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let rendered = loaded.render(&address);
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
@@ -68,7 +68,7 @@ impl Preview {
     /// not reported: `ink preview` reports it.
     pub fn of(dir: &Path, base: &str) -> Result<Option<Self>, Error> {
         let address = Address::from_flag(Some(base))?;
-        let loaded = Source::new(dir).load()?;
+        let loaded = Source::new(dir, &args::Origin::default()).load()?;
         let rendered = loaded.render(&address);
         Ok(Self::assemble(loaded, rendered))
     }

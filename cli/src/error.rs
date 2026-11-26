@@ -1,5 +1,5 @@
-//! What stops a command before any diagnostic could: the folder refused, an output folder `ink`
-//! will not write into, a terminal that cannot be written to.
+//! What stops a command before any diagnostic could: the folder or repository refused, an output
+//! folder `ink` will not write into, a terminal that cannot be written to.
 
 use std::fmt;
 use std::path::PathBuf;
@@ -12,6 +12,11 @@ use crate::exit::Exit;
 pub enum Error {
     /// The folder could not be read as a snapshot: reported as its diagnostic.
     Refused(host_native::Refused),
+    /// `--rev` was given for a folder read as the files on disk.
+    Unversioned {
+        /// The site's folder.
+        dir: PathBuf,
+    },
     /// `--base` is no site address.
     Base {
         /// The address, as given.
@@ -90,7 +95,11 @@ impl Error {
     /// listed is a usage error, like any path given wrong; what is wrong inside it is content.
     pub(crate) fn exit(&self) -> Exit {
         match self {
-            Self::Refused(host_native::Refused::Root { .. }) => Exit::Usage,
+            Self::Refused(
+                host_native::Refused::Root { .. }
+                | host_native::Refused::Repository { .. }
+                | host_native::Refused::Revision { .. },
+            ) => Exit::Usage,
             Self::Refused(_) => Exit::Content,
             _ => Exit::Usage,
         }
@@ -101,6 +110,7 @@ impl Error {
     pub(crate) fn kind(&self) -> &'static str {
         match self {
             Self::Refused(refused) => model::Diagnostic::from(refused).code(),
+            Self::Unversioned { .. } => "source.rev.unversioned",
             Self::Base { .. } => "base.address.invalid",
             Self::Path { .. } => "explain.path.invalid",
             Self::Unknown { .. } => "explain.path.unknown",
@@ -121,6 +131,9 @@ impl fmt::Display for Error {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Refused(refused) => write!(out, "{refused}"),
+            Self::Unversioned { dir } => {
+                write!(out, "`--rev` names a commit, and {} is read as a folder, not a git repository", dir.display())
+            }
             Self::Base { written, .. } => write!(out, "`{written}` is not an address a site is served at"),
             Self::Path { written, .. } => write!(out, "`{written}` is not a path in the folder"),
             Self::Unknown { path } => write!(out, "{path} is not a file of the folder"),
@@ -152,7 +165,7 @@ impl std::error::Error for Error {
             Self::Placed { source, .. } => Some(source),
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),
-            Self::Output(_) | Self::Unknown { .. } => None,
+            Self::Output(_) | Self::Unknown { .. } | Self::Unversioned { .. } => None,
         }
     }
 }
