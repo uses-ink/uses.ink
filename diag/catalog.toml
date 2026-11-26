@@ -37,6 +37,7 @@ reason = "Why, as the part that refused it says."
 route = "The route."
 segment = "The segment of the path, as written."
 size = "How large it is."
+table = "The table, as written."
 target = "The file it points at."
 tex = "The TeX, as written."
 theme = "The theme's name."
@@ -56,6 +57,13 @@ fault = "author"
 fields = { key = "text" }
 message = "`{key}` is not a key ink.toml has"
 fix = "remove it, or compare it with what `ink explain --pin` prints"
+
+[diagnostic."config.key.misplaced"]
+severity = "error"
+fault = "author"
+fields = { key = "text", table = "text" }
+message = "`{key}` pins one file, so it is written in that file's table, not in `[{table}]`"
+fix = "move it under the file it pins, such as `[{table}.\"posts/x.md\"]`"
 
 [diagnostic."config.value.invalid"]
 severity = "error"

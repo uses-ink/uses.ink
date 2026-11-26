@@ -12,6 +12,9 @@ impl Message<'_> {
             Problem::ConfigKeyUnknown { key, .. } => {
                 write!(out, "`{key}` is not a key ink.toml has")
             }
+            Problem::ConfigKeyMisplaced { key, table, .. } => {
+                write!(out, "`{key}` pins one file, so it is written in that file's table, not in `[{table}]`")
+            }
             Problem::ConfigValueInvalid { key, expected, .. } => {
                 write!(out, "`{key}` takes {expected}")
             }
@@ -194,6 +197,7 @@ impl Fix<'_> {
         match problem {
             Problem::ConfigSyntaxInvalid { .. } => true,
             Problem::ConfigKeyUnknown { .. } => true,
+            Problem::ConfigKeyMisplaced { .. } => true,
             Problem::ConfigValueInvalid { .. } => false,
             Problem::FrontmatterSyntaxInvalid { .. } => true,
             Problem::FrontmatterValueInvalid { .. } => true,
@@ -263,6 +267,9 @@ impl Fix<'_> {
             }
             Problem::ConfigKeyUnknown { .. } => {
                 write!(out, "remove it, or compare it with what `ink explain --pin` prints")
+            }
+            Problem::ConfigKeyMisplaced { table, .. } => {
+                write!(out, "move it under the file it pins, such as `[{table}.\"posts/x.md\"]`")
             }
             Problem::ConfigValueInvalid { .. } => Ok(()),
             Problem::FrontmatterSyntaxInvalid { .. } => {

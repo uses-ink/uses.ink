@@ -20,6 +20,14 @@ pub enum Problem {
         /// The key, as written.
         key: String,
     },
+    /// `config.key.misplaced`: `{key}` pins one file, so it is written in that file's table, not in `[{table}]`
+    #[serde(rename = "config.key.misplaced")]
+    ConfigKeyMisplaced {
+        /// The key, as written.
+        key: String,
+        /// The table, as written.
+        table: String,
+    },
     /// `config.value.invalid`: `{key}` takes {expected}
     #[serde(rename = "config.value.invalid")]
     ConfigValueInvalid {
@@ -311,6 +319,7 @@ impl Problem {
     pub const CODES: &'static [&'static str] = &[
         "config.syntax.invalid",
         "config.key.unknown",
+        "config.key.misplaced",
         "config.value.invalid",
         "frontmatter.syntax.invalid",
         "frontmatter.value.invalid",
@@ -359,6 +368,7 @@ impl Problem {
         match self {
             Self::ConfigSyntaxInvalid { .. } => "config.syntax.invalid",
             Self::ConfigKeyUnknown { .. } => "config.key.unknown",
+            Self::ConfigKeyMisplaced { .. } => "config.key.misplaced",
             Self::ConfigValueInvalid { .. } => "config.value.invalid",
             Self::FrontmatterSyntaxInvalid { .. } => "frontmatter.syntax.invalid",
             Self::FrontmatterValueInvalid { .. } => "frontmatter.value.invalid",
@@ -408,6 +418,7 @@ impl Problem {
         match self {
             Self::ConfigSyntaxInvalid { .. } => Severity::Error,
             Self::ConfigKeyUnknown { .. } => Severity::Error,
+            Self::ConfigKeyMisplaced { .. } => Severity::Error,
             Self::ConfigValueInvalid { .. } => Severity::Error,
             Self::FrontmatterSyntaxInvalid { .. } => Severity::Warning,
             Self::FrontmatterValueInvalid { .. } => Severity::Warning,
@@ -457,6 +468,7 @@ impl Problem {
         match self {
             Self::ConfigSyntaxInvalid { .. } => Fault::Author,
             Self::ConfigKeyUnknown { .. } => Fault::Author,
+            Self::ConfigKeyMisplaced { .. } => Fault::Author,
             Self::ConfigValueInvalid { .. } => Fault::Author,
             Self::FrontmatterSyntaxInvalid { .. } => Fault::Author,
             Self::FrontmatterValueInvalid { .. } => Fault::Author,

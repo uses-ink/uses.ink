@@ -97,7 +97,9 @@ impl Reader {
         }
     }
 
-    /// One entry of a pin table: a sitewide pin, or a file's table of pins.
+    /// One entry of a pin table: a sitewide pin, or a file's table of pins. A per-file key
+    /// written straight in the table (`[page] title = "x"`) is `config.key.misplaced`, not a file
+    /// named `title`.
     fn entry(&mut self, table: &str, key: Key<'_>, node: Node<'_>) {
         let path = KeyPath(vec![table, key.name]);
         if let Some(place) = Place::find(table, key.name, Scope::Site) {
@@ -105,6 +107,10 @@ impl Reader {
         }
         if !Place::holds(table, Scope::File) {
             return self.unknown(&path, key.span);
+        }
+        if node.table().is_none() && Place::find(table, key.name, Scope::File).is_some() {
+            let problem = Problem::ConfigKeyMisplaced { key: path.to_string(), table: table.to_owned() };
+            return self.diagnostics.push(Diagnostic::new(problem).at(key.span));
         }
         let file = match ContentPath::parse(key.name) {
             Ok(file) => file,

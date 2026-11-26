@@ -1,0 +1,6 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/parse/misplaced.toml
+---
+error config.key.misplaced: ConfigKeyMisplaced { key: "page.title", table: "page" } at 7..12 `title`
+error config.key.misplaced: ConfigKeyMisplaced { key: "file.ignore", table: "file" } at 28..34 `ignore`
