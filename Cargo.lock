@@ -1604,12 +1604,12 @@ name = "uses-ink-format-markdown"
 version = "0.0.0"
 dependencies = [
  "comrak",
- "insta",
  "jiff",
  "proptest",
  "serde",
  "serde-saphyr",
  "serde_json",
+ "uses-ink-fixture",
  "uses-ink-model",
 ]
 
