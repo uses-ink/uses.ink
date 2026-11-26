@@ -17,23 +17,28 @@ pub struct ContentPath(String);
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum PathError {
+    /// It is empty.
     Empty,
     /// It starts with `/`.
     Absolute,
     /// Segment number `index` (from zero) is empty.
     EmptySegment {
+        /// The segment, from zero.
         index: usize,
     },
     /// Segment number `index` is `.` or `..`.
     Relative {
+        /// The segment, from zero.
         index: usize,
     },
     /// A backslash at this byte offset.
     Backslash {
+        /// The byte offset.
         at: usize,
     },
     /// A NUL at this byte offset.
     Nul {
+        /// The byte offset.
         at: usize,
     },
 }
@@ -54,6 +59,7 @@ impl fmt::Display for PathError {
 impl std::error::Error for PathError {}
 
 impl ContentPath {
+    /// `text`, when it is a path in a snapshot.
     pub fn parse(text: impl Into<String>) -> Result<Self, PathError> {
         let text = text.into();
         if text.is_empty() {
@@ -78,6 +84,7 @@ impl ContentPath {
         Ok(Self(text))
     }
 
+    /// The path, as written: `posts/hello.md`.
     pub fn as_str(&self) -> &str {
         &self.0
     }

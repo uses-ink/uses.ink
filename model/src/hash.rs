@@ -24,6 +24,7 @@ impl Hash {
         Self(bytes)
     }
 
+    /// The 32 bytes.
     pub const fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
@@ -47,9 +48,15 @@ impl fmt::Display for Hash {
 #[non_exhaustive]
 pub enum HashError {
     /// Not 64 characters long.
-    Length { found: usize },
+    Length {
+        /// How long it is.
+        found: usize,
+    },
     /// A character that is not a lower-case hex digit, at this byte offset.
-    Digit { at: usize },
+    Digit {
+        /// The byte offset.
+        at: usize,
+    },
 }
 
 impl fmt::Display for HashError {

@@ -11,10 +11,13 @@ use crate::Hash;
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Version {
+    /// A git commit.
     GitCommit(Oid),
+    /// An upload, such as `ink push`'s.
     Upload(UploadId),
     /// A local folder, versioned by the hash of its tree.
     Folder {
+        /// The hash of the folder's tree.
         hash: Hash,
     },
 }
@@ -34,11 +37,20 @@ pub struct UploadId(String);
 #[non_exhaustive]
 pub enum VersionError {
     /// An object id of the wrong length.
-    OidLength { found: usize },
+    OidLength {
+        /// How long it is.
+        found: usize,
+    },
     /// An upload id of the wrong length.
-    UploadLength { found: usize },
+    UploadLength {
+        /// How long it is.
+        found: usize,
+    },
     /// A character the id may not hold, at this byte offset.
-    Character { at: usize },
+    Character {
+        /// The byte offset.
+        at: usize,
+    },
 }
 
 impl fmt::Display for VersionError {
@@ -54,6 +66,7 @@ impl fmt::Display for VersionError {
 impl std::error::Error for VersionError {}
 
 impl Oid {
+    /// `text`, when it is 40 or 64 lower-case hex digits.
     pub fn parse(text: impl Into<String>) -> Result<Self, VersionError> {
         let text = text.into();
         if !matches!(text.len(), 40 | 64) {
@@ -65,12 +78,14 @@ impl Oid {
         }
     }
 
+    /// The id, as git writes it.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
 
 impl UploadId {
+    /// `text`, when it is 1 to 64 ASCII letters, digits or `-`.
     pub fn parse(text: impl Into<String>) -> Result<Self, VersionError> {
         let text = text.into();
         if !(1..=64).contains(&text.len()) {
@@ -82,6 +97,7 @@ impl UploadId {
         }
     }
 
+    /// The id.
     pub fn as_str(&self) -> &str {
         &self.0
     }

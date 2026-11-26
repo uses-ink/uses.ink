@@ -16,11 +16,14 @@ use crate::time::When;
 /// A value and where in the file it was written: the evidence a decision cites.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Spanned<T> {
+    /// The value.
     pub value: T,
+    /// Where it is written.
     pub span: Span,
 }
 
 impl<T> Spanned<T> {
+    /// `value`, written at `span`.
     pub const fn new(value: T, span: Span) -> Self {
         Self { value, span }
     }
@@ -31,10 +34,15 @@ impl<T> Spanned<T> {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct Front {
+    /// `title:`.
     pub title: Option<Spanned<String>>,
+    /// `date:`.
     pub date: Option<Spanned<When>>,
+    /// `updated:`.
     pub updated: Option<Spanned<When>>,
+    /// `slug:`.
     pub slug: Option<Spanned<Slug>>,
+    /// `tags:`.
     pub tags: Option<Spanned<Vec<Tag>>>,
     /// `publish: true` or `false`.
     pub publish: Option<Spanned<bool>>,
@@ -54,15 +62,20 @@ pub struct Front {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct Read {
+    /// The body.
     pub document: Document,
+    /// The frontmatter keys the engine reads.
     pub front: Front,
     /// The text of the first level-1 heading and where it is: a title when frontmatter has none.
     pub heading: Option<Spanned<String>>,
+    /// Every problem the format found, in the order found.
     pub diagnostics: Vec<Diagnostic>,
+    /// Everything else the format has to say.
     pub notices: Vec<Notice>,
 }
 
 impl Read {
+    /// A file read without a problem or a notice.
     pub fn new(document: Document, front: Front, heading: Option<Spanned<String>>) -> Self {
         Self { document, front, heading, diagnostics: Vec::new(), notices: Vec::new() }
     }

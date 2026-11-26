@@ -15,7 +15,9 @@ pub struct Span {
 /// A span whose end comes before its start.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Backwards {
+    /// Where it starts.
     pub start: usize,
+    /// Where it ends, before `start`.
     pub end: usize,
 }
 
@@ -28,22 +30,27 @@ impl fmt::Display for Backwards {
 impl std::error::Error for Backwards {}
 
 impl Span {
+    /// The bytes from `start` up to `end`, when `start <= end`.
     pub const fn new(start: usize, end: usize) -> Result<Self, Backwards> {
         if start <= end { Ok(Self { start, end }) } else { Err(Backwards { start, end }) }
     }
 
+    /// The first byte.
     pub const fn start(self) -> usize {
         self.start
     }
 
+    /// The byte after the last.
     pub const fn end(self) -> usize {
         self.end
     }
 
+    /// How many bytes it covers.
     pub const fn len(self) -> usize {
         self.end - self.start
     }
 
+    /// Whether it covers no bytes.
     pub const fn is_empty(self) -> bool {
         self.start == self.end
     }

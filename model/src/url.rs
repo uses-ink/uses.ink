@@ -20,7 +20,10 @@ pub enum UrlError {
     /// An `http(s)` URL with nothing after `//`, or a `mailto:` with no address.
     Empty,
     /// Whitespace or a control character at this byte offset.
-    Character { at: usize },
+    Character {
+        /// The byte offset.
+        at: usize,
+    },
 }
 
 impl fmt::Display for UrlError {
@@ -36,6 +39,7 @@ impl fmt::Display for UrlError {
 impl std::error::Error for UrlError {}
 
 impl ExternalUrl {
+    /// `text`, when it is an `http`, `https` or `mailto` URL.
     pub fn parse(text: impl Into<String>) -> Result<Self, UrlError> {
         let text = text.into();
         if let Some((at, _)) = text.char_indices().find(|(_, c)| c.is_whitespace() || c.is_control()) {
@@ -53,6 +57,7 @@ impl ExternalUrl {
         Ok(Self(text))
     }
 
+    /// The URL, as written.
     pub fn as_str(&self) -> &str {
         &self.0
     }

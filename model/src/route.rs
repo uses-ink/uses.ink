@@ -18,9 +18,17 @@ pub enum SlugError {
     /// Nothing is left once everything but letters and digits is dropped.
     Empty,
     /// A character a slug does not hold, at this byte offset (strict parsing only).
-    Character { at: usize, found: char },
+    Character {
+        /// The byte offset.
+        at: usize,
+        /// The character.
+        found: char,
+    },
     /// A `-` at the start or end, or two in a row, at this byte offset (strict parsing only).
-    Hyphen { at: usize },
+    Hyphen {
+        /// The byte offset.
+        at: usize,
+    },
 }
 
 impl fmt::Display for SlugError {
@@ -77,6 +85,7 @@ impl Slug {
         Ok(Self(text))
     }
 
+    /// The slug: `on-shelves`.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -145,7 +154,12 @@ pub enum RouteError {
     /// It ends with `/` and is not the root.
     TrailingSlash,
     /// Segment number `index` (from zero) is not slugs joined by `.`.
-    Segment { index: usize, source: SlugError },
+    Segment {
+        /// The segment, from zero.
+        index: usize,
+        /// Why it is no slug.
+        source: SlugError,
+    },
 }
 
 impl fmt::Display for RouteError {
@@ -173,6 +187,7 @@ impl Route {
         Self("/".to_owned())
     }
 
+    /// `text`, when it is a route: `/`, or segments of slugs joined by `.`, each after a `/`.
     pub fn parse(text: impl Into<String>) -> Result<Self, RouteError> {
         let text = text.into();
         let rest = text.strip_prefix('/').ok_or(RouteError::Relative)?;
@@ -201,10 +216,12 @@ impl Route {
         if text.is_empty() { Self::root() } else { Self(text) }
     }
 
+    /// Whether it is `/`.
     pub fn is_root(&self) -> bool {
         self.0 == "/"
     }
 
+    /// The route: `/posts/on-shelves`.
     pub fn as_str(&self) -> &str {
         &self.0
     }

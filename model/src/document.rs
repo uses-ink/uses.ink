@@ -17,6 +17,7 @@ pub use visit::Visit;
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub struct Document {
+    /// The body, in reading order.
     pub blocks: Vec<Block>,
     /// The footnotes, in the order they are first referenced: a footnote's number is its place
     /// here, counted from 1.
@@ -45,11 +46,14 @@ impl Document {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub struct Footnote {
+    /// The name references use.
     pub name: FootnoteName,
+    /// Its text.
     pub blocks: Vec<Block>,
 }
 
 impl Footnote {
+    /// The footnote `name` with `blocks` as its text.
     pub fn new(name: FootnoteName, blocks: Vec<Block>) -> Self {
         Self { name, blocks }
     }
@@ -85,6 +89,7 @@ impl fmt::Display for FootnoteName {
 pub struct Item {
     /// `Some` for a task list item (`- [ ]`, `- [x]`).
     pub task: Option<Task>,
+    /// Its content.
     pub blocks: Vec<Block>,
 }
 
@@ -104,7 +109,9 @@ impl Item {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Task {
+    /// `- [ ]`: not done yet.
     Open,
+    /// `- [x]`: done.
     Done,
 }
 
@@ -113,34 +120,54 @@ pub enum Task {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Block {
+    /// A heading, `#` to `######`.
     Heading {
+        /// 1 to 6.
         level: Level,
+        /// The place links to it point at.
         anchor: Anchor,
+        /// Its text.
         inlines: Vec<Inline>,
     },
+    /// A paragraph of text.
     Paragraph(Vec<Inline>),
     /// `ordered` is the first number of an ordered list. A tight list has no blank lines
     /// between its items.
     List {
+        /// The first number of an ordered list; `None` for a bulleted one.
         ordered: Option<u64>,
+        /// Its items, in order.
         items: Vec<Item>,
+        /// Whether no blank line separates its items.
         tight: bool,
     },
+    /// A block quote.
     Quote(Vec<Block>),
+    /// A fenced or indented code block.
     Code {
+        /// The language written after the opening fence, if any.
         language: Option<String>,
+        /// The code, as written.
         text: String,
     },
+    /// A thematic break: `---`.
     Rule,
     /// `head` and each row hold one cell per alignment.
     Table {
+        /// Each column's alignment, left to right.
         alignments: Vec<Alignment>,
+        /// The header row's cells.
         head: Vec<Vec<Inline>>,
+        /// Every body row's cells.
         rows: Vec<Vec<Vec<Inline>>>,
     },
+    /// A callout: a quote that says what kind of note it is (`> [!tip]`).
     Callout {
+        /// What it says about its content.
         kind: CalloutKind,
+        /// Its own title, or `None` for its kind's name.
         title: Option<Vec<Inline>>,
+        /// Its content.
         blocks: Vec<Block>,
     },
     /// Display math, as TeX.
@@ -149,7 +176,9 @@ pub enum Block {
     Definitions(Vec<Definition>),
     /// A section shown folded, with the summary as its handle (`<details><summary>`).
     Details {
+        /// What shows while it is folded.
         summary: Vec<Inline>,
+        /// What shows once it is open.
         blocks: Vec<Block>,
     },
 }
@@ -158,11 +187,14 @@ pub enum Block {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub struct Definition {
+    /// The term defined.
     pub term: Vec<Inline>,
+    /// Each of its details, in order.
     pub details: Vec<Vec<Block>>,
 }
 
 impl Definition {
+    /// `term`, with `details`.
     pub fn new(term: Vec<Inline>, details: Vec<Vec<Block>>) -> Self {
         Self { term, details }
     }
@@ -173,17 +205,28 @@ impl Definition {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Inline {
+    /// Plain text.
     Text(String),
+    /// `*text*`.
     Emphasis(Vec<Inline>),
+    /// `**text**`.
     Strong(Vec<Inline>),
+    /// `~~text~~`.
     Strike(Vec<Inline>),
+    /// `` `code` ``, as written.
     Code(String),
+    /// A link.
     Link {
+        /// Where it goes.
         target: LinkTarget,
+        /// Its text.
         children: Vec<Inline>,
     },
+    /// An image.
     Image {
+        /// Where its bytes come from.
         source: ImageSource,
+        /// The text shown in its place, and read by screen readers.
         alt: String,
     },
     /// A hard line break.
@@ -209,15 +252,20 @@ pub enum Inline {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum LinkTarget {
+    /// A page of the site.
     Page {
+        /// The page.
         id: PageId,
+        /// A place on it, or `None` for its top.
         anchor: Option<Anchor>,
     },
     /// A place on the same page.
     Anchor(Anchor),
+    /// A place outside the site.
     External(ExternalUrl),
     /// A link that resolved to nothing, rendered as plain text (`link.target.missing`).
     Unresolved {
+        /// The target, as written.
         written: String,
     },
 }
@@ -229,9 +277,11 @@ pub enum LinkTarget {
 pub enum ImageSource {
     /// A file in the snapshot, published as an asset.
     Asset(ContentPath),
+    /// An image outside the site.
     External(ExternalUrl),
     /// An image that resolved to nothing, rendered as its alt text.
     Unresolved {
+        /// The source, as written.
         written: String,
     },
 }
@@ -241,9 +291,13 @@ pub enum ImageSource {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Alignment {
+    /// As the theme aligns text.
     None,
+    /// `:---`.
     Left,
+    /// `:---:`.
     Center,
+    /// `---:`.
     Right,
 }
 
@@ -252,10 +306,15 @@ pub enum Alignment {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum CalloutKind {
+    /// `> [!note]`: worth knowing.
     Note,
+    /// `> [!tip]`: a way to do better.
     Tip,
+    /// `> [!important]`: needed to succeed.
     Important,
+    /// `> [!warning]`: needs attention now.
     Warning,
+    /// `> [!caution]`: a risk of harm.
     Caution,
     /// Any other kind a format knows, such as Obsidian's `todo`.
     Other(Slug),
@@ -269,6 +328,7 @@ pub struct Level(u8);
 /// A number that is no heading level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LevelError {
+    /// The number given.
     pub found: u8,
 }
 
@@ -281,10 +341,12 @@ impl fmt::Display for LevelError {
 impl std::error::Error for LevelError {}
 
 impl Level {
+    /// `level`, when it is 1 to 6.
     pub const fn new(level: u8) -> Result<Self, LevelError> {
         if 1 <= level && level <= 6 { Ok(Self(level)) } else { Err(LevelError { found: level }) }
     }
 
+    /// The level, 1 to 6.
     pub const fn get(self) -> u8 {
         self.0
     }
@@ -310,6 +372,7 @@ impl From<Level> for u8 {
 pub struct Anchor(Slug);
 
 impl Anchor {
+    /// The anchor `slug`.
     pub fn new(slug: Slug) -> Self {
         Self(slug)
     }
@@ -319,6 +382,7 @@ impl Anchor {
         Slug::from_text(text).map(Self)
     }
 
+    /// The anchor's text, without the `#`.
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }

@@ -14,25 +14,73 @@ use crate::blob::StoreError;
 #[non_exhaustive]
 pub enum Refused {
     /// The folder itself could not be opened.
-    Root { path: PathBuf, source: std::io::Error },
+    Root {
+        /// The folder.
+        path: PathBuf,
+        /// What the system said.
+        source: std::io::Error,
+    },
     /// A file or folder inside could not be read.
-    Unreadable { path: ContentPath, source: std::io::Error },
+    Unreadable {
+        /// The file or folder.
+        path: ContentPath,
+        /// What the system said.
+        source: std::io::Error,
+    },
     /// A name that is not UTF-8.
-    Encoding { path: PathBuf },
+    Encoding {
+        /// The path, as the system gives it.
+        path: PathBuf,
+    },
     /// A UTF-8 name that is no [`ContentPath`], such as one holding `\`.
-    Name { written: String, source: PathError },
+    Name {
+        /// The name.
+        written: String,
+        /// Why it is no path.
+        source: PathError,
+    },
     /// A link whose target is outside the folder.
-    Outside { path: ContentPath, target: PathBuf },
+    Outside {
+        /// The link.
+        path: ContentPath,
+        /// Where it points.
+        target: PathBuf,
+    },
     /// A link to a folder that holds the link.
-    Cycle { path: ContentPath, target: PathBuf },
+    Cycle {
+        /// The link.
+        path: ContentPath,
+        /// Where it points.
+        target: PathBuf,
+    },
     /// Neither a file nor a folder: a socket, a pipe, a device.
-    Special { path: ContentPath },
+    Special {
+        /// The path.
+        path: ContentPath,
+    },
     /// More files than the budget.
-    Files { count: u64, limit: u64 },
+    Files {
+        /// How many files there are.
+        count: u64,
+        /// How many a site may hold.
+        limit: u64,
+    },
     /// One file larger than the budget.
-    File { path: ContentPath, size: Bytes, limit: Bytes },
+    File {
+        /// The file.
+        path: ContentPath,
+        /// How large it is.
+        size: Bytes,
+        /// How large a file may be.
+        limit: Bytes,
+    },
     /// All files together larger than the budget.
-    Total { size: Bytes, limit: Bytes },
+    Total {
+        /// How large they are together.
+        size: Bytes,
+        /// How large a site may be.
+        limit: Bytes,
+    },
     /// A file's bytes could not be stored.
     Store(StoreError),
     /// The files do not make a snapshot.

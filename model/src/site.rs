@@ -22,9 +22,13 @@ pub enum Root {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Layout {
+    /// Dated posts in a collection, and pages beside them.
     Blog,
+    /// A notes vault, such as Obsidian's: nothing is published until it is selected.
     Vault,
+    /// Documentation, marked by a `docs` folder: pages, no posts.
     Docs,
+    /// Pages and nothing else: the layout when nothing marks another.
     Flat,
 }
 
@@ -33,9 +37,11 @@ pub enum Layout {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum PageKind {
+    /// The site's home page.
     Home,
     /// A dated page in a collection.
     Post,
+    /// A page that is not a post.
     Page,
 }
 
@@ -53,6 +59,7 @@ impl PageId {
         Self(hasher.finalize().into())
     }
 
+    /// The hash it is.
     pub const fn hash(self) -> Hash {
         self.0
     }
@@ -114,7 +121,9 @@ impl std::fmt::Display for Author {
 #[serde(try_from = "TagParts")]
 #[non_exhaustive]
 pub struct Tag {
+    /// What routes and comparison use: `rust-notes`.
     pub slug: Slug,
+    /// As the author wrote it: `Rust Notes`.
     pub written: String,
 }
 
@@ -184,16 +193,25 @@ impl Tag {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct Page {
+    /// Its identity, from its file's path.
     pub id: PageId,
+    /// The file it is read from.
     pub file: ContentPath,
+    /// Where it is served.
     pub route: Route,
+    /// What it is to its site.
     pub kind: PageKind,
+    /// Its title.
     pub title: String,
+    /// When it was written, or `None`.
     pub date: Option<When>,
+    /// When it was last changed, or `None`.
     pub updated: Option<When>,
+    /// Its tags, sorted by slug, each slug once.
     pub tags: Vec<Tag>,
     /// For feeds, listings and `og:description`; `None` when the page has no text.
     pub summary: Option<String>,
+    /// Its body.
     pub body: Document,
 }
 
@@ -205,12 +223,14 @@ impl Page {
         Self { id, file, route, kind, title, date: None, updated: None, tags: Vec::new(), summary: None, body }
     }
 
+    /// The same page with `summary`.
     #[must_use]
     pub fn summarized(mut self, summary: Option<String>) -> Self {
         self.summary = summary;
         self
     }
 
+    /// The same page, written at `date` and last changed at `updated`.
     #[must_use]
     pub fn dated(mut self, date: Option<When>, updated: Option<When>) -> Self {
         self.date = date;
@@ -232,12 +252,16 @@ impl Page {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[non_exhaustive]
 pub struct Asset {
+    /// The file.
     pub file: ContentPath,
+    /// Where it is served.
     pub route: Route,
+    /// The hash of its bytes.
     pub blob: Hash,
 }
 
 impl Asset {
+    /// `file`, served at `route` with the bytes of `blob`.
     pub fn new(file: ContentPath, route: Route, blob: Hash) -> Self {
         Self { file, route, blob }
     }
@@ -247,11 +271,14 @@ impl Asset {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[non_exhaustive]
 pub struct Excluded {
+    /// The file.
     pub path: ContentPath,
+    /// The decision that left it out: `file.ignore`, `page.publish`, `site.root`.
     pub because: AnyCode,
 }
 
 impl Excluded {
+    /// `path`, left out by the decision `because`.
     pub fn new(path: ContentPath, because: AnyCode) -> Self {
         Self { path, because }
     }
@@ -261,10 +288,13 @@ impl Excluded {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct Identity {
+    /// Its name.
     pub title: String,
+    /// One line saying what it is, or `None`.
     pub description: Option<String>,
     /// First author first.
     pub authors: Vec<Author>,
+    /// The language of its pages.
     pub language: Language,
 }
 
@@ -294,9 +324,17 @@ pub struct Site {
 #[non_exhaustive]
 pub enum SiteError {
     /// Two pages or assets share a route.
-    Collision { route: Route, files: [ContentPath; 2] },
+    Collision {
+        /// The route.
+        route: Route,
+        /// Two of the files that route there.
+        files: [ContentPath; 2],
+    },
     /// The home or a nav entry names a page the site does not hold.
-    Missing { page: PageId },
+    Missing {
+        /// The page named.
+        page: PageId,
+    },
 }
 
 impl fmt::Display for SiteError {
@@ -314,13 +352,21 @@ impl std::error::Error for SiteError {}
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SiteParts {
+    /// What the site says about itself.
     pub identity: Identity,
+    /// Where its content starts.
     pub root: Root,
+    /// How its files are arranged.
     pub layout: Layout,
+    /// The home page, or `None` for a generated listing.
     pub home: Option<PageId>,
+    /// Every page.
     pub pages: Vec<Page>,
+    /// Every asset.
     pub assets: Vec<Asset>,
+    /// The pages in the navigation, in order.
     pub nav: Vec<PageId>,
+    /// Every file left out.
     pub excluded: Vec<Excluded>,
 }
 
@@ -364,14 +410,17 @@ impl Site {
         Ok(Self { identity, root, layout, home, pages, assets, nav, excluded })
     }
 
+    /// What the site says about itself.
     pub fn identity(&self) -> &Identity {
         &self.identity
     }
 
+    /// Where its content starts in the snapshot.
     pub fn root(&self) -> &Root {
         &self.root
     }
 
+    /// How its files are arranged.
     pub fn layout(&self) -> Layout {
         self.layout
     }
@@ -401,6 +450,7 @@ impl Site {
         &self.excluded
     }
 
+    /// The page `id`, if the site holds it.
     pub fn page(&self, id: PageId) -> Option<&Page> {
         self.pages.iter().find(|page| page.id == id)
     }

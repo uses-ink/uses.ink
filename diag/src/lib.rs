@@ -52,10 +52,12 @@ impl fmt::Display for Message<'_> {
 pub struct Fix<'a>(Said<'a>);
 
 impl<'a> Fix<'a> {
+    /// The fix for `problem`, when the catalog gives one.
     pub fn of_problem(problem: &'a Problem) -> Option<Self> {
         Self::problem_has(problem).then_some(Self(Said::Problem(problem)))
     }
 
+    /// The fix for `announcement`, when the catalog gives one.
     pub fn of_announcement(announcement: &'a Announcement) -> Option<Self> {
         Self::announcement_has(announcement).then_some(Self(Said::Announcement(announcement)))
     }

@@ -36,6 +36,7 @@ const PREFIX: &[u8] = b"uses.ink/manifest/v2\n";
 pub struct DeployId(Hash);
 
 impl DeployId {
+    /// The hash of the manifest's canonical bytes.
     pub const fn hash(self) -> Hash {
         self.0
     }
@@ -52,21 +53,37 @@ impl fmt::Display for DeployId {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum MediaType {
+    /// `text/html`.
     Html,
+    /// `text/css`.
     Css,
+    /// `application/xml`, such as the sitemap.
     Xml,
+    /// `application/atom+xml`.
     Atom,
+    /// `application/rss+xml`.
     Rss,
+    /// `application/json`.
     Json,
+    /// `text/plain`, such as `robots.txt`.
     Text,
+    /// `image/svg+xml`.
     Svg,
+    /// `image/png`.
     Png,
+    /// `image/jpeg`.
     Jpeg,
+    /// `image/avif`.
     Avif,
+    /// `image/webp`.
     Webp,
+    /// `image/gif`.
     Gif,
+    /// `image/x-icon`.
     Ico,
+    /// `font/woff2`.
     Woff2,
+    /// `application/pdf`.
     Pdf,
 }
 
@@ -122,6 +139,7 @@ pub enum Status {
 }
 
 impl Status {
+    /// The HTTP status code: `200`, `404`.
     pub const fn code(self) -> u16 {
         match self {
             Self::Ok => 200,
@@ -154,18 +172,22 @@ impl Served {
         self
     }
 
+    /// The status it is served with.
     pub fn status(&self) -> Status {
         self.status
     }
 
+    /// Where it is served.
     pub fn route(&self) -> &Route {
         &self.route
     }
 
+    /// The hash of the bytes it serves.
     pub fn blob(&self) -> Hash {
         self.blob
     }
 
+    /// What kind of bytes they are.
     pub fn media(&self) -> MediaType {
         self.media
     }
@@ -179,6 +201,7 @@ impl Served {
 /// Two entries for one route.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DuplicateRoute {
+    /// The route served twice.
     pub route: Route,
 }
 
@@ -215,6 +238,7 @@ impl Manifest {
         &self.entries
     }
 
+    /// The entry served at `route`, if there is one.
     pub fn entry(&self, route: &Route) -> Option<&Served> {
         let at = self.entries.binary_search_by(|e| e.route.cmp(route)).ok()?;
         self.entries.get(at)
@@ -243,6 +267,7 @@ impl Manifest {
         bytes
     }
 
+    /// The deploy's identity: the hash of [`Manifest::canonical`].
     pub fn id(&self) -> DeployId {
         DeployId(Hash::of(self.canonical()))
     }

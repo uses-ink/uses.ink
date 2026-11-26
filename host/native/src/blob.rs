@@ -21,9 +21,19 @@ pub trait Store: Blobs {
 #[non_exhaustive]
 pub enum StoreError {
     /// The store's folder could not be made.
-    Create { path: PathBuf, source: std::io::Error },
+    Create {
+        /// The folder.
+        path: PathBuf,
+        /// What the system said.
+        source: std::io::Error,
+    },
     /// A blob's file could not be written.
-    Write { path: PathBuf, source: std::io::Error },
+    Write {
+        /// The blob's file.
+        path: PathBuf,
+        /// What the system said.
+        source: std::io::Error,
+    },
 }
 
 impl fmt::Display for StoreError {

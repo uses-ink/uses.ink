@@ -19,6 +19,7 @@ pub enum Severity {
 }
 
 impl Severity {
+    /// As the terminal and NDJSON write it: `error`.
     pub const fn name(self) -> &'static str {
         match self {
             Self::Error => "error",
@@ -44,6 +45,7 @@ pub enum Fault {
 }
 
 impl Fault {
+    /// As NDJSON writes it: `author`.
     pub const fn name(self) -> &'static str {
         match self {
             Self::Author => "author",
@@ -58,43 +60,54 @@ impl Fault {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct Diagnostic {
+    /// What is wrong, with its code and typed fields.
     pub problem: Problem,
+    /// What it is about: the site, a file, or nothing in particular.
     pub subject: Option<Subject>,
+    /// Where in the subject's file, when a place is known.
     pub span: Option<Span>,
+    /// The problem that caused it, shown as its `caused by` chain.
     pub cause: Option<Box<Diagnostic>>,
 }
 
 impl Diagnostic {
+    /// `problem`, about nothing in particular, with no place and no cause.
     pub fn new(problem: Problem) -> Self {
         Self { problem, subject: None, span: None, cause: None }
     }
 
+    /// The same problem, about `subject`.
     #[must_use]
     pub fn on(mut self, subject: Subject) -> Self {
         self.subject = Some(subject);
         self
     }
 
+    /// The same problem, at `span` of its subject's file.
     #[must_use]
     pub fn at(mut self, span: Span) -> Self {
         self.span = Some(span);
         self
     }
 
+    /// The same problem, caused by `cause`.
     #[must_use]
     pub fn caused_by(mut self, cause: Self) -> Self {
         self.cause = Some(Box::new(cause));
         self
     }
 
+    /// Its problem's code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
         self.problem.code()
     }
 
+    /// How bad its problem is.
     pub const fn severity(&self) -> Severity {
         self.problem.severity()
     }
 
+    /// Whose move it is to fix it.
     pub const fn fault(&self) -> Fault {
         self.problem.fault()
     }
@@ -115,28 +128,35 @@ impl From<Problem> for Diagnostic {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct Notice {
+    /// What it says, with its code and typed fields.
     pub announcement: Announcement,
+    /// What it is about: the site, a file, or nothing in particular.
     pub subject: Option<Subject>,
+    /// Where in the subject's file, when a place is known.
     pub span: Option<Span>,
 }
 
 impl Notice {
+    /// `announcement`, about nothing in particular, with no place.
     pub fn new(announcement: Announcement) -> Self {
         Self { announcement, subject: None, span: None }
     }
 
+    /// The same notice, about `subject`.
     #[must_use]
     pub fn on(mut self, subject: Subject) -> Self {
         self.subject = Some(subject);
         self
     }
 
+    /// The same notice, at `span` of its subject's file.
     #[must_use]
     pub fn at(mut self, span: Span) -> Self {
         self.span = Some(span);
         self
     }
 
+    /// Its announcement's code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
         self.announcement.code()
     }

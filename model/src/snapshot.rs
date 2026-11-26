@@ -24,12 +24,16 @@ pub struct Snapshot {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[non_exhaustive]
 pub struct Entry {
+    /// Where it is in the tree.
     pub path: ContentPath,
+    /// The hash of its bytes.
     pub blob: Hash,
+    /// How large it is.
     pub size: Bytes,
 }
 
 impl Entry {
+    /// The file at `path`, with the bytes of `blob`.
     pub fn new(path: ContentPath, blob: Hash, size: Bytes) -> Self {
         Self { path, blob, size }
     }
@@ -39,12 +43,16 @@ impl Entry {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub struct FileFacts {
+    /// The file.
     pub path: ContentPath,
+    /// When it was first added.
     pub created: Known<Timestamp>,
+    /// When it was last changed.
     pub updated: Known<Timestamp>,
 }
 
 impl FileFacts {
+    /// What is known of `path`: when it was added and last changed.
     pub fn new(path: ContentPath, created: Known<Timestamp>, updated: Known<Timestamp>) -> Self {
         Self { path, created, updated }
     }
@@ -57,15 +65,21 @@ impl FileFacts {
 pub enum Known<T> {
     /// The value itself.
     Exact {
+        /// The value.
         value: T,
+        /// Where it came from.
         from: Provenance,
     },
     /// A bound: the true value is this or earlier. Never treated as exact.
     NotAfter {
+        /// The latest the value can be.
         value: T,
+        /// Where it came from.
         from: Provenance,
     },
+    /// Nothing is known.
     Unknown {
+        /// Why not.
         reason: UnknownReason,
     },
 }
@@ -86,7 +100,10 @@ impl<T> Known<T> {
 #[non_exhaustive]
 pub enum Provenance {
     /// Git history, read up to this commit.
-    GitHistory { commit: Oid },
+    GitHistory {
+        /// The commit history was read up to.
+        commit: Oid,
+    },
     /// The local filesystem's metadata.
     Filesystem,
 }
@@ -99,7 +116,10 @@ pub enum UnknownReason {
     /// The source has no history ability.
     NoHistory,
     /// The history was cut at this many commits before the file's start.
-    BeyondDepth { depth: u32 },
+    BeyondDepth {
+        /// How many commits were read.
+        depth: u32,
+    },
     /// The source could have said and did not.
     NotReported,
 }
@@ -109,9 +129,13 @@ pub enum UnknownReason {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Ability {
+    /// It can give an immutable tree at one version.
     Snapshot,
+    /// It knows when each file was added and changed.
     History,
+    /// It can say when its content changes.
     Watch,
+    /// Its content is not public: nothing is published until it is selected.
     Private,
 }
 
@@ -119,11 +143,14 @@ pub enum Ability {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub struct Observed {
+    /// What it could do.
     pub has: Vec<Ability>,
+    /// What it could not do, each with the decision that suffers for it.
     pub lacks: Vec<Lack>,
 }
 
 impl Observed {
+    /// A fetch that had `has` and lacked `lacks`.
     pub fn new(has: Vec<Ability>, lacks: Vec<Lack>) -> Self {
         Self { has, lacks }
     }
@@ -133,11 +160,14 @@ impl Observed {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub struct Lack {
+    /// What the fetch could not do.
     pub ability: Ability,
+    /// The decision that suffers for it, such as `page.date` without history.
     pub consequence: AnyCode,
 }
 
 impl Lack {
+    /// `ability` lacked, which `consequence` suffers for.
     pub fn new(ability: Ability, consequence: AnyCode) -> Self {
         Self { ability, consequence }
     }
@@ -148,11 +178,20 @@ impl Lack {
 #[non_exhaustive]
 pub enum SnapshotError {
     /// Two entries share a path.
-    Duplicate { path: ContentPath },
+    Duplicate {
+        /// The path.
+        path: ContentPath,
+    },
     /// Two fact records share a path.
-    DuplicateFacts { path: ContentPath },
+    DuplicateFacts {
+        /// The path.
+        path: ContentPath,
+    },
     /// Facts about a path the tree does not hold.
-    Stray { path: ContentPath },
+    Stray {
+        /// The path.
+        path: ContentPath,
+    },
 }
 
 impl fmt::Display for SnapshotError {
@@ -198,6 +237,7 @@ impl Snapshot {
         Ok(Self { version, tree, facts, observed })
     }
 
+    /// The version it was taken at.
     pub fn version(&self) -> &Version {
         &self.version
     }
@@ -212,6 +252,7 @@ impl Snapshot {
         &self.facts
     }
 
+    /// What the fetch could and could not do.
     pub fn observed(&self) -> &Observed {
         &self.observed
     }

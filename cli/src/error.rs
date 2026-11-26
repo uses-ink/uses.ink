@@ -13,21 +13,53 @@ pub enum Error {
     /// The folder could not be read as a snapshot: reported as its diagnostic.
     Refused(host_native::Refused),
     /// `--base` is no site address.
-    Base { written: String, source: engine::BaseUrlError },
+    Base {
+        /// The address, as given.
+        written: String,
+        /// Why it is no address.
+        source: engine::BaseUrlError,
+    },
     /// The path given to `ink explain` is no path of a site.
-    Path { written: String, source: model::PathError },
+    Path {
+        /// The path, as given.
+        written: String,
+        /// Why it is no path.
+        source: model::PathError,
+    },
     /// The output folder holds files that no earlier `ink build` wrote.
-    Foreign { path: PathBuf },
+    Foreign {
+        /// The output folder.
+        path: PathBuf,
+    },
     /// The output folder or a file in it could not be written.
-    Write { path: PathBuf, source: std::io::Error },
+    Write {
+        /// The folder or file.
+        path: PathBuf,
+        /// What the system said.
+        source: std::io::Error,
+    },
     /// The previous build's manifest in the output folder does not parse.
-    Manifest { path: PathBuf, source: serde_json::Error },
+    Manifest {
+        /// The manifest's file.
+        path: PathBuf,
+        /// Why it does not parse.
+        source: serde_json::Error,
+    },
     /// The preview server could not listen or serve.
-    Serve { source: std::io::Error },
+    Serve {
+        /// What the system said.
+        source: std::io::Error,
+    },
     /// Stdout or stderr could not be written.
-    Terminal { source: std::io::Error },
+    Terminal {
+        /// What the system said.
+        source: std::io::Error,
+    },
     /// A result could not be written as JSON.
-    Json { source: serde_json::Error },
+    Json {
+        /// Why it could not.
+        source: serde_json::Error,
+    },
 }
 
 impl Error {

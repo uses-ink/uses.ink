@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct Bytes(pub u64);
 
 impl Bytes {
+    /// How many bytes.
     pub const fn count(self) -> u64 {
         self.0
     }

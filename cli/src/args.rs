@@ -14,6 +14,7 @@ pub struct Cli {
     /// Also print notices: defaults chosen, files skipped. They are warn-level quiet otherwise.
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
+    /// What to do.
     #[command(subcommand)]
     pub command: Command,
 }

@@ -18,7 +18,10 @@ pub enum LanguageError {
     /// The primary language is not two or three letters.
     Primary,
     /// The subtag at this place (from 1) is empty, too long or not letters and digits.
-    Subtag { index: usize },
+    Subtag {
+        /// Which subtag, from 1.
+        index: usize,
+    },
 }
 
 impl fmt::Display for LanguageError {

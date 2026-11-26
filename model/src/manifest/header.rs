@@ -9,14 +9,23 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum HeaderName {
+    /// `cache-control`.
     CacheControl,
+    /// `content-security-policy`.
     ContentSecurityPolicy,
+    /// `cross-origin-opener-policy`.
     CrossOriginOpenerPolicy,
+    /// `link`.
     Link,
+    /// `permissions-policy`.
     PermissionsPolicy,
+    /// `referrer-policy`.
     ReferrerPolicy,
+    /// `strict-transport-security`.
     StrictTransportSecurity,
+    /// `x-content-type-options`.
     XContentTypeOptions,
+    /// `x-frame-options`.
     XFrameOptions,
 }
 
@@ -53,7 +62,10 @@ pub struct HeaderValue(String);
 #[non_exhaustive]
 pub enum HeaderValueError {
     /// A byte that is not visible ASCII, space or tab, at this offset.
-    Byte { at: usize },
+    Byte {
+        /// The byte offset.
+        at: usize,
+    },
     /// Whitespace at the start or the end.
     Padded,
 }
@@ -70,6 +82,7 @@ impl fmt::Display for HeaderValueError {
 impl std::error::Error for HeaderValueError {}
 
 impl HeaderValue {
+    /// `text`, when it is visible ASCII, spaces and tabs, not padded.
     pub fn parse(text: impl Into<String>) -> Result<Self, HeaderValueError> {
         let text = text.into();
         if let Some(at) = text.bytes().position(|b| !(b.is_ascii_graphic() || b == b' ' || b == b'\t')) {
@@ -81,6 +94,7 @@ impl HeaderValue {
         Ok(Self(text))
     }
 
+    /// The value, as sent.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -110,11 +124,14 @@ impl From<HeaderValue> for String {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[non_exhaustive]
 pub struct Header {
+    /// Which header.
     pub name: HeaderName,
+    /// Its value.
     pub value: HeaderValue,
 }
 
 impl Header {
+    /// The header `name: value`.
     pub fn new(name: HeaderName, value: HeaderValue) -> Self {
         Self { name, value }
     }
