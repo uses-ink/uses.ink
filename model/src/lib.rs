@@ -6,6 +6,8 @@
 //! - Values: [`Value`], and [`FromFront`] for what frontmatter can hold.
 //! - The result: [`Site`], [`Page`], [`Document`], read with [`Visit`] and rewritten with
 //!   [`Fold`].
+//! - Highlighting: the [`highlight::Highlight`] capability a theme asks for a code block's
+//!   classed runs.
 //! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`].
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
 //!   `cargo xtask diag` generates from `diag/catalog.toml`.
@@ -20,6 +22,7 @@ mod format;
 #[allow(clippy::too_many_lines, clippy::match_same_arms, reason = "generated: one match arm per catalog entry")]
 mod generated;
 mod hash;
+pub mod highlight;
 mod language;
 mod manifest;
 mod path;
