@@ -64,6 +64,17 @@ The engine, end to end, on the local disk.
 **Exit:** `ink build` on every fixture twice gives identical deploy hashes; `ink explain --pin`
 output, put back as `ink.toml`, reproduces the same deploy; no JS in any reader page.
 
+Progress (2026-11-26): `model`, `config`, `diag`, the engine and `ink:format-markdown` run natively;
+`host/native` reads a folder into a snapshot (budgets, link refusals, mtimes as bounds) and stores
+blobs in memory or a folder; `ink:theme-quiet` renders every document node through `unspliced`,
+code through giallo and math as MathML, as a placeholder design; the engine serves a generated
+home when a site has none; the CLI has `ink build`, `check`, `explain [--pin]` and `preview` with
+`--json`. Site fixtures (`cli/fixture/site/`: blog, flat README repo, docs folder, broken
+frontmatter, ambiguous links, a notes folder) pass the three exit tests in `cli/tests/site.rs`.
+Left: `host/wasmtime`, the WIT worlds and running the format and theme as components; a warning channel in the theme contract (the theme keeps its
+own `Said` meanwhile); `ink build --check` against wasm builds.
+
+
 ## Code rework (closes M1)
 
 The M1 crates were written before `code.md`. They are rebuilt onto its abstractions, in order,
