@@ -12,6 +12,7 @@
 mod decision;
 mod diagnostic;
 mod document;
+mod format;
 #[allow(clippy::too_many_lines, clippy::match_same_arms, reason = "generated: one match arm per catalog entry")]
 mod generated;
 mod hash;
@@ -32,6 +33,7 @@ pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
 pub use document::{
     Alignment, Anchor, Block, CalloutKind, Document, ImageSource, Inline, Level, LevelError, LinkTarget,
 };
+pub use format::{Front, Read, Spanned};
 pub use generated::{Announcement, Problem};
 pub use hash::{Hash, HashError};
 pub use manifest::{
