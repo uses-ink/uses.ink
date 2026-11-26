@@ -6,6 +6,11 @@ all-features = true
 
 [advisories]
 yanked = "deny"
+ignore = [
+    # `paste` is unmaintained, not unsound: a proc macro rav1e 0.8.1 (the latest) runs at build
+    # time, so none of its code ships. Drop this when rav1e moves to `pastey`.
+    { id = "RUSTSEC-2024-0436", reason = "build-time macro of rav1e, no maintained rav1e without it" },
+]
 
 [licenses]
 allow = ["MIT", "Apache-2.0", "Unicode-3.0", "AGPL-3.0-or-later"]
@@ -20,6 +25,16 @@ exceptions = [
     { crate = "zlib-rs", allow = ["Zlib"] },
     # axum's router, for `ink preview`
     { crate = "matchit", allow = ["BSD-3-Clause"] },
+    # AVIF, through rav1e (host/image)
+    { crate = "av1-grain", allow = ["BSD-2-Clause"] },
+    { crate = "avif-serialize", allow = ["BSD-3-Clause"] },
+    { crate = "rav1e", allow = ["BSD-2-Clause"] },
+    { crate = "ravif", allow = ["BSD-3-Clause"] },
+    { crate = "v_frame", allow = ["BSD-2-Clause"] },
+    # rav1e's `fuzzing` feature, which nothing enables; `all-features` above reaches it
+    { crate = "libfuzzer-sys", allow = ["NCSA"] },
+    # JPEG copies (host/image): the IJG notice covers its port of libjpeg's tables
+    { crate = "jpeg-encoder", allow = ["IJG"] },
 ]
 
 [bans]

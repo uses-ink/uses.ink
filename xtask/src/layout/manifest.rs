@@ -61,6 +61,7 @@ impl Order {
         ("uses-ink-token", &[]),
         // Formats speak the model directly until host/wasmtime exists, then the generated WIT types.
         ("uses-ink-format-markdown", &["uses-ink-model"]),
+        ("uses-ink-host-image", &["uses-ink-model", "uses-ink-engine"]),
         ("uses-ink-host-native", &["uses-ink-model", "uses-ink-engine"]),
         // The Theme trait, until themes are components speaking the generated WIT types.
         ("uses-ink-theme-quiet", &["uses-ink-model", "uses-ink-engine"]),
@@ -71,6 +72,7 @@ impl Order {
                 "uses-ink-config",
                 "uses-ink-diag",
                 "uses-ink-engine",
+                "uses-ink-host-image",
                 "uses-ink-host-native",
                 "uses-ink-format-markdown",
                 "uses-ink-theme-quiet",

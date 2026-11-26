@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+---
+varied 32x32
+copy image/avif 32x32 293 bytes 2d7a5395ff32b1f8125ebc9f344ed73088f71e4c8e861e6fc9ff0a41d3137547
+copy image/jpeg 32x32 773 bytes 28cab3343e978cf471fc7658e9c6c49946b0affc6b93282f4bcf41544afb11c2
+placeholder image/png 32x32 99 bytes 3daf4b413f9028698c4cc4a84a3e63fd280b21c772253795b5380d73dc81b27c

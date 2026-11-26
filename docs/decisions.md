@@ -337,3 +337,33 @@ Rust then highlight in 2 ms. Its licences are MIT OR Apache-2.0, so `deny.toml` 
 exception, and giallo, zstd and their exceptions are gone. host-native builds for
 `wasm32-unknown-unknown` with the system clang (arborium ships its own sysroot), so the plan
 holds if the host ever runs in wasm; the theme no longer links any highlighter, nor C.
+
+## 0040 Images are prepared by the host, deterministically, and served as hashed copies
+
+Accepted. The engine decides which files get copies, their routes, headers and what a theme
+learns of them; the host does the pixel work behind `engine::Images`, as with highlighting
+(0039), in `host/image` (`uses-ink-host-image`). Before any page is rendered, each raster asset
+is decoded within a pixel budget (50 million by default; a header over it is
+`image.budget.pixels`, refused before a pixel is decoded), its EXIF orientation applied, resized
+with Catmull-Rom to the widths 480, 960 and 1440 that are narrower than it (plus its own width;
+never wider), and encoded as AVIF (ravif, quality 70, speed 10) and JPEG (quality 80,
+progressive), or PNG when it has transparency. Re-encoding leaves every bit of metadata behind,
+so the original is not served. Each copy is served at `<name>.<width>.<hash>.<ext>` with
+`cache-control: public, max-age=31536000, immutable`; the asset carries a `model::Picture` (its
+size, its copies, its placeholder) for the theme's `width`, `height`, `srcset` and `<picture>`.
+The placeholder is the image's thumbhash drawn as a 32-pixel PNG, served as a hashed file and
+shown under the image, not inlined: `unspliced` refuses a `data:` URL at run time and
+`style-src 'self'` refuses inline styles, so the CSP stays as it is. Animated GIF and WebP are
+served as they are (no reader page runs script, so a poster could not start them), and AVIF is,
+since decoding it takes dav1d (C); each is a notice.
+
+Determinism, measured: ravif cuts as many tiles as rayon has threads, so its bytes followed the
+core count; the work runs rav1e on one thread (one tile) without assembly, jpeg-encoder without
+its SIMD feature, `fast_image_resize`'s SIMD paths give the scalar path's bytes for this filter,
+and the ported thumbhash takes its cosines from `libm`. The goldens in `host/image/fixture` hold
+the hash of every copy. A `Key` (the source's hash, the settings, the crates' versions) names
+one image's work; `host_image::Pixels` keeps what it made by key, and the render unit index
+reuses it across builds when it lands. **Why:** layout stability and small pages for readers,
+no metadata leaks, no C. **Reversal:** encode time on hosted builders (a 4000 by 3000 photo
+costs about 2 s of one core) pushes builds past their budget: a slower AVIF speed only behind
+the cache, or fewer widths.

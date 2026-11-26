@@ -17,7 +17,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | HTML safety | own allowlist; `ammonia` 4.2 behind an escape hatch only | smallest XSS surface (0027) |
 | Highlighting capability | `arborium` 2.18, `arborium-theme` 2.18, in `host/native` only | tree-sitter grammars compiled from C, only the 14 languages enabled as features; `arborium-theme` maps capture names onto its slots, which become `model::highlight::Capture` (0039) |
 | Math | `math-core` 0.9 | LaTeX to MathML Core, no JS for readers |
-| Images | `image` 0.25, `fast_image_resize` 6.2, `ravif` 0.13, `jpeg-encoder` 0.7, `imagesize` 0.15, `img-parts` 0.4, vendored thumbhash | pure Rust AVIF and JPEG, no C |
+| Images | `image` 0.25 (GIF, JPEG, PNG and WebP decoders only), `fast_image_resize` 6.2, `ravif` 0.13 without `asm` and `threading`, `jpeg-encoder` 0.7 without `simd`, `imagesize` 0.15, thumbhash ported with `libm`; in `host/image` only | pure Rust decode, resize, AVIF and JPEG, no C or assembly; each pinned so the same bytes come out on every machine (0040); `imagesize` reads an AVIF's size, which nothing decodes without dav1d (C) |
 | Fonts | `harfrust` 0.16, `skrifa` 0.50, `subsetter` 0.2, `ttf2woff2` 0.14 | maintained successors of rustybuzz and ttf-parser; pure Rust WOFF2 |
 | Pen | own port of perfect-freehand, `kurbo` 0.13, `libm`, `tiny-skia` 0.12, `resvg` 0.50 | one deterministic implementation (0025); `freehand-web` is 36 KB gzipped, no `wasm-bindgen` (0034) |
 | Feeds, sitemap | `atom_syndication` 0.12, `rss` 2.1, `quick-xml` 0.42 | typed feeds; no maintained sitemap crate |

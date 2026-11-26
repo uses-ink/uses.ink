@@ -1,0 +1,4 @@
+---
+source: fixture/src/lib.rs
+---
+refused image.budget.pixels on Some(File(ContentPath("bomb.png")))

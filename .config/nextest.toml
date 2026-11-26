@@ -8,3 +8,10 @@ slow-timeout = { period = "100ms", terminate-after = 1 }
 [[profile.default.overrides]]
 filter = "binary(highlight) | test(/highlight/)"
 slow-timeout = { period = "250ms", terminate-after = 1 }
+
+# Encoding AVIF runs rav1e, whose fixed cost per copy is tens of milliseconds even on the tiny
+# generated fixtures: the tests that encode images (host-image's, and those with `image` at the
+# end of their name) have this budget instead.
+[[profile.default.overrides]]
+filter = "package(uses-ink-host-image) | test(/_image$/)"
+slow-timeout = { period = "500ms", terminate-after = 1 }

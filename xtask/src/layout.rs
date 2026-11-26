@@ -52,6 +52,7 @@ pub(crate) const ENFORCED: &[&str] = &[
     "uses-ink-engine",
     "uses-ink-fixture",
     "uses-ink-format-markdown",
+    "uses-ink-host-image",
     "uses-ink-host-native",
     "uses-ink-model",
     "uses-ink-theme-quiet",
