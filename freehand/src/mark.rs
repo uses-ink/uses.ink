@@ -4,13 +4,13 @@
 
 use alloc::vec::Vec;
 
-use crate::centreline::Centreline;
+use crate::centreline::{Centreline, Ellipse};
 use crate::chance::{Chance, Mulberry, Seed};
 use crate::hand::Hand;
 use crate::highlighter::Highlighter;
 use crate::path::Path;
 use crate::pencil::Pencil;
-use crate::point::Point;
+use crate::point::{Point, Rectangle};
 
 /// A quick straight line from `from` to `to`, overshooting a little: a rule or an underline.
 pub fn line(from: Point, to: Point, weight: f64, name: &str) -> Path {
@@ -27,19 +27,13 @@ fn seeded_line(from: Point, to: Point, weight: f64, seed: Seed) -> Path {
 /// A box drawn as four quick lines between corners that each miss their place by up to
 /// `slack / 2` pixels, so the lines cross at the corners. Drawn large, it stretches as a
 /// border image and keeps its wobble.
-pub fn frame(top_left: Point, bottom_right: Point, slack: f64, weight: f64, name: &str) -> Vec<Path> {
+pub fn frame(around: Rectangle, slack: f64, weight: f64, name: &str) -> Vec<Path> {
     let mut chance = Mulberry::new(Seed::of(name));
-    let mut miss = |x: f64, y: f64| {
+    let corners = around.corners().map(|corner| {
         let dx = (chance.draw() - 0.5) * slack;
         let dy = (chance.draw() - 0.5) * slack;
-        Point::new(x + dx, y + dy)
-    };
-    let corners = [
-        miss(top_left.x, top_left.y),
-        miss(bottom_right.x, top_left.y),
-        miss(bottom_right.x, bottom_right.y),
-        miss(top_left.x, bottom_right.y),
-    ];
+        Point::new(corner.x + dx, corner.y + dy)
+    });
     corners
         .iter()
         .zip(corners.iter().cycle().skip(1))
@@ -48,11 +42,11 @@ pub fn frame(top_left: Point, bottom_right: Point, slack: f64, weight: f64, name
         .collect()
 }
 
-/// An ellipse drawn in one go of `count` points from angle `from`, going `turns` times round,
-/// so its ends overlap: a ring around a number, or a scribbled bullet.
-pub fn ring(centre: Point, radius: Point, from: f64, turns: f64, count: u32, weight: f64, name: &str) -> Path {
+/// An ellipse drawn in one go, its ends overlapping when it turns past once: a ring around a
+/// number, or a scribbled bullet.
+pub fn ring(ellipse: Ellipse, weight: f64, name: &str) -> Path {
     let mut chance = Mulberry::new(Seed::of(name));
-    let centre = Centreline::ellipse(centre, radius, from, turns, count);
+    let centre = Centreline::ellipse(ellipse);
     Pencil::new(weight).outline(&Hand::default().trace(&centre, &mut chance))
 }
 
@@ -73,19 +67,13 @@ pub fn underline(width: f64, y: f64, weight: f64, name: &str) -> Path {
 
 /// A bucket fill behind a box: its corners missed by up to 2 px, the whole shape moved by
 /// `shift`, the way every fill of a page misses its lines the same way.
-pub fn fill(top_left: Point, bottom_right: Point, shift: Point, name: &str) -> Path {
+pub fn fill(behind: Rectangle, shift: Point, name: &str) -> Path {
     let mut chance = Mulberry::new(Seed::of(name));
-    let mut miss = |x: f64, y: f64| {
+    let corners = behind.corners().map(|corner| {
         let dx = (chance.draw() - 0.5) * 4.0;
         let dy = (chance.draw() - 0.5) * 4.0;
-        Point::new(x + dx + shift.x, y + dy + shift.y)
-    };
-    let corners = [
-        miss(top_left.x, top_left.y),
-        miss(bottom_right.x, top_left.y),
-        miss(bottom_right.x, bottom_right.y),
-        miss(top_left.x, bottom_right.y),
-    ];
+        Point::new(corner.x + dx + shift.x, corner.y + dy + shift.y)
+    });
     Highlighter::default().fill(&corners, &mut chance)
 }
 

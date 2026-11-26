@@ -39,11 +39,11 @@ mod path;
 mod pencil;
 mod point;
 
-pub use centreline::{Centreline, MOST};
+pub use centreline::{Centreline, Ellipse, MOST};
 pub use chance::{Chance, Constant, Mulberry, Seed};
 pub use hand::Hand;
 pub use highlighter::Highlighter;
 pub use outline::{Cap, Easing, End, Outline, Taper};
 pub use path::Path;
 pub use pencil::Pencil;
-pub use point::{Point, Pressured};
+pub use point::{Point, Pressured, Rectangle};

@@ -18,7 +18,7 @@
 use std::cell::RefCell;
 use std::fmt::Write as _;
 
-use freehand::{Centreline, Hand, Path, Point, mark};
+use freehand::{Centreline, Hand, Path, Point, Rectangle, mark};
 
 thread_local! {
     static INPUT: RefCell<Vec<f64>> = const { RefCell::new(Vec::new()) };
@@ -74,6 +74,11 @@ fn draw(count: u32, name: u32, mark: impl FnOnce(&[Point], &str) -> Vec<Path>) -
     }
 }
 
+/// A `width` by `height` box with its top left corner at the origin.
+const fn at_origin(width: f64, height: f64) -> Rectangle {
+    Rectangle { top_left: Point::new(0.0, 0.0), bottom_right: Point::new(width, height) }
+}
+
 /// `mark::line`.
 #[unsafe(no_mangle)]
 pub extern "C" fn line(from_x: f64, from_y: f64, to_x: f64, to_y: f64, weight: f64, name: u32) -> u32 {
@@ -89,15 +94,13 @@ pub extern "C" fn underline(width: f64, y: f64, weight: f64, name: u32) -> u32 {
 /// `mark::frame` around a `width` by `height` box at the origin: four paths.
 #[unsafe(no_mangle)]
 pub extern "C" fn frame(width: f64, height: f64, slack: f64, weight: f64, name: u32) -> u32 {
-    draw(0, name, |_, name| mark::frame(Point::new(0.0, 0.0), Point::new(width, height), slack, weight, name))
+    draw(0, name, |_, name| mark::frame(at_origin(width, height), slack, weight, name))
 }
 
 /// `mark::fill` behind a `width` by `height` box at the origin.
 #[unsafe(no_mangle)]
 pub extern "C" fn fill(width: f64, height: f64, shift_x: f64, shift_y: f64, name: u32) -> u32 {
-    draw(0, name, |_, name| {
-        vec![mark::fill(Point::new(0.0, 0.0), Point::new(width, height), Point::new(shift_x, shift_y), name)]
-    })
+    draw(0, name, |_, name| vec![mark::fill(at_origin(width, height), Point::new(shift_x, shift_y), name)])
 }
 
 /// `mark::patch` over `count` corners.

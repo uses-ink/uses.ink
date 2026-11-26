@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use freehand::{Centreline, Hand, Highlighter, Mulberry, Path, Pencil, Point, Seed};
+use freehand::{Centreline, Ellipse, Hand, Highlighter, Mulberry, Path, Pencil, Point, Seed};
 use serde::Deserialize;
 use token::Colour;
 use unspliced::{Render, html};
@@ -200,7 +200,14 @@ impl Sheet<'_> {
 
 impl Oval {
     fn line(&self) -> Centreline {
-        Centreline::ellipse(point(self.centre), point(self.radius), self.from, self.turns, self.points)
+        Centreline::ellipse(Ellipse::from(self))
+    }
+}
+
+impl From<&Oval> for Ellipse {
+    fn from(oval: &Oval) -> Self {
+        let Oval { centre, radius, from, turns, points } = *oval;
+        Self { centre: point(centre), radius: point(radius), from, turns, count: points }
     }
 }
 

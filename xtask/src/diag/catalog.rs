@@ -281,8 +281,9 @@ impl Entry {
             (severity, needed("fault", flaws).and_then(|given| fault(&code, given, flaws)))
         };
         let fields = fields(&code, table.get("fields"), flaws);
-        let message = needed("message", flaws).and_then(|t| template(&code, Part::Message, t, &fields, flaws));
-        let fix = text("fix", flaws).and_then(|t| template(&code, Part::Fix, t, &fields, flaws));
+        let message = needed("message", flaws)
+            .and_then(|t| template(Within { code: &code, part: Part::Message }, t, &fields, flaws));
+        let fix = text("fix", flaws).and_then(|t| template(Within { code: &code, part: Part::Fix }, t, &fields, flaws));
         if flaws.len() > before {
             return None;
         }
@@ -365,8 +366,16 @@ fn fields(code: &str, value: Option<&toml::Value>, flaws: &mut Vec<Flaw>) -> Vec
     fields
 }
 
+/// Which template of which entry is being read, as its flaws name it.
+#[derive(Clone, Copy)]
+struct Within<'a> {
+    code: &'a str,
+    part: Part,
+}
+
 /// `{name}` is a field, `{{` and `}}` are braces, anything else is text.
-fn template(code: &str, part: Part, text: &str, fields: &[Field], flaws: &mut Vec<Flaw>) -> Option<Template> {
+fn template(within: Within<'_>, text: &str, fields: &[Field], flaws: &mut Vec<Flaw>) -> Option<Template> {
+    let Within { code, part } = within;
     let mut pieces = Vec::new();
     let mut literal = String::new();
     let mut rest = text.char_indices().peekable();

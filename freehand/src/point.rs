@@ -11,6 +11,23 @@ pub struct Point {
     pub y: f64,
 }
 
+/// An upright rectangle between two corners: a box a mark is drawn around or behind.
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct Rectangle {
+    /// Its top left corner.
+    pub top_left: Point,
+    /// Its bottom right corner.
+    pub bottom_right: Point,
+}
+
+impl Rectangle {
+    /// Its four corners, clockwise on screen from the top left.
+    pub const fn corners(self) -> [Point; 4] {
+        let Self { top_left: a, bottom_right: b } = self;
+        [Point::new(a.x, a.y), Point::new(b.x, a.y), Point::new(b.x, b.y), Point::new(a.x, b.y)]
+    }
+}
+
 impl Point {
     /// The point at `x`, `y`.
     pub const fn new(x: f64, y: f64) -> Self {

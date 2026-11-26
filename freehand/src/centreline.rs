@@ -12,6 +12,22 @@ use crate::point::Point;
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Centreline(Vec<Point>);
 
+/// An ellipse as a hand goes round it: `count` points around `centre`, starting at angle `from`
+/// (radians) and going `turns` times round, so a turn past one overlaps its start.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Ellipse {
+    /// Its middle.
+    pub centre: Point,
+    /// Its half-width and half-height.
+    pub radius: Point,
+    /// The angle of its first point, in radians.
+    pub from: f64,
+    /// How many times round it goes.
+    pub turns: f64,
+    /// How many points it is drawn with.
+    pub count: u32,
+}
+
 /// How far apart a straight line's points are.
 const STEP: f64 = 5.0;
 
@@ -93,9 +109,9 @@ impl Centreline {
         )
     }
 
-    /// `count` points around an ellipse, starting at angle `from` and going `turns` times round.
-    /// More than [`MOST`] points draw nothing.
-    pub fn ellipse(centre: Point, radius: Point, from: f64, turns: f64, count: u32) -> Self {
+    /// The points around `ellipse`. More than [`MOST`] points draw nothing.
+    pub fn ellipse(ellipse: Ellipse) -> Self {
+        let Ellipse { centre, radius, from, turns, count } = ellipse;
         if count > MOST {
             return Self::default();
         }

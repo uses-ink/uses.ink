@@ -4,8 +4,9 @@
 mod catalog;
 mod rust;
 
+use crate::Task;
 use crate::error::Error;
-use crate::output::Output;
+use crate::output::{Origin, Output};
 
 pub(crate) use catalog::Flaw;
 
@@ -17,6 +18,7 @@ pub(crate) fn write(output: &mut Output) -> Result<(), Error> {
     let text = output.read(SOURCE)?;
     let table: toml::Table = toml::from_str(&text).map_err(|source| Error::Toml { path: SOURCE.into(), source })?;
     let catalog = catalog::Catalog::parse(table).map_err(Error::Catalog)?;
-    output.put_rust(MODEL, SOURCE, "diag", rust::model(&catalog))?;
-    output.put_rust(WORDING, SOURCE, "diag", rust::wording(&catalog))
+    let origin = Origin { task: Task::Diag, source: SOURCE };
+    output.put_rust(MODEL, origin, rust::model(&catalog))?;
+    output.put_rust(WORDING, origin, rust::wording(&catalog))
 }
