@@ -159,7 +159,8 @@ impl std::error::Error for UnknownDecision {}
 ///
 /// - one zero-sized type per code, implementing [`Code`] (and [`Keyed`] when it has `keys`);
 /// - [`AnyCode`], the erased code, with [`AnyCode::ALL`], its name and its scope;
-/// - [`AnyDecision`], the erased decision, serialized with the code's name as its `code` tag;
+/// - [`AnyDecision`], the erased decision, serialized with the code's name as its `code` tag
+///   and worded through each code's [`Word`], which every code must implement;
 /// - [`AnyOf`], one value of any [`Family`] per code, and [`AnyCode::each`], which runs an
 ///   [`Each`] for the code it names;
 /// - the conversions between [`AnyDecision`] and the untyped [`decided::Decision`], and
@@ -319,6 +320,13 @@ macro_rules! codes {
             pub const fn evidence(&self) -> &Evidence {
                 match self {
                     $(Self::$name(decision) => &decision.evidence,)*
+                }
+            }
+
+            /// Writes its value in its code's words ([`Word`]).
+            pub fn word(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+                match self {
+                    $(Self::$name(decision) => <$name as Word>::word(&decision.value, out),)*
                 }
             }
         }

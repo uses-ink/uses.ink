@@ -2,45 +2,45 @@
 source: fixture/src/lib.rs
 ---
 the site
-  site.root          {"folder":"docs"}        because docs is there
+  site.root          `docs/`                  because docs is there
   site.layout        docs                     because docs is there
 docs/guide/install.md
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 docs/guide/use.md
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 docs/index.md
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 docs/guide/install.md
-  page.publish       true                     by default
-  page.kind          page                     by default
-  page.title         Install                  from the heading of docs/guide/install.md, bytes 0..9
-  page.date          none                     by default
-  page.updated       none                     by default
-  page.slug          install                  from the name of docs/guide/install.md
-  page.tags          []                       by default
-  page.summary       Download the binary and put it on your path. from the text of docs/guide/install.md
+  page.publish       published                by default
+  page.kind          a page                   by default
+  page.title         “Install”                from the heading of docs/guide/install.md, bytes 0..9
+  page.date          undated                  by default
+  page.updated       never updated            by default
+  page.slug          `install`                from the name of docs/guide/install.md
+  page.tags          no tags                  by default
+  page.summary       “Download the binary and put it on your path.” from the text of docs/guide/install.md
 docs/guide/use.md
-  page.publish       true                     by default
-  page.kind          page                     by default
-  page.title         Use                      from the heading of docs/guide/use.md, bytes 0..5
-  page.date          none                     by default
-  page.updated       none                     by default
-  page.slug          use                      from the name of docs/guide/use.md
-  page.tags          []                       by default
-  page.summary       Run it in a folder. Back to installing. from the text of docs/guide/use.md
+  page.publish       published                by default
+  page.kind          a page                   by default
+  page.title         “Use”                    from the heading of docs/guide/use.md, bytes 0..5
+  page.date          undated                  by default
+  page.updated       never updated            by default
+  page.slug          `use`                    from the name of docs/guide/use.md
+  page.tags          no tags                  by default
+  page.summary       “Run it in a folder. Back to installing.” from the text of docs/guide/use.md
 docs/index.md
-  page.publish       true                     by default
-  page.kind          page                     by default
-  page.title         Handbook                 from the heading of docs/index.md, bytes 0..10
-  page.date          none                     by default
-  page.updated       none                     by default
-  page.slug          index                    from the name of docs/index.md
-  page.tags          []                       by default
-  page.summary       Start with installing, then use it. from the text of docs/index.md
+  page.publish       published                by default
+  page.kind          a page                   by default
+  page.title         “Handbook”               from the heading of docs/index.md, bytes 0..10
+  page.date          undated                  by default
+  page.updated       never updated            by default
+  page.slug          `index`                  from the name of docs/index.md
+  page.tags          no tags                  by default
+  page.summary       “Start with installing, then use it.” from the text of docs/index.md
 the site
   site.home          docs/index.md            from the name of docs/index.md
-  site.title         Handbook                 from the heading of docs/index.md, bytes 0..10
-  site.description   Start with installing, then use it. from the text of docs/index.md
-  site.authors       []                       by default
-  site.language      en                       by default
-  site.nav           []                       by default
+  site.title         “Handbook”               from the heading of docs/index.md, bytes 0..10
+  site.description   “Start with installing, then use it.” from the text of docs/index.md
+  site.authors       no one                   by default
+  site.language      `en`                     by default
+  site.nav           empty                    by default

@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use model::{ContentPath, Decision, Evidence, Subject};
+use model::{AnyDecision, ContentPath, Evidence, Subject};
 use serde::Serialize;
 
 use crate::args::Explain;
@@ -13,11 +13,11 @@ use crate::output::{Io, Strict};
 use crate::report::Texts;
 use crate::site::Source;
 
-/// What `ink explain --json` prints.
+/// What `ink explain --json` prints: each decision as storage holds it, tagged by its code.
 #[derive(Debug, Serialize)]
 struct Explained<'a> {
     schema: &'static str,
-    decisions: Vec<&'a Decision>,
+    decisions: Vec<&'a AnyDecision>,
 }
 
 /// What `ink explain --pin --json` prints.
@@ -50,47 +50,39 @@ impl Explain {
             }
             return Ok(tally.exit(Strict::Off));
         }
-        // HACK(the CLI is ported onto typed decisions, roadmap phase 3): `Line` and the JSON
-        // still read the untyped decision, converted from the erased one without loss.
-        let decisions: Vec<Decision> = understood.explain(subject.as_ref()).cloned().map(Decision::from).collect();
-        let mut current: Option<&Subject> = None;
+        let decisions: Vec<&AnyDecision> = understood.explain(subject.as_ref()).collect();
+        let mut current: Option<Subject> = None;
         for decision in &decisions {
-            if current != Some(&decision.subject) {
-                io.line(&decision.subject)?;
-                current = Some(&decision.subject);
+            let about = decision.subject();
+            if current.as_ref() != Some(&about) {
+                io.line(&about)?;
+                current = Some(about);
             }
             io.line(Line(decision))?;
         }
-        io.json(&Explained { schema: "uses.explain/v1", decisions: decisions.iter().collect() })?;
+        io.json(&Explained { schema: "uses.explain/v1", decisions })?;
         Ok(tally.exit(Strict::Off))
     }
 }
 
-/// One decision: `  code  value  from evidence`.
+/// One decision: `  code  value  from evidence`, its value in its code's words.
 #[derive(Clone, Copy, Debug)]
-struct Line<'a>(&'a Decision);
+struct Line<'a>(&'a AnyDecision);
 
 impl fmt::Display for Line<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value = Value(self.0).to_string();
-        write!(out, "  {:<18} {value:<24} {}", self.0.code().name(), Because(&self.0.evidence))
+        write!(out, "  {:<18} {value:<24} {}", self.0.code().name(), Because(self.0.evidence()))
     }
 }
 
-/// A decided value as text: strings bare, nothing as `none`, the rest as compact JSON.
+/// A decision's value, as its code words it.
 #[derive(Clone, Copy, Debug)]
-struct Value<'a>(&'a Decision);
+struct Value<'a>(&'a AnyDecision);
 
 impl fmt::Display for Value<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // `Decided` serializes as `{ "<code>": value }`.
-        let json = serde_json::to_value(&self.0.decided).unwrap_or(serde_json::Value::Null);
-        let inner = json.as_object().and_then(|object| object.values().next()).unwrap_or(&json);
-        match inner {
-            serde_json::Value::String(text) => out.write_str(text),
-            serde_json::Value::Null => out.write_str("none"),
-            other => write!(out, "{other}"),
-        }
+        self.0.word(out)
     }
 }
 

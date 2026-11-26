@@ -199,13 +199,17 @@ fn explain_shows_decisions_with_evidence() {
     assert_eq!(exit, Exit::Done);
     assert!(stdout.starts_with("usage.md\n"), "{stdout}");
     assert!(
-        stdout.contains("page.title         Usage                    from the heading of usage.md, bytes 0..7"),
+        stdout.contains("page.title         “Usage”                  from the heading of usage.md, bytes 0..7"),
         "{stdout}"
     );
     let (_, json, _) = ink(&["explain", "-C", dir.to_str().unwrap(), "--json"]);
     let json: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(json["schema"], "uses.explain/v1");
     assert!(json["decisions"].as_array().unwrap().len() > 10);
+    let root = &json["decisions"][0];
+    assert_eq!(root["code"], "site.root", "decisions are tagged by their code: {root}");
+    assert_eq!(root["subject"], "site");
+    assert_eq!(root["value"], "top");
 }
 
 /// `ink explain` on every site, compared with `fixture/explain/<name>.snap`. Not its JSON: that

@@ -2,71 +2,71 @@
 source: fixture/src/lib.rs
 ---
 the site
-  site.root          top                      by default
-  site.layout        blog                     because posts is there
+  site.root          the top of the snapshot  by default
+  site.layout        a blog                   because posts is there
 about.md
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 index.md
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 posts/2024-03-01-first-steps.md
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 posts/later.md
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 posts/nib.svg
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 posts/second.md
-  file.ignore        false                    by default
+  file.ignore        kept                     by default
 about.md
-  page.publish       true                     by default
-  page.kind          page                     by default
-  page.title         About                    from the heading of about.md, bytes 0..7
-  page.date          none                     by default
-  page.updated       none                     by default
-  page.slug          about                    from the name of about.md
-  page.tags          []                       by default
-  page.summary       Who writes here, and why it is all about ink. from the text of about.md
+  page.publish       published                by default
+  page.kind          a page                   by default
+  page.title         “About”                  from the heading of about.md, bytes 0..7
+  page.date          undated                  by default
+  page.updated       never updated            by default
+  page.slug          `about`                  from the name of about.md
+  page.tags          no tags                  by default
+  page.summary       “Who writes here, and why it is all about ink.” from the text of about.md
 index.md
-  page.publish       true                     by default
-  page.kind          page                     by default
-  page.title         Ink and paper            from the frontmatter of index.md, bytes 11..24
-  page.date          none                     by default
-  page.updated       none                     by default
-  page.slug          index                    from the name of index.md
-  page.tags          []                       by default
-  page.summary       Notes on pens, nibs and the paper that takes them. from the frontmatter of index.md, bytes 38..88
+  page.publish       published                by default
+  page.kind          a page                   by default
+  page.title         “Ink and paper”          from the frontmatter of index.md, bytes 11..24
+  page.date          undated                  by default
+  page.updated       never updated            by default
+  page.slug          `index`                  from the name of index.md
+  page.tags          no tags                  by default
+  page.summary       “Notes on pens, nibs and the paper that takes them.” from the frontmatter of index.md, bytes 38..88
 posts/2024-03-01-first-steps.md
-  page.publish       true                     by default
-  page.kind          post                     from the name of posts/2024-03-01-first-steps.md
-  page.title         First steps              from the heading of posts/2024-03-01-first-steps.md, bytes 26..39
-  page.date          {"day":"2024-03-01"}     from the name of posts/2024-03-01-first-steps.md
-  page.updated       none                     by default
-  page.slug          first-steps              from the name of posts/2024-03-01-first-steps.md
-  page.tags          [{"slug":"pens","written":"pens"},{"slug":"ink","written":"ink"}] from the frontmatter of posts/2024-03-01-first-steps.md, bytes 10..20
-  page.summary       A fountain pen needs ink, patience and luck practice. The flow rate is roughly q = k \cdot w for a nib of width w. from the text of posts/2024-03-01-first-steps.md
+  page.publish       published                by default
+  page.kind          a post                   from the name of posts/2024-03-01-first-steps.md
+  page.title         “First steps”            from the heading of posts/2024-03-01-first-steps.md, bytes 26..39
+  page.date          2024-03-01               from the name of posts/2024-03-01-first-steps.md
+  page.updated       never updated            by default
+  page.slug          `first-steps`            from the name of posts/2024-03-01-first-steps.md
+  page.tags          pens, ink                from the frontmatter of posts/2024-03-01-first-steps.md, bytes 10..20
+  page.summary       “A fountain pen needs ink, patience and luck practice. The flow rate is roughly q = k \cdot w for a nib of width w.” from the text of posts/2024-03-01-first-steps.md
 posts/later.md
-  page.publish       false                    from the frontmatter of posts/later.md, bytes 11..15
-  page.kind          post                     from the name of posts/later.md
-  page.title         Later                    from the name of posts/later.md
-  page.date          none                     by default
-  page.updated       none                     by default
-  page.slug          later                    from the name of posts/later.md
-  page.tags          []                       by default
-  page.summary       Not yet.                 from the text of posts/later.md
+  page.publish       not published            from the frontmatter of posts/later.md, bytes 11..15
+  page.kind          a post                   from the name of posts/later.md
+  page.title         “Later”                  from the name of posts/later.md
+  page.date          undated                  by default
+  page.updated       never updated            by default
+  page.slug          `later`                  from the name of posts/later.md
+  page.tags          no tags                  by default
+  page.summary       “Not yet.”               from the text of posts/later.md
 posts/second.md
-  page.publish       true                     by default
-  page.kind          post                     from the name of posts/second.md
-  page.title         Paper weight             from the heading of posts/second.md, bytes 39..53
-  page.date          {"day":"2024-04-02"}     from the frontmatter of posts/second.md, bytes 10..20
-  page.updated       none                     by default
-  page.slug          second                   from the name of posts/second.md
-  page.tags          [{"slug":"paper","written":"paper"}] from the frontmatter of posts/second.md, bytes 27..33
-  page.summary       Heavier paper takes wetter nibs. See the first post. from the text of posts/second.md
+  page.publish       published                by default
+  page.kind          a post                   from the name of posts/second.md
+  page.title         “Paper weight”           from the heading of posts/second.md, bytes 39..53
+  page.date          2024-04-02               from the frontmatter of posts/second.md, bytes 10..20
+  page.updated       never updated            by default
+  page.slug          `second`                 from the name of posts/second.md
+  page.tags          paper                    from the frontmatter of posts/second.md, bytes 27..33
+  page.summary       “Heavier paper takes wetter nibs. See the first post.” from the text of posts/second.md
 posts/nib.svg
-  page.publish       true                     because posts/2024-03-01-first-steps.md is there
+  page.publish       published                because posts/2024-03-01-first-steps.md is there
 the site
   site.home          index.md                 from the name of index.md
-  site.title         Ink and paper            from the frontmatter of index.md, bytes 11..24
-  site.description   Notes on pens, nibs and the paper that takes them. from the frontmatter of index.md, bytes 38..88
-  site.authors       []                       by default
-  site.language      en                       by default
-  site.nav           ["about.md"]             by default
+  site.title         “Ink and paper”          from the frontmatter of index.md, bytes 11..24
+  site.description   “Notes on pens, nibs and the paper that takes them.” from the frontmatter of index.md, bytes 38..88
+  site.authors       no one                   by default
+  site.language      `en`                     by default
+  site.nav           about.md                 by default
