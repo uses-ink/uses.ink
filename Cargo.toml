@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["freehand", "token", "xtask"]
+exclude = ["spikes"]
 
 [workspace.package]
 version = "0.0.0"
