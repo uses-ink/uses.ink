@@ -1,6 +1,6 @@
 //! Repo tasks, run as `cargo xtask <task>`:
 //!
-//! - `token`: write `token/src/generated.rs` from `token/token.toml`.
+//! - `token`: write `token/src/generated.rs` and `token/token.css` from `token/token.toml`.
 //! - `brand`: draw the logo, mark and favicon into `brand/` from `brand/figure.toml`.
 //! - `check`: crate names against paths, dependency direction, licences, banned names, and
 //!   every generated file fresh. Fails with every problem listed.

@@ -31,9 +31,11 @@ Progress (2026-11-26): workspace, lints, `deny.toml`, nextest and CI workflow wr
 `token/token.toml` generates `uses-ink-token`; `freehand` ports perfect-freehand 1.2.3 and the
 mock's pen core, with a golden fixture passing natively and on wasm32-wasip2; `cargo xtask brand`
 draws the logo, mark and favicon from `brand/figure.toml`, byte for byte the JS output (colours
-now spelled `#rrggbb`), and `gen-logo.mjs` is gone. Left: marks (`gen-marks.mjs`), the browser
-build that retires `pen.js` and `pen-core.js`, CSS custom properties from the tokens, the three
-spikes, the PSL submission, the push.
+now spelled `#rrggbb`), and `gen-logo.mjs` is gone. `freehand::mark` draws the reader marks (line,
+frame, ring, patch) byte for byte the mock's, and `gen-marks.mjs` is gone. `cargo xtask token`
+also writes `token/token.css` (`--ink`, `--hand`, as the mocks name them). Left: the browser
+build that retires `pen.js` and `pen-core.js`, the three spikes, the PSL submission. Pushed as orphan `main`; old branches, tags and releases deleted from
+the remote (local mirror kept outside the repo).
 
 **Exit:** `cargo xtask check` passes in CI; the three spikes have recorded answers; the logo is
 built by the pen crate.

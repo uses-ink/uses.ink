@@ -1,6 +1,6 @@
 # The design tokens of uses.ink: every colour and face, once. `cargo xtask token` writes them
-# into `src/generated.rs` (the pen's palette, the CSS custom properties); `cargo xtask check`
-# fails when that file is stale.
+# into `src/generated.rs` (the pen's palette, the face stacks) and `token.css` (custom properties
+# on `:root`, named as here: `--ink`, `--hand`); `cargo xtask check` fails when either is stale.
 
 # The paint box: ink for lines, fills for the bucket and the highlighter.
 [colour]
