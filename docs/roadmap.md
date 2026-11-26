@@ -23,7 +23,7 @@ The workspace, the rules, and the three unknowns answered.
      Includes restricting the container's outbound network: workers-rs has no binding for
      outbound intercepts (workers-rs #1072), so the answer is an upstream PR or a small JS shim,
      written down either way.
-- Submit `uses.ink` to the Public Suffix List (takes weeks; start now).
+- Submit `uses.ink` to the Public Suffix List (takes weeks; start now; steps in `psl.md`, owner sends).
 - Push a fresh orphan `main` to `uses-ink/uses.ink` **(owner: confirm before pushing)**.
 
 Progress (2026-11-26): workspace, lints, `deny.toml`, nextest and CI workflow written; `cargo xtask
