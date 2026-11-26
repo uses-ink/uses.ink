@@ -288,3 +288,16 @@ and the golden fixtures are the reference. **Why:** a 336 px line went from 96 u
 the formatting work of the same day) and brand files shrank 58%, with no visible change at 4x;
 the ink is drawn without anti-aliasing, so hundredths never showed. **Reversal:** a theme drawn
 large enough that a tenth shows.
+
+## 0039 Highlighting is a host capability, through arborium
+
+Accepted, owner. Code is highlighted by the host, behind a WIT interface `ink:host/highlight`
+next to `pen` and `text`: a theme asks for a code block's spans by language and gets classed
+spans back, then styles the classes. The host implements it with arborium (tree-sitter grammars,
+only the languages we enable as features). A theme never links a highlighter. **Why:** every
+theme highlights the same way, as with the pen; tree-sitter parses more accurately than regex
+grammars; C grammars stay in the native host, so themes stay small pure-Rust components; and
+giallo's prebuilt bundle needed `zstd-sys` (C) inside the theme and loaded every grammar up front
+(about 40 ms). **Fallback:** giallo without its `dump` feature, with grammars bundled by an xtask
+generator, if arborium's C toolchain gets in the way. **Reversal:** a theme needs a highlighting
+style tree-sitter's capture names cannot express.
