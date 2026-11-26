@@ -16,6 +16,10 @@ use crate::decision::{Alternative, Decision, Evidence, File, Mismatch, Scope, Si
 use crate::value::{FromFront, Value};
 use crate::{Author, ContentPath, PageKind, Tag, When};
 
+mod word;
+
+pub use word::{Word, Worded};
+
 /// A decision code: a zero-sized type naming one kind of decision. Implemented by `codes!` for
 /// every code of the closed set, never by hand.
 pub trait Code: Copy + Ord + Hash + Default + fmt::Debug + Send + Sync + 'static {

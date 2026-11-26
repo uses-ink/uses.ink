@@ -124,8 +124,11 @@ type Title = Ladder<code::Title, (Pin<code::Title>, Front<code::Title>, Heading,
 ```
 
 Reading the precedence of `page.title` is reading that line. What a code's values mean to a
-person (`undated`, `never updated`, `published`, `ignored`) and which of its defaults is
-announced is the code's own, through `Explain`, not its value type's.
+person is the code's own, not its value type's: `model::Word` gives each code a `NONE` phrase
+(`undated`, `never updated`, `a generated listing`) and a `word` for its values (`published`,
+`ignored`), and `Worded::<C>` is the `Display`. `ink explain`, the engine's notices and
+`ink.toml`'s errors (`a date, or false for undated`) all word a value through it. Which of a
+code's defaults is announced is the engine's `Explain`, a subtrait of `Word`.
 
 ## 3. Interpret and render are stages
 

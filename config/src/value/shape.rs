@@ -1,11 +1,12 @@
 //! What a key of `ink.toml` takes, worded once: the `expected` of `config.value.invalid`. A pin's
-//! shape comes from its value type ([`Toml::SHAPE`](super::Toml::SHAPE)); `Option<T>` and
-//! `Vec<T>` build theirs from `T`'s.
+//! shape comes from its value type ([`Toml::SHAPE`]); `Option<T>` and `Vec<T>` build theirs from
+//! `T`'s, and the code pinned says what `false` means ([`Shape::pin`]).
 
 use std::fmt;
 
-use model::{ContentPath, PathError};
+use model::{ContentPath, PathError, Word};
 
+use super::Toml;
 use crate::pin::KeyPath;
 use crate::{PatternError, ThemeIdError};
 
@@ -32,8 +33,14 @@ pub(crate) enum Shape<'a> {
     Root,
     /// One of these names.
     One(&'a [&'a str]),
-    /// The shape, or `false` for none.
-    Optional(&'a Shape<'a>),
+    /// The shape, or `false` for none, worded as the pinned code words it: `undated` for
+    /// `page.date` ([`Shape::pin`]).
+    Optional {
+        /// What a value is.
+        shape: &'a Shape<'a>,
+        /// What `false` means.
+        none: &'a str,
+    },
     /// An array, each element of the shape.
     Array(&'a Shape<'a>),
     /// A glob pattern.
@@ -53,6 +60,17 @@ pub(crate) enum Shape<'a> {
     Theme,
     /// `use` in `[theme]`.
     ThemeId,
+}
+
+impl Shape<'static> {
+    /// What a pin of code `C` takes: its value type's shape, with `false` worded as `C` words
+    /// none ([`Word::NONE`]).
+    pub(crate) const fn pin<C: Word<Value: Toml>>() -> Self {
+        match C::Value::SHAPE {
+            Self::Optional { shape, .. } => Self::Optional { shape, none: C::NONE },
+            shape => shape,
+        }
+    }
 }
 
 /// The values of `when` in a sentence.
@@ -81,7 +99,7 @@ impl fmt::Display for Shape<'_> {
                 }
                 Ok(())
             }
-            Self::Optional(shape) => write!(out, "{shape}, or false for none"),
+            Self::Optional { shape, none } => write!(out, "{shape}, or false for {none}"),
             Self::Array(shape) => write!(out, "an array of {}", Plural(**shape)),
             Self::Pattern => out.write_str("a glob pattern (`*`, `?`, `**`)"),
             Self::Table(table) => write!(out, "a table: `[{table}]`"),

@@ -18,6 +18,12 @@ pub trait Value: Clone + Eq + fmt::Debug + Serialize + DeserializeOwned {
     /// Writes the value as `ink explain` and notices show it: `a post`, `“Hello”`, `none`.
     fn show(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result;
 
+    /// Whether it holds nothing: none, or an empty list. A code words it as its own `NONE`
+    /// ([`Word`](crate::code::Word)).
+    fn is_empty(&self) -> bool {
+        false
+    }
+
     /// The value as `Display`, through [`Value::show`].
     fn shown(&self) -> Shown<'_, Self> {
         Shown(self)
@@ -43,6 +49,10 @@ impl<T: Value> Value for Option<T> {
             None => out.write_str("none"),
         }
     }
+
+    fn is_empty(&self) -> bool {
+        self.is_none()
+    }
 }
 
 impl<T: Value> Value for Vec<T> {
@@ -54,6 +64,10 @@ impl<T: Value> Value for Vec<T> {
             out.write_str(", ")?;
             value.show(out)
         })
+    }
+
+    fn is_empty(&self) -> bool {
+        <[T]>::is_empty(self)
     }
 }
 

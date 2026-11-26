@@ -142,6 +142,20 @@ fn values_show_as_a_person_reads_them() {
     assert_eq!(model::PageKind::Post.shown().to_string(), "a post");
 }
 
+#[test]
+fn a_code_words_its_values_not_its_value_type() {
+    use model::Worded;
+    assert_eq!(Worded::<code::Date>::new(&None).to_string(), "undated");
+    assert_eq!(Worded::<code::Updated>::new(&None).to_string(), "never updated");
+    assert_eq!(Worded::<code::Summary>::new(&None).to_string(), "none");
+    assert_eq!(Worded::<code::Publish>::new(&false).to_string(), "not published");
+    assert_eq!(Worded::<code::Ignored>::new(&false).to_string(), "kept");
+    assert_eq!(Worded::<code::Tags>::new(&vec![]).to_string(), "no tags");
+    assert_eq!(Worded::<code::Nav>::new(&vec![path("a.md"), path("b.md")]).to_string(), "a.md, b.md");
+    assert_eq!(Worded::<code::Title>::new(&"Hi".to_owned()).to_string(), "“Hi”");
+    assert_eq!(<code::Home as model::Word>::NONE, "a generated listing");
+}
+
 /// A stand-in consumer of [`model::Each`]: the name and scope of the code it is run for.
 struct Describe;
 

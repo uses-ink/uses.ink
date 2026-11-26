@@ -1,25 +1,15 @@
-//! Each code's own words: how its value reads in `ink explain` and notices (an unset date is
-//! `undated`, an unset update `never updated`), and which defaults are announced. The words are
-//! the code's, not its value type's: `page.publish` and `file.ignore` are both a `bool`.
-
-use std::fmt;
-use std::marker::PhantomData;
+//! Which defaults each code announces, and with what. How a code's values read is the model's
+//! [`Word`], shared with config and `ink explain`.
 
 use model::code::{
-    Authors, Code, Date, Description, Home, Ignored, Kind, Language, Layout, Nav, Publish, Root, SiteTitle, Slug,
-    Summary, Tags, Title, Updated,
+    Authors, Date, Description, Home, Ignored, Kind, Language, Layout, Nav, Publish, Root, SiteTitle, Slug, Summary,
+    Tags, Title, Updated,
 };
 use model::decision::Decision;
-use model::{Announcement, DefaultReason, Evidence, Value};
+use model::{Announcement, DefaultReason, Evidence, Word, Worded};
 
-/// A code that can say what its values mean and what taking its default means.
-pub(crate) trait Explain: Code {
-    /// Writes `value` as a person reads it for this code. By default, as the value type shows
-    /// itself.
-    fn word(value: &Self::Value, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        value.show(out)
-    }
-
+/// A code that says what taking its default means.
+pub(crate) trait Explain: Word {
     /// The announcement taking `value` by default, for `reason`, calls for. Defaults that only
     /// mean "nothing to do" (nothing ignored, no tags, never updated, a public page published)
     /// announce nothing, or every file would; this is the default.
@@ -39,27 +29,7 @@ pub(crate) trait Explain: Code {
     }
 }
 
-/// A value of code `C`, in `C`'s words.
-pub(crate) struct Worded<'a, C: Code> {
-    value: &'a C::Value,
-    code: PhantomData<C>,
-}
-
-impl<'a, C: Code> Worded<'a, C> {
-    /// `value`, worded as `C` words it.
-    pub(crate) const fn new(value: &'a C::Value) -> Self {
-        Self { value, code: PhantomData }
-    }
-}
-
-impl<C: Explain> fmt::Display for Worded<'_, C> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        C::word(self.value, out)
-    }
-}
-
-/// Implements [`Explain`] for codes whose default is always announced and whose words are
-/// their value type's. The same impl over a list of types, which a generic cannot write.
+/// Implements [`Explain`] for codes whose default is always announced. The same impl over a list of types, which a generic cannot write.
 ///
 /// ```text
 /// announced!(Root, Layout);
@@ -77,7 +47,7 @@ macro_rules! announced {
     };
 }
 
-announced!(Root, Layout, Kind, Slug, SiteTitle, Language);
+announced!(Root, Layout, Kind, Slug, SiteTitle, Language, Nav, Authors);
 
 impl Explain for Title {}
 
@@ -85,19 +55,9 @@ impl Explain for Summary {}
 
 impl Explain for Description {}
 
-impl Explain for Ignored {
-    /// `ignored` or `kept`.
-    fn word(value: &bool, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.write_str(if *value { "ignored" } else { "kept" })
-    }
-}
+impl Explain for Ignored {}
 
 impl Explain for Publish {
-    /// `published` or `not published`.
-    fn word(value: &bool, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.write_str(if *value { "published" } else { "not published" })
-    }
-
     /// Only a vault's or a private source's default is worth saying: nothing is published until
     /// it is selected.
     fn announce(reason: DefaultReason, value: &bool) -> Option<Announcement> {
@@ -105,69 +65,15 @@ impl Explain for Publish {
     }
 }
 
-impl Explain for Date {
-    /// The date, or `undated`. An undated post is announced by the page stage, which knows it is
-    /// a post.
-    fn word(value: &Option<model::When>, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match value {
-            Some(when) => when.show(out),
-            None => out.write_str("undated"),
-        }
-    }
-}
+impl Explain for Date {}
 
-impl Explain for Updated {
-    /// The date, or `never updated`.
-    fn word(value: &Option<model::When>, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match value {
-            Some(when) => when.show(out),
-            None => out.write_str("never updated"),
-        }
-    }
-}
+impl Explain for Updated {}
 
-impl Explain for Tags {
-    /// The tags, or `no tags`.
-    fn word(value: &Vec<model::Tag>, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if value.is_empty() { out.write_str("no tags") } else { value.show(out) }
-    }
-}
+impl Explain for Tags {}
 
 impl Explain for Home {
-    /// The home's file, or `a generated listing`.
-    fn word(value: &Option<model::ContentPath>, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match value {
-            Some(path) => fmt::Display::fmt(path, out),
-            None => out.write_str("a generated listing"),
-        }
-    }
-
     /// A generated home is always said.
     fn announce(_reason: DefaultReason, _value: &Option<model::ContentPath>) -> Option<Announcement> {
         Some(Announcement::SiteHomeGenerated)
-    }
-}
-
-impl Explain for Nav {
-    /// The files joined by `, `, or `empty`.
-    fn word(value: &Vec<model::ContentPath>, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Some((first, rest)) = value.split_first() else { return out.write_str("empty") };
-        fmt::Display::fmt(first, out)?;
-        rest.iter().try_for_each(|path| write!(out, ", {path}"))
-    }
-
-    fn announce(_reason: DefaultReason, value: &Vec<model::ContentPath>) -> Option<Announcement> {
-        Some(Self::chosen(value))
-    }
-}
-
-impl Explain for Authors {
-    /// The names, or `no one`.
-    fn word(value: &Vec<model::Author>, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if value.is_empty() { out.write_str("no one") } else { value.show(out) }
-    }
-
-    fn announce(_reason: DefaultReason, value: &Vec<model::Author>) -> Option<Announcement> {
-        Some(Self::chosen(value))
     }
 }

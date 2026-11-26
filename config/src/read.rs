@@ -6,7 +6,7 @@ mod node;
 use std::str::FromStr;
 
 use model::decision::Scope;
-use model::{Code, ContentPath, Diagnostic, Each, Problem, Span, Spanned, Subject};
+use model::{ContentPath, Diagnostic, Each, Problem, Span, Spanned, Subject, Word};
 use toml::de::DeTable;
 
 pub(crate) use node::{Key, Node, Refused, Table};
@@ -163,7 +163,7 @@ struct Entry<'r, 'a> {
     node: Node<'a>,
 }
 
-impl<C: Code<Value: Toml>> Each<C> for Entry<'_, '_> {
+impl<C: Word<Value: Toml>> Each<C> for Entry<'_, '_> {
     type Out = ();
 
     fn each(&mut self) {
@@ -174,7 +174,7 @@ impl<C: Code<Value: Toml>> Each<C> for Entry<'_, '_> {
             }
             Err(refused) => {
                 for at in refused {
-                    self.reader.invalid(self.path, &C::Value::SHAPE.into(), at);
+                    self.reader.invalid(self.path, &Shape::pin::<C>().into(), at);
                 }
             }
         }

@@ -26,7 +26,8 @@ pub(crate) trait Toml: Value {
 }
 
 impl<T: Toml> Toml for Option<T> {
-    const SHAPE: Shape<'static> = Shape::Optional(&T::SHAPE);
+    /// `false` is the value type's none; [`Shape::pin`] words it as the pinned code does.
+    const SHAPE: Shape<'static> = Shape::Optional { shape: &T::SHAPE, none: "none" };
 
     /// `false` is none, as in frontmatter (`date = false` is undated); else a value of `T`. An
     /// `Option<bool>` therefore cannot hold `Some(false)`, and no code decides one.
