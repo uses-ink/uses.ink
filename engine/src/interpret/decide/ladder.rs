@@ -117,7 +117,8 @@ impl<C, W: fmt::Debug> fmt::Debug for Ladder<C, W> {
 
 impl<C: Code, W> Ladder<C, W> {
     /// Hears every witness and decides: the first value wins, the other values are outranked,
-    /// the bounds rejected as bounds. Nothing said is the engine's bug.
+    /// the bounds rejected as bounds, every one in the order its witness stands in the ladder.
+    /// Nothing said is the engine's bug.
     pub(crate) fn decide<G: ?Sized>(&self, case: &Case<'_, C, G>) -> Result<Decision<C>, Error>
     where
         W: Witness<C, G>,
@@ -133,13 +134,12 @@ impl<C: Code, W> Ladder<C, W> {
         let mut said = said;
         let (value, evidence, _) = said.remove(chosen);
         let mut decision = Decision::new(case.subject.clone(), value, evidence);
-        let (values, bounds): (Vec<_>, Vec<_>) =
-            said.into_iter().partition(|(_, _, standing)| *standing == Standing::Value);
-        for (value, evidence, _) in values {
-            decision = decision.rejecting(Alternative::new(value, evidence, Rejection::Outranked));
-        }
-        for (value, evidence, _) in bounds {
-            decision = decision.rejecting(Alternative::new(value, evidence, Rejection::OnlyBound));
+        for (value, evidence, standing) in said {
+            let because = match standing {
+                Standing::Value => Rejection::Outranked,
+                Standing::Bound => Rejection::OnlyBound,
+            };
+            decision = decision.rejecting(Alternative::new(value, evidence, because));
         }
         Ok(decision)
     }
@@ -213,5 +213,43 @@ impl<C: Explain, W> Ladder<C, W> {
         let pin = pins.pin::<C>(subject);
         let case = Case { subject, pin, patterns: pins, ground };
         journal.record(self.decide(&case))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use model::code::Date;
+    use model::decision::File;
+    use model::{ContentPath, Provenance, When};
+
+    use super::*;
+    use crate::NoPins;
+
+    /// Testifies one value, or one bound, of `page.date`.
+    #[derive(Debug)]
+    struct Says(Option<When>, Standing);
+
+    impl Witness<Date, ()> for Says {
+        fn testify(&self, _case: &Case<'_, Date, ()>, testimony: &mut Testimony<Option<When>>) {
+            let evidence = Evidence::History { from: Provenance::Filesystem };
+            match self.1 {
+                Standing::Value => testimony.value(self.0, evidence),
+                Standing::Bound => testimony.bound(self.0, evidence),
+            }
+        }
+    }
+
+    #[test]
+    fn rejected_alternatives_keep_the_ladders_order() {
+        let day = |d| Some(When::Day(jiff::civil::date(2024, 1, d)));
+        let ladder: Ladder<Date, (Says, Says, Says)> = Ladder {
+            witnesses: (Says(day(1), Standing::Value), Says(day(2), Standing::Bound), Says(day(3), Standing::Value)),
+            code: PhantomData,
+        };
+        let subject = File(ContentPath::parse("a.md").unwrap());
+        let case = Case { subject: &subject, pin: None, patterns: &NoPins, ground: &() };
+        let decision = ladder.decide(&case).unwrap();
+        let rejected: Vec<_> = decision.rejected.iter().map(|alt| (alt.value, alt.because)).collect();
+        assert_eq!(rejected, [(day(2), Rejection::OnlyBound), (day(3), Rejection::Outranked)]);
     }
 }
