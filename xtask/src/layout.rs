@@ -30,7 +30,11 @@ const MAY_USE: &[(&str, &[&str])] = &[
     // Formats speak the model directly until host/wasmtime exists, then the generated WIT types.
     ("uses-ink-format-markdown", &["uses-ink-model"]),
     (TASKS, &["freehand", "uses-ink-token"]),
+    (FIXTURE, &[]),
 ];
+
+/// The fixture harness: every crate may take it as a dev-dependency, none as a normal one.
+const FIXTURE: &str = "uses-ink-fixture";
 
 const PERMISSIVE: &str = "MIT OR Apache-2.0";
 const SERVICE: &str = "AGPL-3.0-or-later";
@@ -53,13 +57,36 @@ const SKIP: &[&str] = &["target", ".git", ".jj", ".impeccable", "node_modules"];
 
 #[derive(Debug)]
 pub(crate) enum Problem {
-    Name { package: String, path: String, expected: String },
-    Unordered { package: String },
-    Dependency { package: String, on: String },
-    Licence { package: String, found: Option<String>, expected: &'static str },
-    Alias { package: String },
-    Banned { path: PathBuf },
-    Unsafe { path: PathBuf },
+    Name {
+        package: String,
+        path: String,
+        expected: String,
+    },
+    Unordered {
+        package: String,
+    },
+    Dependency {
+        package: String,
+        on: String,
+    },
+    /// The fixture harness taken as a normal or build dependency.
+    Fixture {
+        package: String,
+    },
+    Licence {
+        package: String,
+        found: Option<String>,
+        expected: &'static str,
+    },
+    Alias {
+        package: String,
+    },
+    Banned {
+        path: PathBuf,
+    },
+    Unsafe {
+        path: PathBuf,
+    },
 }
 
 impl fmt::Display for Problem {
@@ -72,6 +99,9 @@ impl fmt::Display for Problem {
                 write!(out, "`{package}` has no row in xtask's MAY_USE: decide what it may depend on")
             }
             Self::Dependency { package, on } => write!(out, "`{package}` may not depend on `{on}`"),
+            Self::Fixture { package } => {
+                write!(out, "`{package}` takes `{FIXTURE}` outside [dev-dependencies]; it is for tests only")
+            }
             Self::Licence { package, found, expected } => {
                 write!(
                     out,
@@ -113,6 +143,15 @@ struct Package {
 struct Dependency {
     name: String,
     path: Option<PathBuf>,
+    /// `dev` or `build`; none for a normal dependency.
+    kind: Option<Kind>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum Kind {
+    Dev,
+    Build,
 }
 
 pub(crate) fn check(root: &Path) -> Result<(), Error> {
@@ -188,6 +227,12 @@ fn dependencies(package: &Package, ours: &[&str], root: &Path, problems: &mut Ve
     for dependency in &package.dependencies {
         // A path dependency outside the workspace (a patched sibling) is not ours.
         let inside = dependency.path.as_ref().is_some_and(|p| p.starts_with(root));
+        if dependency.name == FIXTURE {
+            if dependency.kind != Some(Kind::Dev) {
+                problems.push(Problem::Fixture { package: package.name.clone() });
+            }
+            continue;
+        }
         if inside && ours.contains(&dependency.name.as_str()) && !allowed.contains(&dependency.name.as_str()) {
             problems.push(Problem::Dependency { package: package.name.clone(), on: dependency.name.clone() });
         }

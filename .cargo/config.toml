@@ -1,6 +1,8 @@
 [alias]
 xtask = "run --quiet --package xtask --"
 
-# Golden fixtures run on wasm too: `cargo test -p freehand --target wasm32-wasip2`.
+# Golden fixtures run on wasm too: `cargo test -p freehand --target wasm32-wasip2`. Tests run in
+# the crate's directory, which the runner maps to `/` so the fixture harness finds `fixture/`;
+# insta's workspace is that same `/`, so it never spawns cargo, which wasm cannot.
 [target.wasm32-wasip2]
-runner = "wasmtime"
+runner = ["wasmtime", "run", "--dir", ".::/", "--env", "INSTA_WORKSPACE_ROOT=/"]

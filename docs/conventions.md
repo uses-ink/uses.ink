@@ -281,13 +281,17 @@ a doc comment.
 
 - **Fast.** The suite runs in seconds. A test over 100 ms is a bug or `#[ignore = "reason"]`.
   No network, no sleeping, no real clocks. Run with `cargo nextest run --workspace`.
-- **Fixtures are files** under the crate's `fixture/`: `name.<ext>` is the input, `name.out`
-  the expected result. One harness runs them all (`insta`, with `INSTA_UPDATE`), never a bless
-  variable per crate. Adding a case is adding a file.
-- **Goldens are read, never trusted.** An update writes the new goldens and the run fails, so it
-  cannot pass unnoticed; read every changed golden before committing.
-- **Harness failures are loud.** An empty suite, an input without a golden and a golden without
-  an input all fail.
+- **Fixtures are files** under the crate's `fixture/`: `name.<ext>` is the input, `name.snap`
+  the expected result. One harness runs them all: `uses-ink-fixture` (`fixture/`), a
+  dev-dependency any crate may take. `fixture::files(dir, ext, render)` runs each input through
+  `render`; `fixture::cases(dir, outputs)` takes outputs built in code. It compares through
+  `insta` and updates with `INSTA_UPDATE`, never a bless variable per crate. Adding a case is
+  adding a file.
+- **Goldens are read, never trusted.** An update (`INSTA_UPDATE=always` or `=new`) writes the
+  new goldens and the run fails listing them, so it cannot pass unnoticed; read every changed
+  golden before committing.
+- **Harness failures are loud.** An empty suite, an input without a golden, a golden without an
+  input and a `.snap.new` left beside them all fail.
 - **Site fixtures** are whole folders (`fixture/site/<name>/`) whose expected output is the
   deploy manifest plus the HTML of every page. `ink build --check` must reproduce the same
   hashes twice and on both native and wasm plugin builds.

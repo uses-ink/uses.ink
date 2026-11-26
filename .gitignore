@@ -1,1 +1,4 @@
 target/
+# insta updates waiting for review; the fixture harness fails while one is left
+*.snap.new
+*.pending-snap

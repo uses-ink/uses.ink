@@ -1,8 +1,4 @@
-//! One drawing of every kind, compared with `fixture/golden.out`: the same bytes natively and on
-//! wasm (`cargo test -p freehand --target wasm32-wasip2`). `FREEHAND_BLESS=1` rewrites the
-//! fixture, natively only.
-
-#![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
+//! One drawing of every kind of line, pencil and highlighter.
 
 use std::fmt::Write as _;
 
@@ -31,7 +27,7 @@ fn lines() -> [(&'static str, Centreline); 6] {
     ]
 }
 
-fn drawing() -> String {
+pub(crate) fn drawing() -> String {
     let mut out = String::new();
     for (name, line) in &lines() {
         let traced = Hand::default().trace(line, &mut Mulberry::new(Seed::of(name)));
@@ -63,33 +59,4 @@ fn drawing() -> String {
         writeln!(out, "loop{i} {arc}").unwrap();
     }
     out
-}
-
-#[test]
-fn golden() {
-    let drawn = drawing();
-    if std::env::var_os("FREEHAND_BLESS").is_some() {
-        std::fs::write(concat!(env!("CARGO_MANIFEST_DIR"), "/fixture/golden.out"), &drawn).unwrap();
-        return;
-    }
-    assert_eq!(drawn, include_str!("../fixture/golden.out"));
-}
-
-#[test]
-fn seeds_are_fnv_over_utf16() {
-    assert_eq!(Seed::of("").0, 2_166_136_261);
-    assert_eq!(Seed::of("logo0"), Seed::of("logo0"));
-    assert_ne!(Seed::of("logo0"), Seed::of("logo1"));
-}
-
-/// A continued seed is the seed of the whole text, so `{name}{i}` and `{name}f{i}` seeds built
-/// by continuing are the ones built from the spelled-out name.
-#[test]
-fn continued_seeds_are_seeds_of_the_whole_text() {
-    for name in ["", "logo", "frame", "é字🖊"] {
-        for i in [0, 1, 9, 10, 99, 12_345, usize::MAX] {
-            assert_eq!(Seed::of(name).and_number(i), Seed::of(&format!("{name}{i}")));
-            assert_eq!(Seed::of(name).and("f").and_number(i), Seed::of(&format!("{name}f{i}")));
-        }
-    }
 }

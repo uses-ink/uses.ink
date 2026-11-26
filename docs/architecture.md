@@ -92,6 +92,7 @@ uses.ink/
   migration/             plain .sql, applied by wrangler to D1 and by ink serve to SQLite
   token/                 design tokens (one TOML file) -> CSS custom properties and pen palette
   brand/                 logo stroke data, fonts and their licences
+  fixture/               uses-ink-fixture       the fixture harness: goldens through insta; a dev-dependency only
   xtask/                 cargo xtask token | diag | brand | layout | check (later: wit)
   docs/  spikes/
 ```
@@ -104,6 +105,7 @@ model <- config, diag <- engine <- host <- host/{wasmtime,native} <- cli
 model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret (traits only)
 plugin/* <- plugin/sdk, wit only. Never engine, control, host/* or edge.
 freehand, measure <- nothing of ours. freehand-web <- freehand. token <- nothing of ours.
+fixture <- nothing of ours; every crate may take it as a dev-dependency, none as a normal one.
 ```
 
 ## 5. Core types

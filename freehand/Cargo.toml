@@ -13,5 +13,8 @@ categories = ["graphics", "no-std"]
 [dependencies]
 libm.workspace = true
 
+[dev-dependencies]
+fixture.workspace = true
+
 [lints]
 workspace = true

@@ -1,9 +1,5 @@
-//! The reader theme's marks, compared with `fixture/marks.out`. The geometry first matched the
-//! mock's JS pen (`gen-marks.mjs`) byte for byte; since 0038 the paths are written shorter, and
-//! this file is the reference. Runs natively and on wasm, like `golden.rs`.
-//! `FREEHAND_BLESS=1` rewrites the fixture, natively only.
-
-#![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
+//! The reader theme's marks. The geometry first matched the mock's JS pen (`gen-marks.mjs`) byte
+//! for byte; since 0038 the paths are written shorter, and `fixture/marks.snap` is the reference.
 
 use std::fmt::Write as _;
 
@@ -18,7 +14,7 @@ fn ellipse(centre: Point, radius: Point, turns: (f64, f64), count: u32) -> Ellip
     Ellipse { centre, radius, from, turns, count }
 }
 
-fn drawing() -> String {
+pub(crate) fn drawing() -> String {
     let mut marks = vec![
         ("rule".to_owned(), mark::line(at(6.0, 6.0), at(790.0, 7.0), 2.6, "rule")),
         ("underline-pen".to_owned(), mark::line(at(3.0, 4.0), at(292.0, 5.0), 2.4, "ul-pen")),
@@ -37,14 +33,4 @@ fn drawing() -> String {
         writeln!(out, "{name} {d}").unwrap();
     }
     out
-}
-
-#[test]
-fn marks() {
-    let drawn = drawing();
-    if std::env::var_os("FREEHAND_BLESS").is_some() {
-        std::fs::write(concat!(env!("CARGO_MANIFEST_DIR"), "/fixture/marks.out"), &drawn).unwrap();
-        return;
-    }
-    assert_eq!(drawn, include_str!("../fixture/marks.out"));
 }

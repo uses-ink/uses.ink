@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["config", "diag", "freehand", "freehand-web", "model", "plugin/format/markdown", "token", "xtask"]
+members = ["config", "diag", "fixture", "freehand", "freehand-web", "model", "plugin/format/markdown", "token", "xtask"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -14,6 +14,8 @@ publish = false
 # Every crate of ours by its short name, so code says `token::Colour`.
 [workspace.dependencies]
 config = { package = "uses-ink-config", path = "config" }
+# test-only: a dev-dependency of any crate, a normal dependency of none
+fixture = { package = "uses-ink-fixture", path = "fixture" }
 freehand = { path = "freehand" }
 model = { package = "uses-ink-model", path = "model" }
 token = { package = "uses-ink-token", path = "token" }

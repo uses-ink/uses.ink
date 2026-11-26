@@ -312,6 +312,7 @@ name = "freehand"
 version = "0.1.0"
 dependencies = [
  "libm",
+ "uses-ink-fixture",
 ]
 
 [[package]]
@@ -954,6 +955,13 @@ name = "uses-ink-diag"
 version = "0.0.0"
 dependencies = [
  "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-fixture"
+version = "0.0.0"
+dependencies = [
+ "insta",
 ]
 
 [[package]]
