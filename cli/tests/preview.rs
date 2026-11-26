@@ -33,3 +33,24 @@ fn serves_pages_with_their_headers_and_404() {
     assert!(missing.contains("Page not found"), "{missing}");
     assert!(get(port, "/style.css").contains("text/css"));
 }
+
+#[test]
+fn serves_a_route_that_is_not_ascii() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-preview/unicode");
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("index.md"), "# Home\n").unwrap();
+    std::fs::write(dir.join("thé.md"), "# Thé vert\n").unwrap();
+    let preview = cli::Preview::of(&dir, "http://127.0.0.1:4000").unwrap().unwrap();
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || preview.serve(listener));
+    let tea = get(port, "/th%C3%A9");
+    assert!(tea.starts_with("HTTP/1.1 200"), "{tea}");
+    assert!(tea.contains("Thé vert"), "{tea}");
+    assert!(get(port, "/th%C3%A9/").starts_with("HTTP/1.1 200"));
+    assert!(get(port, "/th%C3").starts_with("HTTP/1.1 404"), "not UTF-8");
+    assert!(get(port, "/th%zz").starts_with("HTTP/1.1 404"), "no escape");
+}

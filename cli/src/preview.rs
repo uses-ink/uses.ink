@@ -78,6 +78,8 @@ impl Preview {
     /// The deploy as the edge would serve it: an entry with its status and headers, or the
     /// not-found page with 404.
     fn respond(&self, path: &str) -> Response<Body> {
+        let decoded = Decoded::try_from(path).ok();
+        let path = decoded.as_ref().map_or("", |decoded| decoded.0.as_str());
         let trimmed = if path.len() > 1 { path.trim_end_matches('/') } else { path };
         let route: Option<Route> = trimmed.parse().ok();
         let found = route.as_ref().and_then(|route| self.manifest.entry(route));
@@ -111,5 +113,57 @@ impl Preview {
         let mut response = Response::new(Body::empty());
         *response.status_mut() = status;
         response
+    }
+}
+
+/// A request's path, percent-decoded as UTF-8: `/th%C3%A9` is `/thé`, the route it names.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Decoded(String);
+
+/// Why a request's path does not decode: it names no route, so it is served as not found.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Undecodable {
+    /// A `%` not followed by two hex digits, at this byte offset.
+    Escape { at: usize },
+    /// The decoded bytes are not UTF-8.
+    Encoding,
+}
+
+impl TryFrom<&str> for Decoded {
+    type Error = Undecodable;
+
+    fn try_from(path: &str) -> Result<Self, Self::Error> {
+        let bytes = path.as_bytes();
+        let mut decoded = Vec::with_capacity(bytes.len());
+        let mut at = 0;
+        while let Some(&byte) = bytes.get(at) {
+            if byte != b'%' {
+                decoded.push(byte);
+                at += 1;
+                continue;
+            }
+            let digits = bytes.get(at + 1..at + 3).filter(|digits| digits.iter().all(u8::is_ascii_hexdigit));
+            let value = digits
+                .and_then(|digits| std::str::from_utf8(digits).ok())
+                .and_then(|digits| u8::from_str_radix(digits, 16).ok())
+                .ok_or(Undecodable::Escape { at })?;
+            decoded.push(value);
+            at += 3;
+        }
+        String::from_utf8(decoded).map(Self).map_err(|_| Undecodable::Encoding)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Decoded, Undecodable};
+
+    #[test]
+    fn decodes_percent_escapes_as_utf8() {
+        assert_eq!(Decoded::try_from("/th%C3%A9"), Ok(Decoded("/thé".to_owned())));
+        assert_eq!(Decoded::try_from("/thé"), Ok(Decoded("/thé".to_owned())));
+        assert_eq!(Decoded::try_from("/a%2"), Err(Undecodable::Escape { at: 2 }));
+        assert_eq!(Decoded::try_from("/a%+1"), Err(Undecodable::Escape { at: 2 }));
+        assert_eq!(Decoded::try_from("/%C3"), Err(Undecodable::Encoding));
     }
 }
