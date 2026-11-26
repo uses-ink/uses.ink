@@ -1,5 +1,6 @@
 //! What a decision can decide: [`Value`], implemented once per value type, and generically for
-//! `Option<T>` and `Vec<T>`.
+//! `Option<T>` and `Vec<T>`. A surface a value appears on is a trait of its own, so a value type
+//! opts into it: [`FromFront`] for frontmatter here, `Toml` for `ink.toml` in the config crate.
 
 use std::fmt;
 
@@ -7,6 +8,10 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::{Author, ContentPath, Language, Layout, PageKind, Root, Slug, Tag, When};
+
+mod front;
+
+pub use front::{Cause, Expected, Form, FromFront, Raw, Refusal, Wanted};
 
 /// A value a decision decides: compared against alternatives, stored, and shown to a person.
 pub trait Value: Clone + Eq + fmt::Debug + Serialize + DeserializeOwned {

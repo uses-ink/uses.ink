@@ -4,7 +4,7 @@
 //! - Interpretation: typed decision codes ([`code`]) and their [`decision::Decision`], erased
 //!   as [`AnyDecision`] for storage and the wire; the untyped [`Decision`] and [`Decided`] stay
 //!   until every crate is ported, and convert to and from [`AnyDecision`] without loss.
-//! - Values: [`Value`], what a decision can decide.
+//! - Values: [`Value`], and [`FromFront`] for what frontmatter can hold.
 //! - The result: [`Site`], [`Page`], [`Document`].
 //! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`].
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
@@ -33,7 +33,7 @@ mod time;
 mod url;
 mod value;
 
-pub use code::{AnyCode, AnyDecision, Code, UnknownDecision};
+pub use code::{AnyCode, AnyDecision, Code, Keyed, UnknownDecision};
 pub use decision::decided::{Alternative, Decided, Decision, DecisionCode};
 pub use decision::{DefaultReason, Evidence, Rejection};
 pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
@@ -61,6 +61,6 @@ pub use snapshot::{
 };
 pub use span::{Backwards, Span};
 pub use subject::Subject;
-pub use time::{Timestamp, When};
+pub use time::{Timestamp, When, WhenError};
 pub use url::{ExternalUrl, UrlError};
-pub use value::{Shown, Value};
+pub use value::{Cause, Expected, Form, FromFront, Raw, Refusal, Shown, Value, Wanted};

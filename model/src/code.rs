@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::decision::decided::{self, Decided, DecisionCode};
 use crate::decision::{Alternative, Decision, Evidence, File, Mismatch, Scope, Site, Subject};
-use crate::value::Value;
+use crate::value::{FromFront, Value};
 use crate::{Author, ContentPath, PageKind, Tag, When};
 
 /// A decision code: a zero-sized type naming one kind of decision. Implemented by `codes!` for
@@ -36,6 +36,13 @@ pub trait Code: Copy + Ord + Hash + Default + fmt::Debug + Send + Sync + 'static
 
     /// A view of the decision, when `decision` is one of this code.
     fn view(decision: &AnyDecision) -> Option<&Decision<Self>>;
+}
+
+/// A code an author can also decide in a file's frontmatter, under one of its keys. The first
+/// key written wins; a format reports the others.
+pub trait Keyed: Code<Subject = File, Value: FromFront> {
+    /// The frontmatter keys, in precedence order: `["description", "summary"]`.
+    const KEYS: &'static [&'static str];
 }
 
 impl<C: Code> From<Decision<C>> for AnyDecision {
@@ -109,7 +116,7 @@ impl std::error::Error for UnknownDecision {}
 /// Declares the closed set of decision codes, in the order the inferrers decide them
 /// (architecture.md section 9), and generates from it:
 ///
-/// - one zero-sized type per code, implementing [`Code`];
+/// - one zero-sized type per code, implementing [`Code`] (and [`Keyed`] when it has `keys`);
 /// - [`AnyCode`], the erased code, with [`AnyCode::ALL`], its name and its scope;
 /// - [`AnyDecision`], the erased decision, serialized with the code's name as its `code` tag;
 /// - the conversions between [`AnyDecision`] and the untyped [`decided::Decision`], and
@@ -120,14 +127,14 @@ impl std::error::Error for UnknownDecision {}
 /// ```text
 /// codes! {
 ///     /// A page's title.
-///     Title => "page.title" on File: String;
+///     Title => "page.title" on File: String, keys ["title"];
 /// }
 /// // makes `code::Title`, whose `Value` is `String` and whose `Subject` is `File`
 /// ```
 macro_rules! codes {
     ($(
         $(#[$doc:meta])*
-        $name:ident => $code:literal on $subject:ident: $value:ty;
+        $name:ident => $code:literal on $subject:ident: $value:ty $(, keys [$($key:literal),+])?;
     )*) => {
         $(
             $(#[$doc])*
@@ -159,6 +166,11 @@ macro_rules! codes {
                 }
             }
 
+            $(
+                impl Keyed for $name {
+                    const KEYS: &'static [&'static str] = &[$($key),+];
+                }
+            )?
         )*
 
         /// A decision code, erased: one variant per code type, written as its name.
@@ -294,22 +306,22 @@ codes! {
     /// `file.ignore`: whether a file is left out of the site.
     Ignored => "file.ignore" on File: bool;
     /// `page.kind`: what a page is to its site.
-    Kind => "page.kind" on File: PageKind;
+    Kind => "page.kind" on File: PageKind, keys ["type"];
     /// `page.publish`: whether a page is published.
-    Publish => "page.publish" on File: bool;
+    Publish => "page.publish" on File: bool, keys ["publish"];
     /// `page.title`: a page's title.
-    Title => "page.title" on File: String;
+    Title => "page.title" on File: String, keys ["title"];
     /// `page.summary`: a page's summary for feeds, listings and `og:description`, or none when
     /// it has no text.
-    Summary => "page.summary" on File: Option<String>;
+    Summary => "page.summary" on File: Option<String>, keys ["description", "summary"];
     /// `page.date`: when a page was written, or none.
-    Date => "page.date" on File: Option<When>;
+    Date => "page.date" on File: Option<When>, keys ["date"];
     /// `page.updated`: when a page was last changed, or never.
-    Updated => "page.updated" on File: Option<When>;
+    Updated => "page.updated" on File: Option<When>, keys ["updated"];
     /// `page.slug`: the last segment of a page's route.
-    Slug => "page.slug" on File: crate::Slug;
+    Slug => "page.slug" on File: crate::Slug, keys ["slug"];
     /// `page.tags`: a page's tags.
-    Tags => "page.tags" on File: Vec<Tag>;
+    Tags => "page.tags" on File: Vec<Tag>, keys ["tags"];
     /// `site.home`: the home page's file, or none for a generated listing.
     Home => "site.home" on Site: Option<ContentPath>;
     /// `site.nav`: the pages in the navigation, in order.

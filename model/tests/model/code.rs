@@ -1,4 +1,4 @@
-use model::code::{self, Code};
+use model::code::{self, Code, Keyed};
 use model::decision::{self, File, Mismatch, Scope, Site};
 use model::{
     AnyCode, AnyDecision, ContentPath, Decided, DecisionCode, DefaultReason, Evidence, Rejection, Span, Subject, Tag,
@@ -40,10 +40,12 @@ fn every_code_is_the_untyped_code_of_the_same_name_and_scope() {
 }
 
 #[test]
-fn a_code_type_carries_its_name_and_scope() {
+fn a_code_type_carries_its_name_scope_and_keys() {
     assert_eq!(described::<code::Title>(), ("page.title", Scope::File));
     assert_eq!(described::<code::Home>(), ("site.home", Scope::Site));
     assert_eq!(code::Summary::CODE, AnyCode::Summary);
+    assert_eq!(<code::Summary as Keyed>::KEYS, ["description", "summary"]);
+    assert_eq!(<code::Kind as Keyed>::KEYS, ["type"]);
 }
 
 #[test]

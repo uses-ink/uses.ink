@@ -6,6 +6,7 @@
 
 use std::cmp::Ordering;
 use std::fmt;
+use std::str::FromStr;
 
 use jiff::civil::Date;
 use jiff::tz::Offset;
@@ -62,6 +63,53 @@ impl fmt::Display for When {
     }
 }
 
+impl FromStr for When {
+    type Err = WhenError;
+
+    /// Exactly `YYYY-MM-DD` is a day; anything else must be an instant with its offset
+    /// (`2024-03-01T09:30:00+01:00`). A day is never read out of a longer text.
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text.len() == "2024-03-01".len() {
+            text.parse::<Date>().map(Self::Day).map_err(|source| WhenError::Day { source })
+        } else {
+            text.parse::<Timestamp>().map(Self::Instant).map_err(|source| WhenError::Instant { source })
+        }
+    }
+}
+
+/// Why text is no [`When`].
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum WhenError {
+    /// Ten characters that are no calendar day.
+    Day {
+        /// What the calendar refused.
+        source: jiff::Error,
+    },
+    /// Text that is no instant with an offset.
+    Instant {
+        /// What the parser refused.
+        source: jiff::Error,
+    },
+}
+
+impl fmt::Display for WhenError {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Day { .. } => out.write_str("the text is no calendar day"),
+            Self::Instant { .. } => out.write_str("the text is no time with an offset"),
+        }
+    }
+}
+
+impl std::error::Error for WhenError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Day { source } | Self::Instant { source } => Some(source),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use jiff::civil::date;
@@ -78,5 +126,14 @@ mod test {
         assert_eq!(all, [before, day, morning]);
         assert_eq!(morning.to_string(), "2024-03-01T09:00:00Z");
         assert_eq!(day.to_string(), "2024-03-01");
+    }
+
+    #[test]
+    fn parses_a_day_or_an_instant() {
+        assert_eq!("2024-03-01".parse::<When>().unwrap(), When::Day(date(2024, 3, 1)));
+        let instant = "2024-03-01T09:30:00+01:00".parse::<When>().unwrap();
+        assert_eq!(instant.to_string(), "2024-03-01T08:30:00Z");
+        assert!(matches!("2024-02-30".parse::<When>(), Err(super::WhenError::Day { .. })));
+        assert!(matches!("2024-03-01 noon".parse::<When>(), Err(super::WhenError::Instant { .. })));
     }
 }
