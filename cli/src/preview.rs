@@ -26,16 +26,19 @@ pub struct Preview {
 }
 
 impl args::Preview {
+    /// Binds the port first, so the site is built for the address it is served at: with
+    /// `--port 0`, the port the system chose.
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let address = format!("http://127.0.0.1:{}", self.port);
+        let serve = |source| Error::Serve { source };
+        let listener = std::net::TcpListener::bind(("127.0.0.1", self.port)).map_err(serve)?;
+        let port = listener.local_addr().map_err(serve)?.port();
+        let address = format!("http://127.0.0.1:{port}");
         let address = Address { chosen: None, ..Address::from_flag(Some(&address))? };
         let loaded = Source::new(&self.dir).load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let rendered = loaded.render(&address);
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
         let Some(preview) = Preview::assemble(loaded, rendered) else { return Ok(Exit::Content) };
-        let listener =
-            std::net::TcpListener::bind(("127.0.0.1", self.port)).map_err(|source| Error::Serve { source })?;
         io.line(&address.base)?;
         preview.serve(listener)?;
         Ok(tally.exit(Strict::Off))

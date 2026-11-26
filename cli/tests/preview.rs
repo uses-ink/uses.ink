@@ -54,3 +54,34 @@ fn serves_a_route_that_is_not_ascii() {
     assert!(get(port, "/th%C3").starts_with("HTTP/1.1 404"), "not UTF-8");
     assert!(get(port, "/th%zz").starts_with("HTTP/1.1 404"), "no escape");
 }
+
+/// Stdout sent to the test while `ink preview` runs in its own thread.
+struct Sent(std::sync::mpsc::Sender<Vec<u8>>);
+
+impl Write for Sent {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.send(bytes.to_vec()).map_err(|_| std::io::ErrorKind::BrokenPipe)?;
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn preview_on_port_zero_prints_the_port_it_bound() {
+    use clap::Parser;
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixture/site/notes");
+    let cli = cli::Cli::try_parse_from(["ink", "preview", dir.to_str().unwrap(), "--port", "0"]).unwrap();
+    let (sender, received) = std::sync::mpsc::channel();
+    std::thread::spawn(move || cli.run(&mut Sent(sender), &mut std::io::sink()));
+    let mut printed = String::new();
+    while !printed.ends_with('\n') {
+        let bytes = received.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
+        printed.push_str(std::str::from_utf8(&bytes).unwrap());
+    }
+    let port: u16 = printed.trim().strip_prefix("http://127.0.0.1:").unwrap().trim_end_matches('/').parse().unwrap();
+    assert_ne!(port, 0, "{printed}");
+    assert!(get(port, "/tea").starts_with("HTTP/1.1 200"));
+}
