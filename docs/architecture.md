@@ -67,7 +67,7 @@ uses.ink/
   engine/                uses-ink-engine        interpret and render, pure, talks to host traits only
   host/                  uses-ink-host          capability traits: blob, git, http, pen, text, asset, diagnostic
   host/wasmtime/         uses-ink-host-wasmtime component loading, linking, fuel, epochs, pooling, .cwasm cache
-  host/native/           uses-ink-host-native   real capabilities for the builder: gix, http client, blob store
+  host/native/           uses-ink-host-native   real capabilities for the builder: gix, http client, blob store, highlighting
   freehand/              freehand               the pen: strokes, tools, marks; native and wasm32
   freehand-web/          freehand-web           the pen as plain wasm exports, and its loader freehand.js
   measure/               (own name)             text shaping and measuring with real fonts
@@ -153,7 +153,7 @@ Four slots. Every first-party plugin uses the public contract; there is no priva
 |---|---|---|---|---|
 | `source` | locator to snapshot; cheap version poll | wasm component | builder | `git`, `http`, `blob`, `diagnostic` |
 | `format` | one file's bytes to a `Document`, frontmatter facts and decisions | wasm component | builder | `blob`, `diagnostic` |
-| `theme` | pages to files (contract in section 7) | wasm component | builder | `pen`, `text`, `asset`, `diagnostic` |
+| `theme` | pages to files (contract in section 7) | wasm component | builder | `pen`, `text`, `highlight`, `asset`, `diagnostic` |
 | `authority` | begin and verify a claim, mint a grant | native crate against the generated WIT types | edge | `http`, `dns`, `clock`, `secret` |
 
 Authorities stay native in v1 because the edge is a Worker, which cannot host wasmtime. They use
@@ -168,6 +168,7 @@ the same WIT types, so moving them to components later changes no type.
 | `http` | `fetch(request)` | allowlisted hosts per plugin manifest; no other network |
 | `pen` | `stroke`, `mark`, `palette` | section 8 |
 | `text` | `measure(font, size, text)`, `lines(font, size, text, width)` | real font shaping, so marks fit their words |
+| `highlight` | `highlight(language, code) -> result<list<run>, unhighlighted>` | classed runs from tree-sitter grammars in the host (decision 0039); natively `model::highlight::Highlight`, implemented by `host_native::Grammars` |
 | `asset` | `theme(path)`, `slot(name)` | a theme's bundled files; a slot already rendered from the author's `theme/` override |
 | `diagnostic` | `emit(diagnostic)`, `notice(notice)` | typed; plugins never print |
 
@@ -194,6 +195,7 @@ package ink:theme@0.1.0;
 world theme {
   import ink:host/pen@0.1.0;
   import ink:host/text@0.1.0;
+  import ink:host/highlight@0.1.0;
   import ink:host/asset@0.1.0;
   import ink:host/diagnostic@0.1.0;
   use ink:model/site@0.1.0.{site, page-id, route, file};

@@ -187,7 +187,11 @@ overrides a method calls `node.walk(self)` to keep descending.
 
 Link resolution is a `Fold` (unresolved targets become pages), the summary is a `Visit` that
 collects plain text, a theme's HTML is a `Visit` that writes through `unspliced`, outline and
-reading time are visits. A new node kind is added to the model once with its default walk, and
+reading time are visits. `ink:theme-quiet`'s `Writer` writes an element with children as a shell
+holding `unspliced::HERE`: `Split` writes the shell up to the mark, the walk visits the children,
+then the rest is written, so the writer holds `&mut` state (footnote references, the list's
+spacing, the record) and never recurses by hand. Footnotes are its `footnote` method, after the
+blocks in their own section. A new node kind is added to the model once with its default walk, and
 every visitor that does not care keeps working.
 
 ## 5. Plugins are traits the engine is generic over
@@ -196,7 +200,8 @@ every visitor that does not care keeps working.
 pub trait Format { fn handles(&self, path: &ContentPath) -> bool; fn read(&self, path: &ContentPath, bytes: &[u8]) -> Read; }
 pub trait Formats { fn handles(&self, path: &ContentPath) -> bool; fn read(&self, path: &ContentPath, bytes: &[u8]) -> Option<Read>; }
 impl<A: Format, B: Format> Formats for (A, B) { .. }   // tuples up to four: the first that handles it
-pub trait Theme { fn name(&self) -> &str; fn assets(&self) -> Vec<File>; fn render(&self, page: &Page, site: &Site) -> Result<Html, Diagnostic>; }
+pub trait Theme { fn name(&self) -> &str; fn assets(&self) -> Vec<File>; fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>; }
+pub trait Record { fn diagnose(&mut self, diagnostic: Diagnostic); fn notice(&mut self, notice: Notice); }
 pub trait Blobs { fn read(&self, hash: &Hash) -> Result<Cow<'_, [u8]>, BlobMissing>; }
 pub trait Pins: Patterns { fn pin<C: Code>(&self, subject: &C::Subject) -> Option<Pin<C::Value>>; }
 ```
@@ -204,7 +209,28 @@ pub trait Pins: Patterns { fn pin<C: Code>(&self, subject: &C::Subject) -> Optio
 The engine is `Engine<B, P, F, T>`, with `interpret` needing the first three and `render` the
 theme, so a part a call does not use is `()`; the CLI picks native types, the wasmtime host picks
 component adapters implementing the same traits, tests pick in-memory ones. Nothing in the engine
-names a concrete plugin.
+names a concrete plugin. A theme says what it finds while it renders (math that does not parse,
+code in a language no grammar knows) into the `Record` it is given, the native stand-in for
+`ink:host/diagnostic`: the render's output records it beside everything else, and a test passes
+an `engine::Said`.
+
+A capability a plugin imports and the engine never calls is a trait in `model`, so the plugin
+and the host that implements it meet without going through the engine. Highlighting is the first
+(decision 0039):
+
+```rust
+pub trait Highlight {
+    type Error: std::error::Error + 'static;
+    fn highlight<'c>(&self, language: &str, code: &'c str) -> Result<Vec<Run<'c>>, Unhighlighted<Self::Error>>;
+}
+pub struct Run<'c> { pub capture: Option<Capture>, pub text: &'c str }   // runs cover the code in order
+pub enum Unhighlighted<E> { Unknown, Failed(E) }
+pub enum Capture { Attribute, Comment, Constant, Function, Keyword, String, Type, .. }   // closed, from tree-sitter's capture names
+```
+
+`host_native::Grammars` implements it with arborium; `ink:theme-quiet` is `Quiet<H: Highlight>`
+and maps each `Capture` to a class of its code stylesheet in one exhaustive `match`, so a
+capture without a class does not compile and no highlighter's markup reaches a page.
 
 ## 6. The pen: tools and marks are types
 
