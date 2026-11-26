@@ -82,6 +82,6 @@ line here.
 
 ## Not the owner's, to settle in code
 
-- Which Rust generator gives clean host-side WIT types: settled by the M0 wasmtime spike.
+- Which Rust generator gives clean host-side WIT types: `wasmtime::component::bindgen!` (0035).
 - Container cold start time: measured in the M0 workers-rs spike.
 - Names of the pen and text-measuring crates: checked free on crates.io when cut.

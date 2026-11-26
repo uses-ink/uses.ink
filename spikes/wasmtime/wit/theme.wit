@@ -1,0 +1,28 @@
+// Spike stub of `ink:theme` (architecture.md section 7): one page in, one HTML file out.
+package ink:theme@0.1.0;
+
+interface page {
+  record page {
+    title: string,
+    paragraphs: list<string>,
+  }
+}
+
+/// Exports that exist only to time calls; a real theme has none of these.
+interface probe {
+  /// Calls `text.measure` `count` times and returns the summed width.
+  measure: func(count: u32) -> f64;
+  /// Calls `pen.stroke` `count` times and returns the summed path length in bytes.
+  stroke: func(count: u32) -> u64;
+  /// Does nothing: the cost of a host-to-guest call.
+  nothing: func();
+}
+
+world theme {
+  import ink:host/pen@0.1.0;
+  import ink:host/text@0.1.0;
+  use page.{page};
+
+  export render: func(page: page) -> string;
+  export probe;
+}

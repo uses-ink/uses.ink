@@ -1,0 +1,23 @@
+[package]
+name = "uses-ink-spike-host"
+version = "0.0.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+# Its own workspace: the spike stays out of the root one and keeps `target/` here.
+[workspace]
+
+[dependencies]
+freehand = { path = "../../../freehand" }
+wasmtime = { version = "51.0.0", default-features = false, features = [
+    "component-model",
+    "cranelift",
+    "parallel-compilation",
+    "pooling-allocator",
+    "runtime",
+    "std",
+] }
+
+[profile.release]
+debug = false
