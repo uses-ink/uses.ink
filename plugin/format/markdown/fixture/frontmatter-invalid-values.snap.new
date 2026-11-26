@@ -1,0 +1,194 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+assertion_line: 21
+input_file: plugin/format/markdown/fixture/frontmatter-invalid-values.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Body still read."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": {
+      "value": [
+        {
+          "slug": "good",
+          "written": "good"
+        }
+      ],
+      "span": [
+        91,
+        106
+      ]
+    },
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": [
+      0,
+      153
+    ]
+  },
+  "heading": null,
+  "diagnostics": [
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "title",
+          "expected": "some text"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        11,
+        21
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "date",
+          "expected": "a day (`2024-03-01`) or a time with its offset (`2024-03-01T09:30:00+01:00`)"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        29,
+        48
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "updated",
+          "expected": "a day (`2024-03-01`) or a time with its offset (`2024-03-01T09:30:00+01:00`)"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        58,
+        67
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "slug",
+          "expected": "a slug: lower-case letters and digits, joined by single `-`"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        74,
+        84
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "tags",
+          "expected": "a list of tags, or tags separated by commas, each with a letter or digit"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        98,
+        103
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "tags",
+          "expected": "a list of tags, or tags separated by commas, each with a letter or digit"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        105,
+        106
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "publish",
+          "expected": "`true` or `false`"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        122,
+        127
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "draft",
+          "expected": "`true` or `false`"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        135,
+        136
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "type",
+          "expected": "`post` or `page`"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-invalid-values.md"
+      },
+      "span": [
+        143,
+        148
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

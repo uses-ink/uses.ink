@@ -1,0 +1,116 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+assertion_line: 21
+input_file: plugin/format/markdown/fixture/task.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "list": {
+          "ordered": null,
+          "items": [
+            {
+              "task": "open",
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "write the draft"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": "done",
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "pick a title"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": "done",
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "also done"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "a plain item"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "tight": true
+        }
+      },
+      {
+        "list": {
+          "ordered": 1,
+          "items": [
+            {
+              "task": "open",
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "numbered task"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": "done",
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "numbered done"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "tight": true
+        }
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

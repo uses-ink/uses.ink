@@ -1,0 +1,300 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+assertion_line: 21
+input_file: plugin/format/markdown/fixture/links.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "links",
+          "inlines": [
+            {
+              "text": "Links"
+            }
+          ]
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "link": {
+              "target": {
+                "external": "https://example.org/a?b#c"
+              },
+              "children": [
+                {
+                  "text": "web"
+                }
+              ]
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "link": {
+              "target": {
+                "external": "http://example.org"
+              },
+              "children": [
+                {
+                  "text": "plain http"
+                }
+              ]
+            }
+          },
+          "soft-break",
+          {
+            "link": {
+              "target": {
+                "external": "mailto:me@example.org"
+              },
+              "children": [
+                {
+                  "text": "mail"
+                }
+              ]
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "link": {
+              "target": {
+                "external": "https://autolink.example"
+              },
+              "children": [
+                {
+                  "text": "https://autolink.example"
+                }
+              ]
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "link": {
+              "target": {
+                "external": "http://www.bare.example"
+              },
+              "children": [
+                {
+                  "text": "www.bare.example"
+                }
+              ]
+            }
+          },
+          {
+            "text": " and "
+          },
+          {
+            "link": {
+              "target": {
+                "external": "mailto:me@example.org"
+              },
+              "children": [
+                {
+                  "text": "me@example.org"
+                }
+              ]
+            }
+          },
+          "soft-break",
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "../other.md"
+                }
+              },
+              "children": [
+                {
+                  "text": "relative"
+                }
+              ]
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "other.md#section"
+                }
+              },
+              "children": [
+                {
+                  "text": "with anchor"
+                }
+              ]
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "link": {
+              "target": {
+                "anchor": "links"
+              },
+              "children": [
+                {
+                  "text": "anchor"
+                }
+              ]
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "#Not_A_Slug"
+                }
+              },
+              "children": [
+                {
+                  "text": "anchor not slug"
+                }
+              ]
+            }
+          },
+          "soft-break",
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "javascript:alert(1)"
+                }
+              },
+              "children": [
+                {
+                  "text": "js"
+                }
+              ]
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": ""
+                }
+              },
+              "children": [
+                {
+                  "text": "empty"
+                }
+              ]
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "ftp://example.org"
+                }
+              },
+              "children": [
+                {
+                  "text": "ftp"
+                }
+              ]
+            }
+          },
+          "soft-break",
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "./ref.md"
+                }
+              },
+              "children": [
+                {
+                  "text": "ref link"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "image": {
+              "source": {
+                "external": "https://example.org/i.png"
+              },
+              "alt": "alt text"
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "image": {
+              "source": {
+                "unresolved": {
+                  "written": "img/a.png"
+                }
+              },
+              "alt": "local"
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "image": {
+              "source": {
+                "unresolved": {
+                  "written": "data:image/png;base64,AAAA"
+                }
+              },
+              "alt": ""
+            }
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": {
+    "value": "Links",
+    "span": [
+      0,
+      7
+    ]
+  },
+  "diagnostics": [],
+  "notices": []
+}

@@ -16,6 +16,7 @@ mod format;
 #[allow(clippy::too_many_lines, clippy::match_same_arms, reason = "generated: one match arm per catalog entry")]
 mod generated;
 mod hash;
+mod language;
 mod manifest;
 mod path;
 mod route;
@@ -31,18 +32,19 @@ pub use decision::{
 };
 pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
 pub use document::{
-    Alignment, Anchor, Block, CalloutKind, Document, Footnote, FootnoteName, ImageSource, Inline, Item, Level,
-    LevelError, LinkTarget, Task,
+    Alignment, Anchor, Block, CalloutKind, Definition, Document, Footnote, FootnoteName, ImageSource, Inline, Item,
+    Level, LevelError, LinkTarget, Task,
 };
 pub use format::{Front, Read, Spanned};
 pub use generated::{Announcement, Problem};
 pub use hash::{Hash, HashError};
+pub use language::{Language, LanguageError};
 pub use manifest::{
     DeployId, DuplicateRoute, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType, Served,
 };
 pub use path::{ContentPath, PathError};
 pub use route::{Route, RouteError, Slug, SlugError};
-pub use site::{Asset, Excluded, Layout, Page, PageId, PageKind, Site, SiteError, SiteParts, Tag};
+pub use site::{Asset, Author, EmptyAuthor, Excluded, Layout, Page, PageId, PageKind, Site, SiteError, SiteParts, Tag};
 pub use size::Bytes;
 pub use snapshot::{
     Ability, Entry, FileFacts, Known, Lack, Observed, Oid, Provenance, Snapshot, SnapshotError, UnknownReason,

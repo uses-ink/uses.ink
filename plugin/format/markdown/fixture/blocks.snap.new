@@ -1,0 +1,426 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+assertion_line: 21
+input_file: plugin/format/markdown/fixture/blocks.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "title-with-emphasis",
+          "inlines": [
+            {
+              "text": "Title "
+            },
+            {
+              "emphasis": [
+                {
+                  "text": "with"
+                }
+              ]
+            },
+            {
+              "text": " emphasis"
+            }
+          ]
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Paragraph with "
+          },
+          {
+            "strong": [
+              {
+                "text": "strong"
+              }
+            ]
+          },
+          {
+            "text": ", "
+          },
+          {
+            "emphasis": [
+              {
+                "text": "emphasis"
+              }
+            ]
+          },
+          {
+            "text": ", "
+          },
+          {
+            "strike": [
+              {
+                "text": "strike"
+              }
+            ]
+          },
+          {
+            "text": ", "
+          },
+          {
+            "code": "code"
+          },
+          {
+            "text": ", a hard"
+          },
+          "break",
+          {
+            "text": "break and a soft"
+          },
+          "soft-break",
+          {
+            "text": "break."
+          }
+        ]
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "lists",
+          "inlines": [
+            {
+              "text": "Lists"
+            }
+          ]
+        }
+      },
+      {
+        "list": {
+          "ordered": null,
+          "items": [
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "one"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "two"
+                    }
+                  ]
+                },
+                {
+                  "list": {
+                    "ordered": null,
+                    "items": [
+                      {
+                        "task": null,
+                        "blocks": [
+                          {
+                            "paragraph": [
+                              {
+                                "text": "nested"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "tight": true
+                  }
+                }
+              ]
+            }
+          ],
+          "tight": true
+        }
+      },
+      {
+        "list": {
+          "ordered": 3,
+          "items": [
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "three"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "four"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "tight": true
+        }
+      },
+      {
+        "list": {
+          "ordered": null,
+          "items": [
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "loose"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "list"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "tight": false
+        }
+      },
+      {
+        "quote": [
+          {
+            "paragraph": [
+              {
+                "text": "A quote"
+              }
+            ]
+          },
+          {
+            "quote": [
+              {
+                "paragraph": [
+                  {
+                    "text": "nested"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "code": {
+          "language": "rust",
+          "text": "fn main() {}\n"
+        }
+      },
+      {
+        "code": {
+          "language": null,
+          "text": "indented code\n"
+        }
+      },
+      "rule",
+      {
+        "table": {
+          "alignments": [
+            "left",
+            "center",
+            "right",
+            "none"
+          ],
+          "head": [
+            [
+              {
+                "text": "left"
+              }
+            ],
+            [
+              {
+                "text": "center"
+              }
+            ],
+            [
+              {
+                "text": "right"
+              }
+            ],
+            [
+              {
+                "text": "none"
+              }
+            ]
+          ],
+          "rows": [
+            [
+              [
+                {
+                  "text": "a"
+                }
+              ],
+              [
+                {
+                  "strong": [
+                    {
+                      "text": "b"
+                    }
+                  ]
+                }
+              ],
+              [
+                {
+                  "text": "c"
+                }
+              ],
+              []
+            ],
+            [
+              [
+                {
+                  "text": "d"
+                }
+              ],
+              [
+                {
+                  "text": "e"
+                }
+              ],
+              [
+                {
+                  "text": "f"
+                }
+              ],
+              [
+                {
+                  "text": "g"
+                }
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "lists-1",
+          "inlines": [
+            {
+              "text": "Lists"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "lists-2",
+          "inlines": [
+            {
+              "text": "Lists"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "lists-1-1",
+          "inlines": [
+            {
+              "text": "Lists 1"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "section",
+          "inlines": [
+            {
+              "text": "!!!"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "section-1",
+          "inlines": []
+        }
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": {
+    "value": "Title with emphasis",
+    "span": [
+      0,
+      23
+    ]
+  },
+  "diagnostics": [],
+  "notices": [
+    {
+      "announcement": {
+        "heading.anchor.generated": {
+          "anchor": "section"
+        }
+      },
+      "subject": {
+        "file": "blocks.md"
+      },
+      "span": [
+        401,
+        406
+      ]
+    },
+    {
+      "announcement": {
+        "heading.anchor.generated": {
+          "anchor": "section-1"
+        }
+      },
+      "subject": {
+        "file": "blocks.md"
+      },
+      "span": [
+        407,
+        408
+      ]
+    }
+  ]
+}

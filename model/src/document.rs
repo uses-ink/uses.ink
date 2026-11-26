@@ -139,6 +139,27 @@ pub enum Block {
     },
     /// Display math, as TeX.
     Math(String),
+    /// Terms and their details (`Term` then `: details`).
+    Definitions(Vec<Definition>),
+    /// A section shown folded, with the summary as its handle (`<details><summary>`).
+    Details {
+        summary: Vec<Inline>,
+        blocks: Vec<Block>,
+    },
+}
+
+/// One term of a definition list and its details, each a run of blocks.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
+pub struct Definition {
+    pub term: Vec<Inline>,
+    pub details: Vec<Vec<Block>>,
+}
+
+impl Definition {
+    pub fn new(term: Vec<Inline>, details: Vec<Vec<Block>>) -> Self {
+        Self { term, details }
+    }
 }
 
 /// One run of text inside a block.
@@ -167,6 +188,14 @@ pub enum Inline {
     Math(String),
     /// A reference to a footnote of the same document.
     Footnote(FootnoteName),
+    /// Marked text (`==text==`, `<mark>`).
+    Highlight(Vec<Inline>),
+    /// `^text^`, `<sup>`.
+    Superscript(Vec<Inline>),
+    /// `~text~`, `<sub>`.
+    Subscript(Vec<Inline>),
+    /// A key or key combination (`<kbd>Ctrl</kbd>`).
+    Keyboard(String),
 }
 
 /// Where a link goes.

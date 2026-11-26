@@ -1,0 +1,136 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+assertion_line: 21
+input_file: plugin/format/markdown/fixture/footnote.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "A claim"
+          },
+          {
+            "footnote": "source"
+          },
+          {
+            "text": " and another"
+          },
+          {
+            "footnote": "2"
+          },
+          {
+            "text": ", then the first again"
+          },
+          {
+            "footnote": "source"
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "A symbol-only name"
+          },
+          {
+            "footnote": "note-867e33a4"
+          },
+          {
+            "text": " still works."
+          }
+        ]
+      }
+    ],
+    "footnotes": [
+      {
+        "name": "source",
+        "blocks": [
+          {
+            "paragraph": [
+              {
+                "text": "Where it came from, with "
+              },
+              {
+                "emphasis": [
+                  {
+                    "text": "emphasis"
+                  }
+                ]
+              },
+              {
+                "text": "."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "2",
+        "blocks": [
+          {
+            "paragraph": [
+              {
+                "text": "Second note."
+              }
+            ]
+          },
+          {
+            "paragraph": [
+              {
+                "text": "With a second paragraph."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "note-867e33a4",
+        "blocks": [
+          {
+            "paragraph": [
+              {
+                "text": "The odd one."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": [
+    {
+      "announcement": {
+        "footnote.name.generated": {
+          "name": "note-867e33a4",
+          "given": "*"
+        }
+      },
+      "subject": {
+        "file": "footnote.md"
+      },
+      "span": [
+        202,
+        220
+      ]
+    }
+  ]
+}

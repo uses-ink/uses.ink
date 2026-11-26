@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ContentPath, Layout, PageKind, Provenance, Slug, Span, Tag, When};
+use crate::{Author, ContentPath, Language, Layout, PageKind, Provenance, Slug, Span, Tag, When};
 
 /// What a decision is about.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -55,6 +55,16 @@ pub enum Decided {
     Slug(Slug),
     Tags(Vec<Tag>),
     Nav(Vec<ContentPath>),
+    /// A page's summary for feeds, listings and `og:description`, or `None` when it has no text.
+    Summary(Option<String>),
+    /// The site's name, shown in every page's title and its feeds.
+    SiteTitle(String),
+    /// One line saying what the site is, or `None`.
+    Description(Option<String>),
+    /// Who wrote the site, first author first.
+    Authors(Vec<Author>),
+    /// The language of the site's pages.
+    Language(Language),
 }
 
 impl Decided {
@@ -72,6 +82,11 @@ impl Decided {
             Self::Slug(_) => DecisionCode::Slug,
             Self::Tags(_) => DecisionCode::Tags,
             Self::Nav(_) => DecisionCode::Nav,
+            Self::Summary(_) => DecisionCode::Summary,
+            Self::SiteTitle(_) => DecisionCode::SiteTitle,
+            Self::Description(_) => DecisionCode::Description,
+            Self::Authors(_) => DecisionCode::Authors,
+            Self::Language(_) => DecisionCode::Language,
         }
     }
 }
@@ -95,6 +110,11 @@ pub enum DecisionCode {
     Slug,
     Tags,
     Nav,
+    Summary,
+    SiteTitle,
+    Description,
+    Authors,
+    Language,
 }
 
 impl DecisionCode {
@@ -106,12 +126,17 @@ impl DecisionCode {
         Self::Kind,
         Self::Publish,
         Self::Title,
+        Self::Summary,
         Self::Date,
         Self::Updated,
         Self::Slug,
         Self::Tags,
         Self::Home,
         Self::Nav,
+        Self::SiteTitle,
+        Self::Description,
+        Self::Authors,
+        Self::Language,
     ];
 
     /// `table.key`, the pin's path in `ink.toml`.
@@ -129,12 +154,27 @@ impl DecisionCode {
             Self::Slug => "page.slug",
             Self::Tags => "page.tags",
             Self::Nav => "site.nav",
+            Self::Summary => "page.summary",
+            Self::SiteTitle => "site.title",
+            Self::Description => "site.description",
+            Self::Authors => "site.authors",
+            Self::Language => "site.language",
         }
     }
 
     /// Whether it is decided once for the site rather than once per file.
     pub const fn is_sitewide(self) -> bool {
-        matches!(self, Self::Root | Self::Layout | Self::Home | Self::Nav)
+        matches!(
+            self,
+            Self::Root
+                | Self::Layout
+                | Self::Home
+                | Self::Nav
+                | Self::SiteTitle
+                | Self::Description
+                | Self::Authors
+                | Self::Language
+        )
     }
 }
 

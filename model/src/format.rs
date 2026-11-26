@@ -7,6 +7,7 @@ use serde::Serialize;
 
 use crate::diagnostic::{Diagnostic, Notice};
 use crate::document::Document;
+use crate::language::Language;
 use crate::route::Slug;
 use crate::site::{PageKind, Tag};
 use crate::span::Span;
@@ -41,6 +42,10 @@ pub struct Front {
     pub draft: Option<Spanned<bool>>,
     /// `type:` (`post`, `page`).
     pub kind: Option<Spanned<PageKind>>,
+    /// `description:` or `summary:`.
+    pub description: Option<Spanned<String>>,
+    /// `lang:`.
+    pub language: Option<Spanned<Language>>,
     /// Where the frontmatter block is, if the file has one.
     pub block: Option<Span>,
 }

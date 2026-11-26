@@ -1,0 +1,59 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+assertion_line: 21
+input_file: plugin/format/markdown/fixture/frontmatter-unclosed.md
+---
+{
+  "document": {
+    "blocks": [
+      "rule",
+      {
+        "paragraph": [
+          {
+            "text": "title: no end"
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Just text."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [
+    {
+      "problem": {
+        "frontmatter.syntax.invalid": {
+          "reason": "it has no closing `---` line, so the whole file is read as the body"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-unclosed.md"
+      },
+      "span": [
+        0,
+        4
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}
