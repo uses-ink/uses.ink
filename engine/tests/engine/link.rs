@@ -136,3 +136,14 @@ fn links_in_list_items_and_footnotes_are_resolved() {
         .collect();
     assert_eq!(written, ["gone.md", "lost.md"]);
 }
+
+#[test]
+fn an_image_of_a_kind_never_served_stays_its_alt_text() {
+    let u = Tree::new().file("a.md", "![clip](clip.mov)\n").file("clip.mov", "mov").understand(&Pinned::none());
+    assert_eq!(codes(&u), ["asset.media.unknown"]);
+    let site = u.site.as_ref().unwrap();
+    assert_eq!(site.assets(), []);
+    let image = &inlines(site, "a.md")[0];
+    assert!(matches!(image, Inline::Image { source: ImageSource::Unresolved { .. }, .. }), "{image:?}");
+    assert!(!on::<code::Publish>(&u, "clip.mov").value);
+}

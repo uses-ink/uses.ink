@@ -6,7 +6,8 @@
 mod target;
 
 use model::{
-    Anchor, ContentPath, Diagnostic, ExternalUrl, Fold, ImageSource, Inline, LinkTarget, PageId, Problem, Slug,
+    Anchor, ContentPath, Diagnostic, ExternalUrl, Fold, ImageSource, Inline, LinkTarget, MediaType, PageId, Problem,
+    Slug,
 };
 
 pub(crate) use target::Targets;
@@ -93,17 +94,22 @@ impl Resolve<'_, '_> {
         }
     }
 
-    /// What an image shows: a link out, or a plain file, which a page showing it publishes.
+    /// What an image shows: a link out, or a plain file of a kind the engine serves, which a page
+    /// showing it publishes.
     fn picture(&mut self, written: Written<'_>) -> Option<ImageSource> {
         if written.is_external() {
             return self.missing(written, ExternalUrl::parse(written.0).ok().map(ImageSource::External));
         }
         let (path, _) = written.split();
         match self.targets.find(self.from, Written(path)) {
-            Found::File(file) => {
-                self.used.entry(file.clone()).or_insert_with(|| self.from.clone());
-                Some(ImageSource::Asset(file))
-            }
+            Found::File(file) => match MediaType::try_from(&file) {
+                Ok(_) => {
+                    self.used.entry(file.clone()).or_insert_with(|| self.from.clone());
+                    Some(ImageSource::Asset(file))
+                }
+                // never served, so never pointed at: the theme shows the alt text
+                Err(unknown) => self.refuse(Problem::AssetMediaUnknown { path: unknown.path }),
+            },
             Found::Page(_) => self.missing(written, None),
             found => self.unfound(written, found),
         }

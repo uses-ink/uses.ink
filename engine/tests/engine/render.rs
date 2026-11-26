@@ -153,9 +153,11 @@ fn a_page_the_theme_refuses_keeps_the_themes_cause_and_what_it_said() {
 }
 
 #[test]
-fn a_plain_file_of_unknown_kind_is_left_out() {
-    let tree = Tree::new().file("a.md", "![z](data.zip)\n").file("data.zip", "zip");
-    let rendered = rendered(&tree, &Plain::default());
+fn a_pinned_plain_file_of_unknown_kind_is_left_out() {
+    let tree = Tree::new().file("a.md", "x\n").file("data.zip", "zip");
+    let site = tree.understand(&Pinned::none().file::<model::code::Publish>("data.zip", true)).site.unwrap();
+    let rendered = Engine::new((), NoPins, (), &Plain::default()).render(&site, &settings());
     let codes: Vec<&str> = rendered.diagnostics.iter().map(model::Diagnostic::code).collect();
     assert_eq!(codes, ["asset.media.unknown"]);
+    assert!(rendered.manifest.entry(&route("/data.zip")).is_none());
 }

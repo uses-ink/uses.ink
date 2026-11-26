@@ -21,7 +21,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Hash, Route};
+use crate::{ContentPath, Hash, Route};
 
 mod header;
 
@@ -118,6 +118,44 @@ impl MediaType {
         )
     }
 }
+
+impl TryFrom<&ContentPath> for MediaType {
+    type Error = MediaUnknown;
+
+    /// The media type of a file of the author's, by its extension in any case: only the images
+    /// and documents a page may show or link.
+    fn try_from(path: &ContentPath) -> Result<Self, MediaUnknown> {
+        let unknown = || MediaUnknown { path: path.clone() };
+        let extension = path.extension().ok_or_else(unknown)?.to_ascii_lowercase();
+        Ok(match extension.as_str() {
+            "png" => Self::Png,
+            "jpg" | "jpeg" => Self::Jpeg,
+            "avif" => Self::Avif,
+            "webp" => Self::Webp,
+            "gif" => Self::Gif,
+            "svg" => Self::Svg,
+            "ico" => Self::Ico,
+            "pdf" => Self::Pdf,
+            _ => return Err(unknown()),
+        })
+    }
+}
+
+/// A file of a kind uses.ink does not serve: its extension names no [`MediaType`] it knows.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct MediaUnknown {
+    /// The file.
+    pub path: ContentPath,
+}
+
+impl fmt::Display for MediaUnknown {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "{} is a kind of file uses.ink does not serve", self.path)
+    }
+}
+
+impl std::error::Error for MediaUnknown {}
 
 impl fmt::Display for MediaType {
     /// The `Content-Type` value: the essence, with `; charset=utf-8` for text.
