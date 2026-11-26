@@ -306,3 +306,19 @@ fn repository_files_match_their_whole_name_and_say_they_are_ignored() {
         .collect();
     assert_eq!(said, [".github", "CHANGELOG.md", "LICENCE.md", "LICENSE", "LICENSE-MIT", "Security.md"]);
 }
+
+#[test]
+fn a_posts_folders_index_is_a_listing_page() {
+    let u = Tree::new()
+        .file("posts/index.md", "---\ndate: 2024-03-01\n---\n")
+        .file("blog/README.md", "x\n")
+        .file("posts/a.md", "x\n")
+        .file("posts/bundle/index.md", "x\n")
+        .understand(&Pinned::none());
+    let kind = |p| on::<code::Kind>(&u, p);
+    assert_eq!(kind("posts/index.md").value, PageKind::Page);
+    assert_eq!(kind("posts/index.md").evidence, Evidence::Marker { path: path("posts") });
+    assert_eq!(kind("blog/README.md").value, PageKind::Page);
+    assert_eq!(kind("posts/a.md").value, PageKind::Post);
+    assert_eq!(kind("posts/bundle/index.md").value, PageKind::Post);
+}

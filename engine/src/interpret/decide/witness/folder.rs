@@ -9,6 +9,7 @@ use model::{ContentPath, Evidence, PageKind};
 
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::file::name::Name;
 use crate::interpret::site;
 use crate::interpret::tree::{Scope, Tree};
 
@@ -76,8 +77,12 @@ impl Posts {
 }
 
 impl Mark<Kind> for Posts {
+    /// A post, except the folder's own index (`posts/index.md`, `posts/README.md`), which lists
+    /// the posts: a page.
     fn mark(relative: &ContentPath) -> Option<(PageKind, Marked)> {
-        Self::top(relative).map(|_| (PageKind::Post, Marked::Folder(1)))
+        Self::top(relative)?;
+        let listing = relative.segments().count() == 2 && Name::from(relative).is_index();
+        Some((if listing { PageKind::Page } else { PageKind::Post }, Marked::Folder(1)))
     }
 }
 
