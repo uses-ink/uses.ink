@@ -122,7 +122,7 @@ The path predicts the name and the name predicts the path.
 - The workspace aliases every crate to its short name (`engine = { package = "uses-ink-engine",
   path = "engine" }`), so code says `engine::Site`.
 - A crate useful outside uses.ink (the pen, the text measurer) gets no prefix and a name of its own,
-  so it can be published and reused as is (the pen, the text measurer). Its name is checked free on
+  so it can be published and reused as is. Its name is checked free on
   crates.io when it is cut.
 - A port is a directory with the trait crate at its root and one directory per adapter:
   `db/` is `uses-ink-db`, `db/d1/` and `db/sqlite/` are its adapters.
