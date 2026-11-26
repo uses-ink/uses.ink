@@ -4,7 +4,7 @@ source: fixture/src/lib.rs
 # decisions
 {"code":"site.root","subject":"site","value":"top","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
 {"code":"site.layout","subject":"site","value":"blog","evidence":{"marker":{"path":"posts"}},"rejected":[{"value":"blog","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
-{"code":"file.ignore","subject":{"file":".github/ci.md"},"value":true,"evidence":{"filename":{"path":".github/ci.md"}},"rejected":[]}
+{"code":"file.ignore","subject":{"file":".github/ci.md"},"value":true,"evidence":{"marker":{"path":".github"}},"rejected":[]}
 {"code":"file.ignore","subject":{"file":"LICENSE"},"value":true,"evidence":{"filename":{"path":"LICENSE"}},"rejected":[]}
 {"code":"file.ignore","subject":{"file":"about.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
 {"code":"file.ignore","subject":{"file":"index.md"},"value":false,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
@@ -28,7 +28,7 @@ source: fixture/src/lib.rs
 {"code":"page.tags","subject":{"file":"index.md"},"value":[],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
 {"code":"page.summary","subject":{"file":"index.md"},"value":"Notes on pens.","evidence":{"frontmatter":{"path":"index.md","span":[25,53]}},"rejected":[{"value":"Welcome.","evidence":{"body":{"path":"index.md"}},"because":"outranked"}]}
 {"code":"page.publish","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":true,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
-{"code":"page.kind","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":"post","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[{"value":"post","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
+{"code":"page.kind","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":"post","evidence":{"marker":{"path":"posts"}},"rejected":[{"value":"post","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
 {"code":"page.title","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":"First steps","evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
 {"code":"page.date","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":{"day":"2024-03-01"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
 {"code":"page.updated","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
@@ -36,7 +36,7 @@ source: fixture/src/lib.rs
 {"code":"page.tags","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":[{"slug":"pens","written":"pens"},{"slug":"ink","written":"ink"}],"evidence":{"frontmatter":{"path":"posts/2024-03-01-first-steps.md","span":[4,20]}},"rejected":[]}
 {"code":"page.summary","subject":{"file":"posts/2024-03-01-first-steps.md"},"value":"The first post.","evidence":{"body":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
 {"code":"page.publish","subject":{"file":"posts/later.md"},"value":false,"evidence":{"frontmatter":{"path":"posts/later.md","span":[4,16]}},"rejected":[]}
-{"code":"page.kind","subject":{"file":"posts/later.md"},"value":"post","evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
+{"code":"page.kind","subject":{"file":"posts/later.md"},"value":"post","evidence":{"marker":{"path":"posts"}},"rejected":[]}
 {"code":"page.title","subject":{"file":"posts/later.md"},"value":"Later","evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
 {"code":"page.date","subject":{"file":"posts/later.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
 {"code":"page.updated","subject":{"file":"posts/later.md"},"value":null,"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}

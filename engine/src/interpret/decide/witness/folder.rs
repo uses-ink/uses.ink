@@ -1,6 +1,6 @@
 //! [`Folder`]: what a folder says by being there, named by a marker `M`: a posts folder, a
 //! drafts folder, a hidden or vendored folder, a vault's `.obsidian/`, a docs root, the one
-//! content folder.
+//! content folder. Its evidence names the folder.
 
 use std::marker::PhantomData;
 
@@ -12,21 +12,51 @@ use crate::interpret::decide::ladder::{Case, Testimony, Witness};
 use crate::interpret::site;
 use crate::interpret::tree::{Scope, Tree};
 
-/// A folder marker that says a code's value of a file it holds.
-pub(crate) trait Mark<C: Code> {
-    /// The value for a file at `relative`, a path below the root, if the marker holds it.
-    fn mark(relative: &ContentPath) -> Option<C::Value>;
+/// What a marker found in a file's path below the root.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Marked {
+    /// The folder made of the path's first segments, this many.
+    Folder(usize),
+    /// The file's own name, such as a dotfile or a draft's leading `_`.
+    Name,
 }
 
-/// The folder marked `M`. On a file's ground, a file it holds, evidence `Filename`; on the
-/// site's, the folder itself, evidence `Marker`.
+impl Marked {
+    /// The evidence of the mark on `file`: the folder in the snapshot, or the file's name.
+    fn evidence<G: Filed + ?Sized>(self, file: &G) -> Evidence {
+        let Self::Folder(depth) = self else { return file.named() };
+        let up = file.relative().segments().count().saturating_sub(depth);
+        match (0..up).try_fold(file.path().clone(), |path, _| path.parent()) {
+            Some(path) => Evidence::Marker { path },
+            None => file.named(),
+        }
+    }
+
+    /// The first segment of `relative` matching `marks`: a folder holding the file, or the file's
+    /// own name when the match is its last segment.
+    fn find(relative: &ContentPath, marks: impl Fn(&str) -> bool) -> Option<Self> {
+        let count = relative.segments().count();
+        let at = relative.segments().position(marks)?;
+        Some(if at + 1 == count { Self::Name } else { Self::Folder(at + 1) })
+    }
+}
+
+/// A folder marker that says a code's value of a file it holds.
+pub(crate) trait Mark<C: Code> {
+    /// The value for a file at `relative`, a path below the root, and where the marker found
+    /// it, if the marker holds it.
+    fn mark(relative: &ContentPath) -> Option<(C::Value, Marked)>;
+}
+
+/// The folder marked `M`. On a file's ground, the folder holding the file (or the file's name,
+/// for a marker a name can carry); on the site's, the folder itself. Evidence `Marker`.
 #[derive(Debug, Default)]
 pub(crate) struct Folder<M>(PhantomData<M>);
 
 impl<C: Code, M: Mark<C>, G: Filed + ?Sized> Witness<C, G> for Folder<M> {
     fn testify(&self, case: &Case<'_, C, G>, testimony: &mut Testimony<C::Value>) {
-        if let Some(value) = M::mark(case.ground.relative()) {
-            testimony.value(value, case.ground.named());
+        if let Some((value, marked)) = M::mark(case.ground.relative()) {
+            testimony.value(value, marked.evidence(case.ground));
         }
     }
 }
@@ -46,8 +76,8 @@ impl Posts {
 }
 
 impl Mark<Kind> for Posts {
-    fn mark(relative: &ContentPath) -> Option<PageKind> {
-        Self::top(relative).map(|_| PageKind::Post)
+    fn mark(relative: &ContentPath) -> Option<(PageKind, Marked)> {
+        Self::top(relative).map(|_| (PageKind::Post, Marked::Folder(1)))
     }
 }
 
@@ -67,9 +97,14 @@ impl Witness<Layout, Scope<'_>> for Folder<Posts> {
 pub(crate) struct Drafts;
 
 impl Mark<Publish> for Drafts {
-    fn mark(relative: &ContentPath) -> Option<bool> {
-        let drafted = relative.segments().any(|segment| segment == "drafts") || relative.file_name().starts_with('_');
-        drafted.then_some(false)
+    fn mark(relative: &ContentPath) -> Option<(bool, Marked)> {
+        let folders = relative.segments().count().saturating_sub(1);
+        let folder = relative.segments().take(folders).position(|segment| segment == "drafts");
+        let marked = match folder {
+            Some(at) => Marked::Folder(at + 1),
+            None => relative.file_name().starts_with('_').then_some(Marked::Name)?,
+        };
+        Some((false, marked))
     }
 }
 
@@ -78,10 +113,10 @@ impl Mark<Publish> for Drafts {
 pub(crate) struct Hidden;
 
 impl Mark<Ignored> for Hidden {
-    fn mark(relative: &ContentPath) -> Option<bool> {
+    fn mark(relative: &ContentPath) -> Option<(bool, Marked)> {
         const VENDORED: &[&str] = &["node_modules"];
-        let hidden = relative.segments().any(|segment| segment.starts_with('.') || VENDORED.contains(&segment));
-        hidden.then_some(true)
+        let marked = Marked::find(relative, |segment| segment.starts_with('.') || VENDORED.contains(&segment))?;
+        Some((true, marked))
     }
 }
 
@@ -89,11 +124,17 @@ impl Mark<Ignored> for Hidden {
 #[derive(Debug, Default)]
 pub(crate) struct Obsidian;
 
+impl Folder<Obsidian> {
+    /// The folder's name.
+    const NAME: &str = ".obsidian";
+}
+
 impl Witness<Layout, Scope<'_>> for Folder<Obsidian> {
     fn testify(&self, case: &Case<'_, Layout, Scope<'_>>, testimony: &mut Testimony<model::Layout>) {
-        let found = case.ground.inside.iter().find(|file| file.relative.segments().next() == Some(".obsidian"));
-        if let Some(file) = found {
-            testimony.value(model::Layout::Vault, Evidence::Marker { path: file.entry.path.clone() });
+        let scope = case.ground;
+        let found = scope.inside.iter().find(|file| file.relative.segments().next() == Some(Self::NAME));
+        if let Some(folder) = found.and_then(|_| ContentPath::parse(Self::NAME).ok()) {
+            testimony.value(model::Layout::Vault, Evidence::Marker { path: scope.absolute(&folder) });
         }
     }
 }

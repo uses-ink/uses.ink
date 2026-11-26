@@ -252,3 +252,23 @@ fn draft_false_does_not_select_a_vault_note() {
     assert_eq!(a.evidence, Evidence::Default { reason: DefaultReason::NotSelected });
     assert_eq!(u.site.unwrap().pages(), []);
 }
+
+#[test]
+fn folder_evidence_names_the_folder() {
+    let u = Tree::new()
+        .file(".obsidian/app.json", "{}")
+        .file("content/posts/a.md", "---\npublish: true\n---\n")
+        .file("content/notes/drafts/b.md", "x\n")
+        .file("content/_c.md", "x\n")
+        .file("content/node_modules/x/y.md", "x\n")
+        .understand(&Pinned::none().site::<code::Root>(Root::Folder(path("content"))));
+    let folder = |p: &str| Evidence::Marker { path: path(p) };
+    assert_eq!(on::<code::Kind>(&u, "content/posts/a.md").evidence, folder("content/posts"));
+    assert_eq!(on::<code::Publish>(&u, "content/notes/drafts/b.md").evidence, folder("content/notes/drafts"));
+    assert_eq!(on::<code::Publish>(&u, "content/_c.md").evidence, Evidence::Filename { path: path("content/_c.md") });
+    assert_eq!(on::<code::Ignored>(&u, "content/node_modules/x/y.md").evidence, folder("content/node_modules"));
+    let vault = Tree::new().file(".obsidian/app.json", "{}").file("a.md", "x\n").understand(&Pinned::none());
+    assert_eq!(site::<code::Layout>(&vault).evidence, folder(".obsidian"));
+    let blog = Tree::new().file("posts/a.md", "x\n").understand(&Pinned::none());
+    assert_eq!(site::<code::Layout>(&blog).evidence, folder("posts"));
+}

@@ -114,7 +114,7 @@ and reused across codes; what a witness means for a code is a trait the code imp
 | `Body` | the first paragraph, cut near a sentence end (a `Visit`) | |
 | `FileName<P>` | a parse of the file name, `P` the parser (`Dated`, `Stem`, `Repository`) | `Parse<C>` on `P` |
 | `History<F>` | a history fact `F` (`Created`, `Changed`): a value when exact, a bound when `NotAfter` | |
-| `Folder<M>` | a folder marker `M` (`Posts`, `Drafts`, `Hidden`, `Obsidian`, `Docs`, `Content`) | `Mark<C>` on `M` |
+| `Folder<M>` | a folder marker `M` (`Posts`, `Drafts`, `Hidden`, `Obsidian`, `Docs`, `Content`), evidence `Marker { path }` naming the folder | `Mark<C>` on `M` |
 | `Pattern<L>` | an `include` or `exclude` pattern | `Listed<L>` |
 | `Derived<D>` | the home page's decision of code `D` | `Follows<D>` |
 | `Implied<D, W>` | what witness `W` says of code `D` on the same subject | `Follows<D>` |

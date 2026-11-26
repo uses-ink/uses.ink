@@ -97,7 +97,8 @@ pub enum Evidence {
         /// The file.
         path: ContentPath,
     },
-    /// A file or folder whose presence says something, such as `.obsidian/`.
+    /// A file or folder whose presence says something: `.obsidian/` of a vault, `posts/` of the
+    /// posts it holds, the published page that uses an asset.
     Marker {
         /// The file or folder.
         path: ContentPath,
