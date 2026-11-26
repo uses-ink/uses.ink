@@ -6,6 +6,7 @@ use std::path::Path;
 
 use config::{Config, Parsed};
 use engine::{BaseUrl, Blobs, Engine, NoPins, RenderSettings, Understood};
+use host_image::Pixels;
 use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject, Version};
 use theme_quiet::Quiet;
@@ -165,7 +166,8 @@ pub(crate) struct Rendering {
 }
 
 impl Loaded {
-    /// Renders the site through `ink:theme-quiet`, if interpreting gave one.
+    /// Renders the site through `ink:theme-quiet`, its images through the host's image work, if
+    /// interpreting gave one.
     pub(crate) fn render(&self, address: &Address) -> Rendering {
         let understood = &self.understood;
         let mut diagnostics = understood.diagnostics.clone();
@@ -176,7 +178,7 @@ impl Loaded {
         };
         let theme = Quiet::new(address.base.clone(), Grammars::default());
         let engine = Engine::new(&self.store, NoPins, (Markdown,), &theme);
-        let rendered = engine.render(site, &RenderSettings { base: address.base.clone() });
+        let rendered = engine.render(site, &RenderSettings { base: address.base.clone() }, &Pixels::default());
         diagnostics.extend(rendered.diagnostics);
         notices.extend(rendered.notices);
         Rendering { deploy: Some(rendered.manifest), blobs: rendered.blobs, diagnostics, notices }

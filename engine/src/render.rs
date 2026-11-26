@@ -6,6 +6,7 @@
 mod asset;
 mod feed;
 mod output;
+mod picture;
 mod policy;
 mod settings;
 mod sitemap;
@@ -17,10 +18,12 @@ use std::collections::BTreeMap;
 use model::{Diagnostic, Hash, Manifest, Notice, Route, Site};
 
 use crate::error::Error;
-use crate::{Engine, Theme};
+use crate::image::Images;
+use crate::{Blobs, Engine, Theme};
 use asset::Assets;
 use feed::{Atom, Feed, Rss};
 use output::Output;
+use picture::Prepare;
 use policy::Policy;
 pub use settings::{BaseUrl, BaseUrlError, RenderSettings};
 use sitemap::{Robots, Sitemap};
@@ -120,11 +123,12 @@ impl AsRef<str> for Reserved {
     }
 }
 
-impl<B, P, F, T: Theme> Engine<B, P, F, T> {
-    /// Renders `site` through the theme: its pages, a generated home and not-found page when
-    /// the site has none, the plain files pages use, the feeds, the sitemap, `robots.txt`, then
-    /// the theme's own files, which may take no route already served.
-    pub fn render(&self, site: &Site, settings: &RenderSettings) -> Rendered {
+impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
+    /// Renders `site` through the theme: first its raster images through `images`, so each
+    /// page knows their sizes and copies; then its pages, a generated home and not-found page
+    /// when the site has none, the plain files pages use, the feeds, the sitemap, `robots.txt`,
+    /// then the theme's own files, which may take no route already served.
+    pub fn render<I: Images>(&self, site: &Site, settings: &RenderSettings, images: &I) -> Rendered {
         let policy = match Policy::new() {
             Ok(policy) => policy,
             Err(error) => {
@@ -137,17 +141,19 @@ impl<B, P, F, T: Theme> Engine<B, P, F, T> {
                 };
             }
         };
+        let mut out = Output::new(&policy, &settings.base);
+        let pictures = Prepare { blobs: &self.blobs, images }.run(site, &mut out);
+        let site = &site.clone().pictured(|asset| pictures.picture(asset));
         let theme = &self.theme;
         let artifacts = (
             Pages { theme },
             NotFound { theme },
-            Assets,
+            Assets { pictures: &pictures },
             Feed::<(Atom, Rss)>::default(),
             Sitemap,
             Robots,
             ThemeFiles { theme },
         );
-        let mut out = Output::new(&policy, &settings.base);
         if let Err(error) = artifacts.files(site, &mut out) {
             out.fail(error);
         }

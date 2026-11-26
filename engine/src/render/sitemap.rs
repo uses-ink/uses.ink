@@ -7,6 +7,7 @@ use model::{MediaType, Route, Site, Status};
 
 use crate::error::Error;
 use crate::render::output::{Body, Entry, Output, Owner};
+use crate::render::policy::Cache;
 use crate::render::{Artifact, Reserved};
 
 /// `/sitemap.xml`.
@@ -47,7 +48,14 @@ impl Artifact for Robots {
         let sitemap = out.base.at(&Reserved::Sitemap.route()?);
         let route = Reserved::Robots.route()?;
         let body = Body::Bytes(Allowed { sitemap: &sitemap }.to_string().into_bytes());
-        out.serve(Entry { route, media: MediaType::Text, status: Status::Ok, body, owner: Owner::Engine });
+        out.serve(Entry {
+            route,
+            media: MediaType::Text,
+            status: Status::Ok,
+            body,
+            owner: Owner::Engine,
+            cache: Cache::Revalidate,
+        });
         Ok(())
     }
 }

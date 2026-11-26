@@ -42,6 +42,20 @@ pub enum Error {
         /// Why it does not parse.
         source: RouteError,
     },
+    /// The route of an image's copy does not parse.
+    Variant {
+        /// The route as written.
+        written: String,
+        /// Why it does not parse.
+        source: RouteError,
+    },
+    /// The host prepared another number of images than it was asked to.
+    Images {
+        /// How many were asked for.
+        asked: usize,
+        /// How many it prepared.
+        count: usize,
+    },
     /// The file of a page the engine makes does not parse.
     Path {
         /// The page.
@@ -90,6 +104,10 @@ impl Error {
             Self::Missing { code, .. } => Problem::EngineDecisionMissing { decision: *code },
             Self::Header { name, .. } => Problem::EngineHeaderInvalid { header: name.name().to_owned() },
             Self::Route { reserved, .. } => Problem::EngineRouteInvalid { written: reserved.as_ref().to_owned() },
+            Self::Variant { written, .. } => Problem::EngineRouteInvalid { written: written.clone() },
+            Self::Images { asked, count } => {
+                Problem::EngineImageMiscounted { count: *count as u64, asked: *asked as u64 }
+            }
             Self::Path { page, .. } => Problem::EnginePathInvalid { written: page.as_ref().to_owned() },
             Self::Language { written, .. } => Problem::EngineLanguageInvalid { written: (*written).to_owned() },
             Self::Served { route } => Problem::EngineRouteRepeated { route: route.clone() },
@@ -119,13 +137,13 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Header { source, .. } => Some(source),
-            Self::Route { source, .. } => Some(source),
+            Self::Route { source, .. } | Self::Variant { source, .. } => Some(source),
             Self::Path { source, .. } => Some(source),
             Self::Language { source, .. } => Some(source),
             Self::Site { source } => Some(source),
             Self::Xml { source, .. } => Some(source),
             Self::Date { source, .. } => Some(source),
-            Self::Repeated { .. } | Self::Missing { .. } | Self::Served { .. } => None,
+            Self::Repeated { .. } | Self::Missing { .. } | Self::Served { .. } | Self::Images { .. } => None,
         }
     }
 }

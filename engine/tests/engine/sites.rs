@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use engine::{Engine, NoPins};
 
-use crate::support::{Pinned, Plain, Tree, settings};
+use crate::support::{Pinned, Plain, Stand, Tree, settings};
 
 const SITES: &str = "fixture/site";
 
@@ -46,7 +46,8 @@ fn report(site: &Path) -> String {
         let _infallible = writeln!(out, "{} on {}", notice.code(), on(notice.subject.as_ref()));
     }
     let Some(site) = understood.site else { return out };
-    let rendered = Engine::new((), NoPins, (), Plain::default()).render(&site, &settings());
+    let (_, store) = tree.snapshot();
+    let rendered = Engine::new(&store, NoPins, (), Plain::default()).render(&site, &settings(), &Stand);
     let _infallible = writeln!(out, "# deploy {}", rendered.manifest.id());
     for entry in rendered.manifest.entries() {
         let _infallible =

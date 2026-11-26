@@ -8,6 +8,7 @@ use model::{Status, Subject};
 
 use crate::error::Error;
 use crate::render::output::{Body, Entry, Output, Owner};
+use crate::render::policy::Cache;
 use crate::render::{Artifact, Reserved};
 use crate::{Record, Theme};
 
@@ -81,6 +82,7 @@ impl<T: Theme> Pages<'_, T> {
                 status,
                 body: Body::Bytes(html.into()),
                 owner: Owner::Page(page.file.clone()),
+                cache: Cache::Revalidate,
             }),
             Err(cause) => {
                 let problem = Problem::ThemePageRefused { theme: self.theme.name().to_owned() };
@@ -151,6 +153,7 @@ impl<T: Theme> Artifact for ThemeFiles<'_, T> {
                     status: Status::Ok,
                     body: Body::Bytes(file.bytes),
                     owner: Owner::Theme,
+                    cache: Cache::Revalidate,
                 }),
             }
         }

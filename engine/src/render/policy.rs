@@ -13,6 +13,16 @@ use crate::error::Error;
 pub(crate) struct Policy {
     page: Vec<Header>,
     file: Vec<Header>,
+    immutable: Vec<Header>,
+}
+
+/// How long a reader's browser and the edge may keep an entry without asking again.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Cache {
+    /// As HTTP decides: the entry can change with the next deploy.
+    Revalidate,
+    /// For a year, never asking: the route holds the hash of the bytes, so they never change.
+    Immutable,
 }
 
 impl Policy {
@@ -40,17 +50,25 @@ impl Policy {
         (HeaderName::XContentTypeOptions, "nosniff"),
     ];
 
+    /// What an entry whose route holds the hash of its bytes may be cached for.
+    const IMMUTABLE: (HeaderName, &str) = (HeaderName::CacheControl, "public, max-age=31536000, immutable");
+
     /// The policy, its header values parsed.
     pub(crate) fn new() -> Result<Self, Error> {
-        Ok(Self { page: Self::parse(Self::PAGE)?, file: Self::parse(Self::FILE)? })
+        let immutable = Self::parse(&[Self::IMMUTABLE])?;
+        Ok(Self { page: Self::parse(Self::PAGE)?, file: Self::parse(Self::FILE)?, immutable })
     }
 
-    /// The headers an entry of `media` is served with.
-    pub(crate) fn headers(&self, media: MediaType) -> Vec<Header> {
-        match media {
+    /// The headers an entry of `media` is served with, kept as long as `cache` says.
+    pub(crate) fn headers(&self, media: MediaType, cache: Cache) -> Vec<Header> {
+        let mut headers = match media {
             MediaType::Html => self.page.clone(),
             _ => self.file.clone(),
+        };
+        if cache == Cache::Immutable {
+            headers.extend(self.immutable.iter().cloned());
         }
+        headers
     }
 
     fn parse(table: &[(HeaderName, &str)]) -> Result<Vec<Header>, Error> {
@@ -71,7 +89,8 @@ mod test {
     #[test]
     fn every_value_parses() {
         let policy = Policy::new().unwrap();
-        assert_eq!(policy.headers(MediaType::Html).len(), Policy::PAGE.len());
-        assert_eq!(policy.headers(MediaType::Png).len(), Policy::FILE.len());
+        assert_eq!(policy.headers(MediaType::Html, Cache::Revalidate).len(), Policy::PAGE.len());
+        assert_eq!(policy.headers(MediaType::Png, Cache::Revalidate).len(), Policy::FILE.len());
+        assert_eq!(policy.headers(MediaType::Avif, Cache::Immutable).len(), Policy::FILE.len() + 1);
     }
 }

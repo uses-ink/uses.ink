@@ -14,6 +14,7 @@ extern crate uses_ink_engine as engine;
 
 mod interpret;
 mod link;
+mod picture;
 mod render;
 mod sites;
 mod support;

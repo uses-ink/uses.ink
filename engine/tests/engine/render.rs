@@ -4,7 +4,7 @@
 use engine::{Engine, File, NoPins, Rendered};
 use model::{HeaderName, MediaType, Route, Status};
 
-use crate::support::{Pinned, Plain, Tree, settings};
+use crate::support::{Pinned, Plain, Stand, Tree, settings};
 
 fn blog() -> Tree {
     Tree::new()
@@ -17,8 +17,7 @@ fn blog() -> Tree {
 }
 
 fn rendered(tree: &Tree, theme: &Plain) -> Rendered {
-    let site = tree.understand(&Pinned::none()).site.unwrap();
-    Engine::new((), NoPins, (), theme).render(&site, &settings())
+    tree.render(theme)
 }
 
 fn route(text: &str) -> Route {
@@ -43,19 +42,22 @@ fn the_same_input_gives_the_same_deploy() {
 
 #[test]
 fn every_page_carries_the_engines_headers() {
-    let rendered = rendered(&blog(), &Plain::default());
+    let rendered =
+        rendered(&blog().file("posts/nib.svg", "<svg/>").file("posts/third.md", "![n](nib.svg)\n"), &Plain::default());
     assert!(rendered.diagnostics.is_empty(), "{:?}", rendered.diagnostics);
     let routes: Vec<&str> = rendered.manifest.entries().iter().map(|e| e.route().as_str()).collect();
+    let pages: Vec<&str> = routes.iter().copied().filter(|r| !r.starts_with("/posts/p.")).collect();
     assert_eq!(
-        routes,
+        pages,
         [
             "/",
             "/404",
             "/about",
             "/feed.xml",
             "/posts/first",
-            "/posts/p.png",
+            "/posts/nib.svg",
             "/posts/second",
+            "/posts/third",
             "/posts/undated",
             "/robots.txt",
             "/rss.xml",
@@ -69,17 +71,15 @@ fn every_page_carries_the_engines_headers() {
         assert_eq!(entry.headers().len(), 7);
         assert!(entry.headers().iter().any(|h| h.name == HeaderName::CrossOriginResourcePolicy));
     }
-    let image = rendered.manifest.entry(&route("/posts/p.png")).unwrap();
-    assert_eq!(image.media(), MediaType::Png);
+    let image = rendered.manifest.entry(&route("/posts/nib.svg")).unwrap();
+    assert_eq!(image.media(), MediaType::Svg);
     let headers: Vec<(&str, &str)> = image.headers().iter().map(|h| (h.name.name(), h.value.as_str())).collect();
-    assert_eq!(
-        headers,
-        [
-            ("content-security-policy", "default-src 'none'; frame-ancestors 'none'; sandbox"),
-            ("cross-origin-resource-policy", "same-origin"),
-            ("x-content-type-options", "nosniff")
-        ]
-    );
+    let sandboxed = [
+        ("content-security-policy", "default-src 'none'; frame-ancestors 'none'; sandbox"),
+        ("cross-origin-resource-policy", "same-origin"),
+        ("x-content-type-options", "nosniff"),
+    ];
+    assert_eq!(headers, sandboxed);
     assert!(!rendered.blobs.contains_key(&image.blob()), "the snapshot holds a plain file's bytes");
 }
 
@@ -166,7 +166,8 @@ fn a_page_the_theme_refuses_keeps_the_themes_cause_and_what_it_said() {
 fn a_pinned_plain_file_of_unknown_kind_is_left_out() {
     let tree = Tree::new().file("a.md", "x\n").file("data.zip", "zip");
     let site = tree.understand(&Pinned::none().file::<model::code::Publish>("data.zip", true)).site.unwrap();
-    let rendered = Engine::new((), NoPins, (), &Plain::default()).render(&site, &settings());
+    let (_, store) = tree.snapshot();
+    let rendered = Engine::new(&store, NoPins, (), &Plain::default()).render(&site, &settings(), &Stand);
     let codes: Vec<&str> = rendered.diagnostics.iter().map(model::Diagnostic::code).collect();
     assert_eq!(codes, ["asset.media.unknown"]);
     assert!(rendered.manifest.entry(&route("/data.zip")).is_none());

@@ -5,15 +5,17 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
+use engine::image::{Encoded, Kept, Prepared, Source, Variants};
 use engine::{
-    BlobMissing, Blobs, Engine, File, Format, Html, Patterns, Pin, Pins, Record, RenderSettings, Theme, Understood,
+    BlobMissing, Blobs, Engine, File, Format, Html, Images, NoPins, Patterns, Pin, Pins, Record, RenderSettings,
+    Rendered, Theme, Understood,
 };
 use model::code::{AnyDecision, Code};
 use model::decision::{self, Decision};
 use model::{
-    Ability, Announcement, Block, Bytes, ContentPath, Diagnostic, Document, Entry, Evidence, FileFacts, Front, Hash,
-    ImageSource, Inline, Known, Level, LinkTarget, Notice, Observed, Page, PageKind, Problem, Read, Site, Snapshot,
-    Span, Spanned, Subject, Tag, UnknownReason, Version, When,
+    Ability, Announcement, Block, Bytes, ContentPath, Diagnostic, Dimensions, Document, Entry, Evidence, FileFacts,
+    Front, Hash, ImageSource, Inline, Known, Level, LinkTarget, MediaType, Notice, Observed, Page, PageKind, Problem,
+    Read, Site, Snapshot, Span, Spanned, Subject, Tag, UnknownReason, Version, When,
 };
 
 /// A snapshot written file by file.
@@ -77,6 +79,58 @@ impl Tree {
     pub fn read_with(&self, pins: &impl Pins, format: impl Format) -> Understood {
         let (snapshot, store) = self.snapshot();
         Engine::new(&store, pins, (format,), ()).interpret(&snapshot)
+    }
+}
+
+impl Tree {
+    /// Interprets the tree and renders it through `theme`, its images through [`Stand`].
+    pub fn render(&self, theme: &impl Theme) -> Rendered {
+        let (_, store) = self.snapshot();
+        let site = self.understand(&Pinned::none()).site.unwrap();
+        Engine::new(&store, NoPins, (), theme).render(&site, &settings(), &Stand)
+    }
+}
+
+/// A stand-in for the host's image work, reading an image's bytes as what to do: `animated`
+/// keeps it, `broken` refuses it, `clear` has transparency (no placeholder); anything else is
+/// 40 by 30 pixels, copied as AVIF and JPEG at widths 20 and 40, its bytes the source's with
+/// the format and width after them.
+#[derive(Debug, Default)]
+pub struct Stand;
+
+impl Stand {
+    fn copy(source: &Source<'_>, media: MediaType, width: u32) -> Encoded {
+        let mut bytes = source.bytes.to_vec();
+        bytes.extend(format!(" {} {width}", media.essence()).into_bytes());
+        Encoded::new(media, Dimensions::new(width, width * 3 / 4), bytes)
+    }
+
+    #[expect(clippy::result_large_err, reason = "a refusal is the diagnostic the engine records")]
+    fn prepare(source: &Source<'_>) -> Result<Prepared, Diagnostic> {
+        let dimensions = Dimensions::new(40, 30);
+        match source.bytes {
+            b"animated" => Ok(Prepared::Kept { dimensions, reason: Kept::Animated }),
+            b"broken" => Err(Diagnostic::new(Problem::ImageDecodeFailed {
+                path: source.file.clone(),
+                reason: "broken".to_owned(),
+            })),
+            bytes => {
+                let copies = [MediaType::Avif, MediaType::Jpeg]
+                    .into_iter()
+                    .flat_map(|media| [20, 40].map(|width| Self::copy(source, media, width)))
+                    .collect();
+                let placeholder = (bytes != b"clear").then(|| Self::copy(source, MediaType::Png, 4));
+                Ok(Prepared::Varied(Variants::new(dimensions, copies, placeholder)))
+            }
+        }
+    }
+}
+
+impl Images for Stand {
+    type Refusal = Diagnostic;
+
+    fn prepare(&self, sources: &[Source<'_>]) -> Vec<Result<Prepared, Diagnostic>> {
+        sources.iter().map(Self::prepare).collect()
     }
 }
 

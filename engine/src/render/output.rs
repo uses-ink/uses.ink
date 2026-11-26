@@ -8,7 +8,7 @@ use model::{ContentPath, Diagnostic, Hash, Manifest, MediaType, Notice, Route, S
 
 use crate::Record;
 use crate::error::Error;
-use crate::render::policy::Policy;
+use crate::render::policy::{Cache, Policy};
 use crate::render::settings::BaseUrl;
 use crate::render::xml::Xml;
 use crate::render::{Rendered, Reserved};
@@ -43,6 +43,7 @@ pub(crate) struct Entry {
     pub(crate) status: Status,
     pub(crate) body: Body,
     pub(crate) owner: Owner,
+    pub(crate) cache: Cache,
 }
 
 impl Record for Output<'_> {
@@ -94,7 +95,7 @@ impl<'a> Output<'a> {
             }
             Body::Blob(hash) => hash,
         };
-        let served = Served::new(entry.route.clone(), blob, entry.media, self.policy.headers(entry.media));
+        let served = Served::new(entry.route.clone(), blob, entry.media, self.policy.headers(entry.media, entry.cache));
         self.entries.insert(entry.route, (served.with_status(entry.status), entry.owner));
     }
 
@@ -110,7 +111,14 @@ impl<'a> Output<'a> {
         let own = self.base.at(&route);
         let written = Xml::declared().and_then(|mut xml| write(&mut xml, &own).map(|()| xml.into()));
         let bytes = written.map_err(|source| Error::Xml { route: route.clone(), source })?;
-        self.serve(Entry { route, media, status: Status::Ok, body: Body::Bytes(bytes), owner: Owner::Engine });
+        self.serve(Entry {
+            route,
+            media,
+            status: Status::Ok,
+            body: Body::Bytes(bytes),
+            owner: Owner::Engine,
+            cache: Cache::Revalidate,
+        });
         Ok(())
     }
 
