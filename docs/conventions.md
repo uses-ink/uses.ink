@@ -6,7 +6,8 @@ lints in `Cargo.toml`, `clippy.toml`, `deny.toml`, and `cargo xtask check`. The 
 rules. When a rule and a deadline collide, the rule wins or the exception is written next to the
 code with its reason.
 
-Lineage: these are the agon and rien conventions, adapted. Decisions live in `decisions.md`; this
+Lineage: these are the agon and rien conventions, adapted. How the code is shaped (the shared
+generic abstractions every crate plugs into) is `code.md`. Decisions live in `decisions.md`; this
 page only says how things are named and written.
 
 ## Vocabulary

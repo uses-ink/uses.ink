@@ -62,6 +62,21 @@ The engine, end to end, on the local disk.
 **Exit:** `ink build` on every fixture twice gives identical deploy hashes; `ink explain --pin`
 output, put back as `ink.toml`, reproduces the same deploy; no JS in any reader page.
 
+## Code rework (closes M1)
+
+The M1 crates were written before `code.md`. They are rebuilt onto its abstractions, in order,
+each phase green before the next:
+
+1. `model`: typed codes (`Code`, `Decision<C>`, `codes!`, `Value`, `FromFront`, `Toml`) and
+   the document walk (`Visit`, `Fold`).
+2. In parallel: `engine` onto ladders, witnesses, stages and artifacts; `config` onto `Toml`
+   values; the markdown format onto `FromFront` and one builder; `freehand` onto `Tool` and
+   `Mark`; `xtask` onto generators, steps and rules.
+3. The theme and the CLI onto `Visit`, `Artifact` and the generic `Engine`.
+
+**Exit:** no free function outside entry points and tests, every function name one or two
+words, `cargo xtask check` enforcing both, and the M1 exit criteria still green.
+
 ## M2: Vaults, git, images
 
 The two real audiences, locally.
