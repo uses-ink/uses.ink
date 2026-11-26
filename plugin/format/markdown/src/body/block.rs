@@ -1,82 +1,96 @@
-//! Blocks.
+//! Blocks: how a comrak block joins its run, and the blocks that need the walk to build.
 
-use comrak::nodes::{AlertType, AstNode, ListType, NodeAlert, NodeCodeBlock, NodeList, NodeValue, TableAlignment};
+use comrak::nodes::{AlertType, AstNode, ListType, NodeAlert, NodeCodeBlock, NodeTaskItem, NodeValue, TableAlignment};
 use comrak::options::AlertStyleType;
 use model::{
-    Alignment, Announcement, Block, CalloutKind, Definition, Footnote, Inline, Item, Level, Notice, Slug, Span,
-    Spanned, Task,
+    Alignment, Anchor, Announcement, Block, CalloutKind, Definition, Footnote, FootnoteName, Inline, Item, Level, Slug,
+    Span, Spanned, Task,
 };
 
-use super::fold::Nest;
-use super::inline::{has_content, plain};
-use super::{DEPTH, Walk, text_of};
+use super::html::Fold;
+use super::inline::Plain;
+use super::stack::Stack;
+use super::{Builder, Literal, Node, ToModel};
 
-impl Walk<'_> {
-    pub(super) fn blocks<'a>(&mut self, node: &'a AstNode<'a>) -> Vec<Block> {
-        let mut out = Vec::new();
-        if self.depth >= DEPTH {
-            self.too_deep(node, &mut out);
-            return out;
-        }
-        self.depth += 1;
-        let mut nest = Nest::default();
-        for child in node.children() {
-            self.block(child, &mut nest);
-        }
-        self.depth -= 1;
-        self.unfold(nest)
-    }
+impl Node for Block {
+    type Open = Fold;
 
-    fn block<'a>(&mut self, node: &'a AstNode<'a>, nest: &mut Nest) {
-        let data = node.data();
-        let span = self.span(data.sourcepos);
-        if let NodeValue::HtmlBlock(block) = &data.value {
-            return self.html_block(&block.literal, span, nest);
-        }
-        let out = nest.target();
-        match &data.value {
-            NodeValue::Paragraph => self.paragraph(node, out),
-            NodeValue::Heading(heading) => out.push(self.heading(node, heading.level, span)),
-            NodeValue::List(list) => out.push(self.list(node, list)),
-            NodeValue::BlockQuote | NodeValue::MultilineBlockQuote(_) => out.push(Block::Quote(self.blocks(node))),
-            NodeValue::CodeBlock(code) => out.push(code_block(code)),
-            NodeValue::ThematicBreak(_) => out.push(Block::Rule),
-            NodeValue::Table(table) => out.push(self.table(node, &table.alignments)),
-            NodeValue::Alert(alert) => out.push(self.callout(node, alert, span)),
-            NodeValue::DescriptionList => out.push(self.definitions(node)),
-            NodeValue::MathBlock(math) => out.push(Block::Math(math.literal.trim_end_matches('\n').to_owned())),
-            NodeValue::FootnoteDefinition(definition) => {
-                // a definition is not part of the flow: it joins the document's footnotes
-                let blocks = self.blocks(node);
-                if let Some(name) = self.footnote_name(&definition.name, Some(span)) {
-                    self.footnotes.push(Footnote::new(name, blocks));
-                }
+    fn read<'a>(child: &'a AstNode<'a>, builder: &mut Builder<'_>, run: &mut Stack<Fold>) {
+        let data = child.data();
+        let span = builder.positions.span(data.sourcepos);
+        let block = match &data.value {
+            NodeValue::HtmlBlock(html) => return builder.html(&html.literal, span, run),
+            NodeValue::Paragraph => builder.paragraph(child),
+            NodeValue::Heading(heading) => Some(builder.heading(child, heading.level, span)),
+            NodeValue::List(list) => {
+                let ordered = match list.list_type {
+                    ListType::Ordered => Some(list.start as u64),
+                    ListType::Bullet => None,
+                };
+                Some(Self::List { ordered, items: builder.items(child), tight: list.tight })
             }
-            _ => out.extend(self.blocks(node)),
+            NodeValue::BlockQuote | NodeValue::MultilineBlockQuote(_) => Some(Self::Quote(builder.run(child))),
+            NodeValue::CodeBlock(code) => Some(code.to_model()),
+            NodeValue::ThematicBreak(_) => Some(Self::Rule),
+            NodeValue::Table(table) => Some(builder.table(child, &table.alignments)),
+            NodeValue::Alert(alert) => Some(builder.callout(child, alert, span)),
+            NodeValue::DescriptionList => Some(builder.definitions(child)),
+            NodeValue::MathBlock(math) => Some(Self::Math(math.literal.trim_end_matches('\n').to_owned())),
+            NodeValue::FootnoteDefinition(definition) => {
+                builder.footnote(child, &definition.name, span);
+                None
+            }
+            _ => {
+                for block in builder.run(child) {
+                    run.push(block);
+                }
+                None
+            }
+        };
+        if let Some(block) = block {
+            run.push(block);
         }
     }
 
-    /// A paragraph, or display math when `$$...$$` is all it holds.
-    fn paragraph<'a>(&mut self, node: &'a AstNode<'a>, out: &mut Vec<Block>) {
+    /// A paragraph of the children's text, each child's text joined by a space.
+    fn flatten<'a>(parent: &'a AstNode<'a>) -> Option<Self> {
+        let text = parent.children().map(|child| Literal(child).to_string()).collect::<Vec<_>>().join(" ");
+        let text = text.trim();
+        (!text.is_empty()).then(|| Self::Paragraph(vec![Inline::Text(text.to_owned())]))
+    }
+
+    fn join(run: &mut Vec<Self>, block: Self) {
+        run.push(block);
+    }
+
+    fn shows(run: &[Self]) -> bool {
+        !run.is_empty()
+    }
+}
+
+impl Builder<'_> {
+    /// A paragraph, or display math when `$$...$$` is all it holds, or nothing when it shows
+    /// nothing.
+    fn paragraph<'a>(&mut self, node: &'a AstNode<'a>) -> Option<Block> {
         let mut children = node.children();
         if let (Some(only), None) = (children.next(), children.next())
             && let NodeValue::Math(math) = &only.data().value
             && math.display_math
         {
-            out.push(Block::Math(math.literal.clone()));
-            return;
+            return Some(Block::Math(math.literal.clone()));
         }
-        let inlines = self.inlines(node);
-        if has_content(&inlines) {
-            out.push(Block::Paragraph(inlines));
-        }
+        let inlines: Vec<Inline> = self.run(node);
+        Inline::shows(&inlines).then_some(Block::Paragraph(inlines))
     }
 
+    /// A heading with its anchor; the first level-1 heading with text is also the body's
+    /// heading.
     fn heading<'a>(&mut self, node: &'a AstNode<'a>, level: u8, span: Span) -> Block {
-        let inlines = self.inlines(node);
-        let text = plain(&inlines);
+        let inlines = self.run(node);
+        let text = Plain::of(&inlines);
         let text = text.trim();
-        let (Ok(level), Some(anchor)) = (Level::new(level), self.anchor(text, span)) else {
+        let anchor = self.names.name::<Anchor>(text, Some(span), self.report);
+        let (Ok(level), Some(anchor)) = (Level::new(level), anchor) else {
             return Block::Paragraph(inlines);
         };
         if level.get() == 1 && self.heading.is_none() && !text.is_empty() {
@@ -85,31 +99,24 @@ impl Walk<'_> {
         Block::Heading { level, anchor, inlines }
     }
 
-    fn list<'a>(&mut self, node: &'a AstNode<'a>, list: &NodeList) -> Block {
-        let ordered = match list.list_type {
-            ListType::Ordered => Some(list.start as u64),
-            ListType::Bullet => None,
-        };
-        let items = node
-            .children()
+    /// The items of a list, a task list's with their state.
+    fn items<'a>(&mut self, node: &'a AstNode<'a>) -> Vec<Item> {
+        node.children()
             .map(|item| match &item.data().value {
-                NodeValue::TaskItem(task) => {
-                    let done = if task.symbol.is_some() { Task::Done } else { Task::Open };
-                    Item::task(done, self.blocks(item))
-                }
-                _ => Item::new(self.blocks(item)),
+                NodeValue::TaskItem(task) => Item::task(task.to_model(), self.run(item)),
+                _ => Item::new(self.run(item)),
             })
-            .collect();
-        Block::List { ordered, items, tight: list.tight }
+            .collect()
     }
 
+    /// A table, every row with one cell per column.
     fn table<'a>(&mut self, node: &'a AstNode<'a>, alignments: &[TableAlignment]) -> Block {
-        let alignments: Vec<Alignment> = alignments.iter().map(|&a| alignment(a)).collect();
+        let alignments: Vec<Alignment> = alignments.iter().map(ToModel::to_model).collect();
         let mut head = Vec::new();
         let mut rows = Vec::new();
         for row in node.children() {
             let header = matches!(&row.data().value, NodeValue::TableRow(row) if row.header);
-            let mut cells: Vec<Vec<Inline>> = row.children().map(|cell| self.inlines(cell)).collect();
+            let mut cells: Vec<Vec<Inline>> = row.children().map(|cell| self.run(cell)).collect();
             cells.resize_with(alignments.len(), Vec::new);
             if header && head.is_empty() { head = cells } else { rows.push(cells) }
         }
@@ -119,18 +126,19 @@ impl Walk<'_> {
         Block::Table { alignments, head, rows }
     }
 
+    /// A callout (`> [!note]`). A kind comrak learns later keeps the name comrak gives it; a
+    /// name that is no slug is a note, and says so.
     fn callout<'a>(&mut self, node: &'a AstNode<'a>, alert: &NodeAlert, span: Span) -> Block {
-        let kind = match alert.alert_type {
-            AlertType::Note => CalloutKind::Note,
-            AlertType::Tip => CalloutKind::Tip,
-            AlertType::Important => CalloutKind::Important,
-            AlertType::Warning => CalloutKind::Warning,
-            AlertType::Caution => CalloutKind::Caution,
-            // a kind comrak learns later keeps the name comrak gives it
-            other => self.callout_kind(other.css_class(AlertStyleType::Semantic), span),
-        };
+        let kind = alert.alert_type.to_model().unwrap_or_else(|| {
+            let name = alert.alert_type.css_class(AlertStyleType::Semantic);
+            if let Ok(slug) = Slug::parse(name) {
+                return CalloutKind::Other(slug);
+            }
+            self.report.announce(Announcement::CalloutKindUnknown { kind: name.to_owned() }, span);
+            CalloutKind::Note
+        });
         let title = alert.title.as_ref().map(|title| vec![Inline::Text(title.clone())]);
-        Block::Callout { kind, title, blocks: self.blocks(node) }
+        Block::Callout { kind, title, blocks: self.run(node) }
     }
 
     /// A description list. comrak gives a term written once with several `:` details as one
@@ -144,7 +152,7 @@ impl Walk<'_> {
                 match &part.data().value {
                     NodeValue::DescriptionTerm => term = Some(self.term(part)),
                     // comrak puts only terms and details in an item
-                    _ => details.push(self.blocks(part)),
+                    _ => details.push(self.run(part)),
                 }
             }
             match (term, definitions.last_mut()) {
@@ -156,10 +164,10 @@ impl Walk<'_> {
         Block::Definitions(definitions)
     }
 
-    /// A term's inlines: comrak wraps them in a paragraph.
+    /// A term's inlines: comrak wraps them in paragraphs, joined here by soft breaks.
     fn term<'a>(&mut self, node: &'a AstNode<'a>) -> Vec<Inline> {
         let mut inlines = Vec::new();
-        for block in self.blocks(node) {
+        for block in self.run(node) {
             if let Block::Paragraph(paragraph) = block {
                 if !inlines.is_empty() {
                     inlines.push(Inline::SoftBreak);
@@ -170,40 +178,61 @@ impl Walk<'_> {
         inlines
     }
 
-    /// A callout kind by its name; a name that is no slug is a note, and says so.
-    fn callout_kind(&mut self, name: &str, span: Span) -> CalloutKind {
-        if let Ok(slug) = Slug::parse(name) {
-            return CalloutKind::Other(slug);
+    /// A footnote definition: not part of the flow, it joins the document's footnotes.
+    fn footnote<'a>(&mut self, node: &'a AstNode<'a>, given: &str, span: Span) {
+        let blocks = self.run(node);
+        if let Some(name) = self.names.name::<FootnoteName>(given, Some(span), self.report) {
+            self.footnotes.push(Footnote::new(name, blocks));
         }
-        let announcement = Announcement::CalloutKindUnknown { kind: name.to_owned() };
-        self.notices.push(Notice::new(announcement).on(self.subject.clone()).at(span));
-        CalloutKind::Note
-    }
-
-    /// A block nested past [`DEPTH`]: its text as one paragraph.
-    fn too_deep<'a>(&mut self, node: &'a AstNode<'a>, out: &mut Vec<Block>) {
-        let text = node.children().map(text_of).collect::<Vec<_>>().join(" ");
-        let text = text.trim();
-        if !text.is_empty() {
-            out.push(Block::Paragraph(vec![Inline::Text(text.to_owned())]));
-        }
-        self.nested(node);
     }
 }
 
-fn code_block(code: &NodeCodeBlock) -> Block {
-    let language = code.info.split_whitespace().next().map(str::to_owned);
-    if language.as_deref() == Some("math") {
-        return Block::Math(code.literal.trim_end_matches('\n').to_owned());
+impl ToModel for NodeCodeBlock {
+    type Model = Block;
+
+    /// Code with its language, or display math for a ` ```math ` block.
+    fn to_model(&self) -> Block {
+        let language = self.info.split_whitespace().next().map(str::to_owned);
+        if language.as_deref() == Some("math") {
+            return Block::Math(self.literal.trim_end_matches('\n').to_owned());
+        }
+        Block::Code { language, text: self.literal.clone() }
     }
-    Block::Code { language, text: code.literal.clone() }
 }
 
-const fn alignment(alignment: TableAlignment) -> Alignment {
-    match alignment {
-        TableAlignment::None => Alignment::None,
-        TableAlignment::Left => Alignment::Left,
-        TableAlignment::Center => Alignment::Center,
-        TableAlignment::Right => Alignment::Right,
+impl ToModel for TableAlignment {
+    type Model = Alignment;
+
+    fn to_model(&self) -> Alignment {
+        match self {
+            Self::None => Alignment::None,
+            Self::Left => Alignment::Left,
+            Self::Center => Alignment::Center,
+            Self::Right => Alignment::Right,
+        }
+    }
+}
+
+impl ToModel for NodeTaskItem {
+    type Model = Task;
+
+    fn to_model(&self) -> Task {
+        if self.symbol.is_some() { Task::Done } else { Task::Open }
+    }
+}
+
+impl ToModel for AlertType {
+    type Model = Option<CalloutKind>;
+
+    /// The kind, for the five GitHub names; `None` for a kind comrak learns later.
+    fn to_model(&self) -> Option<CalloutKind> {
+        Some(match self {
+            Self::Note => CalloutKind::Note,
+            Self::Tip => CalloutKind::Tip,
+            Self::Important => CalloutKind::Important,
+            Self::Warning => CalloutKind::Warning,
+            Self::Caution => CalloutKind::Caution,
+            _ => return None,
+        })
     }
 }

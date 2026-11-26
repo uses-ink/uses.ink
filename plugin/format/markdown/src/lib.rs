@@ -53,7 +53,6 @@
 //! Until `host/wasmtime` exists this crate speaks `uses-ink-model` directly; it moves to the
 //! generated WIT types when it becomes a component.
 
-/// comrak, behind model types: nothing else in the crate names it.
 mod body;
 mod error;
 mod file;
@@ -62,20 +61,18 @@ mod html;
 
 use model::{ContentPath, Document, Front, Read, Subject};
 
+use body::Builder;
 use error::Report;
 use file::File;
 use front::{Keys, Yaml};
 
 /// Reads one markdown file. Pure: the same bytes give the same [`Read`], and no input panics.
 pub fn read(path: &ContentPath, bytes: &[u8]) -> Read {
-    let subject = Subject::File(path.clone());
-    let mut report = Report::new(subject.clone());
+    let mut report = Report::new(Subject::File(path.clone()));
     let mut read = match File::try_from(bytes) {
         Ok(file) => {
             let front = Yaml::read::<Keys>(&file, &mut report);
-            let body = body::Body::read(file.text, file.body, subject);
-            report.diagnostics.extend(body.diagnostics);
-            report.notices.extend(body.notices);
+            let body = Builder::read(&file, &mut report);
             Read::new(body.document, front, body.heading)
         }
         Err(encoding) => {

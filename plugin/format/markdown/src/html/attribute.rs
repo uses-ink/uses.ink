@@ -1,7 +1,7 @@
 //! A tag's attributes, read the way a browser reads them: `name`, `name=value`, `name='value'`
 //! and `name="value"`, separated by whitespace.
 
-use super::decode;
+use super::Decoded;
 
 /// One attribute: its name lower-cased and its value with entities decoded. An attribute written
 /// without a value (`hidden`) has the empty text.
@@ -72,7 +72,7 @@ impl Iterator for Attributes<'_> {
                 continue;
             }
             self.take_while(char::is_whitespace);
-            let value = if self.eat('=') { decode(self.value()) } else { String::new() };
+            let value = if self.eat('=') { Decoded(self.value()).to_string() } else { String::new() };
             return Some(Attribute { name: name.to_ascii_lowercase(), value });
         }
     }

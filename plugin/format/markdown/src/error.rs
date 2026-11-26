@@ -4,7 +4,10 @@
 
 use std::fmt;
 
-use model::{Diagnostic, Expected, Notice, Problem, Span, Subject};
+use model::{Announcement, Diagnostic, Expected, Notice, Problem, Span, Subject};
+
+/// Deeper than this, a block or inline keeps only its text: a page is not a stack to overflow.
+pub(crate) const DEPTH: usize = 64;
 
 /// Why part of a file was not read as written.
 #[derive(Debug)]
@@ -35,6 +38,13 @@ pub(crate) enum Error {
         /// The earlier key, kept.
         other: &'static str,
     },
+    /// An HTML element the allowlist does not keep here, removed with its tags.
+    Stripped {
+        /// The element's lower-cased name.
+        element: String,
+    },
+    /// Blocks or inlines nested past [`DEPTH`], kept as their text.
+    Nested,
 }
 
 impl fmt::Display for Error {
@@ -50,6 +60,8 @@ impl fmt::Display for Error {
             }
             Self::Value { key, source } => write!(out, "`{key}` takes {source}"),
             Self::Conflict { key, other } => write!(out, "`{key}` sets the same thing as `{other}` before it"),
+            Self::Stripped { element } => write!(out, "`<{element}>` is not allowed"),
+            Self::Nested => write!(out, "nested more than {DEPTH} deep"),
         }
     }
 }
@@ -60,7 +72,7 @@ impl std::error::Error for Error {
             Self::Encoding(encoding) => Some(encoding),
             Self::Yaml { source, .. } => Some(source),
             Self::Value { source, .. } => Some(source),
-            Self::Unclosed | Self::Conflict { .. } => None,
+            Self::Unclosed | Self::Conflict { .. } | Self::Stripped { .. } | Self::Nested => None,
         }
     }
 }
@@ -78,6 +90,8 @@ impl From<Error> for Problem {
             Error::Conflict { key, other } => {
                 Self::FrontmatterKeyConflict { key: key.to_owned(), other: other.to_owned() }
             }
+            Error::Stripped { element } => Self::HtmlElementStripped { element },
+            Error::Nested => Self::PageNestingDeep { limit: DEPTH as u64 },
         }
     }
 }
@@ -139,5 +153,10 @@ impl Report {
             diagnostic = diagnostic.at(span);
         }
         self.diagnostics.push(diagnostic);
+    }
+
+    /// Announces `announcement` at `span`.
+    pub(crate) fn announce(&mut self, announcement: Announcement, span: Span) {
+        self.notices.push(Notice::new(announcement).on(self.subject.clone()).at(span));
     }
 }

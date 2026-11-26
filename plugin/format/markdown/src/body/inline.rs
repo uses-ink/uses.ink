@@ -1,143 +1,136 @@
-//! Inlines, links and images.
+//! Inlines: how a comrak inline joins its run, where links and images point, and the text a
+//! reader sees.
 
 use comrak::nodes::{AstNode, NodeValue};
-use model::{Anchor, Diagnostic, ExternalUrl, ImageSource, Inline, LinkTarget, Problem, Slug, Span};
+use model::{Anchor, ExternalUrl, FootnoteName, ImageSource, Inline, LinkTarget, Slug, Visit};
 
-use super::raw::Inlines;
-use super::{DEPTH, Walk, text_of};
-use crate::html::Pieces;
+use super::html::Open;
+use super::stack::Stack;
+use super::{Builder, Literal, Node};
 
-impl Walk<'_> {
-    pub(super) fn inlines<'a>(&mut self, node: &'a AstNode<'a>) -> Vec<Inline> {
-        if self.depth >= DEPTH {
-            let mut out = Vec::new();
-            let text = node.children().map(text_of).collect::<String>();
-            push_text(&mut out, &text);
-            self.nested(node);
-            return out;
-        }
-        self.depth += 1;
-        let mut inlines = Inlines::default();
-        for child in node.children() {
-            self.inline(child, &mut inlines);
-        }
-        self.depth -= 1;
-        self.finish(inlines)
-    }
+impl Node for Inline {
+    type Open = Open;
 
-    /// One inline into `inlines`, where raw HTML before it may have left elements open.
-    fn inline<'a>(&mut self, node: &'a AstNode<'a>, inlines: &mut Inlines) {
-        let data = node.data();
+    fn read<'a>(child: &'a AstNode<'a>, builder: &mut Builder<'_>, run: &mut Stack<Open>) {
+        let data = child.data();
         let inline = match &data.value {
-            NodeValue::HtmlInline(raw) => return self.html_inline(raw, self.span(data.sourcepos), inlines),
-            _ if inlines.is_opaque() => return,
-            NodeValue::Text(text) => return inlines.push_text(text),
-            NodeValue::SoftBreak => Inline::SoftBreak,
-            NodeValue::LineBreak => Inline::Break,
-            NodeValue::Code(code) => Inline::Code(code.literal.clone()),
-            NodeValue::Emph(_) => Inline::Emphasis(self.inlines(node)),
-            NodeValue::Strong(_) => Inline::Strong(self.inlines(node)),
-            NodeValue::Strikethrough(_) => Inline::Strike(self.inlines(node)),
-            NodeValue::Highlight => Inline::Highlight(self.inlines(node)),
-            NodeValue::Superscript => Inline::Superscript(self.inlines(node)),
-            NodeValue::Subscript => Inline::Subscript(self.inlines(node)),
-            NodeValue::Link(link) => Inline::Link { target: target(&link.url), children: self.inlines(node) },
-            NodeValue::Image(link) => Inline::Image { source: source(&link.url), alt: plain(&self.inlines(node)) },
-            NodeValue::Math(math) => Inline::Math(math.literal.clone()),
-            NodeValue::FootnoteReference(reference) => match self.footnote_name(&reference.name, None) {
-                Some(name) => Inline::Footnote(name),
-                None => return,
-            },
+            NodeValue::HtmlInline(raw) => return builder.tags(raw, builder.positions.span(data.sourcepos), run),
+            _ if run.is_opaque() => return,
+            NodeValue::Text(text) => Self::Text(text.to_string()),
+            NodeValue::SoftBreak => Self::SoftBreak,
+            NodeValue::LineBreak => Self::Break,
+            NodeValue::Code(code) => Self::Code(code.literal.clone()),
+            NodeValue::Emph(_) => Self::Emphasis(builder.run(child)),
+            NodeValue::Strong(_) => Self::Strong(builder.run(child)),
+            NodeValue::Strikethrough(_) => Self::Strike(builder.run(child)),
+            NodeValue::Highlight => Self::Highlight(builder.run(child)),
+            NodeValue::Superscript => Self::Superscript(builder.run(child)),
+            NodeValue::Subscript => Self::Subscript(builder.run(child)),
+            NodeValue::Link(link) => Self::Link { target: Written(&link.url).into(), children: builder.run(child) },
+            NodeValue::Image(link) => {
+                Self::Image { source: Written(&link.url).into(), alt: Plain::of(&builder.run(child)) }
+            }
+            NodeValue::Math(math) => Self::Math(math.literal.clone()),
+            NodeValue::FootnoteReference(reference) => {
+                match builder.names.name::<FootnoteName>(&reference.name, None, builder.report) {
+                    Some(name) => Self::Footnote(name),
+                    None => return,
+                }
+            }
             _ => {
-                for inline in self.inlines(node) {
-                    inlines.push(inline);
+                for inline in builder.run(child) {
+                    run.push(inline);
                 }
                 return;
             }
         };
-        inlines.push(inline);
+        run.push(inline);
     }
 
-    /// One inline tag, paired with its siblings.
-    fn html_inline(&mut self, raw: &str, span: Span, inlines: &mut Inlines) {
-        let placement = self.placement(raw, span);
-        for piece in Pieces::new(raw) {
-            self.piece(inlines, &piece, placement.at(&piece));
+    /// The children's text as one run of text.
+    fn flatten<'a>(parent: &'a AstNode<'a>) -> Option<Self> {
+        let text: String = parent.children().map(|child| Literal(child).to_string()).collect();
+        (!text.is_empty()).then_some(Self::Text(text))
+    }
+
+    /// Text joins the text before it, so the document holds one text per run; empty text is
+    /// nothing.
+    fn join(run: &mut Vec<Self>, inline: Self) {
+        let Self::Text(text) = inline else { return run.push(inline) };
+        match run.last_mut() {
+            _ if text.is_empty() => {}
+            Some(Self::Text(last)) => last.push_str(&text),
+            _ => run.push(Self::Text(text)),
         }
     }
 
-    /// Reports content nested past [`DEPTH`].
-    pub(super) fn nested<'a>(&mut self, node: &'a AstNode<'a>) {
-        let span = self.span(node.data().sourcepos);
-        let problem = Problem::PageNestingDeep { limit: DEPTH as u64 };
-        self.diagnostics.push(Diagnostic::new(problem).on(self.subject.clone()).at(span));
+    /// More than whitespace and line breaks.
+    fn shows(run: &[Self]) -> bool {
+        run.iter().any(|inline| match inline {
+            Self::Text(text) => !text.trim().is_empty(),
+            Self::Break | Self::SoftBreak => false,
+            _ => true,
+        })
     }
 }
 
-/// Where a link goes, as far as one file can tell.
-pub(super) fn target(url: &str) -> LinkTarget {
-    if let Ok(external) = ExternalUrl::parse(url) {
-        return LinkTarget::External(external);
-    }
-    if let Some(slug) = url.strip_prefix('#').and_then(|anchor| Slug::parse(anchor).ok()) {
-        return LinkTarget::Anchor(Anchor::new(slug));
-    }
-    LinkTarget::Unresolved { written: url.to_owned() }
-}
+/// A link's or an image's destination as written, read as far as one file can tell. Nothing
+/// is resolved: a path stays as written for the engine.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Written<'a>(pub(crate) &'a str);
 
-/// Where an image comes from, as far as one file can tell.
-pub(super) fn source(url: &str) -> ImageSource {
-    match ExternalUrl::parse(url) {
-        Ok(external) => ImageSource::External(external),
-        Err(_) => ImageSource::Unresolved { written: url.to_owned() },
-    }
-}
-
-/// Text appended to the text before it, if any, so the document holds one run per run.
-pub(super) fn push_text(out: &mut Vec<Inline>, text: &str) {
-    if text.is_empty() {
-        return;
-    }
-    match out.last_mut() {
-        Some(Inline::Text(last)) => last.push_str(text),
-        _ => out.push(Inline::Text(text.to_owned())),
+impl From<Written<'_>> for LinkTarget {
+    /// `http(s):` and `mailto:` are external, `#anchor` alone is an anchor when it is a slug,
+    /// anything else is unresolved.
+    fn from(Written(url): Written<'_>) -> Self {
+        if let Ok(external) = ExternalUrl::parse(url) {
+            return Self::External(external);
+        }
+        if let Some(slug) = url.strip_prefix('#').and_then(|anchor| Slug::parse(anchor).ok()) {
+            return Self::Anchor(Anchor::new(slug));
+        }
+        Self::Unresolved { written: url.to_owned() }
     }
 }
 
-/// An inline appended, text joined to the text before it.
-pub(super) fn push(out: &mut Vec<Inline>, inline: Inline) {
-    match inline {
-        Inline::Text(text) => push_text(out, &text),
-        other => out.push(other),
+impl From<Written<'_>> for ImageSource {
+    /// External, or unresolved.
+    fn from(Written(url): Written<'_>) -> Self {
+        match ExternalUrl::parse(url) {
+            Ok(external) => Self::External(external),
+            Err(_) => Self::Unresolved { written: url.to_owned() },
+        }
     }
 }
 
-/// The text of inlines as a reader sees it, breaks as spaces.
-pub(super) fn plain(inlines: &[Inline]) -> String {
-    let mut text = String::new();
-    for inline in inlines {
+/// The text of inlines as a reader sees it: code, math and keys as written, an image as its
+/// alt text, breaks as spaces.
+#[derive(Debug, Default)]
+pub(crate) struct Plain(String);
+
+impl Plain {
+    /// The plain text of `inlines`.
+    pub(crate) fn of(inlines: &[Inline]) -> String {
+        let mut plain = Self::default();
+        plain.inlines(inlines);
+        plain.0
+    }
+}
+
+impl Visit for Plain {
+    fn inline(&mut self, inline: &Inline) {
         match inline {
-            Inline::Text(t) | Inline::Code(t) | Inline::Math(t) | Inline::Keyboard(t) => text.push_str(t),
-            Inline::Emphasis(children)
-            | Inline::Strong(children)
-            | Inline::Strike(children)
-            | Inline::Highlight(children)
-            | Inline::Superscript(children)
-            | Inline::Subscript(children)
-            | Inline::Link { children, .. } => text.push_str(&plain(children)),
-            Inline::Image { alt, .. } => text.push_str(alt),
-            Inline::Break | Inline::SoftBreak => text.push(' '),
-            _ => {}
+            Inline::Code(text) | Inline::Math(text) | Inline::Keyboard(text) => self.0.push_str(text),
+            Inline::Break | Inline::SoftBreak => self.0.push(' '),
+            _ => inline.walk(self),
         }
     }
-    text
-}
 
-/// Whether inlines show anything: more than whitespace and line breaks.
-pub(super) fn has_content(inlines: &[Inline]) -> bool {
-    inlines.iter().any(|inline| match inline {
-        Inline::Text(text) => !text.trim().is_empty(),
-        Inline::Break | Inline::SoftBreak => false,
-        _ => true,
-    })
+    fn image(&mut self, _: &ImageSource, alt: &str) {
+        self.0.push_str(alt);
+    }
+
+    fn text(&mut self, text: &str) {
+        self.0.push_str(text);
+    }
 }
