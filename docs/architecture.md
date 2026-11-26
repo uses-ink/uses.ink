@@ -92,11 +92,12 @@ uses.ink/
   migration/             plain .sql, applied by wrangler to D1 and by ink serve to SQLite
   token/                 design tokens (one TOML file) -> CSS custom properties and pen palette
   brand/                 logo stroke data, fonts and their licences
-  xtask/                 cargo xtask token | diag | brand | check (later: wit, fixture)
+  xtask/                 cargo xtask token | diag | brand | layout | check (later: wit)
   docs/  spikes/
 ```
 
-Dependency direction, enforced by `xtask check` from `cargo metadata`:
+Dependency direction, enforced by `cargo xtask layout` (a step of `cargo xtask check`) from
+`cargo metadata`:
 
 ```
 model <- config, diag <- engine <- host <- host/{wasmtime,native} <- cli

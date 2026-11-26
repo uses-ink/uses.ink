@@ -18,13 +18,6 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest,cargo-deny,wasmtime
-      - run: cargo fmt --all --check
-      - run: cargo clippy --locked --workspace --all-targets -- -D warnings
-      - run: cargo nextest run --locked --workspace
-      - run: cargo test --locked --workspace --doc
-      - run: cargo deny check
-      # The pen draws the same bytes on wasm: its golden fixture runs there too.
-      - run: cargo test --locked -p freehand --target wasm32-wasip2
-      - run: cargo clippy --locked -p freehand -p freehand-web --target wasm32-unknown-unknown -- -D warnings
-      - run: cargo build --locked -p freehand-web --release --target wasm32-unknown-unknown
+      # The whole gate, in one place: fmt, clippy, nextest, doc tests, cargo deny, wasm tests and
+      # builds, layout and generated files (xtask/src/check.rs).
       - run: cargo --locked xtask check

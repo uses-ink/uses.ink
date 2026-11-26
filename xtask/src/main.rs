@@ -3,8 +3,11 @@
 //! - `token`: write `token/src/generated.rs` and `token/token.css` from `token/token.toml`.
 //! - `diag`: write `model/src/generated.rs` and `diag/src/generated.rs` from `diag/catalog.toml`.
 //! - `brand`: draw the logo, mark and favicon into `brand/` from `brand/figure.toml`.
-//! - `check`: crate names against paths, dependency direction, licences, banned names, and
+//! - `layout`: crate names against paths, dependency direction, licences, banned names, and
 //!   every generated file fresh. Fails with every problem listed.
+//! - `check`: the whole gate, in CI's order: fmt, clippy (native and wasm32), nextest, doc tests,
+//!   `cargo deny`, the pen's tests on wasm32-wasip2, the browser pen's release build, then
+//!   `layout`. Runs every step and fails with every failed step listed.
 
 use std::error::Error as _;
 use std::fmt;
@@ -14,6 +17,7 @@ use std::process::ExitCode;
 use std::str::FromStr;
 
 mod brand;
+mod check;
 mod diag;
 mod error;
 mod layout;
@@ -22,7 +26,7 @@ mod process;
 mod token;
 
 use error::Error;
-use output::{Mode, Output};
+use output::{Line, Mode, Output};
 
 /// What `cargo xtask` was asked to do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,12 +34,13 @@ pub(crate) enum Task {
     Token,
     Diag,
     Brand,
+    Layout,
     Check,
 }
 
 impl Task {
     /// Every task, in the order they are listed.
-    pub(crate) const ALL: [Self; 4] = [Self::Token, Self::Diag, Self::Brand, Self::Check];
+    pub(crate) const ALL: [Self; 5] = [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Check];
     /// The tasks that write generated files.
     pub(crate) const GENERATORS: [Self; 3] = [Self::Token, Self::Diag, Self::Brand];
 
@@ -45,32 +50,34 @@ impl Task {
             Self::Token => "token",
             Self::Diag => "diag",
             Self::Brand => "brand",
+            Self::Layout => "layout",
             Self::Check => "check",
         }
     }
 
-    fn run(self, root: &Path) -> Result<Output, Error> {
-        let mode = if matches!(self, Self::Check) { Mode::Check } else { Mode::Write };
-        let mut output = Output::new(root.to_path_buf(), mode);
+    fn run(self, root: &Path) -> Result<Vec<Line>, Error> {
+        let mut output = Output::new(root.to_path_buf(), Mode::Write);
         match self {
             Self::Token => token::write(&mut output)?,
             Self::Diag => diag::write(&mut output)?,
             Self::Brand => brand::write(&mut output)?,
-            Self::Check => {
-                // Every problem at once: layout, then generated files.
-                let layout = layout::check(root);
-                let token = token::write(&mut output);
-                let diag = diag::write(&mut output);
-                let brand = brand::write(&mut output);
-                let failed: Vec<Error> =
-                    [layout, token, diag, brand, output.fresh()].into_iter().filter_map(Result::err).collect();
-                if !failed.is_empty() {
-                    return Err(Error::Each(failed));
-                }
-            }
+            Self::Layout => return layout(root),
+            Self::Check => return check::run(root),
         }
-        Ok(output)
+        Ok(output.report())
     }
+}
+
+/// The layout rules, then every generated file compared with what its generator writes now.
+/// Every problem at once.
+pub(crate) fn layout(root: &Path) -> Result<Vec<Line>, Error> {
+    let mut output = Output::new(root.to_path_buf(), Mode::Check);
+    let layout = layout::check(root);
+    let token = token::write(&mut output);
+    let diag = diag::write(&mut output);
+    let brand = brand::write(&mut output);
+    let failed: Vec<Error> = [layout, token, diag, brand, output.fresh()].into_iter().filter_map(Result::err).collect();
+    if failed.is_empty() { Ok(output.report()) } else { Err(Error::Each(failed)) }
 }
 
 impl fmt::Display for Task {
@@ -111,7 +118,7 @@ fn main() -> ExitCode {
     let mut err = std::io::stderr();
     // A report that cannot be written fails the task: nothing it did goes unsaid.
     let written = match task.and_then(|task| task.run(&root)) {
-        Ok(output) => output.report().iter().try_for_each(|line| writeln!(err, "{line}")).map(|()| ExitCode::SUCCESS),
+        Ok(lines) => lines.iter().try_for_each(|line| writeln!(err, "{line}")).map(|()| ExitCode::SUCCESS),
         Err(error) => {
             error.into_each().iter().try_for_each(|error| writeln!(err, "{}", Chain(error))).map(|()| ExitCode::FAILURE)
         }

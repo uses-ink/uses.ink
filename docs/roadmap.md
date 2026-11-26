@@ -9,8 +9,10 @@ decision from `open.md` before they start.
 The workspace, the rules, and the three unknowns answered.
 
 - Workspace per `architecture.md` section 4: toolchain, workspace lints, `deny.toml`, nextest,
-  `xtask check` (crate names against paths, dependency direction, banned names).
-- CI on GitHub Actions: fmt, clippy, nextest, `cargo deny`, wasm32 build of the pen.
+  `cargo xtask check` (the whole gate; its `layout` step checks crate names against paths,
+  dependency direction, banned names).
+- CI on GitHub Actions: `cargo xtask check` (fmt, clippy, nextest, `cargo deny`, wasm32 build of
+  the pen), one command.
 - `token/`: one TOML file generating CSS custom properties and the pen palette.
 - `pen`: own perfect-freehand port, strokes, tools, marks; golden fixtures identical on
   native and wasm32; `cargo xtask brand` regenerates the logo, mark and favicon from

@@ -5,6 +5,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use crate::Task;
+use crate::check::{Step, Tool};
 use crate::layout::Problem;
 use crate::process::Failure;
 
@@ -47,6 +48,18 @@ pub(crate) enum Error {
     Layout(Vec<Problem>),
     /// Generated files that differ from what the generator writes now.
     Stale(Vec<PathBuf>),
+    /// A step of `cargo xtask check` that failed.
+    Step {
+        step: Step,
+        source: Failure,
+    },
+    /// A step that needs a tool that is not installed.
+    Tool {
+        step: Step,
+        tool: Tool,
+    },
+    /// Progress could not be written to stderr.
+    Progress(std::io::Error),
     /// Several failures, each reported on its own.
     Each(Vec<Error>),
 }
@@ -91,6 +104,16 @@ impl fmt::Display for Error {
                 write!(out, "stale generated files; run {}:", Listed(&run))?;
                 paths.iter().try_for_each(|p| write!(out, "\n  {}", p.display()))
             }
+            Self::Step { step, .. } => write!(out, "check: {step} failed"),
+            Self::Tool { step, tool } => {
+                write!(
+                    out,
+                    "check: {step} needs `{}`, which is not on PATH; install it with `{}`",
+                    tool.binary(),
+                    tool.install()
+                )
+            }
+            Self::Progress(_) => write!(out, "cannot write progress to stderr"),
             Self::Each(errors) => write!(out, "{} failures", errors.len()),
         }
     }
@@ -99,10 +122,10 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Read { source, .. } | Self::Write { source, .. } => Some(source),
+            Self::Read { source, .. } | Self::Write { source, .. } | Self::Progress(source) => Some(source),
             Self::Toml { source, .. } => Some(source),
             Self::Generated { source, .. } => Some(source),
-            Self::Rustfmt { source, .. } | Self::Metadata(source) => Some(source),
+            Self::Rustfmt { source, .. } | Self::Metadata(source) | Self::Step { source, .. } => Some(source),
             // Each of these is the whole failure: its data says what is wrong.
             Self::Task { .. }
             | Self::Token { .. }
@@ -110,6 +133,7 @@ impl std::error::Error for Error {
             | Self::Catalog(_)
             | Self::Layout(_)
             | Self::Stale(_)
+            | Self::Tool { .. }
             | Self::Each(_) => None,
         }
     }

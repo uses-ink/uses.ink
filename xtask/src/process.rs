@@ -39,6 +39,13 @@ impl Process {
         }
     }
 
+    /// Runs it with the caller's stdin, stdout and stderr, and fails unless it exits with success.
+    /// Its stderr went to the person, so the failure holds none.
+    pub(crate) fn status(mut self) -> Result<(), Failure> {
+        let status = self.0.status().map_err(Failure::Spawn)?;
+        if status.success() { Ok(()) } else { Err(Failure::Exit { status, stderr: Vec::new() }) }
+    }
+
     /// Its stdout, as UTF-8 text.
     pub(crate) fn text(self, input: &[u8]) -> Result<String, Failure> {
         String::from_utf8(self.stdout(input)?).map_err(Failure::Utf8)

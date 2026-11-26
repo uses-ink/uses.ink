@@ -140,6 +140,8 @@ pub(crate) enum Line {
     Unchanged,
     /// The layout and every generated file are as they should be.
     Checked,
+    /// Every step of the gate passed.
+    Passed,
 }
 
 impl fmt::Display for Line {
@@ -148,7 +150,8 @@ impl fmt::Display for Line {
             Self::Wrote(path) => write!(out, "wrote {}", path.display()),
             Self::Removed(path) => write!(out, "removed {} (no longer generated)", path.display()),
             Self::Unchanged => write!(out, "nothing changed"),
-            Self::Checked => write!(out, "check: layout fine, generated files fresh"),
+            Self::Checked => write!(out, "layout fine, generated files fresh"),
+            Self::Passed => write!(out, "check: every step passed"),
         }
     }
 }

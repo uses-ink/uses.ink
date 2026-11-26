@@ -139,9 +139,8 @@ The path predicts the name and the name predicts the path.
 - A plugin lives at `plugin/<slot>/<variant>/`; the slot's WIT lives at `plugin/<slot>/wit/`.
   First-party plugins are laid out exactly like third-party ones.
 - `spikes/` holds throwaway experiments. Nothing depends on a spike.
-- Repo tasks are `cargo xtask <task>` (`token`, `brand`, `check`; `wit` and `fixture` when they
-  exist). No loose scripts in
-  `scripts/`, no generator files beside the code they generate.
+- Repo tasks are `cargo xtask <task>` (`token`, `diag`, `brand`, `layout`, `check`; `wit` when
+  it exists). No loose scripts in `scripts/`, no generator files beside the code they generate.
 - Binaries: `ink` only. Its crate is `uses-ink-cli` at `cli/`.
 - Cut a crate when its second user appears, not before; its tests move with it. A crate useful
   outside uses.ink is cut with a name of its own (above).
@@ -260,7 +259,8 @@ holding a secret redacts itself in `Debug` and has no `Display`. No telemetry.
 
 **Hacks.** Every `#[allow]`/`#[expect]` has `reason = "..."`; prefer `#[expect]`. A workaround is
 `// HACK(<condition for removal>): <why>`. No `TODO` without a condition. No commented-out code.
-`unsafe` is denied at the workspace level; `xtask check` allows it only where a decision says.
+`unsafe` is denied at the workspace level; `cargo xtask layout` allows it only where a decision
+says.
 
 **One source of truth.** Every fact lives in one place; everything else is generated from it and
 a check fails when the copies differ. Validate once, in a type: code holding a `Slug` does not
@@ -334,7 +334,10 @@ a doc comment.
   attribution.
 - One logical change per commit: a refactor and a behaviour change are two commits.
 - Every commit passes the checks: `cargo xtask check` runs all of them in CI's order (fmt, clippy
-  on every target, nextest, doc tests, `cargo deny`, wasm builds and tests, layout and generated
-  files). CI runs that one command, so the list lives in one place.
+  natively and on wasm32, nextest, doc tests, `cargo deny`, the pen's tests on wasm32-wasip2, the
+  browser pen's release build, then layout and generated files), every one with `--locked`. It
+  runs every step and lists each failure; a missing tool fails with the command that installs it.
+  CI runs that one command, so the list lives in one place (`xtask/src/check.rs`).
+  `cargo xtask layout` runs the last step alone, for a fast loop.
 - After each milestone, read-only review agents go over its diff; every finding that holds is
   fixed, and the ones skipped are written down with the reason.
