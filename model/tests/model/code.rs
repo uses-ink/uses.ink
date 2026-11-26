@@ -141,3 +141,37 @@ fn values_show_as_a_person_reads_them() {
     assert_eq!(Vec::<Tag>::new().shown().to_string(), "none");
     assert_eq!(model::PageKind::Post.shown().to_string(), "a post");
 }
+
+/// A stand-in consumer of [`model::Each`]: the name and scope of the code it is run for.
+struct Describe;
+
+impl<C: Code> model::Each<C> for Describe {
+    type Out = (&'static str, Scope);
+
+    fn each(&mut self) -> Self::Out {
+        described::<C>()
+    }
+}
+
+#[test]
+fn each_runs_the_work_of_the_code_it_names() {
+    for code in AnyCode::ALL {
+        assert_eq!(code.each(&mut Describe), (code.name(), code.scope()));
+    }
+}
+
+/// A stand-in family: each code's value type.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Values;
+
+impl model::Family for Values {
+    type Of<C: Code> = C::Value;
+}
+
+#[test]
+fn any_of_holds_one_code_and_gives_back_only_that_one() {
+    let title = model::AnyOf::<Values>::new::<code::Title>("Pinned".to_owned());
+    assert_eq!(title.code(), AnyCode::Title);
+    assert_eq!(title.get::<code::Title>().map(String::as_str), Some("Pinned"));
+    assert_eq!(title.get::<code::SiteTitle>(), None);
+}

@@ -36,6 +36,43 @@ pub trait Code: Copy + Ord + Hash + Default + fmt::Debug + Send + Sync + 'static
 
     /// A view of the decision, when `decision` is one of this code.
     fn view(decision: &AnyDecision) -> Option<&Decision<Self>>;
+
+    /// `of`, erased: the [`AnyOf`] variant of this code.
+    fn wrap<F: Family>(of: F::Of<Self>) -> AnyOf<F>;
+
+    /// A view of `any`, when it is of this code.
+    fn pick<F: Family>(any: &AnyOf<F>) -> Option<&F::Of<Self>>;
+}
+
+/// Work done for one code `C`, picked at run time by [`AnyCode::each`]. A consumer implements
+/// it once, generically over `C` with the bounds its work needs (config's `C::Value: Toml`), and
+/// `each` compiles only when every code meets them: a code whose value lacks a surface is a
+/// build error, not a missing match arm.
+pub trait Each<C: Code> {
+    /// What the work gives back, the same for every code.
+    type Out;
+
+    /// Does the work for `C`.
+    fn each(&mut self) -> Self::Out;
+}
+
+/// A type made from each code, so [`AnyOf`] can hold one of any code. A zero-sized marker
+/// implements it: config's pins are `type Of<C> = Pinned<C>`.
+pub trait Family {
+    /// The type for code `C`.
+    type Of<C: Code>: Clone + fmt::Debug + PartialEq + Eq;
+}
+
+impl<F: Family> AnyOf<F> {
+    /// `of`, erased.
+    pub fn new<C: Code>(of: F::Of<C>) -> Self {
+        C::wrap(of)
+    }
+
+    /// The value as code `C`, when it is one.
+    pub fn get<C: Code>(&self) -> Option<&F::Of<C>> {
+        C::pick(self)
+    }
 }
 
 /// A code an author can also decide in a file's frontmatter, under one of its keys. The first
@@ -119,6 +156,8 @@ impl std::error::Error for UnknownDecision {}
 /// - one zero-sized type per code, implementing [`Code`] (and [`Keyed`] when it has `keys`);
 /// - [`AnyCode`], the erased code, with [`AnyCode::ALL`], its name and its scope;
 /// - [`AnyDecision`], the erased decision, serialized with the code's name as its `code` tag;
+/// - [`AnyOf`], one value of any [`Family`] per code, and [`AnyCode::each`], which runs an
+///   [`Each`] for the code it names;
 /// - the conversions between [`AnyDecision`] and the untyped [`decided::Decision`], and
 ///   between [`AnyCode`] and [`DecisionCode`], until those go.
 ///
@@ -164,6 +203,17 @@ macro_rules! codes {
                         _ => None,
                     }
                 }
+
+                fn wrap<F: Family>(of: F::Of<Self>) -> AnyOf<F> {
+                    AnyOf::$name(of)
+                }
+
+                fn pick<F: Family>(any: &AnyOf<F>) -> Option<&F::Of<Self>> {
+                    match any {
+                        AnyOf::$name(of) => Some(of),
+                        _ => None,
+                    }
+                }
             }
 
             $(
@@ -199,6 +249,36 @@ macro_rules! codes {
             pub const fn scope(self) -> Scope {
                 match self {
                     $(Self::$name => <$subject as Subject>::SCOPE,)*
+                }
+            }
+
+            /// Does `work` for the code this names, as its type.
+            pub fn each<E, O>(self, work: &mut E) -> O
+            where
+                $(E: Each<$name, Out = O>,)*
+            {
+                match self {
+                    $(Self::$name => <E as Each<$name>>::each(work),)*
+                }
+            }
+        }
+
+        /// One `F::Of<C>` of any code `C`, tagged by the code: what holds a typed value per code
+        /// in one collection, such as config's pins.
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[non_exhaustive]
+        pub enum AnyOf<F: Family> {
+            $(
+                $(#[$doc])*
+                $name(F::Of<$name>),
+            )*
+        }
+
+        impl<F: Family> AnyOf<F> {
+            /// Its code.
+            pub const fn code(&self) -> AnyCode {
+                match self {
+                    $(Self::$name(_) => AnyCode::$name,)*
                 }
             }
         }

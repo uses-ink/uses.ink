@@ -34,7 +34,7 @@ mod time;
 mod url;
 mod value;
 
-pub use code::{AnyCode, AnyDecision, Code, Keyed, UnknownDecision};
+pub use code::{AnyCode, AnyDecision, AnyOf, Code, Each, Family, Keyed, UnknownDecision};
 pub use decision::decided::{Alternative, Decided, Decision, DecisionCode};
 pub use decision::{DefaultReason, Evidence, Rejection};
 pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
