@@ -72,7 +72,7 @@ impl Assemble {
         let updated = journal.needed::<Updated>(&subject)?;
         let tags = journal.needed::<Tags>(&subject)?;
         let summary = journal.needed::<Summary>(&subject)?;
-        let page = Page::new(source.path, route, kind, title, source.read.document);
+        let page = Page::new(source.path, route, kind, title).holding(source.read.document);
         Some(page.dated(date, updated).tagged(tags).summarized(summary))
     }
 

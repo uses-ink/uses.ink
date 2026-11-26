@@ -26,10 +26,10 @@ impl Generated {
     fn page(self, site: &Site, route: Route) -> Result<Page, Error> {
         let file: ContentPath = self.as_ref().parse().map_err(|source| Error::Path { page: self, source })?;
         Ok(match self {
-            Self::Home => Page::new(file, route, PageKind::Home, site.identity().title.clone(), Document::default()),
+            Self::Home => Page::new(file, route, PageKind::Home, site.identity().title.clone()),
             Self::NotFound => {
                 let body = Document::new(vec![Block::Paragraph(vec![Inline::Text(Missing::Body.to_string())])]);
-                Page::new(file, route, PageKind::Page, Missing::Title.to_string(), body)
+                Page::new(file, route, PageKind::Page, Missing::Title.to_string()).holding(body)
             }
         })
     }

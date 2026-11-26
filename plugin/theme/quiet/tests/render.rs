@@ -95,19 +95,13 @@ fn body(other: &Page) -> Document {
 }
 
 fn site() -> Site {
-    let other =
-        Page::new("usage.md".parse().unwrap(), "/usage".parse().unwrap(), PageKind::Page, "Usage", Document::default());
-    let post = Page::new(
-        "posts/a.md".parse().unwrap(),
-        "/posts/a".parse().unwrap(),
-        PageKind::Post,
-        "Every node",
-        body(&other),
-    )
-    .dated(Some(When::Day(jiff::civil::date(2024, 3, 1))), None)
-    .tagged(vec![Tag::new("ink").unwrap(), Tag::new("Pens").unwrap()])
-    .summarized(Some("All of it.".to_owned()));
-    let home = Page::new("index.md".parse().unwrap(), Route::root(), PageKind::Home, "Ink", Document::default());
+    let other = Page::new("usage.md".parse().unwrap(), "/usage".parse().unwrap(), PageKind::Page, "Usage");
+    let post = Page::new("posts/a.md".parse().unwrap(), "/posts/a".parse().unwrap(), PageKind::Post, "Every node")
+        .holding(body(&other))
+        .dated(Some(When::Day(jiff::civil::date(2024, 3, 1))), None)
+        .tagged(vec![Tag::new("ink").unwrap(), Tag::new("Pens").unwrap()])
+        .summarized(Some("All of it.".to_owned()));
+    let home = Page::new("index.md".parse().unwrap(), Route::root(), PageKind::Home, "Ink");
     let mut parts =
         SiteParts::new(model::Identity::new("Ink", "en".parse().unwrap()), model::Root::Top, model::Layout::Blog);
     parts.home = Some(home.id);

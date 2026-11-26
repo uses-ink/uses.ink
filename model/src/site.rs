@@ -216,11 +216,21 @@ pub struct Page {
 }
 
 impl Page {
-    /// A page with no date, no update and no tags; its id is derived from `file`.
-    pub fn new(file: ContentPath, route: Route, kind: PageKind, title: impl Into<String>, body: Document) -> Self {
+    /// A page with an empty body, no date, no update, no tags and no summary; its id is derived
+    /// from `file`. The rest is added by [`Page::holding`], [`Page::dated`], [`Page::tagged`]
+    /// and [`Page::summarized`].
+    pub fn new(file: ContentPath, route: Route, kind: PageKind, title: impl Into<String>) -> Self {
         let id = PageId::of(&file);
         let title = title.into();
+        let body = Document::default();
         Self { id, file, route, kind, title, date: None, updated: None, tags: Vec::new(), summary: None, body }
+    }
+
+    /// The same page with `body`.
+    #[must_use]
+    pub fn holding(mut self, body: Document) -> Self {
+        self.body = body;
+        self
     }
 
     /// The same page with `summary`.
