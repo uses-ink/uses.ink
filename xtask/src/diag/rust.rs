@@ -21,11 +21,15 @@ impl Catalog {
         let imports = used.iter().map(|name| format_ident!("{name}"));
         let problem = self.problem();
         let announcement = self.announcement();
+        let coded =
+            [Self::coded(&self.diagnostics, &quote! { Problem }), Self::coded(&self.notices, &quote! { Announcement })];
         quote! {
             use serde::Serialize;
+            use crate::coded::{Coded, Field, Refused};
             use crate::{#(#imports),*};
             #problem
             #announcement
+            #(#coded)*
         }
     }
 
@@ -61,6 +65,48 @@ impl Catalog {
                 /// Whose move it is to fix it.
                 pub const fn fault(&self) -> Fault {
                     match self { #(#patterns => #faults,)* }
+                }
+            }
+        }
+    }
+
+    /// `From<&T> for Coded` and `TryFrom<Coded> for T`, for `T` the enum of `entries`: each
+    /// variant's fields in catalog order.
+    fn coded<C>(entries: &[Entry<C>], owner: &TokenStream) -> TokenStream {
+        let names: Vec<Vec<Ident>> =
+            entries.iter().map(|e| e.fields.iter().map(|f| format_ident!("{}", f.name)).collect()).collect();
+        let patterns = entries.iter().zip(&names).map(|(e, names)| {
+            let bound: Vec<&str> = e.fields.iter().map(|f| f.name.as_str()).collect();
+            let (pattern, code) = (e.pattern(owner, &bound), e.code.as_str());
+            let values = e.fields.iter().zip(names).map(|(f, name)| f.kind.copied(name));
+            quote! { #pattern => Coded::new(#code, vec![#(Field::from(#values)),*]) }
+        });
+        let codes = entries.iter().map(|e| e.code.as_str());
+        let made = entries.iter().zip(&names).map(|(e, names)| {
+            let name = e.ident();
+            if names.is_empty() {
+                quote! { Self::#name }
+            } else {
+                quote! { Self::#name { #(#names: fields.next()?),* } }
+            }
+        });
+        quote! {
+            impl From<&#owner> for Coded {
+                fn from(erased: &#owner) -> Self {
+                    match erased { #(#patterns,)* }
+                }
+            }
+
+            impl TryFrom<Coded> for #owner {
+                type Error = Refused;
+
+                fn try_from(coded: Coded) -> Result<Self, Refused> {
+                    let mut fields = coded.into_fields();
+                    let made = match fields.code().to_owned().as_str() {
+                        #(#codes => #made,)*
+                        _ => return fields.unknown(),
+                    };
+                    fields.end(made)
                 }
             }
         }
@@ -218,6 +264,14 @@ impl Kind {
             Self::Bytes => quote! { Bytes },
             Self::Span => quote! { Span },
             Self::Decision => quote! { AnyCode },
+        }
+    }
+
+    /// The value of the field bound as `name`, owned: copied or cloned, as its type allows.
+    fn copied(self, name: &Ident) -> TokenStream {
+        match self {
+            Self::Count | Self::Bytes | Self::Span | Self::Decision => quote! { *#name },
+            Self::Path | Self::Paths | Self::Route | Self::Text => quote! { #name.clone() },
         }
     }
 

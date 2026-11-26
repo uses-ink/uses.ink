@@ -1,5 +1,5 @@
 //! `diag/catalog.toml` into `model/src/generated.rs` (the `Problem` and `Announcement` enums,
-//! their codes, severities and faults) and `diag/src/generated.rs` (their English wording).
+//! their codes, severities and faults, and their coded form) and `diag/src/generated.rs` (their English wording).
 
 mod catalog;
 mod rust;

@@ -11,11 +11,13 @@
 //! - Images: the [`Picture`] the engine prepares from a raster asset, for a theme to show.
 //! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`].
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
-//!   `cargo xtask diag` generates from `diag/catalog.toml`.
+//!   `cargo xtask diag` generates from `diag/catalog.toml`, with their [`coded`] form for the
+//!   plugin boundary.
 //!
 //! Nothing here reads a clock, the environment or a file: these are values.
 
 pub mod code;
+pub mod coded;
 pub mod decision;
 mod diagnostic;
 mod document;
