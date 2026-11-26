@@ -74,39 +74,58 @@ once. A new code needs no reader or writer of its own.
 ## 2. Every decision is a ladder of witnesses
 
 All inferrers share one mechanism: an ordered list of witnesses, each able to testify to a value
-with its evidence. The first that testifies wins; every later one that also testifies becomes a
-rejected alternative with its reason. This is the precedence table of `research/architecture.md`
-3.6 as code.
+with its evidence. The first value testified wins; every later one becomes a rejected
+alternative, outranked; a bound is always rejected as one. This is the precedence table of
+`research/architecture.md` 3.6 as code.
 
 ```rust
-pub trait Witness<C: Code> {
-    fn testify(&self, case: &Case<'_, C>) -> Option<Testimony<C::Value>>;
+pub trait Witness<C: Code, G: ?Sized> {
+    fn testify(&self, case: &Case<'_, C, G>, testimony: &mut Testimony<C::Value>);
 }
+pub struct Case<'a, C: Code, G: ?Sized> { subject: &'a C::Subject, pin: Option<Pin<C::Value>>, patterns: &'a dyn Patterns, ground: &'a G }
 
-pub struct Ladder<C: Code, W> { witnesses: W, code: PhantomData<C> }   // W: a tuple of witnesses
-impl<C: Code, W: Witnesses<C>> Ladder<C, W> {
-    pub fn decide(&self, case: &Case<'_, C>) -> Decision<C>;
+pub struct Ladder<C, W> { witnesses: W, code: PhantomData<C> }   // W: a tuple of witnesses
+impl<C: Code, W> Ladder<C, W> {
+    pub fn decide<G: ?Sized>(&self, case: &Case<'_, C, G>) -> Result<Decision<C>, Error> where W: Witness<C, G>;
 }
 ```
 
-`Witnesses<C>` is implemented for tuples of `Witness<C>` (static dispatch, no boxes), and for
-`Vec<Box<dyn Witness<C>>>` where a plugin adds witnesses at run time. Witnesses are generic and
-reused across codes:
+`G` is the ground the deciding stage holds: one file, the snapshot, the site so far. A witness
+is generic over the grounds it can read through two small traits, `Filed` (a file's paths and
+facts) and `Sourced` (a page a format read: the file itself, or the site's home), so `Front<C>`
+reads a page's frontmatter on a file's ground and the home's on the site's. A witness adds to the
+`Testimony` (a value, a bound, or a failure), so one witness can testify several times (`Index`
+for each home candidate) and a later one can see what was said (`Fallback`, `Otherwise`).
 
-| Witness | Testifies | Used by |
+A tuple of witnesses is itself a witness (static dispatch, no boxes), and so is
+`Vec<Box<dyn Witness<C, G>>>`, where a plugin adds witnesses at run time. Witnesses are generic
+and reused across codes; what a witness means for a code is a trait the code implements:
+
+| Witness | Testifies | Code trait |
 |---|---|---|
-| `Pin<C>` | the `ink.toml` value, evidence `Config { span }` | every code |
-| `Front<C: Keyed>` | the frontmatter keys `C::KEYS` | title, date, updated, slug, tags, publish, kind, summary, language |
-| `Heading` | the first level-1 heading | title |
-| `FileName<P>` | a parse of the file name, `P` the parser (date prefix, stem) | date, slug, title |
-| `History<F>` | an `Exact` history fact `F` (created, updated); a `NotAfter` fact is a rejection with `OnlyBound` | date, updated |
-| `Folder<M>` | a folder marker `M` (`posts/`, `drafts/`, `.obsidian/`) | kind, publish, layout |
-| `Derived<C, D>` | a value derived from earlier decisions | site.title from the home page, summary from the body |
-| `Fallback<C>` | the default, evidence `Default { reason }`, and a notice | every code |
+| `Pin<C>` | the `ink.toml` value, evidence `Config { span }` | |
+| `Front<C>` | the frontmatter field of `C` | `Fronted` |
+| `Draft` | `draft: true`, the opposite of `publish` | |
+| `Heading` | the first level-1 heading | |
+| `Body` | the first paragraph, cut near a sentence end (a `Visit`) | |
+| `FileName<P>` | a parse of the file name, `P` the parser (`Dated`, `Stem`, `Repository`) | `Parse<C>` on `P` |
+| `History<F>` | a history fact `F` (`Created`, `Changed`): a value when exact, a bound when `NotAfter` | |
+| `Folder<M>` | a folder marker `M` (`Posts`, `Drafts`, `Hidden`, `Obsidian`, `Docs`, `Content`) | `Mark<C>` on `M` |
+| `Pattern<L>` | an `include` or `exclude` pattern | `Listed<L>` |
+| `Derived<D>` | the home page's decision of code `D` | `Follows<D>` |
+| `Implied<D, W>` | what witness `W` says of code `D` on the same subject | `Follows<D>` |
+| `Otherwise<W>` | what `W` says, only when nothing before it said a value | |
+| `Fallback<C>` | the default, evidence `Default { reason }` | `Assumed<G>` |
 
-A decision's ladder is a type alias: `type TitleLadder = Ladder<Title, (Pin<Title>,
-Front<Title>, Heading, FileName<Stem>, Fallback<Title>)>`. Reading the precedence of `page.title`
-is reading that line.
+A decision's precedence is a type alias, one per code, in `engine::interpret::decide::precedence`:
+
+```rust
+type Title = Ladder<code::Title, (Pin<code::Title>, Front<code::Title>, Heading, Otherwise<FileName<Stem>>)>;
+```
+
+Reading the precedence of `page.title` is reading that line. What a code's values mean to a
+person (`undated`, `never updated`, `published`, `ignored`) and which of its defaults is
+announced is the code's own, through `Explain`, not its value type's.
 
 ## 3. Interpret and render are stages
 
@@ -117,25 +136,29 @@ pub trait Stage<I> {
 }
 ```
 
-`Journal` is the one sink for decisions, diagnostics and notices: nothing is returned on the
-side, nothing is printed. Interpret is a composition of stages (`Root`, `Layout`, `Files`,
-`Read<F: Formats>`, `Pages`, `Links`, `Assemble`), each generic over what it needs from the
-host (`B: Blobs`, `P: Pins`, `F: Formats`). A stage that cannot continue records why and the
-composition stops at the end of that stage, so every problem of a stage is reported.
+`Journal` is the one sink for decisions (erased as `AnyDecision`, read back typed), diagnostics
+and notices: nothing is returned on the side, nothing is printed. Interpret is a composition of
+stages (`Root`, `Layout`, `Files`, `Read<B, F>`, `Pages`, `Links`, `Assets`, `Site`, `Routing`,
+`Assemble`), each generic over what it needs from the host (`B: Blobs`, `P: Pins`,
+`F: Formats`). Every stage runs, so every problem of every stage is reported; `Assemble` builds
+no site from a journal holding an error.
 
-Render is a list of artifacts, each a type producing served files:
+Render is a tuple of artifacts, each a type producing served files:
 
 ```rust
 pub trait Artifact {
-    fn files<'s>(&'s self, site: &'s Site, out: &mut Output<'_>);
+    fn files(&self, site: &Site, out: &mut Output<'_>) -> Result<(), Error>;
 }
 ```
 
-`Pages<T: Theme>`, `Feed<S: Syndication>` (with `Atom` and `Rss` as the two syndication
-formats), `Sitemap`, `Robots`, `NotFound<T>`, `ThemeFiles<T>`. Headers come from a
-`Policy` (`fn headers(&self, media: MediaType, status: Status) -> Headers`), so the CSP lives in
-one type. The engine's render is `(Pages<T>, Feed<Atom>, Feed<Rss>, ..)` run in order; adding an
-output is adding an artifact to that tuple.
+`Pages<T>` (and a generated home), `NotFound<T>`, `Assets`, `Feed<S: Syndication>`, `Sitemap`,
+`Robots`, `ThemeFiles<T>`. A tuple of syndication formats is one, so `Feed<(Atom, Rss)>` gathers
+the posts and says what it leaves out once. Headers come from one `Policy`
+(`fn headers(&self, media: MediaType) -> Vec<Header>`), so the CSP lives in one type; quick-xml
+is seen only by `render::xml`. The engine's render is
+`(Pages<T>, NotFound<T>, Assets, Feed<(Atom, Rss)>, Sitemap, Robots, ThemeFiles<T>)` run in
+order; adding an output is adding an artifact to that tuple. An artifact that fails is recorded
+and the next still runs.
 
 ## 4. One walk over a document
 
@@ -164,13 +187,15 @@ every visitor that does not care keeps working.
 
 ```rust
 pub trait Format { fn handles(&self, path: &ContentPath) -> bool; fn read(&self, path: &ContentPath, bytes: &[u8]) -> Read; }
-pub trait Formats { fn read(&self, path: &ContentPath, bytes: &[u8]) -> Option<Read>; }   // a set of formats
-impl<A: Format, B: Formats> Formats for (A, B) { .. }                                      // first that handles it
-pub trait Theme { fn render(&self, page: &Page, site: &Site) -> Result<Html, Diagnostic>; fn files(&self) -> Files; }
+pub trait Formats { fn handles(&self, path: &ContentPath) -> bool; fn read(&self, path: &ContentPath, bytes: &[u8]) -> Option<Read>; }
+impl<A: Format, B: Format> Formats for (A, B) { .. }   // tuples up to four: the first that handles it
+pub trait Theme { fn name(&self) -> &str; fn assets(&self) -> Vec<File>; fn render(&self, page: &Page, site: &Site) -> Result<Html, Diagnostic>; }
 pub trait Blobs { fn read(&self, hash: &Hash) -> Result<Cow<'_, [u8]>, BlobMissing>; }
+pub trait Pins: Patterns { fn pin<C: Code>(&self, subject: &C::Subject) -> Option<Pin<C::Value>>; }
 ```
 
-The engine is `Engine<B, P, F, T>`; the CLI picks native types, the wasmtime host picks
+The engine is `Engine<B, P, F, T>`, with `interpret` needing the first three and `render` the
+theme, so a part a call does not use is `()`; the CLI picks native types, the wasmtime host picks
 component adapters implementing the same traits, tests pick in-memory ones. Nothing in the engine
 names a concrete plugin.
 
