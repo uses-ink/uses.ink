@@ -9,6 +9,7 @@ use model::{ContentPath, Evidence, PageKind};
 
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::file::ignore;
 use crate::interpret::file::name::Name;
 use crate::interpret::site;
 use crate::interpret::tree::{Scope, Tree};
@@ -122,6 +123,27 @@ impl Mark<Ignored> for Hidden {
         const VENDORED: &[&str] = &["node_modules"];
         let marked = Marked::find(relative, |segment| segment.starts_with('.') || VENDORED.contains(&segment))?;
         Some((true, marked))
+    }
+}
+
+/// A vault's `templates/` folder at the top of the root, in any case: Obsidian's templates,
+/// never pages. Obsidian names the folder in `.obsidian/templates.json`; until that file is read,
+/// the conventional name stands for it.
+#[derive(Debug, Default)]
+pub(crate) struct Templates;
+
+impl Folder<Templates> {
+    /// The folder's conventional name.
+    const NAME: &str = "templates";
+}
+
+impl Witness<Ignored, ignore::Ground<'_>> for Folder<Templates> {
+    fn testify(&self, case: &Case<'_, Ignored, ignore::Ground<'_>>, testimony: &mut Testimony<bool>) {
+        let file = case.ground;
+        let top = file.relative().parent().and_then(|_| file.relative().segments().next());
+        if file.layout == Some(model::Layout::Vault) && top.is_some_and(|top| top.eq_ignore_ascii_case(Self::NAME)) {
+            testimony.value(true, Marked::Folder(1).evidence(file));
+        }
     }
 }
 

@@ -2,7 +2,7 @@
 //! files are published.
 
 pub(crate) mod asset;
-mod ignore;
+pub(crate) mod ignore;
 pub(crate) mod name;
 pub(crate) mod read;
 

@@ -20,7 +20,7 @@ use model::code::Code;
 pub(crate) use body::Body;
 pub(crate) use derive::{Derived, Implied};
 pub(crate) use fallback::Fallback;
-pub(crate) use folder::{Content, Docs, Drafts, Folder, Hidden, Obsidian, Posts};
+pub(crate) use folder::{Content, Docs, Drafts, Folder, Hidden, Obsidian, Posts, Templates};
 pub(crate) use front::{Draft, Front, Heading};
 pub(crate) use history::{Changed, Created, History};
 pub(crate) use name::{Dated, FileName, Repository, Stem};

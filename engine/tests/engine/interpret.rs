@@ -322,3 +322,24 @@ fn a_posts_folders_index_is_a_listing_page() {
     assert_eq!(kind("posts/a.md").value, PageKind::Post);
     assert_eq!(kind("posts/bundle/index.md").value, PageKind::Post);
 }
+
+#[test]
+fn a_vaults_templates_folder_is_ignored() {
+    let vault = Tree::new()
+        .file(".obsidian/app.json", "{}")
+        .file("Templates/daily.md", "---\npublish: true\n---\n")
+        .file("notes/templates.md", "---\npublish: true\n---\n")
+        .understand(&Pinned::none());
+    let t = on::<code::Ignored>(&vault, "Templates/daily.md");
+    assert!(t.value);
+    assert_eq!(t.evidence, Evidence::Marker { path: path("Templates") });
+    assert!(!on::<code::Ignored>(&vault, "notes/templates.md").value);
+    assert!(
+        vault
+            .notices
+            .iter()
+            .any(|n| n.announcement == model::Announcement::FileIgnoreInferred { path: path("Templates") })
+    );
+    let blog = Tree::new().file("templates/a.md", "x\n").understand(&Pinned::none());
+    assert!(!on::<code::Ignored>(&blog, "templates/a.md").value);
+}

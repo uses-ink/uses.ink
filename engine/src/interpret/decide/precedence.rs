@@ -7,7 +7,7 @@ use model::code;
 use crate::interpret::decide::ladder::Ladder;
 use crate::interpret::decide::witness::{
     Body, Changed, Content, Created, Dated, Derived, Docs, Draft, Drafts, Exclude, Fallback, FileName, Folder, Front,
-    Heading, Hidden, History, Implied, Include, Obsidian, Otherwise, Pattern, Pin, Posts, Repository, Stem,
+    Heading, Hidden, History, Implied, Include, Obsidian, Otherwise, Pattern, Pin, Posts, Repository, Stem, Templates,
 };
 use crate::interpret::file::asset::Used;
 use crate::interpret::site::Index;
@@ -19,7 +19,8 @@ pub(crate) type Layout = Ladder<
     code::Layout,
     (Pin<code::Layout>, Folder<Obsidian>, Folder<Docs>, Folder<Posts>, FileName<Dated>, Fallback<code::Layout>),
 >;
-/// `file.ignore`: `exclude`, then `include`, then hidden and repository files, then kept.
+/// `file.ignore`: `exclude`, then `include`, then hidden and repository files and a vault's
+/// templates, then kept.
 pub(crate) type Ignored = Ladder<
     code::Ignored,
     (
@@ -28,6 +29,7 @@ pub(crate) type Ignored = Ladder<
         Pattern<Include>,
         Folder<Hidden>,
         FileName<Repository>,
+        Folder<Templates>,
         Fallback<code::Ignored>,
     ),
 >;

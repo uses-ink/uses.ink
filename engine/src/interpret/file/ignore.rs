@@ -2,16 +2,39 @@
 
 use std::collections::BTreeSet;
 
-use model::code::Ignored;
-use model::decision::File;
-use model::{Announcement, ContentPath, Evidence, Notice};
+use model::code::{Ignored, Layout};
+use model::decision::{File, Site};
+use model::{Announcement, ContentPath, Evidence, FileFacts, Notice};
 
 use crate::Pins;
+use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::precedence;
 use crate::interpret::journal::Journal;
 use crate::interpret::stage::Stage;
 use crate::interpret::tree::{InRoot, Scope};
+
+/// What `file.ignore` is decided on: the file, and how the site is arranged, as a vault keeps
+/// its templates in a folder of their own.
+#[derive(Debug)]
+pub(crate) struct Ground<'a> {
+    pub(crate) file: &'a InRoot<'a>,
+    pub(crate) layout: Option<model::Layout>,
+}
+
+impl Filed for Ground<'_> {
+    fn path(&self) -> &ContentPath {
+        self.file.path()
+    }
+
+    fn relative(&self) -> &ContentPath {
+        self.file.relative()
+    }
+
+    fn facts(&self) -> Option<&FileFacts> {
+        self.file.facts()
+    }
+}
 
 /// Decides which files under the root are kept.
 #[derive(Debug)]
@@ -27,9 +50,11 @@ impl<'s, P: Pins> Stage<&Scope<'s>> for Files<'_, P> {
         let ladder = precedence::Ignored::default();
         let mut kept = Vec::new();
         let mut said = Said::default();
+        let layout = journal.value::<Layout>(&Site).copied();
         for file in &scope.inside {
             let subject = File(file.entry.path.clone());
-            match ladder.record(About { subject: &subject, ground: file }, self.pins, journal) {
+            let ground = Ground { file, layout };
+            match ladder.record(About { subject: &subject, ground: &ground }, self.pins, journal) {
                 Some(false) => kept.push(file.clone()),
                 Some(true) => {
                     let evidence = journal.decision::<Ignored>(&subject).map(|decision| decision.evidence.clone());
