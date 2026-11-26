@@ -69,10 +69,11 @@ pub(crate) struct Pages<'t, T> {
 }
 
 impl<T: Theme> Pages<'_, T> {
-    /// Serves `page` as the theme renders it, with `status`, recording what the theme says on
-    /// the way. A page the theme refuses is `theme.page.refused`, caused by the theme's
-    /// diagnostic.
-    fn serve(&self, page: &Page, site: &Site, status: Status, out: &mut Output<'_>) {
+    /// Serves `page` as the theme renders it, recording what the theme says on the way; the
+    /// page at `/404` is served with status 404. A page the theme refuses is
+    /// `theme.page.refused`, caused by the theme's diagnostic.
+    fn serve(&self, page: &Page, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
+        let status = if page.route == Reserved::NotFound.route()? { Status::NotFound } else { Status::Ok };
         match self.theme.render(page, site, out) {
             Ok(html) => out.serve(Entry {
                 route: page.route.clone(),
@@ -86,19 +87,18 @@ impl<T: Theme> Pages<'_, T> {
                 out.diagnose(Diagnostic::new(problem).on(Subject::File(page.file.clone())).caused_by(cause));
             }
         }
+        Ok(())
     }
 }
 
 impl<T: Theme> Artifact for Pages<'_, T> {
     fn files(&self, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
-        let not_found = Reserved::NotFound.route()?;
         for page in site.pages() {
-            let status = if page.route == not_found { Status::NotFound } else { Status::Ok };
-            self.serve(page, site, status, out);
+            self.serve(page, site, out)?;
         }
         let root = Route::root();
         if site.home().is_none() && out.owner(&root).is_none() {
-            self.serve(&Generated::Home.page(site, root)?, site, Status::Ok, out);
+            self.serve(&Generated::Home.page(site, root)?, site, out)?;
         }
         Ok(())
     }
@@ -117,7 +117,7 @@ impl<T: Theme> Artifact for NotFound<'_, T> {
             return Ok(());
         }
         let page = Generated::NotFound.page(site, route)?;
-        Pages { theme: self.theme }.serve(&page, site, Status::NotFound, out);
+        Pages { theme: self.theme }.serve(&page, site, out)?;
         Ok(())
     }
 }
