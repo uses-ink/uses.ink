@@ -9,7 +9,7 @@ pub(crate) struct Markdown;
 
 impl Format for Markdown {
     fn handles(&self, path: &ContentPath) -> bool {
-        path.extension().is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "md" | "markdown"))
+        format_markdown::handles(path)
     }
 
     fn read(&self, path: &ContentPath, bytes: &[u8]) -> Read {

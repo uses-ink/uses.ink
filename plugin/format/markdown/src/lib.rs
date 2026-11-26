@@ -50,8 +50,8 @@
 //! and each later one is a `frontmatter.key.conflict` diagnostic. `lang` is a language tag
 //! (`en`, `fr-CH`). A key written twice is a `frontmatter.syntax.invalid` diagnostic.
 //!
-//! Until `host/wasmtime` exists this crate speaks `uses-ink-model` directly; it moves to the
-//! generated WIT types when it becomes a component.
+//! This crate is the format's native core and speaks `uses-ink-model` directly; `guest/` exports
+//! it as the `ink:format` world of a wasm component (decision 0035).
 
 mod body;
 mod error;
@@ -65,6 +65,11 @@ use body::Builder;
 use error::Report;
 use file::File;
 use front::{Keys, Yaml};
+
+/// Whether a file is markdown: its extension is `md` or `markdown`, in any case.
+pub fn handles(path: &ContentPath) -> bool {
+    path.extension().is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "md" | "markdown"))
+}
 
 /// Reads one markdown file. Pure: the same bytes give the same [`Read`], and no input panics.
 pub fn read(path: &ContentPath, bytes: &[u8]) -> Read {
