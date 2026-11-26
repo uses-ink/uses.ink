@@ -5,7 +5,7 @@
 //! [`Folder::read`] walks a folder in byte order of its names, so the same folder always gives
 //! the same snapshot. It skips `.git` and `.jj` and nothing else on its own: which files are part
 //! of the site is the engine's decision (`file.ignore`). A folder holding the build's own output
-//! (named by the caller) is skipped, and so is a link to
+//! (named by the caller, or holding the manifest `ink build` wrote) is skipped, and so is a link to
 //! a folder, whose folder is read at its own path; each skip is returned, so it can be said.
 //! Everything it cannot read is a typed [`Refused`], never a file left out: a link out of the
 //! folder, a name that is not UTF-8, a socket or pipe, and each budget of architecture.md section

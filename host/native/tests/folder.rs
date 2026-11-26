@@ -161,6 +161,26 @@ fn refuses_a_pipe_without_waiting_on_it() {
 }
 
 #[test]
+fn skips_a_folder_holding_a_manifest_ink_wrote() {
+    let mark = format!("{}v2\",\"files\":[]}}", Folder::MARK);
+    let root = site(
+        "marked",
+        &[
+            ("a.md", "a"),
+            ("site/.ink-manifest.json", &mark),
+            ("site/index.html", "<p>"),
+            ("mine/.ink-manifest.json", "{}"),
+        ],
+    );
+    let read = Folder::new(&root).read(&mut Memory::default()).unwrap();
+    let paths: Vec<&str> = read.snapshot.tree().iter().map(|entry| entry.path.as_str()).collect();
+    assert_eq!(paths, ["a.md", "mine/.ink-manifest.json"], "a manifest ink did not write is content");
+    let skipped: Vec<(&str, Skip)> =
+        read.skipped.iter().map(|skipped| (skipped.path.as_str(), skipped.reason)).collect();
+    assert_eq!(skipped, [("site", Skip::Output)]);
+}
+
+#[test]
 fn refuses_a_name_no_site_holds() {
     let root = site("name", &[("a\\b.md", "a")]);
     let refused = Folder::new(&root).read(&mut Memory::default()).unwrap_err();

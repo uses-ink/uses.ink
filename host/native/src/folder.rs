@@ -55,7 +55,8 @@ pub struct Skipped {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Skip {
-    /// It holds the build's own output: the caller named it.
+    /// It holds the build's own output: the caller named it, or it holds the manifest
+    /// [`Folder::MANIFEST`] that `ink build` wrote.
     Output,
     /// It is a link to a folder of the site, read at its own path. Following it would read the
     /// same files again under a second path, and a ladder of such links doubles the paths at
@@ -82,6 +83,13 @@ struct Walk<'a, S> {
 }
 
 impl Folder {
+    /// The manifest `ink build` writes into its output folder. A folder holding one that
+    /// starts with [`Folder::MARK`] is output, so no read takes it as content.
+    pub const MANIFEST: &'static str = ".ink-manifest.json";
+
+    /// How a manifest `ink build` wrote starts: its schema, first.
+    pub const MARK: &'static str = "{\"schema\":\"uses.manifest/";
+
     /// A folder read with the v1 budget, skipping nothing but version control.
     pub fn new(root: impl Into<PathBuf>) -> Self {
         Self { root: root.into(), budget: Budget::default(), output: Vec::new() }
@@ -123,6 +131,10 @@ impl<S: Store> Walk<'_, S> {
             Some(path) => Refused::Unreadable { path: path.clone(), source },
             None => Refused::Root { path: self.folder.root.clone(), source },
         };
+        if let Some(path) = prefix.filter(|_| Marked(real).is_output()) {
+            self.skipped.push(Skipped { path: path.clone(), reason: Skip::Output });
+            return Ok(());
+        }
         let mut children: Vec<(String, PathBuf)> = Vec::new();
         for child in std::fs::read_dir(real).map_err(unreadable)? {
             let child = child.map_err(unreadable)?;
@@ -207,6 +219,25 @@ impl<S: Store> Walk<'_, S> {
         self.facts.push(FileFacts::new(path.clone(), bound.clone(), bound));
         self.entries.push(Entry::new(path, blob, size));
         Ok(())
+    }
+}
+
+/// A folder, asked whether it holds a manifest `ink build` wrote.
+#[derive(Clone, Copy, Debug)]
+struct Marked<'a>(&'a Path);
+
+impl Marked<'_> {
+    /// Whether [`Folder::MANIFEST`] is a file here, not a link, starting with [`Folder::MARK`].
+    fn is_output(self) -> bool {
+        let path = self.0.join(Folder::MANIFEST);
+        let is_file = std::fs::symlink_metadata(&path).is_ok_and(|metadata| metadata.is_file());
+        let mark = Folder::MARK.as_bytes();
+        is_file
+            && Handle::open(&path)
+                .ok()
+                .filter(|handle| handle.metadata().is_file())
+                .and_then(|handle| handle.bytes(mark.len() as u64).ok())
+                .is_some_and(|bytes| bytes == mark)
     }
 }
 

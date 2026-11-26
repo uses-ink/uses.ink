@@ -15,8 +15,8 @@ use crate::report::Texts;
 use crate::site::{Address, DEFAULT_OUT, Source};
 
 /// The manifest's file in the output folder. A dotted name is never a route, so no entry can
-/// take it.
-const MANIFEST: &str = ".ink-manifest.json";
+/// take it. The folder walk knows it by this name, so no command reads the folder as content.
+const MANIFEST: &str = host_native::Folder::MANIFEST;
 
 /// What `ink build --json` prints.
 #[derive(Debug, Serialize)]
@@ -27,7 +27,8 @@ struct Built<'a> {
     entries: usize,
 }
 
-/// The manifest as written into the output folder.
+/// The manifest as written into the output folder: compact, its schema first, so it starts with
+/// [`host_native::Folder::MARK`].
 #[derive(Debug, Serialize)]
 struct Written<'a> {
     schema: &'static str,
@@ -170,7 +171,7 @@ impl OutFolder {
             files.push(file);
         }
         let written = Written { schema: "uses.manifest/v1", deploy: manifest.id(), files, manifest };
-        let json = serde_json::to_vec_pretty(&written).map_err(|source| Error::Json { source })?;
+        let json = serde_json::to_vec(&written).map_err(|source| Error::Json { source })?;
         self.put(MANIFEST, &json)
     }
 

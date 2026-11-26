@@ -247,6 +247,24 @@ fn a_build_writes_over_its_own_output() {
     assert!(out.join("404.html").is_file());
 }
 
+#[test]
+fn no_command_reads_a_custom_output_folder_as_content() {
+    let dir = scratch("custom-out/site");
+    copy(&fixtures().join("readme"), &dir);
+    let dir_text = dir.to_str().unwrap();
+    let (_, before, _) = ink(&["check", dir_text]);
+    let (_, explained, _) = ink(&["explain", "-C", dir_text]);
+    build(&dir, &dir.join("public"));
+    let (exit, after, _) = ink(&["check", dir_text]);
+    assert_eq!(exit, Exit::Done);
+    assert_eq!(after, before);
+    assert_eq!(ink(&["explain", "-C", dir_text]).1, explained);
+    let (_, _, said) = ink(&["check", dir_text, "-v"]);
+    assert!(said.contains("note[source.output.skipped]: public holds the build's own output"), "{said}");
+    let preview = cli::Preview::of(&dir, BASE).unwrap();
+    assert!(preview.is_some(), "the preview builds without reading public/");
+}
+
 /// A golden whose site folder is gone fails, so no stale golden stays behind.
 #[test]
 fn every_golden_has_a_site() {
