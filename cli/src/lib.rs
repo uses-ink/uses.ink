@@ -15,6 +15,7 @@ mod error;
 mod exit;
 mod explain;
 mod format;
+mod out;
 mod output;
 mod pins;
 mod preview;

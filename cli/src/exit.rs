@@ -7,11 +7,13 @@
 pub enum Exit {
     /// `0`: done; warnings, if any, were printed.
     Done,
-    /// `1`: the build or check failed on diagnostics. Nothing was written.
+    /// `1`: the build or check failed on diagnostics. `ink build` wrote nothing: the previous
+    /// build in the output folder is left as it was.
     Content,
-    /// `2`: a usage error, or an output folder `ink` will not write into.
+    /// `2`: a usage error, or an output folder `ink build` will not
+    /// clear or write into; a refused output folder is left as it was.
     Usage,
-    /// `6`: `--strict` was given and there were warnings.
+    /// `6`: `--strict` was given and there were warnings. As with `1`, `ink build` wrote nothing.
     Strict,
 }
 

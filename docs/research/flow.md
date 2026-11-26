@@ -1052,12 +1052,18 @@ posts/old/x.md  post (in posts/)
 | Code | Meaning |
 |---|---|
 | 0 | Done. Warnings, if any, were printed. |
-| 1 | Content error: the deploy or check failed on diagnostics. Nothing changed live. |
+| 1 | Content error: the deploy or check failed on diagnostics. Nothing changed live, and `ink build` wrote nothing. |
 | 2 | Usage error or a confirmation was needed and not given. |
 | 3 | Not signed in, or access to a source was lost. |
 | 4 | Network or service unavailable after retries. Safe to retry. |
 | 5 | Conflict: site paused after rollback, mount conflict, unpushed commit. |
-| 6 | `--strict` was given and there were warnings. |
+| 6 | `--strict` was given and there were warnings. As with 1, nothing changed live and `ink build` wrote nothing. |
+
+`ink build` reads, interprets and renders the whole site before it touches its output folder, so
+exits 1 and 6 leave the previous build there as it was. Before it removes anything, it checks
+every file the previous build's manifest lists: a file whose bytes changed, a link, or a file in
+the way that no build wrote is refused with exit 2, and the folder is left as it was. An output
+folder that is the site's folder or holds it is refused with exit 2.
 
 ## 8. Information architecture
 

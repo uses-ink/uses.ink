@@ -26,10 +26,28 @@ pub enum Error {
         /// Why it is no path.
         source: model::PathError,
     },
-    /// The output folder holds files that no earlier `ink build` wrote.
-    Foreign {
-        /// The output folder.
+    /// The output folder is one `ink build` will not clear or write into.
+    Output(crate::out::Refusal),
+    /// An entry of the deploy has no place in the output folder.
+    Placed {
+        /// Where it would go, as built from its route.
+        file: String,
+        /// Why that is no place.
+        source: crate::out::RelativeError,
+    },
+    /// An entry's bytes are in no store.
+    Blob {
+        /// The entry's route.
+        route: model::Route,
+        /// Which blob is missing.
+        source: engine::BlobMissing,
+    },
+    /// A file or folder in the output folder could not be read.
+    Read {
+        /// The file or folder.
         path: PathBuf,
+        /// What the system said.
+        source: std::io::Error,
     },
     /// The output folder or a file in it could not be written.
     Write {
@@ -78,9 +96,10 @@ impl fmt::Display for Error {
             Self::Refused(refused) => write!(out, "{refused}"),
             Self::Base { written, .. } => write!(out, "`{written}` is not an address a site is served at"),
             Self::Path { written, .. } => write!(out, "`{written}` is not a path in the folder"),
-            Self::Foreign { path } => {
-                write!(out, "{} holds files no `ink build` wrote; choose an empty folder with `-o`", path.display())
-            }
+            Self::Output(refusal) => write!(out, "{refusal}"),
+            Self::Placed { file, .. } => write!(out, "`{file}` is not a file `ink build` can write"),
+            Self::Blob { route, .. } => write!(out, "the bytes of {route} are missing"),
+            Self::Read { path, .. } => write!(out, "{} could not be read", path.display()),
             Self::Write { path, .. } => write!(out, "{} could not be written", path.display()),
             Self::Manifest { path, .. } => {
                 write!(out, "the earlier build's manifest {} does not parse", path.display())
@@ -98,9 +117,14 @@ impl std::error::Error for Error {
             Self::Refused(source) => Some(source),
             Self::Base { source, .. } => Some(source),
             Self::Path { source, .. } => Some(source),
-            Self::Write { source, .. } | Self::Serve { source } | Self::Terminal { source } => Some(source),
+            Self::Write { source, .. }
+            | Self::Read { source, .. }
+            | Self::Serve { source }
+            | Self::Terminal { source } => Some(source),
+            Self::Placed { source, .. } => Some(source),
+            Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),
-            Self::Foreign { .. } => None,
+            Self::Output(_) => None,
         }
     }
 }

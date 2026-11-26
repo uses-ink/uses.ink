@@ -43,7 +43,7 @@ pub struct Build {
     /// The address the site is served at, for feeds, the sitemap and canonical links.
     #[arg(long)]
     pub base: Option<String>,
-    /// Exit with 6 when there are warnings.
+    /// Exit with 6 when there are warnings, writing nothing.
     #[arg(long)]
     pub strict: bool,
 }
