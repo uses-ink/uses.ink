@@ -3,3 +3,4 @@ allow-expect-in-tests = true
 allow-panic-in-tests = true
 allow-indexing-slicing-in-tests = true
 too-many-lines-threshold = 40
+too-many-arguments-threshold = 4
