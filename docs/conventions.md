@@ -111,7 +111,14 @@ Config keys name what they set, never their unit; the value carries the unit
 - Methods read as verbs, accessors as nouns, no `get_`. Booleans are predicates (`is_live`).
   Conversions follow std: `as_` borrows, `to_` copies, `into_` consumes.
 - Nest, do not flatten: `Capability::Pen(Pen::Stroke)`, not `PenStroke`; `source.git.auth`, not
-  `source_git_auth`.
+  `source_git_auth`. Two items sharing a prefix and a reason go in a module named for the prefix,
+  and lose it. A wire format nests the same way: `{ "capability": "pen", "call": "stroke" }`.
+- Names say what a thing is, not how it is made: `Snapshot`, not `SnapshotBuilderImpl`. No type
+  the type system already states (`paths`, not `path_vec`). No `Impl`, `Base`, `Abstract`.
+- One word when one word is accurate; a longer name means the thing does two jobs. Short is not
+  cryptic: `n` in a three-line scope is fine, anything that lives longer gets a word.
+- No boolean parameters: a call reading `draw(x, true)` is an enum (`Cap::Round`). A function
+  takes at most four parameters; past that, a struct of options.
 
 ## Crates and directories
 
@@ -135,6 +142,15 @@ The path predicts the name and the name predicts the path.
   exist). No loose scripts in
   `scripts/`, no generator files beside the code they generate.
 - Binaries: `ink` only. Its crate is `uses-ink-cli` at `cli/`.
+- Cut a crate when its second user appears, not before; its tests move with it. A crate useful
+  outside uses.ink is cut with a name of its own (above).
+- A third-party crate is wrapped in one module of one crate (gix in `host/native`, comrak in the
+  markdown format, wasmtime in `host/wasmtime`); the rest of the code sees our types. Swapping it
+  touches one place.
+- A new dependency needs its row in `libraries.md` in the same change, saying why; a maintained
+  small crate beats writing our own, a large one for a small job does not.
+- A directory holds about eight entries at most (tests and support files aside); past that, nest
+  by domain.
 
 ## Licence
 
@@ -204,9 +220,29 @@ enum with `Display`, not a string pushed into a `Vec<String>`. Nothing parses a 
   into a `String` is infallible and is the one `let _infallible = write!(..)` allowed, named so.
 - Unknown input is rejected with a typed error, never skipped.
 
+**Look before you write.** Search for the concept first; a second copy of anything is a missing
+type or method. A special case for one caller lives in that caller's module, never as a flag on a
+shared one.
+
 **Determinism.** Engine and plugin code never read the wall clock, the environment, the
 filesystem or randomness. Time comes from facts, randomness from seeds. Collections that reach
-output are sorted. Floats that reach output go through `libm`, so native and wasm agree.
+output are sorted. Floats that reach output go through `libm`, so native and wasm agree. Anything
+drawn from a seed consumes its draws in a fixed order: reordering draws redraws every mark, so a
+change there diffs the goldens on purpose.
+
+**Macros.** `macro_rules!` only where a function or a generic cannot remove the repetition (the
+same impl over a list of types, test tables). Never to hide control flow or invent syntax. Each
+has a doc comment with an example and expands clean under clippy. A proc macro needs a written
+reason.
+
+**Features** turn optional capabilities on and never change what existing code does: additive,
+off by default when they pull a dependency, named for the capability (`serde`, `schema`), with
+`dep:` for optional dependencies, documented above the feature in `Cargo.toml` and in the crate
+docs. Gate the narrowest item (`cfg_attr` on a derive, one `impl`), never `cfg!` inside a body.
+CI builds each crate with no features, each alone, and all.
+
+**Privacy.** Nothing is logged that holds a credential, a token or a person's content; a type
+holding a secret redacts itself in `Debug` and has no `Display`. No telemetry.
 
 **Hacks.** Every `#[allow]`/`#[expect]` has `reason = "..."`; prefer `#[expect]`. A workaround is
 `// HACK(<condition for removal>): <why>`. No `TODO` without a condition. No commented-out code.
@@ -247,8 +283,44 @@ a doc comment.
   the returned error.
 - Properties beat examples for parsers and the model; a property test is seeded and prints its
   seed. A bug fix starts with a failing fixture or test.
+- **Hostile input gets tests**: malformed files, huge and non-finite numbers, and for plugins one
+  that spins, allocates without end, overflows its stack or returns garbage, with a check that
+  the host serves afterwards. Budgets in tests are tight (a spinning plugin is cut at 50 ms).
+- **Plugins have a native core.** A plugin keeps its rule in plain Rust, tested natively in
+  milliseconds; its wasm glue is thin, and one differential test per plugin calls the real
+  component and compares it with the native rule. Components are built once per run, not per
+  test.
+- Expensive setup is done once and cached under `target/`, since nextest runs each test in its
+  own process. Dependencies build optimized in the dev profile; our crates keep debug assertions.
+- Test behaviour through the public API; a crate does not expose internals to make a test easier.
 - Tests may `unwrap`.
 
-## Commits
+## CLI output
 
-jj, conventional commits, one line, minimal. No AI attribution.
+- Results go to stdout; everything else (progress, notices, diagnostics) to stderr. `--json`
+  puts the result on stdout as JSON and streams NDJSON events with a `schema` field.
+- A diagnostic is one block: `error[code]: wording` from the catalog, then each context field
+  once as `key: value`, the span with its source line where there is one, then `fix:`, then the
+  `caused by` chain. A notice is one line: `note[code]: wording`.
+- One-shot commands log at warn with no timestamps; `ink serve` logs at info with timestamps.
+  `-v`/`-q` move one level and win over `INK_LOG`, which wins over `RUST_LOG`.
+- Exit codes are a closed, documented set (`research/flow.md` section 7).
+
+## Docs and prose
+
+- Every public item has a doc comment saying what and why, not how; a crate starts with a `//!`
+  line saying what it is (`missing_docs` warns).
+- A decision lives in `decisions.md`; `architecture.md` is changed in the same commit as code that
+  makes it wrong. Docs and comments link; they do not restate.
+- Plain sentences, concrete nouns. No em dashes, no unicode arrows in prose, no marketing words.
+
+## Commits and checks
+
+- jj, conventional commits, one line, minimal, imperative, lower case after the colon. No AI
+  attribution.
+- One logical change per commit: a refactor and a behaviour change are two commits.
+- Every commit passes the checks: `cargo xtask check` runs all of them in CI's order (fmt, clippy
+  on every target, nextest, doc tests, `cargo deny`, wasm builds and tests, layout and generated
+  files). CI runs that one command, so the list lives in one place.
+- After each milestone, read-only review agents go over its diff; every finding that holds is
+  fixed, and the ones skipped are written down with the reason.
