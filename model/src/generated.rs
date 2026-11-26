@@ -539,6 +539,14 @@ pub enum Announcement {
         /// The name as the author wrote it.
         given: String,
     },
+    /// `footnote.name.taken`: another footnote already has the name of `{given}`, so its name is `{name}`
+    #[serde(rename = "footnote.name.taken")]
+    FootnoteNameTaken {
+        /// The name given instead.
+        name: String,
+        /// The name as the author wrote it.
+        given: String,
+    },
     /// `callout.kind.unknown`: the callout kind `{kind}` has no name a theme can use, so it is shown as a note
     #[serde(rename = "callout.kind.unknown")]
     CalloutKindUnknown {
@@ -599,6 +607,7 @@ impl Announcement {
         "notice.default.chosen",
         "heading.anchor.generated",
         "footnote.name.generated",
+        "footnote.name.taken",
         "callout.kind.unknown",
         "site.home.generated",
         "fact.date.bound",
@@ -616,6 +625,7 @@ impl Announcement {
             Self::NoticeDefaultChosen { .. } => "notice.default.chosen",
             Self::HeadingAnchorGenerated { .. } => "heading.anchor.generated",
             Self::FootnoteNameGenerated { .. } => "footnote.name.generated",
+            Self::FootnoteNameTaken { .. } => "footnote.name.taken",
             Self::CalloutKindUnknown { .. } => "callout.kind.unknown",
             Self::SiteHomeGenerated => "site.home.generated",
             Self::FactDateBound { .. } => "fact.date.bound",

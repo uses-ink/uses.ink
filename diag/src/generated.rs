@@ -156,6 +156,9 @@ impl Message<'_> {
             Announcement::FootnoteNameGenerated { given, name, .. } => {
                 write!(out, "the footnote `{given}` has no letters or digits, so its name is `{name}`")
             }
+            Announcement::FootnoteNameTaken { given, name, .. } => {
+                write!(out, "another footnote already has the name of `{given}`, so its name is `{name}`")
+            }
             Announcement::CalloutKindUnknown { kind, .. } => {
                 write!(out, "the callout kind `{kind}` has no name a theme can use, so it is shown as a note")
             }
@@ -247,6 +250,7 @@ impl Fix<'_> {
             Announcement::NoticeDefaultChosen { .. } => true,
             Announcement::HeadingAnchorGenerated { .. } => false,
             Announcement::FootnoteNameGenerated { .. } => false,
+            Announcement::FootnoteNameTaken { .. } => true,
             Announcement::CalloutKindUnknown { .. } => false,
             Announcement::SiteHomeGenerated => true,
             Announcement::FactDateBound { .. } => true,
@@ -383,6 +387,9 @@ impl Fix<'_> {
             }
             Announcement::HeadingAnchorGenerated { .. } => Ok(()),
             Announcement::FootnoteNameGenerated { .. } => Ok(()),
+            Announcement::FootnoteNameTaken { .. } => {
+                write!(out, "give the footnotes names that differ in their letters or digits")
+            }
             Announcement::CalloutKindUnknown { .. } => Ok(()),
             Announcement::SiteHomeGenerated => {
                 write!(out, "add index.md or README.md at the root, or pin `site.home`")

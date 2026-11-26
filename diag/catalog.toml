@@ -362,6 +362,11 @@ message = "a heading has no letters or digits, so its anchor is `{anchor}`"
 fields = { name = "text", given = "text" }
 message = "the footnote `{given}` has no letters or digits, so its name is `{name}`"
 
+[notice."footnote.name.taken"]
+fields = { name = "text", given = "text" }
+message = "another footnote already has the name of `{given}`, so its name is `{name}`"
+fix = "give the footnotes names that differ in their letters or digits"
+
 [notice."callout.kind.unknown"]
 fields = { kind = "text" }
 message = "the callout kind `{kind}` has no name a theme can use, so it is shown as a note"

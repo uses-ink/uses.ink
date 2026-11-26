@@ -1,0 +1,93 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/footnote-collide.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "One"
+          },
+          {
+            "footnote": "a-b"
+          },
+          {
+            "text": " and two"
+          },
+          {
+            "footnote": "a-b-1"
+          },
+          {
+            "text": ", then one again"
+          },
+          {
+            "footnote": "a-b"
+          },
+          {
+            "text": "."
+          }
+        ]
+      }
+    ],
+    "footnotes": [
+      {
+        "name": "a-b",
+        "blocks": [
+          {
+            "paragraph": [
+              {
+                "text": "First."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "a-b-1",
+        "blocks": [
+          {
+            "paragraph": [
+              {
+                "text": "Second."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": [
+    {
+      "announcement": {
+        "footnote.name.taken": {
+          "name": "a-b-1",
+          "given": "a-b"
+        }
+      },
+      "subject": {
+        "file": "footnote-collide.md"
+      },
+      "span": [
+        48,
+        63
+      ]
+    }
+  ]
+}

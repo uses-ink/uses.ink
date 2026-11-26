@@ -388,6 +388,12 @@ impl Anchor {
     }
 }
 
+impl From<Slug> for Anchor {
+    fn from(slug: Slug) -> Self {
+        Self(slug)
+    }
+}
+
 impl fmt::Display for Anchor {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(out, "{}", self.0)
