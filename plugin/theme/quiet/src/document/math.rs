@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 
 use engine::Record;
 use math_core::{LatexError, LatexToMathML, MathCoreConfig, MathDisplay};
+use model::highlight::Highlight;
 use model::{Diagnostic, Problem};
 use unspliced::{Raw, html};
 
@@ -66,7 +67,7 @@ impl Math {
     }
 }
 
-impl<R: Record + ?Sized> Writer<'_, R> {
+impl<H: Highlight, R: Record + ?Sized> Writer<'_, H, R> {
     /// Math as `MathML`, or as written with `math.syntax.invalid` when it does not parse.
     pub(super) fn math(&mut self, tex: &str, placement: Placement) {
         match Math::load().and_then(|math| math.mathml(tex, placement)) {

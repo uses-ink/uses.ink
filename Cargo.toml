@@ -38,8 +38,6 @@ clap = { version = "4.6.9", features = ["derive"] }
 comrak = { version = "1.2.0", default-features = false }
 insta = { version = "1.49.0", features = ["glob"] }
 jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"] }
-# the built-in grammars and themes need `dump`
-giallo = { version = "0.6.0", features = ["dump"] }
 libm = "0.2.16"
 math-core = "0.9.0"
 proptest = "1.12.0"
@@ -61,7 +59,7 @@ syn = { version = "3.0.10", features = ["full", "visit"] }
 # Dependencies build optimized and without debug assertions, so tests stay fast; `"*"` matches
 # no workspace member, so our crates keep debug assertions (docs/conventions.md, Tests).
 [profile.dev.package."*"]
-# 3, not 2: giallo's grammars must load inside a test's 100 ms budget
+# 3, not 2: compiling a tree-sitter grammar's queries must fit a highlighting test's budget
 opt-level = 3
 debug-assertions = false
 

@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"dabba171abbdea1bc679a0b1831c70fc486f67798598ad6d750a04cb43adfa0c","out":"<out>","entries":7}
+{"schema":"uses.build/v1","deploy":"2eca561bbb183188cd04dd223e345c7e474834fd6b6ddc58827cbe8b089e9425","out":"<out>","entries":7}
 # files
 .ink-manifest.json
 404.html

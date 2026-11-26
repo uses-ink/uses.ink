@@ -15,8 +15,6 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Git | `gix` 0.91, minimal features | pure Rust, shallow plus deepen, rev walk and tree diff for dates |
 | Hashing | `blake3` 1.8 | reference implementation |
 | HTML safety | own allowlist; `ammonia` 4.2 behind an escape hatch only | smallest XSS surface (0027) |
-| Highlighting | `giallo` 0.6 | VS Code grammars, classed spans, pure Rust; EUPL-1.2 is compatible with our AGPL |
-| Highlighting grammars | `giallo` 0.6 `dump`, with `zstd` 0.14 | the built-in grammars and themes are a zstd dump, so this pulls `zstd-sys` (C) and loads in about 40 ms, once per process; the theme writes `code.css` ahead of time so a build without code never loads it. A C dependency in a theme that becomes a wasm component is to be settled then |
 | Highlighting capability | `arborium` 2.18, `arborium-theme` 2.18, in `host/native` only | tree-sitter grammars compiled from C, only the 14 languages enabled as features; `arborium-theme` maps capture names onto its slots, which become `model::highlight::Capture` (0039) |
 | Math | `math-core` 0.9 | LaTeX to MathML Core, no JS for readers |
 | Images | `image` 0.25, `fast_image_resize` 6.2, `ravif` 0.13, `jpeg-encoder` 0.7, `imagesize` 0.15, `img-parts` 0.4, vendored thumbhash | pure Rust AVIF and JPEG, no C |

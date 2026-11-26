@@ -1,7 +1,11 @@
 //! `ink:theme-quiet`, the default theme. Deliberately plain: semantic HTML5 written through
 //! `unspliced`, one small stylesheet (system fonts, a readable measure, light and dark from the
-//! reader's setting), a stylesheet of highlighting classes, and no JavaScript ever. Its real
-//! design is the owner's (open.md T1).
+//! reader's setting), a stylesheet with a class for each highlighting capture, and no JavaScript
+//! ever. Its real design is the owner's (open.md T1).
+//!
+//! Code is highlighted by the host: [`Quiet`] is generic over a
+//! [`Highlight`](model::highlight::Highlight), the capability of decision 0039, and links no
+//! highlighter of its own.
 //!
 //! It implements [`engine::Theme`] directly. That trait is the native stand-in for the
 //! `ink:theme` WIT world: when themes become components, this crate speaks the generated WIT
@@ -15,34 +19,28 @@ mod page;
 mod style;
 
 use engine::{BaseUrl, File, Html, Record, Theme};
+use model::highlight::Highlight;
 use model::{Diagnostic, MediaType, Page, Problem, Route, Site, Subject};
 
-use document::Highlighter;
+use document::Source;
 use page::Layout;
 
-/// The highlighting classes, written from giallo's themes by [`code_css`] and checked by a test,
-/// so a build without code never loads giallo.
-const CODE_CSS: &str = include_str!("../code.css");
-
-/// The highlighting stylesheet as giallo writes it today: what `code.css` must hold.
-pub fn code_css() -> Result<String, String> {
-    Highlighter::load().map_err(str::to_owned).and_then(Highlighter::css)
-}
-
-/// The theme.
+/// The theme, highlighting code through `H`, the host's capability.
 #[derive(Debug)]
-pub struct Quiet {
+pub struct Quiet<H> {
     base: BaseUrl,
+    highlight: H,
 }
 
-impl Quiet {
-    /// The theme for a site served at `base`, for canonical links and `og:url`.
-    pub fn new(base: BaseUrl) -> Self {
-        Self { base }
+impl<H: Highlight> Quiet<H> {
+    /// The theme for a site served at `base`, for canonical links and `og:url`, its code
+    /// highlighted by `highlight`.
+    pub fn new(base: BaseUrl, highlight: H) -> Self {
+        Self { base, highlight }
     }
 }
 
-impl Theme for Quiet {
+impl<H: Highlight> Theme for Quiet<H> {
     fn name(&self) -> &'static str {
         "ink:theme-quiet"
     }
@@ -53,7 +51,7 @@ impl Theme for Quiet {
         if let Ok(route) = page::STYLE.parse::<Route>() {
             files.push(File { route, media: MediaType::Css, bytes: style });
         }
-        let code = CODE_CSS.as_bytes().to_vec();
+        let code = style::code::SHEET.text().as_bytes().to_vec();
         if let Ok(route) = page::CODE.parse::<Route>() {
             files.push(File { route, media: MediaType::Css, bytes: code });
         }
@@ -63,7 +61,8 @@ impl Theme for Quiet {
     /// A page the theme could not write whole is `render.page.failed`: a bug in the theme.
     fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         let mut html = String::new();
-        let layout = Layout { page, site, base: &self.base };
+        let source = Source { page, site, highlight: &self.highlight };
+        let layout = Layout { source, base: &self.base };
         match layout.write(&mut html, record) {
             Ok(()) => Ok(Html::from(html)),
             Err(unwritten) => {

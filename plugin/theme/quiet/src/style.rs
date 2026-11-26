@@ -76,3 +76,48 @@ unspliced::css! {
     .listing time { display: inline-block; min-width: 7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
     .foot { margin-top: 4rem; color: var(--muted); font-size: 0.875rem; }
 }
+
+// The highlighting stylesheet: one class per capture of `model::highlight::Capture`, coloured
+// after GitHub's light and dark themes, the dark one from the reader's setting. The mapping from
+// capture to class is `document::code`'s `Shade`, so a capture without a class does not compile.
+unspliced::css! {
+    pub(crate) mod code;
+
+    :root {
+        --code-keyword: #cf222e;
+        --code-function: #8250df;
+        --code-string: #0a3069;
+        --code-comment: #6e7781;
+        --code-constant: #0550ae;
+        --code-variable: #953800;
+        --code-tag: #116329;
+        --code-inserted: #116329;
+        --code-deleted: #82071f;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --code-keyword: #ff7b72;
+            --code-function: #d2a8ff;
+            --code-string: #a5d6ff;
+            --code-comment: #8b949e;
+            --code-constant: #79c0ff;
+            --code-variable: #ffa657;
+            --code-tag: #7fe787;
+            --code-inserted: #aff5b4;
+            --code-deleted: #ffdcd7;
+        }
+    }
+    .keyword, .label { color: var(--code-keyword); }
+    .function, .macro, .constructor, .attribute, .module { color: var(--code-function); }
+    .string, .literal, .link { color: var(--code-string); }
+    .comment { color: var(--code-comment); font-style: italic; }
+    .constant, .number, .type, .property, .heading { color: var(--code-constant); }
+    .variable { color: var(--code-variable); }
+    .tag { color: var(--code-tag); }
+    .inserted { color: var(--code-inserted); }
+    .deleted, .error { color: var(--code-deleted); }
+    .heading, .strong { font-weight: 700; }
+    .emphasis { font-style: italic; }
+    .strike { text-decoration: line-through; }
+    .operator, .punctuation, .embedded { color: inherit; }
+}

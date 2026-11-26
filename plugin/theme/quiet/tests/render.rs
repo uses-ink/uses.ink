@@ -1,11 +1,15 @@
 //! The theme through `engine::Theme`: one page holding every node of the model, compared with
-//! `fixture/every-node.snap`, and the rules no page may break.
+//! `fixture/every-node.snap`, and the rules no page may break. Code goes through a stand-in
+//! highlighter; the real grammars are host-native's and its tests'.
 
 #![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::panic, reason = "tests stop at the first surprise")]
 
 extern crate uses_ink_theme_quiet as theme_quiet;
 
+use std::convert::Infallible;
+
 use engine::{Said, Theme};
+use model::highlight::{Capture, Highlight, Run, Unhighlighted};
 use model::{
     Alignment, Anchor, Asset, Block, CalloutKind, Definition, Document, Footnote, FootnoteName, ImageSource, Inline,
     Item, Level, LinkTarget, Page, PageKind, Route, Site, SiteParts, Slug, Tag, Task, When,
@@ -112,8 +116,24 @@ fn site() -> Site {
     Site::new(parts).unwrap()
 }
 
-fn quiet() -> Quiet {
-    Quiet::new("https://ink.uses.ink".parse().unwrap())
+/// Knows `rust`, in which the first word is a keyword and the rest is plain.
+#[derive(Debug)]
+struct Stand;
+
+impl Highlight for Stand {
+    type Error = Infallible;
+
+    fn highlight<'c>(&self, language: &str, code: &'c str) -> Result<Vec<Run<'c>>, Unhighlighted<Infallible>> {
+        if language != "rust" {
+            return Err(Unhighlighted::Unknown);
+        }
+        let (word, rest) = code.split_at(code.find(' ').unwrap_or(code.len()));
+        Ok(vec![Run { capture: Some(Capture::Keyword), text: word }, Run { capture: None, text: rest }])
+    }
+}
+
+fn quiet() -> Quiet<Stand> {
+    Quiet::new("https://ink.uses.ink".parse().unwrap(), Stand)
 }
 
 fn page<'a>(site: &'a Site, route: &str) -> &'a Page {
@@ -121,7 +141,7 @@ fn page<'a>(site: &'a Site, route: &str) -> &'a Page {
 }
 
 #[test]
-fn highlight_renders_every_node() {
+fn the_theme_renders_every_node() {
     let (site, theme) = (site(), quiet());
     let mut said = Said::default();
     let html = theme.render(page(&site, "/posts/a"), &site, &mut said).unwrap();
@@ -165,30 +185,68 @@ impl Script<'_> {
     }
 }
 
-/// Pages without code, so giallo is not loaded here; the page with code is checked in
-/// `highlight_renders_every_node`.
 #[test]
 fn no_page_runs_script() {
     let (site, theme) = (site(), quiet());
-    for page in site.pages().iter().filter(|page| page.kind != PageKind::Post) {
+    for page in site.pages() {
         let html = theme.render(page, &site, &mut Said::default()).unwrap();
         Script(html.as_ref()).refuse(&page.route);
     }
     let assets = theme.assets();
     let routes: Vec<&str> = assets.iter().map(|file| file.route.as_str()).collect();
     assert_eq!(routes, ["/style.css", "/code.css"]);
-    let code = String::from_utf8(assets[1].bytes.clone()).unwrap();
-    assert!(code.contains(".hl-l-code") && code.contains("@media (prefers-color-scheme: dark)"));
 }
 
-/// `code.css` is what giallo writes; a stale one is rewritten and the run fails, to be read.
+/// Every capture has a class of its own in the code stylesheet, each styled there.
 #[test]
-fn highlight_stylesheet_is_fresh() {
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/code.css");
-    let fresh = theme_quiet::code_css().unwrap();
-    let held = std::fs::read_to_string(path).unwrap_or_default();
-    if held != fresh {
-        std::fs::write(path, &fresh).unwrap();
-        panic!("code.css was stale and is rewritten: read the diff");
+fn every_capture_is_styled() {
+    let theme = quiet();
+    let code = String::from_utf8(theme.assets()[1].bytes.clone()).unwrap();
+    let mut classes: Vec<String> = Capture::ALL
+        .iter()
+        .map(|capture| {
+            let run = [Run { capture: Some(*capture), text: "x" }];
+            Shown(&run).class()
+        })
+        .collect();
+    for class in &classes {
+        assert!(code.contains(&format!(".{class}")), "{class} is not in the code stylesheet");
+    }
+    classes.sort();
+    classes.dedup();
+    assert_eq!(classes.len(), Capture::ALL.len(), "two captures share a class");
+    assert!(code.contains("@media (prefers-color-scheme:dark)"), "{code}");
+}
+
+/// A page whose one block is code highlighted as `runs`, so its class can be read back.
+struct Shown<'r>(&'r [Run<'r>]);
+
+impl Shown<'_> {
+    fn class(&self) -> String {
+        let runs = self.0.to_vec();
+        let theme = Quiet::new("https://ink.uses.ink".parse().unwrap(), Fixed(runs));
+        let code = Block::Code { language: Some("any".to_owned()), text: "x".to_owned() };
+        let page = Page::new("a.md".parse().unwrap(), "/a".parse().unwrap(), PageKind::Page, "A")
+            .holding(Document::new(vec![code]));
+        let mut parts =
+            SiteParts::new(model::Identity::new("Ink", "en".parse().unwrap()), model::Root::Top, model::Layout::Blog);
+        parts.pages = vec![page];
+        let site = Site::new(parts).unwrap();
+        let html = theme.render(&site.pages()[0], &site, &mut Said::default()).unwrap();
+        let html = html.as_ref();
+        let at = html.find("<span class=\"").unwrap() + "<span class=\"".len();
+        html[at..].split('"').next().unwrap().to_owned()
+    }
+}
+
+/// Highlights anything as the same runs.
+#[derive(Debug)]
+struct Fixed<'r>(Vec<Run<'r>>);
+
+impl Highlight for Fixed<'_> {
+    type Error = Infallible;
+
+    fn highlight<'c>(&self, _language: &str, _code: &'c str) -> Result<Vec<Run<'c>>, Unhighlighted<Infallible>> {
+        Ok(self.0.iter().map(|run| Run { capture: run.capture, text: "x" }).collect())
     }
 }

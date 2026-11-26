@@ -115,22 +115,12 @@ third</li>
 <p>
 quoted</p>
 </blockquote>
-<pre class="giallo hl-l-code hl-d-code" >
-<code data-lang="rust">
-<span class="giallo-l">
-<span class="hl-l-8 hl-d-10">
+<pre>
+
+<code>
+<span class="code-keyword">
 fn</span>
-<span class="hl-l-6 hl-d-7">
- main</span>
-<span>
-(</span>
-<span>
-)</span>
-<span>
- {</span>
-<span>
-}</span>
-</span>
+ main() {}
 </code>
 </pre>
 <pre>

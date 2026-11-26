@@ -11,7 +11,8 @@
 //!   alt text.
 //! - Footnotes are numbered in order of first reference and listed at the end, each with a link
 //!   back to every reference ([`note`]).
-//! - Code is highlighted when giallo knows its language (`code.language.unknown` otherwise) and
+//! - Code is highlighted by the host when a grammar knows its language
+//!   (`code.language.unknown` otherwise), each run a class of the code stylesheet ([`code`]);
 //!   math is `MathML` (`math.syntax.invalid` when it does not parse, shown as written).
 
 mod code;
@@ -22,6 +23,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use engine::Record;
+use model::highlight::Highlight;
 use model::{
     Alignment, Block, CalloutKind, Document, Footnote, FootnoteName, ImageSource, Inline, Item, LinkTarget, Page, Site,
     Subject, Task, Visit,
@@ -29,7 +31,6 @@ use model::{
 use unspliced::html::{attr, tag};
 use unspliced::{Class, HERE, Halt, Id, Marks, Render, Sink, Split, Url, html};
 
-pub(crate) use code::Highlighter;
 use math::Placement;
 
 use crate::style::quiet;
@@ -61,11 +62,27 @@ enum Spacing {
     Loose,
 }
 
+/// What a writer reads: the page, the site its links resolve against, and the highlighter its
+/// code goes through.
+#[derive(Debug)]
+pub(crate) struct Source<'a, H> {
+    pub(crate) page: &'a Page,
+    pub(crate) site: &'a Site,
+    pub(crate) highlight: &'a H,
+}
+
+impl<H> Clone for Source<'_, H> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<H> Copy for Source<'_, H> {}
+
 /// The walk over one page's document, writing into `out` and recording what it finds worth
 /// saying into `record`. After the first write `out` refuses, it writes nothing more.
-pub(crate) struct Writer<'a, R: ?Sized> {
-    page: &'a Page,
-    site: &'a Site,
+pub(crate) struct Writer<'a, H, R: ?Sized> {
+    source: Source<'a, H>,
     out: &'a mut dyn Sink,
     record: &'a mut R,
     /// The first failure; nothing is written after one.
@@ -76,22 +93,25 @@ pub(crate) struct Writer<'a, R: ?Sized> {
     references: BTreeMap<FootnoteName, usize>,
 }
 
-impl<R: ?Sized> fmt::Debug for Writer<'_, R> {
+impl<H, R: ?Sized> fmt::Debug for Writer<'_, H, R> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.debug_struct("Writer").field("page", &self.page.file).field("failed", &self.failed).finish_non_exhaustive()
+        out.debug_struct("Writer")
+            .field("page", &self.source.page.file)
+            .field("failed", &self.failed)
+            .finish_non_exhaustive()
     }
 }
 
-impl<'a, R: Record + ?Sized> Writer<'a, R> {
-    /// A writer of `page`, whose links resolve against `site`.
-    pub(crate) fn new(page: &'a Page, site: &'a Site, out: &'a mut dyn Sink, record: &'a mut R) -> Self {
+impl<'a, H: Highlight, R: Record + ?Sized> Writer<'a, H, R> {
+    /// A writer of the source's page.
+    pub(crate) fn new(source: Source<'a, H>, out: &'a mut dyn Sink, record: &'a mut R) -> Self {
         let references = BTreeMap::new();
-        Self { page, site, out, record, failed: None, spacing: Spacing::Loose, references }
+        Self { source, out, record, failed: None, spacing: Spacing::Loose, references }
     }
 
     /// The page's document, written whole, or why it was not.
     pub(crate) fn write(mut self) -> Result<(), Unwritten> {
-        let page = self.page;
+        let page = self.source.page;
         self.document(&page.body);
         self.failed.map_or(Ok(()), Err)
     }
@@ -124,7 +144,7 @@ impl<'a, R: Record + ?Sized> Writer<'a, R> {
 
     /// What a diagnostic or notice of this page is about.
     fn subject(&self) -> Subject {
-        Subject::File(self.page.file.clone())
+        Subject::File(self.source.page.file.clone())
     }
 
     fn table(&mut self, alignments: &[Alignment], head: &[Vec<Inline>], rows: &[Vec<Vec<Inline>>]) {
@@ -172,7 +192,7 @@ impl<'a, R: Record + ?Sized> Writer<'a, R> {
     }
 }
 
-impl<R: Record + ?Sized> Visit for Writer<'_, R> {
+impl<H: Highlight, R: Record + ?Sized> Visit for Writer<'_, H, R> {
     /// The blocks, then the footnotes in a section of their own.
     fn document(&mut self, document: &Document) {
         self.blocks(&document.blocks);
@@ -271,7 +291,7 @@ impl<R: Record + ?Sized> Visit for Writer<'_, R> {
 
     fn link(&mut self, target: &LinkTarget, children: &[Inline]) {
         let href = match target {
-            LinkTarget::Page { id, anchor } => self.site.page(*id).map(|page| match anchor {
+            LinkTarget::Page { id, anchor } => self.source.site.page(*id).map(|page| match anchor {
                 Some(anchor) => format!("{}#{anchor}", page.route),
                 None => page.route.to_string(),
             }),
@@ -289,7 +309,7 @@ impl<R: Record + ?Sized> Visit for Writer<'_, R> {
     fn image(&mut self, source: &ImageSource, alt: &str) {
         let src = match source {
             ImageSource::Asset(path) => {
-                self.site.assets().iter().find(|asset| &asset.file == path).map(|asset| asset.route.to_string())
+                self.source.site.assets().iter().find(|asset| &asset.file == path).map(|asset| asset.route.to_string())
             }
             ImageSource::External(url) => Some(url.to_string()),
             _ => None,

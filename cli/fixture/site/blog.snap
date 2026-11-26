@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"d03cc5bf4ad569d58452f9d37a7103354f822fba137c981e99b53d92f5c475ce","out":"<out>","entries":12}
+{"schema":"uses.build/v1","deploy":"1685c5e7a23cbb2458b46418677fb8a18f047ac61b0cabf9a78c4d8780bab03f","out":"<out>","entries":12}
 # files
 .ink-manifest.json
 404.html
@@ -266,27 +266,15 @@ it started.</p>
 <p class="quiet-label">Tip</p>
 <p>Flush the pen every month.</p>
 </aside>
-<pre class="giallo hl-l-code hl-d-code" >
-<code data-lang="rust">
-<span class="giallo-l">
-<span class="hl-l-8 hl-d-10">fn</span>
-<span class="hl-l-6 hl-d-7"> main</span>
-<span>(</span>
-<span>)</span>
-<span> {</span>
-</span>
-<span class="giallo-l">
-<span class="hl-l-6 hl-d-7">    println!</span>
-<span>(</span>
-<span class="hl-l-2 hl-d-6">&quot;</span>
-<span class="hl-l-2 hl-d-6">fill the pen</span>
-<span class="hl-l-2 hl-d-6">&quot;</span>
-<span>)</span>
-<span>;</span>
-</span>
-<span class="giallo-l">
-<span>}</span>
-</span>
+<pre>
+<code>
+<span class="code-keyword">fn</span> <span class="code-function">main</span>
+<span class="code-punctuation">()</span> <span class="code-punctuation">{</span>
+    <span class="code-macro">println!</span>
+<span class="code-punctuation">(</span>
+<span class="code-string">"fill the pen"</span>
+<span class="code-punctuation">);</span>
+<span class="code-punctuation">}</span>
 </code>
 </pre>
 <section class="quiet-notes" aria-label="Footnotes">

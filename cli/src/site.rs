@@ -5,7 +5,7 @@ use std::path::Path;
 
 use config::{Config, Parsed};
 use engine::{BaseUrl, Blobs, Engine, NoPins, RenderSettings, Understood};
-use host_native::{Folder, Memory};
+use host_native::{Folder, Grammars, Memory};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject};
 use theme_quiet::Quiet;
 
@@ -129,7 +129,7 @@ impl Loaded {
         let Some(site) = &understood.site else {
             return Rendering { deploy: None, blobs: BTreeMap::new(), diagnostics, notices };
         };
-        let theme = Quiet::new(address.base.clone());
+        let theme = Quiet::new(address.base.clone(), Grammars::default());
         let engine = Engine::new(&self.store, NoPins, (Markdown,), &theme);
         let rendered = engine.render(site, &RenderSettings { base: address.base.clone() });
         diagnostics.extend(rendered.diagnostics);

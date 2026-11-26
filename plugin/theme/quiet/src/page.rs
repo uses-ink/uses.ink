@@ -4,10 +4,11 @@
 use std::fmt;
 
 use engine::{BaseUrl, Record};
+use model::highlight::Highlight;
 use model::{Block, Page, PageKind, Site, When};
 use unspliced::{HERE, Halt, Lazy, Render, Sink, Split, Url, html};
 
-use crate::document::{Unwritten, Writer};
+use crate::document::{Source, Unwritten, Writer};
 use crate::style::quiet;
 
 /// The routes the theme links from every page's head.
@@ -18,9 +19,8 @@ const RSS: &str = "/rss.xml";
 
 /// One whole page.
 #[derive(Debug)]
-pub(crate) struct Layout<'a> {
-    pub(crate) page: &'a Page,
-    pub(crate) site: &'a Site,
+pub(crate) struct Layout<'a, H> {
+    pub(crate) source: Source<'a, H>,
     pub(crate) base: &'a BaseUrl,
 }
 
@@ -39,22 +39,21 @@ impl fmt::Display for Title<'_> {
     }
 }
 
-impl Layout<'_> {
+impl<H: Highlight> Layout<'_, H> {
     /// Whether the page needs the title as its heading: not when its text starts with one.
     fn is_titled(&self) -> bool {
-        !matches!(self.page.body.blocks.first(), Some(Block::Heading { level, .. }) if level.get() == 1)
+        !matches!(self.source.page.body.blocks.first(), Some(Block::Heading { level, .. }) if level.get() == 1)
     }
 
     /// Whether the engine writes feeds: when a post is dated.
     fn has_feeds(&self) -> bool {
-        self.site.pages().iter().any(|page| page.kind == PageKind::Post && page.date.is_some())
+        self.source.site.pages().iter().any(|page| page.kind == PageKind::Post && page.date.is_some())
     }
 
     /// Writes the page into `out`, its document where the shell holds [`HERE`], recording what
     /// the document's writer finds worth saying into `record`.
     pub(crate) fn write<R: Record + ?Sized>(&self, out: &mut dyn Sink, record: &mut R) -> Result<(), Unwritten> {
-        let (page, site) = (self.page, self.site);
-        let identity = site.identity();
+        let (page, identity) = (self.source.page, self.source.site.identity());
         let shell = html! {
             doctype
             html lang=(identity.language.as_ref()) {
@@ -82,13 +81,13 @@ impl Layout<'_> {
         };
         let split = Split::new(&shell).map_err(Unwritten::Marks)?;
         split.head(out).map_err(Unwritten::Halt)?;
-        Writer::new(page, site, out, record).write()?;
+        Writer::new(self.source, out, record).write()?;
         split.tail(out).map_err(Unwritten::Halt)
     }
 
     fn head(&self, out: &mut dyn Sink) -> Result<(), Halt> {
-        let (page, identity) = (self.page, self.site.identity());
-        let title = Title(page, self.site).to_string();
+        let (page, identity) = (self.source.page, self.source.site.identity());
+        let title = Title(page, self.source.site).to_string();
         let description = page.summary.as_deref().or(identity.description.as_deref());
         let canonical = self.base.at(&page.route);
         let kind = if page.kind == PageKind::Post { "article" } else { "website" };
@@ -117,7 +116,7 @@ impl Layout<'_> {
     }
 
     fn nav(&self, out: &mut dyn Sink) -> Result<(), Halt> {
-        let pages: Vec<&Page> = self.site.nav().iter().filter_map(|id| self.site.page(*id)).collect();
+        let pages: Vec<&Page> = self.source.site.nav().iter().filter_map(|id| self.source.site.page(*id)).collect();
         if pages.is_empty() {
             return Ok(());
         }
@@ -138,7 +137,7 @@ impl Layout<'_> {
 
     /// The date and tags under the title.
     fn meta(&self, out: &mut dyn Sink) -> Result<(), Halt> {
-        let page = self.page;
+        let page = self.source.page;
         if page.date.is_none() && page.tags.is_empty() {
             return Ok(());
         }
@@ -160,10 +159,12 @@ impl Layout<'_> {
 
     /// On the home: the posts, newest first; on a generated home, every other page after them.
     fn listing(&self, out: &mut dyn Sink) -> Result<(), Halt> {
-        let mut posts: Vec<&Page> = self.site.pages().iter().filter(|page| page.kind == PageKind::Post).collect();
+        let mut posts: Vec<&Page> =
+            self.source.site.pages().iter().filter(|page| page.kind == PageKind::Post).collect();
         posts.sort_by(|a, b| b.date.cmp(&a.date).then_with(|| a.route.cmp(&b.route)));
-        let others: Vec<&Page> = if self.site.home().is_none() {
-            self.site
+        let others: Vec<&Page> = if self.source.site.home().is_none() {
+            self.source
+                .site
                 .pages()
                 .iter()
                 .filter(|page| page.kind == PageKind::Page && page.route.as_str() != "/404")

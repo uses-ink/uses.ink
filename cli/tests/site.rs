@@ -4,8 +4,8 @@
 //! tests: a build twice is the same deploy, `ink explain --pin` written as `ink.toml` builds the
 //! same deploy again, and no reader page runs script.
 //!
-//! The blog has code, so tests that build it load giallo's grammars and carry `highlight` in their
-//! name for its budget (`.config/nextest.toml`).
+//! The blog has code, so tests that build it compile a tree-sitter grammar and carry `highlight`
+//! in their name for its budget (`.config/nextest.toml`).
 
 #![allow(
     clippy::unwrap_used,
