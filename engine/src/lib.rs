@@ -19,7 +19,7 @@ mod interpret;
 mod render;
 
 pub use error::Error;
-pub use host::{BlobMissing, Blobs, File, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Theme};
+pub use host::{BlobMissing, Blobs, File, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Record, Said, Theme};
 pub use interpret::Understood;
 pub use render::{BaseUrl, BaseUrlError, Generated, RenderSettings, Rendered, Reserved};
 

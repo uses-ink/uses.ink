@@ -1,12 +1,13 @@
 //! What the engine asks of its host: bytes, pins, formats and a theme. Each is a trait the
 //! [`Engine`](crate::Engine) is generic over; the CLI picks native types, tests pick in-memory
-//! ones. The engine mirrors config's API in [`Pins`] so it builds and tests on its own.
+//! ones. The engine mirrors config's API in [`Pins`] so it builds and tests on its own. What a
+//! plugin finds worth saying while it works goes into a [`Record`] the engine gives it.
 
 use std::borrow::Cow;
 use std::fmt;
 
 use model::code::Code;
-use model::{ContentPath, Diagnostic, Hash, MediaType, Page, Read, Route, Site, Span};
+use model::{ContentPath, Diagnostic, Hash, MediaType, Notice, Page, Read, Route, Site, Span};
 
 /// Where the engine reads a snapshot's bytes from.
 pub trait Blobs {
@@ -158,9 +159,11 @@ pub trait Theme {
     fn name(&self) -> &str;
     /// CSS, fonts and images, asked for once per build.
     fn assets(&self) -> Vec<File>;
-    /// One page's HTML. `site` is the whole site, for navigation and links.
+    /// One page's HTML. `site` is the whole site, for navigation and links. What rendering
+    /// finds worth saying (math that does not parse, code in a language no grammar knows) goes
+    /// into `record`, also when the page is refused.
     #[expect(clippy::result_large_err, reason = "the theme contract returns the model's diagnostic as is (0014)")]
-    fn render(&self, page: &Page, site: &Site) -> Result<Html, Diagnostic>;
+    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>;
 }
 
 impl<T: Theme + ?Sized> Theme for &T {
@@ -172,8 +175,38 @@ impl<T: Theme + ?Sized> Theme for &T {
         T::assets(self)
     }
 
-    fn render(&self, page: &Page, site: &Site) -> Result<Html, Diagnostic> {
-        T::render(self, page, site)
+    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
+        T::render(self, page, site, record)
+    }
+}
+
+/// Where a plugin says what it found while it worked: the native stand-in for the
+/// `ink:host/diagnostic` capability. The engine's render records into its output; a test can
+/// record into a [`Said`].
+pub trait Record {
+    /// Records a problem.
+    fn diagnose(&mut self, diagnostic: Diagnostic);
+    /// Records an announcement.
+    fn notice(&mut self, notice: Notice);
+}
+
+/// Everything said, in order: a [`Record`] that keeps it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Said {
+    /// Problems, such as `math.syntax.invalid`.
+    pub diagnostics: Vec<Diagnostic>,
+    /// Notices, such as `code.language.unknown`.
+    pub notices: Vec<Notice>,
+}
+
+impl Record for Said {
+    fn diagnose(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    fn notice(&mut self, notice: Notice) {
+        self.notices.push(notice);
     }
 }
 

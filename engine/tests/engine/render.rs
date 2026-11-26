@@ -141,13 +141,15 @@ fn theme_files_never_take_a_route_already_served() {
 }
 
 #[test]
-fn a_page_the_theme_refuses_keeps_the_themes_cause() {
+fn a_page_the_theme_refuses_keeps_the_themes_cause_and_what_it_said() {
     let theme = Plain { files: vec![], refuses: vec!["About".to_owned()] };
     let rendered = rendered(&blog(), &theme);
     let refused = &rendered.diagnostics[0];
     assert_eq!(refused.code(), "theme.page.refused");
     assert_eq!(refused.chain().nth(1).unwrap().code(), "html.element.stripped");
     assert!(rendered.manifest.entry(&route("/about")).is_none());
+    let said: Vec<&str> = rendered.notices.iter().map(model::Notice::code).collect();
+    assert!(said.contains(&"code.language.unknown"), "{said:?}");
 }
 
 #[test]

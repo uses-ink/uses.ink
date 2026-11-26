@@ -16,8 +16,8 @@ mod style;
 
 use std::cell::RefCell;
 
-use engine::{BaseUrl, File, Html, Theme};
-use model::{Diagnostic, MediaType, Notice, Page, Route, Site};
+use engine::{BaseUrl, File, Html, Record, Said, Theme};
+use model::{Diagnostic, MediaType, Page, Route, Site};
 
 use document::Highlighter;
 use page::Layout;
@@ -31,34 +31,16 @@ pub fn code_css() -> Result<String, String> {
     Highlighter::load().map_err(str::to_owned).and_then(Highlighter::css)
 }
 
-/// What rendering found worth saying: math that does not parse, code in a language no grammar
-/// knows. The theme contract has no way to return these with a page yet, so the theme keeps them
-/// until [`Quiet::said`] takes them.
-#[derive(Debug, Default)]
-#[non_exhaustive]
-pub struct Said {
-    /// Problems, such as `math.syntax.invalid`.
-    pub diagnostics: Vec<Diagnostic>,
-    /// Notices, such as `code.language.unknown`.
-    pub notices: Vec<Notice>,
-}
-
 /// The theme.
 #[derive(Debug)]
 pub struct Quiet {
     base: BaseUrl,
-    said: RefCell<Said>,
 }
 
 impl Quiet {
     /// The theme for a site served at `base`, for canonical links and `og:url`.
     pub fn new(base: BaseUrl) -> Self {
-        Self { base, said: RefCell::new(Said::default()) }
-    }
-
-    /// Everything said since the last call, in the order rendering said it.
-    pub fn said(&self) -> Said {
-        self.said.take()
+        Self { base }
     }
 }
 
@@ -80,8 +62,13 @@ impl Theme for Quiet {
         files
     }
 
-    fn render(&self, page: &Page, site: &Site) -> Result<Html, Diagnostic> {
-        let layout = Layout { page, site, base: &self.base, said: &self.said };
-        Ok(Html::from(layout.html()))
+    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
+        let said = RefCell::new(Said::default());
+        let layout = Layout { page, site, base: &self.base, said: &said };
+        let html = Html::from(layout.html());
+        let said = said.into_inner();
+        said.diagnostics.into_iter().for_each(|diagnostic| record.diagnose(diagnostic));
+        said.notices.into_iter().for_each(|notice| record.notice(notice));
+        Ok(html)
     }
 }

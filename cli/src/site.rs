@@ -132,11 +132,8 @@ impl Loaded {
         let theme = Quiet::new(address.base.clone());
         let engine = Engine::new(&self.store, NoPins, (Markdown,), &theme);
         let rendered = engine.render(site, &RenderSettings { base: address.base.clone() });
-        let said = theme.said();
         diagnostics.extend(rendered.diagnostics);
-        diagnostics.extend(said.diagnostics);
         notices.extend(rendered.notices);
-        notices.extend(said.notices);
         Rendering { deploy: Some(rendered.manifest), blobs: rendered.blobs, diagnostics, notices }
     }
 }

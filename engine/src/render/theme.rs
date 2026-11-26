@@ -6,10 +6,10 @@ use std::fmt;
 use model::{Block, ContentPath, Diagnostic, Document, Inline, MediaType, Page, PageKind, Problem, Route, Site};
 use model::{Status, Subject};
 
-use crate::Theme;
 use crate::error::Error;
 use crate::render::output::{Body, Entry, Output, Owner};
 use crate::render::{Artifact, Reserved};
+use crate::{Record, Theme};
 
 /// A page the engine makes when the author wrote none, rendered by the theme like any other.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -69,10 +69,11 @@ pub(crate) struct Pages<'t, T> {
 }
 
 impl<T: Theme> Pages<'_, T> {
-    /// Serves `page` as the theme renders it, with `status`. A page the theme refuses is
-    /// `theme.page.refused`, caused by what the theme said.
+    /// Serves `page` as the theme renders it, with `status`, recording what the theme says on
+    /// the way. A page the theme refuses is `theme.page.refused`, caused by the theme's
+    /// diagnostic.
     fn serve(&self, page: &Page, site: &Site, status: Status, out: &mut Output<'_>) {
-        match self.theme.render(page, site) {
+        match self.theme.render(page, site, out) {
             Ok(html) => out.serve(Entry {
                 route: page.route.clone(),
                 media: MediaType::Html,

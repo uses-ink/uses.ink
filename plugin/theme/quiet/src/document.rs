@@ -29,9 +29,9 @@ use unspliced::{Class, Halt, Id, Lazy, Raw, Render, Sink, Url, html};
 
 use code::Highlighted;
 pub(crate) use code::Highlighter;
+use engine::Said;
 use math::{Display, Math};
 
-use crate::Said;
 use crate::style::quiet;
 
 /// A page's body and its footnotes, ready to render.

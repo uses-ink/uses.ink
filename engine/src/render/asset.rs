@@ -2,6 +2,7 @@
 
 use model::{ContentPath, Diagnostic, MediaType, Problem, Site, Status, Subject};
 
+use crate::Record;
 use crate::error::Error;
 use crate::render::Artifact;
 use crate::render::output::{Body, Entry, Output, Owner};

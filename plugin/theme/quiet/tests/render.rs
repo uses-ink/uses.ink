@@ -5,7 +5,7 @@
 
 extern crate uses_ink_theme_quiet as theme_quiet;
 
-use engine::Theme;
+use engine::{Said, Theme};
 use model::{
     Alignment, Anchor, Asset, Block, CalloutKind, Definition, Document, Footnote, FootnoteName, ImageSource, Inline,
     Item, Level, LinkTarget, Page, PageKind, Route, Site, SiteParts, Slug, Tag, Task, When,
@@ -123,8 +123,8 @@ fn page<'a>(site: &'a Site, route: &str) -> &'a Page {
 #[test]
 fn highlight_renders_every_node() {
     let (site, theme) = (site(), quiet());
-    let html = theme.render(page(&site, "/posts/a"), &site).unwrap();
-    let said = theme.said();
+    let mut said = Said::default();
+    let html = theme.render(page(&site, "/posts/a"), &site, &mut said).unwrap();
     let codes: Vec<&str> = said
         .diagnostics
         .iter()
@@ -143,7 +143,7 @@ fn highlight_renders_every_node() {
 #[test]
 fn the_home_lists_the_posts() {
     let (site, theme) = (site(), quiet());
-    let html = theme.render(page(&site, "/"), &site).unwrap();
+    let html = theme.render(page(&site, "/"), &site, &mut Said::default()).unwrap();
     let html = html.as_ref();
     assert!(html.contains("<title>Ink</title>"));
     assert!(
@@ -171,7 +171,7 @@ impl Script<'_> {
 fn no_page_runs_script() {
     let (site, theme) = (site(), quiet());
     for page in site.pages().iter().filter(|page| page.kind != PageKind::Post) {
-        let html = theme.render(page, &site).unwrap();
+        let html = theme.render(page, &site, &mut Said::default()).unwrap();
         Script(html.as_ref()).refuse(&page.route);
     }
     let assets = theme.assets();

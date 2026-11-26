@@ -5,13 +5,15 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use engine::{BlobMissing, Blobs, Engine, File, Format, Html, Patterns, Pin, Pins, RenderSettings, Theme, Understood};
+use engine::{
+    BlobMissing, Blobs, Engine, File, Format, Html, Patterns, Pin, Pins, Record, RenderSettings, Theme, Understood,
+};
 use model::code::{AnyDecision, Code};
 use model::decision::{self, Decision};
 use model::{
-    Ability, Block, Bytes, ContentPath, Diagnostic, Document, Entry, Evidence, FileFacts, Front, Hash, ImageSource,
-    Inline, Known, Level, LinkTarget, Observed, Page, PageKind, Problem, Read, Site, Snapshot, Span, Spanned, Subject,
-    Tag, UnknownReason, Version, When,
+    Ability, Announcement, Block, Bytes, ContentPath, Diagnostic, Document, Entry, Evidence, FileFacts, Front, Hash,
+    ImageSource, Inline, Known, Level, LinkTarget, Notice, Observed, Page, PageKind, Problem, Read, Site, Snapshot,
+    Span, Spanned, Subject, Tag, UnknownReason, Version, When,
 };
 
 /// A snapshot written file by file.
@@ -234,7 +236,7 @@ fn inline(line: &str) -> Inline {
 #[derive(Debug, Default)]
 pub struct Plain {
     pub files: Vec<File>,
-    /// Pages it refuses, by title.
+    /// Pages it refuses, by title, each after a notice that it was asked to.
     pub refuses: Vec<String>,
 }
 
@@ -247,8 +249,9 @@ impl Theme for Plain {
         self.files.clone()
     }
 
-    fn render(&self, page: &Page, site: &Site) -> Result<Html, Diagnostic> {
+    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         if self.refuses.contains(&page.title) {
+            record.notice(Notice::new(Announcement::CodeLanguageUnknown { language: "refused".to_owned() }));
             return Err(Diagnostic::new(Problem::HtmlElementStripped { element: "refused".to_owned() }));
         }
         let mut html = format!("<!doctype html><title>{}</title>", page.title);

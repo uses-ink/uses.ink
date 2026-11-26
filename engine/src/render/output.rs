@@ -6,6 +6,7 @@ use std::io;
 
 use model::{ContentPath, Diagnostic, Hash, Manifest, MediaType, Notice, Route, Served, Status};
 
+use crate::Record;
 use crate::error::Error;
 use crate::render::policy::Policy;
 use crate::render::settings::BaseUrl;
@@ -42,6 +43,16 @@ pub(crate) struct Entry {
     pub(crate) status: Status,
     pub(crate) body: Body,
     pub(crate) owner: Owner,
+}
+
+impl Record for Output<'_> {
+    fn diagnose(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    fn notice(&mut self, notice: Notice) {
+        self.notices.push(notice);
+    }
 }
 
 /// The render so far.
@@ -103,19 +114,9 @@ impl<'a> Output<'a> {
         Ok(())
     }
 
-    /// Records a problem.
-    pub(crate) fn diagnose(&mut self, diagnostic: Diagnostic) {
-        self.diagnostics.push(diagnostic);
-    }
-
-    /// Records an announcement.
-    pub(crate) fn notice(&mut self, notice: Notice) {
-        self.notices.push(notice);
-    }
-
     /// Records a rule of the engine's own that did not hold.
     pub(crate) fn fail(&mut self, error: Error) {
-        self.diagnose(error.into());
+        self.diagnostics.push(error.into());
     }
 
     /// The manifest of everything served, and everything said.
