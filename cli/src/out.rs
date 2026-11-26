@@ -166,6 +166,19 @@ impl fmt::Display for Refusal {
 
 impl std::error::Error for Refusal {}
 
+impl Refusal {
+    /// Its kind, as `--json` names it.
+    pub(crate) fn kind(&self) -> &'static str {
+        match self {
+            Self::Foreign { .. } => "output.folder.foreign",
+            Self::Holds { .. } => "output.folder.source",
+            Self::Linked { .. } => "output.file.linked",
+            Self::Changed { .. } => "output.file.changed",
+            Self::Occupied { .. } => "output.file.occupied",
+        }
+    }
+}
+
 impl From<Refusal> for Error {
     fn from(refusal: Refusal) -> Self {
         Self::Output(refusal)

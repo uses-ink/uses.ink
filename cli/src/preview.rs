@@ -9,7 +9,8 @@ use axum::body::Body;
 use axum::http::{HeaderName, HeaderValue, Request, Response, StatusCode, header};
 use engine::Blobs;
 use host_native::Memory;
-use model::{Manifest, Route, Served};
+use model::{Manifest, Route};
+use serde::Serialize;
 
 use crate::args;
 use crate::error::Error;
@@ -17,6 +18,16 @@ use crate::exit::Exit;
 use crate::output::{Io, Strict};
 use crate::report::Texts;
 use crate::site::{Address, Loaded, Rendering, Source};
+
+/// What `ink preview --json` prints before it serves: the address, or none when the site has
+/// errors and nothing is served.
+#[derive(Debug, Serialize)]
+struct Served {
+    schema: &'static str,
+    address: Option<String>,
+    errors: usize,
+    warnings: usize,
+}
 
 /// A deploy held in memory, ready to serve.
 #[derive(Clone, Debug)]
@@ -38,7 +49,14 @@ impl args::Preview {
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let rendered = loaded.render(&address);
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
-        let Some(preview) = Preview::assemble(loaded, rendered) else { return Ok(Exit::Content) };
+        let preview = Preview::assemble(loaded, rendered);
+        io.json(&Served {
+            schema: "uses.preview/v1",
+            address: preview.as_ref().map(|_| address.base.to_string()),
+            errors: tally.errors,
+            warnings: tally.warnings,
+        })?;
+        let Some(preview) = preview else { return Ok(Exit::Content) };
         io.line(&address.base)?;
         preview.serve(listener)?;
         Ok(tally.exit(Strict::Off))
@@ -93,7 +111,7 @@ impl Preview {
         }
     }
 
-    fn entry(&self, entry: &Served, found: bool) -> Response<Body> {
+    fn entry(&self, entry: &model::Served, found: bool) -> Response<Body> {
         let Ok(bytes) = self.blobs.read(&entry.blob()) else { return Self::status(StatusCode::INTERNAL_SERVER_ERROR) };
         let status = if found { entry.status().code() } else { StatusCode::NOT_FOUND.as_u16() };
         let mut response = Response::new(Body::from(bytes.into_owned()));

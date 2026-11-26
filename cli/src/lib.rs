@@ -1,8 +1,9 @@
 //! The `ink` command: a folder becomes a site.
 //!
 //! `ink build`, `ink check`, `ink explain` and `ink preview` (architecture.md section 14). Results
-//! go to stdout, everything else to stderr; `--json` makes the result one JSON document with a
-//! `schema` field and every diagnostic and notice an NDJSON event on stderr. Exit codes are the
+//! go to stdout, everything else to stderr; `--json` makes the result one JSON document on stdout
+//! with a `schema` field, an error's document (`uses.error/v1`) included, and every diagnostic an
+//! NDJSON event on stderr; notices are printed only with `-v`, in either form. Exit codes are the
 //! closed set of research/flow.md section 7, [`Exit`].
 //!
 //! This crate is where the parts meet: `host-native` reads the folder, `config` reads `ink.toml`
@@ -28,6 +29,34 @@ pub use exit::Exit;
 pub use preview::Preview;
 
 impl Cli {
+    /// Parses `args` (the program's name first) and runs the command. A command line clap
+    /// refuses is returned to the caller to report, except under `--json`, where it is the one
+    /// error document on stdout and the exit is [`Exit::Usage`].
+    ///
+    /// # Errors
+    ///
+    /// The [`clap::Error`] of a command line that does not parse, help and version among them,
+    /// when `--json` was not given or clap prints it to stdout.
+    pub fn start<I, T>(args: I, out: &mut dyn std::io::Write, err: &mut dyn std::io::Write) -> Result<Exit, clap::Error>
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<std::ffi::OsString> + Clone,
+    {
+        let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+        let json = args.iter().skip(1).any(|arg| arg == "--json");
+        match <Self as clap::Parser>::try_parse_from(&args) {
+            Ok(cli) => Ok(cli.run(out, err)),
+            Err(error) if json && error.use_stderr() => {
+                let mut io = output::Io::new(out, err, true, output::Level::Warning);
+                match io.json(&output::Failed::usage(&error)) {
+                    Ok(()) => Ok(Exit::Usage),
+                    Err(_) => Err(error),
+                }
+            }
+            Err(error) => Err(error),
+        }
+    }
+
     /// Runs the command, writing its result to `out` and everything else to `err`.
     pub fn run(self, out: &mut dyn std::io::Write, err: &mut dyn std::io::Write) -> Exit {
         let level = if self.verbose > 0 { output::Level::Notice } else { output::Level::Warning };

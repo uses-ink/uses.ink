@@ -1,25 +1,28 @@
 //! `ink build` and `ink check`.
 
-use std::path::Path;
-
-use model::DeployId;
+use model::{DeployId, Manifest};
 use serde::Serialize;
 
 use crate::args::{Build, Check};
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::out::OutFolder;
-use crate::output::{Io, Strict};
+use crate::output::{Io, Lossy, Strict};
 use crate::report::Texts;
 use crate::site::{Address, DEFAULT_OUT, Source};
 
-/// What `ink build --json` prints.
+/// What `ink build --json` prints, whether or not the build was written.
 #[derive(Debug, Serialize)]
 struct Built<'a> {
     schema: &'static str,
-    deploy: DeployId,
-    out: &'a Path,
+    /// The deploy, when the site rendered.
+    deploy: Option<DeployId>,
+    /// Whether the output folder now holds it: only when the build exits 0.
+    written: bool,
+    out: Lossy<'a>,
     entries: usize,
+    errors: usize,
+    warnings: usize,
 }
 
 /// What `ink check --json` prints.
@@ -48,14 +51,22 @@ impl Build {
         let rendered = loaded.render(&address);
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
         let exit = tally.exit(Strict::from(self.strict));
-        let Some(deploy) = rendered.deploy.as_ref().filter(|_| exit == Exit::Done) else {
-            return Ok(if exit == Exit::Done { Exit::Content } else { exit });
-        };
-        folder.replace(deploy, &rendered.blobs, &loaded.store)?;
-        let id = deploy.id();
-        io.line(id)?;
-        io.json(&Built { schema: "uses.build/v1", deploy: id, out: &out, entries: deploy.entries().len() })?;
-        Ok(exit)
+        let deploy = rendered.deploy.as_ref();
+        let written = deploy.filter(|_| exit == Exit::Done);
+        if let Some(deploy) = written {
+            folder.replace(deploy, &rendered.blobs, &loaded.store)?;
+            io.line(deploy.id())?;
+        }
+        io.json(&Built {
+            schema: "uses.build/v1",
+            deploy: deploy.map(Manifest::id),
+            written: written.is_some(),
+            out: Lossy(&out),
+            entries: deploy.map_or(0, |deploy| deploy.entries().len()),
+            errors: tally.errors,
+            warnings: tally.warnings,
+        })?;
+        Ok(if written.is_none() && exit == Exit::Done { Exit::Content } else { exit })
     }
 }
 

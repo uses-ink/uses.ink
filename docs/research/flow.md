@@ -975,9 +975,14 @@ Binary `ink`. Output rules:
 - Human output is plain text, no colour when `NO_COLOR` is set or stdout is not a TTY,
   no spinners when not a TTY, stable column order, times in UTC ISO 8601 unless
   `--local`.
-- `--json` on every command prints one JSON document (or NDJSON events for streaming
-  commands with `--json-stream`) with a `"schema": "uses.<cmd>/v1"` field. Diagnostics
-  have `{code, severity, file, line, what, why, fix}`.
+- `--json` on every command prints exactly one JSON document on stdout (or NDJSON events
+  for streaming commands with `--json-stream`) with a `"schema": "uses.<cmd>/v1"` field,
+  on failure too: a command that stops on an error prints `{"schema": "uses.error/v1",
+  "exit", "error", "what", "causes"}` instead, `error` being a diagnostic code or a
+  `noun.noun.reason` kind, and never a plain `error:` line. Paths that are not UTF-8 are
+  written with U+FFFD in place of the bytes that are not. Diagnostics go to stderr as NDJSON
+  events `{code, severity, file, line, what, why, fix}`; notices join them only with `-v`,
+  as in text output.
 - Progress goes to stderr, results to stdout.
 
 ### Commands

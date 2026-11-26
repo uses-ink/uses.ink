@@ -2,11 +2,11 @@
 
 use std::process::ExitCode;
 
-use clap::Parser;
 use uses_ink_cli::Cli;
 
 fn main() -> ExitCode {
-    let cli = Cli::parse();
-    let exit = cli.run(&mut std::io::stdout().lock(), &mut std::io::stderr().lock());
-    ExitCode::from(exit.code())
+    match Cli::start(std::env::args_os(), &mut std::io::stdout().lock(), &mut std::io::stderr().lock()) {
+        Ok(exit) => ExitCode::from(exit.code()),
+        Err(error) => error.exit(),
+    }
 }

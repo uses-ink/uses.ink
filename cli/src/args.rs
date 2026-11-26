@@ -8,10 +8,12 @@ use clap::{Args, Parser, Subcommand};
 #[derive(Debug, Parser)]
 #[command(name = "ink", version, about)]
 pub struct Cli {
-    /// Print the result as one JSON document, and events as NDJSON on stderr.
+    /// Print the result as one JSON document on stdout, an error's too, and diagnostics as NDJSON
+    /// events on stderr.
     #[arg(long, global = true)]
     pub json: bool,
-    /// Also print notices: defaults chosen, files skipped. They are warn-level quiet otherwise.
+    /// Also print notices (defaults chosen, folders skipped), as text or, with `--json`, events.
+    /// They are not printed otherwise.
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
     /// What to do.

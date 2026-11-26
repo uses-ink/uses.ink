@@ -2,6 +2,7 @@
 
 use std::fmt;
 use std::io::Write;
+use std::path::Path;
 
 use model::{Diagnostic, Notice, Severity};
 use serde::Serialize;
@@ -84,7 +85,8 @@ impl<'a> Io<'a> {
         Ok(())
     }
 
-    /// The result as one JSON document, with `--json`.
+    /// The result as one JSON document, with `--json`. A command calls it exactly once, on
+    /// success and on failure alike; [`Io::fail`] prints the document of a command that stopped.
     pub(crate) fn json(&mut self, result: &impl Serialize) -> Result<(), Error> {
         if self.json {
             serde_json::to_writer(&mut *self.out, result).map_err(|source| Error::Json { source })?;
@@ -121,7 +123,7 @@ impl<'a> Io<'a> {
                 writeln!(self.err, "{}", Shown { diagnostic, texts })?;
             }
         }
-        let notices = if self.json || self.level == Level::Notice { notices } else { &[] };
+        let notices = if self.level == Level::Notice { notices } else { &[] };
         for notice in notices {
             if self.json {
                 serde_json::to_writer(&mut *self.err, &Event::notice(notice))
@@ -134,17 +136,85 @@ impl<'a> Io<'a> {
         Ok(tally)
     }
 
-    /// Reports `error` and its causes on stderr and returns its exit code. A refused folder is
-    /// shown as its diagnostic.
+    /// Reports `error` and its causes and returns its exit code: on stderr, a refused folder as
+    /// its diagnostic; with `--json`, as the one document on stdout.
     pub(crate) fn fail(&mut self, error: &Error) -> Exit {
+        let exit = error.exit();
         let written = match error {
+            _ if self.json => self.json(&Failed::of(error, exit)),
             Error::Refused(refused) => self.said(&[Diagnostic::from(refused)], &[], Texts::NONE).map(|_| ()),
             other => Chain(other).write(self.err),
         };
         // Nothing is left to report a failed report to.
         match written {
-            Ok(()) => error.exit(),
+            Ok(()) => exit,
             Err(_) => Exit::Usage,
+        }
+    }
+}
+
+/// A path as JSON: its text, any part that is not UTF-8 written as U+FFFD, so the document is
+/// always valid.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Lossy<'a>(pub(crate) &'a Path);
+
+impl Serialize for Lossy<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0.to_string_lossy())
+    }
+}
+
+/// What every command prints on stdout with `--json` when it stops on an error.
+#[derive(Debug, Serialize)]
+pub(crate) struct Failed {
+    schema: &'static str,
+    exit: u8,
+    /// The error's kind: a diagnostic code for a refused folder, `output.foreign` and the like
+    /// for the rest.
+    error: &'static str,
+    what: String,
+    /// Each cause, outermost first.
+    causes: Vec<String>,
+    /// The refused folder's diagnostic, when it is one.
+    diagnostic: Option<Event>,
+}
+
+impl Failed {
+    const SCHEMA: &'static str = "uses.error/v1";
+
+    pub(crate) fn of(error: &Error, exit: Exit) -> Self {
+        let mut causes = Vec::new();
+        let mut cause = std::error::Error::source(error);
+        while let Some(next) = cause {
+            causes.push(next.to_string());
+            cause = next.source();
+        }
+        let diagnostic = match error {
+            Error::Refused(refused) => Some(Event::diagnostic(&Diagnostic::from(refused), Texts::NONE)),
+            _ => None,
+        };
+        Self {
+            schema: Self::SCHEMA,
+            exit: exit.code(),
+            error: error.kind(),
+            what: error.to_string(),
+            causes,
+            diagnostic,
+        }
+    }
+
+    /// A command line clap refused, under `--json`.
+    pub(crate) fn usage(error: &clap::Error) -> Self {
+        let text = error.to_string();
+        let what = text.lines().next().unwrap_or_default();
+        let what = what.strip_prefix("error: ").unwrap_or(what).to_owned();
+        Self {
+            schema: Self::SCHEMA,
+            exit: Exit::Usage.code(),
+            error: "cli.usage",
+            what,
+            causes: Vec::new(),
+            diagnostic: None,
         }
     }
 }

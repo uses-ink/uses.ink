@@ -95,6 +95,26 @@ impl Error {
             _ => Exit::Usage,
         }
     }
+
+    /// What kind of error it is, as `--json` names it: a refused folder's diagnostic code, or
+    /// `noun.reason` for the rest.
+    pub(crate) fn kind(&self) -> &'static str {
+        match self {
+            Self::Refused(refused) => model::Diagnostic::from(refused).code(),
+            Self::Base { .. } => "base.address.invalid",
+            Self::Path { .. } => "explain.path.invalid",
+            Self::Unknown { .. } => "explain.path.unknown",
+            Self::Output(refusal) => refusal.kind(),
+            Self::Placed { .. } => "output.entry.unplaced",
+            Self::Blob { .. } => "output.blob.missing",
+            Self::Read { .. } => "output.file.unreadable",
+            Self::Write { .. } => "output.file.unwritable",
+            Self::Manifest { .. } => "output.manifest.invalid",
+            Self::Serve { .. } => "preview.serve.failed",
+            Self::Terminal { .. } => "cli.terminal.unwritable",
+            Self::Json { .. } => "cli.json.unwritable",
+        }
+    }
 }
 
 impl fmt::Display for Error {
