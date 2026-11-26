@@ -1,0 +1,17 @@
+[package]
+name = "spike-workers-emit"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "AGPL-3.0-or-later"
+
+# Standalone: not part of the root workspace or the worker spike.
+[workspace]
+
+[[bin]]
+name = "emit"
+path = "src/main.rs"
+
+[profile.release]
+strip = true
+opt-level = "s"

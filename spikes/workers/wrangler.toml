@@ -1,0 +1,25 @@
+# Local only: `npx wrangler@4.168.0 dev`. Never deployed.
+name = "spike-workers"
+main = "build/index.js"
+# 2025-11-17 or later turns on ctx.exports, which outbound intercepts need.
+compatibility_date = "2026-11-01"
+
+[build]
+command = "worker-build --release"
+
+[[durable_objects.bindings]]
+name = "BUILD"
+class_name = "Build"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Build"]
+
+[[containers]]
+class_name = "Build"
+image = "./container/Dockerfile"
+max_instances = 2
+
+[[r2_buckets]]
+binding = "LOGS"
+bucket_name = "spike-logs"

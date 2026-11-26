@@ -1,0 +1,24 @@
+[package]
+name = "spike-workers"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "AGPL-3.0-or-later"
+description = "M0 spike 3: a Durable Object starts a Container, streams its output, writes R2"
+
+# Standalone: excluded from the root workspace (`exclude = ["spikes"]`), target/ stays here.
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = "=0.9.0"
+futures-channel = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+serde = { version = "1", features = ["derive"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
