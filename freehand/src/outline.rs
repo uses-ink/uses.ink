@@ -1,7 +1,7 @@
 //! perfect-freehand's `getStroke`, ported: pressured points to the polygon around their ink.
 //! Constants, loop bounds and the order of every operation are kept, so the outline is the one
-//! the JavaScript draws, to the last bit wherever `libm::hypot` and the browser's `Math.hypot`
-//! agree (they may differ by an ulp). One deliberate difference: `fmin` and `fmax` ignore a NaN
+//! the JavaScript draws, up to the last bit of each length (taken as `sqrt(x² + y²)`, where
+//! the browser uses `Math.hypot`). One deliberate difference: `fmin` and `fmax` ignore a NaN
 //! where `Math.min` and `Math.max` spread it, so NaN input gives finite output here.
 
 use alloc::vec::Vec;

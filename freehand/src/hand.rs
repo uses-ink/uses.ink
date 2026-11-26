@@ -37,10 +37,8 @@ impl Hand {
     pub fn trace(&self, line: &Centreline, chance: &mut impl Chance) -> Vec<Pressured> {
         let points = line.points();
         // each segment's length once: summed in order it is `line.length()`, bit for bit
-        let segments: Vec<f64> = points
-            .windows(2)
-            .map(|pair| if let [a, b] = pair { libm::hypot(b.x - a.x, b.y - a.y) } else { 0.0 })
-            .collect();
+        let segments: Vec<f64> =
+            points.windows(2).map(|pair| if let [a, b] = pair { a.distance(*b) } else { 0.0 }).collect();
         let total = match segments.iter().sum::<f64>() {
             0.0 => 1.0,
             total => total,
@@ -86,7 +84,7 @@ fn normal(points: &[Point], i: usize) -> Point {
     let (Some(a), Some(b)) = (points.get(i.saturating_sub(1)), points.get((i + 1).min(last))) else {
         return Point::default();
     };
-    let d = match libm::hypot(b.x - a.x, b.y - a.y) {
+    let d = match a.distance(*b) {
         0.0 => 1.0,
         d => d,
     };

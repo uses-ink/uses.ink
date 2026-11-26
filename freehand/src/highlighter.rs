@@ -31,7 +31,7 @@ impl Highlighter {
         let mut points = Vec::new();
         for (i, from) in corners.iter().enumerate() {
             let Some(to) = corners.get((i + 1) % corners.len()) else { continue };
-            let count = libm::fmax(1.0, round(libm::hypot(to.x - from.x, to.y - from.y) / self.spacing));
+            let count = libm::fmax(1.0, round(from.distance(*to) / self.spacing));
             // a non-finite or absurd edge draws nothing, as an over-long line does
             if !count.is_finite() || count > f64::from(MOST) {
                 return Path::default();

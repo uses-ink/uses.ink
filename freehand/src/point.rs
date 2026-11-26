@@ -19,7 +19,7 @@ impl Point {
 
     /// The distance to `other`.
     pub fn distance(self, other: Self) -> f64 {
-        libm::hypot(self.y - other.y, self.x - other.x)
+        libm::sqrt(self.distance_squared(other))
     }
 
     pub(crate) fn distance_squared(self, other: Self) -> f64 {
@@ -28,8 +28,10 @@ impl Point {
         dx * dx + dy * dy
     }
 
+    /// Its length: `sqrt(x² + y²)`, exact IEEE arithmetic on every target, and much faster than
+    /// `hypot`, which only matters for lengths past 1e150 that no drawing has.
     pub(crate) fn length(self) -> f64 {
-        libm::hypot(self.x, self.y)
+        libm::sqrt(self.x * self.x + self.y * self.y)
     }
 
     /// The unit vector of this one; a zero vector gives NaN, as in perfect-freehand.

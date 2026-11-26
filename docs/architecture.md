@@ -233,7 +233,8 @@ brand`), social preview images (rasterized with resvg). There is no second imple
 
 - Deterministic: a mark is a function of its seed, its geometry and the pen version. RNG is
   mulberry32 seeded by an FNV hash of the seed string; trig goes through `libm`, so native and
-  wasm produce identical bytes. Golden fixtures (the full path data) run on both targets.
+  wasm produce identical bytes. Golden fixtures (the full path data) run on both targets. Paths
+  are written in tenths of a pixel as a `Q` then a `T` chain (0038).
 - Tools: `Pencil` (MS Paint pencil: thin, nearly constant width, small tremor) and `Highlighter`
   (smooth jittered fill, offset by the shift), each a type with its parameters. The red note pen
   is the pencil in the `pen` colour.

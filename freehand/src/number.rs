@@ -1,103 +1,82 @@
-//! Numbers as SVG path data writes them: two decimals, rounded as a browser's `toFixed(2)`
-//! rounds, so a path is the same text wherever it is drawn.
+//! Numbers as path data writes them: whole tenths of a pixel. The pencil's ink is drawn without
+//! anti-aliasing, so a finer step never shows, and every digit saved is a byte on every page.
 
 use alloc::string::String;
-use core::fmt::{self, Write as _};
 
-/// A coordinate written with two decimals. A value exactly halfway rounds away from zero, and
-/// negative zero is written `0.00`.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Fixed(pub(crate) f64);
+/// A coordinate in whole tenths of a pixel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Tenths(pub(crate) i64);
 
-/// Below this, `x * 100` rounded to a whole number fits a `u64` exactly and the fast path holds.
-const FAST: f64 = 9.0e15;
+/// The largest magnitude written, in pixels: far past any drawing, and small enough that every
+/// sum of tenths stays exact.
+pub(crate) const LARGEST: f64 = 1.0e12;
 
-impl Fixed {
-    /// Appends the number to `out`: the fast path for every coordinate a drawing has.
-    pub(crate) fn push_to(self, out: &mut String) {
-        let x = self.0;
-        let magnitude = libm::fabs(x);
-        if magnitude >= FAST || magnitude.is_nan() {
-            // huge or not a number: the general formatter, which a `String` never refuses
-            let _infallible = write!(out, "{self}");
-            return;
+impl Tenths {
+    /// `x` in tenths, the nearest whole number of them, halves away from zero. `None` past
+    /// [`LARGEST`] or when not a number.
+    pub(crate) fn of(x: f64) -> Option<Self> {
+        if x.is_nan() || libm::fabs(x) > LARGEST {
+            return None;
         }
-        if x < 0.0 {
+        Some(Self(nearest(x * 10.0)))
+    }
+
+    /// The tenths nearest `value`, already in tenths.
+    pub(crate) fn nearest(value: f64) -> Self {
+        Self(nearest(value))
+    }
+
+    /// Appends it: `12.5`, `-3`, `.5`, `-.5`; zero is `0`. A leading zero and a trailing `.0`
+    /// are left out, as SVG's number grammar allows.
+    pub(crate) fn push_to(self, out: &mut String) {
+        let magnitude = self.0.unsigned_abs();
+        let (units, tenth) = (magnitude / 10, magnitude % 10);
+        if self.0 < 0 {
             out.push('-');
         }
-        push_hundredths(out, hundredths(magnitude));
+        if units > 0 || tenth == 0 {
+            push_digits(out, units);
+        }
+        if tenth > 0 {
+            out.push('.');
+            out.push(char::from(b'0' + u8::try_from(tenth).unwrap_or(0)));
+        }
     }
 }
 
-/// `x * 100` rounded to a whole number, a tie away from zero, decided on the exact product.
-///
-/// `n` is `floor(h)`. The rounded product `h` is within `h * 2^-53` of the exact one, so when `h` is further than
-/// that from a half the half it is on is the answer. `floor(h)` may be one off near a whole
-/// number, which does not change the rounding there. Only near a half does `fma(x, 100, -(n +
-/// 0.5))` decide: `fma` rounds once, so its sign is the sign of the exact difference, and it is
-/// zero only on an exact tie. `fma` is software in `libm`, so it runs only there.
-fn hundredths(x: f64) -> u64 {
-    let h = x * 100.0;
-    // `floor` of a non-negative number below 2^63 is truncation: one instruction where
-    // `libm::floor` is a software routine
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a non-negative number below FAST * 100, so below 2^63"
-    )]
-    let whole = h as u64;
+/// The whole number nearest `x`, halves away from zero; `x` is finite and below 2^62.
+fn nearest(x: f64) -> i64 {
+    #[expect(clippy::cast_possible_truncation, reason = "finite and well inside i64")]
+    let whole = x as i64;
     #[expect(clippy::cast_precision_loss, reason = "below 2^53, so exact")]
-    let n = whole as f64;
-    let off = h - n - 0.5;
-    let margin = h * 4.0 * f64::EPSILON;
-    let up = if off > margin {
-        true
-    } else if off < -margin {
-        false
+    let rest = x - whole as f64;
+    if rest >= 0.5 {
+        whole + 1
+    } else if rest <= -0.5 {
+        whole - 1
     } else {
-        libm::fma(x, 100.0, -(n + 0.5)) >= 0.0
-    };
-    whole + u64::from(up)
+        whole
+    }
 }
 
-/// Writes `n` hundredths as `units.hh`, a character at a time: measured faster than building a
-/// buffer and appending it, which pays for a UTF-8 check and a copy.
-fn push_hundredths(out: &mut String, n: u64) {
+/// Appends `n` in decimal, a character at a time: measured faster than building a buffer and
+/// appending it, which pays for a UTF-8 check and a copy.
+fn push_digits(out: &mut String, n: u64) {
     let mut digits = [0u8; 20];
     let mut at = digits.len();
-    let mut units = n / 100;
+    let mut rest = n;
     loop {
         at -= 1;
-        let digit = (units % 10) as u8;
         if let Some(slot) = digits.get_mut(at) {
-            *slot = b'0' + digit;
+            *slot = b'0' + u8::try_from(rest % 10).unwrap_or(0);
         }
-        units /= 10;
-        if units == 0 || at == 0 {
+        rest /= 10;
+        if rest == 0 || at == 0 {
             break;
         }
     }
     for &digit in digits.get(at..).unwrap_or_default() {
         out.push(char::from(digit));
-    }
-    let cents = (n % 100) as u8;
-    out.push('.');
-    out.push(char::from(b'0' + cents / 10));
-    out.push(char::from(b'0' + cents % 10));
-}
-
-impl fmt::Display for Fixed {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let x = self.0;
-        if libm::fabs(x) < FAST {
-            let mut text = String::new();
-            self.push_to(&mut text);
-            return out.write_str(&text);
-        }
-        if x < 0.0 {
-            out.write_str("-")?;
-        }
-        write!(out, "{:.2}", libm::fabs(x))
     }
 }
 
@@ -109,43 +88,30 @@ pub(crate) fn round(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use alloc::string::ToString;
+    use alloc::string::String;
 
-    use super::Fixed;
+    use super::Tenths;
 
-    #[test]
-    fn ties_round_away_from_zero() {
-        assert_eq!(Fixed(0.125).to_string(), "0.13");
-        assert_eq!(Fixed(-0.125).to_string(), "-0.13");
-        assert_eq!(Fixed(2.675).to_string(), "2.67"); // not a tie: 2.67499999..
-        assert_eq!(Fixed(-0.0).to_string(), "0.00");
-        assert_eq!(Fixed(-0.001).to_string(), "-0.00");
-        assert_eq!(Fixed(35.2).to_string(), "35.20");
-        assert_eq!(Fixed(0.005).to_string(), "0.01"); // every expected value here is what a browser's `toFixed(2)` writes
-        assert_eq!(Fixed(1.005).to_string(), "1.00");
-        assert_eq!(Fixed(1_234_567.895).to_string(), "1234567.90"); // as `toFixed(2)` writes it
-        assert_eq!(Fixed(0.995).to_string(), "0.99");
-        assert_eq!(Fixed(9.995).to_string(), "9.99");
-        assert_eq!(Fixed(99.995).to_string(), "100.00");
+    fn written(x: f64) -> String {
+        let mut out = String::new();
+        if let Some(t) = Tenths::of(x) {
+            t.push_to(&mut out);
+        }
+        out
     }
 
-    /// The fast path agrees with exact decimal formatting on every non-tie, over many values.
     #[test]
-    fn fast_path_matches_exact_formatting() {
-        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
-        for _ in 0..20_000 {
-            state ^= state << 13;
-            state ^= state >> 7;
-            state ^= state << 17;
-            #[expect(clippy::cast_precision_loss, reason = "test values")]
-            let x = ((state >> 11) as f64 / (1u64 << 53) as f64 - 0.5) * 2.0e4;
-            let exact = alloc::format!("{:.2}", libm::fabs(x));
-            let fast = Fixed(libm::fabs(x)).to_string();
-            // `{:.2}` rounds an exact tie to even; only ties may differ, and they are checked above
-            let tie = libm::fma(libm::fabs(x), 100.0, -(libm::floor(libm::fabs(x) * 100.0) + 0.5)) == 0.0;
-            if !tie {
-                assert_eq!(fast, exact, "{x:e}");
-            }
-        }
+    fn tenths_are_short() {
+        assert_eq!(written(12.5), "12.5");
+        assert_eq!(written(12.0), "12");
+        assert_eq!(written(0.5), ".5");
+        assert_eq!(written(-0.5), "-.5");
+        assert_eq!(written(-0.04), "0");
+        assert_eq!(written(0.0), "0");
+        assert_eq!(written(0.25), ".3");
+        assert_eq!(written(-0.25), "-.3");
+        assert_eq!(written(1234.96), "1235");
+        assert_eq!(written(f64::NAN), "");
+        assert_eq!(written(1.0e13), "");
     }
 }

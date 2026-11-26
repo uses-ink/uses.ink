@@ -1,5 +1,6 @@
-//! The reader theme's marks, compared with `fixture/marks.out`, which the mock's JS pen drew
-//! (`gen-marks.mjs`, since retired). Runs natively and on wasm, like `golden.rs`.
+//! The reader theme's marks, compared with `fixture/marks.out`. The geometry first matched the
+//! mock's JS pen (`gen-marks.mjs`) byte for byte; since 0038 the paths are written shorter, and
+//! this file is the reference. Runs natively and on wasm, like `golden.rs`.
 //! `FREEHAND_BLESS=1` rewrites the fixture, natively only.
 
 #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]

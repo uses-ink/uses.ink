@@ -134,7 +134,7 @@ impl Centreline {
 
     /// How long it is, along its points.
     pub fn length(&self) -> f64 {
-        self.0.windows(2).map(|pair| if let [a, b] = pair { libm::hypot(b.x - a.x, b.y - a.y) } else { 0.0 }).sum()
+        self.0.windows(2).map(|pair| if let [a, b] = pair { a.distance(*b) } else { 0.0 }).sum()
     }
 }
 
