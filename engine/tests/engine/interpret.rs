@@ -242,3 +242,13 @@ fn explain_filters_by_subject() {
     assert!(a.iter().all(|d| d.subject() == subject("a.md")));
     assert_eq!(u.explain(None).count(), u.decisions.len());
 }
+
+#[test]
+fn draft_false_does_not_select_a_vault_note() {
+    let tree = Tree::new().file(".obsidian/app.json", "{}").file("Private/a.md", "---\ndraft: false\n---\n");
+    let u = tree.understand(&Pinned::none());
+    let a = on::<code::Publish>(&u, "Private/a.md");
+    assert!(!a.value);
+    assert_eq!(a.evidence, Evidence::Default { reason: DefaultReason::NotSelected });
+    assert_eq!(u.site.unwrap().pages(), []);
+}

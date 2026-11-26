@@ -62,15 +62,17 @@ fronted! {
     Language => language;
 }
 
-/// `draft: true`, which means not published: the opposite of `publish`.
+/// `draft: true`, which means not published. It only ever testifies against publishing:
+/// `draft: false` says nothing, so it never selects a page of a vault or a private source
+/// (decision 0017), where only `publish: true` or `include` does.
 #[derive(Debug, Default)]
 pub(crate) struct Draft;
 
 impl<G: Sourced + ?Sized> Witness<Publish, G> for Draft {
     fn testify(&self, case: &Case<'_, Publish, G>, testimony: &mut Testimony<bool>) {
         let Some(source) = case.ground.source() else { return };
-        if let Some(draft) = &source.read.front.draft {
-            testimony.value(!draft.value, source.front(draft.span));
+        if let Some(draft) = source.read.front.draft.as_ref().filter(|draft| draft.value) {
+            testimony.value(false, source.front(draft.span));
         }
     }
 }

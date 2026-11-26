@@ -109,7 +109,7 @@ and reused across codes; what a witness means for a code is a trait the code imp
 |---|---|---|
 | `Pin<C>` | the `ink.toml` value, evidence `Config { span }` | |
 | `Front<C>` | the frontmatter field of `C` | `Fronted` |
-| `Draft` | `draft: true`, the opposite of `publish` | |
+| `Draft` | `draft: true` as not published; `draft: false` says nothing | |
 | `Heading` | the first level-1 heading | |
 | `Body` | the first paragraph, cut near a sentence end (a `Visit`) | |
 | `FileName<P>` | a parse of the file name, `P` the parser (`Dated`, `Stem`, `Repository`) | `Parse<C>` on `P` |
