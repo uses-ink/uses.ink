@@ -14,10 +14,14 @@ A decision code is a type, not an enum variant. Its value type, its subject and 
 together, so a `page.title` decision cannot hold a date.
 
 ```rust
-pub trait Code: Copy + Ord + 'static {
+pub trait Code: Copy + Ord + Hash + Default + fmt::Debug + Send + Sync + 'static {
     const NAME: &'static str;                 // "page.title", also the ink.toml path
+    const CODE: AnyCode;                      // the code, erased
     type Value: Value;                        // String, Option<When>, Vec<Tag>, Layout, ..
-    type Subject: Subject;                    // Site or File
+    type Subject: Subject;                    // decision::Site or decision::File
+    fn erase(decision: Decision<Self>) -> AnyDecision;                       // written by codes!
+    fn claim(decision: AnyDecision) -> Result<Decision<Self>, AnyDecision>;
+    fn view(decision: &AnyDecision) -> Option<&Decision<Self>>;
 }
 
 pub struct Decision<C: Code> {
@@ -28,25 +32,44 @@ pub struct Decision<C: Code> {
 }
 ```
 
-`codes!` declares the closed v1 set in one place (`Title => "page.title": String on File`) and
-generates the zero-sized code types, the erased `AnyDecision` enum that crosses serde, explain
-and WIT, and `Code` impls. It is the one macro the model has: the same impl over a list of
-types. Every consumer is generic over `C: Code`; only storage and the wire see the erased form.
+A subject kind is a type too: `decision::Site` and `decision::File(ContentPath)` implement
+`decision::Subject` (with `const SCOPE: Scope`) and convert to and from the erased
+`model::Subject` that diagnostics, storage and the wire use, refusing the other scope with a
+typed `Mismatch`.
 
-`Value` is the trait every decided value implements: `Display` for explain, `Eq` for comparing
-alternatives, and the conversions a format (frontmatter) and the config (TOML) need, each a trait
-of its own so a value type opts into the surfaces it appears on:
+`codes!` declares the closed v1 set in one place (`Title => "page.title" on File: String, keys
+["title"];`) and generates the zero-sized code types (`model::code::Title`), their `Code` impls,
+`Keyed` impls for codes with frontmatter keys, the erased `AnyCode` (name, scope, `ALL` in
+decision order) and the erased `AnyDecision` enum that crosses serde (tagged by the code's
+name), explain and WIT. It is the one macro the model has: the same impl over a list of types.
+Every consumer is generic over `C: Code`; only storage and the wire see the erased form, through
+`From<Decision<C>> for AnyDecision`, `TryFrom<AnyDecision> for Decision<C>` and
+`AnyDecision::get::<C>()`.
+
+`Value` is the trait every decided value implements: `Eq` for comparing alternatives, serde for
+storage, and `show` for explain (not `Display`: `Option<T>` and `Vec<T>` are values and cannot
+implement it; `Shown(&value)` is the `Display`). Each surface a value appears on is a trait of
+its own, so a value type opts into it:
 
 ```rust
-pub trait Value: Clone + Eq + fmt::Debug + fmt::Display + Serialize {}
-pub trait FromFront: Value { const KEYS: &'static [&'static str]; fn read(raw: Raw<'_>) -> Result<Self, Expected>; }
-pub trait Toml: Value { const SHAPE: Shape; fn read(item: Spanned<&Item>) -> Result<Self, Shape>; fn write(&self) -> Item; }
+pub trait Value: Clone + Eq + fmt::Debug + Serialize + DeserializeOwned { fn show(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result; }
+pub trait FromFront: Value { const WANTED: Wanted; fn read(raw: &Raw<'_>) -> Result<Self, Refusal>; fn many(raw: &Raw<'_>) -> Result<Vec<Self>, Refusal>; }
+pub trait Keyed: Code<Subject = File, Value: FromFront> { const KEYS: &'static [&'static str]; }
+pub trait Toml: Value { const SHAPE: Shape; fn read(item: Spanned<&Item>) -> Result<Self, Shape>; fn write(&self) -> Item; }   // in config
 ```
 
-Generic impls do the repetition once: `Option<T>` reads `false` as none for every `T: Toml`,
-`Vec<T>` reads arrays element by element with element spans, `String`, `bool`, `When`, `Slug`,
-`Language`, `Author`, `ContentPath` each implement the traits once. A new code needs no reader or
-writer of its own.
+Frontmatter keys belong to the code, not the value type: `String` is a title under `title` and a
+summary under `description` or `summary`, so `KEYS` is on `Keyed`. A format parses its syntax
+into `Raw` (null, a boolean or a number with its text as written, text, a list, a mapping, each
+with its span) and the value type reads that; a refusal is an `Expected` (what was wanted, one
+or a list, the span, the value type's own cause), and a `Refusal` holds every refused item of a
+list. `Toml` lives in the config crate, which owns `toml`; the model defines nothing for it.
+
+Generic impls do the repetition once: `Option<T>` reads null and `false` as none, `Vec<T>` reads
+null as empty and a list item by item, refusing the whole value with every bad item's span (a
+scalar is a list of one, except `Tag`, which also splits text at commas). `String`, `bool`,
+`When`, `Slug`, `Language`, `Author`, `Tag`, `PageKind`, `ContentPath` each implement the traits
+once. A new code needs no reader or writer of its own.
 
 ## 2. Every decision is a ladder of witnesses
 
@@ -73,7 +96,7 @@ reused across codes:
 | Witness | Testifies | Used by |
 |---|---|---|
 | `Pin<C>` | the `ink.toml` value, evidence `Config { span }` | every code |
-| `Front<C: FromFront>` | the frontmatter keys `C::KEYS` | title, date, updated, slug, tags, publish, kind, summary, language |
+| `Front<C: Keyed>` | the frontmatter keys `C::KEYS` | title, date, updated, slug, tags, publish, kind, summary, language |
 | `Heading` | the first level-1 heading | title |
 | `FileName<P>` | a parse of the file name, `P` the parser (date prefix, stem) | date, slug, title |
 | `History<F>` | an `Exact` history fact `F` (created, updated); a `NotAfter` fact is a rejection with `OnlyBound` | date, updated |
@@ -118,13 +141,19 @@ output is adding an artifact to that tuple.
 
 ```rust
 pub trait Visit {
-    fn block(&mut self, block: &Block) { walk::block(self, block) }
-    fn inline(&mut self, inline: &Inline) { walk::inline(self, inline) }
-    fn link(&mut self, target: &LinkTarget, children: &[Inline]) { walk::inlines(self, children) }
-    // one method per node kind with a default that recurses
+    fn block(&mut self, block: &Block) { block.walk(self) }
+    fn inline(&mut self, inline: &Inline) { inline.walk(self) }
+    fn link(&mut self, target: &LinkTarget, children: &[Inline]) { self.inlines(children) }
+    // document, footnote, blocks, item, definition, inlines, image, text: each defaults to
+    // the node's own walk
 }
-pub trait Fold { /* the same, returning a new node */ }
+pub trait Fold { /* the same methods, taking the node and returning its replacement */ }
+impl Block { pub fn walk<V: Visit + ?Sized>(&self, visit: &mut V); pub fn fold<F: Fold + ?Sized>(self, fold: &mut F) -> Self; }
 ```
+
+The default recursion lives on the nodes (`Document`, `Footnote`, `Block`, `Item`, `Definition`,
+`Inline` each have `walk` and `fold`), not in a module of free functions: a visitor that
+overrides a method calls `node.walk(self)` to keep descending.
 
 Link resolution is a `Fold` (unresolved targets become pages), the summary is a `Visit` that
 collects plain text, a theme's HTML is a `Visit` that writes through `unspliced`, outline and
