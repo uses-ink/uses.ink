@@ -7,7 +7,12 @@
 
 use std::sync::OnceLock;
 
+use engine::Record;
 use giallo::{HighlightOptions, HtmlRenderer, Registry, RenderOptions, ThemeVariant};
+use model::{Announcement, Diagnostic, Notice, Problem};
+use unspliced::{Raw, html};
+
+use super::Writer;
 
 /// The prefix of every class giallo writes.
 const PREFIX: &str = "hl-";
@@ -74,5 +79,33 @@ impl Highlighter {
     pub(crate) fn css(self) -> Result<String, String> {
         let (light, dark) = self.0.generate_dual_css(LIGHT, DARK, PREFIX).map_err(|error| error.to_string())?;
         Ok(format!("{light}\n@media (prefers-color-scheme: dark) {{\n{dark}}}\n"))
+    }
+}
+
+impl<R: Record + ?Sized> Writer<'_, R> {
+    /// A code block, highlighted when a grammar knows its language.
+    pub(super) fn code(&mut self, language: Option<&str>, text: &str) {
+        let plain = html! { pre { code { (text) } } };
+        let Some(language) = language else { return self.put(plain) };
+        let highlighted = match Highlighter::load() {
+            Ok(highlighter) => highlighter.highlight(language, text),
+            Err(reason) => Highlighted::Broken(reason.to_owned()),
+        };
+        match highlighted {
+            // giallo escapes the code's text and writes only spans with its own classes.
+            Highlighted::Html(html) => self.put(Raw::trusted(&html)),
+            Highlighted::Unknown => {
+                let notice = Announcement::CodeLanguageUnknown { language: language.to_owned() };
+                let subject = self.subject();
+                self.record.notice(Notice::new(notice).on(subject));
+                self.put(plain);
+            }
+            Highlighted::Broken(reason) => {
+                let problem = Problem::RenderPageFailed { reason };
+                let subject = self.subject();
+                self.record.diagnose(Diagnostic::new(problem).on(subject));
+                self.put(plain);
+            }
+        }
     }
 }

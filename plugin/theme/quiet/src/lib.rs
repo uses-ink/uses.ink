@@ -7,17 +7,15 @@
 //! `ink:theme` WIT world: when themes become components, this crate speaks the generated WIT
 //! types instead and the engine dependency goes.
 //!
-//! [`document`] holds the Document-to-HTML walk, apart from the page around it, so a second theme
-//! can reuse it.
+//! `document` writes a page's document as one [`model::Visit`]; `page` writes the page around
+//! it.
 
-pub mod document;
+mod document;
 mod page;
 mod style;
 
-use std::cell::RefCell;
-
-use engine::{BaseUrl, File, Html, Record, Said, Theme};
-use model::{Diagnostic, MediaType, Page, Route, Site};
+use engine::{BaseUrl, File, Html, Record, Theme};
+use model::{Diagnostic, MediaType, Page, Problem, Route, Site, Subject};
 
 use document::Highlighter;
 use page::Layout;
@@ -62,13 +60,16 @@ impl Theme for Quiet {
         files
     }
 
+    /// A page the theme could not write whole is `render.page.failed`: a bug in the theme.
     fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
-        let said = RefCell::new(Said::default());
-        let layout = Layout { page, site, base: &self.base, said: &said };
-        let html = Html::from(layout.html());
-        let said = said.into_inner();
-        said.diagnostics.into_iter().for_each(|diagnostic| record.diagnose(diagnostic));
-        said.notices.into_iter().for_each(|notice| record.notice(notice));
-        Ok(html)
+        let mut html = String::new();
+        let layout = Layout { page, site, base: &self.base };
+        match layout.write(&mut html, record) {
+            Ok(()) => Ok(Html::from(html)),
+            Err(unwritten) => {
+                let problem = Problem::RenderPageFailed { reason: unwritten.to_string() };
+                Err(Diagnostic::new(problem).on(Subject::File(page.file.clone())))
+            }
+        }
     }
 }

@@ -1,16 +1,14 @@
 //! The page around a document: the head, the site's header and navigation, the title with its
 //! date and tags, the home's listing, and the footer.
 
-use std::cell::RefCell;
 use std::fmt;
 
-use engine::BaseUrl;
+use engine::{BaseUrl, Record};
 use model::{Block, Page, PageKind, Site, When};
-use unspliced::{Halt, Lazy, Render, Sink, Url, html};
+use unspliced::{HERE, Halt, Lazy, Render, Sink, Split, Url, html};
 
-use crate::document::Body;
+use crate::document::{Unwritten, Writer};
 use crate::style::quiet;
-use engine::Said;
 
 /// The routes the theme links from every page's head.
 pub(crate) const STYLE: &str = "/style.css";
@@ -24,7 +22,6 @@ pub(crate) struct Layout<'a> {
     pub(crate) page: &'a Page,
     pub(crate) site: &'a Site,
     pub(crate) base: &'a BaseUrl,
-    pub(crate) said: &'a RefCell<Said>,
 }
 
 /// A page's `<title>`: the site alone on the home, else `<page> - <site>`.
@@ -53,12 +50,12 @@ impl Layout<'_> {
         self.site.pages().iter().any(|page| page.kind == PageKind::Post && page.date.is_some())
     }
 
-    /// The page's HTML.
-    pub(crate) fn html(&self) -> String {
+    /// Writes the page into `out`, its document where the shell holds [`HERE`], recording what
+    /// the document's writer finds worth saying into `record`.
+    pub(crate) fn write<R: Record + ?Sized>(&self, out: &mut dyn Sink, record: &mut R) -> Result<(), Unwritten> {
         let (page, site) = (self.page, self.site);
         let identity = site.identity();
-        let body = Body::new(page, site, self.said);
-        html! {
+        let shell = html! {
             doctype
             html lang=(identity.language.as_ref()) {
                 (Lazy(|out: &mut dyn Sink| self.head(out)))
@@ -74,7 +71,7 @@ impl Layout<'_> {
                                     h1 { (&page.title) }
                                 }
                                 (Lazy(|out: &mut dyn Sink| self.meta(out)))
-                                (body)
+                                (HERE)
                             }
                             @if page.kind == PageKind::Home { (Lazy(|out: &mut dyn Sink| self.listing(out))) }
                         }
@@ -82,8 +79,11 @@ impl Layout<'_> {
                     }
                 }
             }
-        }
-        .html()
+        };
+        let split = Split::new(&shell).map_err(Unwritten::Marks)?;
+        split.head(out).map_err(Unwritten::Halt)?;
+        Writer::new(page, site, out, record).write()?;
+        split.tail(out).map_err(Unwritten::Halt)
     }
 
     fn head(&self, out: &mut dyn Sink) -> Result<(), Halt> {
