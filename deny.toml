@@ -15,6 +15,9 @@ exceptions = [
     { crate = "comrak", allow = ["BSD-2-Clause"] },
     { crate = "encoding_rs", allow = ["BSD-3-Clause"] },
     { crate = "finl_unicode", allow = ["Unicode-DFS-2016"] },
+    # gix's hash tables and its pure-Rust zlib, for the git source (0036)
+    { crate = "foldhash", allow = ["Zlib"] },
+    { crate = "zlib-rs", allow = ["Zlib"] },
     # axum's router, for `ink preview`
     { crate = "matchit", allow = ["BSD-3-Clause"] },
 ]

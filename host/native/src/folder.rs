@@ -85,7 +85,7 @@ impl Folder {
         let observed =
             Observed::new(vec![Ability::Snapshot], vec![Lack::new(Ability::History, AnyCode::Date, Gap::Absent)]);
         let snapshot = Snapshot::new(version, entries, facts, observed).map_err(Refused::Snapshot)?;
-        Ok(Read { snapshot, skipped })
+        Ok(Read { snapshot, skipped, pointers: Vec::new() })
     }
 }
 

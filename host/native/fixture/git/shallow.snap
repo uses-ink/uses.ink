@@ -1,0 +1,35 @@
+---
+source: fixture/src/lib.rs
+---
+version GitCommit(Oid("b471fab60edf4f78f5c52a75a995b7ee22394f85"))
+has [Snapshot, History]
+lacks History for page.date as Shallow { commit: Oid("a1a45d00328c817502dc6ab96e0eaf20d40f35d8"), bound: 2024-01-05T00:00:00Z }
+lacks History for page.updated as Shallow { commit: Oid("a1a45d00328c817502dc6ab96e0eaf20d40f35d8"), bound: 2024-01-05T00:00:00Z }
+lacks History for page.date as Renames { moved: 1 }
+a.md (11 bytes)
+  created not after 2024-01-05T00:00:00Z from history up to a1a45d0032
+  updated not after 2024-01-05T00:00:00Z from history up to a1a45d0032
+big.bin (67 bytes)
+  created 2024-01-06T00:00:00Z from commit b471fab60e
+  updated 2024-01-06T00:00:00Z from commit b471fab60e
+gone.md (5 bytes)
+  created 2024-01-06T00:00:00Z from commit b471fab60e
+  updated 2024-01-06T00:00:00Z from commit b471fab60e
+link.md (11 bytes)
+  created 2024-01-06T00:00:00Z from commit b471fab60e
+  updated 2024-01-06T00:00:00Z from commit b471fab60e
+new.md (6 bytes)
+  created 2024-01-06T00:00:00Z from commit b471fab60e
+  updated 2024-01-06T00:00:00Z from commit b471fab60e
+notes/side.md (5 bytes)
+  created not after 2024-01-05T00:00:00Z from history up to a1a45d0032
+  updated not after 2024-01-05T00:00:00Z from history up to a1a45d0032
+notes/up.md (6 bytes)
+  created 2024-01-06T00:00:00Z from commit b471fab60e
+  updated 2024-01-06T00:00:00Z from commit b471fab60e
+skipped vendor/lib as Submodule
+skipped alias as Link
+pointer big.bin
+notice source.submodule.skipped
+notice source.link.skipped
+notice source.lfs.pointer

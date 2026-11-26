@@ -1,10 +1,10 @@
-//! Why a folder was not read. Each refusal becomes a [`Diagnostic`] with a catalog code at the
+//! Why a folder or a git repository was not read. Each refusal becomes a [`Diagnostic`] with a catalog code at the
 //! boundary.
 
 use std::fmt;
 use std::path::PathBuf;
 
-use model::{Bytes, ContentPath, Diagnostic, PathError, Problem, SnapshotError, Subject};
+use model::{Bytes, ContentPath, Diagnostic, PathError, Problem, SnapshotError, Subject, VersionError};
 
 use crate::blob::StoreError;
 
@@ -83,6 +83,42 @@ pub enum Refused {
     Store(StoreError),
     /// The files do not make a snapshot.
     Snapshot(SnapshotError),
+    /// The git repository could not be opened.
+    Repository {
+        /// The folder given.
+        path: PathBuf,
+        /// What git said.
+        source: gix::Error,
+    },
+    /// The revision names no commit.
+    Revision {
+        /// The revision, as given.
+        written: String,
+        /// What git said.
+        source: gix::Error,
+    },
+    /// An object of the repository could not be read.
+    Git {
+        /// What git said.
+        source: gix::Error,
+    },
+    /// Two of the history's trees could not be compared.
+    Diff {
+        /// What git said.
+        source: gix::diff::tree::Error,
+    },
+    /// git gave an object id the model does not take.
+    Id {
+        /// Why it does not.
+        source: VersionError,
+    },
+    /// A link of the commit's tree that leads to nothing the tree holds.
+    Broken {
+        /// The link.
+        path: ContentPath,
+        /// What it holds.
+        target: PathBuf,
+    },
 }
 
 impl fmt::Display for Refused {
@@ -104,6 +140,14 @@ impl fmt::Display for Refused {
             Self::Total { size, limit } => write!(out, "the folder holds at least {size}; a site may hold {limit}"),
             Self::Store(_) => write!(out, "a file's bytes could not be stored"),
             Self::Snapshot(_) => write!(out, "the files do not make a snapshot"),
+            Self::Repository { path, .. } => write!(out, "{} is not a git repository that can be read", path.display()),
+            Self::Revision { written, .. } => write!(out, "`{written}` names no commit of the repository"),
+            Self::Git { .. } => write!(out, "an object of the repository could not be read"),
+            Self::Diff { .. } => write!(out, "two trees of the history could not be compared"),
+            Self::Id { .. } => write!(out, "git gave an object id that is not one"),
+            Self::Broken { path, target } => {
+                write!(out, "{path} links to {}, which the commit does not hold", target.display())
+            }
         }
     }
 }
@@ -115,7 +159,11 @@ impl std::error::Error for Refused {
             Self::Name { source, .. } => Some(source),
             Self::Store(source) => Some(source),
             Self::Snapshot(source) => Some(source),
-            Self::Encoding { .. }
+            Self::Repository { source, .. } | Self::Revision { source, .. } | Self::Git { source } => Some(source),
+            Self::Diff { source } => Some(source),
+            Self::Id { source } => Some(source),
+            Self::Broken { .. }
+            | Self::Encoding { .. }
             | Self::Outside { .. }
             | Self::Folders { .. }
             | Self::Special { .. }
@@ -150,6 +198,18 @@ impl From<&Refused> for Diagnostic {
             Refused::Total { size, limit } => Self::new(Problem::SourceBudgetBytes { size: *size, limit: *limit }),
             Refused::Store(error) => Self::new(Problem::SourceBlobUnwritable { reason: error.to_string() }),
             Refused::Snapshot(error) => Self::new(Problem::SourceRootUnreadable { reason: error.to_string() }),
+            Refused::Repository { source, .. } | Refused::Git { source } => {
+                Self::new(Problem::SourceRepositoryUnreadable { reason: source.to_string() })
+            }
+            Refused::Diff { source } => Self::new(Problem::SourceRepositoryUnreadable { reason: source.to_string() }),
+            Refused::Id { source } => Self::new(Problem::SourceRepositoryUnreadable { reason: source.to_string() }),
+            Refused::Revision { written, source } => {
+                Self::new(Problem::SourceRevisionUnknown { written: written.clone(), reason: source.to_string() })
+            }
+            Refused::Broken { path, target } => {
+                let written = target.display().to_string();
+                Self::new(Problem::SourceLinkBroken { path: path.clone(), written }).on(on(path))
+            }
         }
     }
 }

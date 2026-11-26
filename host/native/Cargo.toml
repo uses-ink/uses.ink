@@ -1,6 +1,6 @@
 [package]
 name = "uses-ink-host-native"
-description = "The builder's capabilities on a local disk: a folder read into a snapshot, and blob stores"
+description = "The builder's capabilities on a local disk: a folder or a git repository read into a snapshot, and blob stores"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,7 +12,13 @@ publish.workspace = true
 arborium.workspace = true
 arborium-theme.workspace = true
 engine.workspace = true
+gix.workspace = true
 model.workspace = true
+
+[dev-dependencies]
+fixture.workspace = true
+# test repositories are written object by object
+gix.workspace = true
 
 [lints]
 workspace = true
