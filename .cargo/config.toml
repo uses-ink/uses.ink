@@ -1,0 +1,6 @@
+[alias]
+xtask = "run --quiet --package xtask --"
+
+# Golden fixtures run on wasm too: `cargo test -p freehand --target wasm32-wasip2`.
+[target.wasm32-wasip2]
+runner = "wasmtime"

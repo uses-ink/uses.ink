@@ -1,0 +1,21 @@
+# The design tokens of uses.ink: every colour and face, once. `cargo xtask token` writes them
+# into `src/generated.rs` (the pen's palette, the CSS custom properties); `cargo xtask check`
+# fails when that file is stale.
+
+# The paint box: ink for lines, fills for the bucket and the highlighter.
+[colour]
+ink = "#000000"     # pencil lines and text
+pen = "#e8170b"     # the red note pen
+pencil = "#5c5c5c"  # quiet text
+paper = "#ffffff"
+bucket = "#ffff00"  # Paint's yellow
+sky = "#80ffff"
+mint = "#80ff80"
+pink = "#ff9ad5"    # the pencil's eraser
+cloud = "#e6e6e6"
+
+# Font stacks, first choice first.
+[face]
+hand = ["Gaegu", "system-ui", "sans-serif"]
+mono = ["Monaspace Radon", "ui-monospace", "monospace"]
+reader = ["Literata", "Georgia", "serif"]

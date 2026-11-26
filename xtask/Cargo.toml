@@ -1,0 +1,23 @@
+[package]
+name = "xtask"
+description = "Repo tasks: cargo xtask token | brand | check"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+freehand.workspace = true
+token.workspace = true
+unspliced.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml = { workspace = true, features = ["preserve_order"] }
+quote = "1.0.47"
+proc-macro2 = "1.0.107"
+prettyplease = "0.3.0"
+syn = { version = "3.0.10", features = ["full"] }
+heck = "0.5.0"
+
+[lints]
+workspace = true

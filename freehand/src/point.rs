@@ -1,0 +1,111 @@
+//! Points and the vector arithmetic the outline needs, in the order perfect-freehand does it.
+
+use core::ops::{Add, Mul, Sub};
+
+/// A point, or a vector between two.
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct Point {
+    /// Across, to the right.
+    pub x: f64,
+    /// Down.
+    pub y: f64,
+}
+
+impl Point {
+    /// The point at `x`, `y`.
+    pub const fn new(x: f64, y: f64) -> Self {
+        Self { x, y }
+    }
+
+    /// The distance to `other`.
+    pub fn distance(self, other: Self) -> f64 {
+        libm::hypot(self.y - other.y, self.x - other.x)
+    }
+
+    pub(crate) fn distance_squared(self, other: Self) -> f64 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        dx * dx + dy * dy
+    }
+
+    pub(crate) fn length(self) -> f64 {
+        libm::hypot(self.x, self.y)
+    }
+
+    /// The unit vector of this one; a zero vector gives NaN, as in perfect-freehand.
+    pub(crate) fn unit(self) -> Self {
+        let length = self.length();
+        Self::new(self.x / length, self.y / length)
+    }
+
+    /// Turned a quarter, clockwise on screen.
+    pub(crate) fn perpendicular(self) -> Self {
+        Self::new(self.y, -self.x)
+    }
+
+    pub(crate) fn dot(self, other: Self) -> f64 {
+        self.x * other.x + self.y * other.y
+    }
+
+    /// The point `t` of the way to `other`.
+    pub(crate) fn lerp(self, other: Self, t: f64) -> Self {
+        self + (other - self) * t
+    }
+
+    /// Turned by `angle` radians around `centre`.
+    pub(crate) fn rotate(self, centre: Self, angle: f64) -> Self {
+        let (s, c) = (libm::sin(angle), libm::cos(angle));
+        let px = self.x - centre.x;
+        let py = self.y - centre.y;
+        Self::new(px * c - py * s + centre.x, px * s + py * c + centre.y)
+    }
+
+    /// Halfway to `other`.
+    #[expect(clippy::manual_midpoint, reason = "the browser's `(a + b) / 2`, for the same bits")]
+    pub(crate) fn mid(self, other: Self) -> Self {
+        Self::new((self.x + other.x) / 2.0, (self.y + other.y) / 2.0)
+    }
+}
+
+impl Add for Point {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self::new(self.x + other.x, self.y + other.y)
+    }
+}
+
+impl Sub for Point {
+    type Output = Self;
+    fn sub(self, other: Self) -> Self {
+        Self::new(self.x - other.x, self.y - other.y)
+    }
+}
+
+impl Mul<f64> for Point {
+    type Output = Self;
+    fn mul(self, n: f64) -> Self {
+        Self::new(self.x * n, self.y * n)
+    }
+}
+
+/// A traced point with the pressure the hand put on it, from 0 to 1. A point with no pressure
+/// of its own takes perfect-freehand's default.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Pressured {
+    /// Where.
+    pub at: Point,
+    /// How hard, when known.
+    pub pressure: Option<f64>,
+}
+
+impl Pressured {
+    /// A point pressed `pressure` hard.
+    pub const fn new(at: Point, pressure: f64) -> Self {
+        Self { at, pressure: Some(pressure) }
+    }
+
+    /// A point with no pressure of its own.
+    pub const fn bare(at: Point) -> Self {
+        Self { at, pressure: None }
+    }
+}

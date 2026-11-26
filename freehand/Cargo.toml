@@ -1,0 +1,17 @@
+[package]
+name = "freehand"
+description = "Deterministic hand-drawn strokes: seeded wobble, pencil outlines and highlighter fills, identical on every target"
+version = "0.1.0"
+edition.workspace = true
+license = "MIT OR Apache-2.0"
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+keywords = ["drawing", "svg", "stroke", "freehand", "no-std"]
+categories = ["graphics", "no-std"]
+
+[dependencies]
+libm.workspace = true
+
+[lints]
+workspace = true

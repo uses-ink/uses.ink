@@ -1,0 +1,64 @@
+# The little guy: a stick figure holding a yellow pencil with a pink eraser. `cargo xtask brand`
+# draws each drawing into `brand/<name>.svg` with the freehand pen; `open` names a second file
+# drawn without the parts marked `head` (no head outline, for large sizes).
+#
+# Coordinates are pixels of the drawing. Named polygons are placed by each drawing's `place`
+# (scaled, then moved), so the pencil is written once.
+
+[polygon]
+pencil-body = [[60, 44], [86, 14], [96, 23], [70, 54]]
+pencil-eraser = [[86, 14], [92, 7], [102, 16], [96, 23]]
+pencil-tip = [[60, 44], [52, 62], [70, 54]]
+
+# The full figure, 120 px.
+[[drawing]]
+name = "logo"
+open = "logo-open"
+size = [120, 120]
+hand = { wobble = 0.6, tremor = 0.5 }
+shift = [2.5, 2]
+place = { offset = [0, 0], scale = 1 }
+fill = [
+    { shape = { ellipse = { centre = [33.5, 28], radius = [19, 20] } }, colour = "paper", head = true },
+    { shape = { polygon = "pencil-body" }, colour = "bucket" },
+    { shape = { polygon = "pencil-eraser" }, colour = "pink" },
+]
+stroke = [
+    { line = { ring = { centre = [36, 30], radius = [20, 21] } }, weight = 3.4, head = true },
+    { line = { points = [[29, 26], [30, 26]] }, weight = 4.6 },
+    { line = { points = [[42, 25], [43, 25]] }, weight = 4.6 },
+    { line = { quad = { from = [27, 35], control = [36, 44], to = [45, 34] } }, weight = 3 },
+    { line = { quad = { from = [36, 51], control = [37, 72], to = [35, 90] } }, weight = 3.4 },
+    { line = { segment = { from = [35, 90], to = [22, 116] } }, weight = 3.4 },
+    { line = { segment = { from = [35, 90], to = [50, 114] } }, weight = 3.4 },
+    { line = { quad = { from = [36, 62], control = [24, 72], to = [18, 86] } }, weight = 3.4 },
+    { line = { quad = { from = [37, 60], control = [50, 58], to = [60, 50] } }, weight = 3.4 },
+    { line = { chain = "pencil-body" }, weight = 3.2 },
+    { line = { chain = "pencil-eraser" }, weight = 3.2 },
+    { line = { chain = "pencil-tip" }, weight = 3.2 },
+    { line = { segment = { from = [53, 60], to = [54, 59] } }, weight = 4.6 },
+]
+
+# The small cut: head and pencil, heavier lines, 64 px. Also the favicon.
+[[drawing]]
+name = "mark"
+open = "mark-open"
+copies = ["favicon"]
+size = [64, 64]
+hand = { wobble = 0.6, tremor = 0.5 }
+shift = [2.5, 2]
+place = { offset = [-2, 4], scale = 0.62 }
+fill = [
+    { shape = { ellipse = { centre = [19.5, 28], radius = [15.5, 16.5] } }, colour = "paper", head = true },
+    { shape = { polygon = "pencil-body" }, colour = "bucket" },
+    { shape = { polygon = "pencil-eraser" }, colour = "pink" },
+]
+stroke = [
+    { line = { ring = { centre = [22, 30], radius = [16.5, 17.5] } }, weight = 4.4, head = true },
+    { line = { points = [[16, 26], [17, 26]] }, weight = 6 },
+    { line = { points = [[27, 25], [28, 25]] }, weight = 6 },
+    { line = { quad = { from = [14, 35], control = [22, 43], to = [30, 34] } }, weight = 4.2 },
+    { line = { chain = "pencil-body" }, weight = 4.2 },
+    { line = { chain = "pencil-eraser" }, weight = 4.2 },
+    { line = { chain = "pencil-tip" }, weight = 4.2 },
+]

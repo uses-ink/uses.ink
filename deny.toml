@@ -1,0 +1,21 @@
+# Dependency gates: licences we can ship under AGPL-3.0-or-later and MIT OR Apache-2.0,
+# advisories, and where crates come from. Run by `cargo deny check` in CI.
+
+[graph]
+all-features = true
+
+[advisories]
+yanked = "deny"
+
+[licenses]
+allow = ["MIT", "Apache-2.0", "Unicode-3.0", "AGPL-3.0-or-later"]
+confidence-threshold = 0.93
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

@@ -1,0 +1,49 @@
+[workspace]
+resolver = "3"
+members = ["freehand", "token", "xtask"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/uses-ink/uses.ink"
+rust-version = "1.100"
+publish = false
+
+# Every crate of ours by its short name, so code says `token::Colour`.
+[workspace.dependencies]
+freehand = { path = "freehand" }
+token = { package = "uses-ink-token", path = "token" }
+libm = "0.2.16"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+toml = "1.2.3"
+unspliced = "0.1.1"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unused_must_use = "deny"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# No panics in library code: typed errors instead.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+indexing_slicing = "deny"
+# Nothing is silent: output goes through typed events, not print.
+print_stdout = "deny"
+print_stderr = "deny"
+dbg_macro = "deny"
+# Hacks are explained.
+allow_attributes_without_reason = "deny"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+

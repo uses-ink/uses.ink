@@ -1,0 +1,3 @@
+[profile.default]
+# A test over 100 ms is a bug (docs/conventions.md, Tests).
+slow-timeout = { period = "100ms", terminate-after = 50 }
