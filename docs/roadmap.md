@@ -35,9 +35,10 @@ draws the logo, mark and favicon from `brand/figure.toml`, byte for byte the JS 
 spelled `#rrggbb`), and `gen-logo.mjs` is gone. `freehand::mark` draws the reader marks (line,
 frame, ring, patch) byte for byte the mock's, and `gen-marks.mjs` is gone. `cargo xtask token` also
 writes `token/token.css` (`--ink`, `--hand`, as the mocks name them). `freehand-web` is the pen in
-the browser (0034); the mock draws through it and `pen-core.js` is gone. Left: the three spikes, the
-PSL submission. Pushed as orphan `main`; old branches, tags and releases deleted from the remote
-(local mirror kept outside the repo).
+the browser (0034); the mock draws through it and `pen-core.js` is gone. The three spikes are
+answered: wasmtime (0035), gix (0036), workers-rs (0037; containers could not start under `wrangler
+dev` on this host, workers-sdk #15394). Left: the PSL submission (owner). Pushed as orphan `main`;
+old branches, tags and releases deleted from the remote (local mirror kept outside the repo).
 
 **Exit:** `cargo xtask check` passes in CI; the three spikes have recorded answers; the logo is
 built by the pen crate.
