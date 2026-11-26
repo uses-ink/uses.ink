@@ -1,0 +1,46 @@
+---
+source: fixture/src/lib.rs
+---
+the site
+  site.root          top                      by default
+  site.layout        flat                     by default
+index.md
+  file.ignore        false                    by default
+one/Note.md
+  file.ignore        false                    by default
+two/Note.md
+  file.ignore        false                    by default
+index.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         Two notes                from the heading of index.md, bytes 0..11
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          index                    from the name of index.md
+  page.tags          []                       by default
+  page.summary       Which note is meant?     from the text of index.md
+one/Note.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         Note one                 from the heading of one/Note.md, bytes 0..10
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          note                     from the name of one/Note.md
+  page.tags          []                       by default
+  page.summary       none                     by default
+two/Note.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         Note two                 from the heading of two/Note.md, bytes 0..10
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          note                     from the name of two/Note.md
+  page.tags          []                       by default
+  page.summary       none                     by default
+the site
+  site.home          index.md                 from the name of index.md
+  site.title         Two notes                from the heading of index.md, bytes 0..11
+  site.description   Which note is meant?     from the text of index.md
+  site.authors       []                       by default
+  site.language      en                       by default
+  site.nav           []                       by default

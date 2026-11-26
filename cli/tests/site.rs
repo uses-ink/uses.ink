@@ -1,7 +1,8 @@
 //! `ink` on every folder under `fixture/site/`, in process: each build compared with
 //! `fixture/site/<name>.snap` (the exit code, the diagnostics, the manifest and the HTML of every
-//! page), and the M1 exit tests: a build twice is the same deploy, `ink explain --pin` written as
-//! `ink.toml` builds the same deploy again, and no reader page runs script.
+//! page), `ink explain` on each compared with `fixture/explain/<name>.snap`, and the M1 exit
+//! tests: a build twice is the same deploy, `ink explain --pin` written as `ink.toml` builds the
+//! same deploy again, and no reader page runs script.
 //!
 //! The blog has code, so tests that build it load giallo's grammars and carry `highlight` in their
 //! name for its budget (`.config/nextest.toml`).
@@ -122,8 +123,8 @@ fn report(name: &str) -> String {
     report
 }
 
-#[test]
-fn highlight_sites_build_as_expected() {
+/// The name of every site under `fixture/site/`, sorted.
+fn sites() -> Vec<String> {
     let mut names: Vec<String> = std::fs::read_dir(fixtures())
         .unwrap()
         .map(|entry| entry.unwrap().path())
@@ -132,7 +133,12 @@ fn highlight_sites_build_as_expected() {
         .collect();
     names.sort();
     assert!(names.len() >= 6, "the fixtures are missing: {names:?}");
-    for name in names {
+    names
+}
+
+#[test]
+fn highlight_sites_build_as_expected() {
+    for name in sites() {
         let mut settings = insta::Settings::clone_current();
         settings.set_snapshot_path(fixtures());
         settings.set_prepend_module_to_snapshot(false);
@@ -200,6 +206,17 @@ fn explain_shows_decisions_with_evidence() {
     let json: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(json["schema"], "uses.explain/v1");
     assert!(json["decisions"].as_array().unwrap().len() > 10);
+}
+
+/// `ink explain` on every site, compared with `fixture/explain/<name>.snap`. Not its JSON: that
+/// holds the file times the folder reports.
+#[test]
+fn explain_shows_every_site_as_expected() {
+    let cases = sites().into_iter().map(|name| {
+        let (_, lines, _) = ink(&["explain", "-C", fixtures().join(&name).to_str().unwrap()]);
+        (name, lines)
+    });
+    fixture::cases("fixture/explain", cases);
 }
 
 #[test]

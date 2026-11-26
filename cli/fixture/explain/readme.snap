@@ -1,0 +1,41 @@
+---
+source: fixture/src/lib.rs
+---
+the site
+  site.root          top                      by default
+  site.layout        flat                     by default
+LICENSE
+  file.ignore        true                     from the name of LICENSE
+README.md
+  file.ignore        false                    by default
+src/main.rs
+  file.ignore        false                    by default
+usage.md
+  file.ignore        false                    by default
+README.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         My tool                  from the heading of README.md, bytes 0..9
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          readme                   from the name of README.md
+  page.tags          []                       by default
+  page.summary       It does one thing. See usage. from the text of README.md
+usage.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         Usage                    from the heading of usage.md, bytes 0..7
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          usage                    from the name of usage.md
+  page.tags          []                       by default
+  page.summary       Run my-tool --help.      from the text of usage.md
+src/main.rs
+  page.publish       false                    by default
+the site
+  site.home          README.md                from the name of README.md
+  site.title         My tool                  from the heading of README.md, bytes 0..9
+  site.description   It does one thing. See usage. from the text of README.md
+  site.authors       []                       by default
+  site.language      en                       by default
+  site.nav           ["usage.md"]             by default

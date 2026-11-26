@@ -28,6 +28,7 @@ theme-quiet.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+fixture.workspace = true
 insta.workspace = true
 
 [lints]

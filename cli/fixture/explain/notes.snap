@@ -1,0 +1,35 @@
+---
+source: fixture/src/lib.rs
+---
+the site
+  site.root          {"folder":"notes"}       because notes is there
+  site.layout        flat                     by default
+notes/kettle.md
+  file.ignore        false                    by default
+notes/tea.md
+  file.ignore        false                    by default
+notes/kettle.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         Kettle                   from the heading of notes/kettle.md, bytes 0..8
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          kettle                   from the name of notes/kettle.md
+  page.tags          []                       by default
+  page.summary       Descale it with vinegar. Related: tea. from the text of notes/kettle.md
+notes/tea.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         Tea                      from the heading of notes/tea.md, bytes 0..5
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          tea                      from the name of notes/tea.md
+  page.tags          []                       by default
+  page.summary       Water just off the boil. See kettle. from the text of notes/tea.md
+the site
+  site.home          none                     by default
+  site.title         notes                    because notes is there
+  site.description   none                     by default
+  site.authors       []                       by default
+  site.language      en                       by default
+  site.nav           ["notes/kettle.md","notes/tea.md"] by default

@@ -1,0 +1,35 @@
+---
+source: fixture/src/lib.rs
+---
+the site
+  site.root          top                      by default
+  site.layout        flat                     by default
+index.md
+  file.ignore        false                    by default
+odd.md
+  file.ignore        false                    by default
+index.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         Broken                   from the heading of index.md, bytes 0..8
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          index                    from the name of index.md
+  page.tags          []                       by default
+  page.summary       One page has frontmatter that does not parse: that one. from the text of index.md
+odd.md
+  page.publish       true                     by default
+  page.kind          page                     by default
+  page.title         Odd                      from the heading of odd.md, bytes 25..30
+  page.date          none                     by default
+  page.updated       none                     by default
+  page.slug          odd                      from the name of odd.md
+  page.tags          []                       by default
+  page.summary       The page is still built, without its frontmatter. from the text of odd.md
+the site
+  site.home          index.md                 from the name of index.md
+  site.title         Broken                   from the heading of index.md, bytes 0..8
+  site.description   One page has frontmatter that does not parse: that one. from the text of index.md
+  site.authors       []                       by default
+  site.language      en                       by default
+  site.nav           ["odd.md"]               by default
