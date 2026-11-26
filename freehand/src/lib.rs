@@ -4,7 +4,8 @@
 //! [`Hand`] traces it with wobble, a slight bow and tremor, seeded by a [`Seed`], and gives each
 //! point a pressure. A [`Pencil`] turns the traced line into the filled outline of its ink, a
 //! port of perfect-freehand's `getStroke`; a [`Highlighter`] turns corners into one smooth
-//! marker pass that misses its lines. Both give a [`Path`], written as SVG path data.
+//! marker pass that misses its lines. Both give a [`Path`], written as SVG path data. The
+//! [`mark`]s a theme draws (rules, frames, rings, highlights) are built from these.
 //!
 //! The outline is a port of [perfect-freehand](https://github.com/steveruizok/perfect-freehand)
 //! 1.2.3 by Steve Ruiz, MIT licensed (`LICENSE-PERFECT-FREEHAND`).
@@ -30,6 +31,7 @@ mod centreline;
 mod chance;
 mod hand;
 mod highlighter;
+pub mod mark;
 mod number;
 mod outline;
 mod path;
