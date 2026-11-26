@@ -1,0 +1,14 @@
+[package]
+name = "spike-gix"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+gix = { version = "0.91.0", default-features = false, features = ["blocking-http-transport-reqwest-rust-tls", "max-performance", "sha1", "blob-diff"] }
+
+[profile.release]
+debug = 0
+strip = "debuginfo"

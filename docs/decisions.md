@@ -241,3 +241,16 @@ keyed by plugin digest plus `Engine::precompile_compatibility_hash`; authorities
 types crate, since the generated types derive wasmtime traits. **Why:** the measured overhead is
 small next to the work a page does. **Reversal:** a real theme where instantiation or imports
 exceed 20% of render time.
+
+## 0036 Git history through gix: full clone for history, one walk for dates
+
+Accepted, spike (`spikes/gix/`). The `git` capability uses `gix` 0.91. When history is wanted it
+clones in full; depth 1 plus `deepen` is for a snapshot first or a bounded window, never as the
+road to full history. File dates come from one walk over history with a parallel tree diff per
+commit (merges skipped, renames not followed), and files older than a shallow window get
+`NotAfter`. **Why:** on tldr (40,944 files, 24,903 commits) the dates take about 2 s on 4
+threads in 300 MiB; a direct full clone takes 7 s against 17 s for depth 1 plus a full deepen.
+The 5 s budget holds for the dates, not for the fetch. gix has no blobless partial clone, so the
+`filter=blob:none` idea in `research/architecture.md` is dropped. **Reversal:** gix gains
+partial clone, or rename following turns out to matter for real sources (1.8% of tldr's files
+were created by a pure move).
