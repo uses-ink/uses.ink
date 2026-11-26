@@ -191,13 +191,6 @@ fields = { decision = "decision" }
 message = "`{decision}` was never decided"
 fix = "report it: this is a bug in uses.ink"
 
-[diagnostic."engine.pin.mismatched"]
-severity = "error"
-fault = "ours"
-fields = { decision = "decision", found = "decision" }
-message = "the pin of `{decision}` holds a value of `{found}`"
-fix = "report it: this is a bug in uses.ink"
-
 [diagnostic."engine.header.invalid"]
 severity = "error"
 fault = "ours"

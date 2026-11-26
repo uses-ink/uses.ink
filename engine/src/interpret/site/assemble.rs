@@ -78,7 +78,7 @@ impl Assemble {
 
     /// Every file left out, with the decision that left it out.
     fn excluded(scope: &Scope<'_>, journal: &Journal) -> Vec<Excluded> {
-        let outside = scope.outside.iter().map(|entry| Excluded::new(entry.path.clone(), AnyCode::Root.into()));
+        let outside = scope.outside.iter().map(|entry| Excluded::new(entry.path.clone(), AnyCode::Root));
         let inside = scope.inside.iter().filter_map(|file| {
             let subject = File(file.entry.path.clone());
             let because = if journal.value::<Ignored>(&subject) == Some(&true) {
@@ -88,7 +88,7 @@ impl Assemble {
             } else {
                 return None;
             };
-            Some(Excluded::new(subject.0, because.into()))
+            Some(Excluded::new(subject.0, because))
         });
         outside.chain(inside).collect()
     }

@@ -7,8 +7,8 @@ mod written;
 use std::error::Error;
 use std::fmt;
 
-use model::decision::{Decision, Mismatch, Scope};
-use model::{AnyCode, AnyDecision, Code, Each, Span, Subject, When};
+use model::decision::{Decision, Scope};
+use model::{AnyCode, AnyDecision, Code, Span, Subject, Typed, When};
 use toml_edit::{DocumentMut, InlineTable, Item, TableLike, TomlError, Value};
 
 pub(crate) use written::Written;
@@ -31,7 +31,7 @@ impl fmt::Display for KeyPath<'_> {
 
 impl Document {
     /// See [`crate::pins`].
-    pub(crate) fn pins<'a, D: Pinnable + 'a>(decisions: impl IntoIterator<Item = &'a D>) -> String {
+    pub(crate) fn pins<'a>(decisions: impl IntoIterator<Item = &'a AnyDecision>) -> String {
         let mut document = Self(DocumentMut::new());
         let unwritten = NotPinned(document.put(decisions).into_iter().filter_map(Result::err).collect());
         if !unwritten.0.is_empty() {
@@ -41,56 +41,13 @@ impl Document {
     }
 
     /// See [`crate::pins_into`].
-    pub(crate) fn pins_into<'a, D: Pinnable + 'a>(
+    pub(crate) fn pins_into<'a>(
         existing: &str,
-        decisions: impl IntoIterator<Item = &'a D>,
+        decisions: impl IntoIterator<Item = &'a AnyDecision>,
     ) -> Result<String, PinsError> {
         let mut document = Self(existing.parse().map_err(|error| PinsError::Syntax(SyntaxError(error)))?);
         document.put(decisions).into_iter().collect::<Result<(), _>>()?;
         Ok(document.0.to_string())
-    }
-}
-
-/// A decision [`pins`] can write: an [`AnyDecision`], and, until the CLI is ported onto typed
-/// decisions, the untyped [`model::Decision`].
-pub trait Pinnable {
-    /// Its code.
-    fn code(&self) -> AnyCode;
-
-    /// What it is about.
-    fn subject(&self) -> Subject;
-
-    /// The decision as code `C`, which [`Pinnable::code`] names.
-    fn typed<C: Code>(&self) -> Result<Decision<C>, Mismatch>;
-}
-
-impl Pinnable for AnyDecision {
-    fn code(&self) -> AnyCode {
-        Self::code(self)
-    }
-
-    fn subject(&self) -> Subject {
-        Self::subject(self)
-    }
-
-    fn typed<C: Code>(&self) -> Result<Decision<C>, Mismatch> {
-        self.get::<C>().cloned().ok_or(Mismatch::Code { expected: C::CODE, found: self.code() })
-    }
-}
-
-// HACK(the engine records `AnyDecision`s and the CLI passes them, phase 3): the untyped decision
-// the CLI still has; a subject of the wrong scope is a `Mismatch`, written as a comment.
-impl Pinnable for model::Decision {
-    fn code(&self) -> AnyCode {
-        self.decided.code().into()
-    }
-
-    fn subject(&self) -> Subject {
-        self.subject.clone()
-    }
-
-    fn typed<C: Code>(&self) -> Result<Decision<C>, Mismatch> {
-        AnyDecision::try_from(self.clone())?.try_into()
     }
 }
 
@@ -101,8 +58,8 @@ pub(crate) struct Document(DocumentMut);
 impl Document {
     /// Pins each decision, in file order (sitewide first, then by table, by file and by the
     /// code's place in decision order), and says how each went.
-    fn put<'a, D: Pinnable + 'a>(&mut self, decisions: impl IntoIterator<Item = &'a D>) -> Vec<Result<(), PinsError>> {
-        let mut ordered: Vec<(Place, Subject, &D)> = decisions
+    fn put<'a>(&mut self, decisions: impl IntoIterator<Item = &'a AnyDecision>) -> Vec<Result<(), PinsError>> {
+        let mut ordered: Vec<(Place, Subject, &AnyDecision)> = decisions
             .into_iter()
             .map(|decision| (Place::from(decision.code()), decision.subject(), decision))
             .collect();
@@ -110,7 +67,7 @@ impl Document {
             let key = |place: &Place, subject| (place.code.scope() == Scope::File, place.table, subject, place.code);
             key(a, a_subject).cmp(&key(b, b_subject))
         });
-        ordered.into_iter().map(|(place, _, decision)| place.code.each(&mut Put { document: self, decision })).collect()
+        ordered.into_iter().map(|(_, _, decision)| decision.each(&mut Put(self))).collect()
     }
 
     /// Pins `decision` at its place.
@@ -140,19 +97,15 @@ impl Document {
     }
 }
 
-/// One decision being pinned, as its code.
+/// The document a decision is pinned into, as its code's type.
 #[derive(Debug)]
-struct Put<'a, D> {
-    document: &'a mut Document,
-    decision: &'a D,
-}
+struct Put<'a>(&'a mut Document);
 
-impl<C: Code<Value: Toml>, D: Pinnable> Each<C> for Put<'_, D> {
+impl<C: Code<Value: Toml>> Typed<C> for Put<'_> {
     type Out = Result<(), PinsError>;
 
-    fn each(&mut self) -> Self::Out {
-        let decision = self.decision.typed::<C>().map_err(|source| PinsError::Mismatch { code: C::CODE, source })?;
-        self.document.pin(&decision)
+    fn each(&mut self, decision: &Decision<C>) -> Self::Out {
+        self.0.pin(decision)
     }
 }
 
@@ -298,13 +251,6 @@ pub enum PinsError {
         /// Why the value cannot be written.
         source: Unwritable,
     },
-    /// An untyped decision whose subject or value is not of its code.
-    Mismatch {
-        /// The code it says it is.
-        code: AnyCode,
-        /// What does not match.
-        source: Mismatch,
-    },
 }
 
 impl fmt::Display for PinsError {
@@ -315,7 +261,6 @@ impl fmt::Display for PinsError {
                 write!(out, "`{code}` cannot be pinned on {subject}: a key on its way in ink.toml is not a table")
             }
             Self::Value { code, subject, .. } => write!(out, "`{code}` on {subject} cannot be written as a pin"),
-            Self::Mismatch { code, .. } => write!(out, "a `{code}` decision cannot be written as a pin"),
         }
     }
 }
@@ -325,7 +270,6 @@ impl Error for PinsError {
         match self {
             Self::Syntax(error) => Some(error),
             Self::Value { source, .. } => Some(source),
-            Self::Mismatch { source, .. } => Some(source),
             Self::NotTable { .. } => None,
         }
     }

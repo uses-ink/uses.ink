@@ -89,9 +89,6 @@ impl Message<'_> {
             Problem::EngineDecisionMissing { decision, .. } => {
                 write!(out, "`{decision}` was never decided")
             }
-            Problem::EnginePinMismatched { decision, found, .. } => {
-                write!(out, "the pin of `{decision}` holds a value of `{found}`")
-            }
             Problem::EngineHeaderInvalid { header, .. } => {
                 write!(out, "the engine's own `{header}` header does not parse")
             }
@@ -210,7 +207,6 @@ impl Fix<'_> {
             Problem::SourceBlobMissing { .. } => true,
             Problem::EngineDecisionRepeated { .. } => true,
             Problem::EngineDecisionMissing { .. } => true,
-            Problem::EnginePinMismatched { .. } => true,
             Problem::EngineHeaderInvalid { .. } => true,
             Problem::EngineRouteInvalid { .. } => true,
             Problem::EnginePathInvalid { .. } => true,
@@ -310,9 +306,6 @@ impl Fix<'_> {
                 write!(out, "report it: this is a bug in uses.ink")
             }
             Problem::EngineDecisionMissing { .. } => {
-                write!(out, "report it: this is a bug in uses.ink")
-            }
-            Problem::EnginePinMismatched { .. } => {
                 write!(out, "report it: this is a bug in uses.ink")
             }
             Problem::EngineHeaderInvalid { .. } => {

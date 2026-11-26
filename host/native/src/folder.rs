@@ -4,7 +4,7 @@ use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
 use model::{
-    Ability, Bytes, ContentPath, DecisionCode, Entry, FileFacts, Hash, Known, Lack, Observed, Provenance, Snapshot,
+    Ability, AnyCode, Bytes, ContentPath, Entry, FileFacts, Hash, Known, Lack, Observed, Provenance, Snapshot,
     Timestamp, UnknownReason, Version,
 };
 
@@ -93,7 +93,7 @@ impl Folder {
             return Err(Refused::Total { size: Bytes(total), limit: self.budget.total });
         }
         let version = Version::Folder { hash: Tree(&entries).hash() };
-        let observed = Observed::new(vec![Ability::Snapshot], vec![Lack::new(Ability::History, DecisionCode::Date)]);
+        let observed = Observed::new(vec![Ability::Snapshot], vec![Lack::new(Ability::History, AnyCode::Date)]);
         let snapshot = Snapshot::new(version, entries, facts, observed).map_err(Refused::Snapshot)?;
         Ok(Read { snapshot, skipped })
     }

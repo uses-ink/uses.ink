@@ -113,8 +113,8 @@ fixture <- nothing of ours; every crate may take it as a dev-dependency, none as
 Sketches; WIT is the source for anything that crosses the plugin boundary, Rust types are
 generated from it. Full sketches with commentary: `research/architecture.md` section 4. The
 types as built live in `model/`; where they differ from these sketches, `model/` is right:
-a decision's code and value are one enum (`Decided`, one variant per code), and a
-diagnostic's code, severity, fault and typed fields are one generated enum (`Problem`) from
+a decision is typed by its code (`Decision<C>`, erased as `AnyDecision` for storage and the
+wire; `code.md` section 1), and a diagnostic's code, severity, fault and typed fields are one generated enum (`Problem`) from
 `diag/catalog.toml`.
 
 ```rust
@@ -129,7 +129,7 @@ enum Known<T> { Exact { value: T, from: Provenance }, NotAfter { value: T, from:
 enum Ability { Snapshot, History, Watch(WatchMode), Private }
 struct Observed { has: Vec<Ability>, lacks: Vec<Lack> }  // Lack carries the decision it affects
 
-struct Decision { code: DecisionCode, subject: Subject, chosen: Value, evidence: Evidence, rejected: Vec<Alternative> }
+struct Decision<C: Code> { subject: C::Subject, value: C::Value, evidence: Evidence, rejected: Vec<Alternative<C::Value>> }
 // the pin is derived from code + subject, never stored
 
 struct Site { layout: Layout, home: PageId, pages: Vec<Page>, assets: Vec<Asset>, nav: Vec<NavItem>, excluded: Vec<Excluded> }
@@ -416,7 +416,7 @@ A build is an append-only list of typed events, identical in the terminal (`ink 
 enum BuildEvent {
     Started { build: BuildId, trigger: Trigger, inputs: BuildInputs },
     SourceFetched { snapshot: SnapshotId, files: u32, bytes: Bytes, observed: Observed },
-    Decided(Decision),
+    Decided(AnyDecision),
     Diagnosed(Diagnostic),
     Noticed(Notice),                         // defaults chosen, caches cold, retries
     Rendered { units: u32, reused: u32, bytes: Bytes },

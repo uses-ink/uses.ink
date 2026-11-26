@@ -44,7 +44,10 @@ decision order) and the erased `AnyDecision` enum that crosses serde (tagged by 
 name), explain and WIT. It is the one macro the model has: the same impl over a list of types.
 Every consumer is generic over `C: Code`; only storage and the wire see the erased form, through
 `From<Decision<C>> for AnyDecision`, `TryFrom<AnyDecision> for Decision<C>` and
-`AnyDecision::get::<C>()`.
+`AnyDecision::get::<C>()`. Work on any code is written once, generically: `AnyCode::each` runs an
+`Each<C>` for the code a name picks, and `AnyDecision::each` runs a `Typed<C>` on a decision as
+its code's type (config pins every decision this way); either compiles only when every code
+meets the impl's bounds.
 
 `Value` is the trait every decided value implements: `Eq` for comparing alternatives, serde for
 storage, and `show` for explain (not `Display`: `Option<T>` and `Vec<T>` are values and cannot

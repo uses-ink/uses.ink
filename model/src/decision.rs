@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use crate::code::Code;
 use crate::{ContentPath, Provenance, Span};
 
-pub(crate) mod decided;
 mod subject;
 
 pub use subject::{File, Mismatch, Scope, Site, Subject};

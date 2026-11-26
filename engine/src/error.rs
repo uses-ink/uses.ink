@@ -86,8 +86,8 @@ impl Error {
     /// The catalog's problem it is.
     pub fn problem(&self) -> Problem {
         match self {
-            Self::Repeated { code, .. } => Problem::EngineDecisionRepeated { decision: (*code).into() },
-            Self::Missing { code, .. } => Problem::EngineDecisionMissing { decision: (*code).into() },
+            Self::Repeated { code, .. } => Problem::EngineDecisionRepeated { decision: *code },
+            Self::Missing { code, .. } => Problem::EngineDecisionMissing { decision: *code },
             Self::Header { name, .. } => Problem::EngineHeaderInvalid { header: name.name().to_owned() },
             Self::Route { reserved, .. } => Problem::EngineRouteInvalid { written: reserved.as_ref().to_owned() },
             Self::Path { page, .. } => Problem::EnginePathInvalid { written: page.as_ref().to_owned() },

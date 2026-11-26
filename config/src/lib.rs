@@ -39,18 +39,18 @@ mod write;
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use model::{AnyCode, AnyDecision, AnyOf, Code, ContentPath, Decided, Diagnostic, Each, Evidence, Span, Subject};
+use model::{AnyCode, AnyDecision, AnyOf, Code, ContentPath, Diagnostic, Span, Subject};
 
 pub use pattern::{Pattern, PatternError, Patterns};
 pub use pin::Pinned;
 pub use theme::{IdPart, Theme, ThemeId, ThemeIdError, Token};
-pub use write::{Pinnable, PinsError, SyntaxError, Unwritable};
+pub use write::{PinsError, SyntaxError, Unwritable};
 
 /// A whole `ink.toml` that pins every decision: sitewide tables first, then the per-file tables
 /// (`[file."..."]`, then `[page."..."]`), each sorted by path, keys in decision order. A later
 /// decision with the same code and subject replaces an earlier one. A decision that cannot be
 /// written is listed in a comment at the end, with its causes, never dropped.
-pub fn pins<'a, D: Pinnable + 'a>(decisions: impl IntoIterator<Item = &'a D>) -> String {
+pub fn pins<'a>(decisions: impl IntoIterator<Item = &'a AnyDecision>) -> String {
     write::Document::pins(decisions)
 }
 
@@ -60,9 +60,9 @@ pub fn pins<'a, D: Pinnable + 'a>(decisions: impl IntoIterator<Item = &'a D>) ->
 /// # Errors
 ///
 /// [`PinsError`] when `existing` is not TOML, or a decision cannot be written in it.
-pub fn pins_into<'a, D: Pinnable + 'a>(
+pub fn pins_into<'a>(
     existing: &str,
-    decisions: impl IntoIterator<Item = &'a D>,
+    decisions: impl IntoIterator<Item = &'a AnyDecision>,
 ) -> Result<String, PinsError> {
     write::Document::pins_into(existing, decisions)
 }
@@ -101,14 +101,6 @@ impl Config {
         self.pins.get(&subject)?.get(&C::CODE)?.get::<C>()
     }
 
-    /// The pin of `code` on `subject` as the untyped value the engine's `Pins` takes today, or
-    /// `None` when there is none or `subject` is of the other scope.
-    // HACK(the engine's `Pins` and the CLI's `Configured` move onto `Config::pin::<C>`, phase 3):
-    // the one bridge from typed pins to `Decided`; remove it with them.
-    pub fn decided(&self, code: AnyCode, subject: &Subject) -> Option<(Decided, Span)> {
-        code.each(&mut Untyped { config: self, subject })
-    }
-
     /// Every file `ink.toml` pins something on, in path order, so a caller can say when one of
     /// them is not in the snapshot.
     pub fn pinned_files(&self) -> impl Iterator<Item = &ContentPath> {
@@ -136,25 +128,6 @@ impl Config {
     /// Records `pinned` for `C` on `subject`.
     pub(crate) fn insert<C: Code>(&mut self, subject: Subject, pinned: Pinned<C>) {
         self.pins.entry(subject).or_default().insert(C::CODE, AnyOf::new::<C>(pinned));
-    }
-}
-
-/// [`Config::decided`] for one code.
-struct Untyped<'a> {
-    config: &'a Config,
-    subject: &'a Subject,
-}
-
-impl<C: Code> Each<C> for Untyped<'_> {
-    type Out = Option<(Decided, Span)>;
-
-    fn each(&mut self) -> Self::Out {
-        let subject = C::Subject::try_from(self.subject.clone()).ok()?;
-        let pinned = self.config.pin::<C>(&subject)?;
-        let span = pinned.span;
-        let typed = model::decision::Decision::<C>::new(subject, pinned.value.clone(), Evidence::Config { span });
-        let untyped = model::Decision::from(AnyDecision::from(typed));
-        Some((untyped.decided, span))
     }
 }
 

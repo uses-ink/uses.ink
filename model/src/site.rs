@@ -4,7 +4,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ContentPath, DecisionCode, Document, Hash, Language, Route, Slug, When};
+use crate::{AnyCode, ContentPath, Document, Hash, Language, Route, Slug, When};
 
 /// Where a site's content starts in the snapshot.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -248,11 +248,11 @@ impl Asset {
 #[non_exhaustive]
 pub struct Excluded {
     pub path: ContentPath,
-    pub because: DecisionCode,
+    pub because: AnyCode,
 }
 
 impl Excluded {
-    pub fn new(path: ContentPath, because: DecisionCode) -> Self {
+    pub fn new(path: ContentPath, because: AnyCode) -> Self {
         Self { path, because }
     }
 }

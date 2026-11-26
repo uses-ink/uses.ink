@@ -115,7 +115,7 @@ impl<P: Pins> Site<'_, P> {
     /// Says each of `paths` that `C` names and that is not a published page.
     fn unpublished<'p, C: Code>(&self, paths: impl IntoIterator<Item = &'p ContentPath>, journal: &mut Journal) {
         for path in paths.into_iter().filter(|path| !self.published.contains(*path)) {
-            let problem = Problem::PinTargetUnpublished { decision: C::CODE.into(), path: path.clone() };
+            let problem = Problem::PinTargetUnpublished { decision: C::CODE, path: path.clone() };
             journal.diagnose(Diagnostic::new(problem).on(Subject::Site));
         }
     }

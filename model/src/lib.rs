@@ -1,9 +1,8 @@
 //! The types every part of uses.ink speaks.
 //!
 //! - Content: [`Hash`], [`ContentPath`], [`Snapshot`] and the facts a source knows.
-//! - Interpretation: typed decision codes ([`code`]) and their [`decision::Decision`], erased
-//!   as [`AnyDecision`] for storage and the wire; the untyped [`Decision`] and [`Decided`] stay
-//!   until every crate is ported, and convert to and from [`AnyDecision`] without loss.
+//! - Interpretation: typed decision codes ([`code`]) and their [`Decision`], erased as
+//!   [`AnyDecision`] for storage and the wire, each value worded by its code ([`Word`]).
 //! - Values: [`Value`], and [`FromFront`] for what frontmatter can hold.
 //! - The result: [`Site`], [`Page`], [`Document`], read with [`Visit`] and rewritten with
 //!   [`Fold`].
@@ -34,9 +33,8 @@ mod time;
 mod url;
 mod value;
 
-pub use code::{AnyCode, AnyDecision, AnyOf, Code, Each, Family, Keyed, UnknownDecision, Word, Worded};
-pub use decision::decided::{Alternative, Decided, Decision, DecisionCode};
-pub use decision::{DefaultReason, Evidence, Rejection};
+pub use code::{AnyCode, AnyDecision, AnyOf, Code, Each, Family, Keyed, Typed, UnknownDecision, Word, Worded};
+pub use decision::{Alternative, Decision, DefaultReason, Evidence, Rejection};
 pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
 pub use document::{
     Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Footnote, FootnoteName, ImageSource, Inline,

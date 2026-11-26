@@ -11,8 +11,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::decision::decided::{self, Decided, DecisionCode};
-use crate::decision::{Alternative, Decision, Evidence, File, Mismatch, Scope, Site, Subject};
+use crate::decision::{Decision, Evidence, File, Mismatch, Scope, Site, Subject};
 use crate::value::{FromFront, Value};
 use crate::{Author, ContentPath, PageKind, Tag, When};
 
@@ -58,6 +57,17 @@ pub trait Each<C: Code> {
 
     /// Does the work for `C`.
     fn each(&mut self) -> Self::Out;
+}
+
+/// Work done on a decision of one code `C`, as its type, picked at run time by
+/// [`AnyDecision::each`]. Like [`Each`], `each` compiles only when every code meets the impl's
+/// bounds.
+pub trait Typed<C: Code> {
+    /// What the work gives back, the same for every code.
+    type Out;
+
+    /// Does the work on `decision`.
+    fn each(&mut self, decision: &Decision<C>) -> Self::Out;
 }
 
 /// A type made from each code, so [`AnyOf`] can hold one of any code. A zero-sized marker
@@ -161,10 +171,9 @@ impl std::error::Error for UnknownDecision {}
 /// - [`AnyCode`], the erased code, with [`AnyCode::ALL`], its name and its scope;
 /// - [`AnyDecision`], the erased decision, serialized with the code's name as its `code` tag
 ///   and worded through each code's [`Word`], which every code must implement;
-/// - [`AnyOf`], one value of any [`Family`] per code, and [`AnyCode::each`], which runs an
-///   [`Each`] for the code it names;
-/// - the conversions between [`AnyDecision`] and the untyped [`decided::Decision`], and
-///   between [`AnyCode`] and [`DecisionCode`], until those go.
+/// - [`AnyOf`], one value of any [`Family`] per code, [`AnyCode::each`], which runs an
+///   [`Each`] for the code it names, and [`AnyDecision::each`], which runs a [`Typed`] on the
+///   decision as its code's type.
 ///
 /// The same impls over a list of types, which a generic cannot write.
 ///
@@ -323,67 +332,20 @@ macro_rules! codes {
                 }
             }
 
+            /// Does `work` on the decision, as the type of its code.
+            pub fn each<E, O>(&self, work: &mut E) -> O
+            where
+                $(E: Typed<$name, Out = O>,)*
+            {
+                match self {
+                    $(Self::$name(decision) => <E as Typed<$name>>::each(work, decision),)*
+                }
+            }
+
             /// Writes its value in its code's words ([`Word`]).
             pub fn word(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
                     $(Self::$name(decision) => <$name as Word>::word(&decision.value, out),)*
-                }
-            }
-        }
-
-        impl From<DecisionCode> for AnyCode {
-            fn from(code: DecisionCode) -> Self {
-                match code {
-                    $(DecisionCode::$name => Self::$name,)*
-                }
-            }
-        }
-
-        impl From<AnyCode> for DecisionCode {
-            fn from(code: AnyCode) -> Self {
-                match code {
-                    $(AnyCode::$name => Self::$name,)*
-                }
-            }
-        }
-
-        impl TryFrom<decided::Decision> for AnyDecision {
-            type Error = Mismatch;
-
-            /// Refuses a subject of the wrong scope and a rejected value of another code, which
-            /// the untyped decision can hold and the typed one cannot.
-            fn try_from(old: decided::Decision) -> Result<Self, Self::Error> {
-                let decided::Decision { decided, subject, evidence, rejected } = old;
-                match decided {
-                    $(
-                        Decided::$name(value) => {
-                            let rejected = rejected
-                                .into_iter()
-                                .map(|lost| match lost.decided {
-                                    Decided::$name(value) => Ok(Alternative::new(value, lost.evidence, lost.because)),
-                                    other => Err(Mismatch::Code { expected: AnyCode::$name, found: other.code().into() }),
-                                })
-                                .collect::<Result<_, _>>()?;
-                            let subject = subject.try_into()?;
-                            Ok(Self::$name(Decision { subject, value, evidence, rejected }))
-                        }
-                    )*
-                }
-            }
-        }
-
-        impl From<AnyDecision> for decided::Decision {
-            fn from(decision: AnyDecision) -> Self {
-                match decision {
-                    $(
-                        AnyDecision::$name(Decision { subject, value, evidence, rejected }) => {
-                            let rejected = rejected
-                                .into_iter()
-                                .map(|lost| decided::Alternative::new(Decided::$name(lost.value), lost.evidence, lost.because))
-                                .collect();
-                            Self { decided: Decided::$name(value), subject: subject.into(), evidence, rejected }
-                        }
-                    )*
                 }
             }
         }

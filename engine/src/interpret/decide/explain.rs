@@ -25,7 +25,7 @@ pub(crate) trait Explain: Word {
 
     /// `notice.default.chosen` for `value`.
     fn chosen(value: &Self::Value) -> Announcement {
-        Announcement::NoticeDefaultChosen { decision: Self::CODE.into(), value: Worded::<Self>::new(value).to_string() }
+        Announcement::NoticeDefaultChosen { decision: Self::CODE, value: Worded::<Self>::new(value).to_string() }
     }
 }
 

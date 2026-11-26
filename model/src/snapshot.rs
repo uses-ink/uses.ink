@@ -5,7 +5,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Bytes, ContentPath, DecisionCode, Hash, Timestamp};
+use crate::{AnyCode, Bytes, ContentPath, Hash, Timestamp};
 
 mod version;
 
@@ -134,11 +134,11 @@ impl Observed {
 #[non_exhaustive]
 pub struct Lack {
     pub ability: Ability,
-    pub consequence: DecisionCode,
+    pub consequence: AnyCode,
 }
 
 impl Lack {
-    pub fn new(ability: Ability, consequence: DecisionCode) -> Self {
+    pub fn new(ability: Ability, consequence: AnyCode) -> Self {
         Self { ability, consequence }
     }
 }

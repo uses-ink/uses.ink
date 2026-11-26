@@ -214,7 +214,7 @@ impl Kind {
             Self::Count => quote! { u64 },
             Self::Bytes => quote! { Bytes },
             Self::Span => quote! { Span },
-            Self::Decision => quote! { DecisionCode },
+            Self::Decision => quote! { AnyCode },
         }
     }
 
@@ -225,7 +225,7 @@ impl Kind {
             Self::Route => Some("Route"),
             Self::Bytes => Some("Bytes"),
             Self::Span => Some("Span"),
-            Self::Decision => Some("DecisionCode"),
+            Self::Decision => Some("AnyCode"),
             Self::Text | Self::Count => None,
         }
     }

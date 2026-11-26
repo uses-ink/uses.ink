@@ -1,8 +1,6 @@
 use model::code::{self, Code, Keyed};
 use model::decision::{self, File, Mismatch, Scope, Site};
-use model::{
-    AnyCode, AnyDecision, ContentPath, Decided, DecisionCode, DefaultReason, Evidence, Rejection, Span, Subject, Tag,
-};
+use model::{AnyCode, AnyDecision, ContentPath, DefaultReason, Evidence, Rejection, Span, Subject, Tag};
 
 fn path(text: &str) -> ContentPath {
     ContentPath::parse(text).unwrap()
@@ -24,17 +22,11 @@ fn described<C: Code>() -> (&'static str, Scope) {
 }
 
 #[test]
-fn every_code_is_the_untyped_code_of_the_same_name_and_scope() {
-    let typed: Vec<(&str, Scope)> = AnyCode::ALL.iter().map(|code| (code.name(), code.scope())).collect();
-    let untyped: Vec<(&str, Scope)> = DecisionCode::ALL
-        .iter()
-        .map(|code| (code.name(), if code.is_sitewide() { Scope::Site } else { Scope::File }))
-        .collect();
-    assert_eq!(typed, untyped);
+fn every_code_is_listed_once_by_its_name() {
     for code in AnyCode::ALL {
-        assert_eq!(AnyCode::from(DecisionCode::from(*code)), *code);
         assert_eq!(code.name().parse::<AnyCode>(), Ok(*code));
         assert_eq!(code.to_string(), code.name());
+        assert_eq!(AnyCode::ALL.iter().filter(|other| *other == code).count(), 1);
     }
     assert!("page.nope".parse::<AnyCode>().is_err());
 }
@@ -57,10 +49,9 @@ fn a_typed_decision_erases_and_comes_back() {
     assert_eq!(erased.get::<code::Title>(), Some(&title()));
     assert_eq!(erased.get::<code::SiteTitle>(), None);
     assert_eq!(decision::Decision::<code::Title>::try_from(erased.clone()), Ok(title()));
-    assert_eq!(
-        decision::Decision::<code::Date>::try_from(erased),
-        Err(Mismatch::Code { expected: AnyCode::Date, found: AnyCode::Title })
-    );
+    let refused = decision::Decision::<code::Date>::try_from(erased).unwrap_err();
+    assert_eq!(refused, Mismatch::Code { expected: AnyCode::Date, found: AnyCode::Title });
+    assert_eq!(refused.to_string(), "the decision is `page.title`, not `page.date`");
 }
 
 #[test]
@@ -99,36 +90,6 @@ fn a_stored_tag_is_checked_against_its_text() {
     assert_eq!(serde_json::from_value::<Tag>(json).unwrap(), tag);
     let stale = serde_json::json!({ "slug": "other", "written": "Rust Notes" });
     assert!(serde_json::from_value::<Tag>(stale).is_err());
-}
-
-#[test]
-fn untyped_decisions_convert_without_loss() {
-    let tags = vec![Tag::new("rust").unwrap()];
-    let rejected = model::Alternative::new(Decided::Tags(vec![]), pinned(), Rejection::OnlyBound);
-    let untyped = [
-        model::Decision::new(Decided::Title("T".to_owned()), Subject::File(path("a.md")), pinned()),
-        model::Decision::new(Decided::Tags(tags), Subject::File(path("a.md")), pinned()).rejecting(rejected),
-        model::Decision::new(Decided::Home(None), Subject::Site, pinned()),
-        model::Decision::new(Decided::Root(model::Root::Top), Subject::Site, pinned()),
-    ];
-    for old in untyped {
-        let erased = AnyDecision::try_from(old.clone()).unwrap();
-        assert_eq!(erased.code(), AnyCode::from(old.code()));
-        assert_eq!(model::Decision::from(erased), old);
-    }
-    let typed = AnyDecision::from(title());
-    assert_eq!(AnyDecision::try_from(model::Decision::from(typed.clone())), Ok(typed));
-}
-
-#[test]
-fn an_untyped_decision_that_mixes_codes_or_scopes_is_refused() {
-    let on_site = model::Decision::new(Decided::Title("T".to_owned()), Subject::Site, pinned());
-    assert_eq!(AnyDecision::try_from(on_site), Err(Mismatch::Scope { expected: Scope::File, found: Scope::Site }));
-    let mixed = model::Decision::new(Decided::Title("T".to_owned()), Subject::File(path("a.md")), pinned())
-        .rejecting(model::Alternative::new(Decided::Publish(true), pinned(), Rejection::Outranked));
-    let refused = AnyDecision::try_from(mixed).unwrap_err();
-    assert_eq!(refused, Mismatch::Code { expected: AnyCode::Title, found: AnyCode::Publish });
-    assert_eq!(refused.to_string(), "the decision is `page.publish`, not `page.title`");
 }
 
 #[test]

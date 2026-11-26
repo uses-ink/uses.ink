@@ -138,7 +138,7 @@ fn ignore_takes_exclude_then_include_then_rules() {
     }
     assert!(!ignored(".well/kept.md"));
     assert!(!ignored("a.md"));
-    let because = AnyCode::Ignored.into();
+    let because = AnyCode::Ignored;
     let excluded = u.site.unwrap().excluded().iter().filter(|e| e.because == because).count();
     assert_eq!(excluded, 4);
 }
@@ -149,7 +149,7 @@ fn root_moves_into_the_only_content_folder() {
     assert_eq!(site::<code::Root>(&u).value, Root::Folder(path("content")));
     let built = u.site.unwrap();
     assert_eq!(built.pages()[0].route.as_str(), "/a");
-    assert_eq!(built.excluded()[0].because, AnyCode::Root.into());
+    assert_eq!(built.excluded()[0].because, AnyCode::Root);
     let top = Tree::new().file("about.md", "x\n").file("content/a.md", "x\n").understand(&Pinned::none());
     assert_eq!(site::<code::Root>(&top).value, Root::Top);
     assert!(top.notices.iter().any(|n| n.code() == "notice.default.chosen" && n.subject == Some(Subject::Site)));

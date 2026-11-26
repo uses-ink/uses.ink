@@ -106,7 +106,7 @@ impl Undated {
         }
         let bound = decision.rejected.iter().find(|lost| lost.because == Rejection::OnlyBound);
         Some(match bound.and_then(|lost| lost.value) {
-            Some(bound) => Announcement::FactDateBound { decision: Date::CODE.into(), bound: bound.to_string() },
+            Some(bound) => Announcement::FactDateBound { decision: Date::CODE, bound: bound.to_string() },
             None => Date::chosen(&None),
         })
     }
