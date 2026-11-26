@@ -5,7 +5,8 @@
 //!   as [`AnyDecision`] for storage and the wire; the untyped [`Decision`] and [`Decided`] stay
 //!   until every crate is ported, and convert to and from [`AnyDecision`] without loss.
 //! - Values: [`Value`], and [`FromFront`] for what frontmatter can hold.
-//! - The result: [`Site`], [`Page`], [`Document`].
+//! - The result: [`Site`], [`Page`], [`Document`], read with [`Visit`] and rewritten with
+//!   [`Fold`].
 //! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`].
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
 //!   `cargo xtask diag` generates from `diag/catalog.toml`.
@@ -38,8 +39,8 @@ pub use decision::decided::{Alternative, Decided, Decision, DecisionCode};
 pub use decision::{DefaultReason, Evidence, Rejection};
 pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
 pub use document::{
-    Alignment, Anchor, Block, CalloutKind, Definition, Document, Footnote, FootnoteName, ImageSource, Inline, Item,
-    Level, LevelError, LinkTarget, Task,
+    Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Footnote, FootnoteName, ImageSource, Inline,
+    Item, Level, LevelError, LinkTarget, Task, Visit,
 };
 pub use format::{Front, Read, Spanned};
 pub use generated::{Announcement, Problem};

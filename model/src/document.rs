@@ -7,6 +7,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ContentPath, ExternalUrl, PageId, Slug};
 
+mod fold;
+mod visit;
+
+pub use fold::Fold;
+pub use visit::Visit;
+
 /// A page's body.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
