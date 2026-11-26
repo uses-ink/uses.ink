@@ -1,12 +1,12 @@
 //! Where generated files go: written, or compared with what is on disk.
 
-use std::io::Write as _;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use proc_macro2::TokenStream;
 
 use crate::error::Error;
+use crate::process::Process;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
@@ -117,22 +117,10 @@ impl Output {
 }
 
 fn rustfmt(root: &Path, path: &str, text: &str) -> Result<String, Error> {
-    let fail = |why: String| Error::Rustfmt { path: path.into(), why };
-    let mut child = Command::new("rustfmt")
+    let mut command = Command::new("rustfmt");
+    command
         .args(["--edition", "2024", "--emit", "stdout", "--config-path"])
         .arg(root.join("rustfmt.toml"))
-        .current_dir(root)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| fail(e.to_string()))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(text.as_bytes()).map_err(|e| fail(e.to_string()))?;
-    }
-    let done = child.wait_with_output().map_err(|e| fail(e.to_string()))?;
-    if !done.status.success() {
-        return Err(fail(String::from_utf8_lossy(&done.stderr).into_owned()));
-    }
-    String::from_utf8(done.stdout).map_err(|e| fail(e.to_string()))
+        .current_dir(root);
+    Process::from(command).text(text.as_bytes()).map_err(|source| Error::Rustfmt { path: path.into(), source })
 }

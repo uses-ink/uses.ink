@@ -1,6 +1,8 @@
 //! `token/token.toml` into `token/src/generated.rs` (the pen's palette and the face stacks) and
 //! `token/token.css` (the same, as custom properties on `:root`).
 
+use std::fmt;
+
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -28,6 +30,37 @@ const GENERIC: &[&str] = &[
     "emoji",
     "fangsong",
 ];
+
+/// What is wrong with an entry of `token/token.toml`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Flaw {
+    /// A top-level key other than `colour` and `face`.
+    Section,
+    /// A name another entry already makes into the same CSS name or Rust variant.
+    Taken,
+    /// A name that is not lowercase words joined by `-`.
+    Name,
+    /// A colour that is not `#rrggbb`.
+    Colour,
+    /// A face that is not a list of plain family names.
+    Stack,
+}
+
+impl fmt::Display for Flaw {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(match self {
+            Self::Section => "is not a section; the sections are `colour` and `face`",
+            Self::Taken => {
+                "is taken: a colour and a face, or two names that differ only by `-`, share a CSS name or a Rust variant"
+            }
+            Self::Name => "is not a name: write lowercase words joined by `-`",
+            Self::Colour => "is not a colour: write `#rrggbb`",
+            Self::Stack => {
+                "is not a font stack: write a list of family names, without quotes, backslashes or control characters"
+            }
+        })
+    }
+}
 
 /// One `#rrggbb` colour.
 struct Colour {
@@ -58,7 +91,7 @@ pub(crate) fn write(output: &mut Output) -> Result<(), Error> {
                     faces.push(face(name, value)?);
                 }
             }
-            _ => return Err(Error::Token { name: key, why: "is not a section; the sections are `colour` and `face`" }),
+            _ => return Err(Error::Token { name: key, flaw: Flaw::Section }),
         }
     }
     unique(&colours, &faces)?;
@@ -73,8 +106,7 @@ fn unique(colours: &[Colour], faces: &[Face]) -> Result<(), Error> {
     for name in names {
         let variant = name.to_upper_camel_case();
         if seen.iter().any(|(v, n)| *n == name || *v == variant) {
-            let why = "is taken: a colour and a face, or two names that differ only by `-`, share a CSS name or a Rust variant";
-            return Err(Error::Token { name: name.clone(), why });
+            return Err(Error::Token { name: name.clone(), flaw: Flaw::Taken });
         }
         seen.push((variant, name));
     }
@@ -85,11 +117,7 @@ fn unique(colours: &[Colour], faces: &[Face]) -> Result<(), Error> {
 fn named(name: String) -> Result<String, Error> {
     let word = |w: &str| !w.is_empty() && w.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit());
     let starts = name.bytes().next().is_some_and(|b| b.is_ascii_lowercase());
-    if starts && name.split('-').all(word) {
-        Ok(name)
-    } else {
-        Err(Error::Token { name, why: "is not a name: write lowercase words joined by `-`" })
-    }
+    if starts && name.split('-').all(word) { Ok(name) } else { Err(Error::Token { name, flaw: Flaw::Name }) }
 }
 
 fn css(colours: &[Colour], faces: &[Face]) -> String {
@@ -110,30 +138,28 @@ fn css(colours: &[Colour], faces: &[Face]) -> String {
 
 fn colour(name: String, value: &toml::Value) -> Result<Colour, Error> {
     let name = named(name)?;
-    let why = "is not a colour: write `#rrggbb`";
     let hex = value
         .as_str()
         .and_then(|s| s.strip_prefix('#'))
         .filter(|h| h.len() == 6 && h.bytes().all(|b| b.is_ascii_hexdigit()));
-    let Some(hex) = hex else { return Err(Error::Token { name, why }) };
+    let Some(hex) = hex else { return Err(Error::Token { name, flaw: Flaw::Colour }) };
     let byte = |at: usize| hex.get(at..at + 2).and_then(|pair| u8::from_str_radix(pair, 16).ok());
     match (byte(0), byte(2), byte(4)) {
         (Some(r), Some(g), Some(b)) => Ok(Colour { name, rgb: [r, g, b] }),
-        _ => Err(Error::Token { name, why }),
+        _ => Err(Error::Token { name, flaw: Flaw::Colour }),
     }
 }
 
 fn face(name: String, value: toml::Value) -> Result<Face, Error> {
     let name = named(name)?;
-    let why = "is not a font stack: write a list of family names, without quotes, backslashes or control characters";
-    let toml::Value::Array(items) = value else { return Err(Error::Token { name, why }) };
+    let toml::Value::Array(items) = value else { return Err(Error::Token { name, flaw: Flaw::Stack }) };
     // a family is written inside double quotes, so it may not hold one, a backslash or a control
     // character (CSS reads CR and FF as newlines)
     let plain = |family: &&str| !family.is_empty() && !family.chars().any(|c| c == '"' || c == '\\' || c.is_control());
     let stack: Option<Vec<String>> = items.into_iter().map(|v| v.as_str().filter(plain).map(str::to_owned)).collect();
     match stack {
         Some(stack) if !stack.is_empty() => Ok(Face { name, stack }),
-        _ => Err(Error::Token { name, why }),
+        _ => Err(Error::Token { name, flaw: Flaw::Stack }),
     }
 }
 
@@ -141,7 +167,7 @@ fn rust(colours: &[Colour], faces: &[Face]) -> TokenStream {
     let colours = colour_enum(colours);
     let faces = face_enum(faces);
     quote! {
-        use crate::{Rgb, Unknown};
+        use crate::{Kind, Rgb, Unknown};
         #colours
         #faces
     }
@@ -180,7 +206,7 @@ fn colour_enum(colours: &[Colour]) -> TokenStream {
             pub fn named(name: &str) -> Result<Self, Unknown<'_>> {
                 match name {
                     #(#names => Ok(Self::#variants),)*
-                    _ => Err(Unknown { kind: "colour", name, known: Self::NAMES }),
+                    _ => Err(Unknown { kind: Kind::Colour, name, known: Self::NAMES }),
                 }
             }
         }
@@ -220,7 +246,7 @@ fn face_enum(faces: &[Face]) -> TokenStream {
             pub fn named(name: &str) -> Result<Self, Unknown<'_>> {
                 match name {
                     #(#face_names => Ok(Self::#face_variants),)*
-                    _ => Err(Unknown { kind: "face", name, known: Self::NAMES }),
+                    _ => Err(Unknown { kind: Kind::Face, name, known: Self::NAMES }),
                 }
             }
         }

@@ -9,6 +9,7 @@ use std::process::Command;
 use serde::Deserialize;
 
 use crate::error::Error;
+use crate::process::Process;
 
 /// Crates with a name of their own: product-independent, published as is, MIT OR Apache-2.0,
 /// depending on no crate of ours.
@@ -152,15 +153,9 @@ fn aliased(root: &Path) -> Result<Vec<String>, Error> {
 }
 
 fn metadata(root: &Path) -> Result<Metadata, Error> {
-    let done = Command::new(env!("CARGO"))
-        .args(["metadata", "--format-version", "1", "--no-deps", "--offline", "--locked"])
-        .current_dir(root)
-        .output()
-        .map_err(|e| Error::Metadata { why: e.to_string() })?;
-    if !done.status.success() {
-        return Err(Error::Metadata { why: String::from_utf8_lossy(&done.stderr).into_owned() });
-    }
-    serde_json::from_slice(&done.stdout).map_err(|e| Error::Metadata { why: e.to_string() })
+    let mut command = Command::new(env!("CARGO"));
+    command.args(["metadata", "--format-version", "1", "--no-deps", "--offline", "--locked"]).current_dir(root);
+    Process::from(command).json().map_err(Error::Metadata)
 }
 
 /// The directory of a crate, relative to the root, with `/` between parts.

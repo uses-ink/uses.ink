@@ -22,11 +22,29 @@ impl fmt::Display for Rgb {
     }
 }
 
+/// A kind of token, as a name asks for one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Kind {
+    /// A [`Colour`].
+    Colour,
+    /// A [`Face`].
+    Face,
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(match self {
+            Self::Colour => "colour",
+            Self::Face => "face",
+        })
+    }
+}
+
 /// A name that is not a token.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Unknown<'a> {
     /// What kind of token was asked for.
-    pub kind: &'static str,
+    pub kind: Kind,
     /// The name asked for.
     pub name: &'a str,
     /// The names there are.

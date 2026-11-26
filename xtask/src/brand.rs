@@ -134,7 +134,7 @@ fn oval_points() -> u32 {
 #[derive(Debug)]
 pub(crate) enum Problem {
     Polygon { drawing: String, name: String },
-    Colour { drawing: String, why: String },
+    Colour { drawing: String, name: String },
     Ring { drawing: String, points: u32 },
 }
 
@@ -142,7 +142,10 @@ impl fmt::Display for Problem {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Polygon { drawing, name } => write!(out, "{drawing}: no polygon `{name}` in [polygon]"),
-            Self::Colour { drawing, why } => write!(out, "{drawing}: {why}"),
+            Self::Colour { drawing, name } => {
+                let unknown = token::Unknown { kind: token::Kind::Colour, name, known: Colour::NAMES };
+                write!(out, "{drawing}: {unknown}")
+            }
             Self::Ring { drawing, points } => write!(out, "{drawing}: a ring of {points} points is too small to split"),
         }
     }
@@ -190,9 +193,8 @@ impl Sheet<'_> {
     }
 
     fn colour(&self, name: &str) -> Result<Colour, Error> {
-        Colour::named(name).map_err(|unknown| {
-            Error::Brand(Problem::Colour { drawing: self.drawing.name.clone(), why: unknown.to_string() })
-        })
+        Colour::named(name)
+            .map_err(|_| Error::Brand(Problem::Colour { drawing: self.drawing.name.clone(), name: name.to_owned() }))
     }
 }
 

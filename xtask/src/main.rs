@@ -6,23 +6,27 @@
 //! - `check`: crate names against paths, dependency direction, licences, banned names, and
 //!   every generated file fresh. Fails with every problem listed.
 
+use std::error::Error as _;
+use std::fmt;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::str::FromStr;
 
 mod brand;
 mod diag;
 mod error;
 mod layout;
 mod output;
+mod process;
 mod token;
 
 use error::Error;
 use output::{Mode, Output};
 
 /// What `cargo xtask` was asked to do.
-#[derive(Debug, Clone, Copy)]
-enum Task {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Task {
     Token,
     Diag,
     Brand,
@@ -30,13 +34,18 @@ enum Task {
 }
 
 impl Task {
-    fn parse(arg: Option<&str>) -> Result<Self, Error> {
-        match arg {
-            Some("token") => Ok(Self::Token),
-            Some("diag") => Ok(Self::Diag),
-            Some("brand") => Ok(Self::Brand),
-            Some("check") => Ok(Self::Check),
-            other => Err(Error::Task { given: other.map(str::to_owned) }),
+    /// Every task, in the order they are listed.
+    pub(crate) const ALL: [Self; 4] = [Self::Token, Self::Diag, Self::Brand, Self::Check];
+    /// The tasks that write generated files.
+    pub(crate) const GENERATORS: [Self; 3] = [Self::Token, Self::Diag, Self::Brand];
+
+    /// Its name on the command line.
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Token => "token",
+            Self::Diag => "diag",
+            Self::Brand => "brand",
+            Self::Check => "check",
         }
     }
 
@@ -64,18 +73,48 @@ impl Task {
     }
 }
 
+impl fmt::Display for Task {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(self.name())
+    }
+}
+
+impl FromStr for Task {
+    type Err = Error;
+
+    fn from_str(given: &str) -> Result<Self, Error> {
+        Self::ALL
+            .into_iter()
+            .find(|task| task.name() == given)
+            .ok_or_else(|| Error::Task { given: Some(given.to_owned()) })
+    }
+}
+
+/// An error and its causes, as `main` prints it: `error: ...`, then a `caused by: ...` line each.
+struct Chain<'a>(&'a Error);
+
+impl fmt::Display for Chain<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "error: {}", self.0)?;
+        let mut cause = self.0.source();
+        while let Some(error) = cause {
+            write!(out, "\n  caused by: {error}")?;
+            cause = error.source();
+        }
+        Ok(())
+    }
+}
+
 fn main() -> ExitCode {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-    let arg = std::env::args().nth(1);
-    let result = Task::parse(arg.as_deref()).and_then(|task| task.run(&root));
+    let task = std::env::args().nth(1).map_or(Err(Error::Task { given: None }), |arg| arg.parse::<Task>());
     let mut err = std::io::stderr();
     // A report that cannot be written fails the task: nothing it did goes unsaid.
-    let (lines, code) = match result {
-        Ok(output) => (output.report(), ExitCode::SUCCESS),
-        Err(error) => (vec![format!("error: {error}")], ExitCode::FAILURE),
+    let written = match task.and_then(|task| task.run(&root)) {
+        Ok(output) => output.report().iter().try_for_each(|line| writeln!(err, "{line}")).map(|()| ExitCode::SUCCESS),
+        Err(error) => {
+            error.into_each().iter().try_for_each(|error| writeln!(err, "{}", Chain(error))).map(|()| ExitCode::FAILURE)
+        }
     };
-    match lines.iter().try_for_each(|line| writeln!(err, "{line}")) {
-        Ok(()) => code,
-        Err(_) => ExitCode::FAILURE,
-    }
+    written.unwrap_or(ExitCode::FAILURE)
 }
