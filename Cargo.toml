@@ -38,6 +38,12 @@ proc-macro2 = "1.0.107"
 quote = "1.0.47"
 syn = { version = "3.0.10", features = ["full"] }
 
+# Dependencies build optimized and without debug assertions, so tests stay fast; `"*"` matches
+# no workspace member, so our crates keep debug assertions (docs/conventions.md, Tests).
+[profile.dev.package."*"]
+opt-level = 2
+debug-assertions = false
+
 [workspace.lints.rust]
 # `deny`, not `forbid`, so `freehand-web` can expect it for its wasm exports; `xtask check`
 # allows unsafe code in no other file.
