@@ -11,7 +11,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 |---|---|---|
 | Markdown | `comrak` 1.2, no default features | wikilinks, embeds, callouts, block ids, spans (0027) |
 | Frontmatter | `serde-saphyr` 2.2 | maintained, pure Rust, spans for evidence |
-| `ink.toml` | `toml` 1.2, `serde_spanned`, `serde_ignored`, `toml_edit` 0.25, `schemars` 1.2 | spans, unknown-key diagnostics, format-preserving pins, editor schema |
+| `ink.toml` | `toml` 1.2 (`preserve_order`), `toml_edit` 0.25 | `toml` reads a spanned tree with recoverable errors, so every key and value has its span and an unknown key is found by walking it; `toml_edit` writes pins in place, keeping the author's formatting and comments |
 | Git | `gix` 0.91, minimal features | pure Rust, shallow plus deepen, rev walk and tree diff for dates |
 | Hashing | `blake3` 1.8 | reference implementation |
 | HTML safety | own allowlist; `ammonia` 4.2 behind an escape hatch only | smallest XSS surface (0027) |

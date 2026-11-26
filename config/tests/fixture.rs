@@ -10,8 +10,8 @@ use std::path::{Path, PathBuf};
 
 use jiff::civil::date;
 use model::{
-    ContentPath, Decided, Decision, DecisionCode, DefaultReason, Evidence, Layout, PageKind, Root, Slug, Subject, Tag,
-    Timestamp, When,
+    Author, ContentPath, Decided, Decision, DecisionCode, DefaultReason, Evidence, Layout, PageKind, Root, Slug,
+    Subject, Tag, Timestamp, When,
 };
 use uses_ink_config::{Config, Parsed, pins, pins_into};
 
@@ -129,6 +129,18 @@ fn decisions() -> Vec<Decision> {
         decision(Decided::Date(None), about()),
         decision(Decided::Ignored(true), Subject::File(path("drafts/x.md"))),
         decision(Decided::Ignored(false), Subject::File(path("LICENSE"))),
+        decision(Decided::Summary(Some("Books, and where they go.".to_owned())), post()),
+        decision(Decided::Summary(None), about()),
+        decision(Decided::Language("fr-CH".parse().unwrap()), Subject::Site),
+        decision(
+            Decided::Authors(vec![
+                Author::try_from("Ann".to_owned()).unwrap(),
+                Author::try_from("Bo Lin".to_owned()).unwrap(),
+            ]),
+            Subject::Site,
+        ),
+        decision(Decided::Description(None), Subject::Site),
+        decision(Decided::SiteTitle("Ann's notes".to_owned()), Subject::Site),
     ]
 }
 

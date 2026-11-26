@@ -12,6 +12,10 @@ root = ""
 layout = "blog"
 home = "README.md"
 nav = ["about.md", "posts"]
+title = "Ann's notes"
+description = "Notes on books and shelves."
+authors = ["Ann"]
+language = "en"
 
 [file."drafts/x.md"]
 ignore = true
@@ -20,6 +24,7 @@ ignore = true
 kind = "post"
 publish = true
 title = "On shelves"
+summary = "Books, and where they go."
 date = 2024-03-01
 updated = 2024-03-02T09:30:00+02:00
 slug = "on-shelves"

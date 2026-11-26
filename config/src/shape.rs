@@ -37,12 +37,22 @@ impl fmt::Display for Shape<'_> {
                 DecisionCode::Ignored | DecisionCode::Publish => write!(out, "true or false"),
                 DecisionCode::Home => write!(out, "the path of a file, or false for a generated listing"),
                 DecisionCode::Kind => write!(out, "one of \"home\", \"post\", \"page\""),
-                DecisionCode::Title => write!(out, "a string"),
+                DecisionCode::Title | DecisionCode::SiteTitle => write!(out, "a string"),
                 DecisionCode::Date => write!(out, "{WHEN}, or false for undated"),
                 DecisionCode::Updated => write!(out, "{WHEN}, or false for never updated"),
                 DecisionCode::Slug => write!(out, "a slug: lower-case letters and digits, with single `-` inside"),
                 DecisionCode::Tags => write!(out, "an array of strings, each with a letter or digit"),
                 DecisionCode::Nav => write!(out, "an array of file paths"),
+                DecisionCode::Summary | DecisionCode::Description => write!(out, "a string, or false for none"),
+                DecisionCode::Authors => {
+                    write!(out, "an array of names, each with a character that is not a space, such as [\"Ann\"]")
+                }
+                DecisionCode::Language => write!(
+                    out,
+                    "a language tag: two or three letters, then `-` and subtags of one to eight letters or digits, such as \"fr-CH\""
+                ),
+                // a code added to `model` after this match; the `every_code` test fails until it
+                // has its own wording
                 _ => write!(out, "a value this version of uses.ink does not read"),
             },
             Self::Table(table) => write!(out, "a table: `[{table}]`"),

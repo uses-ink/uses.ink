@@ -1,0 +1,10 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/identity.toml
+---
+pin site.title on the site: SiteTitle("Ann's notes") at 51..72 `title = "Ann's notes"`
+pin site.description on the site: Description(None) at 73..92 `description = false`
+pin site.authors on the site: Authors([Author("Ann"), Author("Bo Lin")]) at 93..124 `authors = ["Ann", "  Bo Lin  "]`
+pin site.language on the site: Language(Language("fr-CH")) at 125..143 `language = "fr-CH"`
+pin page.summary on about.md: Summary(None) at 222..237 `summary = false`
+pin page.summary on posts/a.md: Summary(Some("Books, and where they go.")) at 165..202 `summary = "Books, and where they go."`

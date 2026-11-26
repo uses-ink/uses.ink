@@ -1,5 +1,7 @@
 //! `Config::parse(&pins(decisions))` pins every decision's value, with no diagnostics, and
-//! `pins_into` an empty file reads back the same.
+//! `pins_into` an empty file reads back the same. `every_code` checks each code of
+//! [`DecisionCode::ALL`] once, so a code added to `model` fails here until `config` reads,
+//! writes and words it.
 
 #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
 
@@ -7,8 +9,8 @@ use std::collections::BTreeMap;
 
 use jiff::civil;
 use model::{
-    ContentPath, Decided, Decision, DecisionCode, DefaultReason, Evidence, Layout, PageKind, Root, Slug, Subject, Tag,
-    Timestamp, When,
+    Author, ContentPath, Decided, Decision, DecisionCode, DefaultReason, Evidence, Language, Layout, PageKind, Problem,
+    Root, Slug, Subject, Tag, Timestamp, When,
 };
 use proptest::prelude::*;
 use uses_ink_config::{Config, pins, pins_into};
@@ -52,7 +54,78 @@ fn decided(code: DecisionCode) -> BoxedStrategy<Decided> {
             .prop_map(|tags| Decided::Tags(tags.into_iter().map(|t| Tag::new(t).unwrap()).collect()))
             .boxed(),
         DecisionCode::Nav => prop::collection::vec(path(), 0..4).prop_map(Decided::Nav).boxed(),
+        DecisionCode::Summary => prop::option::of(any::<String>()).prop_map(Decided::Summary).boxed(),
+        DecisionCode::SiteTitle => any::<String>().prop_map(Decided::SiteTitle).boxed(),
+        DecisionCode::Description => prop::option::of(any::<String>()).prop_map(Decided::Description).boxed(),
+        DecisionCode::Authors => prop::collection::vec("\\s?[\\pL\\pN][\\PC]{0,6}", 0..4)
+            .prop_map(|names| Decided::Authors(names.into_iter().map(|n| Author::try_from(n).unwrap()).collect()))
+            .boxed(),
+        DecisionCode::Language => "[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8}){0,2}"
+            .prop_map(|tag| Decided::Language(tag.parse::<Language>().unwrap()))
+            .boxed(),
         _ => unreachable!("a code this test does not know"),
+    }
+}
+
+/// One value of `code`, written by hand so a new code has to be added here.
+fn sample(code: DecisionCode) -> Option<Decided> {
+    let path = || ContentPath::parse("posts/a.md").unwrap();
+    match code {
+        DecisionCode::Root => Some(Decided::Root(Root::Folder(path()))),
+        DecisionCode::Layout => Some(Decided::Layout(Layout::Vault)),
+        DecisionCode::Ignored => Some(Decided::Ignored(true)),
+        DecisionCode::Home => Some(Decided::Home(None)),
+        DecisionCode::Kind => Some(Decided::Kind(PageKind::Post)),
+        DecisionCode::Publish => Some(Decided::Publish(false)),
+        DecisionCode::Title => Some(Decided::Title("On shelves".to_owned())),
+        DecisionCode::Date => Some(Decided::Date(Some(When::Day(civil::date(2024, 3, 1))))),
+        DecisionCode::Updated => Some(Decided::Updated(None)),
+        DecisionCode::Slug => Some(Decided::Slug(Slug::parse("on-shelves").unwrap())),
+        DecisionCode::Tags => Some(Decided::Tags(vec![Tag::new("Rust").unwrap()])),
+        DecisionCode::Nav => Some(Decided::Nav(vec![path()])),
+        DecisionCode::Summary => Some(Decided::Summary(Some("Books, and where they go.".to_owned()))),
+        DecisionCode::SiteTitle => Some(Decided::SiteTitle("Ann's notes".to_owned())),
+        DecisionCode::Description => Some(Decided::Description(None)),
+        DecisionCode::Authors => Some(Decided::Authors(vec![Author::try_from("Ann".to_owned()).unwrap()])),
+        DecisionCode::Language => Some(Decided::Language("fr-CH".parse().unwrap())),
+        _ => None,
+    }
+}
+
+/// The subject a code is decided on.
+fn subject(code: DecisionCode) -> Subject {
+    if code.is_sitewide() { Subject::Site } else { Subject::File(ContentPath::parse("x.md").unwrap()) }
+}
+
+/// Each code is written as a pin, reads back, and has its own wording when its value is wrong.
+#[test]
+fn every_code() {
+    for code in DecisionCode::ALL {
+        let sampled = sample(*code);
+        assert!(sampled.is_some(), "no sample of `{code}`: add one, and teach config to read and write it");
+        let decision = Decision::new(
+            sampled.unwrap(),
+            subject(*code),
+            Evidence::Default { reason: DefaultReason::NothingMatched },
+        );
+        let written = pins(std::slice::from_ref(&decision));
+        assert!(!written.contains("not pinned"), "`{code}` is not written:\n{written}");
+        reads_back(&written, std::slice::from_ref(&decision)).unwrap();
+
+        let (table, key) = code.name().split_once('.').unwrap();
+        let wrong = match decision.subject {
+            Subject::Site => format!("[{table}]\n{key} = {{}}\n"),
+            _ => format!("[{table}.\"x.md\"]\n{key} = {{}}\n"),
+        };
+        let diagnostics = Config::parse(&wrong).diagnostics;
+        let worded = matches!(
+            diagnostics.as_slice(),
+            [diagnostic] if matches!(
+                &diagnostic.problem,
+                Problem::ConfigValueInvalid { expected, .. } if !expected.contains("does not read")
+            )
+        );
+        assert!(worded, "`{code}` has no wording of its own: {diagnostics:?}");
     }
 }
 

@@ -10,6 +10,7 @@ root = "../up"
 layout = "grid"
 home = true
 nav = ["about.md", "/abs"]
+authors = ["Ann", "  "]
 
 [page."posts/a.md"]
 kind = "draft"

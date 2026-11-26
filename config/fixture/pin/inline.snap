@@ -2,13 +2,17 @@
 source: config/tests/fixture.rs
 input_file: config/fixture/pin/inline.toml
 ---
-page = { "about.md" = { title = "About" , publish = false, date = false } , "posts/2024-03-01-hello.md" = { kind = "post", title = 'Hello, "world"', date = 2024-03-01, updated = 2024-03-02T09:30:00.25Z, slug = "hello", tags = ["Rust", "notes on shelves"] } }
+page = { "about.md" = { title = "About" , publish = false, summary = false, date = false } , "posts/2024-03-01-hello.md" = { kind = "post", title = 'Hello, "world"', summary = "Books, and where they go.", date = 2024-03-01, updated = 2024-03-02T09:30:00.25Z, slug = "hello", tags = ["Rust", "notes on shelves"] } }
 
 [site]
 root = ""
 layout = "blog"
 home = "README.md"
 nav = ["about.md", "posts"]
+title = "Ann's notes"
+description = false
+authors = ["Ann", "Bo Lin"]
+language = "fr-CH"
 
 [file.LICENSE]
 ignore = false

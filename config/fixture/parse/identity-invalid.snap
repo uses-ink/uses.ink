@@ -1,0 +1,11 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/identity-invalid.toml
+---
+pin page.title on posts/c.md: Title("kept") at 166..180 `title = "kept"`
+error config.value.invalid: ConfigValueInvalid { key: "site.title", expected: "a string" } at 15..20 `false`
+error config.value.invalid: ConfigValueInvalid { key: "site.description", expected: "a string, or false for none" } at 35..39 `true`
+error config.value.invalid: ConfigValueInvalid { key: "site.authors", expected: "an array of names, each with a character that is not a space, such as [\"Ann\"]" } at 50..55 `"Ann"`
+error config.value.invalid: ConfigValueInvalid { key: "site.language", expected: "a language tag: two or three letters, then `-` and subtags of one to eight letters or digits, such as \"fr-CH\"" } at 67..75 `"french"`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/a.md\".summary", expected: "a string, or false for none" } at 107..108 `3`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/b.md\".summary", expected: "a string, or false for none" } at 140..144 `true`

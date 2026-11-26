@@ -11,15 +11,21 @@ layout = "blog"   # was a guess
 home = "README.md"
 root = ""
 nav = ["about.md", "posts"]
+title = "Ann's notes"
+description = false
+authors = ["Ann", "Bo Lin"]
+language = "fr-CH"
 
 [page."about.md"]
 title = "About me" # keep this one
 publish = false
+summary = false
 date = false
 
 [page."posts/2024-03-01-hello.md"]
 title = 'Hello, "world"'   # replaced, comment kept
 kind = "post"
+summary = "Books, and where they go."
 date = 2024-03-01
 updated = 2024-03-02T09:30:00.25Z
 slug = "hello"

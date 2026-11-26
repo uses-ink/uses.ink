@@ -17,14 +17,25 @@ pub(super) fn write(decided: &Decided) -> Result<Value, Unwritable> {
         Decided::Layout(layout) => name_of(LAYOUTS, layout).ok_or_else(unknown)?.into(),
         Decided::Kind(kind) => name_of(KINDS, kind).ok_or_else(unknown)?.into(),
         Decided::Ignored(yes) | Decided::Publish(yes) => (*yes).into(),
-        Decided::Home(None) | Decided::Date(None) | Decided::Updated(None) => false.into(),
-        Decided::Title(text) => text.as_str().into(),
+        Decided::Home(None)
+        | Decided::Date(None)
+        | Decided::Updated(None)
+        | Decided::Summary(None)
+        | Decided::Description(None) => false.into(),
+        Decided::Title(text)
+        | Decided::SiteTitle(text)
+        | Decided::Summary(Some(text))
+        | Decided::Description(Some(text)) => text.as_str().into(),
         Decided::Date(Some(at)) | Decided::Updated(Some(at)) => {
             datetime(*at).ok_or(Unwritable::When { code: decided.code(), at: *at })?.into()
         }
         Decided::Slug(slug) => slug.as_str().into(),
         Decided::Tags(tags) => tags.iter().map(|tag| tag.written.as_str()).collect::<Array>().into(),
         Decided::Nav(paths) => paths.iter().map(ContentPath::as_str).collect::<Array>().into(),
+        Decided::Authors(authors) => authors.iter().map(AsRef::<str>::as_ref).collect::<Array>().into(),
+        Decided::Language(language) => language.as_ref().into(),
+        // a variant added to `model` after this match: `Unwritable::Unknown`, and the
+        // `every_code` test fails until it is written
         _ => return Err(unknown()),
     })
 }

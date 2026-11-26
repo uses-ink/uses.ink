@@ -4,7 +4,7 @@ use std::ops::Range;
 
 use jiff::civil;
 use jiff::tz;
-use model::{ContentPath, Decided, DecisionCode, Root, Slug, Tag, When};
+use model::{Author, ContentPath, Decided, DecisionCode, Language, Root, Slug, Tag, When};
 use toml::Spanned;
 use toml::de::DeValue;
 use toml::value::{Date, Datetime, Offset};
@@ -37,6 +37,15 @@ pub(super) fn read(code: DecisionCode, value: &Spanned<DeValue<'_>>) -> Result<D
         DecisionCode::Slug => value.as_str().and_then(|text| Slug::parse(text).ok()).map(Decided::Slug),
         DecisionCode::Tags => return each(value, whole, |text| Tag::new(text).ok()).map(Decided::Tags),
         DecisionCode::Nav => return each(value, whole, |text| ContentPath::parse(text).ok()).map(Decided::Nav),
+        DecisionCode::Summary => text_or_none(value, Decided::Summary),
+        DecisionCode::SiteTitle => value.as_str().map(|text| Decided::SiteTitle(text.to_owned())),
+        DecisionCode::Description => text_or_none(value, Decided::Description),
+        DecisionCode::Authors => {
+            return each(value, whole, |text| Author::try_from(text.to_owned()).ok()).map(Decided::Authors);
+        }
+        DecisionCode::Language => value.as_str().and_then(|text| text.parse::<Language>().ok()).map(Decided::Language),
+        // a code added to `model` after this match: `Shape` says it is not read, and the
+        // `every_code` test fails until it is
         _ => None,
     };
     decided.ok_or(whole)
@@ -46,6 +55,15 @@ pub(super) fn read(code: DecisionCode, value: &Spanned<DeValue<'_>>) -> Result<D
 fn each<T>(value: &DeValue<'_>, whole: Range<usize>, one: impl Fn(&str) -> Option<T>) -> Result<Vec<T>, Range<usize>> {
     let array = value.as_array().ok_or(whole)?;
     array.iter().map(|element| element.get_ref().as_str().and_then(&one).ok_or_else(|| element.span())).collect()
+}
+
+/// A string, or `false` for none, as `decided`.
+fn text_or_none(value: &DeValue<'_>, decided: fn(Option<String>) -> Decided) -> Option<Decided> {
+    match value {
+        DeValue::Boolean(false) => Some(decided(None)),
+        DeValue::String(text) => Some(decided(Some(text.as_ref().to_owned()))),
+        _ => None,
+    }
 }
 
 /// A [`When`], or `false` for none, as `decided`.

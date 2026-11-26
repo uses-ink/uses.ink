@@ -6,6 +6,10 @@ root = ""
 layout = "blog"
 home = "README.md"
 nav = ["about.md", "posts"]
+title = "Ann's notes"
+description = false
+authors = ["Ann", "Bo Lin"]
+language = "fr-CH"
 
 [file.LICENSE]
 ignore = false
@@ -15,11 +19,13 @@ ignore = true
 
 [page."about.md"]
 publish = false
+summary = false
 date = false
 
 [page."posts/2024-03-01-hello.md"]
 kind = "post"
 title = 'Hello, "world"'
+summary = "Books, and where they go."
 date = 2024-03-01
 updated = 2024-03-02T09:30:00.25Z
 slug = "hello"

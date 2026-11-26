@@ -1,0 +1,12 @@
+# the site's identity, and a page's summary
+[site]
+title = "Ann's notes"
+description = false
+authors = ["Ann", "  Bo Lin  "]
+language = "fr-CH"
+
+[page."posts/a.md"]
+summary = "Books, and where they go."
+
+[page."about.md"]
+summary = false

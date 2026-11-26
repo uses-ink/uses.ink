@@ -1,0 +1,14 @@
+[site]
+title = false
+description = true
+authors = "Ann"
+language = "french"
+
+[page."posts/a.md"]
+summary = 3
+
+[page."posts/b.md"]
+summary = true
+
+[page."posts/c.md"]
+title = "kept"

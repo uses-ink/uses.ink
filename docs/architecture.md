@@ -286,6 +286,10 @@ use = "ink:theme-quiet"              # slot choice; omitted means the default, r
 accent = "#2b59c3"                   # every other key is a token the chosen theme declared
 
 [site]
+title = "Ann's notes"                # pins site.title
+description = "Notes on books."      # pins site.description; false pins none
+authors = ["Ann"]                    # pins site.authors; always an array, first author first
+language = "fr-CH"                   # pins site.language, a BCP 47 tag
 home = "README.md"                   # pins site.home; false pins a generated listing
 nav = ["about.md"]                   # pins site.nav
 
@@ -294,6 +298,7 @@ ignore = true                        # pins file.ignore
 
 [page."posts/old/x.md"]              # per-file pins
 title = "On shelves"                 # pins page.title
+summary = "Books, and where they go." # pins page.summary; false pins none
 ```
 
 The table and key come from the decision code's name: a sitewide code `t.k` is `[t] k`, a per-file

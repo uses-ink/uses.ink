@@ -3,7 +3,7 @@ theme-colour = "red"
 
 [site]
 home = "README.md"
-title = "a page code on the site"
+kind = "a page code on the site"
 
 [page."x.md"]
 home = "a sitewide code on a file"
