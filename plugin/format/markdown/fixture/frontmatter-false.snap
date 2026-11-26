@@ -1,0 +1,76 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/frontmatter-false.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Body."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": {
+      "value": "false",
+      "span": [
+        11,
+        16
+      ]
+    },
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": [
+      0,
+      52
+    ]
+  },
+  "heading": null,
+  "diagnostics": [
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "date",
+          "expected": "a day (`2024-03-01`) or a time with its offset (`2024-03-01T09:30:00+01:00`)"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-false.md"
+      },
+      "span": [
+        23,
+        28
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "frontmatter.value.invalid": {
+          "key": "description",
+          "expected": "some text"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-false.md"
+      },
+      "span": [
+        42,
+        47
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

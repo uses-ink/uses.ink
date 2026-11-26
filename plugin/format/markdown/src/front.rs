@@ -1,171 +1,222 @@
-//! The YAML frontmatter block: where it is, and the keys the engine reads, each with its span.
+//! The YAML frontmatter block, read into [`Front`]. serde-saphyr parses the YAML into nodes with
+//! their places; each node becomes the model's [`Raw`], and each field of [`Keys`] reads its
+//! keys' values through its value type's [`FromFront`]. Nothing here knows what a title or a
+//! date is.
 
-mod error;
-mod value;
+mod field;
+mod node;
 
-use model::{Diagnostic, Document, Front, Problem, Read, Span, Subject};
-use serde::Deserialize;
+use model::code::{Date, Kind, Publish, Slug, Summary, Tags, Title, Updated};
+use model::{Expected, FromFront, Front, Raw, Span, Spanned};
 use serde_saphyr::Spanned as Located;
 
-use error::Error;
-use value::{Field, Raw};
+use crate::error::{Error, Report};
+use crate::file::{Fence, File};
+use field::{Draft, Field, Lang};
+use node::{Entries, Node};
 
-/// Where the frontmatter and the body are in the file.
-#[derive(Debug)]
-pub(crate) struct Parts {
-    pub(crate) front: Option<Block>,
-    /// Where the body starts.
-    pub(crate) body: usize,
+/// The fields the engine reads, each a [`Field`]. Every other key is the author's own and is
+/// neither kept nor refused.
+pub(crate) type Keys = (Title, Date, Updated, Slug, Tags, Publish, Draft, Kind, Summary, Lang);
+
+/// The YAML of one frontmatter block, in its file.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Yaml<'a> {
+    file: &'a str,
+    /// Where the YAML is, between the fences.
+    region: Span,
 }
 
-#[derive(Debug)]
-pub(crate) enum Block {
-    /// The YAML between the fences, and the whole block with its fences.
-    Closed { yaml: Span, block: Span },
-    /// An opening `---` with no closing line: the opening line.
-    Unclosed { opening: Span },
-}
-
-/// The frontmatter keys the engine reads, as written. Every other key is the author's.
-#[derive(Debug, Deserialize)]
-struct Keys {
-    title: Option<Located<Raw>>,
-    date: Option<Located<Raw>>,
-    updated: Option<Located<Raw>>,
-    slug: Option<Located<Raw>>,
-    tags: Option<Located<Raw>>,
-    publish: Option<Located<Raw>>,
-    draft: Option<Located<Raw>>,
-    #[serde(rename = "type")]
-    kind: Option<Located<Raw>>,
-    description: Option<Located<Raw>>,
-    summary: Option<Located<Raw>>,
-    lang: Option<Located<Raw>>,
-}
-
-/// Finds a frontmatter block at `base`: a `---` line, YAML, and a `---` or `...` line.
-pub(crate) fn split(text: &str, base: usize) -> Parts {
-    let mut lines = Lines { text, at: base };
-    let Some(first) = lines.next() else { return Parts { front: None, body: base } };
-    if !first.is("---") {
-        return Parts { front: None, body: base };
-    }
-    let opening = first.span;
-    for line in lines {
-        if line.is("---") || line.is("...") {
-            let yaml = Span::new(opening.end(), line.span.start());
-            let block = Span::new(opening.start(), line.span.end());
-            if let (Ok(yaml), Ok(block)) = (yaml, block) {
-                return Parts { front: Some(Block::Closed { yaml, block }), body: line.span.end() };
+impl<'a> Yaml<'a> {
+    /// The frontmatter of `file` read into the fields `F`, every problem into `report`.
+    pub(crate) fn read<F: Fields>(file: &File<'a>, report: &mut Report) -> Front {
+        let mut front = Front::default();
+        match file.front {
+            None => {}
+            Some(Fence::Unclosed { opening }) => report.refuse(Error::Unclosed, opening),
+            Some(Fence::Closed { yaml, block }) => {
+                front.block = Some(block);
+                Self { file: file.text, region: yaml }.fill::<F>(&mut front, report);
             }
         }
+        front
     }
-    Parts { front: Some(Block::Unclosed { opening }), body: base }
-}
 
-/// The frontmatter of `parts`, read into an otherwise empty [`Read`].
-pub(crate) fn read(text: &str, parts: &Parts, subject: &Subject) -> Read {
-    let mut read = Read::new(Document::default(), Front::default(), None);
-    match parts.front {
-        None => {}
-        Some(Block::Unclosed { opening }) => {
-            let problem = Problem::from(&Error::Unclosed);
-            read.diagnostics.push(Diagnostic::new(problem).on(subject.clone()).at(opening));
-        }
-        Some(Block::Closed { yaml, block }) => {
-            read.front.block = Some(block);
-            let source = Source { text, yaml, subject };
-            source.keys(&mut read);
-        }
-    }
-    read
-}
-
-/// The YAML of one frontmatter block and whose it is.
-#[derive(Debug)]
-struct Source<'a> {
-    text: &'a str,
-    yaml: Span,
-    subject: &'a Subject,
-}
-
-impl Source<'_> {
-    fn keys(&self, read: &mut Read) {
-        // `split` cuts at line ends, which are character boundaries
-        let Some(yaml) = self.text.get(self.yaml.range()) else { return };
-        match serde_saphyr::from_str::<Option<Keys>>(yaml) {
-            Ok(Some(keys)) => self.fill(keys, read),
-            Ok(None) => {}
-            Err(error) => {
-                let span = error.location().and_then(|at| self.span(at)).unwrap_or(self.yaml);
-                // YAML counts lines from the block; the author counts them from the file
-                let before = self.text.get(..self.yaml.start()).map_or(0, |before| before.matches('\n').count() as u64);
-                let problem = Problem::from(&Error::Yaml { source: error, before });
-                read.diagnostics.push(Diagnostic::new(problem).on(self.subject.clone()).at(span));
+    /// Parses the YAML and fills `front` with the fields `F`. A block that does not parse is
+    /// one diagnostic and fills nothing; refused values are reported in the order written.
+    fn fill<F: Fields>(self, front: &mut Front, report: &mut Report) {
+        // the fences cut at line ends, which are character boundaries
+        let Some(yaml) = self.file.get(self.region.range()) else { return };
+        let entries = match serde_saphyr::from_str::<Option<Entries>>(yaml) {
+            Ok(Some(entries)) => entries,
+            // an empty block: no keys
+            Ok(None) => return,
+            Err(source) => {
+                let span = source.location().and_then(|at| self.place(at)).unwrap_or(self.region);
+                let before = self.file.get(..self.region.start()).map_or(0, |before| before.matches('\n').count());
+                return report.refuse(Error::Yaml { source, before: before as u64 }, span);
             }
+        };
+        let mut refused = Refused::default();
+        F::fill(&Reading { yaml: self, entries: &entries }, front, &mut refused);
+        refused.0.sort_by_key(|(_, span)| span.start());
+        for (error, span) in refused.0 {
+            report.refuse(error, span);
         }
-    }
-
-    fn fill(&self, keys: Keys, read: &mut Read) {
-        let mut out = value::Out { source: self, diagnostics: &mut read.diagnostics };
-        let front = &mut read.front;
-        front.title = keys.title.and_then(|raw| out.convert(Field::Title, &raw, value::text));
-        front.date = keys.date.and_then(|raw| out.convert(Field::Date, &raw, value::when));
-        front.updated = keys.updated.and_then(|raw| out.convert(Field::Updated, &raw, value::when));
-        front.slug = keys.slug.and_then(|raw| out.convert(Field::Slug, &raw, value::slug));
-        front.tags = keys.tags.and_then(|raw| out.tags(&raw));
-        front.publish = keys.publish.and_then(|raw| out.convert(Field::Publish, &raw, value::flag));
-        front.draft = keys.draft.and_then(|raw| out.convert(Field::Draft, &raw, value::flag));
-        front.kind = keys.kind.and_then(|raw| out.convert(Field::Kind, &raw, value::kind));
-        let description = keys.description.and_then(|raw| out.convert(Field::Description, &raw, value::text));
-        let summary = keys.summary.and_then(|raw| out.convert(Field::Summary, &raw, value::text));
-        front.description = out.either((Field::Description, description), (Field::Summary, summary));
-        front.language = keys.lang.and_then(|raw| out.convert(Field::Language, &raw, value::language));
     }
 
     /// A YAML location as a span of the file.
-    fn span(&self, at: serde_saphyr::Location) -> Option<Span> {
+    fn place(self, at: serde_saphyr::Location) -> Option<Span> {
         let span = at.span();
-        let start = usize::try_from(span.byte_offset()?).ok()?.checked_add(self.yaml.start())?;
+        let start = usize::try_from(span.byte_offset()?).ok()?.checked_add(self.region.start())?;
         let end = start.checked_add(usize::try_from(span.byte_len()?).ok()?)?;
-        Span::new(start, end.min(self.yaml.end())).ok()
+        Span::new(start, end.min(self.region.end())).ok()
     }
 
-    /// The text written at `span`.
-    fn written(&self, span: Span) -> Option<&str> {
-        self.text.get(span.range())
+    /// A node as the model's [`Raw`], each part with its span; a number or a boolean keeps the
+    /// text written for it. A node the parser cannot place is placed at the whole block.
+    fn raw(self, node: &'a Located<Node>) -> Raw<'a> {
+        let span = self.place(node.referenced).unwrap_or(self.region);
+        // a span the parser gave lies on character boundaries inside the block
+        let written = self.file.get(span.range()).unwrap_or_default();
+        match &node.value {
+            Node::Null => Raw::Null { span },
+            Node::Bool(value) => Raw::Bool { value: *value, written, span },
+            Node::Number => Raw::Number { written, span },
+            Node::Text(text) => Raw::Text { value: text.as_str().into(), span },
+            Node::Map => Raw::Map { span },
+            Node::List(items) => {
+                let items: Vec<Raw<'a>> = items.iter().map(|item| self.raw(item)).collect();
+                let end = items.iter().map(|item| item.span().end()).max().unwrap_or(span.end());
+                let span = Span::new(span.start(), end.max(span.end())).unwrap_or(span);
+                Raw::List { items, span }
+            }
+        }
     }
 }
 
-/// One line of the file and where it is, its line ending included in the span.
+/// The entries of one parsed block, being read field by field.
 #[derive(Debug)]
-struct Line<'a> {
-    text: &'a str,
-    span: Span,
+pub(crate) struct Reading<'a> {
+    yaml: Yaml<'a>,
+    entries: &'a Entries,
 }
 
-impl Line<'_> {
-    /// Whether the line is `fence`, with nothing after it but spaces, tabs and the line ending.
-    fn is(&self, fence: &str) -> bool {
-        self.text.trim_end_matches(['\n', '\r', ' ', '\t']) == fence
+/// What the fields refused, each at its place, before they are put in the order written.
+#[derive(Debug, Default)]
+pub(crate) struct Refused(Vec<(Error, Span)>);
+
+impl Reading<'_> {
+    /// Reads the field `F`: each of its keys that is set and not null, through `F::Value`. When
+    /// more than one key holds a value, the first written is kept and each later one is a
+    /// conflict.
+    fn field<F: Field>(&self, front: &mut Front, refused: &mut Refused) {
+        let mut held: Vec<(&'static str, Spanned<F::Held>)> = Vec::new();
+        for &key in F::KEYS {
+            for (_, node) in self.entries.0.iter().filter(|(name, _)| name == key) {
+                let raw = self.yaml.raw(node);
+                if let Raw::Null { .. } = raw {
+                    continue;
+                }
+                let span = raw.span();
+                match F::Value::read(&raw).map(F::hold) {
+                    Ok(Some(value)) => held.push((key, Spanned::new(value, span))),
+                    Ok(None) => {
+                        let source = Expected::new(<F::Value as FromFront>::WANTED, span);
+                        refused.0.push((Error::Value { key, source }, span));
+                    }
+                    Err(refusal) => {
+                        for source in refusal {
+                            let span = source.span;
+                            refused.0.push((Error::Value { key, source }, span));
+                        }
+                    }
+                }
+            }
+        }
+        held.sort_by_key(|(_, value)| value.span.start());
+        let mut held = held.into_iter();
+        let Some((first, kept)) = held.next() else { return };
+        for (key, ignored) in held {
+            refused.0.push((Error::Conflict { key, other: first }, ignored.span));
+        }
+        *F::slot(front) = Some(kept);
     }
 }
 
-#[derive(Debug)]
-struct Lines<'a> {
-    text: &'a str,
-    at: usize,
+/// A set of [`Field`]s read together: a tuple of them, read in order.
+pub(crate) trait Fields {
+    /// Reads every field of the set from `reading` into `front`.
+    fn fill(reading: &Reading<'_>, front: &mut Front, refused: &mut Refused);
 }
 
-impl<'a> Iterator for Lines<'a> {
-    type Item = Line<'a>;
+/// Implements [`Fields`] for a tuple of each arity up to the number of names given, reading
+/// its fields in order:
+///
+/// ```text
+/// fields!(A, B, C);
+/// // implements `Fields` for `(A,)`, `(A, B)` and `(A, B, C)`
+/// ```
+macro_rules! fields {
+    ($first:ident $(, $rest:ident)*) => {
+        impl<$first: Field $(, $rest: Field)*> Fields for ($first, $($rest,)*) {
+            fn fill(reading: &Reading<'_>, front: &mut Front, refused: &mut Refused) {
+                reading.field::<$first>(front, refused);
+                $(reading.field::<$rest>(front, refused);)*
+            }
+        }
+        fields!($($rest),*);
+    };
+    () => {};
+}
 
-    fn next(&mut self) -> Option<Line<'a>> {
-        let rest = self.text.get(self.at..).filter(|rest| !rest.is_empty())?;
-        let len = rest.find('\n').map_or(rest.len(), |end| end + 1);
-        let text = rest.get(..len)?;
-        let span = Span::new(self.at, self.at + len).ok()?;
-        self.at += len;
-        Some(Line { text, span })
+fields!(A, B, C, D, E, F, G, H, I, J, K, L);
+
+#[cfg(test)]
+mod test {
+    use model::{ContentPath, Front, Problem, Spanned, Subject};
+
+    use super::{Field, Yaml};
+    use crate::error::Report;
+    use crate::file::File;
+
+    /// A stand-in field set by two keys.
+    struct Name;
+
+    impl Field for Name {
+        const KEYS: &'static [&'static str] = &["name", "alias"];
+        type Value = String;
+        type Held = String;
+
+        fn hold(value: String) -> Option<String> {
+            Some(value)
+        }
+
+        fn slot(front: &mut Front) -> &mut Option<Spanned<String>> {
+            &mut front.title
+        }
+    }
+
+    fn read(text: &str) -> (Front, Vec<Problem>) {
+        let mut report = Report::new(Subject::File(ContentPath::parse("a.md").unwrap()));
+        let file = File::try_from(text.as_bytes()).unwrap();
+        let front = Yaml::read::<(Name,)>(&file, &mut report);
+        (front, report.diagnostics.into_iter().map(|diagnostic| diagnostic.problem).collect())
+    }
+
+    #[test]
+    fn the_first_key_written_wins_and_later_ones_conflict() {
+        let (front, problems) = read("---\nalias: second\nother: [x]\nname: third\n---\n");
+        assert_eq!(front.title.map(|title| title.value).as_deref(), Some("second"));
+        let conflict = Problem::FrontmatterKeyConflict { key: "name".to_owned(), other: "alias".to_owned() };
+        assert_eq!(problems, [conflict]);
+    }
+
+    #[test]
+    fn a_refused_key_leaves_the_other_one() {
+        let (front, problems) = read("---\nname: [not, text]\nalias: kept\n---\n");
+        assert_eq!(front.title.map(|title| title.value).as_deref(), Some("kept"));
+        let refused = Problem::FrontmatterValueInvalid { key: "name".to_owned(), expected: "some text".to_owned() };
+        assert_eq!(problems, [refused]);
     }
 }

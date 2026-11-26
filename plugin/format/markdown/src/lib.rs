@@ -37,50 +37,54 @@
 //! taken. A heading with no letters or digits is anchored `section` with a
 //! `heading.anchor.generated` notice.
 //!
-//! Frontmatter keys the engine does not read are the author's own and are ignored. A key it reads
-//! with a value it cannot use is a `frontmatter.value.invalid` diagnostic at that value, and the
-//! key counts as absent; nothing is guessed. A `null` value is the same as no key. `description`
-//! and `summary` set the same thing: when both are set, the first written is kept and the second
-//! is a `frontmatter.key.conflict` diagnostic. `lang` is a language tag (`en`, `fr-CH`).
+//! **Frontmatter** is read through the model: each key the engine reads belongs to a decision
+//! code ([`model::code::Keyed`]) or is `draft` or `lang`, and its value is read by the value
+//! type's [`model::FromFront`], so this crate says what YAML is and nothing about what a date
+//! or a tag is. Keys the engine does not read are the author's own and are ignored. A key it
+//! reads with a value it cannot use is a `frontmatter.value.invalid` diagnostic for each refused
+//! part, in the order written, and the key counts as absent; nothing is guessed. A list is
+//! refused whole when any item is (`tags: [good, "!!!"]` sets no tags), with a diagnostic at
+//! every bad item. A `null` value is the same as no key. `false` for a key whose value may be
+//! none (`date: false`) is refused until the frontmatter can hold an explicit none. Keys that set
+//! the same thing (`description` and `summary`): when several are set, the first written is kept
+//! and each later one is a `frontmatter.key.conflict` diagnostic. `lang` is a language tag
+//! (`en`, `fr-CH`). A key written twice is a `frontmatter.syntax.invalid` diagnostic.
 //!
 //! Until `host/wasmtime` exists this crate speaks `uses-ink-model` directly; it moves to the
 //! generated WIT types when it becomes a component.
 
 /// comrak, behind model types: nothing else in the crate names it.
 mod body;
-/// serde-saphyr, behind model types: nothing else in the crate names it.
+mod error;
+mod file;
 mod front;
 mod html;
 
-use model::{ContentPath, Diagnostic, Document, Front, Problem, Read, Span, Subject};
+use model::{ContentPath, Document, Front, Read, Subject};
 
-const BYTE_ORDER_MARK: &str = "\u{feff}";
+use error::Report;
+use file::File;
+use front::{Keys, Yaml};
 
 /// Reads one markdown file. Pure: the same bytes give the same [`Read`], and no input panics.
 pub fn read(path: &ContentPath, bytes: &[u8]) -> Read {
     let subject = Subject::File(path.clone());
-    let text = match std::str::from_utf8(bytes) {
-        Ok(text) => text,
-        Err(error) => return unreadable(subject, error.valid_up_to(), bytes.len()),
+    let mut report = Report::new(subject.clone());
+    let mut read = match File::try_from(bytes) {
+        Ok(file) => {
+            let front = Yaml::read::<Keys>(&file, &mut report);
+            let body = body::Body::read(file.text, file.body, subject);
+            report.diagnostics.extend(body.diagnostics);
+            report.notices.extend(body.notices);
+            Read::new(body.document, front, body.heading)
+        }
+        Err(encoding) => {
+            let span = encoding.span();
+            report.refuse(encoding.into(), span);
+            Read::new(Document::default(), Front::default(), None)
+        }
     };
-    let base = if text.starts_with(BYTE_ORDER_MARK) { BYTE_ORDER_MARK.len() } else { 0 };
-    let parts = front::split(text, base);
-    let mut read = front::read(text, &parts, &subject);
-    let body = body::Body::read(text, parts.body, subject);
-    read.document = body.document;
-    read.heading = body.heading;
-    read.diagnostics.extend(body.diagnostics);
-    read.notices.extend(body.notices);
-    read
-}
-
-/// The read of a file that is not UTF-8: empty, with the offset of the first bad byte.
-fn unreadable(subject: Subject, at: usize, len: usize) -> Read {
-    let mut read = Read::new(Document::default(), Front::default(), None);
-    let mut diagnostic = Diagnostic::new(Problem::SourceFileEncoding { at: at as u64 }).on(subject);
-    if let Ok(span) = Span::new(at, len.min(at + 1)) {
-        diagnostic = diagnostic.at(span);
-    }
-    read.diagnostics.push(diagnostic);
+    read.diagnostics = report.diagnostics;
+    read.notices = report.notices;
     read
 }

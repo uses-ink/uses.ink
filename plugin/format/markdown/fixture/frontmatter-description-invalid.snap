@@ -1,5 +1,5 @@
 ---
-source: plugin/format/markdown/tests/fixture.rs
+source: fixture/src/lib.rs
 input_file: plugin/format/markdown/fixture/frontmatter-description-invalid.md
 ---
 {
@@ -53,7 +53,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-description-invalid.md
       "problem": {
         "frontmatter.value.invalid": {
           "key": "lang",
-          "expected": "a language tag: two or three letters, then subtags joined by `-` (`en`, `fr-CH`)"
+          "expected": "a language tag such as `en` or `fr-CH`"
         }
       },
       "subject": {

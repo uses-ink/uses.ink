@@ -1,5 +1,5 @@
 ---
-source: plugin/format/markdown/tests/fixture.rs
+source: fixture/src/lib.rs
 input_file: plugin/format/markdown/fixture/frontmatter-invalid-values.md
 ---
 {
@@ -20,18 +20,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-invalid-values.md
     "date": null,
     "updated": null,
     "slug": null,
-    "tags": {
-      "value": [
-        {
-          "slug": "good",
-          "written": "good"
-        }
-      ],
-      "span": [
-        91,
-        106
-      ]
-    },
+    "tags": null,
     "publish": null,
     "draft": null,
     "kind": null,
@@ -112,7 +101,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-invalid-values.md
       "problem": {
         "frontmatter.value.invalid": {
           "key": "tags",
-          "expected": "a list of tags, or tags separated by commas, each with a letter or digit"
+          "expected": "a tag with a letter or digit"
         }
       },
       "subject": {
@@ -128,7 +117,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-invalid-values.md
       "problem": {
         "frontmatter.value.invalid": {
           "key": "tags",
-          "expected": "a list of tags, or tags separated by commas, each with a letter or digit"
+          "expected": "a tag with a letter or digit"
         }
       },
       "subject": {
