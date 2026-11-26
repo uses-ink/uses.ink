@@ -176,7 +176,7 @@ output are sorted. Floats that reach output go through `libm`, so native and was
 
 **Hacks.** Every `#[allow]`/`#[expect]` has `reason = "..."`; prefer `#[expect]`. A workaround is
 `// HACK(<condition for removal>): <why>`. No `TODO` without a condition. No commented-out code.
-`unsafe` is forbidden at the workspace level.
+`unsafe` is denied at the workspace level; `xtask check` allows it only where 0034 says.
 
 **One source of truth.** Every fact lives in one place; everything else is generated from it and
 a check fails when the copies differ. Dependency versions, lints and package metadata live in the
