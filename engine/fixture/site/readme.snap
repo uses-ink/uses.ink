@@ -31,8 +31,6 @@ source: fixture/src/lib.rs
 # diagnostics and notices
 notice.default.chosen on the site
 notice.default.chosen on the site
-notice.default.chosen on README.md
-notice.default.chosen on usage.md
 notice.default.chosen on the site
 notice.default.chosen on the site
 notice.default.chosen on the site

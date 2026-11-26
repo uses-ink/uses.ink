@@ -41,9 +41,6 @@ source: fixture/src/lib.rs
 link.target.ambiguous on index.md
 notice.default.chosen on the site
 notice.default.chosen on the site
-notice.default.chosen on index.md
-notice.default.chosen on one/Note.md
-notice.default.chosen on two/Note.md
 notice.default.chosen on the site
 notice.default.chosen on the site
 notice.default.chosen on the site

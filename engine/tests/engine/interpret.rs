@@ -83,7 +83,8 @@ fn kind_takes_type_then_folder_then_date() {
     assert_eq!(kind("posts/b.md"), PageKind::Post);
     assert_eq!(kind("c.md"), PageKind::Post);
     assert_eq!(kind("d.md"), PageKind::Page);
-    assert!(u.notices.iter().any(|n| n.code() == "notice.default.chosen" && n.subject == Some(subject("d.md"))));
+    // a plain page is the mundane default, not worth a notice on every page
+    assert!(!u.notices.iter().any(|n| n.code() == "notice.default.chosen" && n.subject == Some(subject("d.md"))));
 }
 
 #[test]

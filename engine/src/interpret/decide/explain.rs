@@ -47,7 +47,10 @@ macro_rules! announced {
     };
 }
 
-announced!(Root, Layout, Kind, Slug, SiteTitle, Language, Nav, Authors);
+announced!(Root, Layout, Slug, SiteTitle, Language, Nav, Authors);
+
+/// A plain page is the mundane default: saying it would say it of nearly every page.
+impl Explain for Kind {}
 
 impl Explain for Title {}
 

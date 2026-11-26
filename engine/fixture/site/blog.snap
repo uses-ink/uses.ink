@@ -54,8 +54,6 @@ source: fixture/src/lib.rs
 notice.default.chosen on the site
 file.ignore.inferred on .github/ci.md
 file.ignore.inferred on LICENSE
-notice.default.chosen on about.md
-notice.default.chosen on index.md
 notice.default.chosen on posts/later.md
 notice.default.chosen on the site
 notice.default.chosen on the site
