@@ -86,6 +86,17 @@ fn the_not_found_page_is_served_with_404() {
 }
 
 #[test]
+fn a_site_without_a_home_gets_a_generated_one() {
+    let rendered = rendered(&Tree::new().file("notes/a.md", "# A\n").file("notes/b.md", "# B\n"), &Plain::default());
+    let home = rendered.manifest.entry(&Route::root()).unwrap();
+    assert_eq!(home.status(), Status::Ok);
+    assert_eq!(home.media(), MediaType::Html);
+    assert!(text(&rendered, "/sitemap.xml").contains("<url><loc>https://ink.uses.ink/</loc></url>"));
+    let own = self::rendered(&blog(), &Plain::default());
+    assert!(text(&own, "/").contains("<title>Ink</title>"), "an author's home is never replaced");
+}
+
+#[test]
 fn feeds_hold_dated_posts_newest_first() {
     let rendered = rendered(&blog(), &Plain::default());
     let atom = text(&rendered, "/feed.xml");

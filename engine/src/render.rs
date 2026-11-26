@@ -85,8 +85,10 @@ pub fn render(site: &Site, theme: &dyn Theme, settings: &RenderSettings) -> Rend
     let mut out = Output::new(headers);
     let step = pages(site, theme, &mut out);
     out.settle(step);
-    let step = not_found(site, theme, &mut out);
-    out.settle(step);
+    for generated in [Generated::Home, Generated::NotFound] {
+        let step = generated.serve(site, theme, &mut out);
+        out.settle(step);
+    }
     assets(site, &mut out);
     let step = feeds(site, settings, &mut out);
     out.settle(step);
@@ -123,19 +125,36 @@ fn page_entry(page: &Page, site: &Site, theme: &dyn Theme, status: Status, out: 
     }
 }
 
-/// The engine's not-found page, when the author wrote none: a page the theme renders like any
-/// other, served with status 404.
-fn not_found(site: &Site, theme: &dyn Theme, out: &mut Output) -> Result<(), Broken> {
-    const FILE: &str = "404";
-    let route = Owned::NotFound.route()?;
-    if out.owner(&route).is_some() {
-        return Ok(());
+/// A page the engine makes when the author wrote none: the home, a listing the theme fills, and
+/// the not-found page, served with status 404. Each is a page the theme renders like any other.
+#[derive(Clone, Copy, Debug)]
+enum Generated {
+    /// At `/` when no page is the home (`site.home` decided a generated listing).
+    Home,
+    NotFound,
+}
+
+impl Generated {
+    /// Serves this page unless a page of the site already has its route.
+    fn serve(self, site: &Site, theme: &dyn Theme, out: &mut Output) -> Result<(), Broken> {
+        let (file, route, kind, status) = match self {
+            Self::Home => ("index", Route::root(), PageKind::Home, Status::Ok),
+            Self::NotFound => ("404", Owned::NotFound.route()?, PageKind::Page, Status::NotFound),
+        };
+        if out.owner(&route).is_some() || (matches!(self, Self::Home) && site.home().is_some()) {
+            return Ok(());
+        }
+        let file: ContentPath = file.parse().map_err(|source| Broken::Path { written: file, source })?;
+        let page = match self {
+            Self::Home => Page::new(file, route, kind, site.identity().title.clone(), Document::default()),
+            Self::NotFound => {
+                let body = Document::new(vec![Block::Paragraph(vec![Inline::Text(NotFound::Body.to_string())])]);
+                Page::new(file, route, kind, NotFound::Title.to_string(), body)
+            }
+        };
+        page_entry(&page, site, theme, status, out);
+        Ok(())
     }
-    let file: ContentPath = FILE.parse().map_err(|source| Broken::Path { written: FILE, source })?;
-    let body = Document::new(vec![Block::Paragraph(vec![Inline::Text(NotFound::Body.to_string())])]);
-    let page = Page::new(file, route, PageKind::Page, NotFound::Title.to_string(), body);
-    page_entry(&page, site, theme, Status::NotFound, out);
-    Ok(())
 }
 
 /// The words of the engine's not-found page.
@@ -203,17 +222,18 @@ fn feeds(site: &Site, settings: &RenderSettings, out: &mut Output) -> Result<(),
     Ok(())
 }
 
-/// The sitemap of every page but the not-found page, and `robots.txt` pointing at it.
+/// The sitemap of every page but the not-found page, a generated home among them, and
+/// `robots.txt` pointing at it.
 fn sitemap(site: &Site, settings: &RenderSettings, out: &mut Output) -> Result<(), Broken> {
     let not_found = Owned::NotFound.route()?;
-    let locations: Vec<xml::Location> = site
-        .pages()
-        .iter()
-        .filter(|page| page.route != not_found)
-        .map(|page| xml::Location {
+    let generated =
+        site.home().is_none().then(|| xml::Location { url: settings.base.at(&Route::root()), changed: None });
+    let locations: Vec<xml::Location> = generated
+        .into_iter()
+        .chain(site.pages().iter().filter(|page| page.route != not_found).map(|page| xml::Location {
             url: settings.base.at(&page.route),
             changed: page.updated.or(page.date).map(model::When::day),
-        })
+        }))
         .collect();
     let route = Owned::Sitemap.route()?;
     let bytes = xml::sitemap(&locations).map_err(|source| Broken::Xml { route: route.clone(), source })?;
