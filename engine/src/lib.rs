@@ -9,17 +9,20 @@
 //! witnesses: the first that testifies wins, every later one is a rejected alternative. The site
 //! is assembled only from the decisions. [`Engine::render`] turns a site into a
 //! [`Manifest`](model::Manifest) and the bytes behind it, through a list of artifacts: the
-//! theme's pages and files, the feeds, the sitemap, `robots.txt` and the not-found page.
+//! site's raster images as the host's [`Images`] prepared them, the theme's pages and files,
+//! the feeds, the sitemap, `robots.txt` and the not-found page.
 //!
 //! Pure: nothing here reads a clock, the environment, the filesystem or randomness.
 
 mod error;
 mod host;
+pub mod image;
 mod interpret;
 mod render;
 
 pub use error::Error;
 pub use host::{BlobMissing, Blobs, File, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Record, Said, Theme};
+pub use image::Images;
 pub use interpret::Understood;
 pub use render::{BaseUrl, BaseUrlError, Generated, RenderSettings, Rendered, Reserved};
 
