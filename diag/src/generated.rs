@@ -167,6 +167,27 @@ impl Message<'_> {
             Problem::ImageEncodeFailed { path, reason, .. } => {
                 write!(out, "the copies of {path} could not be made: {reason}")
             }
+            Problem::PluginValueUnmirrored { reason, .. } => {
+                write!(out, "a value has no case at the plugin boundary: {reason}")
+            }
+            Problem::PluginValueMalformed { plugin, reason, .. } => {
+                write!(out, "the plugin `{plugin}` sent a value the model refuses: {reason}")
+            }
+            Problem::PluginCallTrapped { plugin, reason, .. } => {
+                write!(out, "the plugin `{plugin}` stopped: {reason}")
+            }
+            Problem::PluginBudgetFuel { plugin, limit, .. } => {
+                write!(out, "the plugin `{plugin}` ran past its {limit} units of fuel in one call")
+            }
+            Problem::PluginBudgetTime { plugin, limit, .. } => {
+                write!(out, "the plugin `{plugin}` ran past its {limit} ms in one call")
+            }
+            Problem::PluginBudgetMemory { plugin, limit, .. } => {
+                write!(out, "the plugin `{plugin}` asked for more than its {limit} of memory")
+            }
+            Problem::BuildCheckMismatch { component, native, .. } => {
+                write!(out, "the plugins built as components give deploy {component}, natively {native}")
+            }
         }
     }
     pub(crate) fn announcement(announcement: &Announcement, out: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -314,6 +335,13 @@ impl Fix<'_> {
             Problem::ImageBudgetPixels { .. } => true,
             Problem::ImageDecodeFailed { .. } => true,
             Problem::ImageEncodeFailed { .. } => true,
+            Problem::PluginValueUnmirrored { .. } => true,
+            Problem::PluginValueMalformed { .. } => true,
+            Problem::PluginCallTrapped { .. } => true,
+            Problem::PluginBudgetFuel { .. } => false,
+            Problem::PluginBudgetTime { .. } => false,
+            Problem::PluginBudgetMemory { .. } => false,
+            Problem::BuildCheckMismatch { .. } => true,
         }
     }
     pub(crate) const fn announcement_has(announcement: &Announcement) -> bool {
@@ -482,6 +510,21 @@ impl Fix<'_> {
             }
             Problem::ImageEncodeFailed { .. } => {
                 write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::PluginValueUnmirrored { .. } => {
+                write!(out, "build the plugin against the same WIT as the host")
+            }
+            Problem::PluginValueMalformed { .. } => {
+                write!(out, "the plugin has a bug; report it to its author")
+            }
+            Problem::PluginCallTrapped { .. } => {
+                write!(out, "the plugin has a bug; report it to its author")
+            }
+            Problem::PluginBudgetFuel { .. } => Ok(()),
+            Problem::PluginBudgetTime { .. } => Ok(()),
+            Problem::PluginBudgetMemory { .. } => Ok(()),
+            Problem::BuildCheckMismatch { .. } => {
+                write!(out, "a plugin's component and its native core disagree; `ink build` natively is the reference")
             }
         }
     }

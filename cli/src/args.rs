@@ -74,6 +74,15 @@ pub struct Build {
     /// Where the files are read from.
     #[command(flatten)]
     pub origin: Origin,
+    /// Build natively and through the plugins as wasm components, write nothing, and fail
+    /// (exit 1) when the two deploys differ.
+    #[arg(long, requires = "components")]
+    pub check: bool,
+    /// The folder holding the components `--check` runs: `format-markdown.wasm` and
+    /// `theme-quiet.wasm`, as `cargo xtask component` writes them. Compiled components are kept
+    /// in its `cache/` folder.
+    #[arg(long, requires = "check")]
+    pub components: Option<PathBuf>,
 }
 
 /// `ink check <dir>`.

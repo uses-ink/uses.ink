@@ -1,0 +1,33 @@
+package ink:model@0.1.0;
+
+/// The files a plugin serves as is.
+interface file {
+    use diagnostic.{route};
+
+    /// The kinds of file a theme serves (`model::MediaType`).
+    enum media {
+        html,
+        css,
+        xml,
+        atom,
+        rss,
+        json,
+        text,
+        svg,
+        png,
+        jpeg,
+        avif,
+        webp,
+        gif,
+        ico,
+        woff2,
+        pdf,
+    }
+
+    /// One file a theme serves as is.
+    record file {
+        route: route,
+        media: media,
+        bytes: list<u8>,
+    }
+}

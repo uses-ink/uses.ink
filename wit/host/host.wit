@@ -1,0 +1,161 @@
+package ink:host@0.1.0;
+
+/// The pen (`freehand`): every hand-drawn mark, drawn by the host so there is one pen
+/// (decisions 0025, 0033). A mark is a function of its geometry, the tool, the hand and the seed.
+interface pen {
+    record point {
+        x: f64,
+        y: f64,
+    }
+
+    record rectangle {
+        top-left: point,
+        bottom-right: point,
+    }
+
+    /// How unsteady the hand is: `1` and `0.9` are the pencil of the page.
+    record hand {
+        wobble: f64,
+        tremor: f64,
+    }
+
+    variant tool {
+        /// A thin line of this weight, in pixels.
+        pencil(f64),
+        highlighter(highlighter),
+    }
+
+    record highlighter {
+        spacing: f64,
+        jitter: f64,
+    }
+
+    record line {
+        start: point,
+        end: point,
+    }
+
+    record underline {
+        width: f64,
+        y: f64,
+    }
+
+    record frame {
+        around: rectangle,
+        slack: f64,
+    }
+
+    record ellipse {
+        centre: point,
+        radius: point,
+        start: f64,
+        turns: f64,
+        count: u32,
+    }
+
+    record fill {
+        behind: rectangle,
+        shift: point,
+    }
+
+    variant mark {
+        line(line),
+        underline(underline),
+        frame(frame),
+        ring(ellipse),
+        fill(fill),
+        patch(list<point>),
+        drawn(list<point>),
+    }
+
+    /// The SVG path data of `mark`, one entry per path, its chance seeded by `seed`.
+    draw: func(mark: mark, tool: tool, hand: hand, seed: string) -> list<string>;
+}
+
+/// Text measured with real fonts, so a mark fits its words.
+interface text {
+    record extent {
+        width: f64,
+        height: f64,
+    }
+
+    variant unmeasured {
+        /// The host holds no font of that name.
+        font-unknown,
+    }
+
+    /// The box `text` takes in `font` at `size` pixels.
+    measure: func(font: string, size: f64, text: string) -> result<extent, unmeasured>;
+}
+
+/// Code highlighted by the host's grammars (decision 0039, `model::highlight`).
+interface highlight {
+    /// What a grammar says a stretch of code is (`model::highlight::Capture`).
+    enum capture {
+        attribute,
+        comment,
+        constant,
+        %constructor,
+        deleted,
+        embedded,
+        emphasis,
+        error,
+        function,
+        heading,
+        inserted,
+        keyword,
+        label,
+        link,
+        literal,
+        macro,
+        module,
+        number,
+        operator,
+        property,
+        punctuation,
+        strike,
+        %string,
+        strong,
+        tag,
+        %type,
+        variable,
+    }
+
+    /// The next `length` bytes of the code, with one capture or none.
+    record run {
+        capture: option<capture>,
+        length: u32,
+    }
+
+    variant unhighlighted {
+        /// No grammar knows the language.
+        unknown,
+        /// The grammar failed: a bug in the host.
+        failed,
+    }
+
+    /// `code` in `language` as runs that cover all of it in order.
+    highlight: func(language: string, code: string) -> result<list<run>, unhighlighted>;
+}
+
+/// What a plugin finds worth saying while it works; plugins never print.
+interface diagnostic {
+    use ink:model/diagnostic@0.1.0.{diagnostic, notice};
+
+    /// Records a problem.
+    emit: func(diagnostic: diagnostic);
+    /// Records a notice.
+    announce: func(notice: notice);
+}
+
+/// Everything a plugin may see: the host's capabilities and the model's types. Hosts and the
+/// plugin SDK generate their bindings from it once, and each slot's world maps onto them.
+world plugin {
+    import pen;
+    import text;
+    import highlight;
+    import diagnostic;
+    import ink:model/read@0.1.0;
+    import ink:model/site@0.1.0;
+    import ink:model/file@0.1.0;
+}

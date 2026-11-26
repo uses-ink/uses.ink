@@ -1,0 +1,21 @@
+[package]
+name = "uses-ink-format-markdown-guest"
+description = "ink:format-markdown as a wasm component: the markdown format behind the ink:format world"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+format-markdown.workspace = true
+model.workspace = true
+sdk.workspace = true
+wit-bindgen.workspace = true
+
+[lints]
+workspace = true

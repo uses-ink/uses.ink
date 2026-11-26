@@ -5,9 +5,11 @@
 //! - `brand`: draw the logo, mark and favicon into `brand/` from `brand/figure.toml`.
 //! - `layout`: every layout rule over the workspace, and every generated file fresh. Fails with
 //!   every problem listed.
+//! - `component`: build the plugins' guest crates for `wasm32-unknown-unknown` and wrap each
+//!   into a component under `target/plugin/`.
 //! - `check`: the whole gate, in CI's order: fmt, clippy (native and wasm32), nextest, doc tests,
-//!   `cargo deny`, the pen's tests on wasm32-wasip2, the browser pen's release build, then
-//!   `layout`. Runs every step and fails with every failed step listed.
+//!   the components, nextest, doc tests, `cargo deny`, the pen's tests on wasm32-wasip2, the
+//!   browser pen's release build, `ink build --check` on every CLI site fixture, then `layout`. Runs every step and fails with every failed step listed.
 //!
 //! Each task is a type: the generators implement [`output::Generator`], the gate's steps
 //! [`check::Step`], the layout rules [`layout::Rule`].
@@ -49,6 +51,7 @@ macro_rules! tuples {
 
 mod brand;
 mod check;
+mod component;
 mod diag;
 mod error;
 mod layout;
@@ -66,12 +69,14 @@ pub(crate) enum Task {
     Diag,
     Brand,
     Layout,
+    Component,
     Check,
 }
 
 impl Task {
     /// Every task, in the order they are listed.
-    pub(crate) const ALL: [Self; 5] = [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Check];
+    pub(crate) const ALL: [Self; 6] =
+        [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Component, Self::Check];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -80,6 +85,7 @@ impl Task {
             Self::Diag => "diag",
             Self::Brand => "brand",
             Self::Layout => "layout",
+            Self::Component => "component",
             Self::Check => "check",
         }
     }
@@ -94,6 +100,10 @@ impl Task {
             Self::Brand => output.generate(&brand::Brand),
             Self::Layout => {
                 check::Step::run(&layout::Layout, root, &mut report);
+                return report;
+            }
+            Self::Component => {
+                check::Step::run(&component::Components, root, &mut report);
                 return report;
             }
             Self::Check => return check::Gate::new(root).run(),

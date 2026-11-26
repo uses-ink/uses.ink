@@ -255,6 +255,8 @@ pub(crate) enum Line {
     Waived { krate: String, rule: &'static str, count: usize },
     /// The layout and every generated file are as they should be.
     Checked,
+    /// A site fixture built the same deploy natively and through the components.
+    Matched(PathBuf),
     /// Every step of the gate passed.
     Passed,
 }
@@ -269,6 +271,7 @@ impl fmt::Display for Line {
                 write!(out, "note: `{rule}` finds {count} in `{krate}`, not enforced there yet (xtask's ENFORCED)")
             }
             Self::Checked => write!(out, "layout fine, generated files fresh"),
+            Self::Matched(path) => write!(out, "{}: same deploy natively and as components", path.display()),
             Self::Passed => write!(out, "check: every step passed"),
         }
     }

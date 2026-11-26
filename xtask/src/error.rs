@@ -74,6 +74,22 @@ pub(crate) enum Error {
     },
     /// Progress could not be written to stderr.
     Progress(std::io::Error),
+    /// A guest's core module that `wit-component` would not wrap.
+    Wrap {
+        path: PathBuf,
+        source: anyhow::Error,
+    },
+    /// A site fixture whose deploys differ natively and as components.
+    Mismatch {
+        path: PathBuf,
+        native: Option<String>,
+        component: Option<String>,
+    },
+    /// A site fixture whose `ink build --check` failed.
+    Site {
+        path: PathBuf,
+        source: Failure,
+    },
 }
 
 /// What is wrong with a generator's source file.
@@ -113,6 +129,15 @@ impl fmt::Display for Error {
                 tool.install()
             ),
             Self::Progress(_) => write!(out, "cannot write progress to stderr"),
+            Self::Wrap { path, .. } => write!(out, "{} could not be wrapped into a component", path.display()),
+            Self::Site { path, .. } => write!(out, "`ink build --check {}` failed", path.display()),
+            Self::Mismatch { path, native, component } => write!(
+                out,
+                "{}: the components build deploy {}, natively {}",
+                path.display(),
+                component.as_deref().unwrap_or("none"),
+                native.as_deref().unwrap_or("none")
+            ),
         }
     }
 }
@@ -134,7 +159,11 @@ impl std::error::Error for Error {
             Self::Read { source, .. } | Self::Write { source, .. } | Self::Progress(source) => Some(source),
             Self::Source { flaw: Flaw::Toml(source), .. } | Self::Manifest { source, .. } => Some(source),
             Self::Generated { source, .. } | Self::Parse { source, .. } => Some(source),
-            Self::Rustfmt { source, .. } | Self::Metadata(source) | Self::Step { source, .. } => Some(source),
+            Self::Rustfmt { source, .. }
+            | Self::Metadata(source)
+            | Self::Step { source, .. }
+            | Self::Site { source, .. } => Some(source),
+            Self::Wrap { source, .. } => Some(source.as_ref()),
             // Each of these is the whole failure: its data says what is wrong.
             Self::Missing
             | Self::Unknown { .. }
@@ -142,7 +171,8 @@ impl std::error::Error for Error {
             | Self::Module { .. }
             | Self::Layout(_)
             | Self::Stale(_)
-            | Self::Tool { .. } => None,
+            | Self::Tool { .. }
+            | Self::Mismatch { .. } => None,
         }
     }
 }

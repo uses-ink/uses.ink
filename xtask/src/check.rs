@@ -5,6 +5,7 @@ use std::fmt;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
+use crate::component::{Components, Sites};
 use crate::error::Error;
 use crate::layout::Layout;
 use crate::output::{Line, Report};
@@ -44,10 +45,21 @@ impl Gate {
             // the crates built for the browser and for plugins
             Cargo {
                 command: Command::Clippy,
-                scope: ["freehand", "freehand-web", "uses-ink-model", "uses-ink-format-markdown"],
+                scope: [
+                    "freehand",
+                    "freehand-web",
+                    "uses-ink-model",
+                    "uses-ink-format-markdown",
+                    "uses-ink-sdk",
+                    "uses-ink-format-markdown-guest",
+                    "uses-ink-theme-quiet-guest",
+                    "uses-ink-host-wasmtime-hostile",
+                ],
                 flags: &[],
                 target: Target::Browser,
             },
+            // the plugins as components, which the tests and `Sites` load
+            Components,
             Cargo { command: Command::Nextest, scope: Every, flags: &[], target: Target::Host },
             Cargo { command: Command::Test, scope: Every, flags: &[Flag::Doc], target: Target::Host },
             Cargo { command: Command::Deny, scope: (), flags: &[], target: Target::Host },
@@ -60,6 +72,8 @@ impl Gate {
                 flags: &[Flag::Release],
                 target: Target::Browser,
             },
+            // every site fixture, natively and through the components
+            Sites,
             Layout,
         )
     }
@@ -86,10 +100,10 @@ impl Gate {
 /// target. `S` is the scope: [`Every`] crate, a list of packages, or `()` for none.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Cargo<S> {
-    command: Command,
-    scope: S,
-    flags: &'static [Flag],
-    target: Target,
+    pub(crate) command: Command,
+    pub(crate) scope: S,
+    pub(crate) flags: &'static [Flag],
+    pub(crate) target: Target,
 }
 
 impl<S: Scope> Cargo<S> {
@@ -227,6 +241,8 @@ pub(crate) enum Flag {
     /// Doc tests only.
     Doc,
     Release,
+    /// The `component` profile the plugins ship with (decision 0035).
+    Component,
 }
 
 impl Flag {
@@ -236,6 +252,7 @@ impl Flag {
             Self::AllTargets => "--all-targets",
             Self::Doc => "--doc",
             Self::Release => "--release",
+            Self::Component => "--profile=component",
         }
     }
 }

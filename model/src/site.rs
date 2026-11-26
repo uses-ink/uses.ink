@@ -65,6 +65,14 @@ impl PageId {
     }
 }
 
+impl From<Hash> for PageId {
+    /// The page whose id is `hash`, as stored or sent across the plugin boundary; whether a site
+    /// holds it is the site's to say.
+    fn from(hash: Hash) -> Self {
+        Self(hash)
+    }
+}
+
 impl fmt::Display for PageId {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(out, "{}", self.0)

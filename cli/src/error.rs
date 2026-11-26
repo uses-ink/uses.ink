@@ -83,6 +83,18 @@ pub enum Error {
         /// What the system said.
         source: std::io::Error,
     },
+    /// A component `ink build --check` runs could not be read.
+    Component {
+        /// Its file.
+        path: PathBuf,
+        /// What the system said.
+        source: std::io::Error,
+    },
+    /// A component could not be loaded.
+    Plugin {
+        /// Why.
+        source: host_wasmtime::Error,
+    },
     /// A result could not be written as JSON.
     Json {
         /// Why it could not.
@@ -122,6 +134,8 @@ impl Error {
             Self::Manifest { .. } => "output.manifest.invalid",
             Self::Serve { .. } => "preview.serve.failed",
             Self::Terminal { .. } => "cli.terminal.unwritable",
+            Self::Component { .. } => "component.file.unreadable",
+            Self::Plugin { .. } => "component.load.failed",
             Self::Json { .. } => "cli.json.unwritable",
         }
     }
@@ -147,6 +161,8 @@ impl fmt::Display for Error {
             }
             Self::Serve { .. } => write!(out, "the preview could not be served"),
             Self::Terminal { .. } => write!(out, "the terminal could not be written to"),
+            Self::Component { path, .. } => write!(out, "the component {} could not be read", path.display()),
+            Self::Plugin { .. } => write!(out, "a component could not be loaded"),
             Self::Json { .. } => write!(out, "the result could not be written as JSON"),
         }
     }
@@ -161,7 +177,9 @@ impl std::error::Error for Error {
             Self::Write { source, .. }
             | Self::Read { source, .. }
             | Self::Serve { source }
-            | Self::Terminal { source } => Some(source),
+            | Self::Terminal { source }
+            | Self::Component { source, .. } => Some(source),
+            Self::Plugin { source } => Some(source),
             Self::Placed { source, .. } => Some(source),
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),

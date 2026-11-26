@@ -22,6 +22,7 @@ engine.workspace = true
 format-markdown.workspace = true
 host-image.workspace = true
 host-native.workspace = true
+host-wasmtime.workspace = true
 model.workspace = true
 serde.workspace = true
 serde_json.workspace = true

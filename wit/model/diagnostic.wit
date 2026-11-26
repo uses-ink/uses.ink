@@ -1,0 +1,61 @@
+package ink:model@0.1.0;
+
+/// Problems and notices (`model::Diagnostic`, `model::Notice`). A problem or an announcement
+/// crosses as its code and its fields in catalog order (`model::coded::Coded`), so a new entry in
+/// `diag/catalog.toml` changes no WIT.
+interface diagnostic {
+    /// A path in the snapshot, `/`-separated, relative (`model::ContentPath`).
+    type path = string;
+    /// A route the site serves, starting with `/` (`model::Route`).
+    type route = string;
+
+    /// Bytes `start` (inclusive) to `end` (exclusive) of a file.
+    record span {
+        start: u64,
+        end: u64,
+    }
+
+    /// What something is about.
+    variant subject {
+        site,
+        file(path),
+    }
+
+    /// One field's value, as its catalog type (`model::coded::Field`).
+    variant field {
+        path(path),
+        paths(list<path>),
+        route(route),
+        text(string),
+        count(u64),
+        bytes(u64),
+        span(span),
+        /// A decision code, `noun.noun`.
+        decision(string),
+    }
+
+    /// A catalog entry's code, `noun.noun.reason`, and its fields in catalog order.
+    record coded {
+        code: string,
+        fields: list<field>,
+    }
+
+    /// One link of a diagnostic's chain.
+    record said {
+        problem: coded,
+        subject: option<subject>,
+        span: option<span>,
+    }
+
+    /// A problem, then what caused it, then what caused that: never empty.
+    record diagnostic {
+        chain: list<said>,
+    }
+
+    /// Something worth saying that is not a problem.
+    record notice {
+        announcement: coded,
+        subject: option<subject>,
+        span: option<span>,
+    }
+}

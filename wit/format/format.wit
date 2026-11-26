@@ -1,0 +1,14 @@
+package ink:format@0.1.0;
+
+/// A format plugin: one file's bytes into a document and its frontmatter. It resolves nothing.
+world format {
+    export format: interface {
+        use ink:model/read@0.1.0.{read as content};
+        use ink:model/diagnostic@0.1.0.{path};
+
+        /// Whether this format reads the file at `path`.
+        handles: func(path: path) -> bool;
+        /// The file at `path`, read.
+        read: func(path: path, bytes: list<u8>) -> content;
+    }
+}

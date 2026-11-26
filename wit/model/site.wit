@@ -1,0 +1,104 @@
+package ink:model@0.1.0;
+
+/// The interpreted site (`model::Site`) and its pages.
+interface site {
+    use diagnostic.{path, route};
+    use document.{document, page-id, slug};
+    use file.{media};
+
+    /// A day, `2024-03-01`, or an instant in RFC 3339 with its offset (`model::When`).
+    type when = string;
+    /// A BCP 47 language tag (`model::Language`).
+    type language = string;
+    /// The 32 bytes of a BLAKE3 hash.
+    type hash = list<u8>;
+
+    enum page-kind {
+        home,
+        post,
+        page,
+    }
+
+    /// A tag as the author wrote it; its slug follows from the text.
+    record tag {
+        written: string,
+    }
+
+    /// One routed document. Its id follows from its file.
+    record page {
+        file: path,
+        route: route,
+        kind: page-kind,
+        title: string,
+        date: option<when>,
+        updated: option<when>,
+        tags: list<tag>,
+        summary: option<string>,
+        body: document,
+    }
+
+    record identity {
+        title: string,
+        description: option<string>,
+        authors: list<string>,
+        language: language,
+    }
+
+    variant root {
+        top,
+        folder(path),
+    }
+
+    enum layout {
+        blog,
+        vault,
+        docs,
+        flat,
+    }
+
+    /// A size in pixels, as an image is shown.
+    record dimensions {
+        width: u32,
+        height: u32,
+    }
+
+    /// One copy of an image the engine serves: a format at a width.
+    record %variant {
+        media: media,
+        dimensions: dimensions,
+        route: route,
+    }
+
+    /// A raster image as the engine prepared it (`model::Picture`).
+    record picture {
+        dimensions: dimensions,
+        /// By format, then width; empty for a file served as it is.
+        variants: list<%variant>,
+        placeholder: option<route>,
+    }
+
+    record asset {
+        file: path,
+        route: route,
+        blob: hash,
+        /// What the engine prepared from it, once rendering has begun, for a raster image.
+        picture: option<picture>,
+    }
+
+    record excluded {
+        path: path,
+        /// The decision code that left it out, `noun.noun`.
+        because: string,
+    }
+
+    record site {
+        identity: identity,
+        root: root,
+        layout: layout,
+        home: option<page-id>,
+        pages: list<page>,
+        assets: list<asset>,
+        nav: list<page-id>,
+        excluded: list<excluded>,
+    }
+}

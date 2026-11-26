@@ -162,7 +162,10 @@ pub trait Theme {
     /// One page's HTML. `site` is the whole site, for navigation and links. What rendering
     /// finds worth saying (math that does not parse, code in a language no grammar knows) goes
     /// into `record`, also when the page is refused.
-    #[expect(clippy::result_large_err, reason = "the theme contract returns the model's diagnostic as is (0014)")]
+    #[cfg_attr(
+        target_pointer_width = "64",
+        expect(clippy::result_large_err, reason = "the theme contract returns the model's diagnostic as is (0014)")
+    )]
     fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>;
 }
 

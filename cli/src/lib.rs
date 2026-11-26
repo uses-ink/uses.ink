@@ -12,6 +12,7 @@
 
 mod args;
 mod build;
+mod component;
 mod error;
 mod exit;
 mod explain;

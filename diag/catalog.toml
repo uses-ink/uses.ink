@@ -19,6 +19,7 @@ at = "The byte offset where the file stops being UTF-8."
 bound = "The latest the date can be."
 candidates = "Every file it could mean, in path order."
 commit = "The commit, as git writes its id."
+component = "The deploy the plugins built as components built."
 count = "How many there are."
 date = "The date, as written."
 decision = "The decision code it is about."
@@ -35,6 +36,8 @@ language = "The language, as written after the opening fence."
 limit = "The most that is allowed."
 name = "The name given instead."
 other = "The key written before it that sets the same thing."
+native = "The deploy the native plugins built."
+plugin = "The plugin's name."
 path = "The file."
 reason = "Why, as the part that refused it says."
 route = "The route."
@@ -507,3 +510,49 @@ message = "{path} is animated, so it is served as it is, with no smaller copies"
 fields = { path = "path" }
 message = "{path} is served as it is, metadata included: uses.ink makes no smaller copies of AVIF images"
 fix = "publish a JPEG or PNG of it to get smaller copies with the metadata removed"
+
+[diagnostic."plugin.value.unmirrored"]
+severity = "error"
+fault = "ours"
+fields = { reason = "text" }
+message = "a value has no case at the plugin boundary: {reason}"
+fix = "build the plugin against the same WIT as the host"
+
+[diagnostic."plugin.value.malformed"]
+severity = "error"
+fault = "ours"
+fields = { plugin = "text", reason = "text" }
+message = "the plugin `{plugin}` sent a value the model refuses: {reason}"
+fix = "the plugin has a bug; report it to its author"
+
+[diagnostic."plugin.call.trapped"]
+severity = "error"
+fault = "ours"
+fields = { plugin = "text", reason = "text" }
+message = "the plugin `{plugin}` stopped: {reason}"
+fix = "the plugin has a bug; report it to its author"
+
+[diagnostic."plugin.budget.fuel"]
+severity = "error"
+fault = "ours"
+fields = { plugin = "text", limit = "count" }
+message = "the plugin `{plugin}` ran past its {limit} units of fuel in one call"
+
+[diagnostic."plugin.budget.time"]
+severity = "error"
+fault = "ours"
+fields = { plugin = "text", limit = "count" }
+message = "the plugin `{plugin}` ran past its {limit} ms in one call"
+
+[diagnostic."plugin.budget.memory"]
+severity = "error"
+fault = "ours"
+fields = { plugin = "text", limit = "bytes" }
+message = "the plugin `{plugin}` asked for more than its {limit} of memory"
+
+[diagnostic."build.check.mismatch"]
+severity = "error"
+fault = "ours"
+fields = { native = "text", component = "text" }
+message = "the plugins built as components give deploy {component}, natively {native}"
+fix = "a plugin's component and its native core disagree; `ink build` natively is the reference"

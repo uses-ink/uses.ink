@@ -51,6 +51,12 @@ impl Process {
         String::from_utf8(self.stdout(input)?).map_err(Failure::Utf8)
     }
 
+    /// Its stdout as JSON, whatever its exit status: for a command whose JSON says how it went.
+    pub(crate) fn answer<T: DeserializeOwned>(mut self) -> Result<T, Failure> {
+        let done = self.0.stdin(Stdio::null()).stderr(Stdio::inherit()).output().map_err(Failure::Spawn)?;
+        serde_json::from_slice(&done.stdout).map_err(Failure::Json)
+    }
+
     /// Its stdout, as JSON.
     pub(crate) fn json<T: DeserializeOwned>(self) -> Result<T, Failure> {
         serde_json::from_slice(&self.stdout(&[])?).map_err(Failure::Json)

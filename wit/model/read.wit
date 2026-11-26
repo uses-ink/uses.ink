@@ -1,0 +1,33 @@
+package ink:model@0.1.0;
+
+/// One file as a format read it (`model::Read`): its body, the frontmatter keys the engine
+/// reads, each with where it is written, and what the format found worth saying.
+interface read {
+    use diagnostic.{span, diagnostic, notice};
+    use document.{document, slug};
+    use site.{when, language, tag, page-kind};
+
+    record front {
+        title: option<tuple<string, span>>,
+        date: option<tuple<when, span>>,
+        updated: option<tuple<when, span>>,
+        slug: option<tuple<slug, span>>,
+        tags: option<tuple<list<tag>, span>>,
+        publish: option<tuple<bool, span>>,
+        draft: option<tuple<bool, span>>,
+        kind: option<tuple<page-kind, span>>,
+        description: option<tuple<string, span>>,
+        language: option<tuple<language, span>>,
+        /// Where the frontmatter block is.
+        block: option<span>,
+    }
+
+    record read {
+        document: document,
+        front: front,
+        /// The first level-1 heading's text and where it is.
+        heading: option<tuple<string, span>>,
+        diagnostics: list<diagnostic>,
+        notices: list<notice>,
+    }
+}

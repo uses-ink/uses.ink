@@ -1,6 +1,6 @@
 [package]
 name = "xtask"
-description = "Repo tasks: cargo xtask token | diag | brand | layout | check"
+description = "Repo tasks: cargo xtask token | diag | brand | layout | component | check"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -18,6 +18,8 @@ proc-macro2.workspace = true
 prettyplease.workspace = true
 syn.workspace = true
 heck.workspace = true
+anyhow.workspace = true
+wit-component.workspace = true
 
 [lints]
 workspace = true

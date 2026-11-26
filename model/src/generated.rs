@@ -378,6 +378,60 @@ pub enum Problem {
         /// Why, as the part that refused it says.
         reason: String,
     },
+    /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
+    #[serde(rename = "plugin.value.unmirrored")]
+    PluginValueUnmirrored {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `plugin.value.malformed`: the plugin `{plugin}` sent a value the model refuses: {reason}
+    #[serde(rename = "plugin.value.malformed")]
+    PluginValueMalformed {
+        /// The plugin's name.
+        plugin: String,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `plugin.call.trapped`: the plugin `{plugin}` stopped: {reason}
+    #[serde(rename = "plugin.call.trapped")]
+    PluginCallTrapped {
+        /// The plugin's name.
+        plugin: String,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `plugin.budget.fuel`: the plugin `{plugin}` ran past its {limit} units of fuel in one call
+    #[serde(rename = "plugin.budget.fuel")]
+    PluginBudgetFuel {
+        /// The plugin's name.
+        plugin: String,
+        /// The most that is allowed.
+        limit: u64,
+    },
+    /// `plugin.budget.time`: the plugin `{plugin}` ran past its {limit} ms in one call
+    #[serde(rename = "plugin.budget.time")]
+    PluginBudgetTime {
+        /// The plugin's name.
+        plugin: String,
+        /// The most that is allowed.
+        limit: u64,
+    },
+    /// `plugin.budget.memory`: the plugin `{plugin}` asked for more than its {limit} of memory
+    #[serde(rename = "plugin.budget.memory")]
+    PluginBudgetMemory {
+        /// The plugin's name.
+        plugin: String,
+        /// The most that is allowed.
+        limit: Bytes,
+    },
+    /// `build.check.mismatch`: the plugins built as components give deploy {component}, natively {native}
+    #[serde(rename = "build.check.mismatch")]
+    BuildCheckMismatch {
+        /// The deploy the native plugins built.
+        native: String,
+        /// The deploy the plugins built as components built.
+        component: String,
+    },
 }
 impl Problem {
     /// Every code, in catalog order.
@@ -435,6 +489,13 @@ impl Problem {
         "image.budget.pixels",
         "image.decode.failed",
         "image.encode.failed",
+        "plugin.value.unmirrored",
+        "plugin.value.malformed",
+        "plugin.call.trapped",
+        "plugin.budget.fuel",
+        "plugin.budget.time",
+        "plugin.budget.memory",
+        "build.check.mismatch",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -492,6 +553,13 @@ impl Problem {
             Self::ImageBudgetPixels { .. } => "image.budget.pixels",
             Self::ImageDecodeFailed { .. } => "image.decode.failed",
             Self::ImageEncodeFailed { .. } => "image.encode.failed",
+            Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
+            Self::PluginValueMalformed { .. } => "plugin.value.malformed",
+            Self::PluginCallTrapped { .. } => "plugin.call.trapped",
+            Self::PluginBudgetFuel { .. } => "plugin.budget.fuel",
+            Self::PluginBudgetTime { .. } => "plugin.budget.time",
+            Self::PluginBudgetMemory { .. } => "plugin.budget.memory",
+            Self::BuildCheckMismatch { .. } => "build.check.mismatch",
         }
     }
     /// How bad it is.
@@ -550,6 +618,13 @@ impl Problem {
             Self::ImageBudgetPixels { .. } => Severity::Error,
             Self::ImageDecodeFailed { .. } => Severity::Error,
             Self::ImageEncodeFailed { .. } => Severity::Error,
+            Self::PluginValueUnmirrored { .. } => Severity::Error,
+            Self::PluginValueMalformed { .. } => Severity::Error,
+            Self::PluginCallTrapped { .. } => Severity::Error,
+            Self::PluginBudgetFuel { .. } => Severity::Error,
+            Self::PluginBudgetTime { .. } => Severity::Error,
+            Self::PluginBudgetMemory { .. } => Severity::Error,
+            Self::BuildCheckMismatch { .. } => Severity::Error,
         }
     }
     /// Whose move it is to fix it.
@@ -608,6 +683,13 @@ impl Problem {
             Self::ImageBudgetPixels { .. } => Fault::Author,
             Self::ImageDecodeFailed { .. } => Fault::Author,
             Self::ImageEncodeFailed { .. } => Fault::Ours,
+            Self::PluginValueUnmirrored { .. } => Fault::Ours,
+            Self::PluginValueMalformed { .. } => Fault::Ours,
+            Self::PluginCallTrapped { .. } => Fault::Ours,
+            Self::PluginBudgetFuel { .. } => Fault::Ours,
+            Self::PluginBudgetTime { .. } => Fault::Ours,
+            Self::PluginBudgetMemory { .. } => Fault::Ours,
+            Self::BuildCheckMismatch { .. } => Fault::Ours,
         }
     }
 }
@@ -961,6 +1043,27 @@ impl From<&Problem> for Coded {
             Problem::ImageEncodeFailed { path, reason, .. } => {
                 Coded::new("image.encode.failed", vec![Field::from(path.clone()), Field::from(reason.clone())])
             }
+            Problem::PluginValueUnmirrored { reason, .. } => {
+                Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
+            }
+            Problem::PluginValueMalformed { plugin, reason, .. } => {
+                Coded::new("plugin.value.malformed", vec![Field::from(plugin.clone()), Field::from(reason.clone())])
+            }
+            Problem::PluginCallTrapped { plugin, reason, .. } => {
+                Coded::new("plugin.call.trapped", vec![Field::from(plugin.clone()), Field::from(reason.clone())])
+            }
+            Problem::PluginBudgetFuel { plugin, limit, .. } => {
+                Coded::new("plugin.budget.fuel", vec![Field::from(plugin.clone()), Field::from(*limit)])
+            }
+            Problem::PluginBudgetTime { plugin, limit, .. } => {
+                Coded::new("plugin.budget.time", vec![Field::from(plugin.clone()), Field::from(*limit)])
+            }
+            Problem::PluginBudgetMemory { plugin, limit, .. } => {
+                Coded::new("plugin.budget.memory", vec![Field::from(plugin.clone()), Field::from(*limit)])
+            }
+            Problem::BuildCheckMismatch { native, component, .. } => {
+                Coded::new("build.check.mismatch", vec![Field::from(native.clone()), Field::from(component.clone())])
+            }
         }
     }
 }
@@ -1039,6 +1142,13 @@ impl TryFrom<Coded> for Problem {
             },
             "image.decode.failed" => Self::ImageDecodeFailed { path: fields.next()?, reason: fields.next()? },
             "image.encode.failed" => Self::ImageEncodeFailed { path: fields.next()?, reason: fields.next()? },
+            "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
+            "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
+            "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },
+            "plugin.budget.fuel" => Self::PluginBudgetFuel { plugin: fields.next()?, limit: fields.next()? },
+            "plugin.budget.time" => Self::PluginBudgetTime { plugin: fields.next()?, limit: fields.next()? },
+            "plugin.budget.memory" => Self::PluginBudgetMemory { plugin: fields.next()?, limit: fields.next()? },
+            "build.check.mismatch" => Self::BuildCheckMismatch { native: fields.next()?, component: fields.next()? },
             _ => return fields.unknown(),
         };
         fields.end(made)

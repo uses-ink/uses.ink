@@ -59,11 +59,11 @@ impl Order {
         ("uses-ink-diag", &["uses-ink-model"]),
         ("uses-ink-engine", &["uses-ink-model", "uses-ink-diag", "uses-ink-config"]),
         ("uses-ink-token", &[]),
-        // Formats speak the model directly until host/wasmtime exists, then the generated WIT types.
+        // A format's native core speaks the model; its guest crate speaks the WIT (0041).
         ("uses-ink-format-markdown", &["uses-ink-model"]),
         ("uses-ink-host-image", &["uses-ink-model", "uses-ink-engine"]),
         ("uses-ink-host-native", &["uses-ink-model", "uses-ink-engine"]),
-        // The Theme trait, until themes are components speaking the generated WIT types.
+        // A theme's native core implements the engine's Theme trait; its guest crate exports it.
         ("uses-ink-theme-quiet", &["uses-ink-model", "uses-ink-engine"]),
         (
             "uses-ink-cli",
@@ -76,8 +76,27 @@ impl Order {
                 "uses-ink-host-native",
                 "uses-ink-format-markdown",
                 "uses-ink-theme-quiet",
+                "uses-ink-host-wasmtime",
             ],
         ),
+        // The plugin boundary (decision 0035): the host runs components and tests them against
+        // their native cores; the SDK and each guest speak the model through the shared WIT.
+        (
+            "uses-ink-host-wasmtime",
+            &[
+                "freehand",
+                "uses-ink-model",
+                "uses-ink-engine",
+                "uses-ink-host-native",
+                "uses-ink-host-image",
+                "uses-ink-format-markdown",
+                "uses-ink-theme-quiet",
+            ],
+        ),
+        ("uses-ink-sdk", &["freehand", "uses-ink-model", "uses-ink-engine"]),
+        ("uses-ink-format-markdown-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-format-markdown"]),
+        ("uses-ink-theme-quiet-guest", &["uses-ink-model", "uses-ink-engine", "uses-ink-sdk", "uses-ink-theme-quiet"]),
+        ("uses-ink-host-wasmtime-hostile", &["uses-ink-sdk"]),
         (TASKS, &["freehand", "uses-ink-token"]),
         (Self::FIXTURE, &[]),
     ];

@@ -1,0 +1,30 @@
+package ink:theme@0.1.0;
+
+/// A theme plugin (decision 0014): the engine owns the site's structure, the theme writes each
+/// page. What it finds worth saying while it renders goes through `ink:host/diagnostic`.
+world theme {
+    import ink:host/pen@0.1.0;
+    import ink:host/text@0.1.0;
+    import ink:host/highlight@0.1.0;
+    import ink:host/diagnostic@0.1.0;
+    use ink:model/file@0.1.0.{file};
+
+    /// Its name, as diagnostics show it.
+    export name: func() -> string;
+    /// CSS, fonts and images, asked for once per build.
+    export assets: func() -> list<file>;
+
+    /// Renders the pages of one site, which it is given once.
+    export pages: interface {
+        use ink:model/site@0.1.0.{site, page};
+        use ink:model/diagnostic@0.1.0.{diagnostic};
+
+        resource renderer {
+            /// For `site`, served at `base`, an absolute `http(s)` URL.
+            constructor(base: string, site: site);
+            /// One page's HTML; the page need not be one of the site's (the engine's generated
+            /// home and not-found page are not).
+            render: func(page: page) -> result<string, diagnostic>;
+        }
+    }
+}

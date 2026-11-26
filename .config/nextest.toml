@@ -29,3 +29,10 @@ slow-timeout = { period = "500ms", terminate-after = 1 }
 [[profile.default.overrides]]
 filter = "binary(git)"
 slow-timeout = { period = "250ms", terminate-after = 1 }
+
+# A component's tests pay a Cranelift compile on a cold cache (tens of milliseconds for the
+# hostile component, about a second for the markdown format) and the spinning plugin's 50 ms
+# deadline; the components themselves are built once per run by `cargo xtask component`.
+[[profile.default.overrides]]
+filter = "binary_id(uses-ink-host-wasmtime::component)"
+slow-timeout = { period = "2s", terminate-after = 1 }

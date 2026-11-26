@@ -9,7 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-# the Theme trait, until the theme is a component speaking the generated WIT types
+# the Theme trait the native core implements; `guest/` exports it as a component
 engine.workspace = true
 math-core.workspace = true
 model.workspace = true

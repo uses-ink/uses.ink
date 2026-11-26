@@ -1,0 +1,25 @@
+[package]
+name = "uses-ink-host-wasmtime"
+description = "Plugins as wasm components: loading, linking the host's capabilities, budgets, the .cwasm cache"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+blake3.workspace = true
+engine.workspace = true
+freehand.workspace = true
+host-native.workspace = true
+model.workspace = true
+wasmtime.workspace = true
+
+[dev-dependencies]
+host-image.workspace = true
+format-markdown.workspace = true
+theme-quiet.workspace = true
+
+[lints]
+workspace = true

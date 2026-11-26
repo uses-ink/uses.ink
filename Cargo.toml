@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "xtask"]
+members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/theme/quiet/guest"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -22,7 +22,9 @@ format-markdown = { package = "uses-ink-format-markdown", path = "plugin/format/
 freehand = { path = "freehand" }
 host-image = { package = "uses-ink-host-image", path = "host/image" }
 host-native = { package = "uses-ink-host-native", path = "host/native" }
+host-wasmtime = { package = "uses-ink-host-wasmtime", path = "host/wasmtime" }
 model = { package = "uses-ink-model", path = "model" }
+sdk = { package = "uses-ink-sdk", path = "plugin/sdk" }
 theme-quiet = { package = "uses-ink-theme-quiet", path = "plugin/theme/quiet" }
 token = { package = "uses-ink-token", path = "token" }
 annotate-snippets = "0.12.18"
@@ -52,6 +54,15 @@ tokio = { version = "1.54.1", features = ["rt", "net"] }
 toml = "1.2.3"
 toml_edit = "0.25.21"
 unspliced = "0.1.2"
+# plugins as components (decision 0035): the host, the guests' bindings, and wrapping a guest's
+# core module into a component
+wasmtime = { version = "51.0.0", default-features = false, features = [
+    "component-model", "cranelift", "parallel-compilation", "runtime", "std",
+] }
+wit-bindgen = { version = "0.63.0", default-features = false, features = ["macros", "realloc"] }
+wit-component = { version = "0.263.0", default-features = false }
+# wit-component's error type, named by xtask
+anyhow = "1.0.105"
 # repo tasks: generated Rust is built as tokens and printed
 # images (host/image): decoders without C, a SIMD resizer, AVIF through rav1e without its
 # assembly, JPEG without its runtime SIMD paths, dimensions from headers alone
@@ -72,6 +83,16 @@ syn = { version = "3.0.10", features = ["full", "visit"] }
 # 3, not 2: compiling a tree-sitter grammar's queries must fit a highlighting test's budget
 opt-level = 3
 debug-assertions = false
+
+# The plugins as they ship: `cargo build --profile component --target wasm32-unknown-unknown`,
+# small and without unwinding, as decision 0035 measured them.
+[profile.component]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
 
 [workspace.lints.rust]
 # `deny`, not `forbid`, so `freehand-web` can expect it for its wasm exports; `xtask check`

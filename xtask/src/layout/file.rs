@@ -44,9 +44,16 @@ impl Unsafe {
     const LINT: &'static str = concat!("un", "safe_code");
 
     /// The only files that may hold unsafe code: the pen's wasm exports, whose names need the
-    /// unsafe `no_mangle` attribute. The workspace denies the lint rather than forbidding it so
-    /// these can expect it.
-    pub(crate) const ALLOWED: &'static [&'static str] = &["freehand-web/src/lib.rs"];
+    /// unsafe `no_mangle` attribute (0034), and the plugin boundary's (0035). The workspace
+    /// denies the lint rather than forbidding it so these can allow it.
+    pub(crate) const ALLOWED: &'static [&'static str] = &[
+        "freehand-web/src/lib.rs",
+        // decision 0035: loading a `.cwasm` from the cache, and each guest's exports by symbol
+        "host/wasmtime/src/cache.rs",
+        "host/wasmtime/hostile/src/bind.rs",
+        "plugin/format/markdown/guest/src/bind.rs",
+        "plugin/theme/quiet/guest/src/bind.rs",
+    ];
 
     /// Whether `text` holds the keyword or names its lint as code.
     fn holds(text: &str) -> Result<bool, LexError> {

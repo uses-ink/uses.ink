@@ -1,0 +1,160 @@
+package ink:model@0.1.0;
+
+/// A page's body (`model::Document`). WIT has no recursive types, so the tree is flattened: every
+/// block and every inline is an entry of one list, and a node names its children by their place
+/// in that list. A child comes before its parent and each node is used once, so the tree is read
+/// back in one pass and no input can make a cycle.
+interface document {
+    /// The place of a block in `document.blocks`.
+    type block-at = u32;
+    /// The place of an inline in `document.inlines`.
+    type inline-at = u32;
+    /// A page's identity: the 32 bytes of its BLAKE3 hash (`model::PageId`).
+    type page-id = list<u8>;
+    /// A slug: lower case letters, digits and single `-` (`model::Slug`).
+    type slug = string;
+
+    record document {
+        blocks: list<block>,
+        inlines: list<inline>,
+        /// The body, in reading order.
+        body: list<block-at>,
+        /// In order of first reference.
+        footnotes: list<footnote>,
+    }
+
+    record footnote {
+        name: slug,
+        blocks: list<block-at>,
+    }
+
+    variant block {
+        heading(heading),
+        paragraph(list<inline-at>),
+        %list(listed),
+        quote(list<block-at>),
+        code(code),
+        rule,
+        table(table),
+        callout(callout),
+        math(string),
+        definitions(list<definition>),
+        details(details),
+    }
+
+    record heading {
+        /// 1 to 6.
+        level: u8,
+        anchor: slug,
+        inlines: list<inline-at>,
+    }
+
+    record listed {
+        /// The first number of an ordered list; none for a bulleted one.
+        ordered: option<u64>,
+        items: list<item>,
+        tight: bool,
+    }
+
+    record item {
+        task: option<task>,
+        blocks: list<block-at>,
+    }
+
+    enum task {
+        open,
+        done,
+    }
+
+    record code {
+        language: option<string>,
+        text: string,
+    }
+
+    record table {
+        alignments: list<alignment>,
+        head: list<list<inline-at>>,
+        rows: list<list<list<inline-at>>>,
+    }
+
+    enum alignment {
+        none,
+        left,
+        center,
+        right,
+    }
+
+    record callout {
+        kind: callout-kind,
+        title: option<list<inline-at>>,
+        blocks: list<block-at>,
+    }
+
+    variant callout-kind {
+        note,
+        tip,
+        important,
+        warning,
+        caution,
+        other(slug),
+    }
+
+    record definition {
+        term: list<inline-at>,
+        details: list<list<block-at>>,
+    }
+
+    record details {
+        summary: list<inline-at>,
+        blocks: list<block-at>,
+    }
+
+    variant inline {
+        text(string),
+        emphasis(list<inline-at>),
+        strong(list<inline-at>),
+        strike(list<inline-at>),
+        code(string),
+        link(link),
+        image(image),
+        %break,
+        soft-break,
+        math(string),
+        footnote(slug),
+        highlight(list<inline-at>),
+        superscript(list<inline-at>),
+        subscript(list<inline-at>),
+        keyboard(string),
+    }
+
+    record link {
+        target: link-target,
+        children: list<inline-at>,
+    }
+
+    variant link-target {
+        page(page-link),
+        anchor(slug),
+        /// An `http(s):` or `mailto:` URL.
+        external(string),
+        /// As written; it resolved to nothing.
+        unresolved(string),
+    }
+
+    record page-link {
+        id: page-id,
+        anchor: option<slug>,
+    }
+
+    record image {
+        source: image-source,
+        alt: string,
+    }
+
+    variant image-source {
+        /// A file of the snapshot.
+        asset(string),
+        external(string),
+        unresolved(string),
+    }
+}

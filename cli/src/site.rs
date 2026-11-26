@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use config::{Config, Parsed};
-use engine::{BaseUrl, Blobs, Engine, NoPins, RenderSettings, Understood};
+use engine::{BaseUrl, Blobs, Engine, Formats, NoPins, RenderSettings, Theme, Understood};
 use host_image::Pixels;
 use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject, Version};
@@ -96,6 +96,11 @@ impl<'a> Source<'a> {
     }
 
     pub(crate) fn load(self) -> Result<Loaded, Error> {
+        self.interpret((Markdown,))
+    }
+
+    /// The source interpreted through `formats`.
+    pub(crate) fn interpret<F: Formats>(self, formats: F) -> Result<Loaded, Error> {
         let mut store = Memory::default();
         let (read, said) = self.read(&mut store)?;
         let snapshot = read.snapshot;
@@ -122,7 +127,7 @@ impl<'a> Source<'a> {
             }
         }
         let Parsed { config, diagnostics } = parsed;
-        let mut understood = Engine::new(&store, Configured(&config), (Markdown,), ()).interpret(&snapshot);
+        let mut understood = Engine::new(&store, Configured(&config), formats, ()).interpret(&snapshot);
         let stops = diagnostics.iter().any(|d| d.severity() == model::Severity::Error);
         understood.diagnostics.splice(0..0, diagnostics);
         if stops {
@@ -169,6 +174,11 @@ impl Loaded {
     /// Renders the site through `ink:theme-quiet`, its images through the host's image work, if
     /// interpreting gave one.
     pub(crate) fn render(&self, address: &Address) -> Rendering {
+        self.through(address, &Quiet::new(address.base.clone(), Grammars::default()))
+    }
+
+    /// Renders the site through `theme`, if interpreting gave one.
+    pub(crate) fn through<T: Theme>(&self, address: &Address, theme: &T) -> Rendering {
         let understood = &self.understood;
         let mut diagnostics = understood.diagnostics.clone();
         let mut notices = understood.notices.clone();
@@ -176,8 +186,7 @@ impl Loaded {
         let Some(site) = &understood.site else {
             return Rendering { deploy: None, blobs: BTreeMap::new(), diagnostics, notices };
         };
-        let theme = Quiet::new(address.base.clone(), Grammars::default());
-        let engine = Engine::new(&self.store, NoPins, (Markdown,), &theme);
+        let engine = Engine::new(&self.store, NoPins, (), theme);
         let rendered = engine.render(site, &RenderSettings { base: address.base.clone() }, &Pixels::default());
         diagnostics.extend(rendered.diagnostics);
         notices.extend(rendered.notices);

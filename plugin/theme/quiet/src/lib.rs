@@ -7,9 +7,8 @@
 //! [`Highlight`](model::highlight::Highlight), the capability of decision 0039, and links no
 //! highlighter of its own.
 //!
-//! It implements [`engine::Theme`] directly. That trait is the native stand-in for the
-//! `ink:theme` WIT world: when themes become components, this crate speaks the generated WIT
-//! types instead and the engine dependency goes.
+//! It implements [`engine::Theme`] directly: this crate is the theme's native core, and `guest/`
+//! exports it as the `ink:theme` world of a wasm component (decision 0041).
 //!
 //! `document` writes a page's document as one [`model::Visit`]; `page` writes the page around
 //! it.
@@ -40,12 +39,9 @@ impl<H: Highlight> Quiet<H> {
     }
 }
 
-impl<H: Highlight> Theme for Quiet<H> {
-    fn name(&self) -> &'static str {
-        "ink:theme-quiet"
-    }
-
-    fn assets(&self) -> Vec<File> {
+impl<H> Quiet<H> {
+    /// The theme's own files: its stylesheet and its code stylesheet, the same for every site.
+    pub fn files() -> Vec<File> {
         let mut files = Vec::new();
         let style = style::quiet::SHEET.text().as_bytes().to_vec();
         if let Ok(route) = page::STYLE.parse::<Route>() {
@@ -56,6 +52,16 @@ impl<H: Highlight> Theme for Quiet<H> {
             files.push(File { route, media: MediaType::Css, bytes: code });
         }
         files
+    }
+}
+
+impl<H: Highlight> Theme for Quiet<H> {
+    fn name(&self) -> &'static str {
+        "ink:theme-quiet"
+    }
+
+    fn assets(&self) -> Vec<File> {
+        Self::files()
     }
 
     /// A page the theme could not write whole is `render.page.failed`: a bug in the theme.
