@@ -1,0 +1,121 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/definitions.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "definitions": [
+          {
+            "term": [
+              {
+                "text": "Term"
+              }
+            ],
+            "details": [
+              [
+                {
+                  "paragraph": [
+                    {
+                      "text": "Definition"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          {
+            "term": [
+              {
+                "text": "Term with "
+              },
+              {
+                "emphasis": [
+                  {
+                    "text": "emphasis"
+                  }
+                ]
+              }
+            ],
+            "details": [
+              [
+                {
+                  "paragraph": [
+                    {
+                      "text": "First"
+                    }
+                  ]
+                }
+              ],
+              [
+                {
+                  "paragraph": [
+                    {
+                      "text": "Second"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          {
+            "term": [
+              {
+                "text": "Loose term"
+              }
+            ],
+            "details": [
+              [
+                {
+                  "paragraph": [
+                    {
+                      "text": "A paragraph."
+                    }
+                  ]
+                },
+                {
+                  "paragraph": [
+                    {
+                      "text": "Another paragraph, with "
+                    },
+                    {
+                      "code": "code"
+                    },
+                    {
+                      "text": "."
+                    }
+                  ]
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Plain paragraph after."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

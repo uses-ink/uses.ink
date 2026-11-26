@@ -3,7 +3,7 @@
 use std::fmt;
 
 use jiff::civil::Date;
-use model::{Diagnostic, PageKind, Problem, Slug, Span, Spanned, Tag, Timestamp, When};
+use model::{Diagnostic, Language, PageKind, Problem, Slug, Span, Spanned, Tag, Timestamp, When};
 use serde::Deserialize;
 use serde::de::{self, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde_saphyr::Spanned as Located;
@@ -106,6 +106,9 @@ pub(super) enum Field {
     Publish,
     Draft,
     Kind,
+    Description,
+    Summary,
+    Language,
 }
 
 impl Field {
@@ -119,6 +122,9 @@ impl Field {
             Self::Publish => "publish",
             Self::Draft => "draft",
             Self::Kind => "type",
+            Self::Description => "description",
+            Self::Summary => "summary",
+            Self::Language => "lang",
         }
     }
 }
@@ -130,7 +136,7 @@ struct Expected(Field);
 impl fmt::Display for Expected {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         out.write_str(match self.0 {
-            Field::Title => "some text",
+            Field::Title | Field::Description | Field::Summary => "some text",
             Field::Date | Field::Updated => {
                 "a day (`2024-03-01`) or a time with its offset (`2024-03-01T09:30:00+01:00`)"
             }
@@ -138,6 +144,7 @@ impl fmt::Display for Expected {
             Field::Tags => "a list of tags, or tags separated by commas, each with a letter or digit",
             Field::Publish | Field::Draft => "`true` or `false`",
             Field::Kind => "`post` or `page`",
+            Field::Language => "a language tag: two or three letters, then subtags joined by `-` (`en`, `fr-CH`)",
         })
     }
 }
@@ -160,7 +167,8 @@ impl Value<'_> {
     }
 }
 
-pub(super) fn title(value: &Value<'_>) -> Option<String> {
+/// Text with at least one character that is not a space.
+pub(super) fn text(value: &Value<'_>) -> Option<String> {
     value.text().filter(|text| !text.trim().is_empty()).map(str::to_owned)
 }
 
@@ -182,6 +190,10 @@ pub(super) fn flag(value: &Value<'_>) -> Option<bool> {
         Raw::Bool(flag) => Some(*flag),
         _ => None,
     }
+}
+
+pub(super) fn language(value: &Value<'_>) -> Option<Language> {
+    value.text()?.trim().parse().ok()
 }
 
 pub(super) fn kind(value: &Value<'_>) -> Option<PageKind> {
@@ -219,6 +231,26 @@ impl Out<'_> {
             self.refuse(field, span);
         }
         converted.map(|converted| Spanned::new(converted, span))
+    }
+
+    /// The one of two keys that set the same thing, when only one is set. When both are, the
+    /// first written wins and the second is refused.
+    pub(super) fn either<T>(
+        &mut self,
+        one: (Field, Option<Spanned<T>>),
+        two: (Field, Option<Spanned<T>>),
+    ) -> Option<Spanned<T>> {
+        match (one, two) {
+            ((one, Some(a)), (two, Some(b))) => {
+                let ((first, kept), (second, ignored)) =
+                    if a.span.start() <= b.span.start() { ((one, a), (two, b)) } else { ((two, b), (one, a)) };
+                let problem =
+                    Problem::FrontmatterKeyConflict { key: second.key().to_owned(), other: first.key().to_owned() };
+                self.diagnostics.push(Diagnostic::new(problem).on(self.source.subject.clone()).at(ignored.span));
+                Some(kept)
+            }
+            ((_, a), (_, b)) => a.or(b),
+        }
     }
 
     /// `tags`: a list, or one text of tags separated by commas. A bad tag is refused alone.

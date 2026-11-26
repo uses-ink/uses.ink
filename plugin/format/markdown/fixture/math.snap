@@ -52,6 +52,8 @@ input_file: plugin/format/markdown/fixture/math.md
     "publish": null,
     "draft": null,
     "kind": null,
+    "description": null,
+    "language": null,
     "block": null
   },
   "heading": null,

@@ -15,7 +15,11 @@ input_file: plugin/format/markdown/fixture/html.md
       {
         "paragraph": [
           {
-            "text": "Inline bold and span and  break  done."
+            "text": "Inline bold and span and "
+          },
+          "break",
+          {
+            "text": " break  done."
           }
         ]
       },
@@ -38,6 +42,20 @@ input_file: plugin/format/markdown/fixture/html.md
           ],
           "tight": true
         }
+      },
+      {
+        "paragraph": [
+          {
+            "image": {
+              "source": {
+                "unresolved": {
+                  "written": "x.png"
+                }
+              },
+              "alt": ""
+            }
+          }
+        ]
       }
     ],
     "footnotes": []
@@ -51,6 +69,8 @@ input_file: plugin/format/markdown/fixture/html.md
     "publish": null,
     "draft": null,
     "kind": null,
+    "description": null,
+    "language": null,
     "block": null
   },
   "heading": null,
@@ -103,21 +123,6 @@ input_file: plugin/format/markdown/fixture/html.md
     {
       "problem": {
         "html.element.stripped": {
-          "element": "br"
-        }
-      },
-      "subject": {
-        "file": "html.md"
-      },
-      "span": [
-        102,
-        107
-      ],
-      "cause": null
-    },
-    {
-      "problem": {
-        "html.element.stripped": {
           "element": "script"
         }
       },
@@ -157,21 +162,6 @@ input_file: plugin/format/markdown/fixture/html.md
       "span": [
         243,
         247
-      ],
-      "cause": null
-    },
-    {
-      "problem": {
-        "html.element.stripped": {
-          "element": "img"
-        }
-      },
-      "subject": {
-        "file": "html.md"
-      },
-      "span": [
-        258,
-        294
       ],
       "cause": null
     }

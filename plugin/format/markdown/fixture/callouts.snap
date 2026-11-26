@@ -134,6 +134,8 @@ input_file: plugin/format/markdown/fixture/callouts.md
     "publish": null,
     "draft": null,
     "kind": null,
+    "description": null,
+    "language": null,
     "block": null
   },
   "heading": null,

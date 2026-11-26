@@ -55,6 +55,8 @@ input_file: plugin/format/markdown/fixture/frontmatter-tags-comma.md
         58
       ]
     },
+    "description": null,
+    "language": null,
     "block": [
       0,
       63

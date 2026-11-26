@@ -43,6 +43,13 @@ fields = { key = "text", expected = "text" }
 message = "the frontmatter's `{key}` takes {expected}, so it is ignored"
 fix = "change the value at the marked place, or remove the key"
 
+[diagnostic."frontmatter.key.conflict"]
+severity = "warning"
+fault = "author"
+fields = { key = "text", other = "text" }
+message = "the frontmatter's `{key}` sets the same thing as `{other}` before it, so it is ignored"
+fix = "keep one of the two keys"
+
 [diagnostic."source.file.encoding"]
 severity = "error"
 fault = "author"
@@ -134,6 +141,10 @@ message = "a heading has no letters or digits, so its anchor is `{anchor}`"
 [notice."footnote.name.generated"]
 fields = { name = "text", given = "text" }
 message = "the footnote `{given}` has no letters or digits, so its name is `{name}`"
+
+[notice."callout.kind.unknown"]
+fields = { kind = "text" }
+message = "the callout kind `{kind}` has no name a theme can use, so it is shown as a note"
 
 [notice."site.home.generated"]
 message = "no home page was found, so the home page lists every page"

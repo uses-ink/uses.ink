@@ -1,17 +1,47 @@
-//! Raw HTML, taken apart only far enough to remove it: tags, comments and the text between.
+//! Raw HTML, taken apart far enough to keep what decision 0027 allows and remove the rest: tags
+//! with their attributes, comments and the text between. Nothing here builds a tree; the body
+//! pairs tags.
 
-/// One piece of raw HTML, with its byte range in the HTML it came from.
+mod attribute;
+mod element;
+
+pub(crate) use attribute::Attributes;
+pub(crate) use element::Element;
+
+/// One piece of raw HTML.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Piece<'a> {
     /// Text between tags, as written.
     Text(&'a str),
-    /// `<name ...>` or `<name/>`, the name lower-cased; also `<!doctype>` and `<?...?>`, named
-    /// by what follows the `<`.
-    Open { name: String, start: usize, end: usize },
-    /// `</name>`, the name lower-cased.
-    Close { name: String },
+    /// `<name ...>` or `<name/>`; also `<!doctype>` and `<?...?>`, named by what follows the `<`.
+    Open(Tag<'a>),
+    /// `</name>`.
+    Close(Tag<'a>),
     /// `<!-- ... -->`.
     Comment,
+}
+
+/// One tag: its name lower-cased, its byte range in the HTML it came from, and the text after
+/// its name, where its attributes are.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Tag<'a> {
+    pub(crate) name: String,
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    rest: &'a str,
+}
+
+impl<'a> Tag<'a> {
+    /// The tag's attributes, in the order written.
+    pub(crate) fn attributes(&self) -> Attributes<'a> {
+        Attributes::new(self.rest)
+    }
+
+    /// The value of the first attribute called `name` (lower case), entities decoded; an
+    /// attribute written without a value has the empty text.
+    pub(crate) fn attribute(&self, name: &str) -> Option<String> {
+        self.attributes().find(|attribute| attribute.name == name).map(|attribute| attribute.value)
+    }
 }
 
 /// Elements whose content is code, never prose.
@@ -20,11 +50,12 @@ const OPAQUE: &[&str] = &["script", "style"];
 impl Piece<'_> {
     /// Whether this tag opens an element whose content is not text to keep.
     pub(crate) fn opens_opaque(&self) -> bool {
-        matches!(self, Self::Open { name, .. } if OPAQUE.contains(&name.as_str()))
+        matches!(self, Self::Open(tag) if OPAQUE.contains(&tag.name.as_str()))
     }
 
+    /// Whether this tag closes an element [`Self::opens_opaque`] opened.
     pub(crate) fn closes_opaque(&self) -> bool {
-        matches!(self, Self::Close { name } if OPAQUE.contains(&name.as_str()))
+        matches!(self, Self::Close(tag) if OPAQUE.contains(&tag.name.as_str()))
     }
 }
 
@@ -36,6 +67,7 @@ pub(crate) struct Pieces<'a> {
 }
 
 impl<'a> Pieces<'a> {
+    /// The pieces of `html`, from its start.
     pub(crate) fn new(html: &'a str) -> Self {
         Self { html, at: 0 }
     }
@@ -98,17 +130,22 @@ fn piece(tag: &str, start: usize, end: usize) -> Piece<'_> {
     if tag.starts_with("<!--") {
         return Piece::Comment;
     }
-    if let Some(rest) = tag.strip_prefix("</") {
-        return Piece::Close { name: name(rest) };
+    if let Some(after) = tag.strip_prefix("</") {
+        let (name, rest) = name(after);
+        return Piece::Close(Tag { name, start, end, rest });
     }
-    Piece::Open { name: name(tag.get(1..).unwrap_or_default()), start, end }
+    let (name, rest) = name(tag.get(1..).unwrap_or_default());
+    Piece::Open(Tag { name, start, end, rest })
 }
 
-/// The tag name at the start of `text`, lower-cased.
-fn name(text: &str) -> String {
+/// The tag name at the start of `text`, lower-cased, and the text after it.
+fn name(text: &str) -> (String, &str) {
     let end = text.find(|c: char| c.is_whitespace() || c == '>' || c == '/').unwrap_or(text.len());
-    let name = text.get(..end).filter(|name| !name.is_empty()).unwrap_or(text);
-    name.chars().take(64).collect::<String>().to_ascii_lowercase()
+    let (name, rest) = match text.get(..end).filter(|name| !name.is_empty()) {
+        Some(name) => (name, text.get(end..).unwrap_or_default()),
+        None => (text, ""),
+    };
+    (name.chars().take(64).collect::<String>().to_ascii_lowercase(), rest)
 }
 
 /// Text from HTML with the common character references decoded: the five XML ones, `&nbsp;`,
@@ -152,24 +189,35 @@ fn reference(text: &str) -> Option<(char, usize)> {
 
 #[cfg(test)]
 mod test {
-    use super::{Piece, Pieces, decode};
+    use super::{Piece, Pieces, Tag, decode};
 
     #[test]
     fn splits_tags_from_text() {
-        let pieces: Vec<_> = Pieces::new("a <b class=\"x>y\">c</b> <!-- d --> 1 < 2 <i>").collect();
+        let pieces: Vec<_> = Pieces::new("a <B class=\"x>y\">c</b> <!-- d --> 1 < 2 <i>").collect();
         assert_eq!(
             pieces,
             [
                 Piece::Text("a "),
-                Piece::Open { name: "b".into(), start: 2, end: 17 },
+                Piece::Open(Tag { name: "b".into(), start: 2, end: 17, rest: " class=\"x>y\">" }),
                 Piece::Text("c"),
-                Piece::Close { name: "b".into() },
+                Piece::Close(Tag { name: "b".into(), start: 18, end: 22, rest: ">" }),
                 Piece::Text(" "),
                 Piece::Comment,
                 Piece::Text(" 1 < 2 "),
-                Piece::Open { name: "i".into(), start: 40, end: 43 },
+                Piece::Open(Tag { name: "i".into(), start: 40, end: 43, rest: ">" }),
             ]
         );
+    }
+
+    #[test]
+    fn reads_attributes_of_a_tag() {
+        let Some(Piece::Open(tag)) = Pieces::new("<img SRC='a.png' alt=\"A &amp; B\" hidden>").next() else {
+            panic!("not a tag");
+        };
+        assert_eq!(tag.attribute("src").as_deref(), Some("a.png"));
+        assert_eq!(tag.attribute("alt").as_deref(), Some("A & B"));
+        assert_eq!(tag.attribute("hidden").as_deref(), Some(""));
+        assert_eq!(tag.attribute("title"), None);
     }
 
     #[test]

@@ -170,6 +170,12 @@ with spans. Raw HTML is parsed into `Document` against our allowlist; ammonia on
 escape hatch. **Why:** pulldown-cmark had two 2026 wikilink advisories; ammonia had four mXSS
 advisories in 2026 (`research/deps-engine.md`).
 
+The allowlist, as the markdown format reads it: `<kbd>`, `<sup>`, `<sub>`, `<mark>`, `<del>` and
+`<s>`, `<br>`, `<img src alt>` and `<a href>` inline; `<details>` with an optional first
+`<summary>` around markdown, `<hr>` and `<br>` as blocks. No attribute is kept beyond `src`, `alt`
+and `href`, which follow the same rules as markdown images and links. Every other element is
+removed with `html.element.stripped` and its text kept.
+
 ## 0028 Dates with jiff
 
 Accepted. jiff 1.0 with our own fixed locale table; chrono is unmaintained (RustSec 2026).

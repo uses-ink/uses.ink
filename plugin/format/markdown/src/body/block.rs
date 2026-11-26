@@ -1,11 +1,15 @@
 //! Blocks.
 
 use comrak::nodes::{AlertType, AstNode, ListType, NodeAlert, NodeCodeBlock, NodeList, NodeValue, TableAlignment};
-use model::{Alignment, Block, CalloutKind, Footnote, Inline, Item, Level, Slug, Span, Spanned, Task};
+use comrak::options::AlertStyleType;
+use model::{
+    Alignment, Announcement, Block, CalloutKind, Definition, Footnote, Inline, Item, Level, Notice, Slug, Span,
+    Spanned, Task,
+};
 
+use super::fold::Nest;
 use super::inline::{has_content, plain};
-use super::{Content, DEPTH, Walk, text_of};
-use crate::html::{self, Piece, Pieces};
+use super::{DEPTH, Walk, text_of};
 
 impl Walk<'_> {
     pub(super) fn blocks<'a>(&mut self, node: &'a AstNode<'a>) -> Vec<Block> {
@@ -15,26 +19,31 @@ impl Walk<'_> {
             return out;
         }
         self.depth += 1;
+        let mut nest = Nest::default();
         for child in node.children() {
-            self.block(child, &mut out);
+            self.block(child, &mut nest);
         }
         self.depth -= 1;
-        out
+        self.unfold(nest)
     }
 
-    fn block<'a>(&mut self, node: &'a AstNode<'a>, out: &mut Vec<Block>) {
+    fn block<'a>(&mut self, node: &'a AstNode<'a>, nest: &mut Nest) {
         let data = node.data();
         let span = self.span(data.sourcepos);
+        if let NodeValue::HtmlBlock(block) = &data.value {
+            return self.html_block(&block.literal, span, nest);
+        }
+        let out = nest.target();
         match &data.value {
             NodeValue::Paragraph => self.paragraph(node, out),
             NodeValue::Heading(heading) => out.push(self.heading(node, heading.level, span)),
             NodeValue::List(list) => out.push(self.list(node, list)),
             NodeValue::BlockQuote | NodeValue::MultilineBlockQuote(_) => out.push(Block::Quote(self.blocks(node))),
             NodeValue::CodeBlock(code) => out.push(code_block(code)),
-            NodeValue::HtmlBlock(block) => self.html_block(&block.literal, span, out),
             NodeValue::ThematicBreak(_) => out.push(Block::Rule),
             NodeValue::Table(table) => out.push(self.table(node, &table.alignments)),
-            NodeValue::Alert(alert) => out.push(self.callout(node, alert)),
+            NodeValue::Alert(alert) => out.push(self.callout(node, alert, span)),
+            NodeValue::DescriptionList => out.push(self.definitions(node)),
             NodeValue::MathBlock(math) => out.push(Block::Math(math.literal.trim_end_matches('\n').to_owned())),
             NodeValue::FootnoteDefinition(definition) => {
                 // a definition is not part of the flow: it joins the document's footnotes
@@ -110,36 +119,65 @@ impl Walk<'_> {
         Block::Table { alignments, head, rows }
     }
 
-    fn callout<'a>(&mut self, node: &'a AstNode<'a>, alert: &NodeAlert) -> Block {
+    fn callout<'a>(&mut self, node: &'a AstNode<'a>, alert: &NodeAlert, span: Span) -> Block {
         let kind = match alert.alert_type {
             AlertType::Note => CalloutKind::Note,
             AlertType::Tip => CalloutKind::Tip,
             AlertType::Important => CalloutKind::Important,
             AlertType::Warning => CalloutKind::Warning,
             AlertType::Caution => CalloutKind::Caution,
-            // a kind comrak learns later keeps its own name
-            other => Slug::from_text(format!("{other:?}")).map_or(CalloutKind::Note, CalloutKind::Other),
+            // a kind comrak learns later keeps the name comrak gives it
+            other => self.callout_kind(other.css_class(AlertStyleType::Semantic), span),
         };
         let title = alert.title.as_ref().map(|title| vec![Inline::Text(title.clone())]);
         Block::Callout { kind, title, blocks: self.blocks(node) }
     }
 
-    /// Raw HTML removed: each tag reported, the text between kept as a paragraph.
-    fn html_block(&mut self, literal: &str, span: Span, out: &mut Vec<Block>) {
-        let placement = self.placement(literal, span);
-        let mut text = String::new();
-        let mut content = Content::Prose;
-        for piece in Pieces::new(literal) {
-            if let (Piece::Text(written), Content::Prose) = (&piece, content) {
-                text.push_str(written);
+    /// A description list. comrak gives a term written once with several `:` details as one
+    /// item with the term and items without one; those details join the term before them.
+    fn definitions<'a>(&mut self, node: &'a AstNode<'a>) -> Block {
+        let mut definitions: Vec<Definition> = Vec::new();
+        for item in node.children() {
+            let mut term = None;
+            let mut details = Vec::new();
+            for part in item.children() {
+                match &part.data().value {
+                    NodeValue::DescriptionTerm => term = Some(self.term(part)),
+                    // comrak puts only terms and details in an item
+                    _ => details.push(self.blocks(part)),
+                }
             }
-            content = content.after(&piece);
-            self.strip(&piece, placement);
+            match (term, definitions.last_mut()) {
+                (None, Some(last)) => last.details.extend(details),
+                (Some(term), _) => definitions.push(Definition::new(term, details)),
+                (None, None) => definitions.push(Definition::new(Vec::new(), details)),
+            }
         }
-        let text = html::decode(&text).split_whitespace().collect::<Vec<_>>().join(" ");
-        if !text.is_empty() {
-            out.push(Block::Paragraph(vec![Inline::Text(text)]));
+        Block::Definitions(definitions)
+    }
+
+    /// A term's inlines: comrak wraps them in a paragraph.
+    fn term<'a>(&mut self, node: &'a AstNode<'a>) -> Vec<Inline> {
+        let mut inlines = Vec::new();
+        for block in self.blocks(node) {
+            if let Block::Paragraph(paragraph) = block {
+                if !inlines.is_empty() {
+                    inlines.push(Inline::SoftBreak);
+                }
+                inlines.extend(paragraph);
+            }
         }
+        inlines
+    }
+
+    /// A callout kind by its name; a name that is no slug is a note, and says so.
+    fn callout_kind(&mut self, name: &str, span: Span) -> CalloutKind {
+        if let Ok(slug) = Slug::parse(name) {
+            return CalloutKind::Other(slug);
+        }
+        let announcement = Announcement::CalloutKindUnknown { kind: name.to_owned() };
+        self.notices.push(Notice::new(announcement).on(self.subject.clone()).at(span));
+        CalloutKind::Note
     }
 
     /// A block nested past [`DEPTH`]: its text as one paragraph.

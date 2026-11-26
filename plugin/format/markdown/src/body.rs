@@ -1,14 +1,15 @@
 //! The body: comrak's tree into a [`Document`].
 
 mod block;
+mod fold;
 mod inline;
+mod raw;
 
 use std::collections::BTreeSet;
 
 use comrak::nodes::{AstNode, NodeValue, Sourcepos};
 use model::{
-    Anchor, Announcement, Diagnostic, Document, Footnote, FootnoteName, Hash, Notice, Problem, Slug, Span, Spanned,
-    Subject,
+    Anchor, Announcement, Diagnostic, Document, Footnote, FootnoteName, Hash, Notice, Slug, Span, Spanned, Subject,
 };
 
 use crate::html::Piece;
@@ -73,6 +74,11 @@ fn options() -> comrak::Options<'static> {
     extension.math_code = true;
     extension.footnotes = true;
     extension.tasklist = true;
+    extension.highlight = true;
+    extension.superscript = true;
+    // `~x~` is subscript, so strikethrough is `~~x~~` only
+    extension.subscript = true;
+    extension.description_lists = true;
     options
 }
 
@@ -173,17 +179,6 @@ impl Walk<'_> {
         let exact = self.file.get(span.start()..).is_some_and(|rest| rest.starts_with(html));
         if exact { Placement::Exact(span) } else { Placement::Within(span) }
     }
-
-    /// Reports a tag of raw HTML as removed, at the tag when its place is exact.
-    fn strip(&mut self, piece: &Piece<'_>, placement: Placement) {
-        let Piece::Open { name, start, end } = piece else { return };
-        let span = match placement {
-            Placement::Exact(span) => Span::new(span.start() + start, span.start() + end).unwrap_or(span),
-            Placement::Within(span) => span,
-        };
-        let problem = Problem::HtmlElementStripped { element: name.clone() };
-        self.diagnostics.push(Diagnostic::new(problem).on(self.subject.clone()).at(span));
-    }
 }
 
 /// Where a piece of raw HTML is in the file.
@@ -195,24 +190,14 @@ enum Placement {
     Within(Span),
 }
 
-/// What text between raw HTML tags is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Content {
-    /// Prose, kept.
-    Prose,
-    /// Inside `<script>` or `<style>`: code, dropped.
-    Code,
-}
-
-impl Content {
-    /// The content after `piece`.
-    fn after(self, piece: &Piece<'_>) -> Self {
-        if piece.opens_opaque() {
-            Self::Code
-        } else if piece.closes_opaque() {
-            Self::Prose
-        } else {
-            self
+impl Placement {
+    /// Where `piece` is: exactly, for a tag whose place is exact.
+    fn at(self, piece: &Piece<'_>) -> Span {
+        match (self, piece) {
+            (Self::Exact(span), Piece::Open(tag) | Piece::Close(tag)) => {
+                Span::new(span.start() + tag.start, span.start() + tag.end).unwrap_or(span)
+            }
+            (Self::Exact(span) | Self::Within(span), _) => span,
         }
     }
 }

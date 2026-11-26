@@ -21,6 +21,9 @@ impl Message<'_> {
             Problem::FrontmatterValueInvalid { key, expected, .. } => {
                 write!(out, "the frontmatter's `{key}` takes {expected}, so it is ignored")
             }
+            Problem::FrontmatterKeyConflict { key, other, .. } => {
+                write!(out, "the frontmatter's `{key}` sets the same thing as `{other}` before it, so it is ignored")
+            }
             Problem::SourceFileEncoding { at, .. } => {
                 write!(out, "the file is not UTF-8 text (byte {at}), so it is read as empty")
             }
@@ -72,6 +75,9 @@ impl Message<'_> {
             Announcement::FootnoteNameGenerated { given, name, .. } => {
                 write!(out, "the footnote `{given}` has no letters or digits, so its name is `{name}`")
             }
+            Announcement::CalloutKindUnknown { kind, .. } => {
+                write!(out, "the callout kind `{kind}` has no name a theme can use, so it is shown as a note")
+            }
             Announcement::SiteHomeGenerated => {
                 write!(out, "no home page was found, so the home page lists every page")
             }
@@ -86,6 +92,7 @@ impl Fix<'_> {
             Problem::ConfigValueInvalid { .. } => false,
             Problem::FrontmatterSyntaxInvalid { .. } => true,
             Problem::FrontmatterValueInvalid { .. } => true,
+            Problem::FrontmatterKeyConflict { .. } => true,
             Problem::SourceFileEncoding { .. } => true,
             Problem::LinkTargetMissing { .. } => false,
             Problem::LinkTargetAmbiguous { .. } => true,
@@ -105,6 +112,7 @@ impl Fix<'_> {
             Announcement::NoticeDefaultChosen { .. } => true,
             Announcement::HeadingAnchorGenerated { .. } => false,
             Announcement::FootnoteNameGenerated { .. } => false,
+            Announcement::CalloutKindUnknown { .. } => false,
             Announcement::SiteHomeGenerated => true,
         }
     }
@@ -123,6 +131,9 @@ impl Fix<'_> {
             }
             Problem::FrontmatterValueInvalid { .. } => {
                 write!(out, "change the value at the marked place, or remove the key")
+            }
+            Problem::FrontmatterKeyConflict { .. } => {
+                write!(out, "keep one of the two keys")
             }
             Problem::SourceFileEncoding { .. } => write!(out, "save the file as UTF-8"),
             Problem::LinkTargetMissing { .. } => Ok(()),
@@ -158,6 +169,7 @@ impl Fix<'_> {
             }
             Announcement::HeadingAnchorGenerated { .. } => Ok(()),
             Announcement::FootnoteNameGenerated { .. } => Ok(()),
+            Announcement::CalloutKindUnknown { .. } => Ok(()),
             Announcement::SiteHomeGenerated => {
                 write!(out, "add index.md or README.md at the root, or pin `site.home`")
             }

@@ -23,6 +23,9 @@ pub enum Problem {
     /// `frontmatter.value.invalid`: the frontmatter's `{key}` takes {expected}, so it is ignored
     #[serde(rename = "frontmatter.value.invalid")]
     FrontmatterValueInvalid { key: String, expected: String },
+    /// `frontmatter.key.conflict`: the frontmatter's `{key}` sets the same thing as `{other}` before it, so it is ignored
+    #[serde(rename = "frontmatter.key.conflict")]
+    FrontmatterKeyConflict { key: String, other: String },
     /// `source.file.encoding`: the file is not UTF-8 text (byte {at}), so it is read as empty
     #[serde(rename = "source.file.encoding")]
     SourceFileEncoding { at: u64 },
@@ -68,6 +71,7 @@ impl Problem {
         "config.value.invalid",
         "frontmatter.syntax.invalid",
         "frontmatter.value.invalid",
+        "frontmatter.key.conflict",
         "source.file.encoding",
         "link.target.missing",
         "link.target.ambiguous",
@@ -89,6 +93,7 @@ impl Problem {
             Self::ConfigValueInvalid { .. } => "config.value.invalid",
             Self::FrontmatterSyntaxInvalid { .. } => "frontmatter.syntax.invalid",
             Self::FrontmatterValueInvalid { .. } => "frontmatter.value.invalid",
+            Self::FrontmatterKeyConflict { .. } => "frontmatter.key.conflict",
             Self::SourceFileEncoding { .. } => "source.file.encoding",
             Self::LinkTargetMissing { .. } => "link.target.missing",
             Self::LinkTargetAmbiguous { .. } => "link.target.ambiguous",
@@ -110,6 +115,7 @@ impl Problem {
             Self::ConfigValueInvalid { .. } => Severity::Error,
             Self::FrontmatterSyntaxInvalid { .. } => Severity::Warning,
             Self::FrontmatterValueInvalid { .. } => Severity::Warning,
+            Self::FrontmatterKeyConflict { .. } => Severity::Warning,
             Self::SourceFileEncoding { .. } => Severity::Error,
             Self::LinkTargetMissing { .. } => Severity::Warning,
             Self::LinkTargetAmbiguous { .. } => Severity::Error,
@@ -132,6 +138,7 @@ impl Problem {
             Self::ConfigValueInvalid { .. } => Fault::Author,
             Self::FrontmatterSyntaxInvalid { .. } => Fault::Author,
             Self::FrontmatterValueInvalid { .. } => Fault::Author,
+            Self::FrontmatterKeyConflict { .. } => Fault::Author,
             Self::SourceFileEncoding { .. } => Fault::Author,
             Self::LinkTargetMissing { .. } => Fault::Author,
             Self::LinkTargetAmbiguous { .. } => Fault::Author,
@@ -159,19 +166,28 @@ pub enum Announcement {
     /// `footnote.name.generated`: the footnote `{given}` has no letters or digits, so its name is `{name}`
     #[serde(rename = "footnote.name.generated")]
     FootnoteNameGenerated { name: String, given: String },
+    /// `callout.kind.unknown`: the callout kind `{kind}` has no name a theme can use, so it is shown as a note
+    #[serde(rename = "callout.kind.unknown")]
+    CalloutKindUnknown { kind: String },
     /// `site.home.generated`: no home page was found, so the home page lists every page
     #[serde(rename = "site.home.generated")]
     SiteHomeGenerated,
 }
 impl Announcement {
     /// Every code, in catalog order.
-    pub const CODES: &'static [&'static str] =
-        &["notice.default.chosen", "heading.anchor.generated", "footnote.name.generated", "site.home.generated"];
+    pub const CODES: &'static [&'static str] = &[
+        "notice.default.chosen",
+        "heading.anchor.generated",
+        "footnote.name.generated",
+        "callout.kind.unknown",
+        "site.home.generated",
+    ];
     pub const fn code(&self) -> &'static str {
         match self {
             Self::NoticeDefaultChosen { .. } => "notice.default.chosen",
             Self::HeadingAnchorGenerated { .. } => "heading.anchor.generated",
             Self::FootnoteNameGenerated { .. } => "footnote.name.generated",
+            Self::CalloutKindUnknown { .. } => "callout.kind.unknown",
             Self::SiteHomeGenerated => "site.home.generated",
         }
     }

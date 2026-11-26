@@ -1,7 +1,6 @@
 ---
 source: plugin/format/markdown/tests/fixture.rs
-assertion_line: 21
-input_file: plugin/format/markdown/fixture/frontmatter-null.md
+input_file: plugin/format/markdown/fixture/frontmatter-summary.md
 ---
 {
   "document": {
@@ -9,7 +8,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-null.md
       {
         "paragraph": [
           {
-            "text": "Text."
+            "text": "Body."
           }
         ]
       }
@@ -25,11 +24,23 @@ input_file: plugin/format/markdown/fixture/frontmatter-null.md
     "publish": null,
     "draft": null,
     "kind": null,
-    "description": null,
-    "language": null,
+    "description": {
+      "value": "Only a summary.",
+      "span": [
+        13,
+        28
+      ]
+    },
+    "language": {
+      "value": "en",
+      "span": [
+        53,
+        55
+      ]
+    },
     "block": [
       0,
-      29
+      60
     ]
   },
   "heading": null,

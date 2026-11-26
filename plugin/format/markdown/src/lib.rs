@@ -1,20 +1,32 @@
 //! The markdown format: one file's bytes into a [`model::Read`].
 //!
 //! A file is UTF-8 text, optionally starting with a byte order mark, then optionally a YAML
-//! frontmatter block between `---` lines, then a `CommonMark` body with these GitHub extensions:
-//! tables, strikethrough, autolinks (bare `https://` and `www.` links, email addresses) and alerts
-//! (`> [!note]`, which become callouts). `$x$` and `$$x$$` are math, as are ` ```math ` blocks.
+//! frontmatter block between `---` lines, then a `CommonMark` body with these extensions: tables,
+//! strikethrough (`~~x~~`), autolinks (bare `https://` and `www.` links, email addresses), alerts
+//! (`> [!note]`, which become callouts), footnotes, task lists, highlight (`==x==`), superscript
+//! (`^x^`), subscript (`~x~`: one tilde is subscript, not strikethrough as in GitHub's markdown)
+//! and definition lists (`Term` then `: details`). `$x$` and `$$x$$` are math, as are ` ```math `
+//! blocks.
 //!
-//! What it does not read, and why:
+//! **Raw HTML** goes through the allowlist of decision 0027:
 //!
-//! - **Raw HTML** is removed, block and inline alike. Every opening tag is a
-//!   `html.element.stripped` diagnostic at that tag; a closing tag is part of the element
-//!   already reported. Text between tags is kept as text, except inside `<script>` and `<style>`,
-//!   whose content is code, not prose. An HTML comment is removed without a diagnostic: a browser
-//!   shows nothing for it either, so nothing a reader sees changes. The allowlist of decision
-//!   0027, which keeps safe elements as `Document` nodes, comes later.
-//! - **Footnotes**, task lists and wikilinks have no node in [`model::Document`] yet, so their
-//!   syntax stays text as `CommonMark` reads it. Wikilinks belong to the obsidian format.
+//! - inline, `<kbd>` is a key, `<sup>`, `<sub>` and `<mark>` are superscript, subscript and
+//!   highlight, `<del>` and `<s>` are strikethrough, `<br>` is a line break, `<img src alt>` an
+//!   image and `<a href>` a link, `src` and `href` read as markdown's;
+//! - as blocks, `<details>` with an optional first `<summary>` folds the markdown up to its
+//!   `</details>`, `<hr>` alone is a rule and `<br>` alone a line of its own.
+//!
+//! Tags are matched without regard to case and paired among siblings, so `<kbd>Ctrl</kbd>` and
+//! `<sup><a href="#n">1</a></sup>` nest as written. No other attribute is kept, `on*` handlers
+//! included, since nothing writes raw attributes out. Every other element, and an allowed one
+//! left unclosed, closed out of order or missing its `src` or `href`, is removed: its opening
+//! tag (or a closing tag that closes nothing) is a `html.element.stripped` diagnostic and the
+//! text inside is kept, except inside `<script>` and `<style>`, whose content is code, not
+//! prose. `<ins>` and `<u>` have no node in [`model::Document`], so they are removed like any
+//! other element, their text kept. An HTML comment is removed without a diagnostic: a browser
+//! shows nothing for it either.
+//!
+//! **Wikilinks** stay text as `CommonMark` reads them; they belong to the obsidian format.
 //!
 //! Nothing here resolves a link. `http(s):` and `mailto:` links become
 //! [`model::LinkTarget::External`], `#anchor` alone becomes [`model::LinkTarget::Anchor`] when
@@ -27,7 +39,9 @@
 //!
 //! Frontmatter keys the engine does not read are the author's own and are ignored. A key it reads
 //! with a value it cannot use is a `frontmatter.value.invalid` diagnostic at that value, and the
-//! key counts as absent; nothing is guessed. A `null` value is the same as no key.
+//! key counts as absent; nothing is guessed. A `null` value is the same as no key. `description`
+//! and `summary` set the same thing: when both are set, the first written is kept and the second
+//! is a `frontmatter.key.conflict` diagnostic. `lang` is a language tag (`en`, `fr-CH`).
 //!
 //! Until `host/wasmtime` exists this crate speaks `uses-ink-model` directly; it moves to the
 //! generated WIT types when it becomes a component.

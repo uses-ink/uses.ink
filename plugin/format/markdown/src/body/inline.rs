@@ -3,69 +3,67 @@
 use comrak::nodes::{AstNode, NodeValue};
 use model::{Anchor, Diagnostic, ExternalUrl, ImageSource, Inline, LinkTarget, Problem, Slug, Span};
 
-use super::{Content, DEPTH, Walk, text_of};
+use super::raw::Inlines;
+use super::{DEPTH, Walk, text_of};
 use crate::html::Pieces;
 
 impl Walk<'_> {
     pub(super) fn inlines<'a>(&mut self, node: &'a AstNode<'a>) -> Vec<Inline> {
-        let mut out = Vec::new();
         if self.depth >= DEPTH {
+            let mut out = Vec::new();
             let text = node.children().map(text_of).collect::<String>();
             push_text(&mut out, &text);
             self.nested(node);
             return out;
         }
         self.depth += 1;
-        let mut content = Content::Prose;
+        let mut inlines = Inlines::default();
         for child in node.children() {
-            content = self.inline(child, &mut out, content);
+            self.inline(child, &mut inlines);
         }
         self.depth -= 1;
-        out
+        self.finish(inlines)
     }
 
-    /// One inline into `out`, given what text is here; returns what text is after it, which
-    /// raw HTML can change.
-    fn inline<'a>(&mut self, node: &'a AstNode<'a>, out: &mut Vec<Inline>, content: Content) -> Content {
+    /// One inline into `inlines`, where raw HTML before it may have left elements open.
+    fn inline<'a>(&mut self, node: &'a AstNode<'a>, inlines: &mut Inlines) {
         let data = node.data();
-        match &data.value {
-            NodeValue::Text(text) if content == Content::Prose => push_text(out, text),
-            NodeValue::Text(_) => {}
-            NodeValue::SoftBreak => out.push(Inline::SoftBreak),
-            NodeValue::LineBreak => out.push(Inline::Break),
-            NodeValue::Code(code) => out.push(Inline::Code(code.literal.clone())),
-            NodeValue::Emph(_) => out.push(Inline::Emphasis(self.inlines(node))),
-            NodeValue::Strong(_) => out.push(Inline::Strong(self.inlines(node))),
-            NodeValue::Strikethrough(_) => out.push(Inline::Strike(self.inlines(node))),
-            NodeValue::Link(link) => out.push(Inline::Link { target: target(&link.url), children: self.inlines(node) }),
-            NodeValue::Image(link) => {
-                let alt = plain(&self.inlines(node));
-                out.push(Inline::Image { source: source(&link.url), alt });
-            }
-            NodeValue::Math(math) => out.push(Inline::Math(math.literal.clone())),
-            NodeValue::FootnoteReference(reference) => {
-                if let Some(name) = self.footnote_name(&reference.name, None) {
-                    out.push(Inline::Footnote(name));
-                }
-            }
-            NodeValue::HtmlInline(raw) => return self.html_inline(raw, self.span(data.sourcepos), content),
+        let inline = match &data.value {
+            NodeValue::HtmlInline(raw) => return self.html_inline(raw, self.span(data.sourcepos), inlines),
+            _ if inlines.is_opaque() => return,
+            NodeValue::Text(text) => return inlines.push_text(text),
+            NodeValue::SoftBreak => Inline::SoftBreak,
+            NodeValue::LineBreak => Inline::Break,
+            NodeValue::Code(code) => Inline::Code(code.literal.clone()),
+            NodeValue::Emph(_) => Inline::Emphasis(self.inlines(node)),
+            NodeValue::Strong(_) => Inline::Strong(self.inlines(node)),
+            NodeValue::Strikethrough(_) => Inline::Strike(self.inlines(node)),
+            NodeValue::Highlight => Inline::Highlight(self.inlines(node)),
+            NodeValue::Superscript => Inline::Superscript(self.inlines(node)),
+            NodeValue::Subscript => Inline::Subscript(self.inlines(node)),
+            NodeValue::Link(link) => Inline::Link { target: target(&link.url), children: self.inlines(node) },
+            NodeValue::Image(link) => Inline::Image { source: source(&link.url), alt: plain(&self.inlines(node)) },
+            NodeValue::Math(math) => Inline::Math(math.literal.clone()),
+            NodeValue::FootnoteReference(reference) => match self.footnote_name(&reference.name, None) {
+                Some(name) => Inline::Footnote(name),
+                None => return,
+            },
             _ => {
                 for inline in self.inlines(node) {
-                    push(out, inline);
+                    inlines.push(inline);
                 }
+                return;
             }
-        }
-        content
+        };
+        inlines.push(inline);
     }
 
-    /// One inline tag removed and reported.
-    fn html_inline(&mut self, raw: &str, span: Span, mut content: Content) -> Content {
+    /// One inline tag, paired with its siblings.
+    fn html_inline(&mut self, raw: &str, span: Span, inlines: &mut Inlines) {
         let placement = self.placement(raw, span);
         for piece in Pieces::new(raw) {
-            content = content.after(&piece);
-            self.strip(&piece, placement);
+            self.piece(inlines, &piece, placement.at(&piece));
         }
-        content
     }
 
     /// Reports content nested past [`DEPTH`].
@@ -77,7 +75,7 @@ impl Walk<'_> {
 }
 
 /// Where a link goes, as far as one file can tell.
-fn target(url: &str) -> LinkTarget {
+pub(super) fn target(url: &str) -> LinkTarget {
     if let Ok(external) = ExternalUrl::parse(url) {
         return LinkTarget::External(external);
     }
@@ -87,7 +85,8 @@ fn target(url: &str) -> LinkTarget {
     LinkTarget::Unresolved { written: url.to_owned() }
 }
 
-fn source(url: &str) -> ImageSource {
+/// Where an image comes from, as far as one file can tell.
+pub(super) fn source(url: &str) -> ImageSource {
     match ExternalUrl::parse(url) {
         Ok(external) => ImageSource::External(external),
         Err(_) => ImageSource::Unresolved { written: url.to_owned() },
@@ -95,7 +94,7 @@ fn source(url: &str) -> ImageSource {
 }
 
 /// Text appended to the text before it, if any, so the document holds one run per run.
-fn push_text(out: &mut Vec<Inline>, text: &str) {
+pub(super) fn push_text(out: &mut Vec<Inline>, text: &str) {
     if text.is_empty() {
         return;
     }
@@ -105,7 +104,8 @@ fn push_text(out: &mut Vec<Inline>, text: &str) {
     }
 }
 
-fn push(out: &mut Vec<Inline>, inline: Inline) {
+/// An inline appended, text joined to the text before it.
+pub(super) fn push(out: &mut Vec<Inline>, inline: Inline) {
     match inline {
         Inline::Text(text) => push_text(out, &text),
         other => out.push(other),
@@ -117,10 +117,13 @@ pub(super) fn plain(inlines: &[Inline]) -> String {
     let mut text = String::new();
     for inline in inlines {
         match inline {
-            Inline::Text(t) | Inline::Code(t) | Inline::Math(t) => text.push_str(t),
+            Inline::Text(t) | Inline::Code(t) | Inline::Math(t) | Inline::Keyboard(t) => text.push_str(t),
             Inline::Emphasis(children)
             | Inline::Strong(children)
             | Inline::Strike(children)
+            | Inline::Highlight(children)
+            | Inline::Superscript(children)
+            | Inline::Subscript(children)
             | Inline::Link { children, .. } => text.push_str(&plain(children)),
             Inline::Image { alt, .. } => text.push_str(alt),
             Inline::Break | Inline::SoftBreak => text.push(' '),

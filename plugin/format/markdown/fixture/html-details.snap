@@ -1,0 +1,210 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/html-details.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "details": {
+          "summary": [
+            {
+              "text": "Click me & see"
+            }
+          ],
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Inside "
+                },
+                {
+                  "strong": [
+                    {
+                      "text": "bold"
+                    }
+                  ]
+                },
+                {
+                  "text": "."
+                }
+              ]
+            },
+            {
+              "list": {
+                "ordered": null,
+                "items": [
+                  {
+                    "task": null,
+                    "blocks": [
+                      {
+                        "paragraph": [
+                          {
+                            "text": "a list"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "tight": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "details": {
+          "summary": [
+            {
+              "text": "One line"
+            }
+          ],
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Body with "
+                },
+                {
+                  "keyboard": "K"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "details": {
+          "summary": [],
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "No summary here."
+                }
+              ]
+            },
+            {
+              "details": {
+                "summary": [
+                  {
+                    "text": "Nested"
+                  }
+                ],
+                "blocks": [
+                  {
+                    "paragraph": [
+                      {
+                        "text": "Deep."
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "quote": [
+          {
+            "details": {
+              "summary": [
+                {
+                  "text": "In a quote"
+                }
+              ],
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "Quoted."
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Never closed"
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Kept anyway."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "b"
+        }
+      },
+      "subject": {
+        "file": "html-details.md"
+      },
+      "span": [
+        25,
+        28
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "details"
+        }
+      },
+      "subject": {
+        "file": "html-details.md"
+      },
+      "span": [
+        335,
+        345
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "details"
+        }
+      },
+      "subject": {
+        "file": "html-details.md"
+      },
+      "span": [
+        347,
+        356
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

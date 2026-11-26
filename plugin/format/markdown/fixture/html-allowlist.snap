@@ -1,0 +1,420 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/html-allowlist.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Press "
+          },
+          {
+            "keyboard": "Ctrl"
+          },
+          {
+            "text": "+"
+          },
+          {
+            "keyboard": "C"
+          },
+          {
+            "text": ", or "
+          },
+          {
+            "keyboard": "Alt+F4"
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Water is H"
+          },
+          {
+            "subscript": [
+              {
+                "text": "2"
+              }
+            ]
+          },
+          {
+            "text": "O, e = mc"
+          },
+          {
+            "superscript": [
+              {
+                "text": "2"
+              }
+            ]
+          },
+          {
+            "text": ", a note"
+          },
+          {
+            "superscript": [
+              {
+                "link": {
+                  "target": {
+                    "anchor": "notes"
+                  },
+                  "children": [
+                    {
+                      "text": "1"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "highlight": [
+              {
+                "text": "Marked"
+              }
+            ]
+          },
+          {
+            "text": ", "
+          },
+          {
+            "strike": [
+              {
+                "text": "gone"
+              }
+            ]
+          },
+          {
+            "text": ", "
+          },
+          {
+            "strike": [
+              {
+                "text": "wrong"
+              }
+            ]
+          },
+          {
+            "text": ", added and under."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Line one"
+          },
+          "break",
+          {
+            "text": "line two"
+          },
+          "break",
+          {
+            "text": "line three."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "link": {
+              "target": {
+                "external": "https://example.com/?a=1&b=2"
+              },
+              "children": [
+                {
+                  "text": "out"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "other.md#part"
+                }
+              },
+              "children": [
+                {
+                  "text": "in"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", no href."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "image": {
+              "source": {
+                "unresolved": {
+                  "written": "cat.png"
+                }
+              },
+              "alt": "A & B"
+            }
+          },
+          {
+            "text": " "
+          },
+          {
+            "image": {
+              "source": {
+                "external": "https://example.com/x.png"
+              },
+              "alt": ""
+            }
+          },
+          {
+            "text": " "
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Mismatched "
+          },
+          {
+            "keyboard": "ab"
+          },
+          {
+            "text": "c, unclosed open, stray  and bold."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Inline  code is dropped."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Block with "
+          },
+          {
+            "keyboard": "K"
+          },
+          {
+            "text": " and span"
+          },
+          "break",
+          {
+            "text": "after."
+          }
+        ]
+      },
+      "rule",
+      {
+        "paragraph": [
+          "break"
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "ins"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        220,
+        225
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "u"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        241,
+        244
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "a"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        396,
+        408
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "img"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        536,
+        557
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "sup"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        576,
+        581
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "sub"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        624,
+        630
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "b"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        635,
+        638
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "mark"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        606,
+        612
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "script"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        656,
+        664
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "div"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        705,
+        710
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "span"
+        }
+      },
+      "subject": {
+        "file": "html-allowlist.md"
+      },
+      "span": [
+        738,
+        744
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

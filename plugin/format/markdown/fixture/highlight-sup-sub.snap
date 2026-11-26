@@ -1,0 +1,143 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/highlight-sup-sub.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "highlight": [
+              {
+                "text": "Highlighted "
+              },
+              {
+                "emphasis": [
+                  {
+                    "text": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "text": " and x"
+          },
+          {
+            "superscript": [
+              {
+                "text": "2"
+              }
+            ]
+          },
+          {
+            "text": " and H"
+          },
+          {
+            "subscript": [
+              {
+                "text": "2"
+              }
+            ]
+          },
+          {
+            "text": "O."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "strike": [
+              {
+                "text": "Strike"
+              }
+            ]
+          },
+          {
+            "text": " stays strike; "
+          },
+          {
+            "subscript": [
+              {
+                "text": "single"
+              }
+            ]
+          },
+          {
+            "text": " is subscript."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "A "
+          },
+          {
+            "strike": [
+              {
+                "text": "mix of "
+              },
+              {
+                "subscript": [
+                  {
+                    "text": "sub"
+                  }
+                ]
+              },
+              {
+                "text": " in strike"
+              }
+            ]
+          },
+          {
+            "text": " and "
+          },
+          {
+            "highlight": [
+              {
+                "superscript": [
+                  {
+                    "text": "sup"
+                  }
+                ]
+              },
+              {
+                "text": " in mark"
+              }
+            ]
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Not closed: ==open, ^open, ~open."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

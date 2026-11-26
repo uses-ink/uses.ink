@@ -38,6 +38,9 @@ struct Keys {
     draft: Option<Located<Raw>>,
     #[serde(rename = "type")]
     kind: Option<Located<Raw>>,
+    description: Option<Located<Raw>>,
+    summary: Option<Located<Raw>>,
+    lang: Option<Located<Raw>>,
 }
 
 /// Finds a frontmatter block at `base`: a `---` line, YAML, and a `---` or `...` line.
@@ -106,7 +109,7 @@ impl Source<'_> {
     fn fill(&self, keys: Keys, read: &mut Read) {
         let mut out = value::Out { source: self, diagnostics: &mut read.diagnostics };
         let front = &mut read.front;
-        front.title = keys.title.and_then(|raw| out.convert(Field::Title, &raw, value::title));
+        front.title = keys.title.and_then(|raw| out.convert(Field::Title, &raw, value::text));
         front.date = keys.date.and_then(|raw| out.convert(Field::Date, &raw, value::when));
         front.updated = keys.updated.and_then(|raw| out.convert(Field::Updated, &raw, value::when));
         front.slug = keys.slug.and_then(|raw| out.convert(Field::Slug, &raw, value::slug));
@@ -114,6 +117,10 @@ impl Source<'_> {
         front.publish = keys.publish.and_then(|raw| out.convert(Field::Publish, &raw, value::flag));
         front.draft = keys.draft.and_then(|raw| out.convert(Field::Draft, &raw, value::flag));
         front.kind = keys.kind.and_then(|raw| out.convert(Field::Kind, &raw, value::kind));
+        let description = keys.description.and_then(|raw| out.convert(Field::Description, &raw, value::text));
+        let summary = keys.summary.and_then(|raw| out.convert(Field::Summary, &raw, value::text));
+        front.description = out.either((Field::Description, description), (Field::Summary, summary));
+        front.language = keys.lang.and_then(|raw| out.convert(Field::Language, &raw, value::language));
     }
 
     /// A YAML location as a span of the file.
