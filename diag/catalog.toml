@@ -14,6 +14,7 @@
 [field]
 address = "The address used, as written."
 anchor = "The anchor given to the heading."
+asked = "How many were asked for."
 at = "The byte offset where the file stops being UTF-8."
 bound = "The latest the date can be."
 candidates = "Every file it could mean, in path order."
@@ -27,6 +28,7 @@ file = "The file that also routes there."
 files = "Every file involved, in path order."
 given = "The name as the author wrote it."
 header = "The header's name."
+height = "Its height in pixels."
 key = "The key, as written."
 kind = "The kind, as written."
 language = "The language, as written after the opening fence."
@@ -43,6 +45,7 @@ target = "The file it points at."
 tex = "The TeX, as written."
 theme = "The theme's name."
 value = "The value taken, in the decision code's words."
+width = "Its width in pixels."
 written = "The text, as written."
 
 [diagnostic."config.syntax.invalid"]
@@ -296,6 +299,13 @@ fields = { date = "text" }
 message = "{date} has no instant a feed can write"
 fix = "report it: this is a bug in uses.ink"
 
+[diagnostic."engine.image.miscounted"]
+severity = "error"
+fault = "ours"
+fields = { count = "count", asked = "count" }
+message = "the host prepared {count} images when {asked} were asked for"
+fix = "report it: this is a bug in uses.ink"
+
 [diagnostic."source.budget.bytes"]
 severity = "error"
 fault = "author"
@@ -377,6 +387,27 @@ fault = "author"
 fields = { tex = "text", reason = "text" }
 message = "the math `{tex}` does not parse, so it is shown as written: {reason}"
 fix = "fix the TeX between the `$` signs"
+
+[diagnostic."image.budget.pixels"]
+severity = "error"
+fault = "author"
+fields = { path = "path", width = "count", height = "count", limit = "count" }
+message = "{path} is {width} by {height} pixels; an image may hold {limit} pixels"
+fix = "export a smaller copy of it and publish that"
+
+[diagnostic."image.decode.failed"]
+severity = "error"
+fault = "author"
+fields = { path = "path", reason = "text" }
+message = "{path} could not be read as an image: {reason}"
+fix = "export it again from an image editor, or remove it from the pages that show it"
+
+[diagnostic."image.encode.failed"]
+severity = "error"
+fault = "ours"
+fields = { path = "path", reason = "text" }
+message = "the copies of {path} could not be made: {reason}"
+fix = "report it: this is a bug in uses.ink"
 
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
@@ -467,3 +498,12 @@ fix = "pass `--base <url>` with the address the site is served at"
 fields = { language = "text" }
 message = "no grammar knows the language `{language}`, so its code is shown without highlighting"
 fix = "write a language the highlighter knows after the opening fence, such as `rust` or `toml`"
+
+[notice."image.animation.kept"]
+fields = { path = "path" }
+message = "{path} is animated, so it is served as it is, with no smaller copies"
+
+[notice."image.format.kept"]
+fields = { path = "path" }
+message = "{path} is served as it is, metadata included: uses.ink makes no smaller copies of AVIF images"
+fix = "publish a JPEG or PNG of it to get smaller copies with the metadata removed"

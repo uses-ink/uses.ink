@@ -119,6 +119,9 @@ impl Message<'_> {
             Problem::EngineDateUnrepresentable { date, .. } => {
                 write!(out, "{date} has no instant a feed can write")
             }
+            Problem::EngineImageMiscounted { count, asked, .. } => {
+                write!(out, "the host prepared {count} images when {asked} were asked for")
+            }
             Problem::SourceBudgetBytes { size, limit, .. } => {
                 write!(out, "the source holds {size}; a site may hold {limit}")
             }
@@ -154,6 +157,15 @@ impl Message<'_> {
             }
             Problem::MathSyntaxInvalid { tex, reason, .. } => {
                 write!(out, "the math `{tex}` does not parse, so it is shown as written: {reason}")
+            }
+            Problem::ImageBudgetPixels { path, width, height, limit, .. } => {
+                write!(out, "{path} is {width} by {height} pixels; an image may hold {limit} pixels")
+            }
+            Problem::ImageDecodeFailed { path, reason, .. } => {
+                write!(out, "{path} could not be read as an image: {reason}")
+            }
+            Problem::ImageEncodeFailed { path, reason, .. } => {
+                write!(out, "the copies of {path} could not be made: {reason}")
             }
         }
     }
@@ -234,6 +246,15 @@ impl Message<'_> {
             Announcement::CodeLanguageUnknown { language, .. } => {
                 write!(out, "no grammar knows the language `{language}`, so its code is shown without highlighting")
             }
+            Announcement::ImageAnimationKept { path, .. } => {
+                write!(out, "{path} is animated, so it is served as it is, with no smaller copies")
+            }
+            Announcement::ImageFormatKept { path, .. } => {
+                write!(
+                    out,
+                    "{path} is served as it is, metadata included: uses.ink makes no smaller copies of AVIF images"
+                )
+            }
         }
     }
 }
@@ -277,6 +298,7 @@ impl Fix<'_> {
             Problem::EngineSiteRefused => true,
             Problem::EngineXmlUnwritten { .. } => true,
             Problem::EngineDateUnrepresentable { .. } => true,
+            Problem::EngineImageMiscounted { .. } => true,
             Problem::SourceBudgetBytes { .. } => true,
             Problem::SourceLinkOutside { .. } => true,
             Problem::SourceLinkCycle { .. } => true,
@@ -289,6 +311,9 @@ impl Fix<'_> {
             Problem::SourceRevisionUnknown { .. } => true,
             Problem::SourceLinkBroken { .. } => true,
             Problem::MathSyntaxInvalid { .. } => true,
+            Problem::ImageBudgetPixels { .. } => true,
+            Problem::ImageDecodeFailed { .. } => true,
+            Problem::ImageEncodeFailed { .. } => true,
         }
     }
     pub(crate) const fn announcement_has(announcement: &Announcement) -> bool {
@@ -313,6 +338,8 @@ impl Fix<'_> {
             Announcement::SourceLfsPointer { .. } => true,
             Announcement::BuildAddressDefault { .. } => true,
             Announcement::CodeLanguageUnknown { .. } => true,
+            Announcement::ImageAnimationKept { .. } => false,
+            Announcement::ImageFormatKept { .. } => true,
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.
@@ -413,6 +440,9 @@ impl Fix<'_> {
             Problem::EngineDateUnrepresentable { .. } => {
                 write!(out, "report it: this is a bug in uses.ink")
             }
+            Problem::EngineImageMiscounted { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
             Problem::SourceBudgetBytes { .. } => {
                 write!(out, "move large files that are not part of the site out of the folder")
             }
@@ -443,6 +473,15 @@ impl Fix<'_> {
             }
             Problem::MathSyntaxInvalid { .. } => {
                 write!(out, "fix the TeX between the `$` signs")
+            }
+            Problem::ImageBudgetPixels { .. } => {
+                write!(out, "export a smaller copy of it and publish that")
+            }
+            Problem::ImageDecodeFailed { .. } => {
+                write!(out, "export it again from an image editor, or remove it from the pages that show it")
+            }
+            Problem::ImageEncodeFailed { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
             }
         }
     }
@@ -494,6 +533,10 @@ impl Fix<'_> {
             }
             Announcement::CodeLanguageUnknown { .. } => {
                 write!(out, "write a language the highlighter knows after the opening fence, such as `rust` or `toml`")
+            }
+            Announcement::ImageAnimationKept { .. } => Ok(()),
+            Announcement::ImageFormatKept { .. } => {
+                write!(out, "publish a JPEG or PNG of it to get smaller copies with the metadata removed")
             }
         }
     }

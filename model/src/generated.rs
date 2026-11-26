@@ -261,6 +261,14 @@ pub enum Problem {
         /// The date, as written.
         date: String,
     },
+    /// `engine.image.miscounted`: the host prepared {count} images when {asked} were asked for
+    #[serde(rename = "engine.image.miscounted")]
+    EngineImageMiscounted {
+        /// How many there are.
+        count: u64,
+        /// How many were asked for.
+        asked: u64,
+    },
     /// `source.budget.bytes`: the source holds {size}; a site may hold {limit}
     #[serde(rename = "source.budget.bytes")]
     SourceBudgetBytes {
@@ -341,6 +349,34 @@ pub enum Problem {
         /// Why, as the part that refused it says.
         reason: String,
     },
+    /// `image.budget.pixels`: {path} is {width} by {height} pixels; an image may hold {limit} pixels
+    #[serde(rename = "image.budget.pixels")]
+    ImageBudgetPixels {
+        /// The file.
+        path: ContentPath,
+        /// Its width in pixels.
+        width: u64,
+        /// Its height in pixels.
+        height: u64,
+        /// The most that is allowed.
+        limit: u64,
+    },
+    /// `image.decode.failed`: {path} could not be read as an image: {reason}
+    #[serde(rename = "image.decode.failed")]
+    ImageDecodeFailed {
+        /// The file.
+        path: ContentPath,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `image.encode.failed`: the copies of {path} could not be made: {reason}
+    #[serde(rename = "image.encode.failed")]
+    ImageEncodeFailed {
+        /// The file.
+        path: ContentPath,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
 }
 impl Problem {
     /// Every code, in catalog order.
@@ -382,6 +418,7 @@ impl Problem {
         "engine.site.refused",
         "engine.xml.unwritten",
         "engine.date.unrepresentable",
+        "engine.image.miscounted",
         "source.budget.bytes",
         "source.link.outside",
         "source.link.cycle",
@@ -394,6 +431,9 @@ impl Problem {
         "source.revision.unknown",
         "source.link.broken",
         "math.syntax.invalid",
+        "image.budget.pixels",
+        "image.decode.failed",
+        "image.encode.failed",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -435,6 +475,7 @@ impl Problem {
             Self::EngineSiteRefused => "engine.site.refused",
             Self::EngineXmlUnwritten { .. } => "engine.xml.unwritten",
             Self::EngineDateUnrepresentable { .. } => "engine.date.unrepresentable",
+            Self::EngineImageMiscounted { .. } => "engine.image.miscounted",
             Self::SourceBudgetBytes { .. } => "source.budget.bytes",
             Self::SourceLinkOutside { .. } => "source.link.outside",
             Self::SourceLinkCycle { .. } => "source.link.cycle",
@@ -447,6 +488,9 @@ impl Problem {
             Self::SourceRevisionUnknown { .. } => "source.revision.unknown",
             Self::SourceLinkBroken { .. } => "source.link.broken",
             Self::MathSyntaxInvalid { .. } => "math.syntax.invalid",
+            Self::ImageBudgetPixels { .. } => "image.budget.pixels",
+            Self::ImageDecodeFailed { .. } => "image.decode.failed",
+            Self::ImageEncodeFailed { .. } => "image.encode.failed",
         }
     }
     /// How bad it is.
@@ -489,6 +533,7 @@ impl Problem {
             Self::EngineSiteRefused => Severity::Error,
             Self::EngineXmlUnwritten { .. } => Severity::Error,
             Self::EngineDateUnrepresentable { .. } => Severity::Error,
+            Self::EngineImageMiscounted { .. } => Severity::Error,
             Self::SourceBudgetBytes { .. } => Severity::Error,
             Self::SourceLinkOutside { .. } => Severity::Error,
             Self::SourceLinkCycle { .. } => Severity::Error,
@@ -501,6 +546,9 @@ impl Problem {
             Self::SourceRevisionUnknown { .. } => Severity::Error,
             Self::SourceLinkBroken { .. } => Severity::Error,
             Self::MathSyntaxInvalid { .. } => Severity::Warning,
+            Self::ImageBudgetPixels { .. } => Severity::Error,
+            Self::ImageDecodeFailed { .. } => Severity::Error,
+            Self::ImageEncodeFailed { .. } => Severity::Error,
         }
     }
     /// Whose move it is to fix it.
@@ -543,6 +591,7 @@ impl Problem {
             Self::EngineSiteRefused => Fault::Ours,
             Self::EngineXmlUnwritten { .. } => Fault::Ours,
             Self::EngineDateUnrepresentable { .. } => Fault::Ours,
+            Self::EngineImageMiscounted { .. } => Fault::Ours,
             Self::SourceBudgetBytes { .. } => Fault::Author,
             Self::SourceLinkOutside { .. } => Fault::Author,
             Self::SourceLinkCycle { .. } => Fault::Author,
@@ -555,6 +604,9 @@ impl Problem {
             Self::SourceRevisionUnknown { .. } => Fault::Author,
             Self::SourceLinkBroken { .. } => Fault::Author,
             Self::MathSyntaxInvalid { .. } => Fault::Author,
+            Self::ImageBudgetPixels { .. } => Fault::Author,
+            Self::ImageDecodeFailed { .. } => Fault::Author,
+            Self::ImageEncodeFailed { .. } => Fault::Ours,
         }
     }
 }
@@ -686,6 +738,18 @@ pub enum Announcement {
         /// The language, as written after the opening fence.
         language: String,
     },
+    /// `image.animation.kept`: {path} is animated, so it is served as it is, with no smaller copies
+    #[serde(rename = "image.animation.kept")]
+    ImageAnimationKept {
+        /// The file.
+        path: ContentPath,
+    },
+    /// `image.format.kept`: {path} is served as it is, metadata included: uses.ink makes no smaller copies of AVIF images
+    #[serde(rename = "image.format.kept")]
+    ImageFormatKept {
+        /// The file.
+        path: ContentPath,
+    },
 }
 impl Announcement {
     /// Every code, in catalog order.
@@ -710,6 +774,8 @@ impl Announcement {
         "source.lfs.pointer",
         "build.address.default",
         "code.language.unknown",
+        "image.animation.kept",
+        "image.format.kept",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -734,6 +800,8 @@ impl Announcement {
             Self::SourceLfsPointer { .. } => "source.lfs.pointer",
             Self::BuildAddressDefault { .. } => "build.address.default",
             Self::CodeLanguageUnknown { .. } => "code.language.unknown",
+            Self::ImageAnimationKept { .. } => "image.animation.kept",
+            Self::ImageFormatKept { .. } => "image.format.kept",
         }
     }
 }
