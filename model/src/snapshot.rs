@@ -45,7 +45,8 @@ impl Entry {
 pub struct FileFacts {
     /// The file.
     pub path: ContentPath,
-    /// When it was first added.
+    /// When it came to be at its path: the latest commit that added it, so a file deleted and
+    /// added again was created when it came back, and a file moved there when it moved.
     pub created: Known<Timestamp>,
     /// When it was last changed.
     pub updated: Known<Timestamp>,
@@ -99,9 +100,14 @@ impl<T> Known<T> {
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Provenance {
-    /// Git history, read up to this commit.
+    /// Git history, read up to this commit: a bound at a shallow clone's boundary.
     GitHistory {
         /// The commit history was read up to.
+        commit: Oid,
+    },
+    /// The git commit that made the change.
+    Commit {
+        /// The commit.
         commit: Oid,
     },
     /// The local filesystem's metadata.
@@ -122,6 +128,9 @@ pub enum UnknownReason {
     },
     /// The source could have said and did not.
     NotReported,
+    /// The history shows the change only in a merge commit, and merges are not read
+    /// (decision 0036).
+    Merged,
 }
 
 /// Something a source can do (decision 0012).
@@ -156,21 +165,45 @@ impl Observed {
     }
 }
 
-/// An ability a fetch did not have, and the decision that suffers for it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+/// An ability a fetch did not have, or had only in part, and the decision that suffers for it.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub struct Lack {
     /// What the fetch could not do.
     pub ability: Ability,
     /// The decision that suffers for it, such as `page.date` without history.
     pub consequence: AnyCode,
+    /// How much of the ability is missing.
+    pub gap: Gap,
 }
 
 impl Lack {
-    /// `ability` lacked, which `consequence` suffers for.
-    pub fn new(ability: Ability, consequence: AnyCode) -> Self {
-        Self { ability, consequence }
+    /// `ability` lacked as far as `gap` says, which `consequence` suffers for.
+    pub fn new(ability: Ability, consequence: AnyCode, gap: Gap) -> Self {
+        Self { ability, consequence, gap }
     }
+}
+
+/// How much of an ability a fetch lacked.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum Gap {
+    /// All of it: a folder has no history at all.
+    Absent,
+    /// History stops at a shallow clone's boundary: what is older is only a bound.
+    Shallow {
+        /// The newest boundary commit.
+        commit: Oid,
+        /// Its author time, the bound every older fact gets.
+        bound: Timestamp,
+    },
+    /// History does not follow renames (decision 0036): a file moved to its path was created,
+    /// as far as the source knows, when it moved.
+    Renames {
+        /// How many files of the snapshot were created by a move.
+        moved: u64,
+    },
 }
 
 /// Why parts do not make a [`Snapshot`].

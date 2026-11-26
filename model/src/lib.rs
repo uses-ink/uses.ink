@@ -59,7 +59,7 @@ pub use site::{
 };
 pub use size::Bytes;
 pub use snapshot::{
-    Ability, Entry, FileFacts, Known, Lack, Observed, Oid, Provenance, Snapshot, SnapshotError, UnknownReason,
+    Ability, Entry, FileFacts, Gap, Known, Lack, Observed, Oid, Provenance, Snapshot, SnapshotError, UnknownReason,
     UploadId, Version, VersionError,
 };
 pub use span::{Backwards, Span};

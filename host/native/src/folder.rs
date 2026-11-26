@@ -5,7 +5,7 @@ use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
 use model::{
-    Ability, AnyCode, Bytes, ContentPath, Entry, FileFacts, Hash, Known, Lack, Observed, Provenance, Snapshot,
+    Ability, AnyCode, Bytes, ContentPath, Entry, FileFacts, Gap, Hash, Known, Lack, Observed, Provenance, Snapshot,
     Timestamp, UnknownReason, Version,
 };
 
@@ -114,7 +114,8 @@ impl Folder {
         walk.walk(&root, &root, None)?;
         let Walk { entries, facts, skipped, .. } = walk;
         let version = Version::Folder { hash: Tree(&entries).hash() };
-        let observed = Observed::new(vec![Ability::Snapshot], vec![Lack::new(Ability::History, AnyCode::Date)]);
+        let observed =
+            Observed::new(vec![Ability::Snapshot], vec![Lack::new(Ability::History, AnyCode::Date, Gap::Absent)]);
         let snapshot = Snapshot::new(version, entries, facts, observed).map_err(Refused::Snapshot)?;
         Ok(Read { snapshot, skipped })
     }
