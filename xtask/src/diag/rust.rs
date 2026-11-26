@@ -53,6 +53,7 @@ impl Catalog {
                     match self { #(#patterns => #codes,)* }
                 }
 
+                /// How bad it is.
                 pub const fn severity(&self) -> Severity {
                     match self { #(#patterns => #severities,)* }
                 }
@@ -79,6 +80,7 @@ impl Catalog {
                 /// Every code, in catalog order.
                 pub const CODES: &'static [&'static str] = &[#(#codes),*];
 
+                /// Its dotted code, `noun.noun.reason`.
                 pub const fn code(&self) -> &'static str {
                     match self { #(#patterns => #codes,)* }
                 }
@@ -158,7 +160,8 @@ impl<C> Entry<C> {
         let fields = self.fields.iter().map(|field| {
             let name = format_ident!("{}", field.name);
             let kind = field.kind.rust();
-            quote! { #name: #kind }
+            let doc = format!(" {}", field.doc);
+            quote! { #[doc = #doc] #name: #kind }
         });
         let body = if self.fields.is_empty() {
             quote! {}

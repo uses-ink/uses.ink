@@ -10,133 +10,295 @@ use serde::Serialize;
 pub enum Problem {
     /// `config.syntax.invalid`: ink.toml does not parse: {reason}
     #[serde(rename = "config.syntax.invalid")]
-    ConfigSyntaxInvalid { reason: String },
+    ConfigSyntaxInvalid {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `config.key.unknown`: `{key}` is not a key ink.toml has
     #[serde(rename = "config.key.unknown")]
-    ConfigKeyUnknown { key: String },
+    ConfigKeyUnknown {
+        /// The key, as written.
+        key: String,
+    },
     /// `config.value.invalid`: `{key}` takes {expected}
     #[serde(rename = "config.value.invalid")]
-    ConfigValueInvalid { key: String, expected: String },
+    ConfigValueInvalid {
+        /// The key, as written.
+        key: String,
+        /// What the key takes, worded for a person.
+        expected: String,
+    },
     /// `frontmatter.syntax.invalid`: the frontmatter does not parse, so the page is built without it: {reason}
     #[serde(rename = "frontmatter.syntax.invalid")]
-    FrontmatterSyntaxInvalid { reason: String },
+    FrontmatterSyntaxInvalid {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `frontmatter.value.invalid`: the frontmatter's `{key}` takes {expected}, so it is ignored
     #[serde(rename = "frontmatter.value.invalid")]
-    FrontmatterValueInvalid { key: String, expected: String },
+    FrontmatterValueInvalid {
+        /// The key, as written.
+        key: String,
+        /// What the key takes, worded for a person.
+        expected: String,
+    },
     /// `frontmatter.key.conflict`: the frontmatter's `{key}` sets the same thing as `{other}` before it, so it is ignored
     #[serde(rename = "frontmatter.key.conflict")]
-    FrontmatterKeyConflict { key: String, other: String },
+    FrontmatterKeyConflict {
+        /// The key, as written.
+        key: String,
+        /// The key written before it that sets the same thing.
+        other: String,
+    },
     /// `source.file.encoding`: the file is not UTF-8 text (byte {at}), so it is read as empty
     #[serde(rename = "source.file.encoding")]
-    SourceFileEncoding { at: u64 },
+    SourceFileEncoding {
+        /// The byte offset where the file stops being UTF-8.
+        at: u64,
+    },
     /// `link.target.missing`: `{written}` points at no file, so it is shown as plain text
     #[serde(rename = "link.target.missing")]
-    LinkTargetMissing { written: String },
+    LinkTargetMissing {
+        /// The text, as written.
+        written: String,
+    },
     /// `link.target.ambiguous`: `{written}` could be any of {candidates}
     #[serde(rename = "link.target.ambiguous")]
-    LinkTargetAmbiguous { written: String, candidates: Vec<ContentPath> },
+    LinkTargetAmbiguous {
+        /// The text, as written.
+        written: String,
+        /// Every file it could mean, in path order.
+        candidates: Vec<ContentPath>,
+    },
     /// `link.target.unpublished`: `{written}` points at {target}, which is not published, so it is shown as plain text
     #[serde(rename = "link.target.unpublished")]
-    LinkTargetUnpublished { written: String, target: ContentPath },
+    LinkTargetUnpublished {
+        /// The text, as written.
+        written: String,
+        /// The file it points at.
+        target: ContentPath,
+    },
     /// `page.route.collision`: {files} all route to {route}
     #[serde(rename = "page.route.collision")]
-    PageRouteCollision { route: Route, files: Vec<ContentPath> },
+    PageRouteCollision {
+        /// The route.
+        route: Route,
+        /// Every file involved, in path order.
+        files: Vec<ContentPath>,
+    },
     /// `html.element.stripped`: `<{element}>` is not allowed in a page and was removed
     #[serde(rename = "html.element.stripped")]
-    HtmlElementStripped { element: String },
+    HtmlElementStripped {
+        /// The element's name.
+        element: String,
+    },
     /// `page.nesting.deep`: blocks or inlines nested more than {limit} deep keep only their text
     #[serde(rename = "page.nesting.deep")]
-    PageNestingDeep { limit: u64 },
+    PageNestingDeep {
+        /// The most that is allowed.
+        limit: u64,
+    },
     /// `source.file.unreadable`: {path} could not be read: {reason}
     #[serde(rename = "source.file.unreadable")]
-    SourceFileUnreadable { path: ContentPath, reason: String },
+    SourceFileUnreadable {
+        /// The file.
+        path: ContentPath,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `source.budget.files`: the source holds {count} files; a site may hold {limit}
     #[serde(rename = "source.budget.files")]
-    SourceBudgetFiles { count: u64, limit: u64 },
+    SourceBudgetFiles {
+        /// How many there are.
+        count: u64,
+        /// The most that is allowed.
+        limit: u64,
+    },
     /// `source.budget.file`: {path} is {size}; a file may be {limit}
     #[serde(rename = "source.budget.file")]
-    SourceBudgetFile { path: ContentPath, size: Bytes, limit: Bytes },
+    SourceBudgetFile {
+        /// The file.
+        path: ContentPath,
+        /// How large it is.
+        size: Bytes,
+        /// The most that is allowed.
+        limit: Bytes,
+    },
     /// `theme.route.collision`: the theme `{theme}` serves {route}, which {file} also routes to
     #[serde(rename = "theme.route.collision")]
-    ThemeRouteCollision { route: Route, theme: String, file: ContentPath },
+    ThemeRouteCollision {
+        /// The route.
+        route: Route,
+        /// The theme's name.
+        theme: String,
+        /// The file that also routes there.
+        file: ContentPath,
+    },
     /// `render.page.failed`: the page could not be rendered: {reason}
     #[serde(rename = "render.page.failed")]
-    RenderPageFailed { reason: String },
+    RenderPageFailed {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `link.target.asset`: `{written}` points at {target}, a file that is not a page, so it is shown as plain text
     #[serde(rename = "link.target.asset")]
-    LinkTargetAsset { written: String, target: ContentPath },
+    LinkTargetAsset {
+        /// The text, as written.
+        written: String,
+        /// The file it points at.
+        target: ContentPath,
+    },
     /// `pin.target.unpublished`: `{decision}` names {path}, which is not a published page
     #[serde(rename = "pin.target.unpublished")]
-    PinTargetUnpublished { decision: AnyCode, path: ContentPath },
+    PinTargetUnpublished {
+        /// The decision code it is about.
+        decision: AnyCode,
+        /// The file.
+        path: ContentPath,
+    },
     /// `route.segment.unnamed`: `{segment}` in {path} has no letter or digit, so the route leaves it out
     #[serde(rename = "route.segment.unnamed")]
-    RouteSegmentUnnamed { path: ContentPath, segment: String },
+    RouteSegmentUnnamed {
+        /// The file.
+        path: ContentPath,
+        /// The segment of the path, as written.
+        segment: String,
+    },
     /// `asset.media.unknown`: {path} is a kind of file uses.ink does not serve, so it is left out
     #[serde(rename = "asset.media.unknown")]
-    AssetMediaUnknown { path: ContentPath },
+    AssetMediaUnknown {
+        /// The file.
+        path: ContentPath,
+    },
     /// `theme.route.reserved`: the theme `{theme}` serves {route}, which uses.ink serves itself
     #[serde(rename = "theme.route.reserved")]
-    ThemeRouteReserved { route: Route, theme: String },
+    ThemeRouteReserved {
+        /// The route.
+        route: Route,
+        /// The theme's name.
+        theme: String,
+    },
     /// `theme.page.refused`: the theme `{theme}` could not render the page
     #[serde(rename = "theme.page.refused")]
-    ThemePageRefused { theme: String },
+    ThemePageRefused {
+        /// The theme's name.
+        theme: String,
+    },
     /// `source.blob.missing`: {path} is in the snapshot, but its bytes are not in the blob store
     #[serde(rename = "source.blob.missing")]
-    SourceBlobMissing { path: ContentPath },
+    SourceBlobMissing {
+        /// The file.
+        path: ContentPath,
+    },
     /// `engine.decision.repeated`: `{decision}` was decided twice
     #[serde(rename = "engine.decision.repeated")]
-    EngineDecisionRepeated { decision: AnyCode },
+    EngineDecisionRepeated {
+        /// The decision code it is about.
+        decision: AnyCode,
+    },
     /// `engine.decision.missing`: `{decision}` was never decided
     #[serde(rename = "engine.decision.missing")]
-    EngineDecisionMissing { decision: AnyCode },
+    EngineDecisionMissing {
+        /// The decision code it is about.
+        decision: AnyCode,
+    },
     /// `engine.header.invalid`: the engine's own `{header}` header does not parse
     #[serde(rename = "engine.header.invalid")]
-    EngineHeaderInvalid { header: String },
+    EngineHeaderInvalid {
+        /// The header's name.
+        header: String,
+    },
     /// `engine.route.invalid`: the engine's own route `{written}` does not parse
     #[serde(rename = "engine.route.invalid")]
-    EngineRouteInvalid { written: String },
+    EngineRouteInvalid {
+        /// The text, as written.
+        written: String,
+    },
     /// `engine.path.invalid`: the engine's own path `{written}` does not parse
     #[serde(rename = "engine.path.invalid")]
-    EnginePathInvalid { written: String },
+    EnginePathInvalid {
+        /// The text, as written.
+        written: String,
+    },
     /// `engine.language.invalid`: the engine's own language `{written}` does not parse
     #[serde(rename = "engine.language.invalid")]
-    EngineLanguageInvalid { written: String },
+    EngineLanguageInvalid {
+        /// The text, as written.
+        written: String,
+    },
     /// `engine.route.repeated`: the engine served {route} twice
     #[serde(rename = "engine.route.repeated")]
-    EngineRouteRepeated { route: Route },
+    EngineRouteRepeated {
+        /// The route.
+        route: Route,
+    },
     /// `engine.site.refused`: the site refused the parts interpreting gave it
     #[serde(rename = "engine.site.refused")]
     EngineSiteRefused,
     /// `engine.xml.unwritten`: {route} could not be written
     #[serde(rename = "engine.xml.unwritten")]
-    EngineXmlUnwritten { route: Route },
+    EngineXmlUnwritten {
+        /// The route.
+        route: Route,
+    },
     /// `engine.date.unrepresentable`: {date} has no instant a feed can write
     #[serde(rename = "engine.date.unrepresentable")]
-    EngineDateUnrepresentable { date: String },
+    EngineDateUnrepresentable {
+        /// The date, as written.
+        date: String,
+    },
     /// `source.budget.bytes`: the source holds {size}; a site may hold {limit}
     #[serde(rename = "source.budget.bytes")]
-    SourceBudgetBytes { size: Bytes, limit: Bytes },
+    SourceBudgetBytes {
+        /// How large it is.
+        size: Bytes,
+        /// The most that is allowed.
+        limit: Bytes,
+    },
     /// `source.link.outside`: {path} links to a place outside the folder, which is never read
     #[serde(rename = "source.link.outside")]
-    SourceLinkOutside { path: ContentPath },
+    SourceLinkOutside {
+        /// The file.
+        path: ContentPath,
+    },
     /// `source.link.cycle`: {path} links to a folder that holds it, so reading it would never end
     #[serde(rename = "source.link.cycle")]
-    SourceLinkCycle { path: ContentPath },
+    SourceLinkCycle {
+        /// The file.
+        path: ContentPath,
+    },
     /// `source.name.invalid`: `{written}` is not a name a site can hold
     #[serde(rename = "source.name.invalid")]
-    SourceNameInvalid { written: String },
+    SourceNameInvalid {
+        /// The text, as written.
+        written: String,
+    },
     /// `source.file.special`: {path} is neither a file nor a folder, so it cannot be read
     #[serde(rename = "source.file.special")]
-    SourceFileSpecial { path: ContentPath },
+    SourceFileSpecial {
+        /// The file.
+        path: ContentPath,
+    },
     /// `source.root.unreadable`: the folder could not be read: {reason}
     #[serde(rename = "source.root.unreadable")]
-    SourceRootUnreadable { reason: String },
+    SourceRootUnreadable {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `source.blob.unwritable`: a file's bytes could not be stored: {reason}
     #[serde(rename = "source.blob.unwritable")]
-    SourceBlobUnwritable { reason: String },
+    SourceBlobUnwritable {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `math.syntax.invalid`: the math `{tex}` does not parse, so it is shown as written: {reason}
     #[serde(rename = "math.syntax.invalid")]
-    MathSyntaxInvalid { tex: String, reason: String },
+    MathSyntaxInvalid {
+        /// The TeX, as written.
+        tex: String,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
 }
 impl Problem {
     /// Every code, in catalog order.
@@ -233,6 +395,7 @@ impl Problem {
             Self::MathSyntaxInvalid { .. } => "math.syntax.invalid",
         }
     }
+    /// How bad it is.
     pub const fn severity(&self) -> Severity {
         match self {
             Self::ConfigSyntaxInvalid { .. } => Severity::Error,
@@ -334,22 +497,43 @@ impl Problem {
 pub enum Announcement {
     /// `notice.default.chosen`: nothing decided `{decision}`, so it is {value}
     #[serde(rename = "notice.default.chosen")]
-    NoticeDefaultChosen { decision: AnyCode, value: String },
+    NoticeDefaultChosen {
+        /// The decision code it is about.
+        decision: AnyCode,
+        /// The value taken, in the decision code's words.
+        value: String,
+    },
     /// `heading.anchor.generated`: a heading has no letters or digits, so its anchor is `{anchor}`
     #[serde(rename = "heading.anchor.generated")]
-    HeadingAnchorGenerated { anchor: String },
+    HeadingAnchorGenerated {
+        /// The anchor given to the heading.
+        anchor: String,
+    },
     /// `footnote.name.generated`: the footnote `{given}` has no letters or digits, so its name is `{name}`
     #[serde(rename = "footnote.name.generated")]
-    FootnoteNameGenerated { name: String, given: String },
+    FootnoteNameGenerated {
+        /// The name given instead.
+        name: String,
+        /// The name as the author wrote it.
+        given: String,
+    },
     /// `callout.kind.unknown`: the callout kind `{kind}` has no name a theme can use, so it is shown as a note
     #[serde(rename = "callout.kind.unknown")]
-    CalloutKindUnknown { kind: String },
+    CalloutKindUnknown {
+        /// The kind, as written.
+        kind: String,
+    },
     /// `site.home.generated`: no home page was found, so the home page lists every page
     #[serde(rename = "site.home.generated")]
     SiteHomeGenerated,
     /// `fact.date.bound`: only a bound is known for `{decision}`, not after {bound}, so it is not used
     #[serde(rename = "fact.date.bound")]
-    FactDateBound { decision: AnyCode, bound: String },
+    FactDateBound {
+        /// The decision code it is about.
+        decision: AnyCode,
+        /// The latest the date can be.
+        bound: String,
+    },
     /// `feed.post.undated`: the post has no date, so the feeds leave it out
     #[serde(rename = "feed.post.undated")]
     FeedPostUndated,
@@ -358,13 +542,22 @@ pub enum Announcement {
     FeedPostNone,
     /// `source.output.skipped`: {path} holds the build's own output, so it is not read
     #[serde(rename = "source.output.skipped")]
-    SourceOutputSkipped { path: ContentPath },
+    SourceOutputSkipped {
+        /// The file.
+        path: ContentPath,
+    },
     /// `build.address.default`: no address was given, so feeds, the sitemap and canonical links use {address}
     #[serde(rename = "build.address.default")]
-    BuildAddressDefault { address: String },
+    BuildAddressDefault {
+        /// The address used, as written.
+        address: String,
+    },
     /// `code.language.unknown`: no grammar knows the language `{language}`, so its code is shown without highlighting
     #[serde(rename = "code.language.unknown")]
-    CodeLanguageUnknown { language: String },
+    CodeLanguageUnknown {
+        /// The language, as written after the opening fence.
+        language: String,
+    },
 }
 impl Announcement {
     /// Every code, in catalog order.
@@ -381,6 +574,7 @@ impl Announcement {
         "build.address.default",
         "code.language.unknown",
     ];
+    /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
         match self {
             Self::NoticeDefaultChosen { .. } => "notice.default.chosen",

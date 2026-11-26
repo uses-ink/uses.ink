@@ -4,6 +4,12 @@ use std::fmt;
 
 use heck::ToUpperCamelCase;
 
+mod field;
+
+pub(crate) use field::{Field, Kind};
+
+use field::Docs;
+
 /// A checked catalog: diagnostics and notices, in file order.
 #[derive(Debug)]
 pub(crate) struct Catalog {
@@ -86,6 +92,11 @@ impl Named for Section {
     const NAMES: &'static [(&'static str, Self)] = &[("diagnostic", Self::Diagnostic), ("notice", Self::Notice)];
 }
 
+impl Section {
+    /// `[field]`, read before the others: each field name's doc.
+    const FIELD: &'static str = "field";
+}
+
 /// The keys an entry may have.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Key {
@@ -159,38 +170,6 @@ impl Choice for Fault {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct Field {
-    pub(crate) name: String,
-    pub(crate) kind: Kind,
-}
-
-/// The closed set of field types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Kind {
-    Path,
-    Paths,
-    Route,
-    Text,
-    Count,
-    Bytes,
-    Span,
-    Decision,
-}
-
-impl Named for Kind {
-    const NAMES: &'static [(&'static str, Self)] = &[
-        ("path", Self::Path),
-        ("paths", Self::Paths),
-        ("route", Self::Route),
-        ("text", Self::Text),
-        ("count", Self::Count),
-        ("bytes", Self::Bytes),
-        ("span", Self::Span),
-        ("decision", Self::Decision),
-    ];
-}
-
 /// A message or fix: literal text and fields, in order.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Template(pub(crate) Vec<Piece>);
@@ -236,7 +215,7 @@ impl Part {
 /// One thing wrong with the catalog.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Flaw {
-    /// A top-level key other than `diagnostic` and `notice`, or one that is not a table.
+    /// A top-level key other than `diagnostic`, `notice` and `field`, or one that is not a table.
     Section {
         name: String,
     },
@@ -287,6 +266,19 @@ pub(crate) enum Flaw {
         field: String,
         given: String,
     },
+    /// A doc in `[field]` that is not a string.
+    FieldDoc {
+        field: String,
+    },
+    /// A field whose name has no doc in `[field]`.
+    Undocumented {
+        code: String,
+        field: String,
+    },
+    /// A doc in `[field]` for a name no entry has.
+    Unused {
+        field: String,
+    },
     /// A template that uses a field the entry does not declare.
     Undeclared {
         code: String,
@@ -305,7 +297,7 @@ impl fmt::Display for Flaw {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Section { name } => {
-                write!(out, "`{name}` is not a section; the sections are `diagnostic` and `notice`")
+                write!(out, "`{name}` is not a section; the sections are `diagnostic`, `notice` and `field`")
             }
             Self::Code { code } => write!(out, "`{code}` is not a code: write `noun.noun.reason` in kebab case"),
             Self::Collision { code, other } => write!(out, "`{code}` and `{other}` make the same Rust name"),
@@ -326,6 +318,11 @@ impl fmt::Display for Flaw {
                 let known: Vec<&str> = Kind::NAMES.iter().map(|(name, _)| *name).collect();
                 write!(out, "`{code}`: field `{field}` has type `{given}`; the types are {}", known.join(", "))
             }
+            Self::FieldDoc { field } => write!(out, "`field.{field}` is not a string"),
+            Self::Undocumented { code, field } => {
+                write!(out, "`{code}`: field `{field}` has no doc; write one under `[field]`")
+            }
+            Self::Unused { field } => write!(out, "`field.{field}` documents a field no entry has"),
             Self::Undeclared { code, part, field } => {
                 write!(out, "`{code}`: the {} uses `{{{field}}}`, which is not a declared field", part.key())
             }
@@ -360,8 +357,16 @@ impl<T: Named> fmt::Display for Either<T> {
 impl TryFrom<toml::Table> for Catalog {
     type Error = Vec<Flaw>;
 
-    fn try_from(table: toml::Table) -> Result<Self, Vec<Flaw>> {
+    fn try_from(mut table: toml::Table) -> Result<Self, Vec<Flaw>> {
         let mut flaws = Vec::new();
+        let mut docs = match table.remove(Section::FIELD) {
+            None => Docs::default(),
+            Some(toml::Value::Table(section)) => Docs::read(section, &mut flaws),
+            Some(_) => {
+                flaws.push(Flaw::Section { name: Section::FIELD.to_owned() });
+                Docs::default()
+            }
+        };
         let mut catalog = Self { diagnostics: Vec::new(), notices: Vec::new() };
         for (name, value) in table {
             let (toml::Value::Table(entries), Some(section)) = (value, Section::find(&name)) else {
@@ -369,12 +374,14 @@ impl TryFrom<toml::Table> for Catalog {
                 continue;
             };
             for (code, value) in entries {
+                let mut reading = Reading { docs: &mut docs, flaws: &mut flaws };
                 match section {
-                    Section::Diagnostic => catalog.diagnostics.extend(Entry::read(code, value, &mut flaws)),
-                    Section::Notice => catalog.notices.extend(Entry::read(code, value, &mut flaws)),
+                    Section::Diagnostic => catalog.diagnostics.extend(Entry::read(code, value, &mut reading)),
+                    Section::Notice => catalog.notices.extend(Entry::read(code, value, &mut reading)),
                 }
             }
         }
+        docs.unused(&mut flaws);
         catalog.collisions(&mut flaws);
         if flaws.is_empty() { Ok(catalog) } else { Err(flaws) }
     }
@@ -394,8 +401,9 @@ impl Catalog {
 }
 
 impl<C: Class> Entry<C> {
-    /// Reads one entry, every flaw into `flaws`; `None` when it has any.
-    fn read(code: String, value: toml::Value, flaws: &mut Vec<Flaw>) -> Option<Self> {
+    /// Reads one entry, every flaw into the reading's flaws; `None` when it has any.
+    fn read(code: String, value: toml::Value, reading: &mut Reading<'_>) -> Option<Self> {
+        let Reading { docs, flaws } = reading;
         let before = flaws.len();
         if !Self::is_code(&code) {
             flaws.push(Flaw::Code { code: code.clone() });
@@ -404,7 +412,7 @@ impl<C: Class> Entry<C> {
             flaws.push(Flaw::NotTable { code });
             return None;
         };
-        let mut reader = Reader { code: &code, table: &table, flaws };
+        let mut reader = Reader { code: &code, table: &table, docs, flaws };
         reader.unknown(C::KEYS);
         let class = C::read(&mut reader);
         let fields = reader.fields();
@@ -445,10 +453,17 @@ impl<C> Entry<C> {
     }
 }
 
+/// The catalog being read: the field docs entries take theirs from, and every flaw so far.
+struct Reading<'a> {
+    docs: &'a mut Docs,
+    flaws: &'a mut Vec<Flaw>,
+}
+
 /// One entry's table being read: what it finds wrong goes into `flaws`, named by `code`.
 pub(crate) struct Reader<'a> {
     code: &'a str,
     table: &'a toml::Table,
+    docs: &'a mut Docs,
     flaws: &'a mut Vec<Flaw>,
 }
 
@@ -511,7 +526,11 @@ impl<'a> Reader<'a> {
             }
             let given = kind.as_str().map_or_else(|| kind.to_string(), str::to_owned);
             match Kind::find(&given) {
-                Some(kind) if named => fields.push(Field { name: name.clone(), kind }),
+                Some(kind) if named => {
+                    if let Some(doc) = self.docs.of(self.code, name, self.flaws) {
+                        fields.push(Field { name: name.clone(), kind, doc });
+                    }
+                }
                 Some(_) => {}
                 None => self.flaws.push(Flaw::FieldType { code: self.code.to_owned(), field: name.clone(), given }),
             }

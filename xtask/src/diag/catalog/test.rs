@@ -9,6 +9,10 @@ fn flaws(text: &str) -> Vec<Flaw> {
 }
 
 const GOOD: &str = r#"
+[field]
+written = "The text, as written."
+candidates = "Every file it could mean."
+
 [diagnostic."link.target.ambiguous"]
 severity = "error"
 fault = "author"
@@ -26,6 +30,10 @@ fn reads_a_good_catalog() {
     let [entry] = catalog.diagnostics.as_slice() else { panic!("one diagnostic") };
     assert_eq!(entry.variant, "LinkTargetAmbiguous");
     assert_eq!(entry.fields.iter().map(|f| f.kind).collect::<Vec<_>>(), [Kind::Text, Kind::Paths]);
+    assert_eq!(
+        entry.fields.iter().map(|f| f.doc.as_str()).collect::<Vec<_>>(),
+        ["The text, as written.", "Every file it could mean."]
+    );
     let expected = Template(vec![
         Piece::Text("`".to_owned()),
         Piece::Field("written".to_owned()),
@@ -105,7 +113,7 @@ fn refuses_bad_fields() {
 #[test]
 fn refuses_templates_with_undeclared_fields_or_stray_braces() {
     let code = || "a.b.c".to_owned();
-    let text = "[notice.\"a.b.c\"]\nfields = { path = \"path\" }\nmessage = \"{path} {route}\"\nfix = \"oops }\"";
+    let text = "[field]\npath = \"The file.\"\n[notice.\"a.b.c\"]\nfields = { path = \"path\" }\nmessage = \"{path} {route}\"\nfix = \"oops }\"";
     assert_eq!(
         flaws(text),
         [
@@ -115,4 +123,18 @@ fn refuses_templates_with_undeclared_fields_or_stray_braces() {
     );
     let open = "[notice.\"a.b.c\"]\nmessage = \"x {path\"";
     assert_eq!(flaws(open), [Flaw::Brace { code: code(), part: Part::Message, at: 2 }]);
+}
+
+#[test]
+fn refuses_a_field_without_a_doc_and_a_doc_without_a_field() {
+    let text =
+        "[field]\nroute = \"The route.\"\nsize = 3\n[notice.\"a.b.c\"]\nfields = { path = \"path\" }\nmessage = \"x\"";
+    assert_eq!(
+        flaws(text),
+        [
+            Flaw::FieldDoc { field: "size".to_owned() },
+            Flaw::Undocumented { code: "a.b.c".to_owned(), field: "path".to_owned() },
+            Flaw::Unused { field: "route".to_owned() },
+        ]
+    );
 }

@@ -5,9 +5,43 @@
 #
 # A code is `noun.noun.reason`: three kebab-case words joined by `.`.
 # severity: error | warning | note. fault: author | source | operator | ours.
-# Field types: path, paths, route, text, count, bytes, span, decision.
+# Field types: path, paths, route, text, count, bytes, span, decision (a decision code, `AnyCode`).
 # message and fix are templates: `{field}` is a declared field, `{{` and `}}` are braces.
 # Notices are not problems, so they have no severity and no fault.
+# A field name means one thing in every entry that has it, so `[field]` documents each name once
+# and the generated field carries that doc; a name without one, or a doc no entry uses, fails.
+
+[field]
+address = "The address used, as written."
+anchor = "The anchor given to the heading."
+at = "The byte offset where the file stops being UTF-8."
+bound = "The latest the date can be."
+candidates = "Every file it could mean, in path order."
+count = "How many there are."
+date = "The date, as written."
+decision = "The decision code it is about."
+element = "The element's name."
+expected = "What the key takes, worded for a person."
+file = "The file that also routes there."
+files = "Every file involved, in path order."
+given = "The name as the author wrote it."
+header = "The header's name."
+key = "The key, as written."
+kind = "The kind, as written."
+language = "The language, as written after the opening fence."
+limit = "The most that is allowed."
+name = "The name given instead."
+other = "The key written before it that sets the same thing."
+path = "The file."
+reason = "Why, as the part that refused it says."
+route = "The route."
+segment = "The segment of the path, as written."
+size = "How large it is."
+target = "The file it points at."
+tex = "The TeX, as written."
+theme = "The theme's name."
+value = "The value taken, in the decision code's words."
+written = "The text, as written."
 
 [diagnostic."config.syntax.invalid"]
 severity = "error"
