@@ -1,7 +1,7 @@
-use super::{Catalog, Flaw, Kind, Part, Piece, Template};
+use super::{Catalog, Flaw, Key, Kind, Part, Piece, Template};
 
 fn parse(text: &str) -> Result<Catalog, Vec<Flaw>> {
-    Catalog::parse(toml::from_str(text).unwrap())
+    Catalog::try_from(toml::from_str::<toml::Table>(text).unwrap())
 }
 
 fn flaws(text: &str) -> Vec<Flaw> {
@@ -68,7 +68,7 @@ fn refuses_unknown_and_missing_keys() {
     let code = "a.b.c".to_owned();
     assert_eq!(
         flaws(text),
-        [Flaw::Key { code: code.clone(), key: "hint".to_owned() }, Flaw::Missing { code, key: "fault" }]
+        [Flaw::Key { code: code.clone(), key: "hint".to_owned() }, Flaw::Missing { code, key: Key::Fault }]
     );
     let notice = "[notice.\"a.b.c\"]\nseverity = \"note\"\nmessage = \"x\"";
     assert_eq!(flaws(notice), [Flaw::Key { code: "a.b.c".to_owned(), key: "severity".to_owned() }]);
@@ -77,7 +77,7 @@ fn refuses_unknown_and_missing_keys() {
 #[test]
 fn refuses_values_of_the_wrong_kind() {
     let code = || "a.b.c".to_owned();
-    assert_eq!(flaws("[notice.\"a.b.c\"]\nmessage = 3"), [Flaw::NotText { code: code(), key: "message".to_owned() }]);
+    assert_eq!(flaws("[notice.\"a.b.c\"]\nmessage = 3"), [Flaw::NotText { code: code(), key: Key::Message }]);
     let text = "[diagnostic.\"a.b.c\"]\nseverity = \"fatal\"\nfault = \"theirs\"\nmessage = \"x\"";
     assert_eq!(
         flaws(text),

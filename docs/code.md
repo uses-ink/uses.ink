@@ -197,14 +197,34 @@ through the same tools and seeds.
 ## 7. Repo tasks are generators, steps and rules
 
 ```rust
-pub trait Generator { const SOURCE: &'static str; fn generate(&self, source: &str, out: &mut Output) -> Result<(), Error>; }
-pub trait Step { fn run(&self, cargo: &Cargo) -> Result<(), StepFailure>; }   // fmt, clippy, nextest, ..
-pub trait Rule { fn check(&self, workspace: &Workspace, problems: &mut Problems); }
+pub trait Generator {
+    const TASK: Task;                                              // named in each file's header
+    const SOURCE: &'static str;                                    // "token/token.toml"
+    type Source: TryFrom<toml::Table, Error: Into<Flaw>>;          // Tokens, Catalog, Figure
+    fn generate(&self, source: &Self::Source, files: &mut Files<'_>) -> Result<(), Error>;
+}
+pub trait Step: Display { fn run(&self, root: &Path, report: &mut Report); }
+pub trait Rule { const NAME: &'static str; fn check(&self, workspace: &Workspace, problems: &mut Problems); }
 ```
 
-`token`, `diag` and `brand` are generators; `cargo xtask check` runs every step and every rule
-(`Names`, `Order`, `Licence`, `Alias`, `Banned`, `Unsafe`, `Words`) and reports all of them. A
-new check is a new `Rule`.
+`Token`, `Diag` and `Brand` are generators. `Output::generate::<G>` reads `G::SOURCE`, parses it
+into the typed `G::Source` (a source that does not parse is an `Error::Source` naming the file),
+and hands the generator a `Files` that writes or, for `layout`, compares each file and records
+which task a stale one comes from. The generators' Rust is built through `ToTokens` impls
+(`Palette`, `Faces`) and methods on the catalog's types, never free functions.
+
+The gate is a tuple of steps (`Gate::steps`): each cargo step is one generic
+`Cargo<S: Scope>` (a `Command`, a scope of `Every` crate, a `[&str; N]` of packages or `()`,
+typed `Flag`s and a `Target`), whose command line and needed `Tool`s follow from that data, and
+the last step is `Layout`. Rules run over a `Workspace` read once: `cargo metadata`, the
+`[workspace.dependencies]` aliases, every path in the tree, every `.rs` file per crate, and the
+module tree each target compiles, parsed with `syn` and marked entry, inner, test or generated.
+The rules are `Names`, `Order`, `Licence`, `Alias`, `Banned`, `Unsafe` (on tokens, so comments
+and literals never count), `Words` and `Free`. `Gradual<R>` wraps a rule so it fails only the
+crates in `ENFORCED` and counts the rest in a note, which is how `Words` and `Free` land while
+the crates move onto them. Lists of generators, steps and rules are tuples, given their list
+trait by one `tuples!` macro. `cargo xtask check` runs every step and reports every failure; a
+new check is a new `Rule` added to `Layout::RULES`.
 
 ## 8. Generic, and where it stops
 

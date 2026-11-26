@@ -201,7 +201,12 @@ else is one of:
 No `utils.rs`, `helpers.rs`, `common.rs`, `misc.rs`. A name of three words or more
 (`push_text_node`, `atom_entry_of`) is a missing type or module: `text::Node::push`,
 `atom::Entry`. Function and method names are one or two words; `cargo xtask check` refuses
-longer ones outside tests (a test's name is a sentence and may be long).
+longer ones outside tests (a test's name is a sentence and may be long), and refuses a free
+function outside a crate's entry points (the `pub` functions and `main` of a target's root, a
+function exported by symbol name, and xtask's `Free::ALLOWED`, kept tiny). Both rules skip
+`#[test]` functions, `#[cfg(test)]` modules, test targets and generated files, and count a
+trait impl's methods under the trait. They fail only the crates in xtask's `ENFORCED` and count
+the others in a note; a crate joins the list when its code passes.
 
 **No strings where a type belongs.** A path is a validated newtype (`ContentPath`, `Route`), a
 kind is an enum, a code is an enum variant with a `const` name. JSON is serde types. HTML, SVG
@@ -259,8 +264,8 @@ holding a secret redacts itself in `Debug` and has no `Display`. No telemetry.
 
 **Hacks.** Every `#[allow]`/`#[expect]` has `reason = "..."`; prefer `#[expect]`. A workaround is
 `// HACK(<condition for removal>): <why>`. No `TODO` without a condition. No commented-out code.
-`unsafe` is denied at the workspace level; `cargo xtask layout` allows it only where a decision
-says.
+`unsafe` is denied at the workspace level; `cargo xtask layout` allows it only in the files
+xtask's `Unsafe::ALLOWED` lists, each because a decision says.
 
 **One source of truth.** Every fact lives in one place; everything else is generated from it and
 a check fails when the copies differ. Validate once, in a type: code holding a `Slug` does not
@@ -341,7 +346,7 @@ a doc comment.
   natively and on wasm32, nextest, doc tests, `cargo deny`, the pen's tests on wasm32-wasip2, the
   browser pen's release build, then layout and generated files), every one with `--locked`. It
   runs every step and lists each failure; a missing tool fails with the command that installs it.
-  CI runs that one command, so the list lives in one place (`xtask/src/check.rs`).
+  CI runs that one command, so the list lives in one place (`Gate::steps` in `xtask/src/check.rs`).
   `cargo xtask layout` runs the last step alone, for a fast loop.
 - After each milestone, read-only review agents go over its diff; every finding that holds is
   fixed, and the ones skipped are written down with the reason.

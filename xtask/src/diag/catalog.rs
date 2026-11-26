@@ -1,4 +1,4 @@
-//! The catalog, parsed and checked. Every flaw in the file is reported at once.
+//! The catalog, read and checked. Every flaw in the file is reported at once.
 
 use std::fmt;
 
@@ -7,21 +7,119 @@ use heck::ToUpperCamelCase;
 /// A checked catalog: diagnostics and notices, in file order.
 #[derive(Debug)]
 pub(crate) struct Catalog {
-    pub(crate) diagnostics: Vec<Entry>,
-    pub(crate) notices: Vec<Entry>,
+    pub(crate) diagnostics: Vec<Entry<Rank>>,
+    pub(crate) notices: Vec<Entry<()>>,
 }
 
+/// One code of the catalog. `C` is what its class adds: a diagnostic's [`Rank`], nothing for a
+/// notice.
 #[derive(Debug)]
-pub(crate) struct Entry {
+pub(crate) struct Entry<C> {
     pub(crate) code: String,
     /// The Rust variant: `link.target.ambiguous` is `LinkTargetAmbiguous`.
     pub(crate) variant: String,
-    /// Both set for a diagnostic, neither for a notice.
-    pub(crate) severity: Option<Severity>,
-    pub(crate) fault: Option<Fault>,
+    pub(crate) class: C,
     pub(crate) fields: Vec<Field>,
     pub(crate) message: Template,
     pub(crate) fix: Option<Template>,
+}
+
+/// What a diagnostic has that a notice does not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Rank {
+    pub(crate) severity: Severity,
+    pub(crate) fault: Fault,
+}
+
+/// The class of an entry: its keys beyond those every entry may have, and how they are read.
+pub(crate) trait Class: Sized {
+    /// Every key an entry of this class may have.
+    const KEYS: &'static [Key];
+
+    /// Reads the class's own keys, each flaw into the reader.
+    fn read(reader: &mut Reader<'_>) -> Option<Self>;
+}
+
+impl Class for Rank {
+    const KEYS: &'static [Key] = &[Key::Severity, Key::Fault, Key::Fields, Key::Message, Key::Fix];
+
+    fn read(reader: &mut Reader<'_>) -> Option<Self> {
+        let severity = reader.choice(Key::Severity);
+        let fault = reader.choice(Key::Fault);
+        Some(Self { severity: severity?, fault: fault? })
+    }
+}
+
+impl Class for () {
+    const KEYS: &'static [Key] = &[Key::Fields, Key::Message, Key::Fix];
+
+    fn read(_: &mut Reader<'_>) -> Option<Self> {
+        Some(())
+    }
+}
+
+/// A closed set the catalog spells as text: each member and its name.
+pub(crate) trait Named: Copy + 'static {
+    /// Every member, by name.
+    const NAMES: &'static [(&'static str, Self)];
+
+    /// The member named `name`.
+    fn find(name: &str) -> Option<Self> {
+        Self::NAMES.iter().find(|(n, _)| *n == name).map(|&(_, member)| member)
+    }
+}
+
+/// A [`Named`] set an entry chooses from under one key, refused with a flaw of its own.
+pub(crate) trait Choice: Named {
+    /// The flaw for `given`, which names no member.
+    fn refuse(code: String, given: String) -> Flaw;
+}
+
+/// The sections of the catalog.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Section {
+    Diagnostic,
+    Notice,
+}
+
+impl Named for Section {
+    const NAMES: &'static [(&'static str, Self)] = &[("diagnostic", Self::Diagnostic), ("notice", Self::Notice)];
+}
+
+/// The keys an entry may have.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Key {
+    Severity,
+    Fault,
+    Fields,
+    Message,
+    Fix,
+}
+
+impl Key {
+    const ALL: [Self; 5] = [Self::Severity, Self::Fault, Self::Fields, Self::Message, Self::Fix];
+
+    /// The key named `name`.
+    fn find(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|key| key.name() == name)
+    }
+
+    /// Its name in the catalog.
+    const fn name(self) -> &'static str {
+        match self {
+            Self::Severity => "severity",
+            Self::Fault => "fault",
+            Self::Fields => "fields",
+            Self::Message => "message",
+            Self::Fix => "fix",
+        }
+    }
+}
+
+impl fmt::Display for Key {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(self.name())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,12 +129,34 @@ pub(crate) enum Severity {
     Note,
 }
 
+impl Named for Severity {
+    const NAMES: &'static [(&'static str, Self)] =
+        &[("error", Self::Error), ("warning", Self::Warning), ("note", Self::Note)];
+}
+
+impl Choice for Severity {
+    fn refuse(code: String, given: String) -> Flaw {
+        Flaw::Severity { code, given }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Fault {
     Author,
     Source,
     Operator,
     Ours,
+}
+
+impl Named for Fault {
+    const NAMES: &'static [(&'static str, Self)] =
+        &[("author", Self::Author), ("source", Self::Source), ("operator", Self::Operator), ("ours", Self::Ours)];
+}
+
+impl Choice for Fault {
+    fn refuse(code: String, given: String) -> Flaw {
+        Flaw::Fault { code, given }
+    }
 }
 
 #[derive(Debug)]
@@ -58,8 +178,8 @@ pub(crate) enum Kind {
     Decision,
 }
 
-impl Kind {
-    const NAMES: &[(&str, Self)] = &[
+impl Named for Kind {
+    const NAMES: &'static [(&'static str, Self)] = &[
         ("path", Self::Path),
         ("paths", Self::Paths),
         ("route", Self::Route),
@@ -104,10 +224,11 @@ pub(crate) enum Part {
 }
 
 impl Part {
-    fn key(self) -> &'static str {
+    /// The key it is written under.
+    const fn key(self) -> Key {
         match self {
-            Self::Message => "message",
-            Self::Fix => "fix",
+            Self::Message => Key::Message,
+            Self::Fix => Key::Fix,
         }
     }
 }
@@ -140,12 +261,12 @@ pub(crate) enum Flaw {
     /// A key the entry needs.
     Missing {
         code: String,
-        key: &'static str,
+        key: Key,
     },
-    /// A key whose value is not a string.
+    /// A key whose value is not a string, or not a table for `fields`.
     NotText {
         code: String,
-        key: String,
+        key: Key,
     },
     Severity {
         code: String,
@@ -193,10 +314,10 @@ impl fmt::Display for Flaw {
             Self::Missing { code, key } => write!(out, "`{code}` has no `{key}`"),
             Self::NotText { code, key } => write!(out, "`{code}`: `{key}` is not a string"),
             Self::Severity { code, given } => {
-                write!(out, "`{code}`: `{given}` is not a severity; write error, warning or note")
+                write!(out, "`{code}`: `{given}` is not a severity; write {}", Either::<Severity>::SET)
             }
             Self::Fault { code, given } => {
-                write!(out, "`{code}`: `{given}` is not a fault; write author, source, operator or ours")
+                write!(out, "`{code}`: `{given}` is not a fault; write {}", Either::<Fault>::SET)
             }
             Self::FieldName { code, field } => {
                 write!(out, "`{code}`: `{field}` is not a field name; write a lower-case Rust identifier")
@@ -215,206 +336,233 @@ impl fmt::Display for Flaw {
     }
 }
 
-impl Catalog {
-    pub(crate) fn parse(table: toml::Table) -> Result<Self, Vec<Flaw>> {
+/// The members of a [`Named`] set as a choice reads: `a, b or c`.
+struct Either<T>(std::marker::PhantomData<T>);
+
+impl<T> Either<T> {
+    const SET: Self = Self(std::marker::PhantomData);
+}
+
+impl<T: Named> fmt::Display for Either<T> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let last = T::NAMES.len().saturating_sub(1);
+        T::NAMES.iter().enumerate().try_for_each(|(i, (name, _))| {
+            let sep = match i {
+                0 => "",
+                i if i == last => " or ",
+                _ => ", ",
+            };
+            write!(out, "{sep}{name}")
+        })
+    }
+}
+
+impl TryFrom<toml::Table> for Catalog {
+    type Error = Vec<Flaw>;
+
+    fn try_from(table: toml::Table) -> Result<Self, Vec<Flaw>> {
         let mut flaws = Vec::new();
         let mut catalog = Self { diagnostics: Vec::new(), notices: Vec::new() };
         for (name, value) in table {
-            let (toml::Value::Table(entries), notice) = (value, name == "notice") else {
+            let (toml::Value::Table(entries), Some(section)) = (value, Section::find(&name)) else {
                 flaws.push(Flaw::Section { name });
                 continue;
             };
-            if !notice && name != "diagnostic" {
-                flaws.push(Flaw::Section { name });
-                continue;
-            }
             for (code, value) in entries {
-                if let Some(entry) = Entry::parse(code, value, notice, &mut flaws) {
-                    if notice { catalog.notices.push(entry) } else { catalog.diagnostics.push(entry) }
+                match section {
+                    Section::Diagnostic => catalog.diagnostics.extend(Entry::read(code, value, &mut flaws)),
+                    Section::Notice => catalog.notices.extend(Entry::read(code, value, &mut flaws)),
                 }
             }
         }
         catalog.collisions(&mut flaws);
         if flaws.is_empty() { Ok(catalog) } else { Err(flaws) }
     }
+}
 
+impl Catalog {
+    /// Every pair of codes that make the same Rust variant.
     fn collisions(&self, flaws: &mut Vec<Flaw>) {
-        let all: Vec<&Entry> = self.diagnostics.iter().chain(&self.notices).collect();
-        for (i, entry) in all.iter().enumerate() {
-            if let Some(other) = all.iter().skip(i + 1).find(|o| o.variant == entry.variant) {
-                flaws.push(Flaw::Collision { code: entry.code.clone(), other: other.code.clone() });
+        let all: Vec<(&str, &str)> =
+            self.diagnostics.iter().map(Entry::names).chain(self.notices.iter().map(Entry::names)).collect();
+        for (i, (code, variant)) in all.iter().enumerate() {
+            if let Some((other, _)) = all.iter().skip(i + 1).find(|(_, v)| v == variant) {
+                flaws.push(Flaw::Collision { code: (*code).to_owned(), other: (*other).to_owned() });
             }
         }
     }
 }
 
-impl Entry {
-    fn parse(code: String, value: toml::Value, notice: bool, flaws: &mut Vec<Flaw>) -> Option<Self> {
+impl<C: Class> Entry<C> {
+    /// Reads one entry, every flaw into `flaws`; `None` when it has any.
+    fn read(code: String, value: toml::Value, flaws: &mut Vec<Flaw>) -> Option<Self> {
         let before = flaws.len();
-        if !is_code(&code) {
+        if !Self::is_code(&code) {
             flaws.push(Flaw::Code { code: code.clone() });
         }
         let toml::Value::Table(table) = value else {
             flaws.push(Flaw::NotTable { code });
             return None;
         };
-        unknown_keys(&code, &table, notice, flaws);
-        let text = |key: &'static str, flaws: &mut Vec<Flaw>| match table.get(key) {
-            None => None,
-            Some(toml::Value::String(text)) => Some(text.as_str()),
-            Some(_) => {
-                flaws.push(Flaw::NotText { code: code.clone(), key: key.to_owned() });
-                None
-            }
-        };
-        let needed = |key: &'static str, flaws: &mut Vec<Flaw>| {
-            let found = text(key, flaws);
-            if found.is_none() && table.get(key).is_none_or(toml::Value::is_str) {
-                flaws.push(Flaw::Missing { code: code.clone(), key });
-            }
-            found
-        };
-        let (severity, fault) = if notice {
-            (None, None)
-        } else {
-            let severity = needed("severity", flaws).and_then(|given| severity(&code, given, flaws));
-            (severity, needed("fault", flaws).and_then(|given| fault(&code, given, flaws)))
-        };
-        let fields = fields(&code, table.get("fields"), flaws);
-        let message = needed("message", flaws)
-            .and_then(|t| template(Within { code: &code, part: Part::Message }, t, &fields, flaws));
-        let fix = text("fix", flaws).and_then(|t| template(Within { code: &code, part: Part::Fix }, t, &fields, flaws));
+        let mut reader = Reader { code: &code, table: &table, flaws };
+        reader.unknown(C::KEYS);
+        let class = C::read(&mut reader);
+        let fields = reader.fields();
+        let message = reader.needed(Key::Message).and_then(|t| reader.template(Part::Message, t, &fields));
+        let fix = reader.text(Key::Fix).and_then(|t| reader.template(Part::Fix, t, &fields));
         if flaws.len() > before {
             return None;
         }
         let variant = code.replace('.', "-").to_upper_camel_case();
-        Some(Self { code, variant, severity, fault, fields, message: message?, fix })
+        Some(Self { code, variant, class: class?, fields, message: message?, fix })
+    }
+
+    /// Three words of lower-case letters and digits in kebab case, joined by `.`, each word
+    /// starting with a letter.
+    fn is_code(code: &str) -> bool {
+        let word = |w: &str| {
+            w.bytes().next().is_some_and(|b| b.is_ascii_lowercase())
+                && w.split('-')
+                    .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
+        };
+        let words: Vec<&str> = code.split('.').collect();
+        words.len() == 3 && words.iter().all(|w| word(w))
     }
 }
 
-fn unknown_keys(code: &str, table: &toml::Table, notice: bool, flaws: &mut Vec<Flaw>) {
-    let allowed: &[&str] =
-        if notice { &["fields", "message", "fix"] } else { &["severity", "fault", "fields", "message", "fix"] };
-    for key in table.keys().filter(|key| !allowed.contains(&key.as_str())) {
-        flaws.push(Flaw::Key { code: code.to_owned(), key: key.clone() });
+impl<C> Entry<C> {
+    /// Its code and its Rust variant.
+    fn names(&self) -> (&str, &str) {
+        (&self.code, &self.variant)
     }
-}
 
-/// Three words of lower-case letters and digits in kebab case, joined by `.`, each word
-/// starting with a letter.
-fn is_code(code: &str) -> bool {
-    let word = |w: &str| {
-        w.bytes().next().is_some_and(|b| b.is_ascii_lowercase())
-            && w.split('-')
-                .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
-    };
-    let words: Vec<&str> = code.split('.').collect();
-    words.len() == 3 && words.iter().all(|w| word(w))
-}
-
-fn severity(code: &str, given: &str, flaws: &mut Vec<Flaw>) -> Option<Severity> {
-    let found = match given {
-        "error" => Some(Severity::Error),
-        "warning" => Some(Severity::Warning),
-        "note" => Some(Severity::Note),
-        _ => None,
-    };
-    if found.is_none() {
-        flaws.push(Flaw::Severity { code: code.to_owned(), given: given.to_owned() });
-    }
-    found
-}
-
-fn fault(code: &str, given: &str, flaws: &mut Vec<Flaw>) -> Option<Fault> {
-    let found = match given {
-        "author" => Some(Fault::Author),
-        "source" => Some(Fault::Source),
-        "operator" => Some(Fault::Operator),
-        "ours" => Some(Fault::Ours),
-        _ => None,
-    };
-    if found.is_none() {
-        flaws.push(Flaw::Fault { code: code.to_owned(), given: given.to_owned() });
-    }
-    found
-}
-
-fn fields(code: &str, value: Option<&toml::Value>, flaws: &mut Vec<Flaw>) -> Vec<Field> {
-    let table = match value {
-        None => return Vec::new(),
-        Some(toml::Value::Table(table)) => table,
-        Some(_) => {
-            flaws.push(Flaw::NotText { code: code.to_owned(), key: "fields".to_owned() });
-            return Vec::new();
-        }
-    };
-    let mut fields = Vec::new();
-    for (name, kind) in table {
-        let named = name.bytes().next().is_some_and(|b| b.is_ascii_lowercase())
-            && name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
-            && syn::parse_str::<syn::Ident>(name).is_ok();
-        if !named {
-            flaws.push(Flaw::FieldName { code: code.to_owned(), field: name.clone() });
-        }
-        let given = kind.as_str().map_or_else(|| kind.to_string(), str::to_owned);
-        match Kind::NAMES.iter().find(|(n, _)| *n == given) {
-            Some(&(_, kind)) if named => fields.push(Field { name: name.clone(), kind }),
-            Some(_) => {}
-            None => flaws.push(Flaw::FieldType { code: code.to_owned(), field: name.clone(), given }),
+    /// The template of `part`, if it has one.
+    pub(crate) fn template(&self, part: Part) -> Option<&Template> {
+        match part {
+            Part::Message => Some(&self.message),
+            Part::Fix => self.fix.as_ref(),
         }
     }
-    fields
 }
 
-/// Which template of which entry is being read, as its flaws name it.
-#[derive(Clone, Copy)]
-struct Within<'a> {
+/// One entry's table being read: what it finds wrong goes into `flaws`, named by `code`.
+pub(crate) struct Reader<'a> {
     code: &'a str,
-    part: Part,
+    table: &'a toml::Table,
+    flaws: &'a mut Vec<Flaw>,
 }
 
-/// `{name}` is a field, `{{` and `}}` are braces, anything else is text.
-fn template(within: Within<'_>, text: &str, fields: &[Field], flaws: &mut Vec<Flaw>) -> Option<Template> {
-    let Within { code, part } = within;
-    let mut pieces = Vec::new();
-    let mut literal = String::new();
-    let mut rest = text.char_indices().peekable();
-    let brace = |at: usize| Flaw::Brace { code: code.to_owned(), part, at };
-    while let Some((at, c)) = rest.next() {
-        match c {
-            '{' if rest.next_if(|&(_, c)| c == '{').is_some() => literal.push('{'),
-            '}' if rest.next_if(|&(_, c)| c == '}').is_some() => literal.push('}'),
-            '}' => {
-                flaws.push(brace(at));
-                return None;
+impl<'a> Reader<'a> {
+    /// Every key outside `allowed`.
+    fn unknown(&mut self, allowed: &[Key]) {
+        for key in self.table.keys().filter(|key| Key::find(key).is_none_or(|key| !allowed.contains(&key))) {
+            self.flaws.push(Flaw::Key { code: self.code.to_owned(), key: key.clone() });
+        }
+    }
+
+    /// The text under `key`, if it is there and is text.
+    fn text(&mut self, key: Key) -> Option<&'a str> {
+        match self.table.get(key.name()) {
+            None => None,
+            Some(toml::Value::String(text)) => Some(text.as_str()),
+            Some(_) => {
+                self.flaws.push(Flaw::NotText { code: self.code.to_owned(), key });
+                None
             }
-            '{' => {
-                let mut name = String::new();
-                loop {
-                    match rest.next() {
-                        Some((_, '}')) => break,
-                        Some((_, c)) if c != '{' => name.push(c),
-                        _ => {
-                            flaws.push(brace(at));
-                            return None;
+        }
+    }
+
+    /// The text under `key`, which the entry needs.
+    fn needed(&mut self, key: Key) -> Option<&'a str> {
+        let found = self.text(key);
+        if found.is_none() && self.table.get(key.name()).is_none_or(toml::Value::is_str) {
+            self.flaws.push(Flaw::Missing { code: self.code.to_owned(), key });
+        }
+        found
+    }
+
+    /// The member of `T` named under `key`, which the entry needs.
+    fn choice<T: Choice>(&mut self, key: Key) -> Option<T> {
+        let given = self.needed(key)?;
+        let found = T::find(given);
+        if found.is_none() {
+            self.flaws.push(T::refuse(self.code.to_owned(), given.to_owned()));
+        }
+        found
+    }
+
+    /// The declared fields, in file order.
+    fn fields(&mut self) -> Vec<Field> {
+        let table = match self.table.get(Key::Fields.name()) {
+            None => return Vec::new(),
+            Some(toml::Value::Table(table)) => table,
+            Some(_) => {
+                self.flaws.push(Flaw::NotText { code: self.code.to_owned(), key: Key::Fields });
+                return Vec::new();
+            }
+        };
+        let mut fields = Vec::new();
+        for (name, kind) in table {
+            let named = name.bytes().next().is_some_and(|b| b.is_ascii_lowercase())
+                && name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+                && syn::parse_str::<syn::Ident>(name).is_ok();
+            if !named {
+                self.flaws.push(Flaw::FieldName { code: self.code.to_owned(), field: name.clone() });
+            }
+            let given = kind.as_str().map_or_else(|| kind.to_string(), str::to_owned);
+            match Kind::find(&given) {
+                Some(kind) if named => fields.push(Field { name: name.clone(), kind }),
+                Some(_) => {}
+                None => self.flaws.push(Flaw::FieldType { code: self.code.to_owned(), field: name.clone(), given }),
+            }
+        }
+        fields
+    }
+
+    /// The template `text` of `part`: `{name}` is a field, `{{` and `}}` are braces, anything
+    /// else is text.
+    fn template(&mut self, part: Part, text: &str, fields: &[Field]) -> Option<Template> {
+        let code = self.code;
+        let mut pieces = Vec::new();
+        let mut literal = String::new();
+        let mut rest = text.char_indices().peekable();
+        let brace = |at: usize| Flaw::Brace { code: code.to_owned(), part, at };
+        while let Some((at, c)) = rest.next() {
+            match c {
+                '{' if rest.next_if(|&(_, c)| c == '{').is_some() => literal.push('{'),
+                '}' if rest.next_if(|&(_, c)| c == '}').is_some() => literal.push('}'),
+                '}' => {
+                    self.flaws.push(brace(at));
+                    return None;
+                }
+                '{' => {
+                    let mut name = String::new();
+                    loop {
+                        match rest.next() {
+                            Some((_, '}')) => break,
+                            Some((_, c)) if c != '{' => name.push(c),
+                            _ => {
+                                self.flaws.push(brace(at));
+                                return None;
+                            }
                         }
                     }
+                    if !fields.iter().any(|f| f.name == name) {
+                        self.flaws.push(Flaw::Undeclared { code: code.to_owned(), part, field: name.clone() });
+                    }
+                    if !literal.is_empty() {
+                        pieces.push(Piece::Text(std::mem::take(&mut literal)));
+                    }
+                    pieces.push(Piece::Field(name));
                 }
-                if !fields.iter().any(|f| f.name == name) {
-                    flaws.push(Flaw::Undeclared { code: code.to_owned(), part, field: name.clone() });
-                }
-                if !literal.is_empty() {
-                    pieces.push(Piece::Text(std::mem::take(&mut literal)));
-                }
-                pieces.push(Piece::Field(name));
+                c => literal.push(c),
             }
-            c => literal.push(c),
         }
+        if !literal.is_empty() {
+            pieces.push(Piece::Text(literal));
+        }
+        Some(Template(pieces))
     }
-    if !literal.is_empty() {
-        pieces.push(Piece::Text(literal));
-    }
-    Some(Template(pieces))
 }
 
 #[cfg(test)]

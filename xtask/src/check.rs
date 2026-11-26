@@ -1,115 +1,271 @@
 //! `cargo xtask check`: the whole gate, in the order CI runs it. CI runs this one command, so the
-//! list of checks lives here and nowhere else.
+//! list of steps lives here ([`Gate::steps`]) and nowhere else.
 
 use std::fmt;
 use std::io::Write as _;
-use std::path::Path;
-use std::process::Command;
+use std::path::{Path, PathBuf};
 
 use crate::error::Error;
-use crate::output::Line;
+use crate::layout::Layout;
+use crate::output::{Line, Report};
 use crate::process::Process;
 
 /// One step of the gate.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Step {
-    Fmt,
-    Clippy,
-    /// Clippy on the crates that are built for the browser and for plugins.
-    ClippyWasm,
-    Nextest,
-    Doc,
-    Deny,
-    /// The pen's tests on wasm32-wasip2: its goldens hold on wasm too.
-    WasmTest,
-    /// The browser pen as it ships.
-    WasmBuild,
-    /// `cargo xtask layout`, in this process.
-    Layout,
+pub(crate) trait Step: fmt::Display {
+    /// Runs it from the workspace at `root`, its lines and failures into `report`.
+    fn run(&self, root: &Path, report: &mut Report);
 }
 
-impl Step {
-    /// Every step, in the order they run.
-    pub(crate) const ALL: [Self; 9] = [
-        Self::Fmt,
-        Self::Clippy,
-        Self::ClippyWasm,
-        Self::Nextest,
-        Self::Doc,
-        Self::Deny,
-        Self::WasmTest,
-        Self::WasmBuild,
-        Self::Layout,
-    ];
+/// A list of steps, run in order. Implemented for tuples of [`Step`]s.
+pub(crate) trait Steps {
+    /// Runs each, announced as it starts.
+    fn run(&self, gate: &mut Gate);
+}
 
-    /// The arguments to cargo that run it, `--locked` in each; `None` for a step run in this
-    /// process.
-    const fn cargo(self) -> Option<&'static [&'static str]> {
-        Some(match self {
-            Self::Fmt => &["--locked", "fmt", "--all", "--check"],
-            Self::Clippy => &["clippy", "--locked", "--workspace", "--all-targets", "--", "-D", "warnings"],
-            Self::ClippyWasm => &[
-                "clippy",
-                "--locked",
-                "-p",
-                "freehand",
-                "-p",
-                "freehand-web",
-                "-p",
-                "uses-ink-model",
-                "-p",
-                "uses-ink-format-markdown",
-                "--target",
-                "wasm32-unknown-unknown",
-                "--",
-                "-D",
-                "warnings",
-            ],
-            Self::Nextest => &["nextest", "run", "--locked", "--workspace"],
-            Self::Doc => &["test", "--locked", "--workspace", "--doc"],
-            Self::Deny => &["deny", "--locked", "check"],
-            Self::WasmTest => &["test", "--locked", "-p", "freehand", "--target", "wasm32-wasip2"],
-            Self::WasmBuild => {
-                &["build", "--locked", "-p", "freehand-web", "--release", "--target", "wasm32-unknown-unknown"]
-            }
-            Self::Layout => return None,
-        })
+tuples! { Steps: Step, fn run(&self, gate: &mut Gate) { |step| gate.step(step) } }
+
+/// The gate as it runs: every step's lines and failures, gathered.
+#[derive(Debug)]
+pub(crate) struct Gate {
+    root: PathBuf,
+    report: Report,
+}
+
+impl Gate {
+    pub(crate) fn new(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into(), report: Report::default() }
     }
 
-    /// The tool outside the toolchain it needs.
+    /// Every step of the gate, in CI's order, each with `--locked`.
+    fn steps() -> impl Steps {
+        (
+            Cargo { command: Command::Fmt, scope: Every, flags: &[Flag::Check], target: Target::Host },
+            Cargo { command: Command::Clippy, scope: Every, flags: &[Flag::AllTargets], target: Target::Host },
+            // the crates built for the browser and for plugins
+            Cargo {
+                command: Command::Clippy,
+                scope: ["freehand", "freehand-web", "uses-ink-model", "uses-ink-format-markdown"],
+                flags: &[],
+                target: Target::Browser,
+            },
+            Cargo { command: Command::Nextest, scope: Every, flags: &[], target: Target::Host },
+            Cargo { command: Command::Test, scope: Every, flags: &[Flag::Doc], target: Target::Host },
+            Cargo { command: Command::Deny, scope: (), flags: &[], target: Target::Host },
+            // the pen's goldens hold on wasm too
+            Cargo { command: Command::Test, scope: ["freehand"], flags: &[], target: Target::Wasi },
+            // the browser pen as it ships
+            Cargo {
+                command: Command::Build,
+                scope: ["freehand-web"],
+                flags: &[Flag::Release],
+                target: Target::Browser,
+            },
+            Layout,
+        )
+    }
+
+    /// Runs every step and reports every failure, then whether all passed.
+    pub(crate) fn run(mut self) -> Report {
+        Self::steps().run(&mut self);
+        if self.report.failures().is_empty() {
+            self.report.line(Line::Passed);
+        }
+        self.report
+    }
+
+    /// Runs one step, announced on stderr as it starts.
+    fn step(&mut self, step: &impl Step) {
+        if let Err(error) = writeln!(std::io::stderr(), "check: {step}") {
+            self.report.fail(Error::Progress(error));
+        }
+        step.run(&self.root, &mut self.report);
+    }
+}
+
+/// A cargo command run as one step: a subcommand over a scope of crates, with flags, for a
+/// target. `S` is the scope: [`Every`] crate, a list of packages, or `()` for none.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Cargo<S> {
+    command: Command,
+    scope: S,
+    flags: &'static [Flag],
+    target: Target,
+}
+
+impl<S: Scope> Cargo<S> {
+    /// The command line it runs, after `cargo`.
+    fn invocation(&self) -> Invocation {
+        let mut args = self.command.words().to_vec();
+        args.extend(self.scope.args(self.command));
+        args.extend(self.flags.iter().map(|flag| flag.arg()));
+        args.extend(self.target.args());
+        args.extend(self.command.tail());
+        Invocation(args)
+    }
+
+    /// The tools outside the toolchain it needs.
+    fn tools(&self) -> impl Iterator<Item = Tool> {
+        self.command.tool().into_iter().chain(self.target.tool())
+    }
+}
+
+impl<S: Scope> Step for Cargo<S> {
+    fn run(&self, root: &Path, report: &mut Report) {
+        let command = self.invocation();
+        if let Some(tool) = self.tools().find(|tool| !tool.is_installed()) {
+            return report.fail(Error::Tool { command, tool });
+        }
+        let mut process = std::process::Command::new(env!("CARGO"));
+        process.args(&command.0).current_dir(root);
+        report.take(Process::from(process).status().map_err(|source| Error::Step { command, source }));
+    }
+}
+
+impl<S: Scope> fmt::Display for Cargo<S> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.invocation().fmt(out)
+    }
+}
+
+/// A cargo command line, the words after `cargo`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Invocation(Vec<&'static str>);
+
+impl fmt::Display for Invocation {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str("cargo")?;
+        self.0.iter().try_for_each(|arg| write!(out, " {arg}"))
+    }
+}
+
+/// The crates a cargo command covers, as its arguments.
+pub(crate) trait Scope {
+    fn args(&self, command: Command) -> Vec<&'static str>;
+}
+
+/// Every crate of the workspace.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Every;
+
+impl Scope for Every {
+    fn args(&self, command: Command) -> Vec<&'static str> {
+        vec![command.every()]
+    }
+}
+
+/// The packages named.
+impl<const N: usize> Scope for [&'static str; N] {
+    fn args(&self, _: Command) -> Vec<&'static str> {
+        self.iter().flat_map(|package| ["-p", package]).collect()
+    }
+}
+
+/// No scope: the command covers what it covers.
+impl Scope for () {
+    fn args(&self, _: Command) -> Vec<&'static str> {
+        Vec::new()
+    }
+}
+
+/// A cargo subcommand.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Command {
+    Fmt,
+    Clippy,
+    Nextest,
+    Test,
+    Deny,
+    Build,
+}
+
+impl Command {
+    /// The words that start it, `--locked` where it takes it.
+    const fn words(self) -> &'static [&'static str] {
+        match self {
+            Self::Fmt => &["--locked", "fmt"],
+            Self::Clippy => &["clippy", "--locked"],
+            Self::Nextest => &["nextest", "run", "--locked"],
+            Self::Test => &["test", "--locked"],
+            Self::Deny => &["deny", "--locked", "check"],
+            Self::Build => &["build", "--locked"],
+        }
+    }
+
+    /// The words that end it: lints denied for clippy.
+    const fn tail(self) -> &'static [&'static str] {
+        match self {
+            Self::Clippy => &["--", "-D", "warnings"],
+            Self::Fmt | Self::Nextest | Self::Test | Self::Deny | Self::Build => &[],
+        }
+    }
+
+    /// How it spells every crate of the workspace.
+    const fn every(self) -> &'static str {
+        match self {
+            Self::Fmt => "--all",
+            Self::Clippy | Self::Nextest | Self::Test | Self::Deny | Self::Build => "--workspace",
+        }
+    }
+
+    /// The tool outside the toolchain it is.
     const fn tool(self) -> Option<Tool> {
         match self {
             Self::Nextest => Some(Tool::Nextest),
             Self::Deny => Some(Tool::Deny),
-            Self::WasmTest => Some(Tool::Wasmtime),
-            Self::Fmt | Self::Clippy | Self::ClippyWasm | Self::Doc | Self::WasmBuild | Self::Layout => None,
+            Self::Fmt | Self::Clippy | Self::Test | Self::Build => None,
         }
-    }
-
-    fn run(self, root: &Path) -> Result<(), Error> {
-        if let Some(tool) = self.tool().filter(|tool| !tool.is_installed()) {
-            return Err(Error::Tool { step: self, tool });
-        }
-        let Some(args) = self.cargo() else { return crate::layout(root).map(drop) };
-        let mut command = Command::new(env!("CARGO"));
-        command.args(args).current_dir(root);
-        Process::from(command).status().map_err(|source| Error::Step { step: self, source })
     }
 }
 
-impl fmt::Display for Step {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.write_str(match self {
-            Self::Fmt => "fmt",
-            Self::Clippy => "clippy",
-            Self::ClippyWasm => "clippy on wasm32",
-            Self::Nextest => "nextest",
-            Self::Doc => "doc tests",
-            Self::Deny => "cargo deny",
-            Self::WasmTest => "freehand tests on wasm32-wasip2",
-            Self::WasmBuild => "freehand-web release build",
-            Self::Layout => "layout and generated files",
-        })
+/// A flag a step passes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Flag {
+    /// Check formatting without writing.
+    Check,
+    /// Tests, examples and benches too.
+    AllTargets,
+    /// Doc tests only.
+    Doc,
+    Release,
+}
+
+impl Flag {
+    const fn arg(self) -> &'static str {
+        match self {
+            Self::Check => "--check",
+            Self::AllTargets => "--all-targets",
+            Self::Doc => "--doc",
+            Self::Release => "--release",
+        }
+    }
+}
+
+/// What a step builds for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Target {
+    /// This machine.
+    Host,
+    /// The browser: `wasm32-unknown-unknown`.
+    Browser,
+    /// WASI preview 2, run by wasmtime: `wasm32-wasip2`.
+    Wasi,
+}
+
+impl Target {
+    const fn args(self) -> &'static [&'static str] {
+        match self {
+            Self::Host => &[],
+            Self::Browser => &["--target", "wasm32-unknown-unknown"],
+            Self::Wasi => &["--target", "wasm32-wasip2"],
+        }
+    }
+
+    /// The tool outside the toolchain that runs what it builds.
+    const fn tool(self) -> Option<Tool> {
+        match self {
+            Self::Wasi => Some(Tool::Wasmtime),
+            Self::Host | Self::Browser => None,
+        }
     }
 }
 
@@ -142,20 +298,7 @@ impl Tool {
     }
 
     fn is_installed(self) -> bool {
-        let path = std::env::var_os("PATH").unwrap_or_default();
-        std::env::split_paths(&path).any(|dir| dir.join(self.binary()).is_file())
+        std::env::var_os("PATH")
+            .is_some_and(|path| std::env::split_paths(&path).any(|dir| dir.join(self.binary()).is_file()))
     }
-}
-
-/// Runs every step, each announced on stderr as it starts, and fails with every failed step.
-pub(crate) fn run(root: &Path) -> Result<Vec<Line>, Error> {
-    let mut err = std::io::stderr();
-    let mut failed = Vec::new();
-    for step in Step::ALL {
-        writeln!(err, "check: {step}").map_err(Error::Progress)?;
-        if let Err(error) = step.run(root) {
-            failed.push(error);
-        }
-    }
-    if failed.is_empty() { Ok(vec![Line::Passed]) } else { Err(Error::Each(failed)) }
 }

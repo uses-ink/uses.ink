@@ -30,7 +30,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Serialization | `serde` 1, `serde_json` 1 | typed JSON for `--json`, events and `cargo metadata` |
 | Tests | `insta`, `proptest`, `similar`, `scraper`, `cargo-deny` | snapshots, properties, licence and advisory gates |
 
-| Repo tasks | `quote`, `proc-macro2`, `syn` 3, `prettyplease` 0.3, `heck`, `serde_json` | generated Rust is built as tokens and printed, never spliced; `cargo metadata` read as typed JSON |
+| Repo tasks | `quote`, `proc-macro2`, `syn` 3, `prettyplease` 0.3, `heck`, `serde_json` | generated Rust is built as tokens and printed, never spliced; `cargo metadata` read as typed JSON; `syn`'s `visit` walks the module tree for the layout rules |
 
 Later: `typst` and `typst-html` 0.15 for `ink:format-typst` (they still pull rustybuzz and
 ttf-parser, so this waits); `pagefind` 1.6 for opt-in search.

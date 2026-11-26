@@ -49,7 +49,7 @@ heck = "0.5.0"
 prettyplease = "0.3.0"
 proc-macro2 = "1.0.107"
 quote = "1.0.47"
-syn = { version = "3.0.10", features = ["full"] }
+syn = { version = "3.0.10", features = ["full", "visit"] }
 
 # Dependencies build optimized and without debug assertions, so tests stay fast; `"*"` matches
 # no workspace member, so our crates keep debug assertions (docs/conventions.md, Tests).

@@ -6,19 +6,32 @@ mod rust;
 
 use crate::Task;
 use crate::error::Error;
-use crate::output::{Origin, Output};
+use crate::output::{Files, Generator};
 
 pub(crate) use catalog::Flaw;
 
-const SOURCE: &str = "diag/catalog.toml";
-const MODEL: &str = "model/src/generated.rs";
-const WORDING: &str = "diag/src/generated.rs";
+/// `cargo xtask diag`.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Diag;
 
-pub(crate) fn write(output: &mut Output) -> Result<(), Error> {
-    let text = output.read(SOURCE)?;
-    let table: toml::Table = toml::from_str(&text).map_err(|source| Error::Toml { path: SOURCE.into(), source })?;
-    let catalog = catalog::Catalog::parse(table).map_err(Error::Catalog)?;
-    let origin = Origin { task: Task::Diag, source: SOURCE };
-    output.put_rust(MODEL, origin, rust::model(&catalog))?;
-    output.put_rust(WORDING, origin, rust::wording(&catalog))
+impl Diag {
+    const MODEL: &'static str = "model/src/generated.rs";
+    const WORDING: &'static str = "diag/src/generated.rs";
+}
+
+impl Generator for Diag {
+    const TASK: Task = Task::Diag;
+    const SOURCE: &'static str = "diag/catalog.toml";
+    type Source = catalog::Catalog;
+
+    fn generate(&self, catalog: &catalog::Catalog, files: &mut Files<'_>) -> Result<(), Error> {
+        files.rust(Self::MODEL, catalog.model())?;
+        files.rust(Self::WORDING, catalog.wording())
+    }
+}
+
+impl From<Vec<Flaw>> for crate::error::Flaw {
+    fn from(flaws: Vec<Flaw>) -> Self {
+        Self::Catalog(flaws)
+    }
 }
