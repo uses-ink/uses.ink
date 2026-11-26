@@ -145,34 +145,63 @@ third-party theme is not bound by the AGPL. Every crate states its licence throu
 
 ## Code
 
-These are rien's rules, kept whole.
+Adapted from rien (structure, strings, one source of truth) and agon (errors at the edge, the
+std trait table).
 
 **Generic first.** Arguments take the widest useful bound (`impl AsRef<str>`, `impl
 IntoIterator<Item = T>`, `impl AsRef<Path>`). Returns are concrete or `impl Trait`. Dynamic
 dispatch only at plugin and port boundaries. Two real callers justify an abstraction; one does
 not.
 
-**Std vocabulary before our own.** `From`/`TryFrom` with typed errors, `FromStr`, `Display`
-written once on the type it describes, `Default`, derived `Eq`/`Ord`/`Hash`, `Iterator` over
-returning a `Vec` that is only iterated.
+**Std traits first.** A type works with `?`, `.parse()`, `.collect()` and `.into()` because it
+implements the standard traits, not a method of its own:
+
+| To do this | Implement | Not |
+|---|---|---|
+| parse text | `FromStr` (and `TryFrom<String>` when it owns) | `parse`, `from_str`, `from_text` |
+| convert, cannot fail | `From<T>` | `from_x`, `wrap`, `new_from` |
+| convert, can fail | `TryFrom<T>` with a typed error | a method returning `Option` |
+| view as bytes, text or a path | `AsRef<[u8]>`, `AsRef<str>`, `AsRef<Path>` | `as_bytes`, `to_slice` |
+| build from many | `FromIterator`, `Extend` | `of_all`, `from_parts` |
+| default | `Default` | `empty`, `none`, `standard` |
+| show to a person | `Display` | `to_text`, `describe`, `message()` |
+
+A named constructor stays when it says what a trait cannot (`Hash::of(bytes)` hashes); a
+conversion that would be a trap gets a named method and its doc says why.
 
 **No standalone helpers.** Behavior that acts on a type is a method on it; a conversion is a
-`From`; a real shared capability with no owner is a small crate named for what it does. No
-`utils.rs`, `helpers.rs`, `common.rs`, `misc.rs`.
+`From`; a real shared capability with no owner is a small crate named for what it does. A
+private free function is fine for one pure step next to its only caller. No `utils.rs`,
+`helpers.rs`, `common.rs`, `misc.rs`.
 
 **No strings where a type belongs.** A path is a validated newtype (`ContentPath`, `Route`), a
-kind is an enum, a code is an enum variant with a `const` name. JSON is serde types. HTML is
-built through a typed API, never spliced with `format!`. Text shown to a person comes from
-`Display` or the diagnostic catalog, written once.
+kind is an enum, a code is an enum variant with a `const` name. JSON is serde types. HTML, SVG
+and CSS are built through `unspliced`, never spliced with `format!`. A name built by a rule (a
+seed `{name}{i}`, a route, a file name) is built by one method on one type, never by `format!`
+at each call site.
 
-**Errors and events.** Nothing is silent.
+**Text is written once.** Text shown to a person comes from `Display` on the type it describes,
+or from the diagnostic catalog. `format!` is for a one-off line with a few holes; once a line is
+built the same way twice, it is a `Display` impl. A report line (`wrote brand/logo.svg`) is an
+enum with `Display`, not a string pushed into a `Vec<String>`. Nothing parses a message.
 
-- Every error is a typed enum with data in its fields and `source()` for the cause. No `String`
-  errors, no `Box<dyn Error>` in library code.
+**Errors.** Nothing is silent.
+
+- Each crate owns its error enum: one variant per failure, the data in typed fields (paths,
+  names, spans, counts, codes), the cause in a `#[source]`-style field returned by `source()`.
+  No `String` and no `&'static str` reason fields: a reason with a rule is a variant or an enum.
+- A cause is kept, never flattened: no `.to_string()`, `format!("{e}")` or
+  `String::from_utf8_lossy(stderr)` into an error field. A child process's failure keeps its
+  exit status and its stderr as bytes, in a type of its own.
+- No aggregate error type and no `Box<dyn Error>` in library code. Erasure to text happens once,
+  at the edge (the CLI or the API), through `Display` and the `source()` chain.
+- Problems an author or operator sees go through the catalog (`diag/catalog.toml`), not through
+  a crate error: the crate error converts into a `Diagnostic` with a code at the boundary.
 - Denied by lint in library code: `unwrap`, `expect`, `panic!`, `todo!`, `unimplemented!`,
   indexing that can panic on unvalidated input, `println!`, `eprintln!`, `dbg!`.
 - No silent fallback. Code that picks a default after a failure, or in the absence of input,
-  emits a notice saying so. No `let _ = fallible();`, no `unwrap_or_default()` on input.
+  emits a notice saying so. No `let _ = fallible();`, no `unwrap_or_default()` on input. Writing
+  into a `String` is infallible and is the one `let _infallible = write!(..)` allowed, named so.
 - Unknown input is rejected with a typed error, never skipped.
 
 **Determinism.** Engine and plugin code never read the wall clock, the environment, the
@@ -181,33 +210,43 @@ output are sorted. Floats that reach output go through `libm`, so native and was
 
 **Hacks.** Every `#[allow]`/`#[expect]` has `reason = "..."`; prefer `#[expect]`. A workaround is
 `// HACK(<condition for removal>): <why>`. No `TODO` without a condition. No commented-out code.
-`unsafe` is denied at the workspace level; `xtask check` allows it only where 0034 says.
+`unsafe` is denied at the workspace level; `xtask check` allows it only where a decision says.
 
 **One source of truth.** Every fact lives in one place; everything else is generated from it and
-a check fails when the copies differ. Dependency versions, lints and package metadata live in the
-workspace `Cargo.toml`. WIT is the source of the plugin boundary types. Design tokens live in one
-file that generates both CSS custom properties and the pen's palette. Docs point; they do not
-copy.
+a check fails when the copies differ. Validate once, in a type: code holding a `Slug` does not
+check it again. Dependency versions, lints and package metadata live in the workspace
+`Cargo.toml`; a version in a crate manifest is a bug. WIT is the source of the plugin boundary
+types. Design tokens live in one file. Docs point; they do not copy.
 
 **Size.** One idea per module; a file over about 400 lines or a function over about 40 is asking
 to be split. Prefer a table or an enum with methods to a chain of `if`. Public API is small;
 `pub(crate)` is the default for sharing. Dependencies flow one way, as in `architecture.md`.
 
-**Types.** Parse, do not validate. Invalid states are unrepresentable. Newtypes for ids, spans,
-hashes, sizes, durations. `#[non_exhaustive]` on public enums and structs that will grow.
-`Debug` on everything public.
+**Types.** Parse, do not validate. Invalid states are unrepresentable: two bools that exclude
+each other are an enum. Newtypes for ids, spans, hashes, sizes, durations. `#[non_exhaustive]`
+on public enums and structs that will grow. `Debug` on everything public; every public item has
+a doc comment.
 
 ## Tests
 
 - **Fast.** The suite runs in seconds. A test over 100 ms is a bug or `#[ignore = "reason"]`.
   No network, no sleeping, no real clocks. Run with `cargo nextest run --workspace`.
 - **Fixtures are files** under the crate's `fixture/`: `name.<ext>` is the input, `name.out`
-  the expected result, compared with `insta`. Adding a case is adding a file.
+  the expected result. One harness runs them all (`insta`, with `INSTA_UPDATE`), never a bless
+  variable per crate. Adding a case is adding a file.
+- **Goldens are read, never trusted.** An update writes the new goldens and the run fails, so it
+  cannot pass unnoticed; read every changed golden before committing.
+- **Harness failures are loud.** An empty suite, an input without a golden and a golden without
+  an input all fail.
 - **Site fixtures** are whole folders (`fixture/site/<name>/`) whose expected output is the
   deploy manifest plus the HTML of every page. `ink build --check` must reproduce the same
   hashes twice and on both native and wasm plugin builds.
 - **Ports have conformance suites** that every adapter runs (`db/conformance`,
   `blob/conformance`).
+- **Refusals are visible.** A test of a refusal checks the diagnostic or notice it emits, not only
+  the returned error.
+- Properties beat examples for parsers and the model; a property test is seeded and prints its
+  seed. A bug fix starts with a failing fixture or test.
 - Tests may `unwrap`.
 
 ## Commits
