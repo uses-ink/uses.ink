@@ -378,6 +378,11 @@ message = "the site has no dated posts, so it has no feeds"
 fields = { path = "path" }
 message = "{path} holds the build's own output, so it is not read"
 
+[notice."file.ignore.inferred"]
+fields = { path = "path" }
+message = "{path} is hidden, another tool's or about the repository, so it is not part of the site"
+fix = "add it to `include` in ink.toml to keep it"
+
 [notice."source.link.skipped"]
 fields = { path = "path" }
 message = "{path} links to a folder of the site, which is read at its own path, so the link is not followed"

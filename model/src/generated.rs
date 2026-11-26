@@ -556,6 +556,12 @@ pub enum Announcement {
         /// The file.
         path: ContentPath,
     },
+    /// `file.ignore.inferred`: {path} is hidden, another tool's or about the repository, so it is not part of the site
+    #[serde(rename = "file.ignore.inferred")]
+    FileIgnoreInferred {
+        /// The file.
+        path: ContentPath,
+    },
     /// `source.link.skipped`: {path} links to a folder of the site, which is read at its own path, so the link is not followed
     #[serde(rename = "source.link.skipped")]
     SourceLinkSkipped {
@@ -587,6 +593,7 @@ impl Announcement {
         "feed.post.undated",
         "feed.post.none",
         "source.output.skipped",
+        "file.ignore.inferred",
         "source.link.skipped",
         "build.address.default",
         "code.language.unknown",
@@ -603,6 +610,7 @@ impl Announcement {
             Self::FeedPostUndated => "feed.post.undated",
             Self::FeedPostNone => "feed.post.none",
             Self::SourceOutputSkipped { .. } => "source.output.skipped",
+            Self::FileIgnoreInferred { .. } => "file.ignore.inferred",
             Self::SourceLinkSkipped { .. } => "source.link.skipped",
             Self::BuildAddressDefault { .. } => "build.address.default",
             Self::CodeLanguageUnknown { .. } => "code.language.unknown",

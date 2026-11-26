@@ -171,6 +171,9 @@ impl Message<'_> {
             Announcement::SourceOutputSkipped { path, .. } => {
                 write!(out, "{path} holds the build's own output, so it is not read")
             }
+            Announcement::FileIgnoreInferred { path, .. } => {
+                write!(out, "{path} is hidden, another tool's or about the repository, so it is not part of the site")
+            }
             Announcement::SourceLinkSkipped { path, .. } => {
                 write!(
                     out,
@@ -246,6 +249,7 @@ impl Fix<'_> {
             Announcement::FeedPostUndated => true,
             Announcement::FeedPostNone => false,
             Announcement::SourceOutputSkipped { .. } => false,
+            Announcement::FileIgnoreInferred { .. } => true,
             Announcement::SourceLinkSkipped { .. } => false,
             Announcement::BuildAddressDefault { .. } => true,
             Announcement::CodeLanguageUnknown { .. } => true,
@@ -384,6 +388,9 @@ impl Fix<'_> {
             }
             Announcement::FeedPostNone => Ok(()),
             Announcement::SourceOutputSkipped { .. } => Ok(()),
+            Announcement::FileIgnoreInferred { .. } => {
+                write!(out, "add it to `include` in ink.toml to keep it")
+            }
             Announcement::SourceLinkSkipped { .. } => Ok(()),
             Announcement::BuildAddressDefault { .. } => {
                 write!(out, "pass `--base <url>` with the address the site is served at")

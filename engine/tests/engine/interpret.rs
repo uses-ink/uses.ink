@@ -272,3 +272,36 @@ fn folder_evidence_names_the_folder() {
     let blog = Tree::new().file("posts/a.md", "x\n").understand(&Pinned::none());
     assert_eq!(site::<code::Layout>(&blog).evidence, folder("posts"));
 }
+
+#[test]
+fn repository_files_match_their_whole_name_and_say_they_are_ignored() {
+    let u = Tree::new()
+        .file("LICENSE", "x\n")
+        .file("LICENSE-MIT", "x\n")
+        .file("LICENCE.md", "x\n")
+        .file("Security.md", "x\n")
+        .file("CHANGELOG.md", "x\n")
+        .file("security-checklist.md", "x\n")
+        .file("license-guide.md", "x\n")
+        .file("changelogs.md", "x\n")
+        .file(".github/a.md", "x\n")
+        .file(".github/b.md", "x\n")
+        .file("notes/private.md", "x\n")
+        .understand(&Pinned::none().exclude("notes/"));
+    let ignored = |p| on::<code::Ignored>(&u, p).value;
+    for p in ["LICENSE", "LICENSE-MIT", "LICENCE.md", "Security.md", "CHANGELOG.md", ".github/a.md"] {
+        assert!(ignored(p), "{p}");
+    }
+    for p in ["security-checklist.md", "license-guide.md", "changelogs.md"] {
+        assert!(!ignored(p), "{p}");
+    }
+    let said: Vec<String> = u
+        .notices
+        .iter()
+        .filter_map(|n| match &n.announcement {
+            model::Announcement::FileIgnoreInferred { path } => Some(path.to_string()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(said, [".github", "CHANGELOG.md", "LICENCE.md", "LICENSE", "LICENSE-MIT", "Security.md"]);
+}

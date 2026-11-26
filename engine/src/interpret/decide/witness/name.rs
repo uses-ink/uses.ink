@@ -64,21 +64,34 @@ impl Parse<Slug> for Stem {
 }
 
 /// A file about the repository, not the site, at the top of the root (`LICENSE`, `CHANGELOG`),
-/// or `ink.toml` at the top of the snapshot.
+/// or `ink.toml` at the top of the snapshot. Its whole stem is the name, in any case:
+/// `security-checklist.md` is a page.
 #[derive(Debug, Default)]
 pub(crate) struct Repository;
 
 impl Repository {
     /// Stems of files about the repository.
-    const STEMS: &[&str] = &["license", "licence", "changelog", "contributing", "code_of_conduct", "security"];
+    const STEMS: &[&str] = &["changelog", "contributing", "code_of_conduct", "security"];
+
+    /// Stems of licence files, which also come one per licence (`LICENSE-MIT`).
+    const LICENCES: &[&str] = &["license", "licence"];
 
     /// The config file, at the top of the snapshot.
     const CONFIG: &str = "ink.toml";
 
     /// Whether `path`, at the top of its tree, is named as a file about the repository.
     pub(crate) fn names(path: &model::ContentPath) -> bool {
-        let stem = path.stem().to_ascii_lowercase();
-        path.parent().is_none() && Self::STEMS.iter().any(|name| stem.starts_with(name))
+        let stem = path.stem();
+        let exact = Self::STEMS.iter().chain(Self::LICENCES).any(|name| stem.eq_ignore_ascii_case(name));
+        path.parent().is_none() && (exact || Self::LICENCES.iter().any(|name| Self::is_licence(stem, name)))
+    }
+
+    /// Whether `stem` is the licence `name`, then `-` or `.` and an identifier with no lower-case
+    /// letter: `LICENSE-MIT`, `licence.APACHE-2.0`, not `license-guide`.
+    fn is_licence(stem: &str, name: &str) -> bool {
+        let (Some(head), Some(tail)) = (stem.get(..name.len()), stem.get(name.len()..)) else { return false };
+        let id = tail.strip_prefix(['-', '.']);
+        head.eq_ignore_ascii_case(name) && id.is_some_and(|id| !id.is_empty() && !id.chars().any(char::is_lowercase))
     }
 
     /// Whether `path` in the snapshot is about the repository rather than any site in it: a

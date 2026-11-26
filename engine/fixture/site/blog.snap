@@ -52,6 +52,8 @@ source: fixture/src/lib.rs
 {"code":"site.nav","subject":"site","value":["about.md"],"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
 # diagnostics and notices
 notice.default.chosen on the site
+file.ignore.inferred on .github/ci.md
+file.ignore.inferred on LICENSE
 notice.default.chosen on about.md
 notice.default.chosen on index.md
 notice.default.chosen on posts/later.md
