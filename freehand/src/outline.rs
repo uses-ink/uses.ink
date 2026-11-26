@@ -27,8 +27,8 @@ const UNIT: Point = Point::new(1.0, 1.0);
 /// How one end of a stroke finishes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct End {
-    /// Round (`true`) or flat, when the end is not tapered.
-    pub cap: bool,
+    /// How the end is shaped when it is not tapered.
+    pub cap: Cap,
     /// How far the stroke thins toward this end, in pixels; `0` for none.
     pub taper: Taper,
     /// The easing of the taper.
@@ -83,12 +83,12 @@ pub enum Cap {
 impl End {
     /// An untapered end with `cap`, easing as perfect-freehand's start does.
     pub fn first(cap: Cap) -> Self {
-        Self { cap: cap == Cap::Round, taper: Taper::None, easing: Easing::OutQuad }
+        Self { cap, taper: Taper::None, easing: Easing::OutQuad }
     }
 
     /// An untapered end with `cap`, easing as perfect-freehand's end does.
     pub fn last(cap: Cap) -> Self {
-        Self { cap: cap == Cap::Round, taper: Taper::None, easing: Easing::OutCubic }
+        Self { cap, taper: Taper::None, easing: Easing::OutCubic }
     }
 }
 
@@ -362,7 +362,7 @@ impl Outline {
             return Vec::new();
         }
         let (Some(left), Some(right)) = (sides.left.first(), sides.right.first()) else { return Vec::new() };
-        if self.start.cap {
+        if self.start.cap == Cap::Round {
             return turns(START_CAP_SEGMENTS, true, |t| right.rotate(ends.first, FIXED_PI * t));
         }
         let corners = *left - *right;
@@ -375,7 +375,7 @@ impl Outline {
         if ends.taper_end != 0.0 {
             return alloc::vec![ends.last];
         }
-        if self.end.cap {
+        if self.end.cap == Cap::Round {
             let start = ends.last + direction * ends.radius;
             return turns(END_CAP_SEGMENTS, false, |t| start.rotate(ends.last, FIXED_PI * 3.0 * t));
         }

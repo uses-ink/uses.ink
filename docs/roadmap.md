@@ -12,9 +12,10 @@ The workspace, the rules, and the three unknowns answered.
   `xtask check` (crate names against paths, dependency direction, banned names).
 - CI on GitHub Actions: fmt, clippy, nextest, `cargo deny`, wasm32 build of the pen.
 - `token/`: one TOML file generating CSS custom properties and the pen palette.
-- `pen`: own perfect-freehand port, strokes, tools, marks; golden-hash fixtures identical on
+- `pen`: own perfect-freehand port, strokes, tools, marks; golden fixtures identical on
   native and wasm32; `cargo xtask brand` regenerates the logo, mark and favicon from
-  `brand/` stroke data. Delete `pen-core.js`, `pen.js`, `gen-*.mjs` once it reaches parity.
+  `brand/` stroke data. Delete `pen-core.js` and `gen-*.mjs` once it reaches parity; the mock's
+  `pen.js` keeps only measuring and inserting, drawing through `freehand-web` (0034).
 - Spikes, each a yes or no written into `decisions.md`:
   1. wasmtime host: a Rust theme component imports `pen.stroke` and `text.measure` and renders
      a page; measure instantiation and call cost with pooling and `.cwasm`.
@@ -24,7 +25,7 @@ The workspace, the rules, and the three unknowns answered.
      outbound intercepts (workers-rs #1072), so the answer is an upstream PR or a small JS shim,
      written down either way.
 - Submit `uses.ink` to the Public Suffix List (takes weeks; start now; steps in `psl.md`, owner sends).
-- Push a fresh orphan `main` to `uses-ink/uses.ink` **(owner: confirm before pushing)**.
+- Push a fresh orphan `main` to `uses-ink/uses.ink` (owner confirmed; pushed 2026-11-26).
 
 Progress (2026-11-26): workspace, lints, `deny.toml`, nextest and CI workflow written; `cargo xtask
 check` checks names, dependency order, licences, banned names and generated files;

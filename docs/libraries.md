@@ -25,6 +25,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Plugins | `wasmtime` 51 (component model, fuel, epochs, pooling, `.cwasm`); `wit-bindgen` 0.63 for guests | component model is Tier 1 |
 | CLI | `clap` 4.6, `annotate-snippets` 0.12, `tracing`, `notify` 9, `notify-debouncer-full` 0.8, `indicatif` 0.18 | rustc's diagnostic renderer over our own `Diagnostic` |
 | Dates | `jiff` 1.0 | chrono is unmaintained (0028) |
+| Serialization | `serde` 1, `serde_json` 1 | typed JSON for `--json`, events and `cargo metadata` |
 | Tests | `insta`, `proptest`, `similar`, `scraper`, `cargo-deny` | snapshots, properties, licence and advisory gates |
 
 | Repo tasks | `quote`, `proc-macro2`, `syn` 3, `prettyplease` 0.3, `heck`, `serde_json` | generated Rust is built as tokens and printed, never spliced; `cargo metadata` read as typed JSON |

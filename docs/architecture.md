@@ -96,7 +96,7 @@ uses.ink/
   docs/  spikes/
 ```
 
-Dependency direction, enforced by a `cargo tree` test in `xtask check`:
+Dependency direction, enforced by `xtask check` from `cargo metadata`:
 
 ```
 model <- config, diag <- engine <- host <- host/{wasmtime,native} <- cli
@@ -229,16 +229,19 @@ brand`), social preview images (rasterized with resvg). There is no second imple
 
 - Deterministic: a mark is a function of its seed, its geometry and the pen version. RNG is
   mulberry32 seeded by an FNV hash of the seed string; trig goes through `libm`, so native and
-  wasm produce identical bytes. A golden-hash fixture runs on both targets.
-- Tools: `pencil` (MS Paint pencil: thin, nearly constant width, small tremor), `pen` (the red
-  note pen), `highlighter` (smooth jittered fill, offset by the shift). Each is a typed
-  `Tool` with its parameters, not a set of loose numbers.
+  wasm produce identical bytes. Golden fixtures (the full path data) run on both targets.
+- Tools: `Pencil` (MS Paint pencil: thin, nearly constant width, small tremor) and `Highlighter`
+  (smooth jittered fill, offset by the shift), each a type with its parameters. The red note pen
+  is the pencil in the `pen` colour.
 - Strokes: low-frequency perpendicular jitter, overshoot and bowing at ends, closed loops drawn
   as two arcs, outlines from our own port of perfect-freehand's `getStroke`.
-- Marks built on strokes: `underline`, `box`, `ring`, `fill`, `tick`, `arrow`, `rule`, `frame`.
+- Marks built on strokes (`freehand::mark`): `line` (rules), `underline`, `frame` (boxes),
+  `ring`, `fill`, `patch` (tape, highlights), `drawn` (any centreline); `tick` and `arrow` when a
+  theme needs them.
   A mark takes measured geometry (from `text.measure` or the DOM), so it fits the thing it marks.
-- Palette and tool parameters come from `token/`, the same file that produces the CSS custom
-  properties, so a colour exists once.
+- Colours come from `token/`, the same file that produces the CSS custom properties, so a colour
+  exists once. The pen takes no colour: its caller paints each path (`freehand` depends on
+  nothing of ours).
 - Animation (draw-in, swipe-in fills, boil on hover) is data the mark carries (stroke order,
   path length); the dashboard animates it, reader themes ignore it.
 

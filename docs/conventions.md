@@ -101,7 +101,9 @@ Config keys name what they set, never their unit; the value carries the unit
 - Banned anywhere: `util`, `utils`, `common`, `core`, `helpers`, `misc`, `base`, `shared`,
   `manager`, `handler`, `service`, `impl`. They collect unrelated code.
 - Abbreviations only from a closed list: `id`, `url`, `tls`, `api`, `cli`, `db`, `wit`, `ui`,
-  `dns`, `did`, `og`, `css`, `html`, `svg`, `toml`. A new one is added here first.
+  `dns`, `did`, `og`, `css`, `html`, `svg`, `toml`, `rgb`, `hex`. A new one is added here first.
+  Ported code keeps its original's names (`prev` in `freehand`'s perfect-freehand port) so it
+  reads against the source.
 - Singular everywhere, directories included (`plugin/`, `migration/`, `fixture/`).
 - Do not repeat the module in the item: `deploy::Manifest`, not `deploy::DeployManifest`.
 - Methods read as verbs, accessors as nouns, no `get_`. Booleans are predicates (`is_live`).
@@ -119,9 +121,9 @@ The path predicts the name and the name predicts the path.
   one character, and `ink_*` belongs to Polkadot's ink!.
 - The workspace aliases every crate to its short name (`engine = { package = "uses-ink-engine",
   path = "engine" }`), so code says `engine::Site`.
-- A crate that does not depend on uses.ink gets no prefix and a name of its own, so it can be
-  published and reused as is (the pen, the text measurer). Its name is checked free on crates.io
-  when it is cut.
+- A crate useful outside uses.ink (the pen, the text measurer) gets no prefix and a name of its own,
+  so it can be published and reused as is (the pen, the text measurer). Its name is checked free on
+  crates.io when it is cut.
 - A port is a directory with the trait crate at its root and one directory per adapter:
   `db/` is `uses-ink-db`, `db/d1/` and `db/sqlite/` are its adapters.
 - A plugin lives at `plugin/<slot>/<variant>/`; the slot's WIT lives at `plugin/<slot>/wit/`.
