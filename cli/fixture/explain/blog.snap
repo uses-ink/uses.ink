@@ -14,11 +14,19 @@ index.md
   file.ignore        kept                     by default
 posts/2024-03-01-first-steps.md
   file.ignore        kept                     by default
+posts/blink.gif
+  file.ignore        kept                     by default
 posts/later.md
+  file.ignore        kept                     by default
+posts/leaf.png
   file.ignore        kept                     by default
 posts/nib.svg
   file.ignore        kept                     by default
+posts/pictures.md
+  file.ignore        kept                     by default
 posts/second.md
+  file.ignore        kept                     by default
+posts/turned.jpg
   file.ignore        kept                     by default
 about.md
   page.publish       published                by default
@@ -56,6 +64,15 @@ posts/later.md
   page.slug          `later`                  from the name of posts/later.md
   page.tags          no tags                  by default
   page.summary       “Not yet.”               from the text of posts/later.md
+posts/pictures.md
+  page.publish       published                by default
+  page.kind          a post                   because posts is there
+  page.title         “Pictures”               from the frontmatter of posts/pictures.md, bytes 11..19
+  page.date          2024-05-01               from the frontmatter of posts/pictures.md, bytes 26..36
+  page.updated       never updated            by default
+  page.slug          `pictures`               from the name of posts/pictures.md
+  page.tags          no tags                  by default
+  page.summary       “A photo the camera held sideways, turned upright and without its GPS position:” from the text of posts/pictures.md
 posts/second.md
   page.publish       published                by default
   page.kind          a post                   because posts is there
@@ -65,8 +82,14 @@ posts/second.md
   page.slug          `second`                 from the name of posts/second.md
   page.tags          paper                    from the frontmatter of posts/second.md, bytes 27..33
   page.summary       “Heavier paper takes wetter nibs. See the first post.” from the text of posts/second.md
+posts/blink.gif
+  page.publish       published                because posts/pictures.md is there
+posts/leaf.png
+  page.publish       published                because posts/pictures.md is there
 posts/nib.svg
   page.publish       published                because posts/2024-03-01-first-steps.md is there
+posts/turned.jpg
+  page.publish       published                because posts/pictures.md is there
 the site
   site.home          index.md                 from the name of index.md
   site.title         “Ink and paper”          from the frontmatter of index.md, bytes 11..24

@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"c21c4931903d17c7fcf5c4cb4e2004f407e11b4174660dc42783d89a29cda272","written":true,"out":"<out>","entries":12,"errors":0,"warnings":0}
+{"schema":"uses.build/v1","deploy":"9d3e37481bb506b6b63e72f20e13d9fa1dbaa44e088db67637cbe5ee82871984","written":true,"out":"<out>","entries":19,"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
@@ -11,9 +11,16 @@ about/index.html
 code.css
 feed.xml
 index.html
+posts/blink.gif
 posts/first-steps/index.html
+posts/leaf.48.12f3a867408ca789.avif
+posts/leaf.48.5b6cb8cacc12719c.png
 posts/nib.svg
+posts/pictures/index.html
 posts/second/index.html
+posts/turned.32.3d4dcdf16c26ec7b.jpeg
+posts/turned.32.c5b21ef0926a29e6.avif
+posts/turned.placeholder.ed696fe0c714c4f7.png
 robots.txt
 rss.xml
 sitemap.xml
@@ -144,6 +151,9 @@ it started.</p>
 </article>
 <h2>Posts</h2>
 <ul class="quiet-listing">
+<li>
+<time datetime="2024-05-01">2024-05-01</time> <a href="/posts/pictures">Pictures</a>
+</li>
 <li>
 <time datetime="2024-04-02">2024-04-02</time> <a href="/posts/second">Paper weight</a>
 </li>
@@ -285,6 +295,68 @@ it started.</p>
 </li>
 </ol>
 </section>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Ink and paper</p>
+</footer>
+</div>
+</body>
+</html>
+## posts/pictures/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pictures - Ink and paper</title>
+<meta name="description" content="A photo the camera held sideways, turned upright and without its GPS position:">
+<link rel="canonical" href="https://ink.example/posts/pictures">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<link rel="alternate" type="application/atom+xml" title="Ink and paper" href="/feed.xml">
+<link rel="alternate" type="application/rss+xml" title="Ink and paper" href="/rss.xml">
+<meta property="og:title" content="Pictures">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Ink and paper">
+<meta property="og:url" content="https://ink.example/posts/pictures">
+<meta property="og:description" content="A photo the camera held sideways, turned upright and without its GPS position:">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Ink and paper</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/about">About</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Pictures</h1>
+<div class="quiet-meta">
+<time datetime="2024-05-01">2024-05-01</time>
+</div>
+<p>A photo the camera held sideways, turned upright and without its GPS position:</p>
+<p>
+<span class="quiet-picture">
+<img src="/posts/turned.placeholder.ed696fe0c714c4f7.png" alt="" width="32" height="64">
+<picture>
+<source type="image/avif" srcset="/posts/turned.32.c5b21ef0926a29e6.avif 32w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">
+<img src="/posts/turned.32.3d4dcdf16c26ec7b.jpeg" srcset="/posts/turned.32.3d4dcdf16c26ec7b.jpeg 32w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="32" height="64" alt="a red stripe over a blue one" loading="lazy" decoding="async">
+</picture>
+</span>
+</p>
+<p>A leaf with nothing around it, and a light that blinks:</p>
+<p>
+<picture>
+<source type="image/avif" srcset="/posts/leaf.48.12f3a867408ca789.avif 48w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">
+<img src="/posts/leaf.48.5b6cb8cacc12719c.png" srcset="/posts/leaf.48.5b6cb8cacc12719c.png 48w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="48" height="32" alt="a green leaf" loading="lazy" decoding="async">
+</picture> <img src="/posts/blink.gif" alt="a blinking light" width="16" height="16" loading="lazy" decoding="async">
+</p>
 </article>
 </main>
 <footer class="quiet-foot">
