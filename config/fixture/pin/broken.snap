@@ -1,0 +1,5 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/pin/broken.toml
+---
+error: Syntax(SyntaxError(TomlError { message: "unclosed table, expected `]`", input: Some("[site\n"), keys: [], span: Some(5..5) }))

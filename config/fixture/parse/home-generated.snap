@@ -1,0 +1,7 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/home-generated.toml
+---
+pin site.root on the site: Root(Folder(ContentPath("content"))) at 7..23 `root = "content"`
+pin site.layout on the site: Layout(Vault) at 37..53 `layout = "vault"`
+pin site.home on the site: Home(None) at 24..36 `home = false`

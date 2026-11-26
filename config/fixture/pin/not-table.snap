@@ -1,0 +1,5 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/pin/not-table.toml
+---
+error: NotTable { code: Root, subject: Site }

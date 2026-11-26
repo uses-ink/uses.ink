@@ -1,0 +1,13 @@
+# my site
+theme = { use = "ink:theme-quiet" }
+
+[site]
+layout = "flat"   # was a guess
+# the front page
+home = "index.md"
+
+[page."about.md"]
+title = "About me" # keep this one
+
+[page."posts/2024-03-01-hello.md"]
+title = "Old title"   # replaced, comment kept

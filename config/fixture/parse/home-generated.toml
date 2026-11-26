@@ -1,0 +1,4 @@
+[site]
+root = "content"
+home = false
+layout = "vault"

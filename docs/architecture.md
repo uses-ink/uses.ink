@@ -274,37 +274,39 @@ Rules that hold for every inferrer:
 
 ## 10. `ink.toml`
 
-One file at the source root. Optional. Every key is either a pin of a decision code or a slot
-choice. A sketch:
+One file at the source root. Optional. Every key is either a pin of a decision code, the theme
+choice with its tokens, or a file pattern. Built in `config/` (`uses-ink-config`). A sketch:
 
 ```toml
-theme = "ink:theme-quiet"          # slot choice; omitted means the default, recorded as a notice
+include = ["notes/2023.md"]          # top-level keys go before the first table
+exclude = ["notes/private/**"]
 
-[theme]                             # tokens the chosen theme declared
-accent = "#2b59c3"
+[theme]
+use = "ink:theme-quiet"              # slot choice; omitted means the default, recorded as a notice
+accent = "#2b59c3"                   # every other key is a token the chosen theme declared
 
 [site]
-home = "README.md"                  # pins site.home
-nav = ["about.md"]                  # pins site.nav
+home = "README.md"                   # pins site.home; false pins a generated listing
+nav = ["about.md"]                   # pins site.nav
 
-[post]
-folder = "posts/"                   # pins post.folder
+[file."drafts/x.md"]
+ignore = true                        # pins file.ignore
 
-[draft]
-folder = ["drafts"]
-frontmatter = true
-
-[page."posts/old/x.md"]             # per-file pins
-title = "On shelves"
-
-include = ["notes/2023.md"]
-exclude = ["notes/private/**"]
+[page."posts/old/x.md"]              # per-file pins
+title = "On shelves"                 # pins page.title
 ```
+
+The table and key come from the decision code's name: a sitewide code `t.k` is `[t] k`, a per-file
+one is `[t."<path>"] k`. A key is read once its code exists in `model`, so rules such as a posts
+folder or draft folders join as decision codes, not as config keys of their own. TOML allows a
+key only once, so the theme is a `[theme]` table with `use`, not a `theme = "..."` string beside
+it. Pattern syntax (`*`, `?`, `**`; a pattern matching a folder matches what is in it) is
+documented in `config/src/pattern.rs`.
 
 `ink explain --pin` prints the whole file that reproduces the current decisions; `--minimal`
 prints only what differs from the defaults. The CLI writes pins with `toml_edit`, preserving the
-author's formatting and comments. A JSON schema generated from the config types gives editor
-completion through Taplo.
+author's formatting and comments. A JSON schema for editor completion through Taplo is not
+generated yet; it has to come from the decision codes, not from a second set of config types.
 
 ## 11. Build, storage, serving
 

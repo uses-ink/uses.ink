@@ -1,0 +1,6 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/theme-default.toml
+---
+theme default
+token accent = "#2b59c3" at 17..26 `"#2b59c3"`

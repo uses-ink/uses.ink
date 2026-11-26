@@ -1,0 +1,29 @@
+---
+source: config/tests/fixture.rs
+---
+[site]
+root = ""
+layout = "blog"
+home = "README.md"
+nav = ["about.md", "posts"]
+
+[file.LICENSE]
+ignore = false
+
+[file."drafts/x.md"]
+ignore = true
+
+[page."about.md"]
+publish = false
+date = false
+
+[page."posts/2024-03-01-hello.md"]
+kind = "post"
+title = 'Hello, "world"'
+date = 2024-03-01
+updated = 2024-03-02T09:30:00.25Z
+slug = "hello"
+tags = ["Rust", "notes on shelves"]
+
+# not pinned: `site.home` is not pinned on x.md
+# not pinned: `page.date` is -000005-01-01; TOML writes years 0 to 9999

@@ -1,0 +1,30 @@
+# every key ink.toml has
+include = ["notes/2023.md", "talks/**/*.md"]
+exclude = ["notes/private/**", "drafts"]
+
+[theme]
+use = "ink:theme-quiet"
+accent = "#2b59c3"
+paper-tone = "warm"
+
+[site]
+root = ""
+layout = "blog"
+home = "README.md"
+nav = ["about.md", "posts"]
+
+[file."drafts/x.md"]
+ignore = true
+
+[page."posts/2024-03-01-hello.md"]
+kind = "post"
+publish = true
+title = "On shelves"
+date = 2024-03-01
+updated = 2024-03-02T09:30:00+02:00
+slug = "on-shelves"
+tags = ["Rust", "notes"]
+
+[page."about.md"]
+date = false
+updated = false

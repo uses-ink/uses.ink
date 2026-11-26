@@ -1,0 +1,15 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/unknown.toml
+---
+pin site.home on the site: Home(Some(ContentPath("README.md"))) at 38..56 `home = "README.md"`
+pin page.title on x.md: Title("kept") at 155..169 `title = "kept"`
+theme default
+error config.key.unknown: ConfigKeyUnknown { key: "nope" } at 0..4 `nope`
+error config.key.unknown: ConfigKeyUnknown { key: "theme-colour" } at 9..21 `theme-colour`
+error config.key.unknown: ConfigKeyUnknown { key: "site.title" } at 57..62 `title`
+error config.key.unknown: ConfigKeyUnknown { key: "page.\"x.md\".home" } at 106..110 `home`
+error config.key.unknown: ConfigKeyUnknown { key: "page.\"x.md\".ignore" } at 141..147 `ignore`
+error config.key.unknown: ConfigKeyUnknown { key: "file.\"x.md\".title" } at 185..190 `title`
+error config.key.unknown: ConfigKeyUnknown { key: "post" } at 213..217 `post`
+error config.key.unknown: ConfigKeyUnknown { key: "theme.Accent" } at 246..252 `Accent`

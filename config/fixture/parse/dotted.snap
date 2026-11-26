@@ -1,0 +1,9 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/dotted.toml
+---
+pin site.layout on the site: Layout(Docs) at 169..184 `layout = "docs"`
+pin page.title on a.md: Title("A") at 68..79 `title = "A"`
+pin page.kind on b.md: Kind(Page) at 109..122 `kind = "page"`
+pin page.title on b.md: Title("B") at 96..107 `title = "B"`
+pin file.ignore on c.md: Ignored(false) at 145..159 `ignore = false`

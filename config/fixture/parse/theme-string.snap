@@ -1,0 +1,6 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/theme-string.toml
+---
+error config.value.invalid: ConfigValueInvalid { key: "theme", expected: "a table: `[theme]` with `use = \"<scope>:theme-<variant>\"` and tokens" } at 8..25 `"ink:theme-quiet"`
+error config.value.invalid: ConfigValueInvalid { key: "site", expected: "a table: `[site]`" } at 33..44 `"README.md"`

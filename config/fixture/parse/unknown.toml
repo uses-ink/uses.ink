@@ -1,0 +1,20 @@
+nope = 1
+theme-colour = "red"
+
+[site]
+home = "README.md"
+title = "a page code on the site"
+
+[page."x.md"]
+home = "a sitewide code on a file"
+ignore = true
+title = "kept"
+
+[file."x.md"]
+title = "not a file code"
+
+[post]
+folder = "posts/"
+
+[theme]
+Accent = "#fff"

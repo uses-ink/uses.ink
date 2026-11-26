@@ -1,0 +1,5 @@
+# dotted keys and inline tables pin the same as headers
+page."a.md".title = "A"
+page."b.md" = { title = "B", kind = "page" }
+file = { "c.md" = { ignore = false } }
+site.layout = "docs"

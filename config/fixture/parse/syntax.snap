@@ -1,0 +1,5 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/syntax.toml
+---
+error config.syntax.invalid: ConfigSyntaxInvalid { reason: "invalid basic string, expected `\"`" } at 24..24 ``

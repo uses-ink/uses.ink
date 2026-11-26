@@ -1,0 +1,24 @@
+include = "notes/**"
+exclude = ["a**", 3, "/abs", "ok/*.md"]
+
+[theme]
+use = "quiet"
+accent = 3
+
+[site]
+root = "../up"
+layout = "grid"
+home = true
+nav = ["about.md", "/abs"]
+
+[page."posts/a.md"]
+kind = "draft"
+publish = "yes"
+title = 3
+date = 2024-03-01T09:30:00
+updated = 09:30:00
+slug = "Not A Slug"
+tags = ["ok", "!!"]
+
+[page."/abs.md"]
+title = "x"

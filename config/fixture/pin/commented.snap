@@ -1,0 +1,32 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/pin/commented.toml
+---
+# my site
+theme = { use = "ink:theme-quiet" }
+
+[site]
+layout = "blog"   # was a guess
+# the front page
+home = "README.md"
+root = ""
+nav = ["about.md", "posts"]
+
+[page."about.md"]
+title = "About me" # keep this one
+publish = false
+date = false
+
+[page."posts/2024-03-01-hello.md"]
+title = 'Hello, "world"'   # replaced, comment kept
+kind = "post"
+date = 2024-03-01
+updated = 2024-03-02T09:30:00.25Z
+slug = "hello"
+tags = ["Rust", "notes on shelves"]
+
+[file.LICENSE]
+ignore = false
+
+[file."drafts/x.md"]
+ignore = true

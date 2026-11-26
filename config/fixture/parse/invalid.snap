@@ -1,0 +1,24 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/parse/invalid.toml
+---
+theme default
+exclude ok/*.md at 50..59 `"ok/*.md"`
+error config.value.invalid: ConfigValueInvalid { key: "include", expected: "an array of glob patterns (`*`, `?`, `**`)" } at 10..20 `"notes/**"`
+error config.value.invalid: ConfigValueInvalid { key: "exclude", expected: "an array of glob patterns (`*`, `?`, `**`), and part 1 of the pattern has `**` next to other characters" } at 32..37 `"a**"`
+error config.value.invalid: ConfigValueInvalid { key: "exclude", expected: "an array of glob patterns (`*`, `?`, `**`)" } at 39..40 `3`
+error config.value.invalid: ConfigValueInvalid { key: "exclude", expected: "an array of glob patterns (`*`, `?`, `**`), and a pattern does not start with `/`" } at 42..48 `"/abs"`
+error config.value.invalid: ConfigValueInvalid { key: "theme.use", expected: "a theme plugin id, such as \"ink:theme-quiet\", and a plugin id is `<scope>:<slot>-<variant>`" } at 76..83 `"quiet"`
+error config.value.invalid: ConfigValueInvalid { key: "theme.accent", expected: "a string" } at 93..94 `3`
+error config.value.invalid: ConfigValueInvalid { key: "site.root", expected: "\"\" for the top of the source, or the path of a folder" } at 110..117 `"../up"`
+error config.value.invalid: ConfigValueInvalid { key: "site.layout", expected: "one of \"blog\", \"vault\", \"docs\", \"flat\"" } at 127..133 `"grid"`
+error config.value.invalid: ConfigValueInvalid { key: "site.home", expected: "the path of a file, or false for a generated listing" } at 141..145 `true`
+error config.value.invalid: ConfigValueInvalid { key: "site.nav", expected: "an array of file paths" } at 165..171 `"/abs"`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/a.md\".kind", expected: "one of \"home\", \"post\", \"page\"" } at 201..208 `"draft"`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/a.md\".publish", expected: "true or false" } at 219..224 `"yes"`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/a.md\".title", expected: "a string" } at 233..234 `3`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/a.md\".date", expected: "a date (2024-03-01), a date and time with an offset (2024-03-01T09:30:00Z), or false for undated" } at 242..261 `2024-03-01T09:30:00`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/a.md\".updated", expected: "a date (2024-03-01), a date and time with an offset (2024-03-01T09:30:00Z), or false for never updated" } at 272..280 `09:30:00`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/a.md\".slug", expected: "a slug: lower-case letters and digits, with single `-` inside" } at 288..300 `"Not A Slug"`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"posts/a.md\".tags", expected: "an array of strings, each with a letter or digit" } at 315..319 `"!!"`
+error config.value.invalid: ConfigValueInvalid { key: "page.\"/abs.md\"", expected: "the path of a file as its key, and a path in a snapshot does not start with `/`" } at 328..337 `"/abs.md"`

@@ -1,0 +1,17 @@
+---
+source: config/tests/fixture.rs
+input_file: config/fixture/pin/inline.toml
+---
+page = { "about.md" = { title = "About" , publish = false, date = false } , "posts/2024-03-01-hello.md" = { kind = "post", title = 'Hello, "world"', date = 2024-03-01, updated = 2024-03-02T09:30:00.25Z, slug = "hello", tags = ["Rust", "notes on shelves"] } }
+
+[site]
+root = ""
+layout = "blog"
+home = "README.md"
+nav = ["about.md", "posts"]
+
+[file.LICENSE]
+ignore = false
+
+[file."drafts/x.md"]
+ignore = true

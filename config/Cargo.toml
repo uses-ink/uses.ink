@@ -1,0 +1,24 @@
+[package]
+name = "uses-ink-config"
+description = "ink.toml: pins of decisions, the theme choice and include/exclude patterns, read with spans and written back with toml_edit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+jiff.workspace = true
+model.workspace = true
+# document order, so diagnostics come out in the order the author wrote the keys whatever
+# features other crates in the build turn on
+toml = { workspace = true, features = ["preserve_order"] }
+toml_edit.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true
