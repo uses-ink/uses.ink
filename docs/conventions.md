@@ -185,10 +185,23 @@ implements the standard traits, not a method of its own:
 A named constructor stays when it says what a trait cannot (`Hash::of(bytes)` hashes); a
 conversion that would be a trap gets a named method and its doc says why.
 
-**No standalone helpers.** Behavior that acts on a type is a method on it; a conversion is a
-`From`; a real shared capability with no owner is a small crate named for what it does. A
-private free function is fine for one pure step next to its only caller. No `utils.rs`,
-`helpers.rs`, `common.rs`, `misc.rs`.
+**No free functions.** Behaviour lives on the type it acts on. A free function is allowed only
+as a crate's entry point (`markdown::read`, `engine::interpret`, `main`) or a test. Everything
+else is one of:
+
+- a method or associated function on the type it reads or builds (`Route::of(page)`, not
+  `route_of_page(page)`; `Entry::atom(&self)` on a feed entry, not `atom_entry(entry)`);
+- a std trait impl: a conversion is `From`/`TryFrom`, parsing is `FromStr`, text is `Display`
+  (frontmatter values are `TryFrom<Raw>` impls, not `text()`, `when()`, `slug()` helpers);
+- a method on a small private type made for the job when no type exists yet: a walk over a tree
+  is a `Walk` struct with methods, an inferrer is a type implementing the inferrer trait, not a
+  module with a `decide` function;
+- a trait when several types share the behaviour.
+
+No `utils.rs`, `helpers.rs`, `common.rs`, `misc.rs`. A name of three words or more
+(`push_text_node`, `atom_entry_of`) is a missing type or module: `text::Node::push`,
+`atom::Entry`. Function and method names are one or two words; `cargo xtask check` refuses
+longer ones outside tests (a test's name is a sentence and may be long).
 
 **No strings where a type belongs.** A path is a validated newtype (`ContentPath`, `Route`), a
 kind is an enum, a code is an enum variant with a `const` name. JSON is serde types. HTML, SVG
