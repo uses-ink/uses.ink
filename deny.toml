@@ -10,6 +10,12 @@ yanked = "deny"
 [licenses]
 allow = ["MIT", "Apache-2.0", "Unicode-3.0", "AGPL-3.0-or-later"]
 confidence-threshold = 0.93
+# Permissive licences allowed only for the crate that needs them, so a new one is a decision.
+exceptions = [
+    { crate = "comrak", allow = ["BSD-2-Clause"] },
+    { crate = "encoding_rs", allow = ["BSD-3-Clause"] },
+    { crate = "finl_unicode", allow = ["Unicode-DFS-2016"] },
+]
 
 [bans]
 multiple-versions = "warn"

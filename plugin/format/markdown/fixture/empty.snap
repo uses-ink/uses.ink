@@ -1,0 +1,23 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/empty.md
+---
+{
+  "document": {
+    "blocks": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

@@ -1,0 +1,116 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/frontmatter-full.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "ignored-as-title-kept-as-heading",
+          "inlines": [
+            {
+              "text": "Ignored as title, kept as heading"
+            }
+          ]
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Body."
+          }
+        ]
+      }
+    ]
+  },
+  "front": {
+    "title": {
+      "value": "On Shelves, Again",
+      "span": [
+        11,
+        28
+      ]
+    },
+    "date": {
+      "value": {
+        "day": "2024-03-01"
+      },
+      "span": [
+        35,
+        45
+      ]
+    },
+    "updated": {
+      "value": {
+        "instant": "2024-03-05T08:30:00Z"
+      },
+      "span": [
+        55,
+        80
+      ]
+    },
+    "slug": {
+      "value": "on-shelves",
+      "span": [
+        87,
+        97
+      ]
+    },
+    "tags": {
+      "value": [
+        {
+          "slug": "books",
+          "written": "books"
+        },
+        {
+          "slug": "reading-list",
+          "written": "Reading List"
+        },
+        {
+          "slug": "2024",
+          "written": "2024"
+        }
+      ],
+      "span": [
+        104,
+        130
+      ]
+    },
+    "publish": {
+      "value": true,
+      "span": [
+        141,
+        145
+      ]
+    },
+    "draft": {
+      "value": false,
+      "span": [
+        153,
+        158
+      ]
+    },
+    "kind": {
+      "value": "post",
+      "span": [
+        165,
+        169
+      ]
+    },
+    "block": [
+      0,
+      209
+    ]
+  },
+  "heading": {
+    "value": "Ignored as title, kept as heading",
+    "span": [
+      209,
+      244
+    ]
+  },
+  "diagnostics": [],
+  "notices": []
+}

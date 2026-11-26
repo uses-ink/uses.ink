@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["config", "diag", "freehand", "freehand-web", "model", "token", "xtask"]
+members = ["config", "diag", "freehand", "freehand-web", "model", "plugin/format/markdown", "token", "xtask"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -18,12 +18,14 @@ freehand = { path = "freehand" }
 model = { package = "uses-ink-model", path = "model" }
 token = { package = "uses-ink-token", path = "token" }
 blake3 = "1.8.7"
-insta = { version = "1.49.0", default-features = false }
+comrak = { version = "1.2.0", default-features = false }
+insta = { version = "1.49.0", features = ["glob"] }
 jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"] }
 libm = "0.2.16"
 proptest = "1.12.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
+serde-saphyr = { version = "2.2.0", default-features = false, features = ["deserialize"] }
 toml = "1.2.3"
 toml_edit = "0.25.21"
 unspliced = "0.1.1"

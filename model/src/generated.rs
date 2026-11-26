@@ -20,6 +20,12 @@ pub enum Problem {
     /// `frontmatter.syntax.invalid`: the frontmatter does not parse, so the page is built without it: {reason}
     #[serde(rename = "frontmatter.syntax.invalid")]
     FrontmatterSyntaxInvalid { reason: String },
+    /// `frontmatter.value.invalid`: the frontmatter's `{key}` takes {expected}, so it is ignored
+    #[serde(rename = "frontmatter.value.invalid")]
+    FrontmatterValueInvalid { key: String, expected: String },
+    /// `source.file.encoding`: the file is not UTF-8 text (byte {at}), so it is read as empty
+    #[serde(rename = "source.file.encoding")]
+    SourceFileEncoding { at: u64 },
     /// `link.target.missing`: `{written}` points at no file, so it is shown as plain text
     #[serde(rename = "link.target.missing")]
     LinkTargetMissing { written: String },
@@ -35,6 +41,9 @@ pub enum Problem {
     /// `html.element.stripped`: `<{element}>` is not allowed in a page and was removed
     #[serde(rename = "html.element.stripped")]
     HtmlElementStripped { element: String },
+    /// `page.nesting.deep`: blocks or inlines nested more than {limit} deep keep only their text
+    #[serde(rename = "page.nesting.deep")]
+    PageNestingDeep { limit: u64 },
     /// `source.file.unreadable`: {path} could not be read: {reason}
     #[serde(rename = "source.file.unreadable")]
     SourceFileUnreadable { path: ContentPath, reason: String },
@@ -58,11 +67,14 @@ impl Problem {
         "config.key.unknown",
         "config.value.invalid",
         "frontmatter.syntax.invalid",
+        "frontmatter.value.invalid",
+        "source.file.encoding",
         "link.target.missing",
         "link.target.ambiguous",
         "link.target.unpublished",
         "page.route.collision",
         "html.element.stripped",
+        "page.nesting.deep",
         "source.file.unreadable",
         "source.budget.files",
         "source.budget.file",
@@ -76,11 +88,14 @@ impl Problem {
             Self::ConfigKeyUnknown { .. } => "config.key.unknown",
             Self::ConfigValueInvalid { .. } => "config.value.invalid",
             Self::FrontmatterSyntaxInvalid { .. } => "frontmatter.syntax.invalid",
+            Self::FrontmatterValueInvalid { .. } => "frontmatter.value.invalid",
+            Self::SourceFileEncoding { .. } => "source.file.encoding",
             Self::LinkTargetMissing { .. } => "link.target.missing",
             Self::LinkTargetAmbiguous { .. } => "link.target.ambiguous",
             Self::LinkTargetUnpublished { .. } => "link.target.unpublished",
             Self::PageRouteCollision { .. } => "page.route.collision",
             Self::HtmlElementStripped { .. } => "html.element.stripped",
+            Self::PageNestingDeep { .. } => "page.nesting.deep",
             Self::SourceFileUnreadable { .. } => "source.file.unreadable",
             Self::SourceBudgetFiles { .. } => "source.budget.files",
             Self::SourceBudgetFile { .. } => "source.budget.file",
@@ -94,11 +109,14 @@ impl Problem {
             Self::ConfigKeyUnknown { .. } => Severity::Error,
             Self::ConfigValueInvalid { .. } => Severity::Error,
             Self::FrontmatterSyntaxInvalid { .. } => Severity::Warning,
+            Self::FrontmatterValueInvalid { .. } => Severity::Warning,
+            Self::SourceFileEncoding { .. } => Severity::Error,
             Self::LinkTargetMissing { .. } => Severity::Warning,
             Self::LinkTargetAmbiguous { .. } => Severity::Error,
             Self::LinkTargetUnpublished { .. } => Severity::Warning,
             Self::PageRouteCollision { .. } => Severity::Error,
             Self::HtmlElementStripped { .. } => Severity::Warning,
+            Self::PageNestingDeep { .. } => Severity::Warning,
             Self::SourceFileUnreadable { .. } => Severity::Error,
             Self::SourceBudgetFiles { .. } => Severity::Error,
             Self::SourceBudgetFile { .. } => Severity::Error,
@@ -113,11 +131,14 @@ impl Problem {
             Self::ConfigKeyUnknown { .. } => Fault::Author,
             Self::ConfigValueInvalid { .. } => Fault::Author,
             Self::FrontmatterSyntaxInvalid { .. } => Fault::Author,
+            Self::FrontmatterValueInvalid { .. } => Fault::Author,
+            Self::SourceFileEncoding { .. } => Fault::Author,
             Self::LinkTargetMissing { .. } => Fault::Author,
             Self::LinkTargetAmbiguous { .. } => Fault::Author,
             Self::LinkTargetUnpublished { .. } => Fault::Author,
             Self::PageRouteCollision { .. } => Fault::Author,
             Self::HtmlElementStripped { .. } => Fault::Author,
+            Self::PageNestingDeep { .. } => Fault::Author,
             Self::SourceFileUnreadable { .. } => Fault::Source,
             Self::SourceBudgetFiles { .. } => Fault::Author,
             Self::SourceBudgetFile { .. } => Fault::Author,
@@ -132,16 +153,21 @@ pub enum Announcement {
     /// `notice.default.chosen`: nothing decided `{decision}`, so it is {value}
     #[serde(rename = "notice.default.chosen")]
     NoticeDefaultChosen { decision: DecisionCode, value: String },
+    /// `heading.anchor.generated`: a heading has no letters or digits, so its anchor is `{anchor}`
+    #[serde(rename = "heading.anchor.generated")]
+    HeadingAnchorGenerated { anchor: String },
     /// `site.home.generated`: no home page was found, so the home page lists every page
     #[serde(rename = "site.home.generated")]
     SiteHomeGenerated,
 }
 impl Announcement {
     /// Every code, in catalog order.
-    pub const CODES: &'static [&'static str] = &["notice.default.chosen", "site.home.generated"];
+    pub const CODES: &'static [&'static str] =
+        &["notice.default.chosen", "heading.anchor.generated", "site.home.generated"];
     pub const fn code(&self) -> &'static str {
         match self {
             Self::NoticeDefaultChosen { .. } => "notice.default.chosen",
+            Self::HeadingAnchorGenerated { .. } => "heading.anchor.generated",
             Self::SiteHomeGenerated => "site.home.generated",
         }
     }

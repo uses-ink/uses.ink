@@ -36,6 +36,20 @@ fields = { reason = "text" }
 message = "the frontmatter does not parse, so the page is built without it: {reason}"
 fix = "fix the YAML between the `---` lines"
 
+[diagnostic."frontmatter.value.invalid"]
+severity = "warning"
+fault = "author"
+fields = { key = "text", expected = "text" }
+message = "the frontmatter's `{key}` takes {expected}, so it is ignored"
+fix = "change the value at the marked place, or remove the key"
+
+[diagnostic."source.file.encoding"]
+severity = "error"
+fault = "author"
+fields = { at = "count" }
+message = "the file is not UTF-8 text (byte {at}), so it is read as empty"
+fix = "save the file as UTF-8"
+
 [diagnostic."link.target.missing"]
 severity = "warning"
 fault = "author"
@@ -68,6 +82,13 @@ severity = "warning"
 fault = "author"
 fields = { element = "text" }
 message = "`<{element}>` is not allowed in a page and was removed"
+
+[diagnostic."page.nesting.deep"]
+severity = "warning"
+fault = "author"
+fields = { limit = "count" }
+message = "blocks or inlines nested more than {limit} deep keep only their text"
+fix = "nest lists, quotes and emphasis less deeply"
 
 [diagnostic."source.file.unreadable"]
 severity = "error"
@@ -105,6 +126,10 @@ message = "the page could not be rendered: {reason}"
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"
 fix = "pin `{decision}` in ink.toml to choose"
+
+[notice."heading.anchor.generated"]
+fields = { anchor = "text" }
+message = "a heading has no letters or digits, so its anchor is `{anchor}`"
 
 [notice."site.home.generated"]
 message = "no home page was found, so the home page lists every page"

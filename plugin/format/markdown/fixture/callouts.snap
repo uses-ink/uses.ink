@@ -1,0 +1,138 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/callouts.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "callout": {
+          "kind": "note",
+          "title": null,
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "A note."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "callout": {
+          "kind": "tip",
+          "title": [
+            {
+              "text": "Custom title"
+            }
+          ],
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "A tip with "
+                },
+                {
+                  "strong": [
+                    {
+                      "text": "bold"
+                    }
+                  ]
+                },
+                {
+                  "text": "."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "callout": {
+          "kind": "important",
+          "title": null,
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Important."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "callout": {
+          "kind": "warning",
+          "title": null,
+          "blocks": [
+            {
+              "list": {
+                "ordered": null,
+                "items": [
+                  [
+                    {
+                      "paragraph": [
+                        {
+                          "text": "a list inside"
+                        }
+                      ]
+                    }
+                  ]
+                ],
+                "tight": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "callout": {
+          "kind": "caution",
+          "title": null,
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Careful."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "quote": [
+          {
+            "paragraph": [
+              {
+                "text": "[!todo]"
+              },
+              "soft-break",
+              {
+                "text": "Not a GitHub alert: a quote."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

@@ -1,0 +1,34 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/frontmatter-empty.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Nothing above."
+          }
+        ]
+      }
+    ]
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "block": [
+      0,
+      8
+    ]
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

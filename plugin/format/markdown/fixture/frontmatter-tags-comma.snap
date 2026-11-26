@@ -1,0 +1,65 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/frontmatter-tags-comma.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Text."
+          }
+        ]
+      }
+    ]
+  },
+  "front": {
+    "title": {
+      "value": "1984",
+      "span": [
+        11,
+        15
+      ]
+    },
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": {
+      "value": [
+        {
+          "slug": "rust",
+          "written": "rust"
+        },
+        {
+          "slug": "wasm",
+          "written": "wasm"
+        },
+        {
+          "slug": "self-host",
+          "written": "self-host"
+        }
+      ],
+      "span": [
+        22,
+        47
+      ]
+    },
+    "publish": null,
+    "draft": null,
+    "kind": {
+      "value": "page",
+      "span": [
+        54,
+        58
+      ]
+    },
+    "block": [
+      0,
+      63
+    ]
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

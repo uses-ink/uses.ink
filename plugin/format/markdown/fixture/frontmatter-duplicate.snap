@@ -1,0 +1,50 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/frontmatter-duplicate.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Text."
+          }
+        ]
+      }
+    ]
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "block": [
+      0,
+      30
+    ]
+  },
+  "heading": null,
+  "diagnostics": [
+    {
+      "problem": {
+        "frontmatter.syntax.invalid": {
+          "reason": "duplicate mapping key `title` is not allowed here at line 3, column 1"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-duplicate.md"
+      },
+      "span": [
+        15,
+        20
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

@@ -18,6 +18,12 @@ impl Message<'_> {
             Problem::FrontmatterSyntaxInvalid { reason, .. } => {
                 write!(out, "the frontmatter does not parse, so the page is built without it: {reason}")
             }
+            Problem::FrontmatterValueInvalid { key, expected, .. } => {
+                write!(out, "the frontmatter's `{key}` takes {expected}, so it is ignored")
+            }
+            Problem::SourceFileEncoding { at, .. } => {
+                write!(out, "the file is not UTF-8 text (byte {at}), so it is read as empty")
+            }
             Problem::LinkTargetMissing { written, .. } => {
                 write!(out, "`{written}` points at no file, so it is shown as plain text")
             }
@@ -34,6 +40,9 @@ impl Message<'_> {
             }
             Problem::HtmlElementStripped { element, .. } => {
                 write!(out, "`<{element}>` is not allowed in a page and was removed")
+            }
+            Problem::PageNestingDeep { limit, .. } => {
+                write!(out, "blocks or inlines nested more than {limit} deep keep only their text")
             }
             Problem::SourceFileUnreadable { path, reason, .. } => {
                 write!(out, "{path} could not be read: {reason}")
@@ -57,6 +66,9 @@ impl Message<'_> {
             Announcement::NoticeDefaultChosen { decision, value, .. } => {
                 write!(out, "nothing decided `{decision}`, so it is {value}")
             }
+            Announcement::HeadingAnchorGenerated { anchor, .. } => {
+                write!(out, "a heading has no letters or digits, so its anchor is `{anchor}`")
+            }
             Announcement::SiteHomeGenerated => {
                 write!(out, "no home page was found, so the home page lists every page")
             }
@@ -70,11 +82,14 @@ impl Fix<'_> {
             Problem::ConfigKeyUnknown { .. } => true,
             Problem::ConfigValueInvalid { .. } => false,
             Problem::FrontmatterSyntaxInvalid { .. } => true,
+            Problem::FrontmatterValueInvalid { .. } => true,
+            Problem::SourceFileEncoding { .. } => true,
             Problem::LinkTargetMissing { .. } => false,
             Problem::LinkTargetAmbiguous { .. } => true,
             Problem::LinkTargetUnpublished { .. } => true,
             Problem::PageRouteCollision { .. } => true,
             Problem::HtmlElementStripped { .. } => false,
+            Problem::PageNestingDeep { .. } => true,
             Problem::SourceFileUnreadable { .. } => false,
             Problem::SourceBudgetFiles { .. } => true,
             Problem::SourceBudgetFile { .. } => false,
@@ -85,6 +100,7 @@ impl Fix<'_> {
     pub(crate) const fn announcement_has(announcement: &Announcement) -> bool {
         match announcement {
             Announcement::NoticeDefaultChosen { .. } => true,
+            Announcement::HeadingAnchorGenerated { .. } => false,
             Announcement::SiteHomeGenerated => true,
         }
     }
@@ -101,6 +117,10 @@ impl Fix<'_> {
             Problem::FrontmatterSyntaxInvalid { .. } => {
                 write!(out, "fix the YAML between the `---` lines")
             }
+            Problem::FrontmatterValueInvalid { .. } => {
+                write!(out, "change the value at the marked place, or remove the key")
+            }
+            Problem::SourceFileEncoding { .. } => write!(out, "save the file as UTF-8"),
             Problem::LinkTargetMissing { .. } => Ok(()),
             Problem::LinkTargetAmbiguous { .. } => {
                 write!(out, "write the path of the one you mean")
@@ -112,6 +132,9 @@ impl Fix<'_> {
                 write!(out, "pin a different `page.slug` on all but one")
             }
             Problem::HtmlElementStripped { .. } => Ok(()),
+            Problem::PageNestingDeep { .. } => {
+                write!(out, "nest lists, quotes and emphasis less deeply")
+            }
             Problem::SourceFileUnreadable { .. } => Ok(()),
             Problem::SourceBudgetFiles { .. } => {
                 write!(out, "exclude folders that are not part of the site in ink.toml")
@@ -129,6 +152,7 @@ impl Fix<'_> {
             Announcement::NoticeDefaultChosen { decision, .. } => {
                 write!(out, "pin `{decision}` in ink.toml to choose")
             }
+            Announcement::HeadingAnchorGenerated { .. } => Ok(()),
             Announcement::SiteHomeGenerated => {
                 write!(out, "add index.md or README.md at the root, or pin `site.home`")
             }

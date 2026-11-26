@@ -1,0 +1,176 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/html.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Kept text & more"
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Inline bold and span and  break  done."
+          }
+        ]
+      },
+      {
+        "list": {
+          "ordered": null,
+          "items": [
+            [
+              {
+                "paragraph": [
+                  {
+                    "text": "list with html"
+                  }
+                ]
+              }
+            ]
+          ],
+          "tight": true
+        }
+      }
+    ]
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "div"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        0,
+        17
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "b"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        54,
+        57
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "span"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        70,
+        86
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "br"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        102,
+        107
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "script"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        137,
+        145
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "style"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        198,
+        205
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "em"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        243,
+        247
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "img"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        258,
+        294
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

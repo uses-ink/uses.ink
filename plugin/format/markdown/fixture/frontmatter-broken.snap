@@ -1,0 +1,60 @@
+---
+source: plugin/format/markdown/tests/fixture.rs
+input_file: plugin/format/markdown/fixture/frontmatter-broken.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "body-still-read",
+          "inlines": [
+            {
+              "text": "Body still read"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "block": [
+      0,
+      42
+    ]
+  },
+  "heading": {
+    "value": "Body still read",
+    "span": [
+      42,
+      59
+    ]
+  },
+  "diagnostics": [
+    {
+      "problem": {
+        "frontmatter.syntax.invalid": {
+          "reason": "unclosed quote at line 2, column 8"
+        }
+      },
+      "subject": {
+        "file": "frontmatter-broken.md"
+      },
+      "span": [
+        4,
+        38
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

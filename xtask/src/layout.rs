@@ -26,6 +26,8 @@ const MAY_USE: &[(&str, &[&str])] = &[
     ("uses-ink-config", &["uses-ink-model"]),
     ("uses-ink-diag", &["uses-ink-model"]),
     ("uses-ink-token", &[]),
+    // Formats speak the model directly until host/wasmtime exists, then the generated WIT types.
+    ("uses-ink-format-markdown", &["uses-ink-model"]),
     (TASKS, &["freehand", "uses-ink-token"]),
 ];
 
