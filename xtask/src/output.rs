@@ -1,5 +1,6 @@
 //! Where generated files go: written, or compared with what is on disk.
 
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -104,14 +105,38 @@ impl Output {
     }
 
     /// What happened, a line each.
-    pub(crate) fn report(&self) -> Vec<String> {
+    pub(crate) fn report(&self) -> Vec<Line> {
         match self.mode {
-            Mode::Check => vec!["check: layout fine, generated files fresh".to_owned()],
-            Mode::Write if self.written.is_empty() && self.removed.is_empty() => vec!["nothing changed".to_owned()],
+            Mode::Check => vec![Line::Checked],
+            Mode::Write if self.written.is_empty() && self.removed.is_empty() => vec![Line::Unchanged],
             Mode::Write => {
-                let wrote = self.written.iter().map(|p| format!("wrote {}", p.display()));
-                wrote.chain(self.removed.iter().map(|p| format!("removed {} (no longer drawn)", p.display()))).collect()
+                let wrote = self.written.iter().cloned().map(Line::Wrote);
+                wrote.chain(self.removed.iter().cloned().map(Line::Removed)).collect()
             }
+        }
+    }
+}
+
+/// One line of a task's report.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Line {
+    /// A generated file written, by path relative to the root.
+    Wrote(PathBuf),
+    /// A file in a claimed directory removed because nothing generates it any more.
+    Removed(PathBuf),
+    /// Every generated file already held what the generator writes.
+    Unchanged,
+    /// The layout and every generated file are as they should be.
+    Checked,
+}
+
+impl fmt::Display for Line {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Wrote(path) => write!(out, "wrote {}", path.display()),
+            Self::Removed(path) => write!(out, "removed {} (no longer generated)", path.display()),
+            Self::Unchanged => write!(out, "nothing changed"),
+            Self::Checked => write!(out, "check: layout fine, generated files fresh"),
         }
     }
 }
