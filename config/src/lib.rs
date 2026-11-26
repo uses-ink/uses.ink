@@ -44,7 +44,28 @@ use model::{AnyCode, AnyDecision, AnyOf, Code, ContentPath, Decided, Diagnostic,
 pub use pattern::{Pattern, PatternError, Patterns};
 pub use pin::Pinned;
 pub use theme::{IdPart, Theme, ThemeId, ThemeIdError, Token};
-pub use write::{Pinnable, PinsError, SyntaxError, Unwritable, pins, pins_into};
+pub use write::{Pinnable, PinsError, SyntaxError, Unwritable};
+
+/// A whole `ink.toml` that pins every decision: sitewide tables first, then the per-file tables
+/// (`[file."..."]`, then `[page."..."]`), each sorted by path, keys in decision order. A later
+/// decision with the same code and subject replaces an earlier one. A decision that cannot be
+/// written is listed in a comment at the end, with its causes, never dropped.
+pub fn pins<'a, D: Pinnable + 'a>(decisions: impl IntoIterator<Item = &'a D>) -> String {
+    write::Document::pins(decisions)
+}
+
+/// `existing` with every decision pinned in it: values already there are replaced in place,
+/// keeping their comments; new tables go after the existing ones.
+///
+/// # Errors
+///
+/// [`PinsError`] when `existing` is not TOML, or a decision cannot be written in it.
+pub fn pins_into<'a, D: Pinnable + 'a>(
+    existing: &str,
+    decisions: impl IntoIterator<Item = &'a D>,
+) -> Result<String, PinsError> {
+    write::Document::pins_into(existing, decisions)
+}
 
 /// What `ink.toml` says. The default is what no `ink.toml` says: no pins, the default theme,
 /// no patterns.

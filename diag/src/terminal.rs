@@ -44,7 +44,7 @@ impl fmt::Display for Terminal<'_> {
                         out.write_str("\n  caused by ")?;
                     }
                     write!(out, "{}[{}]: {}", d.severity().name(), d.code(), Message::from(&d.problem))?;
-                    place(d.subject.as_ref(), d.span, out)?;
+                    write!(out, "{}", Place(d.subject.as_ref(), d.span))?;
                     if let Some(fix) = Fix::of_problem(&d.problem) {
                         write!(out, "\n  fix: {fix}")?;
                     }
@@ -53,7 +53,7 @@ impl fmt::Display for Terminal<'_> {
             }
             Shown::Notice(notice) => {
                 write!(out, "notice[{}]: {}", notice.code(), Message::from(&notice.announcement))?;
-                place(notice.subject.as_ref(), notice.span, out)?;
+                write!(out, "{}", Place(notice.subject.as_ref(), notice.span))?;
                 match Fix::of_announcement(&notice.announcement) {
                     Some(fix) => write!(out, "\n  fix: {fix}"),
                     None => Ok(()),
@@ -64,12 +64,16 @@ impl fmt::Display for Terminal<'_> {
 }
 
 /// `  at <subject>, <span>`, as much of it as is known.
-fn place(subject: Option<&Subject>, span: Option<Span>, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match (subject, span) {
-        (Some(subject), Some(span)) => write!(out, "\n  at {subject}, {span}"),
-        (Some(subject), None) => write!(out, "\n  at {subject}"),
-        (None, Some(span)) => write!(out, "\n  at {span}"),
-        (None, None) => Ok(()),
+struct Place<'a>(Option<&'a Subject>, Option<Span>);
+
+impl fmt::Display for Place<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self.0, self.1) {
+            (Some(subject), Some(span)) => write!(out, "\n  at {subject}, {span}"),
+            (Some(subject), None) => write!(out, "\n  at {subject}"),
+            (None, Some(span)) => write!(out, "\n  at {span}"),
+            (None, None) => Ok(()),
+        }
     }
 }
 

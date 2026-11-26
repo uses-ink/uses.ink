@@ -69,7 +69,7 @@ impl Slug {
                 if at == 0 || previous == Some('-') || at + 1 == text.len() {
                     return Err(SlugError::Hyphen { at });
                 }
-            } else if !is_slug_char(c) {
+            } else if !Slug::allows(c) {
                 return Err(SlugError::Character { at, found: c });
             }
             previous = Some(c);
@@ -93,9 +93,11 @@ impl crate::PageId {
     }
 }
 
-/// A letter or digit that lower-casing leaves alone.
-fn is_slug_char(c: char) -> bool {
-    c.is_alphanumeric() && c.to_lowercase().eq(std::iter::once(c))
+impl Slug {
+    /// Whether `c` may stand in a slug: a letter or digit that lower-casing leaves alone.
+    fn allows(c: char) -> bool {
+        c.is_alphanumeric() && c.to_lowercase().eq(std::iter::once(c))
+    }
 }
 
 impl fmt::Display for Slug {

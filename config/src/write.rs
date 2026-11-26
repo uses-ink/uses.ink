@@ -29,28 +29,26 @@ impl fmt::Display for KeyPath<'_> {
     }
 }
 
-/// A whole `ink.toml` that pins every decision: sitewide tables first, then the per-file tables
-/// (`[file."..."]`, then `[page."..."]`), each sorted by path, keys in decision order. A later
-/// decision with the same code and subject replaces an earlier one. A decision that cannot be
-/// written is listed in a comment at the end, with its causes, never dropped.
-pub fn pins<'a, D: Pinnable + 'a>(decisions: impl IntoIterator<Item = &'a D>) -> String {
-    let mut document = Document(DocumentMut::new());
-    let unwritten = NotPinned(document.put(decisions).into_iter().filter_map(Result::err).collect());
-    if !unwritten.0.is_empty() {
-        document.0.set_trailing(format!("\n{unwritten}"));
+impl Document {
+    /// See [`crate::pins`].
+    pub(crate) fn pins<'a, D: Pinnable + 'a>(decisions: impl IntoIterator<Item = &'a D>) -> String {
+        let mut document = Self(DocumentMut::new());
+        let unwritten = NotPinned(document.put(decisions).into_iter().filter_map(Result::err).collect());
+        if !unwritten.0.is_empty() {
+            document.0.set_trailing(format!("\n{unwritten}"));
+        }
+        document.0.to_string()
     }
-    document.0.to_string()
-}
 
-/// `existing` with every decision pinned in it: values already there are replaced in place,
-/// keeping their comments; new tables go after the existing ones.
-pub fn pins_into<'a, D: Pinnable + 'a>(
-    existing: &str,
-    decisions: impl IntoIterator<Item = &'a D>,
-) -> Result<String, PinsError> {
-    let mut document = Document(existing.parse().map_err(|error| PinsError::Syntax(SyntaxError(error)))?);
-    document.put(decisions).into_iter().collect::<Result<(), _>>()?;
-    Ok(document.0.to_string())
+    /// See [`crate::pins_into`].
+    pub(crate) fn pins_into<'a, D: Pinnable + 'a>(
+        existing: &str,
+        decisions: impl IntoIterator<Item = &'a D>,
+    ) -> Result<String, PinsError> {
+        let mut document = Self(existing.parse().map_err(|error| PinsError::Syntax(SyntaxError(error)))?);
+        document.put(decisions).into_iter().collect::<Result<(), _>>()?;
+        Ok(document.0.to_string())
+    }
 }
 
 /// A decision [`pins`] can write: an [`AnyDecision`], and, until the CLI is ported onto typed
@@ -98,7 +96,7 @@ impl Pinnable for model::Decision {
 
 /// The document being written.
 #[derive(Debug)]
-struct Document(DocumentMut);
+pub(crate) struct Document(DocumentMut);
 
 impl Document {
     /// Pins each decision, in file order (sitewide first, then by table, by file and by the
