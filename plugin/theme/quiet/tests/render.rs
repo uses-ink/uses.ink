@@ -250,3 +250,23 @@ impl Highlight for Fixed<'_> {
         Ok(self.0.iter().map(|run| Run { capture: run.capture, text: "x" }).collect())
     }
 }
+
+#[test]
+fn math_holds_only_mathml() {
+    let hostile = [r"\htmlClass{x}{y}", r"\href{javascript:alert(1)}{x}", r"\text{<img src=x onerror=alert(1)>}"];
+    let body = Document::new(vec![para(hostile.iter().map(|tex| Inline::Math((*tex).to_owned())).collect())]);
+    let page = Page::new("a.md".parse().unwrap(), "/a".parse().unwrap(), PageKind::Page, "Math").holding(body);
+    let mut parts =
+        SiteParts::new(model::Identity::new("Ink", "en".parse().unwrap()), model::Root::Top, model::Layout::Flat);
+    parts.pages = vec![page];
+    let site = Site::new(parts).unwrap();
+    let mut said = Said::default();
+    let html = quiet().render(&site.pages()[0], &site, &mut said).unwrap();
+    let html = html.as_ref();
+    for refused in ["<img", "href=\"javascript", "class=\"x\""] {
+        assert!(!html.contains(refused), "{refused} in {html}");
+    }
+    assert!(html.contains("<mtext>&lt;img"), "{html}");
+    let codes: Vec<&str> = said.diagnostics.iter().map(model::Diagnostic::code).collect();
+    assert_eq!(codes, ["math.syntax.invalid", "math.syntax.invalid"]);
+}
