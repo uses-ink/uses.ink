@@ -35,31 +35,64 @@ impl<G: Sourced + ?Sized> Witness<Summary, G> for Body {
     }
 }
 
-/// Inlines as plain text: what a reader would read, breaks as spaces, images left out.
+/// Where reading a paragraph as plain text stopped.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Stop {
+    /// It read every inline.
+    #[default]
+    End,
+    /// At math: TeX is not text a reader reads, and a summary has no `MathML`, so the text
+    /// stops before it.
+    Math,
+}
+
+/// Inlines as plain text: what a reader would read, breaks as spaces, images left out, up to
+/// the first math.
 #[derive(Debug, Default)]
-struct Plain(String);
+struct Plain {
+    text: String,
+    stop: Stop,
+}
 
 impl Visit for Plain {
     fn inline(&mut self, inline: &Inline) {
+        if self.stop == Stop::Math {
+            return;
+        }
         match inline {
-            Inline::Code(text) | Inline::Math(text) | Inline::Keyboard(text) => self.0.push_str(text),
-            Inline::Break | Inline::SoftBreak => self.0.push(' '),
+            Inline::Code(text) | Inline::Keyboard(text) => self.text.push_str(text),
+            Inline::Break | Inline::SoftBreak => self.text.push(' '),
+            Inline::Math(_) => self.stop = Stop::Math,
             Inline::Image { .. } => {}
             other => other.walk(self),
         }
     }
 
     fn text(&mut self, text: &str) {
-        self.0.push_str(text);
+        if self.stop == Stop::End {
+            self.text.push_str(text);
+        }
     }
 }
 
 impl Plain {
-    /// The text whole when short; else up to the sentence end nearest [`NEAR`] between
-    /// [`SHORTEST`] and [`LONGEST`] characters; else up to the last space before [`NEAR`],
-    /// then `…`.
+    /// The text, its runs of space made one, and when it stopped at math, only its sentences
+    /// before the math (or what came before, then `…`); then whole when short; else up to the
+    /// sentence end nearest [`NEAR`] between [`SHORTEST`] and [`LONGEST`] characters; else up to
+    /// the last space before [`NEAR`], then `…`.
     fn cut(self) -> String {
-        let text = self.0;
+        let mut text = self.text.split_whitespace().collect::<Vec<_>>().join(" ");
+        if self.stop == Stop::Math {
+            let mut ends = text.char_indices().rev().filter(|&(at, c)| {
+                matches!(c, '.' | '!' | '?')
+                    && text.get(at + c.len_utf8()..).is_some_and(|rest| rest.is_empty() || rest.starts_with(' '))
+            });
+            match ends.next() {
+                Some((at, c)) => text.truncate(at + c.len_utf8()),
+                None if text.is_empty() => {}
+                None => text.push('…'),
+            }
+        }
         let chars: Vec<(usize, char)> = text.char_indices().collect();
         if chars.len() <= NEAR {
             return text;
@@ -85,7 +118,22 @@ mod test {
     use super::*;
 
     fn cut(text: &str) -> String {
-        Plain(text.to_owned()).cut()
+        Plain { text: text.to_owned(), stop: Stop::End }.cut()
+    }
+
+    fn plain(inlines: &[Inline]) -> String {
+        let mut plain = Plain::default();
+        plain.inlines(inlines);
+        plain.cut()
+    }
+
+    #[test]
+    fn a_summary_stops_before_math() {
+        let text = |text: &str| Inline::Text(text.to_owned());
+        let math = Inline::Math("x^2".to_owned());
+        assert_eq!(plain(&[text("Ink flows. Let "), math.clone(), text(" grow.")]), "Ink flows.");
+        assert_eq!(plain(&[text("Let "), math.clone(), text(" grow.")]), "Let…");
+        assert_eq!(plain(&[math, text(" grows.")]), "");
     }
 
     #[test]
