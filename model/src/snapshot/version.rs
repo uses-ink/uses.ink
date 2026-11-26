@@ -84,6 +84,22 @@ impl Oid {
     }
 }
 
+impl TryFrom<&[u8]> for Oid {
+    type Error = VersionError;
+
+    /// The id of an object's 20 (SHA-1) or 32 (SHA-256) bytes, written in hex.
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        if !matches!(bytes.len(), 20 | 32) {
+            return Err(VersionError::OidLength { found: bytes.len() * 2 });
+        }
+        let mut text = String::with_capacity(bytes.len() * 2);
+        for byte in bytes {
+            let _infallible = fmt::Write::write_fmt(&mut text, format_args!("{byte:02x}"));
+        }
+        Ok(Self(text))
+    }
+}
+
 impl UploadId {
     /// `text`, when it is 1 to 64 ASCII letters, digits or `-`.
     pub fn parse(text: impl Into<String>) -> Result<Self, VersionError> {

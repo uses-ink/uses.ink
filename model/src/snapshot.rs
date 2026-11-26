@@ -5,7 +5,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{AnyCode, Bytes, ContentPath, Hash, Timestamp};
+use crate::{Announcement, AnyCode, Bytes, ContentPath, Hash, Notice, Timestamp};
 
 mod version;
 
@@ -182,6 +182,22 @@ impl Lack {
     pub fn new(ability: Ability, consequence: AnyCode, gap: Gap) -> Self {
         Self { ability, consequence, gap }
     }
+
+    /// What a build says of it. A lack of history is said, since dates suffer for it; a
+    /// source without `watch` or `private` builds the same, so that lack is shown by
+    /// `ink explain` and not said.
+    pub fn notice(&self) -> Option<Notice> {
+        let decision = self.consequence;
+        let announcement = match (&self.gap, self.ability) {
+            (Gap::Absent, Ability::History) => Announcement::SourceHistoryAbsent { decision },
+            (Gap::Absent, _) => return None,
+            (Gap::Shallow { commit, bound }, _) => {
+                Announcement::SourceHistoryShallow { decision, commit: commit.to_string(), bound: bound.to_string() }
+            }
+            (Gap::Renames { moved }, _) => Announcement::SourceHistoryMoved { decision, count: *moved },
+        };
+        Some(Notice::new(announcement))
+    }
 }
 
 /// How much of an ability a fetch lacked.
@@ -322,6 +338,14 @@ mod test {
         let paths: Vec<&str> = snapshot.tree().iter().map(|e| e.path.as_str()).collect();
         assert_eq!(paths, ["a.md", "b.md"]);
         assert!(snapshot.entry(&ContentPath::parse("b.md").unwrap()).is_some());
+    }
+
+    #[test]
+    fn an_object_id_is_its_bytes_in_hex() {
+        let oid = Oid::try_from(&[0xab; 20][..]).unwrap();
+        assert_eq!(oid.as_str(), "ab".repeat(20));
+        assert_eq!(Oid::parse(oid.as_str()), Ok(oid));
+        assert!(Oid::try_from(&[0; 19][..]).is_err());
     }
 
     #[test]
