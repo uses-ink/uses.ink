@@ -131,6 +131,10 @@ fix = "pin `{decision}` in ink.toml to choose"
 fields = { anchor = "text" }
 message = "a heading has no letters or digits, so its anchor is `{anchor}`"
 
+[notice."footnote.name.generated"]
+fields = { name = "text", given = "text" }
+message = "the footnote `{given}` has no letters or digits, so its name is `{name}`"
+
 [notice."site.home.generated"]
 message = "no home page was found, so the home page lists every page"
 fix = "add index.md or README.md at the root, or pin `site.home`"

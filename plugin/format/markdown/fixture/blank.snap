@@ -4,7 +4,8 @@ input_file: plugin/format/markdown/fixture/blank.md
 ---
 {
   "document": {
-    "blocks": []
+    "blocks": [],
+    "footnotes": []
   },
   "front": {
     "title": null,

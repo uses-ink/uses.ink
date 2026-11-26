@@ -20,7 +20,8 @@ input_file: plugin/format/markdown/fixture/frontmatter-unclosed.md
           }
         ]
       }
-    ]
+    ],
+    "footnotes": []
   },
   "front": {
     "title": null,

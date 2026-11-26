@@ -23,20 +23,24 @@ input_file: plugin/format/markdown/fixture/html.md
         "list": {
           "ordered": null,
           "items": [
-            [
-              {
-                "paragraph": [
-                  {
-                    "text": "list with html"
-                  }
-                ]
-              }
-            ]
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "list with html"
+                    }
+                  ]
+                }
+              ]
+            }
           ],
           "tight": true
         }
       }
-    ]
+    ],
+    "footnotes": []
   },
   "front": {
     "title": null,

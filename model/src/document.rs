@@ -12,12 +12,94 @@ use crate::{ContentPath, ExternalUrl, PageId, Slug};
 #[non_exhaustive]
 pub struct Document {
     pub blocks: Vec<Block>,
+    /// The footnotes, in the order they are first referenced: a footnote's number is its place
+    /// here, counted from 1.
+    pub footnotes: Vec<Footnote>,
 }
 
 impl Document {
+    /// A document without footnotes.
     pub fn new(blocks: Vec<Block>) -> Self {
-        Self { blocks }
+        Self { blocks, footnotes: Vec::new() }
     }
+
+    /// The same document with these footnotes, in order of first reference.
+    #[must_use]
+    pub fn with_footnotes(self, footnotes: Vec<Footnote>) -> Self {
+        Self { footnotes, ..self }
+    }
+
+    /// The number a reference to `name` shows, from 1, or `None` when no footnote has that name.
+    pub fn footnote_number(&self, name: &FootnoteName) -> Option<usize> {
+        self.footnotes.iter().position(|f| &f.name == name).map(|at| at + 1)
+    }
+}
+
+/// A footnote's text, referenced from the body by `Inline::Footnote`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
+pub struct Footnote {
+    pub name: FootnoteName,
+    pub blocks: Vec<Block>,
+}
+
+impl Footnote {
+    pub fn new(name: FootnoteName, blocks: Vec<Block>) -> Self {
+        Self { name, blocks }
+    }
+}
+
+/// A footnote's name as a slug (`[^Some note]` is `some-note`): the anchor a theme gives it is
+/// built from this.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct FootnoteName(Slug);
+
+impl From<Slug> for FootnoteName {
+    fn from(slug: Slug) -> Self {
+        Self(slug)
+    }
+}
+
+impl AsRef<str> for FootnoteName {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl fmt::Display for FootnoteName {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, out)
+    }
+}
+
+/// One item of a list.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
+pub struct Item {
+    /// `Some` for a task list item (`- [ ]`, `- [x]`).
+    pub task: Option<Task>,
+    pub blocks: Vec<Block>,
+}
+
+impl Item {
+    /// A plain item.
+    pub fn new(blocks: Vec<Block>) -> Self {
+        Self { task: None, blocks }
+    }
+
+    /// A task list item.
+    pub fn task(task: Task, blocks: Vec<Block>) -> Self {
+        Self { task: Some(task), blocks }
+    }
+}
+
+/// Whether a task list item is done.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Task {
+    Open,
+    Done,
 }
 
 /// One block of a document.
@@ -35,7 +117,7 @@ pub enum Block {
     /// between its items.
     List {
         ordered: Option<u64>,
-        items: Vec<Vec<Block>>,
+        items: Vec<Item>,
         tight: bool,
     },
     Quote(Vec<Block>),
@@ -83,6 +165,8 @@ pub enum Inline {
     SoftBreak,
     /// Inline math, as TeX.
     Math(String),
+    /// A reference to a footnote of the same document.
+    Footnote(FootnoteName),
 }
 
 /// Where a link goes.

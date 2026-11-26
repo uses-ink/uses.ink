@@ -12,7 +12,8 @@ input_file: plugin/format/markdown/fixture/frontmatter-invalid-values.md
           }
         ]
       }
-    ]
+    ],
+    "footnotes": []
   },
   "front": {
     "title": null,

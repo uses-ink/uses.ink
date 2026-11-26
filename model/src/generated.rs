@@ -156,6 +156,9 @@ pub enum Announcement {
     /// `heading.anchor.generated`: a heading has no letters or digits, so its anchor is `{anchor}`
     #[serde(rename = "heading.anchor.generated")]
     HeadingAnchorGenerated { anchor: String },
+    /// `footnote.name.generated`: the footnote `{given}` has no letters or digits, so its name is `{name}`
+    #[serde(rename = "footnote.name.generated")]
+    FootnoteNameGenerated { name: String, given: String },
     /// `site.home.generated`: no home page was found, so the home page lists every page
     #[serde(rename = "site.home.generated")]
     SiteHomeGenerated,
@@ -163,11 +166,12 @@ pub enum Announcement {
 impl Announcement {
     /// Every code, in catalog order.
     pub const CODES: &'static [&'static str] =
-        &["notice.default.chosen", "heading.anchor.generated", "site.home.generated"];
+        &["notice.default.chosen", "heading.anchor.generated", "footnote.name.generated", "site.home.generated"];
     pub const fn code(&self) -> &'static str {
         match self {
             Self::NoticeDefaultChosen { .. } => "notice.default.chosen",
             Self::HeadingAnchorGenerated { .. } => "heading.anchor.generated",
+            Self::FootnoteNameGenerated { .. } => "footnote.name.generated",
             Self::SiteHomeGenerated => "site.home.generated",
         }
     }

@@ -73,15 +73,18 @@ input_file: plugin/format/markdown/fixture/callouts.md
               "list": {
                 "ordered": null,
                 "items": [
-                  [
-                    {
-                      "paragraph": [
-                        {
-                          "text": "a list inside"
-                        }
-                      ]
-                    }
-                  ]
+                  {
+                    "task": null,
+                    "blocks": [
+                      {
+                        "paragraph": [
+                          {
+                            "text": "a list inside"
+                          }
+                        ]
+                      }
+                    ]
+                  }
                 ],
                 "tight": true
               }
@@ -119,7 +122,8 @@ input_file: plugin/format/markdown/fixture/callouts.md
           }
         ]
       }
-    ]
+    ],
+    "footnotes": []
   },
   "front": {
     "title": null,

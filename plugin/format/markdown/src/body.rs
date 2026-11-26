@@ -6,7 +6,10 @@ mod inline;
 use std::collections::BTreeSet;
 
 use comrak::nodes::{AstNode, NodeValue, Sourcepos};
-use model::{Anchor, Announcement, Diagnostic, Document, Notice, Problem, Slug, Span, Spanned, Subject};
+use model::{
+    Anchor, Announcement, Diagnostic, Document, Footnote, FootnoteName, Hash, Notice, Problem, Slug, Span, Spanned,
+    Subject,
+};
 
 use crate::html::Piece;
 
@@ -46,10 +49,11 @@ impl Body {
             anchors: BTreeSet::new(),
             heading: None,
             depth: 0,
+            footnotes: Vec::new(),
         };
         let blocks = walk.blocks(root);
         Self {
-            document: Document::new(blocks),
+            document: Document::new(blocks).with_footnotes(walk.footnotes),
             heading: walk.heading,
             diagnostics: walk.diagnostics,
             notices: walk.notices,
@@ -67,6 +71,8 @@ fn options() -> comrak::Options<'static> {
     extension.math_dollars = true;
     extension.math_dollars_block = true;
     extension.math_code = true;
+    extension.footnotes = true;
+    extension.tasklist = true;
     options
 }
 
@@ -99,6 +105,8 @@ struct Walk<'a> {
     anchors: BTreeSet<String>,
     heading: Option<Spanned<String>>,
     depth: usize,
+    /// Footnote definitions, in the order comrak gives them: by first reference.
+    footnotes: Vec<Footnote>,
 }
 
 impl Walk<'_> {
@@ -127,6 +135,22 @@ impl Walk<'_> {
         let slug = self.unique(&slug);
         self.anchors.insert(slug.as_str().to_owned());
         Some(Anchor::new(slug))
+    }
+
+    /// A footnote's name: the slug of what the author wrote. A name with no letters or digits
+    /// (`[^*]`) gets `note-` and the start of its hash, the same for its reference and its
+    /// definition, and the definition announces it.
+    fn footnote_name(&mut self, given: &str, announce: Option<Span>) -> Option<FootnoteName> {
+        if let Ok(slug) = Slug::from_text(given) {
+            return Some(slug.into());
+        }
+        let digest = Hash::of(given.as_bytes()).to_string();
+        let slug = Slug::parse(format!("note-{}", digest.get(..8)?)).ok()?;
+        if let Some(span) = announce {
+            let announcement = Announcement::FootnoteNameGenerated { name: slug.to_string(), given: given.to_owned() };
+            self.notices.push(Notice::new(announcement).on(self.subject.clone()).at(span));
+        }
+        Some(slug.into())
     }
 
     /// `slug`, or the first of `slug-1`, `slug-2` not yet given.

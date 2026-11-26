@@ -1,7 +1,7 @@
 //! Blocks.
 
 use comrak::nodes::{AlertType, AstNode, ListType, NodeAlert, NodeCodeBlock, NodeList, NodeValue, TableAlignment};
-use model::{Alignment, Block, CalloutKind, Inline, Level, Slug, Span, Spanned};
+use model::{Alignment, Block, CalloutKind, Footnote, Inline, Item, Level, Slug, Span, Spanned, Task};
 
 use super::inline::{has_content, plain};
 use super::{Content, DEPTH, Walk, text_of};
@@ -36,6 +36,13 @@ impl Walk<'_> {
             NodeValue::Table(table) => out.push(self.table(node, &table.alignments)),
             NodeValue::Alert(alert) => out.push(self.callout(node, alert)),
             NodeValue::MathBlock(math) => out.push(Block::Math(math.literal.trim_end_matches('\n').to_owned())),
+            NodeValue::FootnoteDefinition(definition) => {
+                // a definition is not part of the flow: it joins the document's footnotes
+                let blocks = self.blocks(node);
+                if let Some(name) = self.footnote_name(&definition.name, Some(span)) {
+                    self.footnotes.push(Footnote::new(name, blocks));
+                }
+            }
             _ => out.extend(self.blocks(node)),
         }
     }
@@ -74,7 +81,16 @@ impl Walk<'_> {
             ListType::Ordered => Some(list.start as u64),
             ListType::Bullet => None,
         };
-        let items = node.children().map(|item| self.blocks(item)).collect();
+        let items = node
+            .children()
+            .map(|item| match &item.data().value {
+                NodeValue::TaskItem(task) => {
+                    let done = if task.symbol.is_some() { Task::Done } else { Task::Open };
+                    Item::task(done, self.blocks(item))
+                }
+                _ => Item::new(self.blocks(item)),
+            })
+            .collect();
         Block::List { ordered, items, tight: list.tight }
     }
 

@@ -69,6 +69,9 @@ impl Message<'_> {
             Announcement::HeadingAnchorGenerated { anchor, .. } => {
                 write!(out, "a heading has no letters or digits, so its anchor is `{anchor}`")
             }
+            Announcement::FootnoteNameGenerated { given, name, .. } => {
+                write!(out, "the footnote `{given}` has no letters or digits, so its name is `{name}`")
+            }
             Announcement::SiteHomeGenerated => {
                 write!(out, "no home page was found, so the home page lists every page")
             }
@@ -101,6 +104,7 @@ impl Fix<'_> {
         match announcement {
             Announcement::NoticeDefaultChosen { .. } => true,
             Announcement::HeadingAnchorGenerated { .. } => false,
+            Announcement::FootnoteNameGenerated { .. } => false,
             Announcement::SiteHomeGenerated => true,
         }
     }
@@ -153,6 +157,7 @@ impl Fix<'_> {
                 write!(out, "pin `{decision}` in ink.toml to choose")
             }
             Announcement::HeadingAnchorGenerated { .. } => Ok(()),
+            Announcement::FootnoteNameGenerated { .. } => Ok(()),
             Announcement::SiteHomeGenerated => {
                 write!(out, "add index.md or README.md at the root, or pin `site.home`")
             }

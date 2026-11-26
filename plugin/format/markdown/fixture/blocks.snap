@@ -92,41 +92,50 @@ input_file: plugin/format/markdown/fixture/blocks.md
         "list": {
           "ordered": null,
           "items": [
-            [
-              {
-                "paragraph": [
-                  {
-                    "text": "one"
-                  }
-                ]
-              }
-            ],
-            [
-              {
-                "paragraph": [
-                  {
-                    "text": "two"
-                  }
-                ]
-              },
-              {
-                "list": {
-                  "ordered": null,
-                  "items": [
-                    [
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "one"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "two"
+                    }
+                  ]
+                },
+                {
+                  "list": {
+                    "ordered": null,
+                    "items": [
                       {
-                        "paragraph": [
+                        "task": null,
+                        "blocks": [
                           {
-                            "text": "nested"
+                            "paragraph": [
+                              {
+                                "text": "nested"
+                              }
+                            ]
                           }
                         ]
                       }
-                    ]
-                  ],
-                  "tight": true
+                    ],
+                    "tight": true
+                  }
                 }
-              }
-            ]
+              ]
+            }
           ],
           "tight": true
         }
@@ -135,24 +144,30 @@ input_file: plugin/format/markdown/fixture/blocks.md
         "list": {
           "ordered": 3,
           "items": [
-            [
-              {
-                "paragraph": [
-                  {
-                    "text": "three"
-                  }
-                ]
-              }
-            ],
-            [
-              {
-                "paragraph": [
-                  {
-                    "text": "four"
-                  }
-                ]
-              }
-            ]
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "three"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "four"
+                    }
+                  ]
+                }
+              ]
+            }
           ],
           "tight": true
         }
@@ -161,24 +176,30 @@ input_file: plugin/format/markdown/fixture/blocks.md
         "list": {
           "ordered": null,
           "items": [
-            [
-              {
-                "paragraph": [
-                  {
-                    "text": "loose"
-                  }
-                ]
-              }
-            ],
-            [
-              {
-                "paragraph": [
-                  {
-                    "text": "list"
-                  }
-                ]
-              }
-            ]
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "loose"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "list"
+                    }
+                  ]
+                }
+              ]
+            }
           ],
           "tight": false
         }
@@ -347,7 +368,8 @@ input_file: plugin/format/markdown/fixture/blocks.md
           "inlines": []
         }
       }
-    ]
+    ],
+    "footnotes": []
   },
   "front": {
     "title": null,

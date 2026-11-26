@@ -43,6 +43,11 @@ impl Walk<'_> {
                 out.push(Inline::Image { source: source(&link.url), alt });
             }
             NodeValue::Math(math) => out.push(Inline::Math(math.literal.clone())),
+            NodeValue::FootnoteReference(reference) => {
+                if let Some(name) = self.footnote_name(&reference.name, None) {
+                    out.push(Inline::Footnote(name));
+                }
+            }
             NodeValue::HtmlInline(raw) => return self.html_inline(raw, self.span(data.sourcepos), content),
             _ => {
                 for inline in self.inlines(node) {

@@ -31,7 +31,8 @@ pub use decision::{
 };
 pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
 pub use document::{
-    Alignment, Anchor, Block, CalloutKind, Document, ImageSource, Inline, Level, LevelError, LinkTarget,
+    Alignment, Anchor, Block, CalloutKind, Document, Footnote, FootnoteName, ImageSource, Inline, Item, Level,
+    LevelError, LinkTarget, Task,
 };
 pub use format::{Front, Read, Spanned};
 pub use generated::{Announcement, Problem};
