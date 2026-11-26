@@ -62,6 +62,60 @@ pub enum Problem {
     /// `render.page.failed`: the page could not be rendered: {reason}
     #[serde(rename = "render.page.failed")]
     RenderPageFailed { reason: String },
+    /// `link.target.asset`: `{written}` points at {target}, a file that is not a page, so it is shown as plain text
+    #[serde(rename = "link.target.asset")]
+    LinkTargetAsset { written: String, target: ContentPath },
+    /// `pin.target.unpublished`: `{decision}` names {path}, which is not a published page
+    #[serde(rename = "pin.target.unpublished")]
+    PinTargetUnpublished { decision: DecisionCode, path: ContentPath },
+    /// `route.segment.unnamed`: `{segment}` in {path} has no letter or digit, so the route leaves it out
+    #[serde(rename = "route.segment.unnamed")]
+    RouteSegmentUnnamed { path: ContentPath, segment: String },
+    /// `asset.media.unknown`: {path} is a kind of file uses.ink does not serve, so it is left out
+    #[serde(rename = "asset.media.unknown")]
+    AssetMediaUnknown { path: ContentPath },
+    /// `theme.route.reserved`: the theme `{theme}` serves {route}, which uses.ink serves itself
+    #[serde(rename = "theme.route.reserved")]
+    ThemeRouteReserved { route: Route, theme: String },
+    /// `theme.page.refused`: the theme `{theme}` could not render the page
+    #[serde(rename = "theme.page.refused")]
+    ThemePageRefused { theme: String },
+    /// `source.blob.missing`: {path} is in the snapshot, but its bytes are not in the blob store
+    #[serde(rename = "source.blob.missing")]
+    SourceBlobMissing { path: ContentPath },
+    /// `engine.decision.repeated`: `{decision}` was decided twice
+    #[serde(rename = "engine.decision.repeated")]
+    EngineDecisionRepeated { decision: DecisionCode },
+    /// `engine.decision.missing`: `{decision}` was never decided
+    #[serde(rename = "engine.decision.missing")]
+    EngineDecisionMissing { decision: DecisionCode },
+    /// `engine.pin.mismatched`: the pin of `{decision}` holds a value of `{found}`
+    #[serde(rename = "engine.pin.mismatched")]
+    EnginePinMismatched { decision: DecisionCode, found: DecisionCode },
+    /// `engine.header.invalid`: the engine's own `{header}` header does not parse
+    #[serde(rename = "engine.header.invalid")]
+    EngineHeaderInvalid { header: String },
+    /// `engine.route.invalid`: the engine's own route `{written}` does not parse
+    #[serde(rename = "engine.route.invalid")]
+    EngineRouteInvalid { written: String },
+    /// `engine.path.invalid`: the engine's own path `{written}` does not parse
+    #[serde(rename = "engine.path.invalid")]
+    EnginePathInvalid { written: String },
+    /// `engine.language.invalid`: the engine's own language `{written}` does not parse
+    #[serde(rename = "engine.language.invalid")]
+    EngineLanguageInvalid { written: String },
+    /// `engine.route.repeated`: the engine served {route} twice
+    #[serde(rename = "engine.route.repeated")]
+    EngineRouteRepeated { route: Route },
+    /// `engine.site.refused`: the site refused the parts interpreting gave it
+    #[serde(rename = "engine.site.refused")]
+    EngineSiteRefused,
+    /// `engine.xml.unwritten`: {route} could not be written
+    #[serde(rename = "engine.xml.unwritten")]
+    EngineXmlUnwritten { route: Route },
+    /// `engine.date.unrepresentable`: {date} has no instant a feed can write
+    #[serde(rename = "engine.date.unrepresentable")]
+    EngineDateUnrepresentable { date: String },
 }
 impl Problem {
     /// Every code, in catalog order.
@@ -84,6 +138,24 @@ impl Problem {
         "source.budget.file",
         "theme.route.collision",
         "render.page.failed",
+        "link.target.asset",
+        "pin.target.unpublished",
+        "route.segment.unnamed",
+        "asset.media.unknown",
+        "theme.route.reserved",
+        "theme.page.refused",
+        "source.blob.missing",
+        "engine.decision.repeated",
+        "engine.decision.missing",
+        "engine.pin.mismatched",
+        "engine.header.invalid",
+        "engine.route.invalid",
+        "engine.path.invalid",
+        "engine.language.invalid",
+        "engine.route.repeated",
+        "engine.site.refused",
+        "engine.xml.unwritten",
+        "engine.date.unrepresentable",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -106,6 +178,24 @@ impl Problem {
             Self::SourceBudgetFile { .. } => "source.budget.file",
             Self::ThemeRouteCollision { .. } => "theme.route.collision",
             Self::RenderPageFailed { .. } => "render.page.failed",
+            Self::LinkTargetAsset { .. } => "link.target.asset",
+            Self::PinTargetUnpublished { .. } => "pin.target.unpublished",
+            Self::RouteSegmentUnnamed { .. } => "route.segment.unnamed",
+            Self::AssetMediaUnknown { .. } => "asset.media.unknown",
+            Self::ThemeRouteReserved { .. } => "theme.route.reserved",
+            Self::ThemePageRefused { .. } => "theme.page.refused",
+            Self::SourceBlobMissing { .. } => "source.blob.missing",
+            Self::EngineDecisionRepeated { .. } => "engine.decision.repeated",
+            Self::EngineDecisionMissing { .. } => "engine.decision.missing",
+            Self::EnginePinMismatched { .. } => "engine.pin.mismatched",
+            Self::EngineHeaderInvalid { .. } => "engine.header.invalid",
+            Self::EngineRouteInvalid { .. } => "engine.route.invalid",
+            Self::EnginePathInvalid { .. } => "engine.path.invalid",
+            Self::EngineLanguageInvalid { .. } => "engine.language.invalid",
+            Self::EngineRouteRepeated { .. } => "engine.route.repeated",
+            Self::EngineSiteRefused => "engine.site.refused",
+            Self::EngineXmlUnwritten { .. } => "engine.xml.unwritten",
+            Self::EngineDateUnrepresentable { .. } => "engine.date.unrepresentable",
         }
     }
     pub const fn severity(&self) -> Severity {
@@ -128,6 +218,24 @@ impl Problem {
             Self::SourceBudgetFile { .. } => Severity::Error,
             Self::ThemeRouteCollision { .. } => Severity::Error,
             Self::RenderPageFailed { .. } => Severity::Error,
+            Self::LinkTargetAsset { .. } => Severity::Warning,
+            Self::PinTargetUnpublished { .. } => Severity::Error,
+            Self::RouteSegmentUnnamed { .. } => Severity::Warning,
+            Self::AssetMediaUnknown { .. } => Severity::Warning,
+            Self::ThemeRouteReserved { .. } => Severity::Error,
+            Self::ThemePageRefused { .. } => Severity::Error,
+            Self::SourceBlobMissing { .. } => Severity::Error,
+            Self::EngineDecisionRepeated { .. } => Severity::Error,
+            Self::EngineDecisionMissing { .. } => Severity::Error,
+            Self::EnginePinMismatched { .. } => Severity::Error,
+            Self::EngineHeaderInvalid { .. } => Severity::Error,
+            Self::EngineRouteInvalid { .. } => Severity::Error,
+            Self::EnginePathInvalid { .. } => Severity::Error,
+            Self::EngineLanguageInvalid { .. } => Severity::Error,
+            Self::EngineRouteRepeated { .. } => Severity::Error,
+            Self::EngineSiteRefused => Severity::Error,
+            Self::EngineXmlUnwritten { .. } => Severity::Error,
+            Self::EngineDateUnrepresentable { .. } => Severity::Error,
         }
     }
     /// Whose move it is to fix it.
@@ -151,6 +259,24 @@ impl Problem {
             Self::SourceBudgetFile { .. } => Fault::Author,
             Self::ThemeRouteCollision { .. } => Fault::Author,
             Self::RenderPageFailed { .. } => Fault::Ours,
+            Self::LinkTargetAsset { .. } => Fault::Author,
+            Self::PinTargetUnpublished { .. } => Fault::Author,
+            Self::RouteSegmentUnnamed { .. } => Fault::Author,
+            Self::AssetMediaUnknown { .. } => Fault::Author,
+            Self::ThemeRouteReserved { .. } => Fault::Author,
+            Self::ThemePageRefused { .. } => Fault::Author,
+            Self::SourceBlobMissing { .. } => Fault::Ours,
+            Self::EngineDecisionRepeated { .. } => Fault::Ours,
+            Self::EngineDecisionMissing { .. } => Fault::Ours,
+            Self::EnginePinMismatched { .. } => Fault::Ours,
+            Self::EngineHeaderInvalid { .. } => Fault::Ours,
+            Self::EngineRouteInvalid { .. } => Fault::Ours,
+            Self::EnginePathInvalid { .. } => Fault::Ours,
+            Self::EngineLanguageInvalid { .. } => Fault::Ours,
+            Self::EngineRouteRepeated { .. } => Fault::Ours,
+            Self::EngineSiteRefused => Fault::Ours,
+            Self::EngineXmlUnwritten { .. } => Fault::Ours,
+            Self::EngineDateUnrepresentable { .. } => Fault::Ours,
         }
     }
 }
@@ -172,6 +298,15 @@ pub enum Announcement {
     /// `site.home.generated`: no home page was found, so the home page lists every page
     #[serde(rename = "site.home.generated")]
     SiteHomeGenerated,
+    /// `fact.date.bound`: only a bound is known for `{decision}`, not after {bound}, so it is not used
+    #[serde(rename = "fact.date.bound")]
+    FactDateBound { decision: DecisionCode, bound: String },
+    /// `feed.post.undated`: the post has no date, so the feeds leave it out
+    #[serde(rename = "feed.post.undated")]
+    FeedPostUndated,
+    /// `feed.post.none`: the site has no dated posts, so it has no feeds
+    #[serde(rename = "feed.post.none")]
+    FeedPostNone,
 }
 impl Announcement {
     /// Every code, in catalog order.
@@ -181,6 +316,9 @@ impl Announcement {
         "footnote.name.generated",
         "callout.kind.unknown",
         "site.home.generated",
+        "fact.date.bound",
+        "feed.post.undated",
+        "feed.post.none",
     ];
     pub const fn code(&self) -> &'static str {
         match self {
@@ -189,6 +327,9 @@ impl Announcement {
             Self::FootnoteNameGenerated { .. } => "footnote.name.generated",
             Self::CalloutKindUnknown { .. } => "callout.kind.unknown",
             Self::SiteHomeGenerated => "site.home.generated",
+            Self::FactDateBound { .. } => "fact.date.bound",
+            Self::FeedPostUndated => "feed.post.undated",
+            Self::FeedPostNone => "feed.post.none",
         }
     }
 }

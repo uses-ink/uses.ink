@@ -129,6 +129,130 @@ fault = "ours"
 fields = { reason = "text" }
 message = "the page could not be rendered: {reason}"
 
+[diagnostic."link.target.asset"]
+severity = "warning"
+fault = "author"
+fields = { written = "text", target = "path" }
+message = "`{written}` points at {target}, a file that is not a page, so it is shown as plain text"
+fix = "link to a page, or show {target} as an image"
+
+[diagnostic."pin.target.unpublished"]
+severity = "error"
+fault = "author"
+fields = { decision = "decision", path = "path" }
+message = "`{decision}` names {path}, which is not a published page"
+fix = "pin a published page, or publish {path}"
+
+[diagnostic."route.segment.unnamed"]
+severity = "warning"
+fault = "author"
+fields = { path = "path", segment = "text" }
+message = "`{segment}` in {path} has no letter or digit, so the route leaves it out"
+fix = "rename it, or pin `page.slug`"
+
+[diagnostic."asset.media.unknown"]
+severity = "warning"
+fault = "author"
+fields = { path = "path" }
+message = "{path} is a kind of file uses.ink does not serve, so it is left out"
+
+[diagnostic."theme.route.reserved"]
+severity = "error"
+fault = "author"
+fields = { route = "route", theme = "text" }
+message = "the theme `{theme}` serves {route}, which uses.ink serves itself"
+fix = "choose another theme, or ask its author to move the file"
+
+[diagnostic."theme.page.refused"]
+severity = "error"
+fault = "author"
+fields = { theme = "text" }
+message = "the theme `{theme}` could not render the page"
+fix = "see the cause below; choose another theme if it persists"
+
+[diagnostic."source.blob.missing"]
+severity = "error"
+fault = "ours"
+fields = { path = "path" }
+message = "{path} is in the snapshot, but its bytes are not in the blob store"
+fix = "build again; report it if it persists"
+
+[diagnostic."engine.decision.repeated"]
+severity = "error"
+fault = "ours"
+fields = { decision = "decision" }
+message = "`{decision}` was decided twice"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.decision.missing"]
+severity = "error"
+fault = "ours"
+fields = { decision = "decision" }
+message = "`{decision}` was never decided"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.pin.mismatched"]
+severity = "error"
+fault = "ours"
+fields = { decision = "decision", found = "decision" }
+message = "the pin of `{decision}` holds a value of `{found}`"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.header.invalid"]
+severity = "error"
+fault = "ours"
+fields = { header = "text" }
+message = "the engine's own `{header}` header does not parse"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.route.invalid"]
+severity = "error"
+fault = "ours"
+fields = { written = "text" }
+message = "the engine's own route `{written}` does not parse"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.path.invalid"]
+severity = "error"
+fault = "ours"
+fields = { written = "text" }
+message = "the engine's own path `{written}` does not parse"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.language.invalid"]
+severity = "error"
+fault = "ours"
+fields = { written = "text" }
+message = "the engine's own language `{written}` does not parse"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.route.repeated"]
+severity = "error"
+fault = "ours"
+fields = { route = "route" }
+message = "the engine served {route} twice"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.site.refused"]
+severity = "error"
+fault = "ours"
+message = "the site refused the parts interpreting gave it"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.xml.unwritten"]
+severity = "error"
+fault = "ours"
+fields = { route = "route" }
+message = "{route} could not be written"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.date.unrepresentable"]
+severity = "error"
+fault = "ours"
+fields = { date = "text" }
+message = "{date} has no instant a feed can write"
+fix = "report it: this is a bug in uses.ink"
+
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"
@@ -149,3 +273,15 @@ message = "the callout kind `{kind}` has no name a theme can use, so it is shown
 [notice."site.home.generated"]
 message = "no home page was found, so the home page lists every page"
 fix = "add index.md or README.md at the root, or pin `site.home`"
+
+[notice."fact.date.bound"]
+fields = { decision = "decision", bound = "text" }
+message = "only a bound is known for `{decision}`, not after {bound}, so it is not used"
+fix = "write the date in the frontmatter, or pin `{decision}`"
+
+[notice."feed.post.undated"]
+message = "the post has no date, so the feeds leave it out"
+fix = "write `date:` in its frontmatter, or pin `page.date`"
+
+[notice."feed.post.none"]
+message = "the site has no dated posts, so it has no feeds"

@@ -40,11 +40,13 @@ pub use generated::{Announcement, Problem};
 pub use hash::{Hash, HashError};
 pub use language::{Language, LanguageError};
 pub use manifest::{
-    DeployId, DuplicateRoute, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType, Served,
+    DeployId, DuplicateRoute, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType, Served, Status,
 };
 pub use path::{ContentPath, PathError};
 pub use route::{Route, RouteError, Slug, SlugError};
-pub use site::{Asset, Author, EmptyAuthor, Excluded, Layout, Page, PageId, PageKind, Site, SiteError, SiteParts, Tag};
+pub use site::{
+    Asset, Author, EmptyAuthor, Excluded, Identity, Layout, Page, PageId, PageKind, Site, SiteError, SiteParts, Tag,
+};
 pub use size::Bytes;
 pub use snapshot::{
     Ability, Entry, FileFacts, Known, Lack, Observed, Oid, Provenance, Snapshot, SnapshotError, UnknownReason,

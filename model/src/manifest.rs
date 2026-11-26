@@ -6,12 +6,13 @@
 //! with a serializer's version. Integers are unsigned 64-bit little-endian; a *string* is its
 //! length in bytes as such an integer, then its UTF-8 bytes.
 //!
-//! 1. The 21 bytes `uses.ink/manifest/v1\n`.
+//! 1. The 21 bytes `uses.ink/manifest/v2\n`.
 //! 2. The number of entries, then each entry in route order:
 //!    1. the route as a string;
 //!    2. the blob hash, 32 raw bytes;
 //!    3. the media type's [`MediaType::essence`] as a string;
-//!    4. the number of headers, then each header, sorted by name and then value, as its lower-case name as a string
+//!    4. the HTTP status code as an integer;
+//!    5. the number of headers, then each header, sorted by name and then value, as its lower-case name as a string
 //!       and its value as a string.
 //!
 //! Changing any of this changes every deploy id, so it is a new version prefix, never an edit.
@@ -27,7 +28,7 @@ mod header;
 pub use header::{Header, HeaderName, HeaderValue, HeaderValueError};
 
 /// The bytes every manifest's canonical form starts with.
-const PREFIX: &[u8] = b"uses.ink/manifest/v1\n";
+const PREFIX: &[u8] = b"uses.ink/manifest/v2\n";
 
 /// A deploy's identity: the hash of its manifest's canonical bytes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -109,20 +110,52 @@ impl fmt::Display for MediaType {
     }
 }
 
+/// The HTTP status a route is served with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum Status {
+    /// `200`.
+    Ok,
+    /// `404`: the site's not-found page, served for every route the manifest does not hold.
+    NotFound,
+}
+
+impl Status {
+    pub const fn code(self) -> u16 {
+        match self {
+            Self::Ok => 200,
+            Self::NotFound => 404,
+        }
+    }
+}
+
 /// One served route.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct Served {
     route: Route,
     blob: Hash,
     media: MediaType,
+    status: Status,
     headers: Vec<Header>,
 }
 
 impl Served {
-    /// Headers are sorted by lower-case name, then value.
+    /// Served with [`Status::Ok`]. Headers are sorted by lower-case name, then value.
     pub fn new(route: Route, blob: Hash, media: MediaType, mut headers: Vec<Header>) -> Self {
         headers.sort_by(|a, b| (a.name.name(), &a.value).cmp(&(b.name.name(), &b.value)));
-        Self { route, blob, media, headers }
+        Self { route, blob, media, status: Status::Ok, headers }
+    }
+
+    /// The same entry, served with `status`.
+    #[must_use]
+    pub fn with_status(mut self, status: Status) -> Self {
+        self.status = status;
+        self
+    }
+
+    pub fn status(&self) -> Status {
+        self.status
     }
 
     pub fn route(&self) -> &Route {
@@ -157,8 +190,8 @@ impl fmt::Display for DuplicateRoute {
 
 impl std::error::Error for DuplicateRoute {}
 
-/// Every route of one deploy, sorted, each once.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+/// Every route of one deploy, sorted, each once. The default serves nothing.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 pub struct Manifest {
     entries: Vec<Served>,
 }
@@ -200,6 +233,7 @@ impl Manifest {
             string(&mut bytes, entry.route.as_str());
             bytes.extend_from_slice(entry.blob.as_bytes());
             string(&mut bytes, entry.media.essence());
+            number(&mut bytes, usize::from(entry.status.code()));
             number(&mut bytes, entry.headers.len());
             for header in &entry.headers {
                 string(&mut bytes, header.name.name());
@@ -230,7 +264,7 @@ mod test {
     #[test]
     fn its_id_never_moves() {
         // A change here changes every deploy id ever published: see the module docs.
-        assert_eq!(manifest().id().to_string(), "8f5490ff6ec182cf5af772c8398645d5a27d7f4d25e2dba241444fe60dcb5607");
+        assert_eq!(manifest().id().to_string(), "f005407c617761abc69e4a13309a3b3220140ddff3d75f1d8069ae81a3405282");
     }
 
     #[test]
@@ -254,12 +288,14 @@ mod test {
             s("/"),
             Hash::of(b"home").as_bytes().to_vec(),
             s("text/html"),
+            n(200),
             n(1),
             s("content-security-policy"),
             s("default-src 'self'"),
             s("/feed.xml"),
             Hash::of(b"feed").as_bytes().to_vec(),
             s("application/atom+xml"),
+            n(200),
             n(0),
         ]
         .concat();

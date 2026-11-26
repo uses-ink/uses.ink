@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["config", "diag", "fixture", "freehand", "freehand-web", "model", "plugin/format/markdown", "token", "xtask"]
+members = ["config", "diag", "engine", "fixture", "freehand", "freehand-web", "model", "plugin/format/markdown", "token", "xtask"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -16,6 +16,7 @@ publish = false
 config = { package = "uses-ink-config", path = "config" }
 # test-only: a dev-dependency of any crate, a normal dependency of none
 fixture = { package = "uses-ink-fixture", path = "fixture" }
+engine = { package = "uses-ink-engine", path = "engine" }
 freehand = { path = "freehand" }
 model = { package = "uses-ink-model", path = "model" }
 token = { package = "uses-ink-token", path = "token" }
@@ -25,6 +26,7 @@ insta = { version = "1.49.0", features = ["glob"] }
 jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"] }
 libm = "0.2.16"
 proptest = "1.12.0"
+quick-xml = "0.42.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 serde-saphyr = { version = "2.2.0", default-features = false, features = ["deserialize"] }

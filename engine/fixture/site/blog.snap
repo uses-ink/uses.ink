@@ -1,0 +1,91 @@
+---
+source: engine/tests/engine/fixture.rs
+input_file: engine/fixture/site/blog
+---
+# decisions
+{"decided":{"root":"top"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"layout":"blog"},"subject":"site","evidence":{"marker":{"path":"posts"}},"rejected":[{"decided":{"layout":"blog"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
+{"decided":{"ignored":true},"subject":{"file":".github/ci.md"},"evidence":{"filename":{"path":".github/ci.md"}},"rejected":[]}
+{"decided":{"ignored":true},"subject":{"file":"LICENSE"},"evidence":{"filename":{"path":"LICENSE"}},"rejected":[]}
+{"decided":{"ignored":false},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"ignored":false},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"ignored":false},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"ignored":false},"subject":{"file":"posts/later.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"ignored":false},"subject":{"file":"posts/nib.svg"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"publish":true},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"kind":"page"},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"title":"About"},"subject":{"file":"about.md"},"evidence":{"heading":{"path":"about.md","span":[0,8]}},"rejected":[]}
+{"decided":{"date":null},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"updated":null},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"slug":"about"},"subject":{"file":"about.md"},"evidence":{"filename":{"path":"about.md"}},"rejected":[]}
+{"decided":{"tags":[]},"subject":{"file":"about.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"summary":"Who writes here."},"subject":{"file":"about.md"},"evidence":{"body":{"path":"about.md"}},"rejected":[]}
+{"decided":{"publish":true},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"kind":"page"},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"title":"Ink and paper"},"subject":{"file":"index.md"},"evidence":{"frontmatter":{"path":"index.md","span":[4,25]}},"rejected":[]}
+{"decided":{"date":null},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"updated":null},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"slug":"index"},"subject":{"file":"index.md"},"evidence":{"filename":{"path":"index.md"}},"rejected":[]}
+{"decided":{"tags":[]},"subject":{"file":"index.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"summary":"Notes on pens."},"subject":{"file":"index.md"},"evidence":{"frontmatter":{"path":"index.md","span":[25,53]}},"rejected":[{"decided":{"summary":"Welcome."},"evidence":{"body":{"path":"index.md"}},"because":"outranked"}]}
+{"decided":{"publish":true},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"kind":"post"},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[{"decided":{"kind":"post"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"because":"outranked"}]}
+{"decided":{"title":"First steps"},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"decided":{"date":{"day":"2024-03-01"}},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"decided":{"updated":null},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"slug":"first-steps"},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"filename":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"decided":{"tags":[{"slug":"pens","written":"pens"},{"slug":"ink","written":"ink"}]},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"frontmatter":{"path":"posts/2024-03-01-first-steps.md","span":[4,20]}},"rejected":[]}
+{"decided":{"summary":"The first post."},"subject":{"file":"posts/2024-03-01-first-steps.md"},"evidence":{"body":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"decided":{"publish":false},"subject":{"file":"posts/later.md"},"evidence":{"frontmatter":{"path":"posts/later.md","span":[4,16]}},"rejected":[]}
+{"decided":{"kind":"post"},"subject":{"file":"posts/later.md"},"evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
+{"decided":{"title":"Later"},"subject":{"file":"posts/later.md"},"evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
+{"decided":{"date":null},"subject":{"file":"posts/later.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"updated":null},"subject":{"file":"posts/later.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"slug":"later"},"subject":{"file":"posts/later.md"},"evidence":{"filename":{"path":"posts/later.md"}},"rejected":[]}
+{"decided":{"tags":[]},"subject":{"file":"posts/later.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"summary":"Not yet."},"subject":{"file":"posts/later.md"},"evidence":{"body":{"path":"posts/later.md"}},"rejected":[]}
+{"decided":{"publish":true},"subject":{"file":"posts/nib.svg"},"evidence":{"marker":{"path":"posts/2024-03-01-first-steps.md"}},"rejected":[]}
+{"decided":{"home":"index.md"},"subject":"site","evidence":{"filename":{"path":"index.md"}},"rejected":[]}
+{"decided":{"site-title":"Ink and paper"},"subject":"site","evidence":{"frontmatter":{"path":"index.md","span":[4,25]}},"rejected":[]}
+{"decided":{"description":"Notes on pens."},"subject":"site","evidence":{"frontmatter":{"path":"index.md","span":[25,53]}},"rejected":[]}
+{"decided":{"authors":[]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"language":"en"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"nav":["about.md"]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+# diagnostics and notices
+notice.default.chosen on the site
+notice.default.chosen on about.md
+notice.default.chosen on index.md
+notice.default.chosen on posts/later.md
+notice.default.chosen on the site
+notice.default.chosen on the site
+notice.default.chosen on the site
+# deploy 9053aa0b23d3c133c0033c924e520b13a875e51287ff89f597f06ce70ac0b8fa
+/ 200 text/html; charset=utf-8 2870ffea0edf2410eff8e5ba4c3dbc5d381d06779df4031019b697413af047b4
+/404 404 text/html; charset=utf-8 d41824544afa357294b05c78661159560a705e8c4a469cd0813c663a35d4851f
+/about 200 text/html; charset=utf-8 e78594c5585dbe3f116534e1b4887d5097219ce28390a024182abdcc74ca87cc
+/feed.xml 200 application/atom+xml; charset=utf-8 1260d0447d9df72be22b8644c4b853c192b397a24aefe54467fbd8a245e3d347
+/posts/first-steps 200 text/html; charset=utf-8 3bc370d441bc4b86194851a143ac39f343413d9d996357af6869c6f0c2d3bce6
+/posts/nib.svg 200 image/svg+xml; charset=utf-8 e5009587fb9883f84c3654d66cd6329a79d00be18884172c1b2514a4cfbd7d53
+/robots.txt 200 text/plain; charset=utf-8 b22fde167eb6cbf5b7a2b01068de0dddf50873b59e37a29db40340610422cf71
+/rss.xml 200 application/rss+xml; charset=utf-8 3835e3ae13502190ad53431e3f27cb422fc91416e42a7d82e0561fd2bd120d2c
+/sitemap.xml 200 application/xml; charset=utf-8 062e499a00d682b364d95f2fa8d30d73ee0e47c9addffe3e348a6d3692f58363
+## /
+<!doctype html><title>Ink and paper</title><p>Welcome.</p><p>/posts/first-steps</p>
+## /404
+<!doctype html><title>Page not found</title><p>There is no page at this address.</p>
+## /about
+<!doctype html><title>About</title><p>Who writes here.</p>
+## /feed.xml
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en"><title>Ink and paper</title><id>https://ink.uses.ink/</id><link rel="alternate" href="https://ink.uses.ink/"/><link rel="self" href="https://ink.uses.ink/feed.xml"/><subtitle>Notes on pens.</subtitle><updated>2024-03-01T00:00:00Z</updated><author><name>Ink and paper</name></author><entry><title>First steps</title><id>https://ink.uses.ink/posts/first-steps</id><link rel="alternate" href="https://ink.uses.ink/posts/first-steps"/><published>2024-03-01T00:00:00Z</published><updated>2024-03-01T00:00:00Z</updated><summary>The first post.</summary><category term="ink" label="ink"/><category term="pens" label="pens"/></entry></feed>
+## /posts/first-steps
+<!doctype html><title>First steps</title><p>The first post.</p><p>/posts/nib.svg</p>
+## /robots.txt
+User-agent: *
+Allow: /
+
+Sitemap: https://ink.uses.ink/sitemap.xml
+
+## /rss.xml
+<?xml version="1.0" encoding="utf-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Ink and paper</title><link>https://ink.uses.ink/</link><description>Notes on pens.</description><language>en</language><atom:link href="https://ink.uses.ink/rss.xml" rel="self" type="application/rss+xml"/><item><title>First steps</title><link>https://ink.uses.ink/posts/first-steps</link><guid isPermaLink="true">https://ink.uses.ink/posts/first-steps</guid><pubDate>Fri, 01 Mar 2024 00:00:00 GMT</pubDate><description>The first post.</description><category>ink</category><category>pens</category></item></channel></rss>
+## /sitemap.xml
+<?xml version="1.0" encoding="utf-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://ink.uses.ink/</loc></url><url><loc>https://ink.uses.ink/about</loc></url><url><loc>https://ink.uses.ink/posts/first-steps</loc><lastmod>2024-03-01</lastmod></url></urlset>

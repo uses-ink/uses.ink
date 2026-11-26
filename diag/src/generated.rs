@@ -62,6 +62,60 @@ impl Message<'_> {
             Problem::RenderPageFailed { reason, .. } => {
                 write!(out, "the page could not be rendered: {reason}")
             }
+            Problem::LinkTargetAsset { written, target, .. } => {
+                write!(out, "`{written}` points at {target}, a file that is not a page, so it is shown as plain text")
+            }
+            Problem::PinTargetUnpublished { decision, path, .. } => {
+                write!(out, "`{decision}` names {path}, which is not a published page")
+            }
+            Problem::RouteSegmentUnnamed { segment, path, .. } => {
+                write!(out, "`{segment}` in {path} has no letter or digit, so the route leaves it out")
+            }
+            Problem::AssetMediaUnknown { path, .. } => {
+                write!(out, "{path} is a kind of file uses.ink does not serve, so it is left out")
+            }
+            Problem::ThemeRouteReserved { theme, route, .. } => {
+                write!(out, "the theme `{theme}` serves {route}, which uses.ink serves itself")
+            }
+            Problem::ThemePageRefused { theme, .. } => {
+                write!(out, "the theme `{theme}` could not render the page")
+            }
+            Problem::SourceBlobMissing { path, .. } => {
+                write!(out, "{path} is in the snapshot, but its bytes are not in the blob store")
+            }
+            Problem::EngineDecisionRepeated { decision, .. } => {
+                write!(out, "`{decision}` was decided twice")
+            }
+            Problem::EngineDecisionMissing { decision, .. } => {
+                write!(out, "`{decision}` was never decided")
+            }
+            Problem::EnginePinMismatched { decision, found, .. } => {
+                write!(out, "the pin of `{decision}` holds a value of `{found}`")
+            }
+            Problem::EngineHeaderInvalid { header, .. } => {
+                write!(out, "the engine's own `{header}` header does not parse")
+            }
+            Problem::EngineRouteInvalid { written, .. } => {
+                write!(out, "the engine's own route `{written}` does not parse")
+            }
+            Problem::EnginePathInvalid { written, .. } => {
+                write!(out, "the engine's own path `{written}` does not parse")
+            }
+            Problem::EngineLanguageInvalid { written, .. } => {
+                write!(out, "the engine's own language `{written}` does not parse")
+            }
+            Problem::EngineRouteRepeated { route, .. } => {
+                write!(out, "the engine served {route} twice")
+            }
+            Problem::EngineSiteRefused => {
+                write!(out, "the site refused the parts interpreting gave it")
+            }
+            Problem::EngineXmlUnwritten { route, .. } => {
+                write!(out, "{route} could not be written")
+            }
+            Problem::EngineDateUnrepresentable { date, .. } => {
+                write!(out, "{date} has no instant a feed can write")
+            }
         }
     }
     pub(crate) fn announcement(announcement: &Announcement, out: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -80,6 +134,15 @@ impl Message<'_> {
             }
             Announcement::SiteHomeGenerated => {
                 write!(out, "no home page was found, so the home page lists every page")
+            }
+            Announcement::FactDateBound { decision, bound, .. } => {
+                write!(out, "only a bound is known for `{decision}`, not after {bound}, so it is not used")
+            }
+            Announcement::FeedPostUndated => {
+                write!(out, "the post has no date, so the feeds leave it out")
+            }
+            Announcement::FeedPostNone => {
+                write!(out, "the site has no dated posts, so it has no feeds")
             }
         }
     }
@@ -105,6 +168,24 @@ impl Fix<'_> {
             Problem::SourceBudgetFile { .. } => false,
             Problem::ThemeRouteCollision { .. } => true,
             Problem::RenderPageFailed { .. } => false,
+            Problem::LinkTargetAsset { .. } => true,
+            Problem::PinTargetUnpublished { .. } => true,
+            Problem::RouteSegmentUnnamed { .. } => true,
+            Problem::AssetMediaUnknown { .. } => false,
+            Problem::ThemeRouteReserved { .. } => true,
+            Problem::ThemePageRefused { .. } => true,
+            Problem::SourceBlobMissing { .. } => true,
+            Problem::EngineDecisionRepeated { .. } => true,
+            Problem::EngineDecisionMissing { .. } => true,
+            Problem::EnginePinMismatched { .. } => true,
+            Problem::EngineHeaderInvalid { .. } => true,
+            Problem::EngineRouteInvalid { .. } => true,
+            Problem::EnginePathInvalid { .. } => true,
+            Problem::EngineLanguageInvalid { .. } => true,
+            Problem::EngineRouteRepeated { .. } => true,
+            Problem::EngineSiteRefused => true,
+            Problem::EngineXmlUnwritten { .. } => true,
+            Problem::EngineDateUnrepresentable { .. } => true,
         }
     }
     pub(crate) const fn announcement_has(announcement: &Announcement) -> bool {
@@ -114,6 +195,9 @@ impl Fix<'_> {
             Announcement::FootnoteNameGenerated { .. } => false,
             Announcement::CalloutKindUnknown { .. } => false,
             Announcement::SiteHomeGenerated => true,
+            Announcement::FactDateBound { .. } => true,
+            Announcement::FeedPostUndated => true,
+            Announcement::FeedPostNone => false,
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.
@@ -159,6 +243,58 @@ impl Fix<'_> {
                 write!(out, "pin a different `page.slug` on {file}")
             }
             Problem::RenderPageFailed { .. } => Ok(()),
+            Problem::LinkTargetAsset { target, .. } => {
+                write!(out, "link to a page, or show {target} as an image")
+            }
+            Problem::PinTargetUnpublished { path, .. } => {
+                write!(out, "pin a published page, or publish {path}")
+            }
+            Problem::RouteSegmentUnnamed { .. } => {
+                write!(out, "rename it, or pin `page.slug`")
+            }
+            Problem::AssetMediaUnknown { .. } => Ok(()),
+            Problem::ThemeRouteReserved { .. } => {
+                write!(out, "choose another theme, or ask its author to move the file")
+            }
+            Problem::ThemePageRefused { .. } => {
+                write!(out, "see the cause below; choose another theme if it persists")
+            }
+            Problem::SourceBlobMissing { .. } => {
+                write!(out, "build again; report it if it persists")
+            }
+            Problem::EngineDecisionRepeated { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineDecisionMissing { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EnginePinMismatched { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineHeaderInvalid { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineRouteInvalid { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EnginePathInvalid { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineLanguageInvalid { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineRouteRepeated { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineSiteRefused => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineXmlUnwritten { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineDateUnrepresentable { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.
@@ -173,6 +309,13 @@ impl Fix<'_> {
             Announcement::SiteHomeGenerated => {
                 write!(out, "add index.md or README.md at the root, or pin `site.home`")
             }
+            Announcement::FactDateBound { decision, .. } => {
+                write!(out, "write the date in the frontmatter, or pin `{decision}`")
+            }
+            Announcement::FeedPostUndated => {
+                write!(out, "write `date:` in its frontmatter, or pin `page.date`")
+            }
+            Announcement::FeedPostNone => Ok(()),
         }
     }
 }

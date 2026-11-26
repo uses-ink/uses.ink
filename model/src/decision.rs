@@ -243,6 +243,10 @@ pub enum Evidence {
     History {
         from: Provenance,
     },
+    /// A page's own text, such as its first paragraph as its summary.
+    Body {
+        path: ContentPath,
+    },
     /// A file or folder whose presence says something, such as `.obsidian/`.
     Marker {
         path: ContentPath,

@@ -82,6 +82,17 @@ impl Slug {
     }
 }
 
+impl crate::PageId {
+    /// The number of hex digits in [`PageId::slug`].
+    pub const SLUG_DIGITS: usize = 12;
+
+    /// A slug for a page whose name gives none: the first [`PageId::SLUG_DIGITS`] hex digits of
+    /// its id, which are lower-case letters and digits.
+    pub fn slug(self) -> Slug {
+        Slug(self.to_string().chars().take(Self::SLUG_DIGITS).collect())
+    }
+}
+
 /// A letter or digit that lower-casing leaves alone.
 fn is_slug_char(c: char) -> bool {
     c.is_alphanumeric() && c.to_lowercase().eq(std::iter::once(c))
@@ -201,6 +212,18 @@ impl Route {
         self.0.split('/').filter(|segment| !segment.is_empty())
     }
 
+    /// A file under this route, its name these slugs joined by `.`: `/img` with `ferris` and
+    /// `png` is `/img/ferris.png`. No slugs is this route.
+    #[must_use]
+    pub fn file<'a>(&self, parts: impl IntoIterator<Item = &'a Slug>) -> Self {
+        let name: Vec<&str> = parts.into_iter().map(Slug::as_str).collect();
+        match (name.is_empty(), self.is_root()) {
+            (true, _) => self.clone(),
+            (false, true) => Self(format!("/{}", name.join("."))),
+            (false, false) => Self(format!("{}/{}", self.0, name.join("."))),
+        }
+    }
+
     /// `slug` under this route.
     #[must_use]
     pub fn child(&self, slug: &Slug) -> Self {
@@ -276,12 +299,23 @@ mod test {
     }
 
     #[test]
+    fn a_page_id_gives_a_slug() {
+        let slug = crate::PageId::of(&crate::ContentPath::parse("!!!.md").unwrap()).slug();
+        assert_eq!(Slug::parse(slug.as_str()), Ok(slug.clone()));
+        assert_eq!(slug.as_str().len(), crate::PageId::SLUG_DIGITS);
+    }
+
+    #[test]
     fn builds_routes_from_slugs() {
         let posts = Slug::parse("posts").unwrap();
         let hello = Slug::parse("hello").unwrap();
         assert_eq!(Route::from_slugs([]), Route::root());
         assert_eq!(Route::from_slugs([&posts, &hello]).as_str(), "/posts/hello");
         assert_eq!(Route::root().child(&posts).child(&hello).as_str(), "/posts/hello");
+        let png = Slug::parse("png").unwrap();
+        assert_eq!(Route::root().child(&posts).file([&hello, &png]).as_str(), "/posts/hello.png");
+        assert_eq!(Route::root().file([&png]).as_str(), "/png");
+        assert_eq!(Route::root().file([]), Route::root());
     }
 
     proptest! {

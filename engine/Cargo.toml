@@ -1,0 +1,21 @@
+[package]
+name = "uses-ink-engine"
+description = "Interpret a snapshot into a site from recorded decisions, and render a site into a deploy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+jiff.workspace = true
+model.workspace = true
+quick-xml.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

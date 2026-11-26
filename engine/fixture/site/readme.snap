@@ -1,0 +1,59 @@
+---
+source: engine/tests/engine/fixture.rs
+input_file: engine/fixture/site/readme
+---
+# decisions
+{"decided":{"root":"top"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"layout":"flat"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"ignored":false},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"ignored":false},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"publish":true},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"kind":"page"},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"title":"My tool"},"subject":{"file":"README.md"},"evidence":{"heading":{"path":"README.md","span":[0,10]}},"rejected":[]}
+{"decided":{"date":null},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"updated":null},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"slug":"readme"},"subject":{"file":"README.md"},"evidence":{"filename":{"path":"README.md"}},"rejected":[]}
+{"decided":{"tags":[]},"subject":{"file":"README.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"summary":"It does one thing."},"subject":{"file":"README.md"},"evidence":{"body":{"path":"README.md"}},"rejected":[]}
+{"decided":{"publish":true},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"kind":"page"},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"title":"Usage"},"subject":{"file":"usage.md"},"evidence":{"heading":{"path":"usage.md","span":[0,8]}},"rejected":[]}
+{"decided":{"date":null},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"updated":null},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"slug":"usage"},"subject":{"file":"usage.md"},"evidence":{"filename":{"path":"usage.md"}},"rejected":[]}
+{"decided":{"tags":[]},"subject":{"file":"usage.md"},"evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"summary":"## Install"},"subject":{"file":"usage.md"},"evidence":{"body":{"path":"usage.md"}},"rejected":[]}
+{"decided":{"home":"README.md"},"subject":"site","evidence":{"filename":{"path":"README.md"}},"rejected":[]}
+{"decided":{"site-title":"My tool"},"subject":"site","evidence":{"heading":{"path":"README.md","span":[0,10]}},"rejected":[]}
+{"decided":{"description":"It does one thing."},"subject":"site","evidence":{"body":{"path":"README.md"}},"rejected":[]}
+{"decided":{"authors":[]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"language":"en"},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+{"decided":{"nav":["usage.md"]},"subject":"site","evidence":{"default":{"reason":"nothing-matched"}},"rejected":[]}
+# diagnostics and notices
+notice.default.chosen on the site
+notice.default.chosen on the site
+notice.default.chosen on README.md
+notice.default.chosen on usage.md
+notice.default.chosen on the site
+notice.default.chosen on the site
+notice.default.chosen on the site
+# deploy 2e8f21c3139f1676efa6eb939badfeaa5f03561fab84276640ae7fccce905fcf
+/ 200 text/html; charset=utf-8 d73813305875080e860c6985e43c1f003183aa9b7d2aef6450544250dd3137ef
+/404 404 text/html; charset=utf-8 d41824544afa357294b05c78661159560a705e8c4a469cd0813c663a35d4851f
+/robots.txt 200 text/plain; charset=utf-8 b22fde167eb6cbf5b7a2b01068de0dddf50873b59e37a29db40340610422cf71
+/sitemap.xml 200 application/xml; charset=utf-8 b70fab8f71f7a42ec3e7e71b04626b7b3c1938d732c464ce705b8bf515b60a62
+/usage 200 text/html; charset=utf-8 a1d79f92a9f73d5012fbdac136a8b2773f9646c5acb74c7dd63fc96776e0275f
+## /
+<!doctype html><title>My tool</title><p>It does one thing.</p><p>/usage#install</p>
+## /404
+<!doctype html><title>Page not found</title><p>There is no page at this address.</p>
+## /robots.txt
+User-agent: *
+Allow: /
+
+Sitemap: https://ink.uses.ink/sitemap.xml
+
+## /sitemap.xml
+<?xml version="1.0" encoding="utf-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://ink.uses.ink/</loc></url><url><loc>https://ink.uses.ink/usage</loc></url></urlset>
+## /usage
+<!doctype html><title>Usage</title><p>## Install</p>

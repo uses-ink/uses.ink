@@ -4,7 +4,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ContentPath, DecisionCode, Document, Hash, Root, Route, Slug, When};
+use crate::{ContentPath, DecisionCode, Document, Hash, Language, Root, Route, Slug, When};
 
 /// How a site's files are arranged, which sets the defaults of later decisions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -126,6 +126,8 @@ pub struct Page {
     pub date: Option<When>,
     pub updated: Option<When>,
     pub tags: Vec<Tag>,
+    /// For feeds, listings and `og:description`; `None` when the page has no text.
+    pub summary: Option<String>,
     pub body: Document,
 }
 
@@ -133,7 +135,14 @@ impl Page {
     /// A page with no date, no update and no tags; its id is derived from `file`.
     pub fn new(file: ContentPath, route: Route, kind: PageKind, title: impl Into<String>, body: Document) -> Self {
         let id = PageId::of(&file);
-        Self { id, file, route, kind, title: title.into(), date: None, updated: None, tags: Vec::new(), body }
+        let title = title.into();
+        Self { id, file, route, kind, title, date: None, updated: None, tags: Vec::new(), summary: None, body }
+    }
+
+    #[must_use]
+    pub fn summarized(mut self, summary: Option<String>) -> Self {
+        self.summary = summary;
+        self
     }
 
     #[must_use]
@@ -182,10 +191,29 @@ impl Excluded {
     }
 }
 
+/// What a site says about itself: its name, its line, its authors, its language.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub struct Identity {
+    pub title: String,
+    pub description: Option<String>,
+    /// First author first.
+    pub authors: Vec<Author>,
+    pub language: Language,
+}
+
+impl Identity {
+    /// A site with no description and no authors.
+    pub fn new(title: impl Into<String>, language: Language) -> Self {
+        Self { title: title.into(), description: None, authors: Vec::new(), language }
+    }
+}
+
 /// The site the engine interpreted. Backlinks, tag pages and feeds are functions of it, not
 /// fields.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Site {
+    identity: Identity,
     root: Root,
     layout: Layout,
     home: Option<PageId>,
@@ -220,6 +248,7 @@ impl std::error::Error for SiteError {}
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SiteParts {
+    pub identity: Identity,
     pub root: Root,
     pub layout: Layout,
     pub home: Option<PageId>,
@@ -231,8 +260,17 @@ pub struct SiteParts {
 
 impl SiteParts {
     /// A site with nothing in it yet.
-    pub fn new(root: Root, layout: Layout) -> Self {
-        Self { root, layout, home: None, pages: Vec::new(), assets: Vec::new(), nav: Vec::new(), excluded: Vec::new() }
+    pub fn new(identity: Identity, root: Root, layout: Layout) -> Self {
+        Self {
+            identity,
+            root,
+            layout,
+            home: None,
+            pages: Vec::new(),
+            assets: Vec::new(),
+            nav: Vec::new(),
+            excluded: Vec::new(),
+        }
     }
 }
 
@@ -240,7 +278,7 @@ impl Site {
     /// Pages and assets are sorted by route, exclusions by path. A route used twice, or a home
     /// or nav entry that is not a page, is an error.
     pub fn new(parts: SiteParts) -> Result<Self, SiteError> {
-        let SiteParts { root, layout, home, mut pages, mut assets, nav, mut excluded } = parts;
+        let SiteParts { identity, root, layout, home, mut pages, mut assets, nav, mut excluded } = parts;
         pages.sort_by(|a, b| a.route.cmp(&b.route));
         assets.sort();
         excluded.sort();
@@ -257,7 +295,11 @@ impl Site {
         if let Some(page) = home.iter().chain(&nav).find(|id| !pages.iter().any(|p| p.id == **id)) {
             return Err(SiteError::Missing { page: *page });
         }
-        Ok(Self { root, layout, home, pages, assets, nav, excluded })
+        Ok(Self { identity, root, layout, home, pages, assets, nav, excluded })
+    }
+
+    pub fn identity(&self) -> &Identity {
+        &self.identity
     }
 
     pub fn root(&self) -> &Root {
