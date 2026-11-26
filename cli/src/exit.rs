@@ -10,8 +10,8 @@ pub enum Exit {
     /// `1`: the build or check failed on diagnostics. `ink build` wrote nothing: the previous
     /// build in the output folder is left as it was.
     Content,
-    /// `2`: a usage error, or an output folder `ink build` will not
-    /// clear or write into; a refused output folder is left as it was.
+    /// `2`: a usage error, a site's folder that is missing or cannot be listed, or an output
+    /// folder `ink build` will not clear or write into; a refused output folder is left as it was.
     Usage,
     /// `6`: `--strict` was given and there were warnings. As with `1`, `ink build` wrote nothing.
     Strict,

@@ -81,9 +81,11 @@ pub enum Error {
 }
 
 impl Error {
-    /// The exit code it ends the command with.
+    /// The exit code it ends the command with: a site's folder that is missing or cannot be
+    /// listed is a usage error, like any path given wrong; what is wrong inside it is content.
     pub(crate) fn exit(&self) -> Exit {
         match self {
+            Self::Refused(host_native::Refused::Root { .. }) => Exit::Usage,
             Self::Refused(_) => Exit::Content,
             _ => Exit::Usage,
         }

@@ -212,10 +212,12 @@ pub(crate) struct OutFolder {
 
 impl OutFolder {
     /// The output folder `root` for the site's folder `dir`, refused when it is `dir` or holds
-    /// it: clearing it could reach the site's own files.
+    /// it: clearing it could reach the site's own files. A `dir` that cannot be listed is refused
+    /// as the folder walk would refuse it.
     pub(crate) fn new(root: &Path, dir: &Path) -> Result<Self, Error> {
-        let dir = std::fs::canonicalize(dir)
-            .map_err(|source| Error::Refused(host_native::Refused::Root { path: dir.to_path_buf(), source }))?;
+        let refused = |source| Error::Refused(host_native::Refused::Root { path: dir.to_path_buf(), source });
+        std::fs::read_dir(dir).map_err(refused)?;
+        let dir = std::fs::canonicalize(dir).map_err(refused)?;
         let resolved = Resolved::of(root)?;
         if dir.starts_with(&resolved) {
             return Err(Refusal::Holds { out: root.to_path_buf(), dir }.into());

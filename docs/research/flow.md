@@ -1053,7 +1053,7 @@ posts/old/x.md  post (in posts/)
 |---|---|
 | 0 | Done. Warnings, if any, were printed. |
 | 1 | Content error: the deploy or check failed on diagnostics. Nothing changed live, and `ink build` wrote nothing. |
-| 2 | Usage error or a confirmation was needed and not given. |
+| 2 | Usage error: a folder that is missing or cannot be listed, a path given wrong, an output folder `ink build` will not write into, or a confirmation was needed and not given. |
 | 3 | Not signed in, or access to a source was lost. |
 | 4 | Network or service unavailable after retries. Safe to retry. |
 | 5 | Conflict: site paused after rollback, mount conflict, unpushed commit. |

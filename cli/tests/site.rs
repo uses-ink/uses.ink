@@ -265,6 +265,22 @@ fn no_command_reads_a_custom_output_folder_as_content() {
     assert!(preview.is_some(), "the preview builds without reading public/");
 }
 
+#[test]
+fn a_missing_or_unlistable_folder_is_a_usage_error() {
+    let missing = scratch("missing-folder");
+    let file = fixtures().join("readme/README.md");
+    for dir in [missing.to_str().unwrap(), file.to_str().unwrap()] {
+        for command in ["check", "build"] {
+            let (exit, _, stderr) = ink(&[command, dir]);
+            assert_eq!(exit, Exit::Usage, "{command} {dir}: {stderr}");
+            assert!(stderr.starts_with("error[source.root.unreadable]"), "{stderr}");
+        }
+        let (exit, _, stderr) = ink(&["explain", "-C", dir]);
+        assert_eq!(exit, Exit::Usage, "{stderr}");
+    }
+    assert!(!missing.exists());
+}
+
 /// A golden whose site folder is gone fails, so no stale golden stays behind.
 #[test]
 fn every_golden_has_a_site() {
