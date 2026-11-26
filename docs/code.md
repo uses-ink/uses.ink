@@ -5,8 +5,9 @@ rule behind every section: a behaviour is written once, as a generic abstraction
 a type that plugs into it. Adding a decision, a witness, an output file, a mark or a repo check
 is adding a type, never editing a central `match`.
 
-Sketches below are the target. A crate that does not match them yet is being moved onto them
-(roadmap, "Code rework").
+Sketches below are the code as built. The one part still moving onto them is the theme: its
+HTML as a `Visit` (section 4) and the engine's `Theme` seam (section 5), roadmap "Code rework"
+phase 3.
 
 ## 1. Decisions are typed codes
 
@@ -252,8 +253,8 @@ the last step is `Layout`. Rules run over a `Workspace` read once: `cargo metada
 module tree each target compiles, parsed with `syn` and marked entry, inner, test or generated.
 The rules are `Names`, `Order`, `Licence`, `Alias`, `Banned`, `Unsafe` (on tokens, so comments
 and literals never count), `Words` and `Free`. `Gradual<R>` wraps a rule so it fails only the
-crates in `ENFORCED` and counts the rest in a note, which is how `Words` and `Free` land while
-the crates move onto them. Lists of generators, steps and rules are tuples, given their list
+crates in `ENFORCED` and counts the rest in a note; every crate is in it, so a new crate joins
+it with its first commit. Lists of generators, steps and rules are tuples, given their list
 trait by one `tuples!` macro. `cargo xtask check` runs every step and reports every failure; a
 new check is a new `Rule` added to `Layout::RULES`.
 
