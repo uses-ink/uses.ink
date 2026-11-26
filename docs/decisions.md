@@ -1,0 +1,215 @@
+# Decisions
+
+Each decision has a number that never changes, a status, what was decided, why, and what would
+reverse it. "Owner" marks a decision the owner made; the rest were proposed in `research/` and
+accepted with the spec on 2026-11-26. A superseded decision stays, with a pointer to its
+replacement.
+
+## 0001 Own engine, written from scratch
+
+Accepted, owner. uses.ink gets a new engine; baudelaire is not reused, though its ideas may be.
+**Why:** the old code was built around git and a fixed theme; the new contracts start clean.
+**Reversal:** none planned.
+
+## 0002 Nothing hardcoded: four plugin slots
+
+Accepted, owner. Content comes through `source` plugins, ownership through `authority` plugins,
+reading through `format` plugins, rendering through `theme` plugins. Git is one source, not the
+protocol. First-party plugins use the public contract with no private API.
+**Why:** the owner rejects hardcoding; one contract keeps first-party honest.
+**Reversal:** none.
+
+## 0003 Rust everywhere, one workspace, one binary
+
+Accepted. Engine, control plane, edge, builder and CLI are Rust in one workspace; the binary is
+`ink`. **Why:** the control plane would otherwise exist twice (Worker and self-host); shared
+types without codegen. **Reversal:** if workers-rs blocks the edge, only the edge adapter moves
+to a thin TS Worker over the Rust control plane compiled to wasm.
+
+## 0004 Hosted runtime: Worker edge, Container builds
+
+Accepted. A workers-rs Worker serves, runs the control plane and takes webhooks; every build runs
+`ink build` in a Cloudflare Container started by a per-handle Durable Object. **Why:** a 128 MB
+isolate cannot clone repos with history or render large vaults; one build path for every source.
+**Reversal:** container cold starts above about 15 s push-to-live: add a wasm fast path for small
+snapshots. Price or availability changes: the same binary runs on a VPS behind the same queue.
+
+## 0005 Self-host is `ink serve`, one process
+
+Accepted. SQLite, a blob directory, an in-process builder, optional ACME; zero flags required,
+every default announced as a notice. **Why:** self-hosting must stay easy; D1 is SQLite, so
+migrations are shared.
+
+## 0006 The engine is pure
+
+Accepted. The engine has no I/O; it asks host traits for everything, and every read is recorded
+and becomes part of a render unit's cache key. **Why:** determinism, incremental builds without
+declared dependencies, the same engine natively and in wasm.
+
+## 0007 WIT is the plugin boundary; builder-side plugins are components in v1
+
+Accepted. Plugin boundary types are written in WIT (`ink:*@0.1`). Source, format and theme
+plugins are wasm components run by wasmtime in the builder from v1. Authority plugins are native
+crates against the WIT-generated types, because the edge is a Worker and cannot host wasmtime.
+**Why:** follows from 0015; once the host exists, every builder plugin goes through it, which
+proves there is no back door. **Reversal:** if component overhead on formats is measured above
+20% of build time, format plugins become native crates against the same types until it is fixed.
+
+## 0008 `git.fetch` is a host capability
+
+Accepted. Git runs host-side with gix; the git source plugin maps it to a snapshot. **Why:** it is
+the one operation that needs a real disk and a native library.
+
+## 0009 Content addressing with BLAKE3, scoped per tenant
+
+Accepted. Every blob is keyed by its BLAKE3 hash under its tenant's prefix; no cross-tenant
+dedup. **Why:** exact deletion, no existence leak through dedup timing.
+
+## 0010 Static builds; a deploy is a hashed manifest
+
+Accepted. Nothing renders on the reader path. Publish and rollback are pointer writes. **Why:**
+atomic publish, trivial rollback, edge-cacheable reads. **Reversal:** per-reader content
+(members, private posts behind auth), not in scope.
+
+## 0011 Facts carry provenance and completeness
+
+Accepted. Dates and authors are `Known<T>`: exact, a bound, or unknown with a reason. **Why:** a
+shallow clone knows a bound, not a date; treating one as the other is a silent lie.
+
+## 0012 Abilities are declared, then observed
+
+Accepted, owner on the word. Sources declare `snapshot`, `history`, `watch`, `private`; each
+source instance records what it actually had. Every lack maps to a stated consequence. "Ability"
+is what a source can do; "capability" is a host function a plugin may import. **Why:** a missing
+ability is shown, never guessed; one word, one meaning.
+
+## 0013 Authorities are separate from sources
+
+Accepted. Proofs are typed and dated; a handle's right to a source is a proof, not a URL. A forge
+package may provide both an authority and a source.
+
+## 0014 Theme contract: the engine owns structure, themes render pages
+
+Accepted, owner. The engine owns routes, feeds, sitemap, images, CSP and headers. A theme
+exports `describe`, `assets`, `render` per page, and may declare extra routes with `routes` and
+`render-route`; collisions are diagnostics. **Why:** every theme gets correct feeds, links and
+security headers, caching stays per page, and themes still have room for unusual pages.
+**Reversal:** a real theme need that cannot be met by extra routes.
+
+## 0015 Themes are wasm components in v1
+
+Accepted, owner. Themes are WebAssembly components from the first release, written in any
+language that targets components; first-party themes are Rust. Template overrides are something
+a theme offers through the `asset.override` capability. **Why:** third-party themes on day one,
+sandboxed, with the same contract first-party themes use.
+
+## 0016 A quiet default theme; the hand-drawn theme is opt-in
+
+Accepted, owner. `ink:theme-quiet` is the default: calm, the author's voice. `ink:theme-notebook`
+carries the uses.ink look and is chosen in `ink.toml`. uses.ink signs only the "made with"
+footer. **Why:** a reader site is the author's blog, not ours.
+
+## 0017 Private by default for vaults and private sources
+
+Accepted. Vaults and private sources publish nothing until the author selects; an attachment no
+published page uses is never published. Public repos publish what Interpret classifies as pages.
+
+## 0018 One config file, `ink.toml`; the decision code is the pin path
+
+Accepted. One optional file at the source root. Every key pins a decision or chooses a slot
+plugin; the key path is the decision code. Unknown keys are diagnostics. The dashboard holds no
+interpretation settings. **Why:** one source of truth, in the author's source.
+
+## 0019 Custom domains through Cloudflare for SaaS, bound by our TXT proof
+
+Accepted. CNAME to `domains.uses.ink` after a TXT proof binds the name to a handle. Apex only
+with CNAME flattening; otherwise `www` plus a redirect. **Reversal:** buy apex proxying if apex
+requests dominate support.
+
+## 0020 Isolation: PSL, `app.uses.ink`, no JS on reader pages
+
+Accepted. `uses.ink` goes on the Public Suffix List before launch; the dashboard is its own site;
+reader pages have no JavaScript, no cookies and a strict CSP written by the engine.
+
+## 0021 Budgets are typed refusals, published
+
+Accepted. Every limit refuses with the number and the limit, and all limits are on a public
+page.
+
+## 0022 Deletion removes bytes before rows
+
+Accepted. Unpublish, delete blobs under the tenant, delete rows, send a receipt. A crash leaves a
+diagnosable row, never orphaned bytes.
+
+## 0023 The build log is one typed event stream
+
+Accepted. The same events in the terminal, the dashboard, storage and forge statuses.
+
+## 0024 Names
+
+Accepted, owner. Product and site: uses.ink. Binary: `ink`. Config: `ink.toml`. Crates:
+`uses-ink-*` (never `ink-*`, which collides with Polkadot's `ink_*` on crates.io). WIT and plugin
+scope: `ink:`. Conventions in `conventions.md`.
+
+## 0025 One pen
+
+Accepted, owner. Every hand-drawn mark in the product comes from one Rust crate: themes through
+the `pen` capability, the dashboard and landing through its wasm build, the logo through `cargo
+xtask brand`. No JS copy, no generator scripts. **Why:** the owner wants shared machinery
+centralized; one implementation cannot drift.
+
+## 0026 Licence
+
+Accepted, owner. Service, engine and first-party plugins: AGPL-3.0-or-later. SDK, WIT packages,
+pen and other product-independent crates: MIT OR Apache-2.0.
+
+## 0027 Markdown through comrak; raw HTML through our own allowlist
+
+Accepted. comrak is the only parser with nodes for wikilinks, embeds, callouts and block ids,
+with spans. Raw HTML is parsed into `Document` against our allowlist; ammonia only behind an
+escape hatch. **Why:** pulldown-cmark had two 2026 wikilink advisories; ammonia had four mXSS
+advisories in 2026 (`research/deps-engine.md`).
+
+## 0028 Dates with jiff
+
+Accepted. jiff 1.0 with our own fixed locale table; chrono is unmaintained (RustSec 2026).
+
+## 0029 Repo tasks are `cargo xtask`
+
+Accepted. Brand generation, WIT codegen checks, fixture updates and the convention checks are
+xtask subcommands. **Why:** no loose scripts (0025's reason applies to every tool).
+
+## 0030 The `Db` port is shaped like D1
+
+Accepted. Queries and atomic batches of raw SQL, no interactive transactions, one migration set
+in wrangler's format with our own runner for SQLite. **Why:** D1 is the stricter target; a port
+shaped like SQLite would let self-host code do what hosted cannot. **Reversal:** D1 gains
+interactive transactions.
+
+## 0031 Credentials sealed with XChaCha20-Poly1305
+
+Accepted. Sealed per row with the row id as associated data, so a copied row fails to open. This
+replaces the AES-256-GCM suggestion in `research/architecture.md`. **Why:** a 24-byte random nonce
+needs no counter; `age` and `hpke` cannot share a build today.
+
+## 0032 HTML, SVG and CSS through `unspliced`; no maud, no Datastar
+
+Accepted, owner. Every page uses.ink renders (themes, dashboard, landing) is written with
+`unspliced`, a crate of its own (`~/code/personal/unspliced`, MIT OR Apache-2.0). It rebuilds the
+owner's earlier `press` (stik) and `vun-html` (vun) as one library: names are typed constants,
+documents are baked by the compiler, text escapes itself, URLs from run time are checked, and
+there is no JavaScript runtime: behaviour is native HTML (`popover`, `<details>`, `<dialog>` with
+`command`), forms that post and redirect, cross-document view transitions, and streamed pages
+(`Split`) for live build logs. A typed action runtime was built and dropped on 2026-11-26 as a
+private framework the platform no longer needs. **Why:** maud lets typos compile and leaves CSS and JS untyped;
+Datastar puts untyped expressions in attributes and needs `unsafe-eval` or a nonce. **Reversal:**
+none planned; Leptos remains the documented fallback for the dashboard.
+
+## 0033 The pen crate is `freehand`; brand drawings are data
+
+Accepted, owner. The pen of 0025 is the crate `freehand` at `freehand/` (MIT OR Apache-2.0, `no_std`,
+only `libm`). The logo, mark and favicon are described in `brand/figure.toml` (named polygons,
+shapes, weights, colours by token name) and drawn by `cargo xtask brand`; the SVG files are written
+with `unspliced`, whose bare `xmlns` on `svg` writes the namespace a standalone file needs.
+**Why:** one implementation of the pen; geometry is data, so a drawing changes without code.
+**Reversal:** none planned.
