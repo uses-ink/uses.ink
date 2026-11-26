@@ -327,6 +327,13 @@ fault = "operator"
 fields = { reason = "text" }
 message = "a file's bytes could not be stored: {reason}"
 
+[diagnostic."source.budget.folders"]
+severity = "error"
+fault = "author"
+fields = { limit = "count" }
+message = "the source holds more than {limit} folders, the most a site may hold"
+fix = "move folders that are not part of the site out of the folder"
+
 [diagnostic."math.syntax.invalid"]
 severity = "warning"
 fault = "author"
@@ -370,6 +377,10 @@ message = "the site has no dated posts, so it has no feeds"
 [notice."source.output.skipped"]
 fields = { path = "path" }
 message = "{path} holds the build's own output, so it is not read"
+
+[notice."source.link.skipped"]
+fields = { path = "path" }
+message = "{path} links to a folder of the site, which is read at its own path, so the link is not followed"
 
 [notice."build.address.default"]
 fields = { address = "text" }

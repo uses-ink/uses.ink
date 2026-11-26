@@ -46,21 +46,19 @@ pub enum Refused {
         /// Where it points.
         target: PathBuf,
     },
-    /// A link to a folder that holds the link.
-    Cycle {
-        /// The link.
-        path: ContentPath,
-        /// Where it points.
-        target: PathBuf,
+    /// More folders than the budget. The walk stops at the first folder past it.
+    Folders {
+        /// How many folders a site may hold.
+        limit: u64,
     },
     /// Neither a file nor a folder: a socket, a pipe, a device.
     Special {
         /// The path.
         path: ContentPath,
     },
-    /// More files than the budget.
+    /// More files than the budget. The walk stops at the first file past it.
     Files {
-        /// How many files there are.
+        /// How many files the walk met before it stopped.
         count: u64,
         /// How many a site may hold.
         limit: u64,
@@ -74,9 +72,9 @@ pub enum Refused {
         /// How large a file may be.
         limit: Bytes,
     },
-    /// All files together larger than the budget.
+    /// All files together larger than the budget. The walk stops at the first file past it.
     Total {
-        /// How large they are together.
+        /// How many bytes the walk read before it stopped, each file once.
         size: Bytes,
         /// How large a site may be.
         limit: Bytes,
@@ -95,11 +93,15 @@ impl fmt::Display for Refused {
             Self::Encoding { path } => write!(out, "the name of {} is not UTF-8", path.display()),
             Self::Name { written, .. } => write!(out, "`{written}` is not a name a site can hold"),
             Self::Outside { path, target } => write!(out, "{path} links outside the folder, to {}", target.display()),
-            Self::Cycle { path, target } => write!(out, "{path} links to {}, a folder that holds it", target.display()),
+            Self::Folders { limit } => {
+                write!(out, "the folder holds more than {limit} folders, the most a site may hold")
+            }
             Self::Special { path } => write!(out, "{path} is neither a file nor a folder"),
-            Self::Files { count, limit } => write!(out, "the folder holds {count} files; a site may hold {limit}"),
+            Self::Files { limit, .. } => {
+                write!(out, "the folder holds more than {limit} files, the most a site may hold")
+            }
             Self::File { path, size, limit } => write!(out, "{path} is {size}; a file may be {limit}"),
-            Self::Total { size, limit } => write!(out, "the folder holds {size}; a site may hold {limit}"),
+            Self::Total { size, limit } => write!(out, "the folder holds at least {size}; a site may hold {limit}"),
             Self::Store(_) => write!(out, "a file's bytes could not be stored"),
             Self::Snapshot(_) => write!(out, "the files do not make a snapshot"),
         }
@@ -115,7 +117,7 @@ impl std::error::Error for Refused {
             Self::Snapshot(source) => Some(source),
             Self::Encoding { .. }
             | Self::Outside { .. }
-            | Self::Cycle { .. }
+            | Self::Folders { .. }
             | Self::Special { .. }
             | Self::Files { .. }
             | Self::File { .. }
@@ -139,7 +141,7 @@ impl From<&Refused> for Diagnostic {
             }
             Refused::Name { written, .. } => Self::new(Problem::SourceNameInvalid { written: written.clone() }),
             Refused::Outside { path, .. } => Self::new(Problem::SourceLinkOutside { path: path.clone() }).on(on(path)),
-            Refused::Cycle { path, .. } => Self::new(Problem::SourceLinkCycle { path: path.clone() }).on(on(path)),
+            Refused::Folders { limit } => Self::new(Problem::SourceBudgetFolders { limit: *limit }),
             Refused::Special { path } => Self::new(Problem::SourceFileSpecial { path: path.clone() }).on(on(path)),
             Refused::Files { count, limit } => Self::new(Problem::SourceBudgetFiles { count: *count, limit: *limit }),
             Refused::File { path, size, limit } => {

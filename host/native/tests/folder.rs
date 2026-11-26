@@ -8,7 +8,7 @@ use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 
 use engine::Blobs;
-use host_native::{Budget, Directory, Folder, Memory, Refused, Store};
+use host_native::{Budget, Directory, Folder, Memory, Refused, Skip, Store};
 use model::{Bytes, ContentPath, Diagnostic, Known, Provenance, Version};
 
 /// A fresh folder named for the test, holding `files`.
@@ -86,15 +86,78 @@ fn refuses_a_link_out_of_the_folder() {
 }
 
 #[test]
-fn follows_links_inside_and_refuses_a_cycle() {
+fn follows_links_to_files_and_skips_links_to_folders() {
     let root = site("inside", &[("notes/a.md", "a")]);
     symlink(root.join("notes/a.md"), root.join("b.md")).unwrap();
-    let read = Folder::new(&root).read(&mut Memory::default()).unwrap();
-    assert!(read.snapshot.entry(&path("b.md")).is_some());
     symlink(root.join("notes"), root.join("notes/again")).unwrap();
+    symlink(root.join("notes"), root.join("alias")).unwrap();
+    let read = Folder::new(&root).read(&mut Memory::default()).unwrap();
+    let paths: Vec<&str> = read.snapshot.tree().iter().map(|entry| entry.path.as_str()).collect();
+    assert_eq!(paths, ["b.md", "notes/a.md"]);
+    let skipped: Vec<(&str, Skip)> =
+        read.skipped.iter().map(|skipped| (skipped.path.as_str(), skipped.reason)).collect();
+    assert_eq!(skipped, [("alias", Skip::Link), ("notes/again", Skip::Link)]);
+}
+
+/// Level `i` holds a file and two links, `a` and `b`, to level `i + 1`: followed, the links make
+/// 2^21 paths to the last level.
+fn ladder(name: &str) -> PathBuf {
+    let root = site(name, &[]);
+    for level in 0..=21 {
+        std::fs::create_dir_all(root.join(format!("l{level:02}"))).unwrap();
+        std::fs::write(root.join(format!("l{level:02}/f.md")), "f").unwrap();
+    }
+    for level in 0..21 {
+        for link in ["a", "b"] {
+            symlink(root.join(format!("l{:02}", level + 1)), root.join(format!("l{level:02}/{link}"))).unwrap();
+        }
+    }
+    root
+}
+
+#[test]
+fn a_ladder_of_folder_links_reads_each_file_once_and_fast() {
+    let root = ladder("ladder");
+    let started = std::time::Instant::now();
+    let read = Folder::new(&root).read(&mut Memory::default()).unwrap();
+    assert_eq!(read.snapshot.tree().len(), 22, "one entry per file, not per path");
+    assert_eq!(read.skipped.len(), 42);
+    let budget = Budget { files: 5, ..Budget::default() };
+    let refused = Folder { budget, ..Folder::new(&root) }.read(&mut Memory::default()).unwrap_err();
+    assert!(matches!(refused, Refused::Files { count: 6, limit: 5 }), "{refused:?}");
+    assert!(started.elapsed() < std::time::Duration::from_millis(500), "{:?}", started.elapsed());
+}
+
+#[test]
+fn refuses_past_the_folder_budget_and_stops_there() {
+    let root = site("folders", &[("a/b/c/d/e.md", "e"), ("z/y.md", "y")]);
+    let budget = Budget { folders: 3, ..Budget::default() };
+    let refused = Folder { budget, ..Folder::new(&root) }.read(&mut Memory::default()).unwrap_err();
+    assert!(matches!(refused, Refused::Folders { limit: 3 }), "{refused:?}");
+    assert_eq!(code(&refused), "source.budget.folders");
+    let budget = Budget { folders: 6, ..Budget::default() };
+    assert!(Folder { budget, ..Folder::new(&root) }.read(&mut Memory::default()).is_ok());
+}
+
+#[test]
+fn a_file_linked_twice_is_read_and_counted_once() {
+    let root = site("linked-twice", &[("a.md", "aaaa")]);
+    symlink(root.join("a.md"), root.join("b.md")).unwrap();
+    let budget = Budget { total: Bytes(6), ..Budget::default() };
+    let read = Folder { budget, ..Folder::new(&root) }.read(&mut Memory::default()).unwrap();
+    assert_eq!(read.snapshot.tree().len(), 2);
+    assert_eq!(read.snapshot.tree()[0].blob, read.snapshot.tree()[1].blob);
+}
+
+#[test]
+fn refuses_a_pipe_without_waiting_on_it() {
+    let root = site("pipe", &[("a.md", "a")]);
+    let made = std::process::Command::new("mkfifo").arg(root.join("pipe.md")).status().unwrap();
+    assert!(made.success());
+    symlink(root.join("pipe.md"), root.join("link.md")).unwrap();
     let refused = Folder::new(&root).read(&mut Memory::default()).unwrap_err();
-    assert!(matches!(&refused, Refused::Cycle { path, .. } if path.as_str() == "notes/again"));
-    assert_eq!(code(&refused), "source.link.cycle");
+    assert!(matches!(&refused, Refused::Special { path } if path.as_str() == "link.md"), "{refused:?}");
+    assert_eq!(code(&refused), "source.file.special");
 }
 
 #[test]

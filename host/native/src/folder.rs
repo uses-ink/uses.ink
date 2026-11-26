@@ -1,5 +1,6 @@
 //! A folder on disk read into a snapshot.
 
+use std::collections::BTreeMap;
 use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
@@ -11,6 +12,7 @@ use model::{
 use crate::blob::Store;
 use crate::budget::Budget;
 use crate::error::Refused;
+use crate::handle::{Handle, Identity};
 
 /// Folders of version control, never part of a snapshot and never said.
 const VERSION_CONTROL: &[&str] = &[".git", ".jj"];
@@ -35,16 +37,30 @@ pub struct Folder {
 pub struct Read {
     /// The files, their facts and the folder's version.
     pub snapshot: Snapshot,
-    /// Folders not read because they hold the build's output, in path order.
+    /// Folders not read, in the order the walk met them.
     pub skipped: Vec<Skipped>,
 }
 
-/// A folder left unread because the caller named it as the build's output.
+/// A folder left unread, and why.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Skipped {
-    /// The folder.
+    /// The folder, or the link to one.
     pub path: ContentPath,
+    /// Why it was not read.
+    pub reason: Skip,
+}
+
+/// Why a folder was not read.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Skip {
+    /// It holds the build's own output: the caller named it.
+    Output,
+    /// It is a link to a folder of the site, read at its own path. Following it would read the
+    /// same files again under a second path, and a ladder of such links doubles the paths at
+    /// every step.
+    Link,
 }
 
 /// The walk so far.
@@ -55,12 +71,14 @@ struct Walk<'a, S> {
     entries: Vec<Entry>,
     facts: Vec<FileFacts>,
     skipped: Vec<Skipped>,
-    /// Files seen, read or not.
-    count: u64,
-    /// Bytes seen, read or not.
+    /// File entries met, links to a file among them.
+    files: u64,
+    /// Folders walked, the root among them.
+    folders: u64,
+    /// Bytes read, each file once.
     total: u64,
-    /// The folders being walked, canonical, outermost first: a link back into one is a cycle.
-    open: Vec<PathBuf>,
+    /// Each file read so far, by identity, so a link to it is not read again.
+    seen: BTreeMap<Identity, (Hash, Bytes)>,
 }
 
 impl Folder {
@@ -69,8 +87,8 @@ impl Folder {
         Self { root: root.into(), budget: Budget::default(), output: Vec::new() }
     }
 
-    /// Reads every file into `store` and the snapshot. Past the file or byte budget it keeps
-    /// counting without reading, so the refusal says how far over the folder is.
+    /// Reads every file into `store` and the snapshot. The walk stops at the first budget
+    /// passed, so a refusal's count is how far it got, never past the limit by more than one.
     pub fn read(&self, store: &mut impl Store) -> Result<Read, Refused> {
         let root =
             std::fs::canonicalize(&self.root).map_err(|source| Refused::Root { path: self.root.clone(), source })?;
@@ -80,18 +98,13 @@ impl Folder {
             entries: Vec::new(),
             facts: Vec::new(),
             skipped: Vec::new(),
-            count: 0,
+            files: 0,
+            folders: 0,
             total: 0,
-            open: Vec::new(),
+            seen: BTreeMap::new(),
         };
         walk.walk(&root, &root, None)?;
-        let Walk { entries, facts, skipped, count, total, .. } = walk;
-        if count > self.budget.files {
-            return Err(Refused::Files { count, limit: self.budget.files });
-        }
-        if total > self.budget.total.count() {
-            return Err(Refused::Total { size: Bytes(total), limit: self.budget.total });
-        }
+        let Walk { entries, facts, skipped, .. } = walk;
         let version = Version::Folder { hash: Tree(&entries).hash() };
         let observed = Observed::new(vec![Ability::Snapshot], vec![Lack::new(Ability::History, AnyCode::Date)]);
         let snapshot = Snapshot::new(version, entries, facts, observed).map_err(Refused::Snapshot)?;
@@ -102,6 +115,10 @@ impl Folder {
 impl<S: Store> Walk<'_, S> {
     /// Walks the folder at `real`, whose content paths start with `prefix`.
     fn walk(&mut self, root: &Path, real: &Path, prefix: Option<&ContentPath>) -> Result<(), Refused> {
+        self.folders += 1;
+        if self.folders > self.folder.budget.folders {
+            return Err(Refused::Folders { limit: self.folder.budget.folders });
+        }
         let unreadable = |source| match prefix {
             Some(path) => Refused::Unreadable { path: path.clone(), source },
             None => Refused::Root { path: self.folder.root.clone(), source },
@@ -114,7 +131,6 @@ impl<S: Store> Walk<'_, S> {
             children.push((name, real));
         }
         children.sort();
-        self.open.push(real.to_path_buf());
         for (name, child) in children {
             if VERSION_CONTROL.contains(&name.as_str()) {
                 continue;
@@ -123,58 +139,71 @@ impl<S: Store> Walk<'_, S> {
             let path = prefix.map_or_else(|| own.clone(), |prefix| prefix.join(&own));
             self.child(root, &child, path)?;
         }
-        self.open.pop();
         Ok(())
     }
 
     fn child(&mut self, root: &Path, real: &Path, path: ContentPath) -> Result<(), Refused> {
         let unreadable = |source| Refused::Unreadable { path: path.clone(), source };
         let metadata = std::fs::symlink_metadata(real).map_err(unreadable)?;
-        let (real, metadata) = if metadata.file_type().is_symlink() {
+        if metadata.is_dir() {
+            if self.folder.output.contains(&path) {
+                self.skipped.push(Skipped { path, reason: Skip::Output });
+                return Ok(());
+            }
+            return self.walk(root, real, Some(&path));
+        }
+        let real = if metadata.file_type().is_symlink() {
             let target = std::fs::canonicalize(real).map_err(unreadable)?;
             if !target.starts_with(root) {
                 return Err(Refused::Outside { path, target });
             }
-            if self.open.contains(&target) {
-                return Err(Refused::Cycle { path, target });
-            }
-            let metadata = std::fs::metadata(&target).map_err(unreadable)?;
-            (target, metadata)
-        } else {
-            (real.to_path_buf(), metadata)
-        };
-        if metadata.is_dir() {
-            if self.folder.output.contains(&path) {
-                self.skipped.push(Skipped { path });
+            if std::fs::metadata(&target).map_err(unreadable)?.is_dir() {
+                self.skipped.push(Skipped { path, reason: Skip::Link });
                 return Ok(());
             }
-            return self.walk(root, &real, Some(&path));
+            target
+        } else {
+            real.to_path_buf()
+        };
+        self.file(&real, path)
+    }
+
+    /// Reads the file at `real` through one handle: the handle says what it is and how long,
+    /// and no more than a file's budget is read from it.
+    fn file(&mut self, real: &Path, path: ContentPath) -> Result<(), Refused> {
+        let budget = self.folder.budget;
+        self.files += 1;
+        if self.files > budget.files {
+            return Err(Refused::Files { count: self.files, limit: budget.files });
         }
+        let unreadable = |source| Refused::Unreadable { path: path.clone(), source };
+        let handle = Handle::open(real).map_err(unreadable)?;
+        let metadata = handle.metadata().clone();
         if !metadata.is_file() {
             return Err(Refused::Special { path });
         }
-        self.file(&real, path, &metadata)
-    }
-
-    fn file(&mut self, real: &Path, path: ContentPath, metadata: &Metadata) -> Result<(), Refused> {
-        let budget = self.folder.budget;
-        let size = Bytes(metadata.len());
-        if size > budget.file {
-            return Err(Refused::File { path, size, limit: budget.file });
-        }
-        self.count += 1;
-        self.total = self.total.saturating_add(size.count());
-        if self.count > budget.files || self.total > budget.total.count() {
+        let bound = Modified(&metadata).bound();
+        let identity = Identity::from(&metadata);
+        if let Some(&(blob, size)) = self.seen.get(&identity) {
+            self.facts.push(FileFacts::new(path.clone(), bound.clone(), bound));
+            self.entries.push(Entry::new(path, blob, size));
             return Ok(());
         }
-        let bytes = std::fs::read(real).map_err(|source| Refused::Unreadable { path: path.clone(), source })?;
-        // The file may have grown since its size was read.
+        if metadata.len() > budget.file.count() {
+            return Err(Refused::File { path, size: Bytes(metadata.len()), limit: budget.file });
+        }
+        let bytes = handle.bytes(budget.file.count().saturating_add(1)).map_err(unreadable)?;
+        // The file may have grown since the handle said how long it was.
         let size = Bytes(bytes.len() as u64);
         if size > budget.file {
             return Err(Refused::File { path, size, limit: budget.file });
         }
+        self.total = self.total.saturating_add(size.count());
+        if self.total > budget.total.count() {
+            return Err(Refused::Total { size: Bytes(self.total), limit: budget.total });
+        }
         let blob = self.store.put(bytes).map_err(Refused::Store)?;
-        let bound = Modified(metadata).bound();
+        self.seen.insert(identity, (blob, size));
         self.facts.push(FileFacts::new(path.clone(), bound.clone(), bound));
         self.entries.push(Entry::new(path, blob, size));
         Ok(())

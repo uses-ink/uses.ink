@@ -5,7 +5,7 @@ use std::path::Path;
 
 use config::{Config, Parsed};
 use engine::{BaseUrl, Blobs, Engine, NoPins, RenderSettings, Understood};
-use host_native::{Folder, Grammars, Memory};
+use host_native::{Folder, Grammars, Memory, Skip, Skipped};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject};
 use theme_quiet::Quiet;
 
@@ -78,12 +78,24 @@ impl<'a> Source<'a> {
         if stops {
             understood.site = None;
         }
-        let skipped = read.skipped.into_iter().map(|skipped| {
-            Notice::new(Announcement::SourceOutputSkipped { path: skipped.path.clone() })
-                .on(Subject::File(skipped.path))
-        });
+        let skipped = read.skipped.into_iter().map(|skipped| Notice::from(Unread(skipped)));
         understood.notices.splice(0..0, skipped);
         Ok(Loaded { snapshot, store, understood })
+    }
+}
+
+/// A folder the read left out, said as its notice.
+#[derive(Debug)]
+struct Unread(Skipped);
+
+impl From<Unread> for Notice {
+    fn from(Unread(skipped): Unread) -> Self {
+        let path = skipped.path;
+        let announcement = match skipped.reason {
+            Skip::Link => Announcement::SourceLinkSkipped { path: path.clone() },
+            _ => Announcement::SourceOutputSkipped { path: path.clone() },
+        };
+        Self::new(announcement).on(Subject::File(path))
     }
 }
 

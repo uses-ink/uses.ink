@@ -11,12 +11,14 @@ pub struct Budget {
     pub file: Bytes,
     /// Every file together: `source.budget.bytes`.
     pub total: Bytes,
+    /// Folders walked, the root among them: `source.budget.folders`.
+    pub folders: u64,
 }
 
 impl Default for Budget {
-    /// The v1 limits: 20,000 files, 25 MiB a file, 1 GiB in all.
+    /// The v1 limits: 20,000 files, 25 MiB a file, 1 GiB in all, 20,000 folders.
     fn default() -> Self {
         const MIB: u64 = 1024 * 1024;
-        Self { files: 20_000, file: Bytes(25 * MIB), total: Bytes(1024 * MIB) }
+        Self { files: 20_000, file: Bytes(25 * MIB), total: Bytes(1024 * MIB), folders: 20_000 }
     }
 }

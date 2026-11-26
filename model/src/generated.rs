@@ -291,6 +291,12 @@ pub enum Problem {
         /// Why, as the part that refused it says.
         reason: String,
     },
+    /// `source.budget.folders`: the source holds more than {limit} folders, the most a site may hold
+    #[serde(rename = "source.budget.folders")]
+    SourceBudgetFolders {
+        /// The most that is allowed.
+        limit: u64,
+    },
     /// `math.syntax.invalid`: the math `{tex}` does not parse, so it is shown as written: {reason}
     #[serde(rename = "math.syntax.invalid")]
     MathSyntaxInvalid {
@@ -345,6 +351,7 @@ impl Problem {
         "source.file.special",
         "source.root.unreadable",
         "source.blob.unwritable",
+        "source.budget.folders",
         "math.syntax.invalid",
     ];
     /// Its dotted code, `noun.noun.reason`.
@@ -392,6 +399,7 @@ impl Problem {
             Self::SourceFileSpecial { .. } => "source.file.special",
             Self::SourceRootUnreadable { .. } => "source.root.unreadable",
             Self::SourceBlobUnwritable { .. } => "source.blob.unwritable",
+            Self::SourceBudgetFolders { .. } => "source.budget.folders",
             Self::MathSyntaxInvalid { .. } => "math.syntax.invalid",
         }
     }
@@ -440,6 +448,7 @@ impl Problem {
             Self::SourceFileSpecial { .. } => Severity::Error,
             Self::SourceRootUnreadable { .. } => Severity::Error,
             Self::SourceBlobUnwritable { .. } => Severity::Error,
+            Self::SourceBudgetFolders { .. } => Severity::Error,
             Self::MathSyntaxInvalid { .. } => Severity::Warning,
         }
     }
@@ -488,6 +497,7 @@ impl Problem {
             Self::SourceFileSpecial { .. } => Fault::Author,
             Self::SourceRootUnreadable { .. } => Fault::Operator,
             Self::SourceBlobUnwritable { .. } => Fault::Operator,
+            Self::SourceBudgetFolders { .. } => Fault::Author,
             Self::MathSyntaxInvalid { .. } => Fault::Author,
         }
     }
@@ -546,6 +556,12 @@ pub enum Announcement {
         /// The file.
         path: ContentPath,
     },
+    /// `source.link.skipped`: {path} links to a folder of the site, which is read at its own path, so the link is not followed
+    #[serde(rename = "source.link.skipped")]
+    SourceLinkSkipped {
+        /// The file.
+        path: ContentPath,
+    },
     /// `build.address.default`: no address was given, so feeds, the sitemap and canonical links use {address}
     #[serde(rename = "build.address.default")]
     BuildAddressDefault {
@@ -571,6 +587,7 @@ impl Announcement {
         "feed.post.undated",
         "feed.post.none",
         "source.output.skipped",
+        "source.link.skipped",
         "build.address.default",
         "code.language.unknown",
     ];
@@ -586,6 +603,7 @@ impl Announcement {
             Self::FeedPostUndated => "feed.post.undated",
             Self::FeedPostNone => "feed.post.none",
             Self::SourceOutputSkipped { .. } => "source.output.skipped",
+            Self::SourceLinkSkipped { .. } => "source.link.skipped",
             Self::BuildAddressDefault { .. } => "build.address.default",
             Self::CodeLanguageUnknown { .. } => "code.language.unknown",
         }

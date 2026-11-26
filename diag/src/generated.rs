@@ -134,6 +134,9 @@ impl Message<'_> {
             Problem::SourceBlobUnwritable { reason, .. } => {
                 write!(out, "a file's bytes could not be stored: {reason}")
             }
+            Problem::SourceBudgetFolders { limit, .. } => {
+                write!(out, "the source holds more than {limit} folders, the most a site may hold")
+            }
             Problem::MathSyntaxInvalid { tex, reason, .. } => {
                 write!(out, "the math `{tex}` does not parse, so it is shown as written: {reason}")
             }
@@ -167,6 +170,12 @@ impl Message<'_> {
             }
             Announcement::SourceOutputSkipped { path, .. } => {
                 write!(out, "{path} holds the build's own output, so it is not read")
+            }
+            Announcement::SourceLinkSkipped { path, .. } => {
+                write!(
+                    out,
+                    "{path} links to a folder of the site, which is read at its own path, so the link is not followed"
+                )
             }
             Announcement::BuildAddressDefault { address, .. } => {
                 write!(out, "no address was given, so feeds, the sitemap and canonical links use {address}")
@@ -222,6 +231,7 @@ impl Fix<'_> {
             Problem::SourceFileSpecial { .. } => true,
             Problem::SourceRootUnreadable { .. } => false,
             Problem::SourceBlobUnwritable { .. } => false,
+            Problem::SourceBudgetFolders { .. } => true,
             Problem::MathSyntaxInvalid { .. } => true,
         }
     }
@@ -236,6 +246,7 @@ impl Fix<'_> {
             Announcement::FeedPostUndated => true,
             Announcement::FeedPostNone => false,
             Announcement::SourceOutputSkipped { .. } => false,
+            Announcement::SourceLinkSkipped { .. } => false,
             Announcement::BuildAddressDefault { .. } => true,
             Announcement::CodeLanguageUnknown { .. } => true,
         }
@@ -345,6 +356,9 @@ impl Fix<'_> {
             Problem::SourceFileSpecial { .. } => write!(out, "move it out of the folder"),
             Problem::SourceRootUnreadable { .. } => Ok(()),
             Problem::SourceBlobUnwritable { .. } => Ok(()),
+            Problem::SourceBudgetFolders { .. } => {
+                write!(out, "move folders that are not part of the site out of the folder")
+            }
             Problem::MathSyntaxInvalid { .. } => {
                 write!(out, "fix the TeX between the `$` signs")
             }
@@ -370,6 +384,7 @@ impl Fix<'_> {
             }
             Announcement::FeedPostNone => Ok(()),
             Announcement::SourceOutputSkipped { .. } => Ok(()),
+            Announcement::SourceLinkSkipped { .. } => Ok(()),
             Announcement::BuildAddressDefault { .. } => {
                 write!(out, "pass `--base <url>` with the address the site is served at")
             }
