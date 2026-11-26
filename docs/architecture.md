@@ -276,6 +276,10 @@ Rules that hold for every inferrer:
 - Vaults and private sources publish nothing until selected; an attachment no published page
   uses is never published (decision 0017).
 - A pinned value turns the decision's evidence into `Config { span }`, shown as "you said so".
+- `site.root` only moves into `content`, `docs`, `notes` or `src/content`. `posts`, `blog` and
+  `writing` are layout markers: a root there would make every post a plain page.
+- A file ignored by inference rather than by a pin or a pattern says so, once per folder or
+  file (`file.ignore.inferred`).
 
 ## 10. `ink.toml`
 

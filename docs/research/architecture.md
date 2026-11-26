@@ -389,12 +389,12 @@ Inference rules for v1 (each line is one decision code):
 
 | Decision | Inputs, in order of precedence | Default when nothing matches |
 |---|---|---|
-| `root` | `ink.toml` location, a single top-level folder named `content`, `docs`, `posts`, `blog`, `notes`, `src/content` | repo root |
-| `layout` | `.obsidian/` present = vault; a `posts`/`blog`/`writing` folder or dated filenames = blog | flat |
-| `ignore` | dotfiles and dot folders (`.obsidian/`, `.trash/`, `.git/`), `node_modules`, the Obsidian templates folder from `.obsidian/templates.json`, CI files, `LICENSE*` | none |
+| `root` | the one folder of `content`, `docs`, `notes`, `src/content` present, when it holds every file a format reads (repository files at the top aside). Not `posts` or `blog`: they are layout markers, and a root there would make every post a plain page | repo root |
+| `layout` | `.obsidian/` present = vault; root `docs` = docs; a top `posts`/`blog`/`writing` folder or dated filenames = blog | flat |
+| `ignore` | dotfiles and dot folders (`.obsidian/`, `.trash/`, `.git/`, `.github/`), `node_modules`, `ink.toml` at the top; at the top of the root, files whose whole stem is `LICENSE`/`LICENCE` (or `LICENSE-MIT`, a licence id in capitals after `-` or `.`), `CHANGELOG`, `CONTRIBUTING`, `CODE_OF_CONDUCT`, `SECURITY`, in any case; in a vault, a top `templates/` folder in any case (the conventional name: `.obsidian/templates.json` is not read yet). Each folder or file ignored this way says so (`file.ignore.inferred`) | none |
 | `home` | `index.md`, `README.md`, `Home.md`, `Index.md` at root | a generated listing |
-| `kind` | frontmatter `type`, folder name, date present | page |
-| `publish` | frontmatter `publish: true/false`, `draft: true`; for vaults and private sources, the selection step (flow.md 2.6) | public source: published; vault or private source: not published until selected |
+| `kind` | frontmatter `type`, a top posts folder (its own `index.md` or `README.md` is a listing page), frontmatter `date`, a dated filename | page |
+| `publish` | frontmatter `publish: true/false`, `draft: true` (`draft: false` says nothing, so it never selects a vault's note), an `include` pattern, a `drafts/` folder anywhere or a name starting with `_`; for vaults and private sources, the selection step (flow.md 2.6) | public source: published; vault or private source: not published until selected |
 | `title` | frontmatter `title`, first H1, filename | filename |
 | `date` | frontmatter `date`, filename `YYYY-MM-DD-*`, history `created` if `Exact` | undated (and said so) |
 | `updated` | frontmatter `updated`, history `updated` | none |
