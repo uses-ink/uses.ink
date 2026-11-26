@@ -44,8 +44,9 @@ const BANNED: &[&str] =
 /// these can expect it.
 const UNSAFE: &[&str] = &["freehand-web/src/lib.rs"];
 
-/// The keyword, spelled in two parts so this file does not match itself.
-const KEYWORD: &str = concat!("un", "safe");
+mod scan;
+
+use scan::{KEYWORD, holds_unsafe};
 
 /// Directories not walked for banned names.
 const SKIP: &[&str] = &["target", ".git", ".jj", ".impeccable", "node_modules"];
@@ -245,47 +246,4 @@ fn unsafety(dir: &Path, root: &Path, problems: &mut Vec<Problem>) -> Result<(), 
         }
     }
     Ok(())
-}
-
-/// Whether Rust source holds the keyword as a word outside `//` comments, or names the lint
-/// (`unsafe_code`) that guards it.
-fn holds_unsafe(text: &str) -> bool {
-    let ident = |c: char| c.is_alphanumeric() || c == '_';
-    text.lines().map(|line| line.split("//").next().unwrap_or(line)).any(|code| {
-        code.match_indices(KEYWORD).any(|(at, _)| {
-            let before = code.get(..at).and_then(|b| b.chars().next_back());
-            let after = code.get(at + KEYWORD.len()..).unwrap_or("");
-            let word = !before.is_some_and(ident) && !after.chars().next().is_some_and(ident);
-            word || after.starts_with("_code")
-        })
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn unsafe_in_every_spelling() {
-        let k = KEYWORD;
-        for code in [
-            format!("{k} {{ x }}"),
-            format!("{k}{{*p}}"),
-            format!("{k}\n{{"),
-            format!("pub {k} fn f() {{}}"),
-            format!("{k} impl Send for X {{}}"),
-            format!("#[{k}(no_mangle)]"),
-            format!("#![expect({k}_code)]"),
-        ] {
-            assert!(holds_unsafe(&code), "{code}");
-        }
-    }
-
-    #[test]
-    fn unsafe_as_part_of_a_word_or_comment() {
-        let k = KEYWORD;
-        for code in [format!("let {k}ty = 1;"), format!("fn is_{k}() {{}}"), format!("// {k} {{ }}")] {
-            assert!(!holds_unsafe(&code), "{code}");
-        }
-    }
 }
