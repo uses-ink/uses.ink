@@ -1,0 +1,15 @@
+[package]
+name = "uses-ink-diag"
+description = "The wording of every diagnostic and notice, from diag/catalog.toml, and their terminal rendering"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+model.workspace = true
+
+[lints]
+workspace = true

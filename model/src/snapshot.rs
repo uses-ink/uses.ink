@@ -1,0 +1,262 @@
+//! What a source hands the engine: an immutable tree at one version, facts about its files, and
+//! what the fetch could and could not do.
+
+use std::fmt;
+
+use serde::Serialize;
+
+use crate::{Bytes, ContentPath, DecisionCode, Hash, Timestamp};
+
+mod version;
+
+pub use version::{Oid, UploadId, Version, VersionError};
+
+/// An immutable tree of files at one version.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Snapshot {
+    version: Version,
+    tree: Vec<Entry>,
+    facts: Vec<FileFacts>,
+    observed: Observed,
+}
+
+/// One file in a snapshot.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[non_exhaustive]
+pub struct Entry {
+    pub path: ContentPath,
+    pub blob: Hash,
+    pub size: Bytes,
+}
+
+impl Entry {
+    pub fn new(path: ContentPath, blob: Hash, size: Bytes) -> Self {
+        Self { path, blob, size }
+    }
+}
+
+/// What a source knows about one file beyond its bytes.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
+pub struct FileFacts {
+    pub path: ContentPath,
+    pub created: Known<Timestamp>,
+    pub updated: Known<Timestamp>,
+}
+
+impl FileFacts {
+    pub fn new(path: ContentPath, created: Known<Timestamp>, updated: Known<Timestamp>) -> Self {
+        Self { path, created, updated }
+    }
+}
+
+/// A fact with how sure the source is of it (decision 0011).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum Known<T> {
+    /// The value itself.
+    Exact {
+        value: T,
+        from: Provenance,
+    },
+    /// A bound: the true value is this or earlier. Never treated as exact.
+    NotAfter {
+        value: T,
+        from: Provenance,
+    },
+    Unknown {
+        reason: UnknownReason,
+    },
+}
+
+impl<T> Known<T> {
+    /// The value, only when it is exact.
+    pub fn exact(&self) -> Option<&T> {
+        match self {
+            Self::Exact { value, .. } => Some(value),
+            Self::NotAfter { .. } | Self::Unknown { .. } => None,
+        }
+    }
+}
+
+/// Where a fact came from.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum Provenance {
+    /// Git history, read up to this commit.
+    GitHistory { commit: Oid },
+    /// The local filesystem's metadata.
+    Filesystem,
+}
+
+/// Why a fact is unknown.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum UnknownReason {
+    /// The source has no history ability.
+    NoHistory,
+    /// The history was cut at this many commits before the file's start.
+    BeyondDepth { depth: u32 },
+    /// The source could have said and did not.
+    NotReported,
+}
+
+/// Something a source can do (decision 0012).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum Ability {
+    Snapshot,
+    History,
+    Watch,
+    Private,
+}
+
+/// What one fetch actually had, and what it lacked.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
+pub struct Observed {
+    pub has: Vec<Ability>,
+    pub lacks: Vec<Lack>,
+}
+
+impl Observed {
+    pub fn new(has: Vec<Ability>, lacks: Vec<Lack>) -> Self {
+        Self { has, lacks }
+    }
+}
+
+/// An ability a fetch did not have, and the decision that suffers for it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
+pub struct Lack {
+    pub ability: Ability,
+    pub consequence: DecisionCode,
+}
+
+impl Lack {
+    pub fn new(ability: Ability, consequence: DecisionCode) -> Self {
+        Self { ability, consequence }
+    }
+}
+
+/// Why parts do not make a [`Snapshot`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SnapshotError {
+    /// Two entries share a path.
+    Duplicate { path: ContentPath },
+    /// Two fact records share a path.
+    DuplicateFacts { path: ContentPath },
+    /// Facts about a path the tree does not hold.
+    Stray { path: ContentPath },
+}
+
+impl fmt::Display for SnapshotError {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Duplicate { path } => write!(out, "the tree holds `{path}` twice"),
+            Self::DuplicateFacts { path } => write!(out, "two sets of facts for `{path}`"),
+            Self::Stray { path } => write!(out, "facts for `{path}`, which the tree does not hold"),
+        }
+    }
+}
+
+impl std::error::Error for SnapshotError {}
+
+impl Snapshot {
+    /// The entries and facts are sorted by path; a path twice, or facts about a path not in the
+    /// tree, is an error.
+    pub fn new(
+        version: Version,
+        mut tree: Vec<Entry>,
+        mut facts: Vec<FileFacts>,
+        observed: Observed,
+    ) -> Result<Self, SnapshotError> {
+        tree.sort_by(|a, b| a.path.cmp(&b.path));
+        for pair in tree.windows(2) {
+            if let [a, b] = pair
+                && a.path == b.path
+            {
+                return Err(SnapshotError::Duplicate { path: a.path.clone() });
+            }
+        }
+        facts.sort_by(|a, b| a.path.cmp(&b.path));
+        let mut previous: Option<&ContentPath> = None;
+        for fact in &facts {
+            if previous == Some(&fact.path) {
+                return Err(SnapshotError::DuplicateFacts { path: fact.path.clone() });
+            }
+            if tree.binary_search_by(|entry| entry.path.cmp(&fact.path)).is_err() {
+                return Err(SnapshotError::Stray { path: fact.path.clone() });
+            }
+            previous = Some(&fact.path);
+        }
+        Ok(Self { version, tree, facts, observed })
+    }
+
+    pub fn version(&self) -> &Version {
+        &self.version
+    }
+
+    /// Every file, sorted by path, each path once.
+    pub fn tree(&self) -> &[Entry] {
+        &self.tree
+    }
+
+    /// Facts, sorted by path, at most one record per path.
+    pub fn facts(&self) -> &[FileFacts] {
+        &self.facts
+    }
+
+    pub fn observed(&self) -> &Observed {
+        &self.observed
+    }
+
+    /// The entry at `path`.
+    pub fn entry(&self, path: &ContentPath) -> Option<&Entry> {
+        let at = self.tree.binary_search_by(|entry| entry.path.cmp(path)).ok()?;
+        self.tree.get(at)
+    }
+
+    /// The facts about `path`.
+    pub fn facts_of(&self, path: &ContentPath) -> Option<&FileFacts> {
+        let at = self.facts.binary_search_by(|fact| fact.path.cmp(path)).ok()?;
+        self.facts.get(at)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn entry(path: &str) -> Entry {
+        Entry::new(ContentPath::parse(path).unwrap(), Hash::of(path), Bytes(1))
+    }
+
+    fn folder() -> Version {
+        Version::Folder { hash: Hash::of(b"") }
+    }
+
+    #[test]
+    fn sorts_its_tree() {
+        let snapshot =
+            Snapshot::new(folder(), vec![entry("b.md"), entry("a.md")], vec![], Observed::default()).unwrap();
+        let paths: Vec<&str> = snapshot.tree().iter().map(|e| e.path.as_str()).collect();
+        assert_eq!(paths, ["a.md", "b.md"]);
+        assert!(snapshot.entry(&ContentPath::parse("b.md").unwrap()).is_some());
+    }
+
+    #[test]
+    fn refuses_a_path_twice_and_stray_facts() {
+        let twice = Snapshot::new(folder(), vec![entry("a.md"), entry("a.md")], vec![], Observed::default());
+        assert!(matches!(twice, Err(SnapshotError::Duplicate { .. })));
+        let unknown = Known::Unknown { reason: UnknownReason::NoHistory };
+        let stray = FileFacts::new(ContentPath::parse("z.md").unwrap(), unknown.clone(), unknown);
+        let result = Snapshot::new(folder(), vec![entry("a.md")], vec![stray], Observed::default());
+        assert!(matches!(result, Err(SnapshotError::Stray { .. })));
+    }
+}

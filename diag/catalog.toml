@@ -1,0 +1,111 @@
+# Every diagnostic and notice uses.ink can emit: its code, how bad it is, whose move it is, its
+# typed fields and its English wording. `cargo xtask diag` turns this file into the `Problem` and
+# `Announcement` enums (model/src/generated.rs) and their wording (diag/src/generated.rs);
+# `cargo xtask check` fails when either is stale.
+#
+# A code is `noun.noun.reason`: three kebab-case words joined by `.`.
+# severity: error | warning | note. fault: author | source | operator | ours.
+# Field types: path, paths, route, text, count, bytes, span, decision.
+# message and fix are templates: `{field}` is a declared field, `{{` and `}}` are braces.
+# Notices are not problems, so they have no severity and no fault.
+
+[diagnostic."config.syntax.invalid"]
+severity = "error"
+fault = "author"
+fields = { reason = "text" }
+message = "ink.toml does not parse: {reason}"
+fix = "fix the TOML at the marked place; nothing else in ink.toml is read until it parses"
+
+[diagnostic."config.key.unknown"]
+severity = "error"
+fault = "author"
+fields = { key = "text" }
+message = "`{key}` is not a key ink.toml has"
+fix = "remove it, or compare it with what `ink explain --pin` prints"
+
+[diagnostic."config.value.invalid"]
+severity = "error"
+fault = "author"
+fields = { key = "text", expected = "text" }
+message = "`{key}` takes {expected}"
+
+[diagnostic."frontmatter.syntax.invalid"]
+severity = "warning"
+fault = "author"
+fields = { reason = "text" }
+message = "the frontmatter does not parse, so the page is built without it: {reason}"
+fix = "fix the YAML between the `---` lines"
+
+[diagnostic."link.target.missing"]
+severity = "warning"
+fault = "author"
+fields = { written = "text" }
+message = "`{written}` points at no file, so it is shown as plain text"
+
+[diagnostic."link.target.ambiguous"]
+severity = "error"
+fault = "author"
+fields = { written = "text", candidates = "paths" }
+message = "`{written}` could be any of {candidates}"
+fix = "write the path of the one you mean"
+
+[diagnostic."link.target.unpublished"]
+severity = "warning"
+fault = "author"
+fields = { written = "text", target = "path" }
+message = "`{written}` points at {target}, which is not published, so it is shown as plain text"
+fix = "publish {target}, or remove the link"
+
+[diagnostic."page.route.collision"]
+severity = "error"
+fault = "author"
+fields = { route = "route", files = "paths" }
+message = "{files} all route to {route}"
+fix = "pin a different `page.slug` on all but one"
+
+[diagnostic."html.element.stripped"]
+severity = "warning"
+fault = "author"
+fields = { element = "text" }
+message = "`<{element}>` is not allowed in a page and was removed"
+
+[diagnostic."source.file.unreadable"]
+severity = "error"
+fault = "source"
+fields = { path = "path", reason = "text" }
+message = "{path} could not be read: {reason}"
+
+[diagnostic."source.budget.files"]
+severity = "error"
+fault = "author"
+fields = { count = "count", limit = "count" }
+message = "the source holds {count} files; a site may hold {limit}"
+fix = "exclude folders that are not part of the site in ink.toml"
+
+[diagnostic."source.budget.file"]
+severity = "error"
+fault = "author"
+fields = { path = "path", size = "bytes", limit = "bytes" }
+message = "{path} is {size}; a file may be {limit}"
+
+[diagnostic."theme.route.collision"]
+severity = "error"
+fault = "author"
+fields = { route = "route", theme = "text", file = "path" }
+message = "the theme `{theme}` serves {route}, which {file} also routes to"
+fix = "pin a different `page.slug` on {file}"
+
+[diagnostic."render.page.failed"]
+severity = "error"
+fault = "ours"
+fields = { reason = "text" }
+message = "the page could not be rendered: {reason}"
+
+[notice."notice.default.chosen"]
+fields = { decision = "decision", value = "text" }
+message = "nothing decided `{decision}`, so it is {value}"
+fix = "pin `{decision}` in ink.toml to choose"
+
+[notice."site.home.generated"]
+message = "no home page was found, so the home page lists every page"
+fix = "add index.md or README.md at the root, or pin `site.home`"

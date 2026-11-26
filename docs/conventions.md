@@ -37,6 +37,8 @@ Each word means one thing everywhere: code, CLI, dashboard copy, docs, diagnosti
 | **preview** | a deploy that is not live, reachable by its own URL | a draft |
 | **diagnostic** | a problem: code, severity, cause, fix | a log line |
 | **notice** | an announcement that is not a problem, such as a default being chosen | a diagnostic |
+| **problem** | what a diagnostic says: its code and typed fields (`Problem`) | a diagnostic |
+| **announcement** | what a notice says: its code and typed fields (`Announcement`) | a notice |
 | **event** | one entry in a build's or a site's append-only log | a diagnostic |
 | **capability** | one host function a plugin may import (`pen.stroke`) | an ability |
 | **plugin** | one installable package that fills one slot | an interface |

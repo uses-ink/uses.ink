@@ -1,6 +1,7 @@
 //! Repo tasks, run as `cargo xtask <task>`:
 //!
 //! - `token`: write `token/src/generated.rs` and `token/token.css` from `token/token.toml`.
+//! - `diag`: write `model/src/generated.rs` and `diag/src/generated.rs` from `diag/catalog.toml`.
 //! - `brand`: draw the logo, mark and favicon into `brand/` from `brand/figure.toml`.
 //! - `check`: crate names against paths, dependency direction, licences, banned names, and
 //!   every generated file fresh. Fails with every problem listed.
@@ -10,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 mod brand;
+mod diag;
 mod error;
 mod layout;
 mod output;
@@ -22,6 +24,7 @@ use output::{Mode, Output};
 #[derive(Debug, Clone, Copy)]
 enum Task {
     Token,
+    Diag,
     Brand,
     Check,
 }
@@ -30,6 +33,7 @@ impl Task {
     fn parse(arg: Option<&str>) -> Result<Self, Error> {
         match arg {
             Some("token") => Ok(Self::Token),
+            Some("diag") => Ok(Self::Diag),
             Some("brand") => Ok(Self::Brand),
             Some("check") => Ok(Self::Check),
             other => Err(Error::Task { given: other.map(str::to_owned) }),
@@ -41,14 +45,16 @@ impl Task {
         let mut output = Output::new(root.to_path_buf(), mode);
         match self {
             Self::Token => token::write(&mut output)?,
+            Self::Diag => diag::write(&mut output)?,
             Self::Brand => brand::write(&mut output)?,
             Self::Check => {
                 // Every problem at once: layout, then generated files.
                 let layout = layout::check(root);
                 let token = token::write(&mut output);
+                let diag = diag::write(&mut output);
                 let brand = brand::write(&mut output);
                 let failed: Vec<Error> =
-                    [layout, token, brand, output.fresh()].into_iter().filter_map(Result::err).collect();
+                    [layout, token, diag, brand, output.fresh()].into_iter().filter_map(Result::err).collect();
                 if !failed.is_empty() {
                     return Err(Error::Each(failed));
                 }

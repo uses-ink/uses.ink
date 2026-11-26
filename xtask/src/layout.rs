@@ -22,6 +22,8 @@ const TASKS: &str = "xtask";
 const MAY_USE: &[(&str, &[&str])] = &[
     ("freehand", &[]),
     ("freehand-web", &["freehand"]),
+    ("uses-ink-model", &[]),
+    ("uses-ink-diag", &["uses-ink-model"]),
     ("uses-ink-token", &[]),
     (TASKS, &["freehand", "uses-ink-token"]),
 ];

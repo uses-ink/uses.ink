@@ -38,6 +38,8 @@ pub(crate) enum Error {
         why: String,
     },
     Brand(crate::brand::Problem),
+    /// Everything wrong with `diag/catalog.toml`.
+    Catalog(Vec<crate::diag::Flaw>),
     Metadata {
         why: String,
     },
@@ -55,7 +57,7 @@ impl fmt::Display for Error {
                 if let Some(given) = given {
                     write!(out, "no task `{given}`; ")?;
                 }
-                write!(out, "the tasks are `token`, `brand` and `check`")
+                write!(out, "the tasks are `token`, `diag`, `brand` and `check`")
             }
             Self::Read { path, source } => write!(out, "reading {}: {source}", path.display()),
             Self::Write { path, source } => write!(out, "writing {}: {source}", path.display()),
@@ -66,13 +68,20 @@ impl fmt::Display for Error {
             }
             Self::Rustfmt { path, why } => write!(out, "rustfmt on {}: {why}", path.display()),
             Self::Brand(problem) => write!(out, "brand/figure.toml: {problem}"),
+            Self::Catalog(flaws) => {
+                write!(out, "diag/catalog.toml has {} flaw(s):", flaws.len())?;
+                flaws.iter().try_for_each(|flaw| write!(out, "\n  {flaw}"))
+            }
             Self::Metadata { why } => write!(out, "cargo metadata: {why}"),
             Self::Layout(problems) => {
                 write!(out, "{} layout problem(s):", problems.len())?;
                 problems.iter().try_for_each(|p| write!(out, "\n  {p}"))
             }
             Self::Stale(paths) => {
-                write!(out, "stale generated files; run `cargo xtask token` and `cargo xtask brand`:")?;
+                write!(
+                    out,
+                    "stale generated files; run `cargo xtask token`, `cargo xtask diag` and `cargo xtask brand`:"
+                )?;
                 paths.iter().try_for_each(|p| write!(out, "\n  {}", p.display()))
             }
             Self::Each(errors) => errors

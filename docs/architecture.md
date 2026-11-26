@@ -63,7 +63,7 @@ uses.ink/
   Cargo.toml  rust-toolchain.toml  rustfmt.toml  clippy.toml  deny.toml  .config/nextest.toml
   model/                 uses-ink-model         Snapshot, Site, Page, Document, Decision, Diagnostic, Event, Manifest
   config/                uses-ink-config        ink.toml: parse with spans, pins, schema for editors
-  diag/                  uses-ink-diag          diagnostic and decision catalog, wording (locale/en.toml), terminal rendering
+  diag/                  uses-ink-diag          diagnostic and notice catalog (catalog.toml), wording, terminal rendering
   engine/                uses-ink-engine        interpret and render, pure, talks to host traits only
   host/                  uses-ink-host          capability traits: blob, git, http, pen, text, asset, diagnostic
   host/wasmtime/         uses-ink-host-wasmtime component loading, linking, fuel, epochs, pooling, .cwasm cache
@@ -92,7 +92,7 @@ uses.ink/
   migration/             plain .sql, applied by wrangler to D1 and by ink serve to SQLite
   token/                 design tokens (one TOML file) -> CSS custom properties and pen palette
   brand/                 logo stroke data, fonts and their licences
-  xtask/                 cargo xtask token | brand | check (later: wit, fixture)
+  xtask/                 cargo xtask token | diag | brand | check (later: wit, fixture)
   docs/  spikes/
 ```
 
@@ -108,7 +108,11 @@ freehand, measure <- nothing of ours. freehand-web <- freehand. token <- nothing
 ## 5. Core types
 
 Sketches; WIT is the source for anything that crosses the plugin boundary, Rust types are
-generated from it. Full sketches with commentary: `research/architecture.md` section 4.
+generated from it. Full sketches with commentary: `research/architecture.md` section 4. The
+types as built live in `model/`; where they differ from these sketches, `model/` is right:
+a decision's code and value are one enum (`Decided`, one variant per code), and a
+diagnostic's code, severity, fault and typed fields are one generated enum (`Problem`) from
+`diag/catalog.toml`.
 
 ```rust
 struct Hash([u8; 32]);                                   // blake3
@@ -256,8 +260,8 @@ page.date, page.updated, page.slug, page.tags -> link.resolve -> site.home, site
 ```
 
 The v1 inference table (inputs in order of precedence, default when none match) is
-`research/architecture.md` section 3.6; it moves into `diag/locale/en.toml` and the decision
-catalog as the inferrers are written, and this page links there once it exists.
+`research/architecture.md` section 3.6; it moves into `diag/catalog.toml` and the decision
+codes as the inferrers are written, and this page links there once it exists.
 
 Rules that hold for every inferrer:
 
