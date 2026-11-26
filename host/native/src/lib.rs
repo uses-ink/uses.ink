@@ -1,4 +1,5 @@
-//! The builder's capabilities on a local disk: a folder read into a [`Snapshot`](model::Snapshot),
+//! The builder's capabilities on a local disk: a folder or a git repository ([`Repository`], at
+//! one commit, with dates from its history) read into a [`Snapshot`](model::Snapshot),
 //! blob stores that implement [`engine::Blobs`], and [`Grammars`], which highlight code for a
 //! theme through arborium's tree-sitter grammars (decision 0039).
 //!

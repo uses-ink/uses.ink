@@ -105,6 +105,12 @@ The two real audiences, locally.
 - `ink:theme-notebook` as a component, the pen drawing measured marks **(owner: its design)**.
 - `ink build --check` in CI on every fixture.
 
+Progress (2026-11-27): the git source's native core is `host_native::Repository` (0036, as
+built): a local repository at a commit, dates from one history walk, shallow bounds and moves
+as lacks, `ink build`, `check`, `explain` and `preview` reading it when the folder holds `.git`
+(`--source`, `--rev`). Left: `git.fetch` (clone and deepen) as a host capability and
+`ink:source-git` as a component over it, which wait for `host/wasmtime`.
+
 **Exit:** a real Obsidian vault and a real notes repo with history build into sites the owner
 would publish; a one-file change rebuilds only its page, its neighbours and the index.
 

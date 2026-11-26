@@ -12,7 +12,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Markdown | `comrak` 1.2, no default features | wikilinks, embeds, callouts, block ids, spans (0027) |
 | Frontmatter | `serde-saphyr` 2.2 | maintained, pure Rust, spans for evidence |
 | `ink.toml` | `toml` 1.2 (`preserve_order`), `toml_edit` 0.25 | `toml` reads a spanned tree with recoverable errors, so every key and value has its span and an unknown key is found by walking it; `toml_edit` writes pins in place, keeping the author's formatting and comments |
-| Git | `gix` 0.91, minimal features | pure Rust, shallow plus deepen, rev walk and tree diff for dates |
+| Git | `gix` 0.91: `parallel`, `pack-cache-lru-dynamic`, `revision`, `sha1`, in `host/native` only | pure Rust, shallow plus deepen, rev walk and tree diff for dates (0036) |
 | Hashing | `blake3` 1.8 | reference implementation |
 | HTML safety | own allowlist; `ammonia` 4.2 behind an escape hatch only | smallest XSS surface (0027) |
 | Highlighting capability | `arborium` 2.18, `arborium-theme` 2.18, in `host/native` only | tree-sitter grammars compiled from C, only the 14 languages enabled as features; `arborium-theme` maps capture names onto its slots, which become `model::highlight::Capture` (0039) |

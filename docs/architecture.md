@@ -128,6 +128,9 @@ enum Known<T> { Exact { value: T, from: Provenance }, NotAfter { value: T, from:
 
 enum Ability { Snapshot, History, Watch(WatchMode), Private }
 struct Observed { has: Vec<Ability>, lacks: Vec<Lack> }  // Lack carries the decision it affects
+struct Lack { ability: Ability, consequence: AnyCode, gap: Gap }
+enum Gap { Absent, Shallow { commit: Oid, bound: Instant }, Renames { moved: u64 } }  // how much is missing
+enum Provenance { GitHistory { commit: Oid }, Commit { commit: Oid }, Filesystem }  // bound at a boundary; the commit that changed it
 
 struct Decision<C: Code> { subject: C::Subject, value: C::Value, evidence: Evidence, rejected: Vec<Alternative<C::Value>> }
 // the pin is derived from code + subject, never stored

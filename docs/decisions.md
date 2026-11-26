@@ -261,6 +261,26 @@ The 5 s budget holds for the dates, not for the fetch. gix has no blobless parti
 partial clone, or rename following turns out to matter for real sources (1.8% of tldr's files
 were created by a pure move).
 
+As built (2026-11-27), natively, before `git.fetch` and `ink:source-git` exist as components:
+`host_native::Repository` reads a local repository at one commit (`HEAD`, or `--rev` as
+`git rev-parse` takes it) into a `Snapshot` whose version is `Version::GitCommit`. The snapshot
+is the commit's tree, never the working copy, so `ink build` in a repository builds what is
+committed; it says so with `source.git.chosen`, and `--source folder` reads the files on disk
+instead. The tree is read with the folder's budgets and refusals: links are resolved against
+the tree (a link to a file is that file, to a folder is skipped, out of the tree is refused,
+to nothing is `source.link.broken`), submodules are skipped and LFS pointers kept and said. A
+file's `updated` is the newest commit by author time that touched its path and its `created`
+the newest that added it, both `Known::Exact` from `Provenance::Commit`, so a file deleted and
+added again was created when it came back. A shallow boundary gives the rest `NotAfter` from
+`Provenance::GitHistory`; a change seen only in a merge is `Unknown { Merged }`. What the
+history lacked is a `Lack` with a `Gap` (`Shallow`, or `Renames` with the count of files a
+move created), said as a notice and shown by `ink explain`. gix is opened isolated (no user or
+system configuration) with a 32 MiB delta-base cache per thread and without
+`pack-cache-lru-static`, whose `uluru` is MPL-2.0; `foldhash` and `zlib-rs` (Zlib) are
+licence exceptions in `deny.toml`. Measured on tldr (40,943 files, 24,903 commits, full clone,
+release build): the whole read, every blob and every date, takes 10.1 s on 1 thread, 3.3 s on 4
+and 2.6 s on 8, in 150 MiB; it matches the spike's 732 files created by a move.
+
 ## 0037 Container egress from Rust through `Reflect`; no JS shim
 
 Accepted, spike (`spikes/workers/`). The build Durable Object starts the Container with
