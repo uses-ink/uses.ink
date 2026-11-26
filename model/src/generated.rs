@@ -311,6 +311,28 @@ pub enum Problem {
         /// The most that is allowed.
         limit: u64,
     },
+    /// `source.repository.unreadable`: the git repository could not be read: {reason}
+    #[serde(rename = "source.repository.unreadable")]
+    SourceRepositoryUnreadable {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `source.revision.unknown`: `{written}` names no commit of the repository: {reason}
+    #[serde(rename = "source.revision.unknown")]
+    SourceRevisionUnknown {
+        /// The text, as written.
+        written: String,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `source.link.broken`: {path} links to `{written}`, which the commit does not hold as a file or folder
+    #[serde(rename = "source.link.broken")]
+    SourceLinkBroken {
+        /// The file.
+        path: ContentPath,
+        /// The text, as written.
+        written: String,
+    },
     /// `math.syntax.invalid`: the math `{tex}` does not parse, so it is shown as written: {reason}
     #[serde(rename = "math.syntax.invalid")]
     MathSyntaxInvalid {
@@ -368,6 +390,9 @@ impl Problem {
         "source.root.unreadable",
         "source.blob.unwritable",
         "source.budget.folders",
+        "source.repository.unreadable",
+        "source.revision.unknown",
+        "source.link.broken",
         "math.syntax.invalid",
     ];
     /// Its dotted code, `noun.noun.reason`.
@@ -418,6 +443,9 @@ impl Problem {
             Self::SourceRootUnreadable { .. } => "source.root.unreadable",
             Self::SourceBlobUnwritable { .. } => "source.blob.unwritable",
             Self::SourceBudgetFolders { .. } => "source.budget.folders",
+            Self::SourceRepositoryUnreadable { .. } => "source.repository.unreadable",
+            Self::SourceRevisionUnknown { .. } => "source.revision.unknown",
+            Self::SourceLinkBroken { .. } => "source.link.broken",
             Self::MathSyntaxInvalid { .. } => "math.syntax.invalid",
         }
     }
@@ -469,6 +497,9 @@ impl Problem {
             Self::SourceRootUnreadable { .. } => Severity::Error,
             Self::SourceBlobUnwritable { .. } => Severity::Error,
             Self::SourceBudgetFolders { .. } => Severity::Error,
+            Self::SourceRepositoryUnreadable { .. } => Severity::Error,
+            Self::SourceRevisionUnknown { .. } => Severity::Error,
+            Self::SourceLinkBroken { .. } => Severity::Error,
             Self::MathSyntaxInvalid { .. } => Severity::Warning,
         }
     }
@@ -520,6 +551,9 @@ impl Problem {
             Self::SourceRootUnreadable { .. } => Fault::Operator,
             Self::SourceBlobUnwritable { .. } => Fault::Operator,
             Self::SourceBudgetFolders { .. } => Fault::Author,
+            Self::SourceRepositoryUnreadable { .. } => Fault::Source,
+            Self::SourceRevisionUnknown { .. } => Fault::Author,
+            Self::SourceLinkBroken { .. } => Fault::Author,
             Self::MathSyntaxInvalid { .. } => Fault::Author,
         }
     }
@@ -598,6 +632,48 @@ pub enum Announcement {
         /// The file.
         path: ContentPath,
     },
+    /// `source.git.chosen`: the folder is a git repository, so the site is read from its commit {commit}, not from the files on disk
+    #[serde(rename = "source.git.chosen")]
+    SourceGitChosen {
+        /// The commit, as git writes its id.
+        commit: String,
+    },
+    /// `source.history.absent`: the source has no history, so `{decision}` is not taken from it
+    #[serde(rename = "source.history.absent")]
+    SourceHistoryAbsent {
+        /// The decision code it is about.
+        decision: AnyCode,
+    },
+    /// `source.history.shallow`: the history stops at commit {commit}, a shallow clone's boundary, so `{decision}` of a file not changed since is only a bound, not after {bound}
+    #[serde(rename = "source.history.shallow")]
+    SourceHistoryShallow {
+        /// The decision code it is about.
+        decision: AnyCode,
+        /// The commit, as git writes its id.
+        commit: String,
+        /// The latest the date can be.
+        bound: String,
+    },
+    /// `source.history.moved`: {count} files came to their path by a move, and the history does not follow renames, so their `{decision}` is when they moved
+    #[serde(rename = "source.history.moved")]
+    SourceHistoryMoved {
+        /// The decision code it is about.
+        decision: AnyCode,
+        /// How many there are.
+        count: u64,
+    },
+    /// `source.submodule.skipped`: {path} is a git submodule, whose files live in another repository, so it is not read
+    #[serde(rename = "source.submodule.skipped")]
+    SourceSubmoduleSkipped {
+        /// The file.
+        path: ContentPath,
+    },
+    /// `source.lfs.pointer`: {path} is a Git LFS pointer, so the site holds the pointer's text, not the file it stands for
+    #[serde(rename = "source.lfs.pointer")]
+    SourceLfsPointer {
+        /// The file.
+        path: ContentPath,
+    },
     /// `build.address.default`: no address was given, so feeds, the sitemap and canonical links use {address}
     #[serde(rename = "build.address.default")]
     BuildAddressDefault {
@@ -626,6 +702,12 @@ impl Announcement {
         "source.output.skipped",
         "file.ignore.inferred",
         "source.link.skipped",
+        "source.git.chosen",
+        "source.history.absent",
+        "source.history.shallow",
+        "source.history.moved",
+        "source.submodule.skipped",
+        "source.lfs.pointer",
         "build.address.default",
         "code.language.unknown",
     ];
@@ -644,6 +726,12 @@ impl Announcement {
             Self::SourceOutputSkipped { .. } => "source.output.skipped",
             Self::FileIgnoreInferred { .. } => "file.ignore.inferred",
             Self::SourceLinkSkipped { .. } => "source.link.skipped",
+            Self::SourceGitChosen { .. } => "source.git.chosen",
+            Self::SourceHistoryAbsent { .. } => "source.history.absent",
+            Self::SourceHistoryShallow { .. } => "source.history.shallow",
+            Self::SourceHistoryMoved { .. } => "source.history.moved",
+            Self::SourceSubmoduleSkipped { .. } => "source.submodule.skipped",
+            Self::SourceLfsPointer { .. } => "source.lfs.pointer",
             Self::BuildAddressDefault { .. } => "build.address.default",
             Self::CodeLanguageUnknown { .. } => "code.language.unknown",
         }

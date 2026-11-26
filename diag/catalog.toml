@@ -17,6 +17,7 @@ anchor = "The anchor given to the heading."
 at = "The byte offset where the file stops being UTF-8."
 bound = "The latest the date can be."
 candidates = "Every file it could mean, in path order."
+commit = "The commit, as git writes its id."
 count = "How many there are."
 date = "The date, as written."
 decision = "The decision code it is about."
@@ -349,6 +350,27 @@ fields = { limit = "count" }
 message = "the source holds more than {limit} folders, the most a site may hold"
 fix = "move folders that are not part of the site out of the folder"
 
+[diagnostic."source.repository.unreadable"]
+severity = "error"
+fault = "source"
+fields = { reason = "text" }
+message = "the git repository could not be read: {reason}"
+fix = "check the repository with `git fsck`, or build the files as a folder with `--source folder`"
+
+[diagnostic."source.revision.unknown"]
+severity = "error"
+fault = "author"
+fields = { written = "text", reason = "text" }
+message = "`{written}` names no commit of the repository: {reason}"
+fix = "pass a branch, tag or commit id that exists, or leave out `--rev` to read HEAD"
+
+[diagnostic."source.link.broken"]
+severity = "error"
+fault = "author"
+fields = { path = "path", written = "text" }
+message = "{path} links to `{written}`, which the commit does not hold as a file or folder"
+fix = "commit what it links to, or remove the link"
+
 [diagnostic."math.syntax.invalid"]
 severity = "warning"
 fault = "author"
@@ -406,6 +428,35 @@ fix = "add it to `include` in ink.toml to keep it"
 [notice."source.link.skipped"]
 fields = { path = "path" }
 message = "{path} links to a folder of the site, which is read at its own path, so the link is not followed"
+
+[notice."source.git.chosen"]
+fields = { commit = "text" }
+message = "the folder is a git repository, so the site is read from its commit {commit}, not from the files on disk"
+fix = "pass `--source folder` to read the files as they are, uncommitted changes included"
+
+[notice."source.history.absent"]
+fields = { decision = "decision" }
+message = "the source has no history, so `{decision}` is not taken from it"
+fix = "write the date in the frontmatter, or build from a git repository"
+
+[notice."source.history.shallow"]
+fields = { decision = "decision", commit = "text", bound = "text" }
+message = "the history stops at commit {commit}, a shallow clone's boundary, so `{decision}` of a file not changed since is only a bound, not after {bound}"
+fix = "fetch the whole history, such as with `git fetch --unshallow`"
+
+[notice."source.history.moved"]
+fields = { decision = "decision", count = "count" }
+message = "{count} files came to their path by a move, and the history does not follow renames, so their `{decision}` is when they moved"
+fix = "write the date in the frontmatter of a moved file, or pin `{decision}`"
+
+[notice."source.submodule.skipped"]
+fields = { path = "path" }
+message = "{path} is a git submodule, whose files live in another repository, so it is not read"
+
+[notice."source.lfs.pointer"]
+fields = { path = "path" }
+message = "{path} is a Git LFS pointer, so the site holds the pointer's text, not the file it stands for"
+fix = "commit the file itself, or fetch it with `git lfs pull` and build with `--source folder`"
 
 [notice."build.address.default"]
 fields = { address = "text" }

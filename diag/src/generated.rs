@@ -143,6 +143,15 @@ impl Message<'_> {
             Problem::SourceBudgetFolders { limit, .. } => {
                 write!(out, "the source holds more than {limit} folders, the most a site may hold")
             }
+            Problem::SourceRepositoryUnreadable { reason, .. } => {
+                write!(out, "the git repository could not be read: {reason}")
+            }
+            Problem::SourceRevisionUnknown { written, reason, .. } => {
+                write!(out, "`{written}` names no commit of the repository: {reason}")
+            }
+            Problem::SourceLinkBroken { path, written, .. } => {
+                write!(out, "{path} links to `{written}`, which the commit does not hold as a file or folder")
+            }
             Problem::MathSyntaxInvalid { tex, reason, .. } => {
                 write!(out, "the math `{tex}` does not parse, so it is shown as written: {reason}")
             }
@@ -187,6 +196,36 @@ impl Message<'_> {
                 write!(
                     out,
                     "{path} links to a folder of the site, which is read at its own path, so the link is not followed"
+                )
+            }
+            Announcement::SourceGitChosen { commit, .. } => {
+                write!(
+                    out,
+                    "the folder is a git repository, so the site is read from its commit {commit}, not from the files on disk"
+                )
+            }
+            Announcement::SourceHistoryAbsent { decision, .. } => {
+                write!(out, "the source has no history, so `{decision}` is not taken from it")
+            }
+            Announcement::SourceHistoryShallow { commit, decision, bound, .. } => {
+                write!(
+                    out,
+                    "the history stops at commit {commit}, a shallow clone's boundary, so `{decision}` of a file not changed since is only a bound, not after {bound}"
+                )
+            }
+            Announcement::SourceHistoryMoved { count, decision, .. } => {
+                write!(
+                    out,
+                    "{count} files came to their path by a move, and the history does not follow renames, so their `{decision}` is when they moved"
+                )
+            }
+            Announcement::SourceSubmoduleSkipped { path, .. } => {
+                write!(out, "{path} is a git submodule, whose files live in another repository, so it is not read")
+            }
+            Announcement::SourceLfsPointer { path, .. } => {
+                write!(
+                    out,
+                    "{path} is a Git LFS pointer, so the site holds the pointer's text, not the file it stands for"
                 )
             }
             Announcement::BuildAddressDefault { address, .. } => {
@@ -246,6 +285,9 @@ impl Fix<'_> {
             Problem::SourceRootUnreadable { .. } => false,
             Problem::SourceBlobUnwritable { .. } => false,
             Problem::SourceBudgetFolders { .. } => true,
+            Problem::SourceRepositoryUnreadable { .. } => true,
+            Problem::SourceRevisionUnknown { .. } => true,
+            Problem::SourceLinkBroken { .. } => true,
             Problem::MathSyntaxInvalid { .. } => true,
         }
     }
@@ -263,6 +305,12 @@ impl Fix<'_> {
             Announcement::SourceOutputSkipped { .. } => false,
             Announcement::FileIgnoreInferred { .. } => true,
             Announcement::SourceLinkSkipped { .. } => false,
+            Announcement::SourceGitChosen { .. } => true,
+            Announcement::SourceHistoryAbsent { .. } => true,
+            Announcement::SourceHistoryShallow { .. } => true,
+            Announcement::SourceHistoryMoved { .. } => true,
+            Announcement::SourceSubmoduleSkipped { .. } => false,
+            Announcement::SourceLfsPointer { .. } => true,
             Announcement::BuildAddressDefault { .. } => true,
             Announcement::CodeLanguageUnknown { .. } => true,
         }
@@ -381,6 +429,18 @@ impl Fix<'_> {
             Problem::SourceBudgetFolders { .. } => {
                 write!(out, "move folders that are not part of the site out of the folder")
             }
+            Problem::SourceRepositoryUnreadable { .. } => {
+                write!(
+                    out,
+                    "check the repository with `git fsck`, or build the files as a folder with `--source folder`"
+                )
+            }
+            Problem::SourceRevisionUnknown { .. } => {
+                write!(out, "pass a branch, tag or commit id that exists, or leave out `--rev` to read HEAD")
+            }
+            Problem::SourceLinkBroken { .. } => {
+                write!(out, "commit what it links to, or remove the link")
+            }
             Problem::MathSyntaxInvalid { .. } => {
                 write!(out, "fix the TeX between the `$` signs")
             }
@@ -413,6 +473,22 @@ impl Fix<'_> {
                 write!(out, "add it to `include` in ink.toml to keep it")
             }
             Announcement::SourceLinkSkipped { .. } => Ok(()),
+            Announcement::SourceGitChosen { .. } => {
+                write!(out, "pass `--source folder` to read the files as they are, uncommitted changes included")
+            }
+            Announcement::SourceHistoryAbsent { .. } => {
+                write!(out, "write the date in the frontmatter, or build from a git repository")
+            }
+            Announcement::SourceHistoryShallow { .. } => {
+                write!(out, "fetch the whole history, such as with `git fetch --unshallow`")
+            }
+            Announcement::SourceHistoryMoved { decision, .. } => {
+                write!(out, "write the date in the frontmatter of a moved file, or pin `{decision}`")
+            }
+            Announcement::SourceSubmoduleSkipped { .. } => Ok(()),
+            Announcement::SourceLfsPointer { .. } => {
+                write!(out, "commit the file itself, or fetch it with `git lfs pull` and build with `--source folder`")
+            }
             Announcement::BuildAddressDefault { .. } => {
                 write!(out, "pass `--base <url>` with the address the site is served at")
             }
