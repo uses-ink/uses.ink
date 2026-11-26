@@ -1,8 +1,7 @@
 //! Marks a theme draws on a page, each from measured geometry and a name. The name seeds every
 //! random draw, so the same name and geometry give the same mark; a mark of several lines seeds
-//! each with `{name}{i}`.
+//! each with `{name}{i}` ([`Seed::and_number`]).
 
-use alloc::format;
 use alloc::vec::Vec;
 
 use crate::centreline::Centreline;
@@ -15,7 +14,12 @@ use crate::point::Point;
 
 /// A quick straight line from `from` to `to`, overshooting a little: a rule or an underline.
 pub fn line(from: Point, to: Point, weight: f64, name: &str) -> Path {
-    let mut chance = Mulberry::new(Seed::of(name));
+    seeded_line(from, to, weight, Seed::of(name))
+}
+
+/// [`line`], drawn from `seed` rather than from a name.
+fn seeded_line(from: Point, to: Point, weight: f64, seed: Seed) -> Path {
+    let mut chance = Mulberry::new(seed);
     let centre = Centreline::straight(from, to, &mut chance);
     Pencil::new(weight).outline(&Hand::default().trace(&centre, &mut chance))
 }
@@ -40,7 +44,7 @@ pub fn frame(top_left: Point, bottom_right: Point, slack: f64, weight: f64, name
         .iter()
         .zip(corners.iter().cycle().skip(1))
         .enumerate()
-        .map(|(i, (from, to))| line(*from, *to, weight, &format!("{name}{i}")))
+        .map(|(i, (from, to))| seeded_line(*from, *to, weight, Seed::of(name).and_number(i)))
         .collect()
 }
 

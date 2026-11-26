@@ -216,7 +216,7 @@ fn paint(sheet: &Sheet<'_>, name: &str, open: bool) -> Result<(Vec<Painted>, Vec
     let mut fills = Vec::new();
     for fill in drawing.fill.iter().filter(|f| !(open && f.head)) {
         for line in sheet.lines(&fill.shape)? {
-            let mut chance = Mulberry::new(Seed::of(&format!("{name}f{}", fills.len())));
+            let mut chance = Mulberry::new(Seed::of(name).and("f").and_number(fills.len()));
             let corners = line.moved(point(drawing.shift));
             fills.push(Painted {
                 d: Highlighter::default().fill(corners.points(), &mut chance),
@@ -228,7 +228,7 @@ fn paint(sheet: &Sheet<'_>, name: &str, open: bool) -> Result<(Vec<Painted>, Vec
     let mut strokes = Vec::new();
     for stroke in drawing.stroke.iter().filter(|s| !(open && s.head)) {
         for line in sheet.lines(&stroke.line)? {
-            let mut chance = Mulberry::new(Seed::of(&format!("{name}{}", strokes.len())));
+            let mut chance = Mulberry::new(Seed::of(name).and_number(strokes.len()));
             let traced = hand.trace(&line, &mut chance);
             strokes.push(Painted {
                 d: Pencil::new(stroke.weight).outline(&traced),

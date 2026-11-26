@@ -1,17 +1,51 @@
 //! Seeded randomness: a drawing's every random draw comes from its seed.
 
+use core::fmt::{self, Write as _};
+
 /// A drawing's seed: the same seed draws the same marks.
+///
+/// A seed is named by text, hashed with FNV-1a, which reads its text one unit at a time: a seed
+/// can be continued with more text, and the result is the seed of the whole text. A mark of
+/// several lines names each by its own name and its index.
+///
+/// ```
+/// use freehand::Seed;
+///
+/// assert_eq!(Seed::of("logo").and("f").and_number(12), Seed::of("logof12"));
+/// ```
+///
+/// Writing into a seed with [`fmt::Write`] continues it the same way.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Seed(pub u32);
 
 impl Seed {
+    /// The seed of no text: FNV-1a's offset basis.
+    const BASIS: Self = Self(2_166_136_261);
+
     /// The seed named by `text`: FNV-1a over its UTF-16 code units, as the browser hashes it.
     pub fn of(text: &str) -> Self {
-        let mut hash: u32 = 2_166_136_261;
-        for unit in text.encode_utf16() {
-            hash = (hash ^ u32::from(unit)).wrapping_mul(16_777_619);
-        }
-        Self(hash)
+        Self::BASIS.and(text)
+    }
+
+    /// This seed continued with `text`: the seed of its own text followed by `text`.
+    #[must_use]
+    pub fn and(self, text: &str) -> Self {
+        Self(text.encode_utf16().fold(self.0, |hash, unit| (hash ^ u32::from(unit)).wrapping_mul(16_777_619)))
+    }
+
+    /// This seed continued with `n` written in decimal, as `{name}{n}` would spell it.
+    #[must_use]
+    pub fn and_number(mut self, n: usize) -> Self {
+        let _infallible = write!(self, "{n}");
+        self
+    }
+}
+
+impl fmt::Write for Seed {
+    /// Continues the seed with `text`; never fails.
+    fn write_str(&mut self, text: &str) -> fmt::Result {
+        *self = self.and(text);
+        Ok(())
     }
 }
 
