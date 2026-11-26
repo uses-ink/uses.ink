@@ -1,6 +1,8 @@
 //! perfect-freehand's `getStroke`, ported: pressured points to the polygon around their ink.
 //! Constants, loop bounds and the order of every operation are kept, so the outline is the one
-//! the JavaScript draws.
+//! the JavaScript draws, to the last bit wherever `libm::hypot` and the browser's `Math.hypot`
+//! agree (they may differ by an ulp). One deliberate difference: `fmin` and `fmax` ignore a NaN
+//! where `Math.min` and `Math.max` spread it, so NaN input gives finite output here.
 
 use alloc::vec::Vec;
 use core::f64::consts::PI;
@@ -333,7 +335,8 @@ impl Outline {
         let ends = Ends { first: first.point, last: last.point, vector: last.vector, radius, taper_start, taper_end };
         if points.len() == 1 {
             if (taper_start == 0.0 && taper_end == 0.0) || self.complete {
-                return dot(first.point, first_radius.unwrap_or(radius));
+                // `firstRadius || radius`: a first radius of exactly 0 falls back too
+                return dot(first.point, first_radius.filter(|r| *r != 0.0).unwrap_or(radius));
             }
             return finish(sides, Vec::new(), Vec::new());
         }

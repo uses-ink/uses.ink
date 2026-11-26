@@ -11,7 +11,8 @@
 //! 1.2.3 by Steve Ruiz, MIT licensed (`LICENSE-PERFECT-FREEHAND`).
 //!
 //! Every number goes through `libm` and every random draw through [`Mulberry`], so a drawing is
-//! a function of its seed and its geometry: the same bytes natively and in wasm.
+//! a function of its seed and its geometry: the same bytes natively and in wasm. A line that
+//! would need more than [`MOST`] points, or has a non-finite coordinate, draws nothing.
 //!
 //! ```
 //! use freehand::{Centreline, Hand, Mulberry, Pencil, Point, Seed};
@@ -38,7 +39,7 @@ mod path;
 mod pencil;
 mod point;
 
-pub use centreline::Centreline;
+pub use centreline::{Centreline, MOST};
 pub use chance::{Chance, Constant, Mulberry, Seed};
 pub use hand::Hand;
 pub use highlighter::Highlighter;

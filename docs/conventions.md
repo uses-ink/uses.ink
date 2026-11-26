@@ -127,7 +127,8 @@ The path predicts the name and the name predicts the path.
 - A plugin lives at `plugin/<slot>/<variant>/`; the slot's WIT lives at `plugin/<slot>/wit/`.
   First-party plugins are laid out exactly like third-party ones.
 - `spikes/` holds throwaway experiments. Nothing depends on a spike.
-- Repo tasks are `cargo xtask <task>` (`brand`, `wit`, `check`, `fixture`). No loose scripts in
+- Repo tasks are `cargo xtask <task>` (`token`, `brand`, `check`; `wit` and `fixture` when they
+  exist). No loose scripts in
   `scripts/`, no generator files beside the code they generate.
 - Binaries: `ink` only. Its crate is `uses-ink-cli` at `cli/`.
 

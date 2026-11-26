@@ -38,10 +38,8 @@ const BANNED: &[&str] =
 /// these can expect it.
 const UNSAFE: &[&str] = &["freehand-web/src/lib.rs"];
 
-/// What unsafe code looks like in a source file: the keyword, then one of these. Kept apart so
-/// this file does not match itself.
-const KEYWORD: &str = "unsafe";
-const UNSAFE_AFTER: &[&str] = &["_code", "(", " {", " fn", " impl", " extern", " trait"];
+/// The keyword, spelled in two parts so this file does not match itself.
+const KEYWORD: &str = concat!("un", "safe");
 
 /// Directories not walked for banned names.
 const SKIP: &[&str] = &["target", ".git", ".jj", ".impeccable", "node_modules"];
@@ -77,7 +75,12 @@ impl fmt::Display for Problem {
             Self::Alias { package } => write!(out, "`{package}` has no alias in [workspace.dependencies]"),
             Self::Banned { path } => write!(out, "`{}` uses a banned name", path.display()),
             Self::Unsafe { path } => {
-                write!(out, "`{}` holds unsafe code; only {} may (xtask's UNSAFE)", path.display(), UNSAFE.join(", "))
+                write!(
+                    out,
+                    "`{}` holds {KEYWORD} code; only {} may (xtask's UNSAFE)",
+                    path.display(),
+                    UNSAFE.join(", ")
+                )
             }
         }
     }
@@ -110,8 +113,7 @@ pub(crate) fn check(root: &Path) -> Result<(), Error> {
     let members: Vec<&Package> =
         metadata.packages.iter().filter(|p| metadata.workspace_members.contains(&p.id)).collect();
     let ours: Vec<&str> = members.iter().map(|p| p.name.as_str()).collect();
-    let manifest = std::fs::read_to_string(root.join("Cargo.toml"))
-        .map_err(|source| Error::Read { path: root.join("Cargo.toml"), source })?;
+    let aliased = aliased(root)?;
     let mut problems = Vec::new();
     let used: Vec<&str> = members.iter().flat_map(|p| p.dependencies.iter().map(|d| d.name.as_str())).collect();
     for package in &members {
@@ -119,10 +121,7 @@ pub(crate) fn check(root: &Path) -> Result<(), Error> {
         dependencies(package, &ours, &metadata.workspace_root, &mut problems);
         licence(package, &mut problems);
         // a crate another member uses is named through the workspace's alias
-        if used.contains(&package.name.as_str())
-            && !manifest.contains(&format!("\"{}\"", package.name))
-            && !manifest.contains(&format!("\n{} = {{ path", package.name))
-        {
+        if used.contains(&package.name.as_str()) && !aliased.contains(&package.name) {
             problems.push(Problem::Alias { package: package.name.clone() });
         }
     }
@@ -134,9 +133,22 @@ pub(crate) fn check(root: &Path) -> Result<(), Error> {
     if problems.is_empty() { Ok(()) } else { Err(Error::Layout(problems)) }
 }
 
+/// The crates `[workspace.dependencies]` names: by key, or by `package` when renamed.
+fn aliased(root: &Path) -> Result<Vec<String>, Error> {
+    let path = root.join("Cargo.toml");
+    let text = std::fs::read_to_string(&path).map_err(|source| Error::Read { path: path.clone(), source })?;
+    let manifest: toml::Table = toml::from_str(&text).map_err(|source| Error::Toml { path, source })?;
+    let dependencies = manifest.get("workspace").and_then(|w| w.get("dependencies")).and_then(toml::Value::as_table);
+    Ok(dependencies
+        .into_iter()
+        .flatten()
+        .map(|(key, value)| value.get("package").and_then(toml::Value::as_str).unwrap_or(key).to_owned())
+        .collect())
+}
+
 fn metadata(root: &Path) -> Result<Metadata, Error> {
     let done = Command::new(env!("CARGO"))
-        .args(["metadata", "--format-version", "1", "--no-deps", "--offline"])
+        .args(["metadata", "--format-version", "1", "--no-deps", "--offline", "--locked"])
         .current_dir(root)
         .output()
         .map_err(|e| Error::Metadata { why: e.to_string() })?;
@@ -201,7 +213,8 @@ fn banned(dir: &Path, root: &Path, problems: &mut Vec<Problem>) -> Result<(), Er
         if BANNED.contains(&stem) {
             problems.push(Problem::Banned { path: path.strip_prefix(root).unwrap_or(&path).to_path_buf() });
         }
-        if path.is_dir() {
+        // the entry's own type: a symlinked directory is never followed
+        if entry.file_type().map_err(|source| Error::Read { path: path.clone(), source })?.is_dir() {
             banned(&path, root, problems)?;
         }
     }
@@ -217,20 +230,62 @@ fn unsafety(dir: &Path, root: &Path, problems: &mut Vec<Problem>) -> Result<(), 
         if SKIP.contains(&entry.file_name().to_string_lossy().as_ref()) {
             continue;
         }
-        if path.is_dir() {
+        // the entry's own type, not its target's: a symlink is never followed
+        let kind = entry.file_type().map_err(|source| Error::Read { path: path.clone(), source })?;
+        if kind.is_dir() {
             unsafety(&path, root, problems)?;
-        } else if path.extension().is_some_and(|e| e == "rs") {
+        } else if kind.is_file() && path.extension().is_some_and(|e| e == "rs") {
             let relative = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
             let allowed = UNSAFE.iter().any(|a| relative == Path::new(a));
             let text = std::fs::read_to_string(&path).map_err(|source| Error::Read { path: path.clone(), source })?;
-            let holds = text.match_indices(KEYWORD).any(|(at, _)| {
-                text.get(at + KEYWORD.len()..)
-                    .is_some_and(|rest| UNSAFE_AFTER.iter().any(|after| rest.starts_with(after)))
-            });
+            let holds = holds_unsafe(&text);
             if !allowed && holds {
                 problems.push(Problem::Unsafe { path: relative });
             }
         }
     }
     Ok(())
+}
+
+/// Whether Rust source holds the keyword as a word outside `//` comments, or names the lint
+/// (`unsafe_code`) that guards it.
+fn holds_unsafe(text: &str) -> bool {
+    let ident = |c: char| c.is_alphanumeric() || c == '_';
+    text.lines().map(|line| line.split("//").next().unwrap_or(line)).any(|code| {
+        code.match_indices(KEYWORD).any(|(at, _)| {
+            let before = code.get(..at).and_then(|b| b.chars().next_back());
+            let after = code.get(at + KEYWORD.len()..).unwrap_or("");
+            let word = !before.is_some_and(ident) && !after.chars().next().is_some_and(ident);
+            word || after.starts_with("_code")
+        })
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unsafe_in_every_spelling() {
+        let k = KEYWORD;
+        for code in [
+            format!("{k} {{ x }}"),
+            format!("{k}{{*p}}"),
+            format!("{k}\n{{"),
+            format!("pub {k} fn f() {{}}"),
+            format!("{k} impl Send for X {{}}"),
+            format!("#[{k}(no_mangle)]"),
+            format!("#![expect({k}_code)]"),
+        ] {
+            assert!(holds_unsafe(&code), "{code}");
+        }
+    }
+
+    #[test]
+    fn unsafe_as_part_of_a_word_or_comment() {
+        let k = KEYWORD;
+        for code in [format!("let {k}ty = 1;"), format!("fn is_{k}() {{}}"), format!("// {k} {{ }}")] {
+            assert!(!holds_unsafe(&code), "{code}");
+        }
+    }
 }

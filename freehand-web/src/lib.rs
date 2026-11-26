@@ -10,8 +10,8 @@
 //!    returns the length of its output: SVG path data, one path per line.
 //! 3. `output()` returns where that output starts.
 //!
-//! A name that is not UTF-8 draws nothing and returns 0, as does a point count the input cannot
-//! hold.
+//! A name that is not UTF-8 draws nothing and returns 0, as do a point count the input cannot
+//! hold and a point that is not finite.
 
 #![expect(unsafe_code, reason = "a wasm export is named with `#[unsafe(no_mangle)]`; nothing else here is unsafe")]
 
@@ -44,9 +44,13 @@ pub extern "C" fn output() -> *const u8 {
 /// `count` points, then a name of `name` bytes, as `input` was given them.
 fn read(count: u32, name: u32) -> Option<(Vec<Point>, String)> {
     INPUT.with_borrow(|input| {
-        let floats = input.get(..count as usize * 2)?;
+        let floats_end = usize::try_from(count).ok()?.checked_mul(2)?;
+        let floats = input.get(..floats_end)?;
+        if !floats.iter().all(|f| f.is_finite()) {
+            return None;
+        }
         let points = floats.as_chunks::<2>().0.iter().map(|[x, y]| Point::new(*x, *y)).collect();
-        let bytes: Vec<u8> = input.get(count as usize * 2..)?.iter().flat_map(|f| f.to_le_bytes()).collect();
+        let bytes: Vec<u8> = input.get(floats_end..)?.iter().flat_map(|f| f.to_le_bytes()).collect();
         let name = String::from_utf8(bytes.get(..name as usize)?.to_vec()).ok()?;
         Some((points, name))
     })
@@ -156,6 +160,18 @@ mod tests {
         let name = put(&[], "box");
         frame(100.0, 40.0, 3.0, 3.0, name);
         assert_eq!(out().lines().count(), 4);
+    }
+
+    #[test]
+    fn infinite_points_draw_nothing() {
+        let name = put(&[0.0, 0.0, f64::INFINITY, 0.0, 1.0, 1.0], "x");
+        assert_eq!(patch(3, name), 0);
+    }
+
+    #[test]
+    fn huge_lines_draw_nothing() {
+        let name = put(&[], "x");
+        assert_eq!(line(0.0, 0.0, 1e12, 0.0, 2.0, name), 0);
     }
 
     #[test]

@@ -15,6 +15,10 @@ pub struct Centreline(Vec<Point>);
 /// How far apart a straight line's points are.
 const STEP: f64 = 5.0;
 
+/// The most points a line is drawn with. A longer line (or a non-finite one) draws nothing, so a
+/// mistaken size cannot exhaust memory: 100,000 points is a line 500,000 px long.
+pub const MOST: u32 = 100_000;
+
 impl Centreline {
     /// The line through `points` as given.
     pub fn through(points: impl IntoIterator<Item = Point>) -> Self {
@@ -33,6 +37,9 @@ impl Centreline {
         let start = Point::new(from.x - ux * chance.draw() * 2.0, from.y - uy * chance.draw() * 2.0);
         let end = Point::new(to.x + ux * (2.0 + chance.draw() * 5.0), to.y + uy * (2.0 + chance.draw() * 5.0));
         let n = libm::fmax(2.0, round(length / STEP));
+        if !n.is_finite() || n > f64::from(MOST) {
+            return Self::default();
+        }
         Self(
             (0..=steps(n))
                 .map(|i| {
@@ -66,7 +73,11 @@ impl Centreline {
     }
 
     /// A quadratic curve from `from` to `to`, pulled toward `control`, in `steps` steps.
+    /// No steps, or more than [`MOST`], draw nothing.
     pub fn quad(from: Point, control: Point, to: Point, steps: u32) -> Self {
+        if steps == 0 || steps > MOST {
+            return Self::default();
+        }
         let n = f64::from(steps);
         Self(
             (0..=steps)
@@ -83,7 +94,11 @@ impl Centreline {
     }
 
     /// `count` points around an ellipse, starting at angle `from` and going `turns` times round.
+    /// More than [`MOST`] points draw nothing.
     pub fn ellipse(centre: Point, radius: Point, from: f64, turns: f64, count: u32) -> Self {
+        if count > MOST {
+            return Self::default();
+        }
         let last = f64::from(count.saturating_sub(1).max(1));
         Self(
             (0..count)
@@ -123,9 +138,9 @@ impl Centreline {
     }
 }
 
-/// A count already rounded and at least 2, as a loop bound.
+/// A count already rounded, at least 2 and at most [`MOST`], as a loop bound.
 fn steps(n: f64) -> u32 {
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "a rounded count of at least 2")]
+    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "a rounded count from 2 to MOST")]
     let steps = n as u32;
     steps
 }

@@ -269,5 +269,5 @@ pub(crate) fn write(output: &mut Output) -> Result<(), Error> {
             output.put(format!("brand/{open}.svg"), svg(drawing, &fills, &strokes).as_bytes())?;
         }
     }
-    Ok(())
+    output.claim("brand", "svg")
 }

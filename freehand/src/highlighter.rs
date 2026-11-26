@@ -3,6 +3,7 @@
 
 use alloc::vec::Vec;
 
+use crate::centreline::MOST;
 use crate::chance::Chance;
 use crate::number::round;
 use crate::path::Path;
@@ -24,12 +25,17 @@ impl Default for Highlighter {
 }
 
 impl Highlighter {
-    /// One pass over the shape with these corners.
+    /// One pass over the shape with these corners. An edge needing more than [`MOST`] points,
+    /// or a non-finite corner, draws nothing.
     pub fn fill(&self, corners: &[Point], chance: &mut impl Chance) -> Path {
         let mut points = Vec::new();
         for (i, from) in corners.iter().enumerate() {
             let Some(to) = corners.get((i + 1) % corners.len()) else { continue };
             let count = libm::fmax(1.0, round(libm::hypot(to.x - from.x, to.y - from.y) / self.spacing));
+            // a non-finite or absurd edge draws nothing, as an over-long line does
+            if !count.is_finite() || count > f64::from(MOST) {
+                return Path::default();
+            }
             let mut step = 0.0;
             while step < count {
                 let t = step / count;

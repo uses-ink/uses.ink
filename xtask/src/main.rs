@@ -45,9 +45,10 @@ impl Task {
             Self::Check => {
                 // Every problem at once: layout, then generated files.
                 let layout = layout::check(root);
-                token::write(&mut output)?;
-                brand::write(&mut output)?;
-                let failed: Vec<Error> = [layout, output.fresh()].into_iter().filter_map(Result::err).collect();
+                let token = token::write(&mut output);
+                let brand = brand::write(&mut output);
+                let failed: Vec<Error> =
+                    [layout, token, brand, output.fresh()].into_iter().filter_map(Result::err).collect();
                 if !failed.is_empty() {
                     return Err(Error::Each(failed));
                 }
@@ -62,16 +63,13 @@ fn main() -> ExitCode {
     let arg = std::env::args().nth(1);
     let result = Task::parse(arg.as_deref()).and_then(|task| task.run(&root));
     let mut err = std::io::stderr();
-    match result {
-        Ok(output) => {
-            for line in output.report() {
-                let _ignored = writeln!(err, "{line}");
-            }
-            ExitCode::SUCCESS
-        }
-        Err(error) => {
-            let _ignored = writeln!(err, "error: {error}");
-            ExitCode::FAILURE
-        }
+    // A report that cannot be written fails the task: nothing it did goes unsaid.
+    let (lines, code) = match result {
+        Ok(output) => (output.report(), ExitCode::SUCCESS),
+        Err(error) => (vec![format!("error: {error}")], ExitCode::FAILURE),
+    };
+    match lines.iter().try_for_each(|line| writeln!(err, "{line}")) {
+        Ok(()) => code,
+        Err(_) => ExitCode::FAILURE,
     }
 }
