@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"1685c5e7a23cbb2458b46418677fb8a18f047ac61b0cabf9a78c4d8780bab03f","written":true,"out":"<out>","entries":12,"errors":0,"warnings":0}
+{"schema":"uses.build/v1","deploy":"d8fad2158a57bf505859129bdfe19c294b962110e68143494736df562e25066c","written":true,"out":"<out>","entries":12,"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
@@ -165,7 +165,7 @@ it started.</p>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>First steps - Ink and paper</title>
-<meta name="description" content="A fountain pen needs ink, patience and luck practice. The flow rate is roughly q = k \cdot w for a nib of width w.">
+<meta name="description" content="A fountain pen needs ink, patience and luck practice.">
 <link rel="canonical" href="https://ink.example/posts/first-steps">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/code.css">
@@ -175,7 +175,7 @@ it started.</p>
 <meta name="og:type" content="article">
 <meta name="og:site_name" content="Ink and paper">
 <meta name="og:url" content="https://ink.example/posts/first-steps">
-<meta name="og:description" content="A fountain pen needs ink, patience and luck practice. The flow rate is roughly q = k \cdot w for a nib of width w.">
+<meta name="og:description" content="A fountain pen needs ink, patience and luck practice.">
 </head>
 <body>
 <div class="quiet-page">

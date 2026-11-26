@@ -36,16 +36,16 @@ index.md
   page.summary       “Notes on pens, nibs and the paper that takes them.” from the frontmatter of index.md, bytes 38..88
 posts/2024-03-01-first-steps.md
   page.publish       published                by default
-  page.kind          a post                   from the name of posts/2024-03-01-first-steps.md
+  page.kind          a post                   because posts is there
   page.title         “First steps”            from the heading of posts/2024-03-01-first-steps.md, bytes 26..39
   page.date          2024-03-01               from the name of posts/2024-03-01-first-steps.md
   page.updated       never updated            by default
   page.slug          `first-steps`            from the name of posts/2024-03-01-first-steps.md
   page.tags          pens, ink                from the frontmatter of posts/2024-03-01-first-steps.md, bytes 10..20
-  page.summary       “A fountain pen needs ink, patience and luck practice. The flow rate is roughly q = k \cdot w for a nib of width w.” from the text of posts/2024-03-01-first-steps.md
+  page.summary       “A fountain pen needs ink, patience and luck practice.” from the text of posts/2024-03-01-first-steps.md
 posts/later.md
   page.publish       not published            from the frontmatter of posts/later.md, bytes 11..15
-  page.kind          a post                   from the name of posts/later.md
+  page.kind          a post                   because posts is there
   page.title         “Later”                  from the name of posts/later.md
   page.date          undated                  by default
   page.updated       never updated            by default
@@ -54,7 +54,7 @@ posts/later.md
   page.summary       “Not yet.”               from the text of posts/later.md
 posts/second.md
   page.publish       published                by default
-  page.kind          a post                   from the name of posts/second.md
+  page.kind          a post                   because posts is there
   page.title         “Paper weight”           from the heading of posts/second.md, bytes 39..53
   page.date          2024-04-02               from the frontmatter of posts/second.md, bytes 10..20
   page.updated       never updated            by default
