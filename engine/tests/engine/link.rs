@@ -26,7 +26,7 @@ fn target(inline: &Inline) -> &LinkTarget {
 #[test]
 fn resolves_relative_paths_anchors_and_names() {
     let u = Tree::new()
-        .file("posts/a.md", "[b](b.md#Some Heading)\n[up](../about.md)\n[bare](b)\n[root](/about.md)\n[here](#x)\n[out](https://example.org)\n")
+        .file("posts/a.md", "# X\n[b](b.md#Some Heading)\n[up](../about.md)\n[bare](b)\n[root](/about.md)\n[here](#x)\n[out](https://example.org)\n")
         .file("posts/b.md", "x\n")
         .file("about.md", "x\n")
         .understand(&Pinned::none());
@@ -146,4 +146,25 @@ fn an_image_of_a_kind_never_served_stays_its_alt_text() {
     let image = &inlines(site, "a.md")[0];
     assert!(matches!(image, Inline::Image { source: ImageSource::Unresolved { .. }, .. }), "{image:?}");
     assert!(!on::<code::Publish>(&u, "clip.mov").value);
+}
+
+#[test]
+fn an_anchor_the_page_lacks_is_named() {
+    let u = Tree::new().file("a.md", "# Title\n[x](#nope)\n[y](#Title)\n").understand(&Pinned::none());
+    assert_eq!(
+        u.diagnostics.iter().map(|d| &d.problem).collect::<Vec<_>>(),
+        [&Problem::LinkAnchorMissing { written: "#nope".into() }]
+    );
+    let anchor = |text: &str| model::Anchor::new(model::Slug::parse(text).unwrap());
+    let quoted = Block::Quote(vec![Block::Heading {
+        level: model::Level::new(2).unwrap(),
+        anchor: anchor("deep"),
+        inlines: vec![],
+    }]);
+    let raw =
+        |a: &str| Block::Paragraph(vec![Inline::Link { target: LinkTarget::Anchor(anchor(a)), children: vec![] }]);
+    let document = model::Document::new(vec![quoted, raw("deep"), raw("gone")]);
+    let u = Tree::new().file("a.md", "").read_with(&Pinned::none(), Fixed(document));
+    assert_eq!(codes(&u), ["link.anchor.missing"]);
+    assert!(matches!(&u.diagnostics[0].problem, Problem::LinkAnchorMissing { written } if written == "#gone"));
 }

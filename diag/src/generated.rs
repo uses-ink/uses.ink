@@ -33,6 +33,9 @@ impl Message<'_> {
             Problem::LinkTargetMissing { written, .. } => {
                 write!(out, "`{written}` points at no file, so it is shown as plain text")
             }
+            Problem::LinkAnchorMissing { written, .. } => {
+                write!(out, "`{written}` points at no heading of this page, so the link goes nowhere")
+            }
             Problem::LinkTargetAmbiguous { written, candidates, .. } => {
                 let candidates = Paths(candidates);
                 write!(out, "`{written}` could be any of {candidates}")
@@ -207,6 +210,7 @@ impl Fix<'_> {
             Problem::FrontmatterKeyConflict { .. } => true,
             Problem::SourceFileEncoding { .. } => true,
             Problem::LinkTargetMissing { .. } => false,
+            Problem::LinkAnchorMissing { .. } => true,
             Problem::LinkTargetAmbiguous { .. } => true,
             Problem::LinkTargetUnpublished { .. } => true,
             Problem::PageRouteCollision { .. } => true,
@@ -287,6 +291,9 @@ impl Fix<'_> {
             }
             Problem::SourceFileEncoding { .. } => write!(out, "save the file as UTF-8"),
             Problem::LinkTargetMissing { .. } => Ok(()),
+            Problem::LinkAnchorMissing { .. } => {
+                write!(out, "write the anchor of a heading of the page, or remove the link")
+            }
             Problem::LinkTargetAmbiguous { .. } => {
                 write!(out, "write the path of the one you mean")
             }

@@ -5,9 +5,11 @@
 
 mod target;
 
+use std::collections::BTreeSet;
+
 use model::{
-    Anchor, ContentPath, Diagnostic, ExternalUrl, Fold, ImageSource, Inline, LinkTarget, MediaType, PageId, Problem,
-    Slug,
+    Anchor, Block, ContentPath, Diagnostic, ExternalUrl, Fold, ImageSource, Inline, LinkTarget, MediaType, PageId,
+    Problem, Slug, Visit,
 };
 
 pub(crate) use target::Targets;
@@ -31,8 +33,15 @@ impl Stage<&mut [Source]> for Links<'_> {
     fn run(&self, sources: &mut [Source], journal: &mut Journal) -> Uses {
         let mut used = Uses::new();
         for source in sources.iter_mut().filter(|source| self.targets.published.contains(&source.path)) {
-            let mut resolve =
-                Resolve { from: &source.path, targets: self.targets, problems: Vec::new(), used: &mut used };
+            let mut headings = Headings::default();
+            headings.document(&source.read.document);
+            let mut resolve = Resolve {
+                from: &source.path,
+                targets: self.targets,
+                anchors: headings.0,
+                problems: Vec::new(),
+                used: &mut used,
+            };
             let document = std::mem::take(&mut source.read.document);
             let document = resolve.document(document);
             let problems = resolve.problems;
@@ -45,11 +54,26 @@ impl Stage<&mut [Source]> for Links<'_> {
     }
 }
 
+/// The anchors of a page's headings, at any depth.
+#[derive(Debug, Default)]
+struct Headings(BTreeSet<Anchor>);
+
+impl Visit for Headings {
+    fn block(&mut self, block: &Block) {
+        if let Block::Heading { anchor, .. } = block {
+            self.0.insert(anchor.clone());
+        }
+        block.walk(self);
+    }
+}
+
 /// One page's links being resolved.
 #[derive(Debug)]
 struct Resolve<'a, 'b> {
     from: &'a ContentPath,
     targets: &'a Targets<'b>,
+    /// The page's own anchors, which a `#` link must name.
+    anchors: BTreeSet<Anchor>,
     problems: Vec<Problem>,
     used: &'a mut Uses,
 }
@@ -62,6 +86,11 @@ impl Fold for Resolve<'_, '_> {
             }
             resolved => resolved,
         };
+        if let LinkTarget::Anchor(anchor) = &target
+            && !self.anchors.contains(anchor)
+        {
+            self.problems.push(Problem::LinkAnchorMissing { written: format!("#{anchor}") });
+        }
         Inline::Link { target, children: self.inlines(children) }
     }
 

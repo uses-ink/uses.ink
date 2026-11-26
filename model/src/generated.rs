@@ -70,6 +70,12 @@ pub enum Problem {
         /// The text, as written.
         written: String,
     },
+    /// `link.anchor.missing`: `{written}` points at no heading of this page, so the link goes nowhere
+    #[serde(rename = "link.anchor.missing")]
+    LinkAnchorMissing {
+        /// The text, as written.
+        written: String,
+    },
     /// `link.target.ambiguous`: `{written}` could be any of {candidates}
     #[serde(rename = "link.target.ambiguous")]
     LinkTargetAmbiguous {
@@ -326,6 +332,7 @@ impl Problem {
         "frontmatter.key.conflict",
         "source.file.encoding",
         "link.target.missing",
+        "link.anchor.missing",
         "link.target.ambiguous",
         "link.target.unpublished",
         "page.route.collision",
@@ -375,6 +382,7 @@ impl Problem {
             Self::FrontmatterKeyConflict { .. } => "frontmatter.key.conflict",
             Self::SourceFileEncoding { .. } => "source.file.encoding",
             Self::LinkTargetMissing { .. } => "link.target.missing",
+            Self::LinkAnchorMissing { .. } => "link.anchor.missing",
             Self::LinkTargetAmbiguous { .. } => "link.target.ambiguous",
             Self::LinkTargetUnpublished { .. } => "link.target.unpublished",
             Self::PageRouteCollision { .. } => "page.route.collision",
@@ -425,6 +433,7 @@ impl Problem {
             Self::FrontmatterKeyConflict { .. } => Severity::Warning,
             Self::SourceFileEncoding { .. } => Severity::Error,
             Self::LinkTargetMissing { .. } => Severity::Warning,
+            Self::LinkAnchorMissing { .. } => Severity::Warning,
             Self::LinkTargetAmbiguous { .. } => Severity::Error,
             Self::LinkTargetUnpublished { .. } => Severity::Warning,
             Self::PageRouteCollision { .. } => Severity::Error,
@@ -475,6 +484,7 @@ impl Problem {
             Self::FrontmatterKeyConflict { .. } => Fault::Author,
             Self::SourceFileEncoding { .. } => Fault::Author,
             Self::LinkTargetMissing { .. } => Fault::Author,
+            Self::LinkAnchorMissing { .. } => Fault::Author,
             Self::LinkTargetAmbiguous { .. } => Fault::Author,
             Self::LinkTargetUnpublished { .. } => Fault::Author,
             Self::PageRouteCollision { .. } => Fault::Author,

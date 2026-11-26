@@ -105,6 +105,13 @@ fault = "author"
 fields = { written = "text" }
 message = "`{written}` points at no file, so it is shown as plain text"
 
+[diagnostic."link.anchor.missing"]
+severity = "warning"
+fault = "author"
+fields = { written = "text" }
+message = "`{written}` points at no heading of this page, so the link goes nowhere"
+fix = "write the anchor of a heading of the page, or remove the link"
+
 [diagnostic."link.target.ambiguous"]
 severity = "error"
 fault = "author"
