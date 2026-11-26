@@ -3,9 +3,10 @@
 
 use alloc::vec::Vec;
 
-use crate::centreline::MOST;
+use crate::Tool;
+use crate::centreline::{Centreline, Count};
 use crate::chance::Chance;
-use crate::number::round;
+use crate::hand::Hand;
 use crate::path::Path;
 use crate::point::Point;
 
@@ -25,17 +26,15 @@ impl Default for Highlighter {
 }
 
 impl Highlighter {
-    /// One pass over the shape with these corners. An edge needing more than [`MOST`] points,
+    /// One pass over the shape with these corners. An edge needing more than [`MOST`](crate::MOST) points,
     /// or a non-finite corner, draws nothing.
     pub fn fill(&self, corners: &[Point], chance: &mut impl Chance) -> Path {
         let mut points = Vec::new();
         for (i, from) in corners.iter().enumerate() {
             let Some(to) = corners.get((i + 1) % corners.len()) else { continue };
-            let count = libm::fmax(1.0, round(from.distance(*to) / self.spacing));
             // a non-finite or absurd edge draws nothing, as an over-long line does
-            if !count.is_finite() || count > f64::from(MOST) {
-                return Path::default();
-            }
+            let Some(count) = Count::of(from.distance(*to), self.spacing, 1.0) else { return Path::default() };
+            let count = f64::from(count);
             let mut step = 0.0;
             while step < count {
                 let t = step / count;
@@ -46,5 +45,13 @@ impl Highlighter {
             }
         }
         Path::around(&points)
+    }
+}
+
+impl Tool for Highlighter {
+    /// One pass around the line's points as corners. A highlighter is held flat and steady: its
+    /// own jitter is its wobble, so it takes no hand.
+    fn ink<C: Chance>(&self, line: &Centreline, _hand: &Hand, chance: &mut C) -> Path {
+        self.fill(line.points(), chance)
     }
 }

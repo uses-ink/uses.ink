@@ -243,9 +243,9 @@ brand`), social preview images (rasterized with resvg). There is no second imple
   is the pencil in the `pen` colour.
 - Strokes: low-frequency perpendicular jitter, overshoot and bowing at ends, closed loops drawn
   as two arcs, outlines from our own port of perfect-freehand's `getStroke`.
-- Marks built on strokes (`freehand::mark`): `line` (rules), `underline`, `frame` (boxes),
-  `ring`, `fill`, `patch` (tape, highlights), `drawn` (any centreline); `tick` and `arrow` when a
-  theme needs them.
+- Marks built on strokes (`freehand::mark`), each a type implementing `Mark`: `Line` (rules),
+  `Underline`, `Frame` (boxes), `Ring`, `Fill`, `Patch` (tape, highlights), `Drawn` (any
+  centreline); `Tick` and `Arrow` when a theme needs them.
   A mark takes measured geometry (from `text.measure` or the DOM), so it fits the thing it marks.
 - Colours come from `token/`, the same file that produces the CSS custom properties, so a colour
   exists once. The pen takes no colour: its caller paints each path (`freehand` depends on

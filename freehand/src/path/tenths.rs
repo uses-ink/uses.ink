@@ -9,7 +9,7 @@ pub(crate) struct Tenths(pub(crate) i64);
 
 /// The largest magnitude written, in pixels: far past any drawing, and small enough that every
 /// sum of tenths stays exact.
-pub(crate) const LARGEST: f64 = 1.0e12;
+const LARGEST: f64 = 1.0e12;
 
 impl Tenths {
     /// `x` in tenths, the nearest whole number of them, halves away from zero. `None` past
@@ -18,16 +18,29 @@ impl Tenths {
         if x.is_nan() || libm::fabs(x) > LARGEST {
             return None;
         }
-        Some(Self(nearest(x * 10.0)))
+        Some(Self::nearest(x * 10.0))
     }
 
-    /// The tenths nearest `value`, already in tenths.
+    /// The tenths nearest `value`, already in tenths: halves away from zero; `value` is finite
+    /// and below 2^62.
     pub(crate) fn nearest(value: f64) -> Self {
-        Self(nearest(value))
+        #[expect(clippy::cast_possible_truncation, reason = "finite and well inside i64")]
+        let whole = value as i64;
+        #[expect(clippy::cast_precision_loss, reason = "below 2^53, so exact")]
+        let rest = value - whole as f64;
+        Self(if rest >= 0.5 {
+            whole + 1
+        } else if rest <= -0.5 {
+            whole - 1
+        } else {
+            whole
+        })
     }
 
     /// Appends it: `12.5`, `-3`, `.5`, `-.5`; zero is `0`. A leading zero and a trailing `.0`
-    /// are left out, as SVG's number grammar allows.
+    /// are left out, as SVG's number grammar allows. The digits go in a character at a time:
+    /// measured faster than formatting into a buffer and appending it, which pays for a UTF-8
+    /// check and a copy.
     pub(crate) fn push_to(self, out: &mut String) {
         let magnitude = self.0.unsigned_abs();
         let (units, tenth) = (magnitude / 10, magnitude % 10);
@@ -35,55 +48,28 @@ impl Tenths {
             out.push('-');
         }
         if units > 0 || tenth == 0 {
-            push_digits(out, units);
+            let mut digits = [0u8; 20];
+            let mut at = digits.len();
+            let mut rest = units;
+            loop {
+                at -= 1;
+                if let Some(slot) = digits.get_mut(at) {
+                    *slot = b'0' + u8::try_from(rest % 10).unwrap_or(0);
+                }
+                rest /= 10;
+                if rest == 0 || at == 0 {
+                    break;
+                }
+            }
+            for &digit in digits.get(at..).unwrap_or_default() {
+                out.push(char::from(digit));
+            }
         }
         if tenth > 0 {
             out.push('.');
             out.push(char::from(b'0' + u8::try_from(tenth).unwrap_or(0)));
         }
     }
-}
-
-/// The whole number nearest `x`, halves away from zero; `x` is finite and below 2^62.
-fn nearest(x: f64) -> i64 {
-    #[expect(clippy::cast_possible_truncation, reason = "finite and well inside i64")]
-    let whole = x as i64;
-    #[expect(clippy::cast_precision_loss, reason = "below 2^53, so exact")]
-    let rest = x - whole as f64;
-    if rest >= 0.5 {
-        whole + 1
-    } else if rest <= -0.5 {
-        whole - 1
-    } else {
-        whole
-    }
-}
-
-/// Appends `n` in decimal, a character at a time: measured faster than building a buffer and
-/// appending it, which pays for a UTF-8 check and a copy.
-fn push_digits(out: &mut String, n: u64) {
-    let mut digits = [0u8; 20];
-    let mut at = digits.len();
-    let mut rest = n;
-    loop {
-        at -= 1;
-        if let Some(slot) = digits.get_mut(at) {
-            *slot = b'0' + u8::try_from(rest % 10).unwrap_or(0);
-        }
-        rest /= 10;
-        if rest == 0 || at == 0 {
-            break;
-        }
-    }
-    for &digit in digits.get(at..).unwrap_or_default() {
-        out.push(char::from(digit));
-    }
-}
-
-/// `Math.round`: halves round up.
-pub(crate) fn round(x: f64) -> f64 {
-    let floor = libm::floor(x);
-    if x - floor >= 0.5 { floor + 1.0 } else { floor }
 }
 
 #[cfg(test)]

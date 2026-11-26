@@ -177,14 +177,22 @@ names a concrete plugin.
 ## 6. The pen: tools and marks are types
 
 ```rust
-pub trait Tool { fn ink(&self, traced: &[Pressured]) -> Path; }            // Pencil, Highlighter
+pub trait Chance { fn draw(&mut self) -> f64; fn fork(&self, part: impl Display) -> Self; } // Mulberry, Constant
+pub trait Tool { fn ink<C: Chance>(&self, line: &Centreline, hand: &Hand, chance: &mut C) -> Path; } // Pencil, Highlighter
 pub trait Mark { fn draw<T: Tool, C: Chance>(&self, hand: &Hand, tool: &T, chance: &mut C) -> Paths; }
 ```
 
-`Line`, `Underline`, `Frame`, `Ring`, `Fill`, `Patch` and `Drawn` are data (their geometry), each
-implementing `Mark`; seeds name a mark (`Seed::of(name).and(i)`), not a function argument
-threaded through helpers. `freehand-web` exports one function per mark type, all through one
-generic `draw::<M>`. Brand drawings and theme marks are the same `Mark` values.
+The marks in `freehand::mark` (`Line`, `Underline`, `Frame`, `Ring`, `Fill`, `Patch<P>`, `Drawn<L>`)
+are data: their geometry, generic over how it is held (`Patch` takes any `AsRef<[Point]>`,
+`Drawn` any `Borrow<Centreline>`). Each implements `Mark` for any tool, hand and chance; a line's
+weight is its pencil's. A seed names a mark: the caller draws from
+`Mulberry::from(Seed::of(name))`, and a mark of several lines draws line `i` from `chance.fork(i)`,
+the seed `Seed::of(name).and(i)`, not from a name threaded through helpers. The perfect-freehand
+port keeps its loops and numbers; what were its free functions are methods on what they act on
+(`Taper::length`, a `Sweep` iterator for caps, `Dot`, `Sides::finish`, `Tenths::nearest`,
+`Centreline::normal`). `freehand-web` describes each export as a `Call` (tool, hand, input
+lengths) drawn through one generic `Call::draw::<M: Mark>` into its `Buffer`. Brand drawings go
+through the same tools and seeds.
 
 ## 7. Repo tasks are generators, steps and rules
 

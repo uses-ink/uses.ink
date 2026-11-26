@@ -71,6 +71,17 @@ pub enum Taper {
     Length(f64),
 }
 
+impl Taper {
+    /// How many pixels it runs, on a stroke `size` wide and `total` long; `0` for none.
+    fn length(self, size: f64, total: f64) -> f64 {
+        match self {
+            Self::None => 0.0,
+            Self::Whole => libm::fmax(size, total),
+            Self::Length(length) => length,
+        }
+    }
+}
+
 /// A cap, for the common case.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cap {
@@ -203,14 +214,6 @@ impl Outline {
         out
     }
 
-    fn taper(taper: Taper, size: f64, total: f64) -> f64 {
-        match taper {
-            Taper::None => 0.0,
-            Taper::Whole => libm::fmax(size, total),
-            Taper::Length(length) => length,
-        }
-    }
-
     fn radius(&self, pressure: f64) -> f64 {
         self.size * self.easing.apply(0.5 - self.thinning * (0.5 - pressure))
     }
@@ -268,8 +271,8 @@ impl Outline {
             return Vec::new();
         }
         let total = last.running;
-        let taper_start = Self::taper(self.start.taper, self.size, total);
-        let taper_end = Self::taper(self.end.taper, self.size, total);
+        let taper_start = self.start.taper.length(self.size, total);
+        let taper_end = self.end.taper.length(self.size, total);
         let mut sides = Sides {
             left: Vec::new(),
             right: Vec::new(),
@@ -336,13 +339,14 @@ impl Outline {
         if points.len() == 1 {
             if (taper_start == 0.0 && taper_end == 0.0) || self.complete {
                 // `firstRadius || radius`: a first radius of exactly 0 falls back too
-                return dot(first.point, first_radius.filter(|r| *r != 0.0).unwrap_or(radius));
+                return Dot { centre: first.point, radius: first_radius.filter(|r| *r != 0.0).unwrap_or(radius) }
+                    .outline();
             }
-            return finish(sides, Vec::new(), Vec::new());
+            return sides.finish(Vec::new(), Vec::new());
         }
         let start_cap = self.start_cap(&ends, &sides);
         let end_cap = self.end_cap(&ends);
-        finish(sides, end_cap, start_cap)
+        sides.finish(end_cap, start_cap)
     }
 }
 
@@ -363,7 +367,7 @@ impl Outline {
         }
         let (Some(left), Some(right)) = (sides.left.first(), sides.right.first()) else { return Vec::new() };
         if self.start.cap == Cap::Round {
-            return turns(START_CAP_SEGMENTS, true, |t| right.rotate(ends.first, FIXED_PI * t));
+            return Sweep::through(START_CAP_SEGMENTS).map(|t| right.rotate(ends.first, FIXED_PI * t)).collect();
         }
         let corners = *left - *right;
         let (a, b) = (corners * 0.5, corners * 0.51);
@@ -377,37 +381,80 @@ impl Outline {
         }
         if self.end.cap == Cap::Round {
             let start = ends.last + direction * ends.radius;
-            return turns(END_CAP_SEGMENTS, false, |t| start.rotate(ends.last, FIXED_PI * 3.0 * t));
+            return Sweep::short(END_CAP_SEGMENTS).map(|t| start.rotate(ends.last, FIXED_PI * 3.0 * t)).collect();
         }
         let (a, b) = (direction * ends.radius, direction * (ends.radius * 0.99));
         alloc::vec![ends.last + a, ends.last + b, ends.last - b, ends.last - a]
     }
 }
 
-/// `point(t)` for `t` from one step up to 1, stepping as perfect-freehand steps (by adding, so
-/// the count is the float loop's); `through` includes a `t` that lands on 1.
-fn turns(segments: f64, through: bool, point: impl Fn(f64) -> Point) -> Vec<Point> {
-    let step = 1.0 / segments;
-    let mut out = Vec::new();
-    let mut t = step;
-    while if through { t <= 1.0 } else { t < 1.0 } {
-        out.push(point(t));
-        t += step;
+/// The `t`s a cap is drawn at: from one step up to 1, stepping as perfect-freehand steps (by
+/// adding, so the count is the float loop's).
+struct Sweep {
+    step: f64,
+    t: f64,
+    reach: Reach,
+}
+
+/// Whether a sweep draws a `t` that lands on 1.
+#[derive(Clone, Copy)]
+enum Reach {
+    /// It does: `t <= 1`.
+    Through,
+    /// It stops short: `t < 1`.
+    Short,
+}
+
+impl Sweep {
+    /// `segments` steps, through 1.
+    fn through(segments: f64) -> Self {
+        Self { step: 1.0 / segments, t: 1.0 / segments, reach: Reach::Through }
     }
-    out
+
+    /// `segments` steps, stopping short of 1.
+    fn short(segments: f64) -> Self {
+        Self { step: 1.0 / segments, t: 1.0 / segments, reach: Reach::Short }
+    }
 }
 
-/// A dot, for a stroke of one point.
-fn dot(centre: Point, radius: f64) -> Vec<Point> {
-    let start = centre + (centre - (centre + UNIT)).perpendicular().unit() * -radius;
-    turns(START_CAP_SEGMENTS, true, |t| start.rotate(centre, FIXED_PI * 2.0 * t))
+impl Iterator for Sweep {
+    type Item = f64;
+
+    fn next(&mut self) -> Option<f64> {
+        let t = self.t;
+        let more = match self.reach {
+            Reach::Through => t <= 1.0,
+            Reach::Short => t < 1.0,
+        };
+        more.then(|| {
+            self.t += self.step;
+            t
+        })
+    }
 }
 
-/// Left side, end cap, right side backwards, start cap: the winding perfect-freehand returns.
-fn finish(sides: Sides, end_cap: Vec<Point>, start_cap: Vec<Point>) -> Vec<Point> {
-    let mut out = sides.left;
-    out.extend(end_cap);
-    out.extend(sides.right.into_iter().rev());
-    out.extend(start_cap);
-    out
+/// The outline of a stroke of one point: a dot.
+struct Dot {
+    centre: Point,
+    radius: f64,
+}
+
+impl Dot {
+    /// The circle around it, from the side perfect-freehand starts at.
+    fn outline(self) -> Vec<Point> {
+        let Self { centre, radius } = self;
+        let start = centre + (centre - (centre + UNIT)).perpendicular().unit() * -radius;
+        Sweep::through(START_CAP_SEGMENTS).map(|t| start.rotate(centre, FIXED_PI * 2.0 * t)).collect()
+    }
+}
+
+impl Sides {
+    /// Left side, end cap, right side backwards, start cap: the winding perfect-freehand returns.
+    fn finish(self, end_cap: Vec<Point>, start_cap: Vec<Point>) -> Vec<Point> {
+        let mut out = self.left;
+        out.extend(end_cap);
+        out.extend(self.right.into_iter().rev());
+        out.extend(start_cap);
+        out
+    }
 }

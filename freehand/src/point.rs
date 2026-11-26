@@ -2,6 +2,8 @@
 
 use core::ops::{Add, Mul, Sub};
 
+use crate::chance::Chance;
+
 /// A point, or a vector between two.
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct Point {
@@ -25,6 +27,16 @@ impl Rectangle {
     pub const fn corners(self) -> [Point; 4] {
         let Self { top_left: a, bottom_right: b } = self;
         [Point::new(a.x, a.y), Point::new(b.x, a.y), Point::new(b.x, b.y), Point::new(a.x, b.y)]
+    }
+
+    /// Its corners as a quick hand places them: each misses its place by up to `slack / 2` on
+    /// each axis, drawn from `chance` across then down, corner by corner.
+    pub(crate) fn jittered(self, slack: f64, chance: &mut impl Chance) -> [Point; 4] {
+        self.corners().map(|corner| {
+            let dx = (chance.draw() - 0.5) * slack;
+            let dy = (chance.draw() - 0.5) * slack;
+            Point::new(corner.x + dx, corner.y + dy)
+        })
     }
 }
 

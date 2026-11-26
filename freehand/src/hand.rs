@@ -51,7 +51,7 @@ impl Hand {
                 run += segment;
             }
             let t = run / total;
-            let normal = normal(points, i);
+            let normal = line.normal(i);
             let shake =
                 self.tremor * (0.7 * libm::sin(TAU * waves.shake.0 * t + waves.shake.1) + 0.5 * (chance.draw() - 0.5));
             let off = waves.amplitude
@@ -76,17 +76,4 @@ impl Hand {
         let bow = (chance.draw() - 0.5) * libm::fmin(4.0, total * 0.01) * self.wobble;
         Waves { slow: (slow, slow_phase), second: (second, second_phase), shake: (shake, shake_phase), amplitude, bow }
     }
-}
-
-/// The unit normal at point `i`, from its neighbours.
-fn normal(points: &[Point], i: usize) -> Point {
-    let last = points.len().saturating_sub(1);
-    let (Some(a), Some(b)) = (points.get(i.saturating_sub(1)), points.get((i + 1).min(last))) else {
-        return Point::default();
-    };
-    let d = match a.distance(*b) {
-        0.0 => 1.0,
-        d => d,
-    };
-    Point::new(-(b.y - a.y) / d, (b.x - a.x) / d)
 }

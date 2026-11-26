@@ -167,13 +167,13 @@ impl Sheet<'_> {
             Error::Brand(Problem::Polygon { drawing: self.drawing.name.clone(), name: name.to_owned() })
         })?;
         let place = &self.drawing.place;
-        Ok(Centreline::through(corners.iter().copied().map(point)).placed(point(place.offset), place.scale))
+        Ok(corners.iter().copied().map(point).collect::<Centreline>().placed(point(place.offset), place.scale))
     }
 
     /// The lines a shape is drawn as: one, or two for a ring.
     fn lines(&self, shape: &Shape) -> Result<Vec<Centreline>, Error> {
         Ok(match shape {
-            Shape::Points(points) => vec![Centreline::through(points.iter().copied().map(point))],
+            Shape::Points(points) => vec![points.iter().copied().map(point).collect()],
             Shape::Segment { from, to } => vec![Centreline::segment(point(*from), point(*to))],
             Shape::Quad { from, control, to, steps } => {
                 vec![Centreline::quad(point(*from), point(*control), point(*to), *steps)]
@@ -200,7 +200,7 @@ impl Sheet<'_> {
 
 impl Oval {
     fn line(&self) -> Centreline {
-        Centreline::ellipse(Ellipse::from(self))
+        Centreline::from(Ellipse::from(self))
     }
 }
 
@@ -223,7 +223,7 @@ fn paint(sheet: &Sheet<'_>, name: &str, open: bool) -> Result<(Vec<Painted>, Vec
     let mut fills = Vec::new();
     for fill in drawing.fill.iter().filter(|f| !(open && f.head)) {
         for line in sheet.lines(&fill.shape)? {
-            let mut chance = Mulberry::new(Seed::of(name).and("f").and_number(fills.len()));
+            let mut chance = Mulberry::from(Seed::of(name).and("f").and(fills.len()));
             let corners = line.moved(point(drawing.shift));
             fills.push(Painted {
                 d: Highlighter::default().fill(corners.points(), &mut chance),
@@ -235,7 +235,7 @@ fn paint(sheet: &Sheet<'_>, name: &str, open: bool) -> Result<(Vec<Painted>, Vec
     let mut strokes = Vec::new();
     for stroke in drawing.stroke.iter().filter(|s| !(open && s.head)) {
         for line in sheet.lines(&stroke.line)? {
-            let mut chance = Mulberry::new(Seed::of(name).and_number(strokes.len()));
+            let mut chance = Mulberry::from(Seed::of(name).and(strokes.len()));
             let traced = hand.trace(&line, &mut chance);
             strokes.push(Painted {
                 d: Pencil::new(stroke.weight).outline(&traced),

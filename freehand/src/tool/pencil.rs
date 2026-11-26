@@ -1,6 +1,10 @@
 //! An MS Paint pencil: thin, nearly one width, barely smoothed. A mouse has no pressure.
 
-use crate::outline::{Cap, End, Outline};
+use super::outline::{Cap, End, Outline};
+use crate::Tool;
+use crate::centreline::Centreline;
+use crate::chance::Chance;
+use crate::hand::Hand;
 use crate::path::Path;
 use crate::point::Pressured;
 
@@ -34,5 +38,12 @@ impl Pencil {
     /// The ink of a traced line, as a filled outline.
     pub fn outline(&self, traced: &[Pressured]) -> Path {
         Path::through(&self.options().around(traced))
+    }
+}
+
+impl Tool for Pencil {
+    /// The outline of the line as `hand` traces it.
+    fn ink<C: Chance>(&self, line: &Centreline, hand: &Hand, chance: &mut C) -> Path {
+        self.outline(&hand.trace(line, chance))
     }
 }

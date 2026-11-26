@@ -1,10 +1,13 @@
 //! SVG path data, smoothed through quadratic curves and written in tenths of a pixel.
 
+mod tenths;
+
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt;
 
-use crate::number::Tenths;
 use crate::point::Point;
+use tenths::Tenths;
 
 /// The `d` of a filled SVG path.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -47,10 +50,10 @@ impl Path {
 
     fn write_closed(&mut self, start: Point, count: usize, control: &impl Fn(usize) -> Point) -> Option<()> {
         self.0.push('M');
-        self.pair(Spot::of(start)?);
+        Spot::of(start)?.push_to(&mut self.0);
         let mut implied = Spot::of(control(0))?;
         self.0.push_str(" Q");
-        self.pair(implied);
+        implied.push_to(&mut self.0);
         for k in 0..count {
             let next = control(k + 1);
             let anchor = if k + 1 == count {
@@ -63,17 +66,11 @@ impl Path {
             if k == 1 {
                 self.0.push('T');
             }
-            self.pair(anchor);
+            anchor.push_to(&mut self.0);
             implied = anchor.mirror(implied);
         }
         self.0.push('Z');
         Some(())
-    }
-
-    fn pair(&mut self, spot: Spot) {
-        spot.x.push_to(&mut self.0);
-        self.0.push(',');
-        spot.y.push_to(&mut self.0);
     }
 
     /// Whether it draws nothing.
@@ -90,6 +87,81 @@ impl Path {
 impl fmt::Display for Path {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         out.write_str(&self.0)
+    }
+}
+
+/// The paths a mark draws, in drawing order: one for a line, four for a frame, two for a loop
+/// drawn in two goes. It displays one path per line.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct Paths(Vec<Path>);
+
+impl Paths {
+    /// How many paths it holds.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether it holds no path.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Its paths, in drawing order.
+    pub fn iter(&self) -> core::slice::Iter<'_, Path> {
+        self.0.iter()
+    }
+}
+
+impl From<Path> for Paths {
+    fn from(path: Path) -> Self {
+        Self(alloc::vec![path])
+    }
+}
+
+impl AsRef<[Path]> for Paths {
+    fn as_ref(&self) -> &[Path] {
+        &self.0
+    }
+}
+
+impl FromIterator<Path> for Paths {
+    fn from_iter<I: IntoIterator<Item = Path>>(paths: I) -> Self {
+        Self(paths.into_iter().collect())
+    }
+}
+
+impl Extend<Path> for Paths {
+    fn extend<I: IntoIterator<Item = Path>>(&mut self, paths: I) {
+        self.0.extend(paths);
+    }
+}
+
+impl IntoIterator for Paths {
+    type Item = Path;
+    type IntoIter = alloc::vec::IntoIter<Path>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Paths {
+    type Item = &'a Path;
+    type IntoIter = core::slice::Iter<'a, Path>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+impl fmt::Display for Paths {
+    /// Each path's data, a newline between two.
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, path) in self.0.iter().enumerate() {
+            if i > 0 {
+                out.write_str("\n")?;
+            }
+            out.write_str(path.as_str())?;
+        }
+        Ok(())
     }
 }
 
@@ -113,6 +185,13 @@ impl Spot {
         #[expect(clippy::cast_precision_loss, reason = "tenths below 2^53, so exact")]
         let half = |c: Tenths, t: f64| Tenths::nearest(f64::midpoint(c.0 as f64, t));
         Some(Self { x: half(control.x, next.x * 10.0), y: half(control.y, next.y * 10.0) })
+    }
+
+    /// Appends it as `x,y`.
+    fn push_to(self, out: &mut String) {
+        self.x.push_to(out);
+        out.push(',');
+        self.y.push_to(out);
     }
 
     /// `control` mirrored through this anchor: the control a `T` after it uses.
