@@ -369,12 +369,13 @@ impl Select {
         }
         let disk = self.dir.join(path.as_str());
         let bytes = std::fs::read(&disk).map_err(|source| Error::Read { path: disk, source })?;
-        let publishing = Publishing::of(&bytes).map_err(|source| Error::Front { path: path.clone(), source })?;
+        let publishing =
+            Publishing::of(&bytes).map_err(|source| Error::Front { path: path.clone(), source: Box::new(source) })?;
         let edit = match verb {
             Verb::Select => publishing.select(),
             Verb::Remove => publishing.clear(),
         };
-        let Edit { was, text, .. } = edit.map_err(|source| Error::Front { path, source })?;
+        let Edit { was, text, .. } = edit.map_err(|source| Error::Front { path, source: Box::new(source) })?;
         let outcome = match (verb, was, text.is_some()) {
             (Verb::Select, Some(_), true) => Outcome::Replaced,
             (Verb::Select, None, _) => Outcome::Added,

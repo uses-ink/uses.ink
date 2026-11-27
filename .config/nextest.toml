@@ -65,3 +65,9 @@ slow-timeout = { period = "5s", terminate-after = 1 }
 [[profile.default.overrides]]
 filter = "binary(incremental)"
 slow-timeout = { period = "5s", terminate-after = 1 }
+
+# `ink select` lists every fixture site, which reads and parses each one: the tests of the `select`
+# binary have a second instead of the default 100 ms.
+[[profile.default.overrides]]
+filter = "binary(select)"
+slow-timeout = { period = "1s", terminate-after = 1 }

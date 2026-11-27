@@ -71,7 +71,7 @@ pub enum Error {
         /// The page.
         path: model::ContentPath,
         /// Why.
-        source: format_markdown::Refusal,
+        source: Box<format_markdown::Refusal>,
     },
     /// A file `ink select` was asked about is not a page whose frontmatter selects it.
     Unselectable {
@@ -213,6 +213,7 @@ impl Error {
 }
 
 impl fmt::Display for Error {
+    #[expect(clippy::too_many_lines, reason = "one arm for each variant of the error")]
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Refused(refused) => write!(out, "{refused}"),
@@ -269,7 +270,7 @@ impl std::error::Error for Error {
             Self::Path { source, .. } => Some(source),
             Self::Code { source } => Some(source),
             Self::Pin { source } => Some(source),
-            Self::Front { source, .. } => Some(source),
+            Self::Front { source, .. } => Some(source.as_ref()),
             Self::Folder { source, .. } => Some(source),
             Self::Include { source } => Some(source),
             Self::Write { source, .. }
