@@ -176,6 +176,9 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         if let Some(source) = flow.log_error() {
             return Err(Error::Io { path: log, source });
         }
+        if flow.nobody {
+            return Err(Error::NoBody { job: id });
+        }
         let verdict = flow.verdict();
         if verdict == Verdict::Lost {
             return Err(Error::Lost { job: id });
@@ -590,6 +593,20 @@ mod tests {
         let farm = farm(vec![failed]);
         let batch = farm.cargo(&["check".to_owned()]).unwrap();
         assert_eq!(farm.report(&batch), Exit::Failed);
+        std::fs::remove_dir_all(&farm.tree.root).ok();
+    }
+
+    #[test]
+    fn a_body_that_never_started_is_an_error_naming_the_job_not_a_lost_connection() {
+        let silent = Member::new(
+            host("a"),
+            Fake::saying(vec![probe(12, "x86_64"), Reply::ok(&["@@farm:seed empty"]), Reply::ok(&["@@farm:nobody"])]),
+        );
+        let farm = farm(vec![silent]);
+        let batch = farm.cargo(&["check".to_owned()]).unwrap();
+        let Some(error @ Error::NoBody { job }) = batch.failed.first() else { panic!("{:?}", batch.failed) };
+        assert!(error.to_string().contains(&job.to_string()));
+        assert_eq!(error.exit(), Exit::Farm);
         std::fs::remove_dir_all(&farm.tree.root).ok();
     }
 

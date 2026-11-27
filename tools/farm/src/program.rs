@@ -125,6 +125,14 @@ macro_rules! home {
     };
 }
 
+/// How many polls, 10 ms apart, `RUN` gives the body to write its pid before it reports `nobody`:
+/// five seconds.
+macro_rules! body_polls {
+    () => {
+        "500"
+    };
+}
+
 const PROBE: &str = concat!(
     "dir=$1 want=$2\n",
     home!("dir"),
@@ -174,7 +182,9 @@ exec 7<&0
 setsid -f sh -c "$text" body "$dir" "$id" "$slots" "$limit" "$tree" "$mold" "$lease" "$shown" "$@" </dev/null >/dev/null 2>&1
 if [ "$mode" = detach ]; then echo "@@farm:started"; exit 0; fi
 n=0
-while [ ! -s "$job/body" ] && [ "$n" -lt 500 ]; do sleep 0.01; n=$((n + 1)); done
+while [ ! -s "$job/body" ] && [ "$n" -lt "#,
+    body_polls!(),
+    r#" ]; do sleep 0.01; n=$((n + 1)); done
 bodypid=$(cat "$job/body" 2>/dev/null)
 [ -n "$bodypid" ] || { echo "@@farm:nobody"; exit 70; }
 tail -q -n +1 -f -s 0.05 --pid="$bodypid" "$job/events" "$job/log" &

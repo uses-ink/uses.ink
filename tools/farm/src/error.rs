@@ -80,6 +80,10 @@ pub(crate) enum Error {
     Lost {
         job: JobId,
     },
+    /// The host could not tell that the job's body started, so it may be running unobserved.
+    NoBody {
+        job: JobId,
+    },
     /// A job the host has no record of.
     NoJob {
         job: JobId,
@@ -121,6 +125,7 @@ impl Error {
             | Self::Silent { .. }
             | Self::NoHost { .. }
             | Self::Lost { .. }
+            | Self::NoBody { .. }
             | Self::NoJob { .. }
             | Self::Crashed { .. }
             | Self::Changes { .. }
@@ -169,6 +174,10 @@ impl fmt::Display for Error {
             Self::Lost { job } => {
                 write!(out, "the connection for job `{job}` ended before it did, and the host stopped the job")
             }
+            Self::NoBody { job } => write!(
+                out,
+                "the host did not report the start of job `{job}` in time; it may be running, see `farm wait {job}` and `farm log {job}`"
+            ),
             Self::NoJob { job } => {
                 write!(out, "the host has no record of job `{job}`; it may be older than seven days")
             }
@@ -176,7 +185,7 @@ impl fmt::Display for Error {
             Self::Changes { host, .. } => write!(out, "`{host}` listed a changed file that is not safe to copy"),
             Self::Edited { host, paths } => write!(
                 out,
-                "{} edited here after the sync to `{host}` started; nothing was brought back, so run `farm fmt` again once you are done editing",
+                "{} edited here after the sync to `{host}` started; nothing was brought back, so run the verb again once you are done editing",
                 Listed(paths)
             ),
             Self::Workspace(fault) => write!(out, "{fault}"),
@@ -204,6 +213,7 @@ impl std::error::Error for Error {
             | Self::NotGolden { .. }
             | Self::Edited { .. }
             | Self::Lost { .. }
+            | Self::NoBody { .. }
             | Self::NoJob { .. }
             | Self::Crashed { .. } => None,
         }

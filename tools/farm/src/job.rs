@@ -117,6 +117,8 @@ pub(crate) struct Flow {
     pub(crate) aborted: bool,
     pub(crate) detached: bool,
     pub(crate) started: bool,
+    /// The host never saw the job's body start.
+    pub(crate) nobody: bool,
     /// The first line that carried the mark and was not an event.
     pub(crate) fault: Option<crate::event::Fault>,
     /// The job's own output.
@@ -143,6 +145,7 @@ impl Flow {
                     Event::Aborted => self.aborted = true,
                     Event::Detached => self.detached = true,
                     Event::Started => self.started = true,
+                    Event::NoBody => self.nobody = true,
                     _ => {}
                 }
                 Some(event)
