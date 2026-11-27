@@ -1,5 +1,7 @@
 # uses.ink: dependencies for the control plane and the edge
 
+> **Status.** Historical research, written before the decisions it fed. The chosen crates and their reasons are in `docs/libraries.md`; the choices are in `docs/decisions.md`. Crate names here (`uses-control`, `uses-edge-cf`, `uses-edge-std`) are the early ones: today they are `uses-ink-control`, `uses-ink-edge` with `uses-ink-edge-axum`, and the Worker adapter is planned as `uses-ink-edge-worker`. The hosted shape (D1, R2, Queues, Container) is not built yet.
+
 Scope: crates and platform pieces for `uses-control`, `uses-edge-cf` (the Worker) and
 `uses-edge-std` (`ink serve`), plus release and test tooling. The engine and builder
 crates are in `deps-engine.md`. Versions, release dates, licenses and download counts were

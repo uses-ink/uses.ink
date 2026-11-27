@@ -1,5 +1,7 @@
 # Configuration inventory
 
+> **Status.** Working document, not a decision. It fed decision 0044 (settings are split three ways). File paths in it name the tree as it was on 2026-11-27, before the layout rework of decision 0074 (`docs/layout.md`); search the code for the item, not the path.
+
 Every fixed value in the workspace that a reader could reasonably ask to change, sorted into the
 split decision 0044 records. Written 2026-11-27, after the owner's remark that magic values and
 limits were hardcoded. `spikes/` is left out.

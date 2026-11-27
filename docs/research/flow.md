@@ -1,5 +1,7 @@
 # uses.ink: flows, states and copy
 
+> **Status.** Pre-decision design record of flows, states and copy. The `ink` command is now specified in `docs/cli.md` (decision 0061), sign-in in `docs/auth.md` (0068), and the dashboard stack is decision 0053; where they differ from this file, they win.
+
 Scope: what a person does, what they see, and what the service says back. No visual
 design. Copy in `code blocks` or quotes is the exact proposed text. Placeholders are
 `<like-this>`. Claims about other products that I did not check against a live source

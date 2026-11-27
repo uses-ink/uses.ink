@@ -1,5 +1,7 @@
 # uses.ink: dependencies for the engine, builder, CLI and pen
 
+> **Status.** Historical research, written before the decisions it fed. The chosen crates and their reasons are in `docs/libraries.md`; the choices are in `docs/decisions.md`. Crate names here (`uses-engine`, `uses-model`) are the early ones: today they are `uses-ink-engine` and `uses-ink-model`.
+
 Scope: crates for the engine (`uses-engine`, `uses-model`), the builder and `ink` binary,
 and the `pen` crate. The dashboard framework and the Cloudflare control plane are out of
 scope. Versions, release dates and download counts were read from the crates.io API on

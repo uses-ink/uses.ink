@@ -503,7 +503,7 @@ streaming, graceful stop, `Observe` of typed `Event`s) and `edge/folder` (`Deplo
 an edit; the hostile-request table (`edge/tests/hostile.rs`) and the in-memory stand-ins
 (`edge/tests/support`) are what each one is held to.
 
-## 11. The API, intake and the watch
+## 10. The API, intake and the watch
 
 `edge/api`'s `Api<P, C, K, D>` is `Control<P>` plus `Credentials`, `clock::Clock` and `clock::Draw`.
 `Api::respond(&Request) -> Reply` never fails: `Call::parse(method, path)` makes one typed call,
@@ -523,7 +523,7 @@ and the body digest once the body is read. `Call::needs()` gives the `Right` a c
 The CLI signs through `auth::Identity`; its key is in `auth::Keystore`. Tests that speak raw HTTP
 sign with `cli/tests/keyed`.
 
-## 12. Signing in
+## 11. Signing in
 
 `control::signin` is sign-in over the row port alone. `SignIn<D: Db>` has the use cases:
 `request` (a link for an address, when it has an account or the `Signup` policy makes one),

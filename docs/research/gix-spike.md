@@ -1,5 +1,7 @@
 # Spike: gix clone, deepen and file dates
 
+> **Status.** Historical record of M0 spike 2. The verdict fed decision 0036. The spike code (`spikes/gix`, binary `spike-gix`, the commands below) was deleted; the clone and the dates walk live in `host/native/src/git/`, and the old code is in the version history. The commands below are kept as the method, not as something to run.
+
 M0 spike 2 in `docs/roadmap.md`: "gix: shallow clone, deepen, per-file first and last commit
 dates for 5,000 files under 5 s."
 

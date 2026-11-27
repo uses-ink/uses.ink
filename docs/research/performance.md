@@ -1,5 +1,7 @@
 # Performance of the text path
 
+> **Status.** A measurement record, dated 2026-11-27, of what decisions 0039 and 0040 changed. Numbers belong to the code of that day. Paths in it predate the layout rework of decision 0074 (`docs/layout.md`).
+
 What reading, interpreting, highlighting and rendering text costs, where the time goes, and
 what was changed for it. Measured 2026-11-27 on the benches the repo carries; the image work,
 the folder walk and the git source are measured on their own.

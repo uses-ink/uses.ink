@@ -144,11 +144,11 @@ The path predicts the name and the name predicts the path.
   one character, and `ink_*` belongs to Polkadot's ink!.
 - The workspace aliases every crate to its short name (`engine = { package = "uses-ink-engine",
   path = "engine" }`), so code says `engine::Site`.
-- A crate useful outside uses.ink (the pen, the text measurer) gets no prefix and a name of its own,
+- A crate useful outside uses.ink (the pen) gets no prefix and a name of its own,
   so it can be published and reused as is. Its name is checked free on
   crates.io when it is cut.
 - A port is a directory with the trait crate at its root and one directory per adapter:
-  `db/` is `uses-ink-db`, `db/d1/` and `db/sqlite/` are its adapters.
+  `db/` is `uses-ink-db` and `db/sqlite/` is its adapter (`db/d1/` is planned for the hosted shape).
 - A plugin lives at `plugin/<slot>/<variant>/`, its wasm export in a thin `guest/` crate beside
   its native core; every WIT package lives at `wit/<package>/` (`wit/theme/` is `ink:theme`).
   First-party plugins are laid out exactly like third-party ones.
@@ -167,12 +167,13 @@ The path predicts the name and the name predicts the path.
 - A new dependency needs its row in `libraries.md` in the same change, saying why; a maintained
   small crate beats writing our own, a large one for a small job does not.
 - A directory holds about eight entries at most (tests and support files aside); past that, nest
-  by domain.
+  by domain. The repository root, `cli/src`, `model/src` and `docs/` are over the limit today;
+  `docs/layout.md` (decision 0074) brings them under it and has xtask enforce the limit.
 
 ## Licence
 
 The service, engine and first-party plugins are AGPL-3.0-or-later. The plugin SDK, the model it
-speaks, the WIT packages and product-independent crates (the pen, the text measurer) are MIT OR
+speaks, the WIT packages and product-independent crates (the pen) are MIT OR
 Apache-2.0, so a third-party theme is not bound by the AGPL (decision 0041). Every crate states
 its licence through `[workspace.package]` or its own manifest. `cargo xtask layout` checks each
 crate's licence and refuses a permissive crate depending on an AGPL crate of ours; `cargo deny`
@@ -363,12 +364,13 @@ a doc comment.
 - jj, conventional commits, one line, minimal, imperative, lower case after the colon. No AI
   attribution.
 - One logical change per commit: a refactor and a behaviour change are two commits.
-- Every commit passes the checks: `cargo xtask check` runs all of them in CI's order (fmt, clippy
-  natively and on wasm32, the plugins built as components, nextest, doc tests, `cargo deny`, the
-  pen's tests on wasm32-wasip2, the browser pen's release build, `ink build --check` on every CLI
-  site fixture, then layout and generated files), every one with `--locked`. It
-  runs every step and lists each failure; a missing tool fails with the command that installs it.
-  CI runs that one command, so the list lives in one place (`Gate::steps` in `xtask/src/check.rs`).
-  `cargo xtask layout` runs the last step alone, for a fast loop.
+- Every commit passes the checks: `cargo xtask check` runs all of them in CI's order and every one
+  with `--locked`. The `lint` stage runs fmt, clippy (natively and on wasm32), `cargo deny` and
+  the layout rules; `test` builds the plugins as components and runs nextest; `docs` runs the doc
+  tests; `wasm` runs the pen's tests on wasm32-wasip2 and builds the browser pen in release;
+  `sites` runs `ink build --check` on every CLI site fixture. It runs every step and lists each
+  failure; a missing tool fails with the command that installs it. CI runs that one command per
+  stage, so the list lives in one place (`Gate::lint`, `test`, `docs`, `wasm` and `sites` in
+  xtask's `check` module). `cargo xtask layout` runs the layout rules alone, for a fast loop.
 - After each milestone, read-only review agents go over its diff; every finding that holds is
   fixed, and the ones skipped are written down with the reason.

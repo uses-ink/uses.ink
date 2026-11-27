@@ -1,5 +1,7 @@
 # uses.ink: frontend dependencies
 
+> **Status.** Historical research, and its recommendation was rejected. It recommends maud and Datastar. Decision 0032 rejects maud and 0053 rejects Datastar, htmx and script on the dashboard: the dashboard is server-rendered with `unspliced`. The chosen crates are in `docs/libraries.md`. Read this file for the comparison, not the verdict.
+
 Scope: what the dashboard (`app.uses.ink`, and `ink serve` self-hosted) and the reader
 themes are built with, and how the pen becomes one shared component. Reads with
 `architecture.md` sections 1 to 3.2 and `flow.md` section 8.

@@ -1,5 +1,7 @@
 # How ink decides, and how it accounts for it
 
+> **Status.** Research that decision 0042 accepted in part: decisions carry one evidence, changes carry a cause, and inference rules are versioned. Where it differs from `docs/code.md` sections 1 and 2 or from the code, those win.
+
 Scope: the paradigm behind decisions, evidence, pins and stability across versions of ink. It
 asks whether the evidence system earns its place, compares five paradigms, and specifies one to
 the level a builder can start from. The decision record it proposes is 0042 (section 8). Sources

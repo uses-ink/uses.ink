@@ -1,5 +1,7 @@
 # uses.ink: architecture and infrastructure
 
+> **Status.** Historical research, written before the decisions it fed. The current design is `docs/architecture.md` and `docs/decisions.md`. Some choices here were changed: the Worker adapter and Container are not built yet (decision 0004 keeps them for the hosted shape), the filter=blob:none partial clone is dropped (0036), and the dashboard stack is `unspliced` (0032, 0053). Crate names here (`uses-model`, `uses-engine`, `uses-control`, `uses-edge-cf`, `uses-edge-std`, `uses-host-wasmtime`) are the early ones: today they are `uses-ink-model`, `uses-ink-engine`, `uses-ink-control`, `uses-ink-edge` with `uses-ink-edge-axum`, and `uses-ink-host-wasmtime`.
+
 Scope: how the engine and the hosted service are built, where each part runs, and the
 contracts between parts. User-facing flows, states and copy live in `flow.md`; this
 document uses its vocabulary (`ink push`, `ink.toml`, "What we understood", the vault

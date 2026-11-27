@@ -56,75 +56,99 @@ Container: ink build (native binary, wasmtime inside)
 
 One builder binary for every source. The Worker never fetches a repo and never renders.
 
+Only the self-hosted shape is built. The hosted one (Worker, D1, R2, Queues, Durable Object, Container) is
+M4 in `roadmap.md`; its crates are marked planned in section 4. Both shapes run the same builder and the same edge crates.
+
 ## 4. Repository layout
+
+Crates marked "planned" do not exist yet; `docs/roadmap.md` M4 lists them. Everything else is a
+member of the root `Cargo.toml` workspace. A path predicts a crate name (`conventions.md`).
 
 ```
 uses.ink/
-  Cargo.toml  rust-toolchain.toml  rustfmt.toml  clippy.toml  deny.toml  .config/nextest.toml
-  model/                 uses-ink-model         Snapshot, Site, Page, Document, Decision, Diagnostic, Event, Manifest;
+  Cargo.toml  Cargo.lock  rust-toolchain.toml  rustfmt.toml  clippy.toml  deny.toml
+  dist-workspace.toml  Dockerfile  .dockerignore  LICENSE-*  PRODUCT.md
+  .config/farm.toml  .config/nextest.toml  .cargo/  .github/
+  model/                 uses-ink-model         Snapshot, Site, Page, Document, Decision, Diagnostic, Event, Manifest,
+                                                and the Git and Highlight capability traits;
                                                 MIT OR Apache-2.0, as every plugin links it (0041)
   config/                uses-ink-config        ink.toml: parse with spans, pins, schema for editors
   diag/                  uses-ink-diag          diagnostic and notice catalog (catalog.toml), wording, terminal rendering
-  engine/                uses-ink-engine        interpret and render, pure, talks to host traits only
-  host/                  uses-ink-host          capability traits: blob, git, http, pen, text, asset, diagnostic
-  host/wasmtime/         uses-ink-host-wasmtime component loading, linking, fuel, epochs, memory limits, .cwasm cache
-    hostile/             uses-ink-host-wasmtime-hostile  a misbehaving format component for the host's tests
-  host/native/           uses-ink-host-native   real capabilities for the builder: gix, http client, blob store, highlighting
-  host/image/            uses-ink-host-image    the builder's image work: decode, orient, resize, AVIF and JPEG, thumbhash
+  engine/                uses-ink-engine        interpret and render, pure; the capability traits it needs
+                                                (Blobs, Pins, Format, Theme, ...) are in engine/src/host.rs
+  host/                  not a crate: a folder of three
+    wasmtime/            uses-ink-host-wasmtime component loading, linking, fuel, epochs, memory limits, .cwasm cache
+      hostile/           uses-ink-host-wasmtime-hostile  a misbehaving format component for the host's tests
+    native/              uses-ink-host-native   real capabilities for the builder: gix, http client, blob store, highlighting
+    image/               uses-ink-host-image    the builder's image work: decode, orient, resize, AVIF and JPEG, thumbhash
+  https/                 uses-ink-https         how git reaches an https remote: one rustls configuration over ring (0072)
   freehand/              freehand               the pen: strokes, tools, marks; native and wasm32
   freehand-web/          freehand-web           the pen as plain wasm exports, and its loader freehand.js
-  measure/               (own name)             text shaping and measuring with real fonts
+  trace/                 uses-ink-trace         logging: the macros every crate instruments through (0065)
   control/               uses-ink-control       accounts, handles, identities, sources, builds, deploys, domains
-  db/  db/d1/  db/sqlite/  db/conformance/       row port and adapters
-  blob/  blob/r2/  blob/dir/  blob/conformance/  blob port and adapters
-  queue/  queue/cf/  queue/local/                build request port
-  build/  build/container/  build/local/         builder port: start a build, stream its events
-  secret/                uses-ink-secret        sealing credentials at rest
+  db/  db/sqlite/  db/conformance/              row port and its adapter; planned: db/d1
+  blob/  blob/dir/  blob/conformance/           blob port and its adapter; planned: blob/r2
+  queue/  queue/local/  queue/conformance/      build request port and its adapter; planned: queue/cf
+  build/  build/local/  build/conformance/      builder port: start a build, stream its events; planned: build/container
+  secret/  secret/local/  secret/conformance/   sealing credentials at rest
   mail/  mail/smtp/      uses-ink-mail          mail port: typed messages and a Mailer; Capture and Stdout stand-ins;
                                                 the SMTP adapter on lettre and rustls (0066)
-  edge/api/              uses-ink-edge-api      the API and intake over the control plane (0052)
   sig/                   uses-ink-sig           the Ink-Sig-1 signed-request profile: parse, sign, verify (0068)
   clock/                 uses-ink-clock         time and randomness as ports
   watch/                 uses-ink-watch         the polling watch and the in-process worker
-  edge/                  uses-ink-edge          serve, api, intake, independent of the HTTP runtime; the serving half is
-                                                built (0051): Sites and Blobs ports, Request to Reply, Limits, refusals
-  edge/worker/           uses-ink-edge-worker   workers-rs entry point, bindings
-  edge/axum/             uses-ink-edge-axum     axum entry point: hyper's HTTP/1 loop, streaming, graceful stop, events
-  edge/folder/           uses-ink-edge-folder   the edge's ports over folders `ink build` wrote (`ink serve`)
-  web/                   uses-ink-web           landing and dashboard (stack in section 14)
+    git/                 uses-ink-watch-git     where a git branch is now, read from the remote's reference list (0067)
+  edge/                  uses-ink-edge          serve, independent of the HTTP runtime; built (0051): Sites and Blobs
+                                                ports, Request to Reply, Limits, refusals
+    api/                 uses-ink-edge-api      the API and intake over the control plane (0052)
+    control/             uses-ink-edge-control  the edge's host-to-deploy lookup over the control plane (0067)
+    axum/                uses-ink-edge-axum     axum entry point: hyper's HTTP/1 loop, streaming, graceful stop, events
+    folder/              uses-ink-edge-folder   the edge's ports over folders `ink build` wrote (`ink serve`)
+    (worker/             planned: uses-ink-edge-worker, the workers-rs entry point)
+  web/                   uses-ink-web           the dashboard screens (stack in section 14); the landing is planned
   cli/                   uses-ink-cli           the `ink` binary
   plugin/
     sdk/                 uses-ink-sdk           guest-side bindings and their conversions to the model;
                                                 MIT OR Apache-2.0, depends on model and freehand only (0041)
-    source/     wit/  git/  upload/  archive/  atproto/
-    authority/  wit/  github/  forgejo/  gitlab/  dns/  email/  atproto/
-    format/     markdown/ (its component in markdown/guest/)  obsidian/ (a dialect of markdown;
-                its component in obsidian/guest/)  typst/
-    theme/      quiet/ (its component in quiet/guest/)  notebook/
-  wit/                   model/ host/ format/ theme/: the WIT packages ink:model, ink:host,
-                         ink:format, ink:theme; mirror/: their conversions to the model (0041)
+    source/git/          the git source (its component in git/guest/); planned: upload, archive, atproto
+    format/              markdown/ (its component in markdown/guest/)  obsidian/ (a dialect of markdown;
+                         its component in obsidian/guest/); planned: typst
+    theme/               quiet/ (its component in quiet/guest/); planned: notebook
+    (authority/          planned: github, forgejo, gitlab, dns, email)
+  wit/                   model/ host/ format/ theme/ source/: the WIT packages ink:model, ink:host,
+                         ink:format, ink:theme, ink:source; mirror/: their conversions to the model (0041)
   (migrations are Rust values, `control::Domain` and `queue_local::Queued`: 0049; no .sql files)
-  token/                 design tokens (one TOML file) -> CSS custom properties and pen palette
-  brand/                 logo stroke data, fonts and their licences
+  token/                 design tokens (one TOML file) to CSS custom properties and pen palette
+  brand/                 logo and mark SVGs and figure.toml, read by `cargo xtask brand`
   fixture/               uses-ink-fixture       the fixture harness: goldens through insta; a dev-dependency only
-  xtask/                 cargo xtask token | diag | brand | layout | check (later: wit)
+  xtask/                 cargo xtask token | diag | brand | layout | component | check (later: wit)
   tools/farm/            farm: the build farm client, installed once (0047); knows no project
-  docs/  spikes/
+  docs/  spikes/         spikes/workers is outside the workspace
 ```
 
-Dependency direction, enforced by `cargo xtask layout` (a step of `cargo xtask check`) from
-`cargo metadata`:
+Dependency direction, enforced by `cargo xtask layout` (the last step of the `lint` stage of
+`cargo xtask check`) from `cargo metadata`; the table is `Order::MAY_USE` in
+xtask:
 
 ```
-model <- config, diag <- engine <- host <- host/{wasmtime,native,image} <- cli
-model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret, mail (traits only)
-edge <- model only today (the serving half does not need control); edge/{axum,folder} <- edge, model; the
-CLI takes edge, edge/axum and edge/folder for `ink serve`.
-plugin/* <- model, plugin/sdk, wit only, and engine for its plugin traits. Never control, host/* or edge.
-plugin/sdk <- model, freehand only: a permissive crate depends on no AGPL crate of ours.
-host/wasmtime <- host/native (grammars), engine (the traits its components implement).
-freehand, measure <- nothing of ours. freehand-web <- freehand. token <- nothing of ours.
-fixture <- nothing of ours; every crate may take it as a dev-dependency, none as a normal one.
+"X takes Y" means X may depend on Y, and on nothing else of ours.
+config, diag              take model
+engine                   takes model, config, diag
+edge                     takes model only (the serving half does not need control)
+edge/folder              takes model, edge
+edge/axum                takes model, edge, edge/api
+edge/control             takes control, edge and the adapters the control plane runs on
+control                  takes model, blob, build, db, mail, queue, secret, sig (ports, traits only)
+edge/api, watch          take control, the ports it runs on, and clock
+host/native, host/image  take model, engine; host/native also takes https
+host/wasmtime            takes host/native, host/image, engine, and the plugins' native cores for its tests
+cli                      takes everything it wires: engine, host/*, edge/*, control, watch/*, the adapters
+plugin/*                 take model, plugin/sdk, wit; a theme takes engine; format/obsidian takes
+                         format/markdown; a plugin's tests may take host/native and fixture.
+                         Never control or edge.
+plugin/sdk               takes model, freehand only: a permissive crate depends on no AGPL crate of ours
+freehand-web             takes freehand
+freehand, token, sig, trace, https, clock, mail   take nothing of ours
+fixture                  takes nothing of ours; every crate may take it as a dev-dependency, none as a normal one
 ```
 
 ## 5. Core types
@@ -404,6 +428,9 @@ reads. It reads the files on disk, since it writes into them; a git read builds 
 
 ## 12. Sources, authorities, domains
 
+Only `ink:source-git` is built. The other sources and every authority below are the design, planned in
+`roadmap.md` M4 and M5.
+
 | Source | Snapshot | History | Watch | Private |
 |---|---|---|---|---|
 | `ink:source-git` (any HTTPS git, GitHub, Forgejo, GitLab) | `git.fetch`, shallow then deepen | from the clone | webhook where the forge has one, else poll `info/refs` every 10 min, backing off to 1 h | with a grant |
@@ -476,12 +503,13 @@ is no hand-written or generated JS (the landing's pen loader, `freehand-web/free
 is the one exception); colours and sizes from `token/`; the dashboard's marks are drawn at render
 time by `freehand`, the landing's by the pen as a wasm module.
 
-**Landing** at `uses.ink`: from `.impeccable/mocks/doodle/index.html`, served by the same web
-crate.
+**Landing** at `uses.ink`: planned, from the doodle mock (a local file under `.impeccable/mocks/doodle/`, not
+tracked), served by the same web crate. `web` holds only the dashboard today.
 
-**CLI** (`ink`): `login`, `logout`, `whoami`, `init`, `build`, `check`, `explain`, `pin`, `preview`,
-`push`, `watch`, `status`, `deploys`, `rollback`, `resume`, `source`, `domain`, `handle`,
-`theme`, `select`, `export`, `account`, `diag`, `serve`. `ink serve [folder] [--addr] [--host-mode]` serves a
+**CLI** (`ink`): `init`, `check`, `build`, `preview`, `serve`, `explain`, `pin`, `select`, `login`,
+`logout`, `whoami`, `key`, `push`, `status`, `watch`, `deploy` (`list`, `show`, `rollback`, `resume`),
+`export`, `completions`, `man`, `help`. The design adds `source`, `domain`, `handle`, `theme`, `account` and
+`diag` (`cli.md`). `ink serve [folder] [--addr] [--host-mode]` serves a
 built deploy through the edge crates the product runs (conditional and range requests, refusals,
 budgets, the manifest's production headers); `ink preview` builds in memory for writing and serves
 on 127.0.0.1 with a hand-written responder. Output rules, samples and exit codes:
