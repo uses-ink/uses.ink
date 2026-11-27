@@ -25,6 +25,26 @@ fn makes_the_key_file_private_and_reuses_it() {
 }
 
 #[test]
+fn openers_that_make_the_key_together_share_one_and_leave_no_temporary() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder.path().join("secret.key");
+    let openers: Vec<_> = (0..8)
+        .map(|_| {
+            let path = path.clone();
+            std::thread::spawn(move || Local::open(&path).unwrap())
+        })
+        .collect();
+    let locals: Vec<Local> = openers.into_iter().map(|opener| opener.join().unwrap()).collect();
+    let row = Binding::from("c-1");
+    let sealed = pollster::block_on(locals.first().unwrap().seal(&Plain::from("token"), &row)).unwrap();
+    for local in &locals {
+        assert_eq!(pollster::block_on(local.open(&sealed, &row)).unwrap().expose(), b"token");
+    }
+    let names: Vec<_> = std::fs::read_dir(folder.path()).unwrap().map(|entry| entry.unwrap().file_name()).collect();
+    assert_eq!(names, ["secret.key"], "the key file is the only file left");
+}
+
+#[test]
 fn sits_beside_the_database() {
     let folder = tempfile::tempdir().unwrap();
     Local::beside(folder.path().join("ink.db")).unwrap();
