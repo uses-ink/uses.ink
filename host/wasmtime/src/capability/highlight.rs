@@ -1,7 +1,7 @@
 use engine::Record as _;
 use model::Diagnostic;
-use model::highlight::Highlight as _;
 use model::Problem;
+use model::highlight::Highlight as _;
 
 use super::State;
 use crate::bind::plugin::ink::host::highlight;

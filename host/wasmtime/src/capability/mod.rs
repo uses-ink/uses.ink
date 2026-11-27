@@ -2,16 +2,15 @@
 //! section 6): the pen through `freehand`, text measuring, highlighting through host-native's
 //! [`Grammars`], and the record of what a plugin says. Each call's store holds a [`State`].
 
-
 mod diagnostic;
 mod git;
 mod highlight;
 mod pen;
 mod text;
 
+use engine::{Record as _, Said};
 use host_native::Grammars;
 use model::{Diagnostic, Problem};
-use engine::{Record as _, Said};
 use wasmtime::ResourceLimiter;
 
 use crate::bind::plugin::ink::model as types;
@@ -29,7 +28,6 @@ pub(crate) struct State {
     pub(crate) limit: Limit,
     pub(crate) sourcing: Sourcing,
 }
-
 
 impl State {
     pub(crate) fn new(plugin: impl Into<String>, grammars: Grammars, budget: &Budget) -> Self {

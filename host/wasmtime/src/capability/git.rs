@@ -2,13 +2,13 @@ use std::fmt;
 use std::time::{Duration, Instant};
 
 use engine::Record as _;
-use host_native::{Failed, Fetch, Memory, Read};
 #[cfg(test)]
 use host_native::Grammars;
-use model::git::{Cloned, Refused, Request, Want};
-use model::{Diagnostic, Hash, Problem};
+use host_native::{Failed, Fetch, Memory, Read};
 #[cfg(test)]
 use model::Oid;
+use model::git::{Cloned, Refused, Request, Want};
+use model::{Diagnostic, Hash, Problem};
 
 use super::State;
 use crate::bind::plugin::ink::host::git;
@@ -205,4 +205,3 @@ mod test {
         assert_eq!(state.said.diagnostics.len(), 1);
     }
 }
-

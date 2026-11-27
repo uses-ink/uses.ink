@@ -9,10 +9,10 @@ extern crate uses_ink_host_native as host_native;
 #[path = "support/origin.rs"]
 mod origin;
 
+use fixture::origin::Origin;
 use host_native::{Cloning, Failed, Fetch, FetchLimits, Memory, Repository};
 use model::git::{Auth, Budget, Depth, Git, Network, Refused, Request, Scheme};
 use model::{Bytes, Diagnostic, Known, Provenance, Version};
-use fixture::origin::Origin;
 use origin::Fetching as _;
 
 fn code<E: std::error::Error>(refused: &Refused<E>) -> String {

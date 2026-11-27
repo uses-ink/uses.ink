@@ -17,7 +17,7 @@ use crate::bind::theme::{Theme as Themes, ThemePre};
 use crate::cache::Origin;
 use crate::capability::State;
 use crate::error::{Error, Failure};
-use crate::runtime::{Runtime, Machine};
+use crate::runtime::{Machine, Runtime};
 
 /// A plugin loaded as a component of world `W`.
 #[derive(Debug)]

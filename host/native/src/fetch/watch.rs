@@ -21,7 +21,10 @@ impl Watch<'_> {
 
     /// Runs `fetch` with a watcher beside it; a fetch the watcher cut, or that ended past the
     /// limit, removes the clone and is the budget's refusal.
-    pub(super) fn over<T>(&self, fetch: impl FnOnce(&AtomicBool) -> Result<T, gix::Error>) -> Result<T, Refused<Failed>> {
+    pub(super) fn over<T>(
+        &self,
+        fetch: impl FnOnce(&AtomicBool) -> Result<T, gix::Error>,
+    ) -> Result<T, Refused<Failed>> {
         let (interrupt, done, late) = (AtomicBool::new(false), AtomicBool::new(false), AtomicBool::new(false));
         let result = std::thread::scope(|scope| {
             scope.spawn(|| {

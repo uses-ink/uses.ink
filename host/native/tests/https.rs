@@ -13,10 +13,10 @@ mod server;
 
 use std::fmt::Write;
 
+use fixture::origin::Origin;
 use host_native::{Failed, Fetch};
 use https::Https;
 use model::git::{Depth, Network, Refused, Request};
-use fixture::origin::Origin;
 use origin::Fetching as _;
 use server::{Authority, Mode, Server};
 

@@ -29,7 +29,7 @@ use crate::capability::{Sourcing, State};
 use crate::component::Component;
 use crate::error::{Error, Failure};
 use crate::mirror::{Malformed, Seen};
-use crate::runtime::{Runtime, Machine};
+use crate::runtime::{Machine, Runtime};
 
 /// What a source's calls run with: the host's fetching and a budget of their own.
 #[derive(Clone, Debug)]
