@@ -384,7 +384,8 @@ the last step is `Layout`. Rules run over a `Workspace` read once: `cargo metada
 module tree each target compiles, parsed with `syn` and marked entry, inner, test or generated.
 The rules are `Names`, `Order`, `Licence` (each crate's licence, and no AGPL crate of ours under
 a permissive one), `Alias`, `Banned`, `Unsafe` (on tokens, so comments
-and literals never count), `Words` and `Free`. `Gradual<R>` wraps a rule so it fails only the
+and literals never count), `Words`, `Free`, `Sql` (section 9) and `Release` (the release files name the
+workspace's binary and versions). `Gradual<R>` wraps a rule so it fails only the
 crates in `ENFORCED` and counts the rest in a note; every crate is in it, so a new crate joins
 it with its first commit. Lists of generators, steps and rules are tuples, given their list
 trait by one `tuples!` macro. `cargo xtask check` runs every step and reports every failure; `cargo xtask check <stage>`

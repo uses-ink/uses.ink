@@ -1,8 +1,9 @@
 //! `cargo xtask layout`: every [`Rule`] over the [`Workspace`], then every generated file
 //! compared with what its generator writes now. The rules are the checkable parts of
 //! docs/conventions.md: the path predicts the name, dependencies flow one way, licences match the
-//! crate's kind, no banned names, unsafe code only where a decision says, function names of one
-//! or two words, no free functions, and release files that name the binary that exists.
+//! crate's kind, no banned names, unsafe code only where a decision says, SQL text only through
+//! the statement builders, function names of one or two words, no free functions, and release
+//! files that name the binary that exists.
 
 mod file;
 mod manifest;
@@ -69,6 +70,8 @@ pub(crate) const ENFORCED: &[&str] = &[
     "uses-ink-host-wasmtime-hostile",
     "uses-ink-model",
     "uses-ink-sdk",
+    "uses-ink-source-git",
+    "uses-ink-source-git-guest",
     "uses-ink-format-markdown-guest",
     "uses-ink-format-obsidian-guest",
     "uses-ink-theme-quiet-guest",
