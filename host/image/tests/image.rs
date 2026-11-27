@@ -31,6 +31,14 @@ fn prepare(pixels: &Pixels, name: &str) -> Result<Prepared, Refused> {
     pixels.prepare(&[source]).pop().unwrap()
 }
 
+/// A JPEG read back as RGB, through the decoder the crate itself uses.
+fn rgb(bytes: &[u8]) -> image::RgbImage {
+    let mut decoder = zune_jpeg::JpegDecoder::new(zune_jpeg::zune_core::bytestream::ZCursor::new(bytes));
+    let pixels = decoder.decode().unwrap();
+    let (width, height) = decoder.dimensions().unwrap();
+    image::RgbImage::from_raw(u32::try_from(width).unwrap(), u32::try_from(height).unwrap(), pixels).unwrap()
+}
+
 fn varied(name: &str) -> engine::image::Variants {
     match prepare(&Pixels::default(), name).unwrap() {
         Prepared::Varied(variants) => variants,
@@ -92,7 +100,7 @@ fn orientation_is_applied_and_metadata_is_left_behind_image() {
     let variants = varied("orientation.jpg");
     assert_eq!(variants.dimensions, Dimensions::new(32, 64), "turned a quarter clockwise");
     let jpeg = variants.copies.iter().find(|copy| copy.media == MediaType::Jpeg).unwrap();
-    let shown = image::load_from_memory(&jpeg.bytes).unwrap().into_rgb8();
+    let shown = rgb(&jpeg.bytes);
     let (top, bottom) = (shown.get_pixel(16, 8).0, shown.get_pixel(16, 56).0);
     assert!(top[0] > 180 && top[2] < 80, "the red left half is on top: {top:?}");
     assert!(bottom[2] > 180 && bottom[0] < 80, "the blue right half is below: {bottom:?}");
@@ -106,7 +114,7 @@ fn orientation_is_applied_and_metadata_is_left_behind_image() {
 fn a_cmyk_jpeg_is_shown_in_its_colours_image() {
     let variants = varied("cmyk.jpg");
     let jpeg = variants.copies.iter().find(|copy| copy.media == MediaType::Jpeg).unwrap();
-    let [r, g, b] = image::load_from_memory(&jpeg.bytes).unwrap().into_rgb8().get_pixel(16, 16).0;
+    let [r, g, b] = rgb(&jpeg.bytes).get_pixel(16, 16).0;
     assert!(r < 80 && g > 180 && b > 180, "cyan: {:?}", [r, g, b]);
 }
 

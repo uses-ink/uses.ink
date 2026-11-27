@@ -11,6 +11,7 @@ use image::{AnimationDecoder, DynamicImage, ImageDecoder, ImageFormat, ImageRead
 use model::{Dimensions, MediaType};
 
 use crate::error::{Reason, Refused};
+use crate::jpeg::Jpeg;
 use crate::settings::Limits;
 
 /// Pixels, row by row: RGB, or RGBA when some pixel is not opaque.
@@ -45,7 +46,7 @@ impl Decoded {
     pub(crate) fn read(source: &Source<'_>, limits: &Limits) -> Result<Self, Refused> {
         let refuse = |reason: Reason| Refused::new(source.file, reason);
         let format = match source.media {
-            MediaType::Jpeg => ImageFormat::Jpeg,
+            MediaType::Jpeg => return Self::jpeg(source, limits),
             MediaType::Png => ImageFormat::Png,
             MediaType::Webp => ImageFormat::WebP,
             MediaType::Gif => ImageFormat::Gif,
@@ -58,10 +59,7 @@ impl Decoded {
         };
         let reader = || ImageReader::with_format(Cursor::new(source.bytes), format);
         let (width, height) = reader().into_dimensions().map_err(|error| refuse(error.into()))?;
-        let limit = limits.pixels;
-        if u64::from(width) * u64::from(height) > limit {
-            return Err(refuse(Reason::Budget { width, height, limit }));
-        }
+        limits.admit(width, height).map_err(refuse)?;
         if Self::animated(source.bytes, format).map_err(|error| refuse(error.into()))? {
             return Ok(Self::Kept(Dimensions::new(width, height), Kept::Animated));
         }
@@ -69,11 +67,23 @@ impl Decoded {
         decoder_limits.max_image_width = Some(width);
         decoder_limits.max_image_height = Some(height);
         // the decoded image in 16-bit RGBA, and as much again for the decoder's own buffers
-        decoder_limits.max_alloc = Some(limit.saturating_mul(16));
+        decoder_limits.max_alloc = Some(limits.pixels.saturating_mul(16));
         let mut decoder = reader().into_decoder().map_err(|error| refuse(error.into()))?;
         decoder.set_limits(decoder_limits).map_err(|error| refuse(error.into()))?;
         let orientation = decoder.orientation().map_err(|error| refuse(error.into()))?;
         let mut image = DynamicImage::from_decoder(decoder).map_err(|error| refuse(error.into()))?;
+        image.apply_orientation(orientation);
+        Ok(Self::Pixels(Pixels::from(image)))
+    }
+
+    /// A JPEG, read by [`Jpeg`] under the same budget.
+    fn jpeg(source: &Source<'_>, limits: &Limits) -> Result<Self, Refused> {
+        let refuse = |reason: Reason| Refused::new(source.file, reason);
+        let jpeg = Jpeg::open(source.bytes).map_err(|error| refuse(error.into()))?;
+        let (width, height) = jpeg.size();
+        limits.admit(width, height).map_err(refuse)?;
+        let orientation = jpeg.orientation();
+        let mut image = jpeg.decode().map_err(|error| refuse(error.into()))?;
         image.apply_orientation(orientation);
         Ok(Self::Pixels(Pixels::from(image)))
     }

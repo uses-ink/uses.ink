@@ -368,7 +368,7 @@ is decoded within a pixel budget (50 million by default; a header over it is
 `image.budget.pixels`, refused before a pixel is decoded), its EXIF orientation applied, resized
 with Catmull-Rom to the widths 480, 960 and 1440 that are narrower than it (plus its own width;
 never wider), and encoded as AVIF (ravif, quality 70, speed 9) and JPEG (quality 80,
-progressive), or PNG when it has transparency. Re-encoding leaves every bit of metadata behind,
+baseline with optimized tables), or PNG when it has transparency. Re-encoding leaves every bit of metadata behind,
 so the original is not served. Each copy is served at `<name>.<width>.<hash>.<ext>` with
 `cache-control: public, max-age=31536000, immutable`; the asset carries a `model::Picture` (its
 size, its copies, its placeholder) for the theme's `width`, `height`, `srcset` and `<picture>`.
@@ -433,7 +433,7 @@ core, SSIM against the resized original:
 | AVIF speed 9 instead of 10 (taken, below) | +40% to +55% | -13% to -15% | 0.932 to 0.935 at 1440, 0.924 to 0.942 at 480 |
 | AVIF speed 8 or 6 | x2.6 to x3.9 | -15% to -19% | at most 0.004 over speed 9 |
 | AVIF 8-bit instead of 10-bit (ravif's default) | 0% to -19% | +5% to +7% | 0.006 to 0.010 lower |
-| JPEG baseline with optimized Huffman tables (refused, below) | same | -16% at 1440, -13% at 480 | identical pixels in libjpeg |
+| JPEG baseline with optimized Huffman tables (taken, below) | same | -16% at 1440, -13% at 480 | identical pixels in libjpeg |
 | JPEG progressive with optimized tables | same | -6% to -8% | identical pixels |
 | No 1440 copy | -60% of AVIF time | | 3x screens get 960 |
 
@@ -457,14 +457,21 @@ with noise), since the wallpaper is not in the repo:
 A cold build costs about 65% more CPU on these photos, more than the one-core estimate in the
 table above; a warm build costs the same. The JPEG copies are unchanged.
 
-Baseline JPEG with optimized Huffman tables is refused for now. jpeg-encoder 0.7.1 writes
-optimized tables only in its sequential mode, one scan per component, and zune-jpeg 0.5.15 (the
-decoder `image` uses, and so the one the image work reads sources with) misreads such a file
-with 4:2:0 chroma: against the source, libjpeg's decode of the 48 by 36 fixture is 31 dB and
-zune-jpeg's 5 dB, and a 1600 by 1200 photo's copies come out at 8 dB beside libjpeg's at every
-width. The file is valid and browsers decode it with libjpeg-turbo, but the CMYK colour test
-fails on it, and a copy our own decoder cannot read is not shipped. **Reversal:** a zune-jpeg
-that reads it, or jpeg-encoder writing optimized tables in an interleaved scan.
+Baseline JPEG with optimized Huffman tables is taken, with its own decoder. jpeg-encoder 0.7.1
+writes optimized tables only in its sequential mode, one scan per component, and zune-jpeg 0.5.15
+(the decoder `image` 0.25 pins) misread such a file with 4:2:0 chroma: against the source,
+libjpeg's decode of the 48 by 36 fixture was 31 dB and zune-jpeg's 5 dB, and a 1600 by 1200
+photo's copies came out at 8 dB beside libjpeg's at every width. The file is valid and browsers
+decode it with libjpeg-turbo. zune-jpeg 0.5.16-rc3 reads it (a 96 by 72 probe: 5.7 dB on 0.5.15,
+37.7 dB on rc3, the same as the other three sampling and table modes), so `host/image` depends on
+`zune-jpeg =0.5.16-rc3` directly, turns off `image`'s `jpeg` feature, and reads JPEG itself
+(`host/image/src/jpeg.rs`: size from the headers, EXIF orientation, grey or RGB pixels, CMYK
+converted). A prerelease cannot satisfy `image`'s `^0.5` requirement, so no `[patch]` can swap it
+in under `image`; that is why the reader is ours. The cache key's codec tag is no longer typed by
+hand: `host/image/build.rs` reads the versions of the crate's registry dependencies from
+`Cargo.lock`. The fixtures' JPEG copies shrink (773 to 310 bytes, 1074 to 599) since baseline
+carries less overhead than the progressive files they replace. **Reversal:** zune-jpeg 0.5.16
+is released and `image` accepts it: drop the direct reader and turn the feature back on.
 
 ## 0041 Components as built: values across, one shared mirror
 

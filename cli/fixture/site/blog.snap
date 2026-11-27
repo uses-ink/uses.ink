@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v2","deploy":"6bdbdafc3016d7e7d5fb8c6391c82afe46f64cffe773dd3de797224d7290659e","written":true,"out":"<out>","entries":19,"changes":{"against":"nothing","public":[{"path":"about.md","route":"/about"},{"path":"index.md","route":"/"},{"path":"posts/2024-03-01-first-steps.md","route":"/posts/first-steps"},{"path":"posts/blink.gif","route":"/posts/blink.gif"},{"path":"posts/leaf.png","route":"/posts/leaf.png"},{"path":"posts/nib.svg","route":"/posts/nib.svg"},{"path":"posts/pictures.md","route":"/posts/pictures"},{"path":"posts/second.md","route":"/posts/second"},{"path":"posts/turned.jpg","route":"/posts/turned.jpg"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
+{"schema":"uses.build/v2","deploy":"b50ccc1d6fda91d465e831b3594a53f85086b70077ea08b2fc6e54e0ab39534f","written":true,"out":"<out>","entries":19,"changes":{"against":"nothing","public":[{"path":"about.md","route":"/about"},{"path":"index.md","route":"/"},{"path":"posts/2024-03-01-first-steps.md","route":"/posts/first-steps"},{"path":"posts/blink.gif","route":"/posts/blink.gif"},{"path":"posts/leaf.png","route":"/posts/leaf.png"},{"path":"posts/nib.svg","route":"/posts/nib.svg"},{"path":"posts/pictures.md","route":"/posts/pictures"},{"path":"posts/second.md","route":"/posts/second"},{"path":"posts/turned.jpg","route":"/posts/turned.jpg"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
@@ -18,7 +18,7 @@ posts/leaf.48.5b6cb8cacc12719c.png
 posts/nib.svg
 posts/pictures/index.html
 posts/second/index.html
-posts/turned.32.3d4dcdf16c26ec7b.jpeg
+posts/turned.32.1bf74db9de256e89.jpeg
 posts/turned.32.548b561923e5cd96.avif
 posts/turned.placeholder.ed696fe0c714c4f7.png
 robots.txt
@@ -346,7 +346,7 @@ it started.</p>
 <img src="/posts/turned.placeholder.ed696fe0c714c4f7.png" alt="" width="32" height="64">
 <picture>
 <source type="image/avif" srcset="/posts/turned.32.548b561923e5cd96.avif 32w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">
-<img src="/posts/turned.32.3d4dcdf16c26ec7b.jpeg" srcset="/posts/turned.32.3d4dcdf16c26ec7b.jpeg 32w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="32" height="64" alt="a red stripe over a blue one" loading="lazy" decoding="async">
+<img src="/posts/turned.32.1bf74db9de256e89.jpeg" srcset="/posts/turned.32.1bf74db9de256e89.jpeg 32w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="32" height="64" alt="a red stripe over a blue one" loading="lazy" decoding="async">
 </picture>
 </span>
 </p>

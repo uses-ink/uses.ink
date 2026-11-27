@@ -18,6 +18,10 @@ jpeg-encoder.workspace = true
 libm.workspace = true
 model.workspace = true
 ravif.workspace = true
+zune-jpeg.workspace = true
+
+[build-dependencies]
+toml.workspace = true
 
 [dev-dependencies]
 divan.workspace = true

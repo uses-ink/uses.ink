@@ -19,6 +19,7 @@
 mod decode;
 mod encode;
 mod error;
+mod jpeg;
 mod record;
 mod settings;
 mod thumbhash;

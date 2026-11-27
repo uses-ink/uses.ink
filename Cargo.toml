@@ -72,9 +72,12 @@ anyhow = "1.0.105"
 # images (host/image): decoders without C, a SIMD resizer, AVIF through rav1e without its
 # assembly, JPEG without its runtime SIMD paths, dimensions from headers alone
 fast_image_resize = "6.2.0"
-image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
+image = { version = "0.25.10", default-features = false, features = ["gif", "png", "webp"] }
 imagesize = "0.15.0"
 jpeg-encoder = "0.7.1"
+# the JPEG reader: the release candidate reads optimized sequential files, which `image`'s pinned
+# release does not; take the stable release when there is one and cargo accepts it for `image`
+zune-jpeg = "=0.5.16-rc3"
 ravif = { version = "0.13.0", default-features = false }
 heck = "0.5.0"
 prettyplease = "0.3.0"

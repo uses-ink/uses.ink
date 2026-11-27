@@ -67,7 +67,7 @@ impl Pixels {
         Ok(Encoded::new(MediaType::Avif, self.dimensions(), bytes))
     }
 
-    /// The copy every browser shows: JPEG, progressive, or PNG when the image has transparency.
+    /// The copy every browser shows: JPEG, baseline with tables fitted to the image, or PNG when the image has transparency.
     pub(crate) fn fallback(&self, settings: &Settings) -> Result<Encoded, Reason> {
         match self.alpha {
             Alpha::Opaque => self.jpeg(settings),
@@ -81,7 +81,7 @@ impl Pixels {
         let height = u16::try_from(self.height).map_err(|_| large())?;
         let mut bytes = Vec::new();
         let mut encoder = jpeg_encoder::Encoder::new(&mut bytes, settings.jpeg_quality.clamp(1, 100));
-        encoder.set_progressive(true);
+        encoder.set_optimized_huffman_tables(true);
         encoder.encode(&self.bytes, width, height, jpeg_encoder::ColorType::Rgb).map_err(Reason::Jpeg)?;
         Ok(Encoded::new(MediaType::Jpeg, self.dimensions(), bytes))
     }

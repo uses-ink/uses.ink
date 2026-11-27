@@ -8,6 +8,8 @@ use std::num::NonZeroUsize;
 
 use model::Hash;
 
+use crate::error::Reason;
+
 /// The settings of the image work. Every field changes the bytes made, so every field is in
 /// [`Key`].
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -48,6 +50,17 @@ pub struct Limits {
     pub opening: NonZeroUsize,
 }
 
+impl Limits {
+    /// Whether an image of `width` by `height` is within the pixel budget.
+    pub(crate) fn admit(&self, width: u32, height: u32) -> Result<(), Reason> {
+        let limit = self.pixels;
+        if u64::from(width) * u64::from(height) > limit {
+            return Err(Reason::Budget { width, height, limit });
+        }
+        Ok(())
+    }
+}
+
 impl Default for Limits {
     /// 50 million pixels (a 48 megapixel phone photo is read, a decompression bomb is not),
     /// eight threads, and two images decoded at once.
@@ -81,10 +94,9 @@ impl Settings {
 pub struct Key(Hash);
 
 impl Key {
-    /// What changes with the encoders or the way the work is done, so an old key never names
-    /// new bytes.
-    const VERSION: &'static [u8] =
-        b"uses.ink/image/v1 image 0.25.10 fast_image_resize 6.2.0 ravif 0.13.0 jpeg-encoder 0.7.1\0";
+    /// What changes with the codecs (their versions, read from `Cargo.lock` by the build script)
+    /// or the way the work is done, so an old key never names new bytes.
+    const VERSION: &'static [u8] = concat!("uses.ink/image/v1 ", env!("INK_IMAGE_CODECS"), "\0").as_bytes();
 
     /// The key of the image whose bytes hash to `blob`, under `settings` and `limits`.
     pub fn of(blob: Hash, settings: &Settings, limits: &Limits) -> Self {
