@@ -272,6 +272,15 @@ pub enum Inline {
     Keyboard(String),
     /// A place a link can point at, inside a block: a block id (`^intro`). Shows nothing.
     Anchor(Anchor),
+    /// Another page's content shown in place, written among other text (`see ![[Note]] here`). A
+    /// format gives the target as written; the engine ends the paragraph before it and starts one
+    /// after it, with a [`Block::Embed`] between, since blocks cannot sit inside text. Where the
+    /// engine cannot (a heading, a table cell, a link's text) it becomes a link, so a finished
+    /// page holds none.
+    Embed {
+        /// The page embedded, and the part of it when an anchor names one.
+        target: LinkTarget,
+    },
 }
 
 /// Where a link goes.

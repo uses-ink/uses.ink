@@ -796,7 +796,7 @@ pub enum Announcement {
         /// The text, as written.
         written: String,
     },
-    /// `embed.inline.linked`: `{written}` is embedded among other text, so it is shown as a link
+    /// `embed.inline.linked`: `{written}` is embedded where only text fits (a heading, a table cell, a link's text), so it is shown as a link
     #[serde(rename = "embed.inline.linked")]
     EmbedInlineLinked {
         /// The text, as written.

@@ -3,8 +3,11 @@
 //! A note is markdown as `uses-ink-format-markdown` reads it, through the same comrak setup
 //! and the same raw HTML allowlist (decision 0027), in the dialect [`Obsidian`]: what Obsidian
 //! adds, and without what it lacks: `^x^` superscript and definition lists stay text, as
-//! Obsidian shows them. comrak strikes `~x~` as GitHub's markdown does, where Obsidian shows it
-//! as written; comrak has no switch for it.
+//! Obsidian shows them, and so does `~x~`: only `~~x~~` is struck through (comrak strikes both, so
+//! the dialect turns a single-tilde pair back into the text it was, outside code).
+//!
+//! A note's title is its file name, as Obsidian shows it: its first heading is a heading, and the
+//! frontmatter `title`, when there is one, still comes first.
 //!
 //! - **Wikilinks**: `[[Note]]`, `[[Note|text]]`, `[[Note#Heading]]`, `[[Note#^block]]` and
 //!   `[[#Heading]]` are links, left unresolved for the engine with the target as written, the
@@ -14,7 +17,8 @@
 //!   name); a size after the `|` (`|300`, `|300x200`) is not kept and is said
 //!   (`embed.size.ignored`). `![[Note]]`, `![[Note#Heading]]` and `![[Note#^block]]` alone in
 //!   their paragraph are a [`model::Block::Embed`] the engine fills with the page or its part;
-//!   among other text they are links (`embed.inline.linked`). An embed of another kind of file
+//!   among other text they are a [`model::Inline::Embed`], which the engine makes a block between
+//!   the text before and the text after. An embed of another kind of file
 //!   (a PDF, audio, video, a canvas) is a link (`embed.file.linked`).
 //! - **Callouts**: `> [!kind] Title`, any kind, the title of inlines, `+` or `-` after the kind
 //!   for a callout that folds open or closed. Obsidian's aliases name its kinds (`hint` is a tip,
@@ -38,7 +42,7 @@ mod callout;
 mod link;
 mod tag;
 
-use format_markdown::dialect::{Callouts, Dialect, Extension, Linked, Syntax, Wikilink};
+use format_markdown::dialect::{Callouts, Dialect, Extension, Linked, Syntax, Titled, Wikilink};
 use model::{CalloutKind, ContentPath, Read, Span};
 
 use link::Target;
@@ -63,7 +67,14 @@ pub struct Obsidian {
 impl Dialect for Obsidian {
     const SYNTAX: Syntax = Syntax {
         callouts: Callouts::Folding,
-        extensions: &[Extension::Wikilinks, Extension::BlockIds, Extension::Comments, Extension::Aliases],
+        title: Titled::File,
+        extensions: &[
+            Extension::Wikilinks,
+            Extension::BlockIds,
+            Extension::Comments,
+            Extension::Aliases,
+            Extension::DoubleStrike,
+        ],
     };
 
     fn wikilink(&mut self, link: Wikilink<'_>) -> Linked {

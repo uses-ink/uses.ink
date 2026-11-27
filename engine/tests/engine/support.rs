@@ -206,7 +206,8 @@ impl Patterns for Pinned {
 
 /// A stand-in format for `.md` files: `key: value` lines between `---` lines, `# heading`,
 /// `[text](target)` and `![alt](target)` lines, `![[target]]` lines as embeds, `^id` lines as
-/// block ids, and paragraphs of anything else.
+/// block ids, `~ text ![[target]] text` as a paragraph with an embed among its text, `#~ text
+/// ![[target]]` as a heading with one, and paragraphs of anything else.
 #[derive(Debug)]
 pub struct Lines;
 
@@ -233,6 +234,10 @@ impl Format for Lines {
                 if let Err(key) = key(&mut front, line, span) {
                     problems.push(Problem::FrontmatterSyntaxInvalid { reason: key });
                 }
+            } else if let Some(text) = line.strip_prefix("~ ") {
+                blocks.push(Block::Paragraph(among(text)));
+            } else if let Some(text) = line.strip_prefix("#~ ") {
+                blocks.push(headed(text));
             } else if let Some(text) = line.strip_prefix("# ") {
                 heading.get_or_insert(Spanned::new(text.to_owned(), span));
                 let anchor = model::Anchor::of_heading(text).unwrap();
@@ -280,6 +285,26 @@ fn key(front: &mut Front, line: &str, span: Span) -> Result<(), String> {
 
 fn when(text: &str) -> When {
     text.parse().map_or_else(|_| When::Instant(text.parse().unwrap()), When::Day)
+}
+
+/// A level 2 heading of text with `![[target]]` embedded in it.
+fn headed(text: &str) -> Block {
+    let anchor = model::Anchor::of_heading("among").unwrap();
+    Block::Heading { level: Level::new(2).unwrap(), anchor, inlines: among(text) }
+}
+
+/// Text with `![[target]]` embedded in it, as the inlines it is: text, embed, text.
+fn among(text: &str) -> Vec<Inline> {
+    let mut inlines = Vec::new();
+    let mut rest = text;
+    while let Some((before, after)) = rest.split_once("![[") {
+        let (written, after) = after.split_once("]]").unwrap();
+        inlines.push(Inline::Text(before.to_owned()));
+        inlines.push(Inline::Embed { target: LinkTarget::Unresolved { written: written.to_owned() } });
+        rest = after;
+    }
+    inlines.push(Inline::Text(rest.to_owned()));
+    inlines
 }
 
 fn inline(line: &str) -> Inline {

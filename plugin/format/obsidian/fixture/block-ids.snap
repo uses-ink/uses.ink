@@ -146,13 +146,7 @@ input_file: plugin/format/obsidian/fixture/block-ids.md
     "aliases": null,
     "block": null
   },
-  "heading": {
-    "value": "Intro",
-    "span": [
-      0,
-      7
-    ]
-  },
+  "heading": null,
   "diagnostics": [
     {
       "problem": {

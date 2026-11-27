@@ -168,7 +168,8 @@ impl Inline {
             | Self::Break
             | Self::SoftBreak
             | Self::Footnote(_)
-            | Self::Anchor(_)) => leaf,
+            | Self::Anchor(_)
+            | Self::Embed { .. }) => leaf,
         }
     }
 }

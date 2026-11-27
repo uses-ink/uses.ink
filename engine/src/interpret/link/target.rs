@@ -13,8 +13,8 @@ use model::{ContentPath, Entry};
 use crate::interpret::decide::Filed;
 use crate::interpret::file::name::Name;
 use crate::interpret::file::read::Source;
-use crate::interpret::link::vault::Attachments;
 use crate::interpret::tree::{InRoot, Scope};
+use crate::interpret::vault::Attachments;
 
 /// A link's target as the author wrote it.
 #[derive(Clone, Copy, Debug)]

@@ -100,13 +100,7 @@ input_file: plugin/format/obsidian/fixture/tags.md
       60
     ]
   },
-  "heading": {
-    "value": "Heading with #heading-tag",
-    "span": [
-      168,
-      195
-    ]
-  },
+  "heading": null,
   "diagnostics": [],
   "notices": []
 }

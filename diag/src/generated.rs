@@ -239,7 +239,10 @@ impl Message<'_> {
                 )
             }
             Announcement::EmbedInlineLinked { written, .. } => {
-                write!(out, "`{written}` is embedded among other text, so it is shown as a link")
+                write!(
+                    out,
+                    "`{written}` is embedded where only text fits (a heading, a table cell, a link's text), so it is shown as a link"
+                )
             }
             Announcement::EmbedSizeIgnored { written, .. } => {
                 write!(out, "the size `{written}` of an embedded image is not kept: the theme sizes images")

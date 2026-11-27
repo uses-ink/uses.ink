@@ -1,0 +1,57 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/title.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "the-first-heading",
+          "inlines": [
+            {
+              "text": "The first heading"
+            }
+          ]
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Text."
+          }
+        ]
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "second",
+          "inlines": [
+            {
+              "text": "Second"
+            }
+          ]
+        }
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

@@ -14,7 +14,7 @@ use super::html::Fold;
 use super::inline::Plain;
 use super::stack::Stack;
 use super::{Builder, Literal, Node, ToModel};
-use crate::dialect::{Dialect, Extension};
+use crate::dialect::{Dialect, Extension, Titled};
 
 impl Node for Block {
     type Open = Fold;
@@ -122,7 +122,7 @@ impl<D: Dialect> Builder<'_, D> {
         let (Ok(level), Some(anchor)) = (Level::new(level), anchor) else {
             return Block::Paragraph(inlines);
         };
-        if level.get() == 1 && self.heading.is_none() && !text.is_empty() {
+        if level.get() == 1 && self.heading.is_none() && !text.is_empty() && D::SYNTAX.title == Titled::Heading {
             self.heading = Some(Spanned::new(text.to_owned(), span));
         }
         Block::Heading { level, anchor, inlines }

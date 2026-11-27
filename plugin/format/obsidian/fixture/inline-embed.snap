@@ -1,0 +1,139 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/inline-embed.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "See "
+          },
+          {
+            "embed": {
+              "target": {
+                "unresolved": {
+                  "written": "Note"
+                }
+              }
+            }
+          },
+          {
+            "text": " here, and "
+          },
+          {
+            "embed": {
+              "target": {
+                "unresolved": {
+                  "written": "Note#Section"
+                }
+              }
+            }
+          },
+          {
+            "text": " or "
+          },
+          {
+            "embed": {
+              "target": {
+                "unresolved": {
+                  "written": "Note#^block"
+                }
+              }
+            }
+          },
+          {
+            "text": " there."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "A heading "
+          },
+          {
+            "embed": {
+              "target": {
+                "unresolved": {
+                  "written": "Note"
+                }
+              }
+            }
+          },
+          {
+            "text": " stays a heading:"
+          }
+        ]
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "heading-note",
+          "inlines": [
+            {
+              "text": "Heading "
+            },
+            {
+              "embed": {
+                "target": {
+                  "unresolved": {
+                    "written": "Note"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "table": {
+          "alignments": [
+            "none"
+          ],
+          "head": [
+            [
+              {
+                "text": "cell"
+              }
+            ]
+          ],
+          "rows": [
+            [
+              [
+                {
+                  "embed": {
+                    "target": {
+                      "unresolved": {
+                        "written": "Note"
+                      }
+                    }
+                  }
+                }
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

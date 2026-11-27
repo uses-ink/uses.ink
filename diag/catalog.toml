@@ -477,7 +477,7 @@ message = "the callout metadata `{written}` styles a callout in Obsidian's own s
 
 [notice."embed.inline.linked"]
 fields = { written = "text" }
-message = "`{written}` is embedded among other text, so it is shown as a link"
+message = "`{written}` is embedded where only text fits (a heading, a table cell, a link's text), so it is shown as a link"
 fix = "put the embed in a paragraph of its own to show the page"
 
 [notice."embed.size.ignored"]

@@ -1,12 +1,11 @@
 ---
 source: cli/tests/site.rs
-assertion_line: 162
 ---
 # exit 0
 {"schema":"uses.event/v1","code":"embed.target.cycle","severity":"warning","file":"Loop.md","line":null,"what":"`Loop.md` is embedded inside itself, through Loop.md and Notes/Rust.md, so the inner embed is shown as a link","why":null,"fix":"remove one of the embeds"}
 {"schema":"uses.event/v1","code":"embed.target.cycle","severity":"warning","file":"Notes/Rust.md","line":null,"what":"`Loop.md` is embedded inside itself, through Notes/Rust.md, Loop.md and Notes/Rust.md, so the inner embed is shown as a link","why":null,"fix":"remove one of the embeds"}
 # result
-{"schema":"uses.build/v1","deploy":"444d591acf12a5f2767f63e6be34469cc052866168a3f8f62f1ba2577b0db210","written":true,"out":"<out>","entries":11,"errors":0,"warnings":2}
+{"schema":"uses.build/v1","deploy":"a20b18e10ce71b5c2b6301a7c55c93b5c6272c43d5a97c5e0f616e33998c2f83","written":true,"out":"<out>","entries":11,"errors":0,"warnings":2}
 # files
 .ink-manifest.json
 404.html
@@ -129,6 +128,15 @@ alias <a href="/notes/rust">the language</a>, by a partial path <a href="/notes/
 <img src="/attachments/ferris.48.5b6cb8cacc12719c.png" srcset="/attachments/ferris.48.5b6cb8cacc12719c.png 48w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="48" height="32" alt="ferris.png" loading="lazy" decoding="async">
 </picture>
 </p>
+<p>An embed inside a line, see </p>
+<div class="quiet-embed">
+<h2 id="borrowing-1">Borrowing<a class="quiet-anchor" href="#borrowing-1" aria-label="Link to this section">#</a>
+</h2>
+<p>One mutable borrow or many shared ones. </p>
+<p>See <a href="/notes/rust#borrowing">Borrowing</a> and the <a href="/notes/ownership">Ownership</a> note.</p>
+</div>
+<p> shown between its text. A single ~tilde~ pair
+stays as written, <s>struck</s> is struck, and <code>~code~</code> is code.</p>
 <p>A paragraph with its own id. <span id="own">
 </span>
 </p>
@@ -277,7 +285,7 @@ alias <a href="/notes/rust">the language</a>, by a partial path <a href="/notes/
 <div class="quiet-embed">
 <p>A note embedding the note that embeds it:</p>
 <div class="quiet-embed">
-<h2 id="loops">Loops<a class="quiet-anchor" href="#loops" aria-label="Link to this section">#</a>
+<h2 id="loops-1">Loops<a class="quiet-anchor" href="#loops-1" aria-label="Link to this section">#</a>
 </h2>
 <p>
 <a href="/loop">Loop.md</a>

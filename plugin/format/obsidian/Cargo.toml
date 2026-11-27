@@ -14,6 +14,7 @@ model.workspace = true
 
 [dev-dependencies]
 fixture.workspace = true
+proptest.workspace = true
 serde_json.workspace = true
 
 [lints]

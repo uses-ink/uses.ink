@@ -108,3 +108,113 @@ fn settings_that_do_not_read_are_said_and_leave_names_ambiguous() {
         .understand(&Pinned::none());
     assert_eq!(codes(&u), ["vault.settings.invalid", "link.target.ambiguous"]);
 }
+
+/// The text of an inline, for naming what a paragraph holds.
+fn said(inline: &Inline) -> String {
+    match inline {
+        Inline::Text(text) => text.clone(),
+        Inline::Link { children, .. } => children.iter().map(said).collect(),
+        other => panic!("not text: {other:?}"),
+    }
+}
+
+#[test]
+fn an_embed_among_text_ends_the_paragraph_and_shows_the_page() {
+    let u = Tree::new()
+        .file("a.md", "~ see ![[b]] here, and ![[c]] there\n")
+        .file("b.md", "bee\n")
+        .file("c.md", "sea\n")
+        .understand(&Pinned::none());
+    assert!(codes(&u).is_empty(), "{:?}", u.diagnostics);
+    let shown = blocks(&u, "a.md");
+    assert_eq!(shown.len(), 5, "{shown:?}");
+    assert!(matches!(&shown[0], Block::Paragraph(text) if said(&text[0]) == "see "));
+    assert!(matches!(&shown[1], Block::Embed { target: LinkTarget::Page { id, .. }, blocks }
+            if *id == PageId::of(&path("b.md")) && blocks == &[Block::Paragraph(vec![Inline::Text("bee".to_owned())])]));
+    assert!(matches!(&shown[2], Block::Paragraph(text) if said(&text[0]) == " here, and "));
+    assert!(matches!(&shown[3], Block::Embed { blocks, .. } if !blocks.is_empty()));
+    assert!(matches!(&shown[4], Block::Paragraph(text) if said(&text[0]) == " there"));
+}
+
+#[test]
+fn an_embed_among_text_keeps_the_cycle_and_budget_refusals() {
+    let u = Tree::new().file("a.md", "~ x ![[b]] y\n").file("b.md", "~ ![[a]]\n").understand(&Pinned::none());
+    assert_eq!(codes(&u), ["embed.target.cycle", "embed.target.cycle"]);
+    let many = "~ x ![[b]] y\n".repeat(65);
+    let u = Tree::new().file("a.md", &many).file("b.md", "z\n").understand(&Pinned::none());
+    assert_eq!(codes(&u), ["embed.budget.count"]);
+    let embeds = blocks(&u, "a.md")
+        .iter()
+        .filter(|block| matches!(block, Block::Embed { blocks, .. } if !blocks.is_empty()))
+        .count();
+    assert_eq!(embeds, 64);
+}
+
+#[test]
+fn an_embed_among_text_naming_nothing_stays_a_link_in_the_text() {
+    let u = Tree::new().file("a.md", "~ x ![[nowhere]] y\n").understand(&Pinned::none());
+    assert_eq!(codes(&u), ["link.target.missing"]);
+    let shown = blocks(&u, "a.md");
+    let Block::Paragraph(inlines) = &shown[0] else { panic!("{shown:?}") };
+    assert!(
+        matches!(&inlines[1], Inline::Link { target: LinkTarget::Unresolved { written }, .. } if written == "nowhere")
+    );
+    assert_eq!(shown.len(), 1);
+}
+
+#[test]
+fn an_embed_where_only_text_fits_is_a_link_and_says_so() {
+    let u = Tree::new().file("a.md", "#~ x ![[b]]\n").file("b.md", "bee\n").understand(&Pinned::none());
+    assert_eq!(codes(&u), Vec::<&str>::new());
+    assert!(
+        u.notices.iter().any(
+            |notice| matches!(&notice.announcement, Announcement::EmbedInlineLinked { written } if written == "b")
+        )
+    );
+    let shown = blocks(&u, "a.md");
+    let Block::Heading { inlines, .. } = &shown[0] else { panic!("{shown:?}") };
+    assert!(matches!(&inlines[1], Inline::Link { target: LinkTarget::Page { .. }, .. }));
+}
+
+#[test]
+fn an_embedded_heading_gets_an_id_the_page_does_not_have() {
+    let u = Tree::new()
+        .file("a.md", "# Part\n![[b]]\n![[b]]\n![[b#Other]]\n")
+        .file("b.md", "# Part\ntext\n# Other\n")
+        .understand(&Pinned::none());
+    assert!(codes(&u).is_empty(), "{:?}", u.diagnostics);
+    let mut ids = Vec::new();
+    let mut anchors = |blocks: &[Block]| {
+        for block in blocks {
+            match block {
+                Block::Heading { anchor, .. } => ids.push(anchor.as_str().to_owned()),
+                Block::Embed { blocks, .. } => {
+                    for block in blocks {
+                        if let Block::Heading { anchor, .. } = block {
+                            ids.push(anchor.as_str().to_owned());
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    };
+    anchors(&blocks(&u, "a.md"));
+    // the page's own `part` comes first; each embed takes what is left, in document order
+    assert_eq!(ids, ["part", "part-1", "other", "part-2", "other-1", "other-2"]);
+    let unique: std::collections::BTreeSet<_> = ids.iter().collect();
+    assert_eq!(unique.len(), ids.len());
+}
+
+#[test]
+fn an_embedded_link_to_its_own_heading_still_points_at_its_page() {
+    let u =
+        Tree::new().file("a.md", "# Part\n![[b]]\n").file("b.md", "# Part\n[go](#part)\n").understand(&Pinned::none());
+    assert!(codes(&u).is_empty(), "{:?}", u.diagnostics);
+    let shown = blocks(&u, "a.md");
+    let Block::Embed { blocks: inner, .. } = &shown[1] else { panic!("{shown:?}") };
+    let b = PageId::of(&path("b.md"));
+    assert!(
+        matches!(linked(&inner[1]), LinkTarget::Page { id, anchor: Some(anchor) } if *id == b && anchor.as_str() == "part")
+    );
+}

@@ -343,3 +343,61 @@ fn a_vaults_templates_folder_is_ignored() {
     let blog = Tree::new().file("templates/a.md", "x\n").understand(&Pinned::none());
     assert!(!on::<code::Ignored>(&blog, "templates/a.md").value);
 }
+
+#[test]
+fn a_vaults_templates_folder_is_the_one_templates_json_names() {
+    let vault = Tree::new()
+        .file(".obsidian/app.json", "{}")
+        .file(".obsidian/templates.json", r#"{"folder": "Meta/Tpl"}"#)
+        .file("meta/tpl/daily.md", "x\n")
+        .file("Templates/kept.md", "x\n")
+        .file("Meta/a.md", "x\n")
+        .understand(&Pinned::none());
+    let t = on::<code::Ignored>(&vault, "meta/tpl/daily.md");
+    assert!(t.value);
+    assert_eq!(t.evidence, Evidence::Marker { path: path("meta/tpl") });
+    // the conventional name is no templates folder once another is set
+    assert!(!on::<code::Ignored>(&vault, "Templates/kept.md").value);
+    assert!(!on::<code::Ignored>(&vault, "Meta/a.md").value);
+    assert!(vault.diagnostics.is_empty(), "{:?}", vault.diagnostics);
+}
+
+#[test]
+fn a_templates_folder_of_a_plugin_that_is_off_is_not_used() {
+    let off = Tree::new()
+        .file(".obsidian/app.json", "{}")
+        .file(".obsidian/templates.json", r#"{"folder": "Tpl"}"#)
+        .file(".obsidian/core-plugins.json", r#"["file-explorer"]"#)
+        .file("Tpl/a.md", "x\n")
+        .file("templates/b.md", "x\n")
+        .understand(&Pinned::none());
+    assert!(!on::<code::Ignored>(&off, "Tpl/a.md").value);
+    assert!(on::<code::Ignored>(&off, "templates/b.md").value);
+    let on_ = Tree::new()
+        .file(".obsidian/app.json", "{}")
+        .file(".obsidian/templates.json", r#"{"folder": "Tpl"}"#)
+        .file(".obsidian/core-plugins.json", r#"{"templates": true}"#)
+        .file("Tpl/a.md", "x\n")
+        .understand(&Pinned::none());
+    assert!(on::<code::Ignored>(&on_, "Tpl/a.md").value);
+}
+
+#[test]
+fn templates_settings_that_do_not_read_are_said_and_the_convention_stands() {
+    let vault = Tree::new()
+        .file(".obsidian/app.json", "{}")
+        .file(".obsidian/templates.json", r#"{"folder": "../out"}"#)
+        .file(".obsidian/core-plugins.json", "not json")
+        .file("templates/a.md", "x\n")
+        .understand(&Pinned::none());
+    let invalid: Vec<_> = vault
+        .diagnostics
+        .iter()
+        .filter_map(|d| match &d.problem {
+            model::Problem::VaultSettingsInvalid { path, .. } => Some(path.to_string()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(invalid, [".obsidian/templates.json", ".obsidian/core-plugins.json"]);
+    assert!(on::<code::Ignored>(&vault, "templates/a.md").value);
+}

@@ -8,17 +8,7 @@ input_file: plugin/format/obsidian/fixture/scripts.md
       {
         "paragraph": [
           {
-            "text": "Obsidian shows ^these^ and "
-          },
-          {
-            "strike": [
-              {
-                "text": "these"
-              }
-            ]
-          },
-          {
-            "text": " as written, and "
+            "text": "Obsidian shows ^these^ and ~these~ as written, and "
           },
           {
             "strike": [

@@ -2,12 +2,12 @@
 //! reader sees.
 
 use comrak::nodes::{AstNode, NodeValue, NodeWikiLink};
-use model::{Anchor, Announcement, ExternalUrl, FootnoteName, ImageSource, Inline, LinkTarget, Slug, Span, Visit};
+use model::{Anchor, ExternalUrl, FootnoteName, ImageSource, Inline, LinkTarget, Slug, Span, Visit};
 
 use super::html::Open;
 use super::stack::Stack;
 use super::{Builder, Literal, Node};
-use crate::dialect::{Dialect, Linked, Wikilink};
+use crate::dialect::{Dialect, Extension, Linked, Wikilink};
 
 impl Node for Inline {
     type Open = Open;
@@ -29,7 +29,7 @@ impl Node for Inline {
             NodeValue::Code(code) => Self::Code(code.literal.clone()),
             NodeValue::Emph(_) => Self::Emphasis(builder.run(child)),
             NodeValue::Strong(_) => Self::Strong(builder.run(child)),
-            NodeValue::Strikethrough(_) => Self::Strike(builder.run(child)),
+            NodeValue::Strikethrough(_) => return builder.strike(child, run),
             NodeValue::Highlight => Self::Highlight(builder.run(child)),
             NodeValue::Superscript => Self::Superscript(builder.run(child)),
             NodeValue::Subscript => Self::Subscript(builder.run(child)),
@@ -90,13 +90,29 @@ impl<D: Dialect> Builder<'_, D> {
         Inline::Text(text.to_owned())
     }
 
-    /// A wikilink among other inlines: an embed of a page is a link here, and that is said.
+    /// A wikilink among other inlines: an embed of a page is an [`Inline::Embed`] here.
     fn inline<'a>(&mut self, node: &'a AstNode<'a>, link: &NodeWikiLink, span: Span) -> Inline {
         let linked = self.wiki(node, link, span);
-        if let Some(written) = linked.embed {
-            self.report.announce(Announcement::EmbedInlineLinked { written }, span);
+        match linked.embed {
+            Some(written) => Inline::Embed { target: LinkTarget::Unresolved { written } },
+            None => linked.inline,
         }
-        linked.inline
+    }
+
+    /// A struck run, or for a dialect where only `~~x~~` strikes, the text a single-tilde pair
+    /// was: comrak strikes `~x~` too, so the source says which it was.
+    fn strike<'a>(&mut self, node: &'a AstNode<'a>, run: &mut Stack<Open>) {
+        let span = self.positions.span(node.data().sourcepos);
+        let inner = self.run(node);
+        if D::SYNTAX.has(Extension::DoubleStrike) && !self.positions.starts(span, "~~") {
+            run.push(Inline::Text("~".to_owned()));
+            for inline in inner {
+                run.push(inline);
+            }
+            run.push(Inline::Text("~".to_owned()));
+        } else {
+            run.push(Inline::Strike(inner));
+        }
     }
 
     /// The text of the link `node`, read as inlines.
@@ -167,6 +183,8 @@ impl Visit for Plain {
         match inline {
             Inline::Code(text) | Inline::Math(text) | Inline::Keyboard(text) => self.0.push_str(text),
             Inline::Break | Inline::SoftBreak => self.0.push(' '),
+            // what the engine falls back to when it cannot show the page
+            Inline::Embed { target: LinkTarget::Unresolved { written } } => self.0.push_str(written),
             _ => inline.walk(self),
         }
     }

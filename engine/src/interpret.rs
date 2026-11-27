@@ -1,7 +1,7 @@
 //! Interpret: the stages in order (architecture.md section 9), each recording into one journal,
 //! then the site from their decisions.
 //!
-//! `site.root`, `site.layout`, `file.ignore`, reading, then per page `page.publish`,
+//! `site.root`, `site.layout`, the vault's settings, `file.ignore`, reading, then per page `page.publish`,
 //! `page.kind`, `page.title`, `page.date`, `page.updated`, `page.slug`, `page.tags`,
 //! `page.summary`, then link resolution and embeds, `page.publish` for plain files, `site.home`,
 //! `site.title`, `site.description`, `site.authors`, `site.language`, `site.nav`, routes, and
@@ -16,6 +16,7 @@ mod page;
 mod site;
 mod stage;
 mod tree;
+mod vault;
 
 use model::code::AnyDecision;
 use model::{Diagnostic, Notice, Snapshot, Subject};
@@ -23,11 +24,12 @@ use model::{Diagnostic, Notice, Snapshot, Subject};
 use crate::interpret::file::read::Split;
 use crate::interpret::file::{Assets, Files, Read};
 use crate::interpret::journal::Journal;
-use crate::interpret::link::{Aliases, Embeds, Links, Settings, Targets};
+use crate::interpret::link::{Aliases, Embeds, Links, Targets};
 use crate::interpret::page::Pages;
 use crate::interpret::site::{Assemble, Parts, Routing, Site};
 use crate::interpret::stage::Stage;
 use crate::interpret::tree::{Layout, Root};
+use crate::interpret::vault::Settings;
 use crate::{Blobs, Engine, Formats, Pins};
 
 /// What interpreting a snapshot understood.
@@ -59,14 +61,15 @@ impl<B: Blobs, P: Pins, F: Formats, T> Engine<B, P, F, T> {
         let pins = &self.pins;
         let scope = Root { formats: &self.formats, pins }.run(snapshot, &mut journal);
         let selection = Layout { pins }.run(&scope, &mut journal);
-        let kept = Files { pins }.run(&scope, &mut journal);
+        let vault = Settings { blobs: &self.blobs }.run(&scope, &mut journal);
+        let kept = Files { pins, templates: &vault.templates }.run(&scope, &mut journal);
         let kept_paths = kept.iter().map(|file| file.entry.path.clone()).collect();
         let Split { mut sources, files } = Read { blobs: &self.blobs, formats: &self.formats }.run(kept, &mut journal);
         let published = Pages { pins, selection }.run(&sources, &mut journal);
         let pages = sources.iter().map(|source| source.path.clone()).collect();
         let aliases: Aliases = sources.iter().collect();
-        let attachments = Settings { blobs: &self.blobs }.run(&scope, &mut journal);
-        let targets = Targets { scope: &scope, kept: kept_paths, pages, published, aliases, attachments };
+        let targets =
+            Targets { scope: &scope, kept: kept_paths, pages, published, aliases, attachments: vault.attachments };
         let used = Links { targets: &targets }.run(&mut sources, &mut journal);
         Embeds { published: &targets.published }.run(&mut sources, &mut journal);
         let published = targets.published;

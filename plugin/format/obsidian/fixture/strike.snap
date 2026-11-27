@@ -1,0 +1,164 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/strike.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "~x~ and "
+          },
+          {
+            "strike": [
+              {
+                "text": "y"
+              }
+            ]
+          },
+          {
+            "text": " and "
+          },
+          {
+            "code": "~z~"
+          },
+          {
+            "text": " and "
+          },
+          {
+            "strike": [
+              {
+                "text": "a ~b~ c"
+              }
+            ]
+          },
+          {
+            "text": " and ~~~"
+          }
+        ]
+      },
+      {
+        "quote": [
+          {
+            "paragraph": [
+              {
+                "text": "~q~ in a quote, "
+              },
+              {
+                "strike": [
+                  {
+                    "text": "r"
+                  }
+                ]
+              },
+              {
+                "text": " struck"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "table": {
+          "alignments": [
+            "none",
+            "none"
+          ],
+          "head": [
+            [
+              {
+                "text": "~t~"
+              }
+            ],
+            [
+              {
+                "strike": [
+                  {
+                    "text": "u"
+                  }
+                ]
+              }
+            ]
+          ],
+          "rows": [
+            [
+              [
+                {
+                  "text": "~v~"
+                }
+              ],
+              [
+                {
+                  "strike": [
+                    {
+                      "text": "w"
+                    }
+                  ]
+                }
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "code": {
+          "language": null,
+          "text": "~code~\n"
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "text": "A "
+          },
+          {
+            "emphasis": [
+              {
+                "text": "~em~"
+              }
+            ]
+          },
+          {
+            "text": " here, and a "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note"
+                }
+              },
+              "children": [
+                {
+                  "text": "~label~"
+                }
+              ]
+            }
+          },
+          {
+            "text": " there."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

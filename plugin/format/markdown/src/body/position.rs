@@ -45,6 +45,11 @@ impl<'a> Positions<'a> {
         Span::new(start, end).unwrap_or(self.whole)
     }
 
+    /// Whether the file's text at `span` starts with `prefix`.
+    pub(crate) fn starts(&self, span: Span, prefix: &str) -> bool {
+        self.file.get(span.start()..).is_some_and(|rest| rest.starts_with(prefix))
+    }
+
     /// Where raw HTML at `span` is in the file: written there as is, or reshaped by comrak
     /// (container prefixes taken out of its lines).
     pub(crate) fn placement(&self, html: &str, span: Span) -> Placement {

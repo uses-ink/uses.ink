@@ -7,19 +7,23 @@
 //!
 //! What is shown keeps pointing where it did on its own page: a link to an anchor of that page
 //! points at the page, and a footnote reference, whose note stays on that page, is removed
-//! (`embed.footnote.dropped`).
+//! (`embed.footnote.dropped`). A heading it shows keeps its text but not necessarily its anchor:
+//! an id may appear once on a page, so an anchor the page already has, or an earlier embed
+//! showed, becomes `anchor-1`, `anchor-2`, in document order.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use model::{
     Anchor, Announcement, Block, ContentPath, Diagnostic, Document, Fold, Inline, LinkTarget, Notice, PageId, Problem,
-    Subject,
+    Slug, Subject, Visit,
 };
 
 use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
 use crate::interpret::stage::Stage;
+
+use super::Headings;
 
 /// Embeds a page may fill, embeds inside embeds counted.
 const BUDGET: usize = 64;
@@ -41,7 +45,10 @@ impl Stage<&mut [Source]> for Embeds<'_> {
             .collect();
         for source in sources.iter_mut().filter(|source| self.published.contains(&source.path)) {
             let id = PageId::of(&source.path);
-            let mut fill = Fill { pages: &pages, shown: vec![(id, None)], budget: BUDGET, said: Vec::new() };
+            let mut taken = Headings::default();
+            taken.document(&source.read.document);
+            let mut fill =
+                Fill { pages: &pages, shown: vec![(id, None)], budget: BUDGET, said: Vec::new(), taken: taken.0 };
             let document = std::mem::take(&mut source.read.document);
             source.read.document = fill.document(document);
             let subject = Subject::from(source.subject());
@@ -73,6 +80,8 @@ struct Fill<'a> {
     /// Embeds still allowed.
     budget: usize,
     said: Vec<Said>,
+    /// Every anchor on the page: its own, then each one an embed has shown.
+    taken: BTreeSet<Anchor>,
 }
 
 /// A page and part as a person reads it: `notes/a.md#intro`.
@@ -134,7 +143,7 @@ impl Fill<'_> {
             return link(written);
         };
         self.budget -= 1;
-        let mut carried = Carried { id, dropped: false };
+        let mut carried = Carried { id, dropped: false, taken: &mut self.taken };
         let blocks = carried.blocks(part);
         if carried.dropped {
             self.said.push(Said::Notice(Announcement::EmbedFootnoteDropped { written }));
@@ -220,15 +229,36 @@ impl Part {
 /// What an embedded part of the page `id` becomes on another page: its links to anchors point
 /// at `id`, its footnote references and block ids are removed, as both stay on `id`.
 #[derive(Debug)]
-struct Carried {
+struct Carried<'a> {
     id: PageId,
     /// Whether a footnote reference was removed.
     dropped: bool,
+    /// The anchors of the page it is shown on, to which each heading's anchor is added.
+    taken: &'a mut BTreeSet<Anchor>,
 }
 
-impl Fold for Carried {
+impl Carried<'_> {
+    /// `anchor`, or the first of `anchor-1`, `anchor-2` the page does not have, now taken.
+    fn unique(&mut self, anchor: Anchor) -> Anchor {
+        if self.taken.insert(anchor.clone()) {
+            return anchor;
+        }
+        let renamed = (1..=u64::from(u32::MAX))
+            .filter_map(|count| Slug::parse(format!("{anchor}-{count}")).ok())
+            .map(Anchor::new)
+            .find(|candidate| self.taken.insert(candidate.clone()));
+        // a slug with `-` and digits after it is a slug, so one is always found
+        renamed.unwrap_or(anchor)
+    }
+}
+
+impl Fold for Carried<'_> {
     fn block(&mut self, block: Block) -> Block {
         match block {
+            Block::Heading { level, anchor, inlines } => {
+                let anchor = self.unique(anchor);
+                Block::Heading { level, anchor, inlines: self.inlines(inlines) }
+            }
             Block::Embed { target: LinkTarget::Anchor(anchor), blocks } => {
                 Block::Embed { target: LinkTarget::Page { id: self.id, anchor: Some(anchor) }, blocks }
             }

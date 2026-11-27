@@ -52,6 +52,7 @@ impl Flat {
             Inline::Subscript(children) => flat::Inline::Subscript(self.inlines(children)?),
             Inline::Keyboard(keys) => flat::Inline::Keyboard(keys.clone()),
             Inline::Anchor(anchor) => flat::Inline::Anchor(anchor.to_string()),
+            Inline::Embed { target } => flat::Inline::Embed(target.try_into()?),
             _ => return Err(Unmirrored::Inline),
         };
         let at = Self::place(self.inlines.len())?;
@@ -268,6 +269,7 @@ impl Lift {
             flat::Inline::Subscript(children) => Inline::Subscript(self.inlines(children, before)?),
             flat::Inline::Keyboard(keys) => Inline::Keyboard(keys),
             flat::Inline::Anchor(anchor) => Inline::Anchor(Written::read(anchor)?),
+            flat::Inline::Embed(target) => Inline::Embed { target: target.try_into()? },
         })
     }
 

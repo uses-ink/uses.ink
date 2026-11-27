@@ -1,5 +1,6 @@
 ---
 publish: true
+title: The garden
 tags: [garden]
 ---
 # The garden
@@ -25,6 +26,9 @@ One block of it:
 A photo shared by two folders, taken from the attachment folder:
 
 ![[ferris.png]]
+
+An embed inside a line, see ![[Rust#Borrowing]] shown between its text. A single ~tilde~ pair
+stays as written, ~~struck~~ is struck, and `~code~` is code.
 
 %%Not shown.%%
 

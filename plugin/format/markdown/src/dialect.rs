@@ -13,6 +13,8 @@ pub use crate::body::Plain;
 pub struct Syntax {
     /// How `> [!kind]` is read.
     pub callouts: Callouts,
+    /// Where a note's title comes from.
+    pub title: Titled,
     /// The extensions turned on.
     pub extensions: &'static [Extension],
 }
@@ -40,6 +42,18 @@ pub enum Extension {
     Comments,
     /// The frontmatter keys `aliases` and `alias`, into [`model::Front::aliases`].
     Aliases,
+    /// Strikethrough is `~~x~~` only: a single-tilde pair is text, as written.
+    DoubleStrike,
+}
+
+/// Where a note's title comes from, when its frontmatter has none.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Titled {
+    /// The first level-1 heading, then the file name.
+    Heading,
+    /// The file name: a heading is a heading, never the title, as in Obsidian.
+    File,
 }
 
 /// How `> [!kind]` is read.
@@ -73,8 +87,8 @@ pub struct Linked {
     /// The inline in its place: a link, an image, or text.
     pub inline: Inline,
     /// For an embed of a page, its target as written: alone in its paragraph it becomes a
-    /// [`model::Block::Embed`]; among other inlines it stays `inline`, a link, with
-    /// `embed.inline.linked` saying so.
+    /// [`model::Block::Embed`]; among other inlines it becomes an [`Inline::Embed`], which the
+    /// engine turns into a block between two paragraphs.
     pub embed: Option<String>,
     /// What is worth saying about it, such as a part of it that was not kept.
     pub said: Option<Announcement>,
@@ -112,8 +126,11 @@ pub trait Dialect {
 pub struct Markdown;
 
 impl Dialect for Markdown {
-    const SYNTAX: Syntax =
-        Syntax { callouts: Callouts::Alerts, extensions: &[Extension::Scripts, Extension::Definitions] };
+    const SYNTAX: Syntax = Syntax {
+        callouts: Callouts::Alerts,
+        title: Titled::Heading,
+        extensions: &[Extension::Scripts, Extension::Definitions],
+    };
 
     /// Never called: wikilinks are off, so `[[x]]` stays text.
     fn wikilink(&mut self, link: Wikilink<'_>) -> Linked {

@@ -143,6 +143,8 @@ interface document {
         keyboard(string),
         /// A block id: a place a link can point at.
         anchor(slug),
+        /// Another page's content among text, its target as written until the engine resolves it.
+        embed(link-target),
     }
 
     record link {

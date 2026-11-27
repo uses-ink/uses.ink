@@ -7,7 +7,6 @@
 
 mod embed;
 mod target;
-mod vault;
 
 use std::collections::BTreeSet;
 
@@ -19,7 +18,6 @@ use model::{
 pub(crate) use embed::Embeds;
 pub(crate) use target::{Aliases, Targets};
 use target::{Found, Written};
-pub(crate) use vault::Settings;
 
 use crate::interpret::file::asset::Uses;
 use crate::interpret::file::read::Source;
@@ -97,6 +95,21 @@ struct Resolve<'a, 'b> {
 }
 
 impl Fold for Resolve<'_, '_> {
+    /// A paragraph holding an embed among its text is ended before it and started after it, with
+    /// the embed a block between: blocks cannot sit inside text.
+    fn blocks(&mut self, blocks: Vec<Block>) -> Vec<Block> {
+        let mut folded = Vec::with_capacity(blocks.len());
+        for block in blocks {
+            match block {
+                Block::Paragraph(inlines) if inlines.iter().any(|inline| matches!(inline, Inline::Embed { .. })) => {
+                    folded.extend(self.split(inlines));
+                }
+                block => folded.push(self.block(block)),
+            }
+        }
+        folded
+    }
+
     /// An embed resolved as a link; one that names no page is a link to what it names.
     fn block(&mut self, block: Block) -> Block {
         let Block::Embed { target: LinkTarget::Unresolved { written }, blocks } = block else {
@@ -109,6 +122,14 @@ impl Fold for Resolve<'_, '_> {
                 Block::Paragraph(vec![Inline::Link { target, children: vec![Inline::Text(written)] }])
             }
         }
+    }
+
+    /// An embed where only text fits (a heading, a table cell, a link's text) is a link to what
+    /// it names, and that is said.
+    fn inline(&mut self, inline: Inline) -> Inline {
+        let Inline::Embed { target: LinkTarget::Unresolved { written } } = inline else { return inline.fold(self) };
+        self.notices.push(Announcement::EmbedInlineLinked { written: written.clone() });
+        Self::linked(self.target(Written(&written)), written)
     }
 
     fn link(&mut self, target: LinkTarget, children: Vec<Inline>) -> Inline {
@@ -138,6 +159,48 @@ impl Fold for Resolve<'_, '_> {
 }
 
 impl Resolve<'_, '_> {
+    /// A link to `target`, as written when it names nothing, showing `written`.
+    fn linked(target: Option<LinkTarget>, written: String) -> Inline {
+        let target = target.unwrap_or_else(|| LinkTarget::Unresolved { written: written.clone() });
+        Inline::Link { target, children: vec![Inline::Text(written)] }
+    }
+
+    /// The blocks of a paragraph holding embeds: its text before each embed that shows a page,
+    /// the embed, and the text after. An embed naming no page it can show stays a link in the
+    /// text.
+    fn split(&mut self, inlines: Vec<Inline>) -> Vec<Block> {
+        let mut blocks = Vec::new();
+        let mut run = Vec::new();
+        for inline in inlines {
+            let Inline::Embed { target: LinkTarget::Unresolved { written } } = inline else {
+                run.push(self.inline(inline));
+                continue;
+            };
+            match self.target(Written(&written)) {
+                Some(target @ (LinkTarget::Page { .. } | LinkTarget::Anchor(_))) => {
+                    Self::paragraph(&mut run, &mut blocks);
+                    blocks.push(Block::Embed { target, blocks: Vec::new() });
+                }
+                target => run.push(Self::linked(target, written)),
+            }
+        }
+        Self::paragraph(&mut run, &mut blocks);
+        blocks
+    }
+
+    /// The paragraph `run` makes, pushed to `blocks` when it shows anything, and emptied.
+    fn paragraph(run: &mut Vec<Inline>, blocks: &mut Vec<Block>) {
+        let inlines = std::mem::take(run);
+        let shows = inlines.iter().any(|inline| match inline {
+            Inline::Text(text) => !text.trim().is_empty(),
+            Inline::Break | Inline::SoftBreak => false,
+            _ => true,
+        });
+        if shows {
+            blocks.push(Block::Paragraph(inlines));
+        }
+    }
+
     /// What a link points at: an anchor of this page, a link out, or a published page.
     fn target(&mut self, written: Written<'_>) -> Option<LinkTarget> {
         let (path, anchor) = written.split();

@@ -126,23 +126,19 @@ impl Mark<Ignored> for Hidden {
     }
 }
 
-/// A vault's `templates/` folder at the top of the root, in any case: Obsidian's templates,
-/// never pages. Obsidian names the folder in `.obsidian/templates.json`; until that file is read,
-/// the conventional name stands for it.
+/// A vault's templates folder: the one `.obsidian/templates.json` names, else the conventional
+/// `templates/` at the top of the root, in any case. Templates are never pages.
 #[derive(Debug, Default)]
 pub(crate) struct Templates;
-
-impl Folder<Templates> {
-    /// The folder's conventional name.
-    const NAME: &str = "templates";
-}
 
 impl Witness<Ignored, ignore::Ground<'_>> for Folder<Templates> {
     fn testify(&self, case: &Case<'_, Ignored, ignore::Ground<'_>>, testimony: &mut Testimony<bool>) {
         let file = case.ground;
-        let top = file.relative().parent().and_then(|_| file.relative().segments().next());
-        if file.layout == Some(model::Layout::Vault) && top.is_some_and(|top| top.eq_ignore_ascii_case(Self::NAME)) {
-            testimony.value(true, Marked::Folder(1).evidence(file));
+        if file.layout != Some(model::Layout::Vault) {
+            return;
+        }
+        if let Some(depth) = file.templates.holds(file.relative()) {
+            testimony.value(true, Marked::Folder(depth).evidence(file));
         }
     }
 }

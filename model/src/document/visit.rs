@@ -146,7 +146,7 @@ impl Inline {
     /// Visits what the inline holds: text through [`Visit::text`], a link through
     /// [`Visit::link`], an image through [`Visit::image`], the children of emphasis, strong,
     /// strike, highlight, superscript and subscript through [`Visit::inlines`]. Code, math,
-    /// keys, breaks, footnote references and anchors hold no nodes.
+    /// keys, breaks, footnote references, anchors and embeds hold no nodes.
     pub fn walk<V: Visit + ?Sized>(&self, visit: &mut V) {
         match self {
             Self::Text(text) => visit.text(text),
@@ -164,7 +164,8 @@ impl Inline {
             | Self::Break
             | Self::SoftBreak
             | Self::Footnote(_)
-            | Self::Anchor(_) => {}
+            | Self::Anchor(_)
+            | Self::Embed { .. } => {}
         }
     }
 }

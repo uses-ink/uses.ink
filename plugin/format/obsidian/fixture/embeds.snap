@@ -41,17 +41,12 @@ input_file: plugin/format/obsidian/fixture/embeds.md
             "text": "An embed among text "
           },
           {
-            "link": {
+            "embed": {
               "target": {
                 "unresolved": {
                   "written": "Note"
                 }
-              },
-              "children": [
-                {
-                  "text": "Note"
-                }
-              ]
+              }
             }
           },
           {
@@ -153,20 +148,6 @@ input_file: plugin/format/obsidian/fixture/embeds.md
   "heading": null,
   "diagnostics": [],
   "notices": [
-    {
-      "announcement": {
-        "embed.inline.linked": {
-          "written": "Note"
-        }
-      },
-      "subject": {
-        "file": "embeds.md"
-      },
-      "span": [
-        68,
-        77
-      ]
-    },
     {
       "announcement": {
         "embed.size.ignored": {
