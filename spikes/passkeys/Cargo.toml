@@ -1,0 +1,20 @@
+[package]
+name = "spike-passkeys"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "AGPL-3.0-or-later"
+description = "Auth slice 2 spike: does webauthn-rs-core build for wasm32-unknown-unknown"
+
+# Standalone: excluded from the root workspace (`exclude = ["spikes"]`), target/ stays here.
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+webauthn-rs-core = "=0.6.2"
+url = "2"
+# the entropy source of rand 0.10, getrandom 0.4 and uuid on wasm32-unknown-unknown
+getrandom = { version = "0.4", features = ["wasm_js"] }
+uuid = { version = "1", features = ["js"] }
