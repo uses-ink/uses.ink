@@ -10,9 +10,9 @@ use jiff::Timestamp;
 use model::ExternalUrl;
 use unspliced::{Halt, Render, Sink, html};
 
+use crate::escaped::Escaped;
 use crate::route::Path;
 use crate::route::Screen;
-use crate::said::Said;
 use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Empty, Outside, Post, Serving, Stamp};
@@ -67,7 +67,7 @@ impl View for Settings {
         html! {
             p.look::LEDE { "Where this site reads from and where it is served. How your content is read is set in " code.look::PATH { "ink.toml" } " in your source, so nothing here changes it." }
             h2 { "Source" }
-            p { (Said(Describe(&self.source))) }
+            p { (Escaped(Describe(&self.source))) }
             h2 { "Address" }
             p { (Outside(&address)) }
             h2 { "Domains" }
@@ -92,7 +92,7 @@ impl View for Settings {
             } @else {
                 ul {
                     @for held in &self.credentials {
-                        li { (Said(Word(held.purpose))) ", stored " (Stamp(held.created)) ". The value is sealed and is never shown." }
+                        li { (Escaped(Word(held.purpose))) ", stored " (Stamp(held.created)) ". The value is sealed and is never shown." }
                     }
                 }
             }

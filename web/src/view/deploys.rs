@@ -7,8 +7,8 @@ use control::Handle;
 use unspliced::keyword::ButtonType;
 use unspliced::{Halt, Lazy, Render, Sink, html};
 
+use crate::escaped::Escaped;
 use crate::route::{Path, Screen};
-use crate::said::Said;
 use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Attempt, Empty, Id, Log, Pill, Post, Serving, Stamp};
@@ -94,18 +94,18 @@ impl Deploys {
             tr {
                 td { (Stamp(attempt.requested)) @if let Some(done) = attempt.finished { br; "ended " (Stamp(done)) } }
                 td { (Log(&self.handle, attempt.build)) }
-                td { (Said(Word(attempt.trigger))) }
+                td { (Escaped(Word(attempt.trigger))) }
                 td { (Pill(attempt.state)) }
                 td {
                     @if let Some(deploy) = &attempt.deploy {
                         (Id(deploy.id)) @if deploy.is_live { " " strong { "live" } }
-                        br; (deploy.files) " files, " (Said(deploy.bytes)) ", " (Stamp(deploy.created))
+                        br; (deploy.files) " files, " (Escaped(deploy.bytes)) ", " (Stamp(deploy.created))
                     } @else { "none" }
                 }
                 td {
                     @if let Some(deploy) = attempt.deploy.as_ref().filter(|deploy| !deploy.is_live) {
                         (Post { to: &rollback, name: "Roll back to this deploy", body: html! {
-                            input type=(unspliced::keyword::InputType::Hidden) name="deploy" value=(Said(deploy.id));
+                            input type=(unspliced::keyword::InputType::Hidden) name="deploy" value=(Escaped(deploy.id));
                             button type=(ButtonType::Submit) { "Roll back" span.look::META { " to " (Id(deploy.id)) } }
                         } })
                     } @else { "-" }

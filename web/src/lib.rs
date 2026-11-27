@@ -10,11 +10,11 @@
 //!   with a code, a cause chain and a fix, shown as a page.
 
 mod dashboard;
+mod escaped;
 mod failure;
 mod form;
 mod mark;
 mod route;
-mod said;
 mod shell;
 mod status;
 mod stream;

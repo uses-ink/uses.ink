@@ -8,8 +8,8 @@ use model::{Diagnostic, ExternalUrl, Observed};
 use unspliced::keyword::ButtonType;
 use unspliced::{Halt, Lazy, Render, Sink, html};
 
+use crate::escaped::Escaped;
 use crate::route::{Path, Screen};
-use crate::said::Said;
 use crate::shell::{Frame, Glyph, View};
 use crate::style::look;
 use crate::view::block::{Attempt, Empty, Id, Link, Log, Outside, Pill, Post, Problem, Serving, Stamp};
@@ -142,12 +142,12 @@ impl Site {
                         Serving::Live(pointer) => {
                             p { span.look::STATE.look::LIVE { (Glyph("ok", "live")) } }
                             p { "Serving " (Outside(address)) }
-                            p.look::META { "deploy " (Id(pointer.deploy)) ", " (pointer.files) " files, " (Said(pointer.bytes)) ", since " (Stamp(pointer.since)) }
+                            p.look::META { "deploy " (Id(pointer.deploy)) ", " (pointer.files) " files, " (Escaped(pointer.bytes)) ", since " (Stamp(pointer.since)) }
                         },
                         Serving::Paused(pointer) => {
                             p { span.look::STATE.look::PAUSED { (Glyph("||", "live, paused")) } }
                             p { "Serving " (Outside(address)) }
-                            p.look::META { "deploy " (Id(pointer.deploy)) ", " (pointer.files) " files, " (Said(pointer.bytes)) ", since " (Stamp(pointer.since)) }
+                            p.look::META { "deploy " (Id(pointer.deploy)) ", " (pointer.files) " files, " (Escaped(pointer.bytes)) ", since " (Stamp(pointer.since)) }
                         },
                     }
                 }
@@ -155,7 +155,7 @@ impl Site {
                     h2 #latest-head { "Latest build" }
                     @if let Some(latest) = self.recent.first() {
                         p { (Pill(latest.state)) }
-                        p.look::META { "requested " (Stamp(latest.requested)) ", by " (Said(Word(latest.trigger))) }
+                        p.look::META { "requested " (Stamp(latest.requested)) ", by " (Escaped(Word(latest.trigger))) }
                         p { (Log(&self.handle, latest.build)) }
                     } @else {
                         p { "No build has run." }
@@ -179,8 +179,8 @@ impl Site {
         }
         html! {
             ul {
-                @for ability in has { li { (Glyph("+", "")) (Said(Word(*ability))) } }
-                @for lack in lacks { li { (Glyph("-", "")) "limited: " (Said(Word(lack.ability))) ", so " code.look::PATH { (lack.consequence.name()) } " may be a guess" } }
+                @for ability in has { li { (Glyph("+", "")) (Escaped(Word(*ability))) } }
+                @for lack in lacks { li { (Glyph("-", "")) "limited: " (Escaped(Word(lack.ability))) ", so " code.look::PATH { (lack.consequence.name()) } " may be a guess" } }
             }
         }
         .render(out)
@@ -211,11 +211,11 @@ impl Render for Builds<'_> {
                             tr {
                                 td { (Stamp(attempt.requested)) }
                                 td { (Log(self.handle, attempt.build)) }
-                                td { (Said(Word(attempt.trigger))) }
+                                td { (Escaped(Word(attempt.trigger))) }
                                 td { (Pill(attempt.state)) }
                                 td {
                                     @if let Some(deploy) = &attempt.deploy {
-                                        (Id(deploy.id)) " " @if deploy.is_live { strong { "live" } } " " (deploy.files) " files, " (Said(deploy.bytes))
+                                        (Id(deploy.id)) " " @if deploy.is_live { strong { "live" } } " " (deploy.files) " files, " (Escaped(deploy.bytes))
                                     } @else { "none" }
                                 }
                             }

@@ -6,9 +6,9 @@ use std::fmt;
 use control::Handle;
 use unspliced::{Halt, Lazy, Render, Sink, Url, html};
 
+use crate::escaped::Escaped;
 use crate::mark::{Ink, Rule};
 use crate::route::{Path, Screen};
-use crate::said::Said;
 use crate::style::look;
 
 /// Where a page sits: which site it is about, if any, and which screen it is.
@@ -140,6 +140,6 @@ pub(crate) struct Glyph(pub(crate) &'static str, pub(crate) &'static str);
 
 impl Render for Glyph {
     fn render(&self, out: &mut dyn Sink) -> Result<(), Halt> {
-        html! { span.look::GLYPH aria-hidden="true" { (self.0) } (Said(self.1)) }.render(out)
+        html! { span.look::GLYPH aria-hidden="true" { (self.0) } (Escaped(self.1)) }.render(out)
     }
 }

@@ -11,8 +11,8 @@ use model::DeployId;
 use unspliced::{HERE, Halt, Lazy, Render, Sink, html};
 
 use crate::Failure;
+use crate::escaped::Escaped;
 use crate::route::{Path, Screen};
-use crate::said::Said;
 use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Id, Link};
@@ -58,14 +58,14 @@ pub(crate) struct Line<'a>(pub(crate) &'a Event);
 impl Render for Line<'_> {
     fn render(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         match self.0 {
-            Event::Started { trigger, .. } => html! { div { "build started, set off by " (Said(Word(*trigger))) } }.render(out),
+            Event::Started { trigger, .. } => html! { div { "build started, set off by " (Escaped(Word(*trigger))) } }.render(out),
             Event::SourceFetched { files, bytes, .. } => {
-                html! { div { "source read: " (*files) " files, " (Said(*bytes)) } }.render(out)
+                html! { div { "source read: " (*files) " files, " (Escaped(*bytes)) } }.render(out)
             }
             Event::Decided(decision) => html! {
                 div {
-                    "decided " code.look::PATH { (decision.code().name()) } " on " (Said(decision.subject())) ": "
-                    (Said(diag::Value(decision))) ", " (Said(diag::Because(decision.evidence())))
+                    "decided " code.look::PATH { (decision.code().name()) } " on " (Escaped(decision.subject())) ": "
+                    (Escaped(diag::Value(decision))) ", " (Escaped(diag::Because(decision.evidence())))
                 }
             }
             .render(out),
@@ -77,13 +77,13 @@ impl Render for Line<'_> {
                 }
             }
             Event::Noticed(notice) => html! { div { "i " (diag::Plain::text(diag::Terminal::from(notice)).to_string()) } }.render(out),
-            Event::Rendered { files, bytes } => html! { div { "rendered " (*files) " files, " (Said(*bytes)) } }.render(out),
+            Event::Rendered { files, bytes } => html! { div { "rendered " (*files) " files, " (Escaped(*bytes)) } }.render(out),
             Event::Published { deploy, previous, visible_within } => html! {
                 div { "live: deploy " (Id(*deploy)) @if let Some(old) = previous { ", replacing " (Id(*old)) } ", visible everywhere within " (visible_within.as_secs()) " s" }
             }
             .render(out),
             Event::Finished { status, wall } => {
-                html! { div { "finished, " (Said(Word(*status))) ", in " (wall.as_millis()) " ms" } }.render(out)
+                html! { div { "finished, " (Escaped(Word(*status))) ", in " (wall.as_millis()) " ms" } }.render(out)
             }
             _ => html! { div { "an event this version cannot show" } }.render(out),
         }
@@ -111,7 +111,7 @@ impl Render for Verdict<'_> {
             .render(out),
             Ended::Finished(Outcome { status, .. }) => html! {
                 section.look::FAILURE role="alert" aria-label="Result" {
-                    h2 { "Result: " (Said(Word(*status))) }
+                    h2 { "Result: " (Escaped(Word(*status))) }
                     p { "Nothing was published; the site still serves what it served before. The lines marked x above say why." }
                     p { strong { "Fix: " } "change what the log names in your source, then push again or press Build now on " (Link(&site, "the site")) "." }
                 }
@@ -150,7 +150,7 @@ impl View for Build {
     }
 
     fn title(&self) -> impl fmt::Display + '_ {
-        Said(BuildTitle(self.build))
+        Escaped(BuildTitle(self.build))
     }
 
     fn body(&self, out: &mut dyn Sink) -> Result<(), Halt> {
@@ -211,7 +211,7 @@ impl View for Live {
     }
 
     fn title(&self) -> impl fmt::Display + '_ {
-        Said(BuildTitle(self.build))
+        Escaped(BuildTitle(self.build))
     }
 
     fn body(&self, out: &mut dyn Sink) -> Result<(), Halt> {

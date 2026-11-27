@@ -8,8 +8,8 @@ use jiff::Timestamp;
 use unspliced::keyword::{ButtonType, InputType};
 use unspliced::{Halt, Lazy, Render, Sink, html};
 
+use crate::escaped::Escaped;
 use crate::route::{Path, Screen};
-use crate::said::Said;
 use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Empty, Link, Post, Stamp};
@@ -89,19 +89,19 @@ impl Account {
             (Path::of(Screen::Site, handle), Path::export(handle), Path::act(handle, "remove"));
         let removing = owned.state == SiteState::Removing;
         html! {
-            section.look::CARD aria-label=(Said(handle)) {
-                h3 { (Link(&site, Said(handle))) }
-                p.look::META { (Said(Word(owned.state))) ", made " (Stamp(owned.created)) }
+            section.look::CARD aria-label=(Escaped(handle)) {
+                h3 { (Link(&site, Escaped(handle))) }
+                p.look::META { (Escaped(Word(owned.state))) ", made " (Stamp(owned.created)) }
                 p { (Link(&export, "Export the site")) " as a folder of files you can host anywhere." }
                 details {
                     summary { "Remove this site" }
                     div.look::DANGER { p { "This removes the site, its deploys and its stored files. The handle stays reserved. " strong { "It cannot be undone." } @if removing { " A removal began earlier; removing again finishes it." } }
                     (Post { to: &remove, name: "Remove the site", body: html! {
                         div.look::STACK {
-                            label { "Type " code.look::PATH { (Said(handle)) } " to confirm"
+                            label { "Type " code.look::PATH { (Escaped(handle)) } " to confirm"
                                 input type=(InputType::Text) name="confirm" autocomplete="off" required;
                             }
-                            button.look::DANGER type=(ButtonType::Submit) { "Remove " (Said(handle)) }
+                            button.look::DANGER type=(ButtonType::Submit) { "Remove " (Escaped(handle)) }
                         }
                     } }) }
                 }

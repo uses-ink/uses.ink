@@ -8,8 +8,8 @@ use engine::{Standing, Trace, Witnessed};
 use model::{AnyCode, AnyDecision, Subject};
 use unspliced::{Halt, Render, Sink, html};
 
+use crate::escaped::Escaped;
 use crate::route::{Path, Screen};
-use crate::said::Said;
 use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Empty, Link};
@@ -84,20 +84,20 @@ impl View for Why {
     }
 
     fn title(&self) -> impl fmt::Display + '_ {
-        Said(self.code)
+        Escaped(self.code)
     }
 
     fn body(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         let back = Path::of(Screen::Understood, &self.handle);
         html! {
-            p.look::LEDE { "How " code.look::PATH { (self.code.name()) } " on " code.look::PATH { (Said(&self.subject)) } " was decided: each witness in order, first first. The first one that said a value wins." }
+            p.look::LEDE { "How " code.look::PATH { (self.code.name()) } " on " code.look::PATH { (Escaped(&self.subject)) } " was decided: each witness in order, first first. The first one that said a value wins." }
             @if self.rungs.is_empty() {
                 (Empty { title: "No ladder to show", what: "The build kept no trace of this decision. Run `ink explain --why` on your own copy of the source to replay it." })
             } @else {
                 ol.look::LADDER {
                     @for rung in &self.rungs {
                         li {
-                            strong { (Said(rung.witness)) }
+                            strong { (Escaped(rung.witness)) }
                             @if rung.heard.is_empty() { " found nothing" } @else {
                                 ul {
                                     @for heard in &rung.heard {
@@ -108,7 +108,7 @@ impl View for Why {
                         }
                     }
                 }
-                p { "To pin it: " code.look::PATH { (Said(diag::Pin(&self.code, &self.subject))) } }
+                p { "To pin it: " code.look::PATH { (Escaped(diag::Pin(&self.code, &self.subject))) } }
             }
             p { (Link(&back, "Back to What we understood")) }
         }
@@ -129,7 +129,7 @@ impl Render for Testified<'_> {
             (false, _) => "outranked",
         };
         let said = html! {
-            (Said(diag::Value(&heard.testimony))) ", " (Said(diag::Because(heard.testimony.evidence()))) ", " (standing)
+            (Escaped(diag::Value(&heard.testimony))) ", " (Escaped(diag::Because(heard.testimony.evidence()))) ", " (standing)
         };
         if heard.chosen { html! { span.look::CHOSEN { (said) } }.render(out) } else { said.render(out) }
     }

@@ -7,8 +7,8 @@ use jiff::Timestamp;
 use model::{Bytes, DeployId, Diagnostic};
 use unspliced::{Halt, Render, Sink, Url, html};
 
+use crate::escaped::Escaped;
 use crate::route::Path;
-use crate::said::Said;
 use crate::shell::Glyph;
 use crate::style::look;
 use crate::view::word::{Brief, Word};
@@ -192,7 +192,7 @@ pub(crate) struct Id(pub(crate) DeployId);
 impl Render for Id {
     fn render(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         let whole = self.0.to_string();
-        html! { code.look::PATH title=(&whole) { (Said(Brief(self.0))) } }.render(out)
+        html! { code.look::PATH title=(&whole) { (Escaped(Brief(self.0))) } }.render(out)
     }
 }
 
@@ -210,13 +210,13 @@ impl Render for Problem<'_> {
                         @if depth > 0 { span.look::META { "caused by" } }
                         strong { (Severity(found.severity())) }
                         code.look::PATH { (found.code()) }
-                        span { (Said(diag::Message::from(&found.problem))) }
+                        span { (Escaped(diag::Message::from(&found.problem))) }
                     }
                     @if let Some(subject) = &found.subject {
-                        p.look::META { "at " code.look::PATH { (Said(subject)) } @if let Some(span) = found.span { ", " (Said(span)) } }
+                        p.look::META { "at " code.look::PATH { (Escaped(subject)) } @if let Some(span) = found.span { ", " (Escaped(span)) } }
                     }
                     @if let Some(fix) = diag::Fix::of_problem(&found.problem) {
-                        p { strong { "fix: " } (Said(fix)) }
+                        p { strong { "fix: " } (Escaped(fix)) }
                     }
                 }
             }

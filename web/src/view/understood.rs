@@ -10,9 +10,9 @@ use model::decision::Basis;
 use model::{AnyCode, AnyDecision, DeployId, Observed};
 use unspliced::{Halt, Lazy, Render, Sink, html};
 
+use crate::escaped::Escaped;
 use crate::form::Asked;
 use crate::route::{Only, Path, Screen};
-use crate::said::Said;
 use crate::shell::{Frame, Glyph, View};
 use crate::style::look;
 use crate::view::block::{Empty, Id, Link};
@@ -121,9 +121,9 @@ impl View for Understood {
     fn body(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         let (all, check) = (Path::of(Screen::Understood, &self.handle), Path::check(&self.handle));
         html! {
-            p.look::LEDE { "Everything uses.ink inferred about " (Said(&self.handle)) ", and why. To change a value, pin it in `ink.toml` in your own source; this page writes nothing." }
+            p.look::LEDE { "Everything uses.ink inferred about " (Escaped(&self.handle)) ", and why. To change a value, pin it in `ink.toml` in your own source; this page writes nothing." }
             p.look::LINE {
-                "Source " (Said(Describe(&self.source)))
+                "Source " (Escaped(Describe(&self.source)))
                 @if let Some(deploy) = self.deploy { "deploy " (Id(deploy)) }
             }
             @if self.decisions.is_empty() {
@@ -196,18 +196,18 @@ impl Render for Row<'_> {
         let replay = Path::why(self.handle, &asked);
         let because = diag::Because(decision.evidence());
         let pin = diag::Pin(&code, &subject);
-        let about = Said(&subject);
+        let about = Escaped(&subject);
         let say = html! {
             td { code.look::PATH { (about) } }
             td { code.look::PATH { (code.name()) } }
-            td { (Said(diag::Value(decision))) }
-            td { (Said(because)) }
+            td { (Escaped(diag::Value(decision))) }
+            td { (Escaped(because)) }
             td { @if check { strong { (Glyph("!", "check")) } } @else { "ok" } }
             td {
                 details {
                     summary { "Show why" }
-                    p { "Chosen " (Said(because)) "." }
-                    p { "To pin it: " code.look::PATH { (Said(pin)) } }
+                    p { "Chosen " (Escaped(because)) "." }
+                    p { "To pin it: " code.look::PATH { (Escaped(pin)) } }
                     p { (Link(&replay, "Replay the ladder")) }
                 }
             }
