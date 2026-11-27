@@ -309,3 +309,128 @@ impl Rule for Alias {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+    use crate::layout::workspace::{Dependency, Workspace};
+
+    /// A crate of ours at `dir` with `licence` and path dependencies on `dependencies`, each
+    /// `(name, kind)`.
+    fn krate(name: &str, dir: &str, licence: Option<&str>, dependencies: &[(&str, Option<Kind>)]) -> Crate {
+        Crate {
+            name: name.to_owned(),
+            dir: PathBuf::from(dir),
+            licence: licence.map(str::to_owned),
+            dependencies: dependencies
+                .iter()
+                .map(|&(name, kind)| Dependency { name: name.to_owned(), inside: true, kind })
+                .collect(),
+            files: vec![],
+            modules: vec![],
+        }
+    }
+
+    fn workspace(crates: Vec<Crate>, aliased: &[&str]) -> Workspace {
+        Workspace {
+            root: PathBuf::from("/w"),
+            crates,
+            aliased: aliased.iter().map(|name| (*name).to_owned()).collect(),
+            entries: vec![],
+        }
+    }
+
+    fn problems_of(rule: &impl Rule, workspace: &Workspace) -> Vec<Problem> {
+        let mut problems = Problems::default();
+        rule.check(workspace, &mut problems);
+        problems.found
+    }
+
+    #[test]
+    fn a_crate_is_named_for_its_path() {
+        let named = |name, dir| problems_of(&Names, &workspace(vec![krate(name, dir, None, &[])], &[]));
+        assert!(named("uses-ink-theme-quiet", "plugin/theme/quiet").is_empty());
+        assert!(named("freehand", "freehand").is_empty());
+        assert!(matches!(
+            named("theme-quiet", "plugin/theme/quiet").as_slice(),
+            [Problem::Name { expected, .. }] if expected == "uses-ink-theme-quiet"
+        ));
+        assert!(matches!(
+            named("freehand-pen", "freehand").as_slice(),
+            [Problem::Name { expected, .. }] if expected == "uses-ink-freehand"
+        ));
+    }
+
+    #[test]
+    fn a_crate_with_no_row_in_the_order_is_refused() {
+        let found = problems_of(&Order, &workspace(vec![krate("uses-ink-new", "new", None, &[])], &[]));
+        assert!(matches!(found.as_slice(), [Problem::Unordered { krate }] if krate == "uses-ink-new"));
+    }
+
+    #[test]
+    fn a_dependency_the_order_forbids_is_refused() {
+        let crates = vec![
+            krate("uses-ink-model", "model", None, &[("uses-ink-config", None)]),
+            krate("uses-ink-config", "config", None, &[("uses-ink-model", None)]),
+        ];
+        let found = problems_of(&Order, &workspace(crates, &[]));
+        assert!(matches!(
+            found.as_slice(),
+            [Problem::Dependency { krate, on }] if krate == "uses-ink-model" && on == "uses-ink-config"
+        ));
+    }
+
+    #[test]
+    fn the_fixture_harness_is_for_dev_dependencies_only() {
+        let normal = krate("uses-ink-engine", "engine", None, &[(Order::FIXTURE, None)]);
+        assert!(matches!(problems_of(&Order, &workspace(vec![normal], &[])).as_slice(), [Problem::Fixture { .. }]));
+        let dev = krate("uses-ink-engine", "engine", None, &[(Order::FIXTURE, Some(Kind::Dev))]);
+        assert!(problems_of(&Order, &workspace(vec![dev], &[])).is_empty());
+    }
+
+    #[test]
+    fn a_licence_is_the_one_its_kind_calls_for() {
+        let check = |krate| problems_of(&Licence, &workspace(vec![krate], &[]));
+        let model = |licence| krate("uses-ink-model", "model", licence, &[]);
+        assert!(check(model(Some(Licence::PERMISSIVE))).is_empty());
+        assert!(matches!(
+            check(model(Some(Licence::SERVICE))).as_slice(),
+            [Problem::Licence { expected, .. }] if *expected == Licence::PERMISSIVE
+        ));
+        let engine = krate("uses-ink-engine", "engine", None, &[]);
+        assert!(matches!(
+            check(engine).as_slice(),
+            [Problem::Licence { found: None, expected, .. }] if *expected == Licence::SERVICE
+        ));
+    }
+
+    #[test]
+    fn a_permissive_crate_may_not_link_the_service() {
+        let engine = || krate("uses-ink-engine", "engine", Some(Licence::SERVICE), &[]);
+        let linked = krate("uses-ink-model", "model", Some(Licence::PERMISSIVE), &[("uses-ink-engine", None)]);
+        let found = problems_of(&Licence, &workspace(vec![linked, engine()], &[]));
+        assert!(matches!(
+            found.as_slice(),
+            [Problem::Copyleft { krate, on }] if krate == "uses-ink-model" && on == "uses-ink-engine"
+        ));
+        // a dev-dependency is not linked by whoever uses the crate
+        let tested =
+            krate("uses-ink-model", "model", Some(Licence::PERMISSIVE), &[("uses-ink-engine", Some(Kind::Dev))]);
+        assert!(problems_of(&Licence, &workspace(vec![tested, engine()], &[])).is_empty());
+    }
+
+    #[test]
+    fn a_crate_another_uses_needs_an_alias() {
+        let crates = || {
+            vec![
+                krate("uses-ink-model", "model", None, &[]),
+                krate("uses-ink-engine", "engine", None, &[("uses-ink-model", None)]),
+            ]
+        };
+        let found = problems_of(&Alias, &workspace(crates(), &[]));
+        assert!(matches!(found.as_slice(), [Problem::Alias { krate }] if krate == "uses-ink-model"));
+        assert!(problems_of(&Alias, &workspace(crates(), &["uses-ink-model"])).is_empty());
+    }
+}

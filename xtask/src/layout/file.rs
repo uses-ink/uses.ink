@@ -88,7 +88,30 @@ impl Rule for Unsafe {
 
 #[cfg(test)]
 mod tests {
-    use super::Unsafe;
+    use std::path::PathBuf;
+
+    use super::*;
+
+    #[test]
+    fn a_banned_name_is_refused_as_a_file_or_a_directory() {
+        let entries = ["src/utils.rs", "src/common", "src/lib.rs", "src/util.rs"].map(PathBuf::from).to_vec();
+        let workspace = Workspace { root: PathBuf::from("/w"), crates: vec![], aliased: vec![], entries };
+        let mut problems = Problems::default();
+        Banned.check(&workspace, &mut problems);
+        let found: Vec<&PathBuf> = problems
+            .found
+            .iter()
+            .filter_map(|problem| match problem {
+                Problem::Banned { path } => Some(path),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            found,
+            [&PathBuf::from("src/utils.rs"), &PathBuf::from("src/common"), &PathBuf::from("src/util.rs")]
+        );
+        assert_eq!(problems.found.len(), 3);
+    }
 
     fn holds(code: &str) -> bool {
         Unsafe::holds(code).unwrap()
