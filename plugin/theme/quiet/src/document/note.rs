@@ -28,7 +28,7 @@ impl Note<'_> {
 impl<H: Highlight, R: Record + ?Sized> Writer<'_, H, R> {
     /// A reference to `name`: its number, linking to the footnote.
     pub(super) fn reference(&mut self, name: &FootnoteName) {
-        let Some(number) = self.source.page.body.footnote_number(name) else { return self.put(name.to_string()) };
+        let Some(&number) = self.numbers.get(name) else { return self.put(name.to_string()) };
         let count = self.references.entry(name.clone()).or_insert(0);
         *count += 1;
         let (note, reference) = (Note(name).id(), Note(name).reference(*count));

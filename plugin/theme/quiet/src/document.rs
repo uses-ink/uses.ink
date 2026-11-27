@@ -94,6 +94,9 @@ pub(crate) struct Writer<'a, H, R: ?Sized> {
     spacing: Spacing,
     /// How many references to each footnote are written so far.
     references: BTreeMap<FootnoteName, usize>,
+    /// Each footnote's number, from 1 in the order listed: looked up once per reference, so
+    /// held by name rather than searched for.
+    numbers: BTreeMap<&'a FootnoteName, usize>,
 }
 
 impl<H, R: ?Sized> fmt::Debug for Writer<'_, H, R> {
@@ -109,7 +112,12 @@ impl<'a, H: Highlight, R: Record + ?Sized> Writer<'a, H, R> {
     /// A writer of the source's page.
     pub(crate) fn new(source: Source<'a, H>, out: &'a mut dyn Sink, record: &'a mut R) -> Self {
         let references = BTreeMap::new();
-        Self { source, out, record, failed: None, spacing: Spacing::Loose, references }
+        let mut numbers = BTreeMap::new();
+        for (at, footnote) in source.page.body.footnotes.iter().enumerate() {
+            // the first of a name, as `Document::footnote_number` has it
+            numbers.entry(&footnote.name).or_insert(at + 1);
+        }
+        Self { source, out, record, failed: None, spacing: Spacing::Loose, references, numbers }
     }
 
     /// The page's document, written whole, or why it was not.
