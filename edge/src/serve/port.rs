@@ -13,9 +13,9 @@ use std::sync::Arc;
 use bytes::Bytes;
 use model::{Hash, Manifest, Route};
 
-use crate::encoding::Encoding;
-use crate::host::Hostname;
-use crate::range::Span;
+use crate::http::encoding::Encoding;
+use crate::http::range::Span;
+use crate::serve::hostname::Hostname;
 
 /// Routes that moved: each old route and the route that took its place. A route the manifest
 /// still serves is never moved.

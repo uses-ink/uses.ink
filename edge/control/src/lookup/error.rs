@@ -1,4 +1,4 @@
-//! An error and its causes, kept so they can cross a channel.
+//! Why a lookup through the channel failed, and the error chain it keeps so it can cross one.
 
 use std::error::Error;
 use std::fmt;
@@ -28,5 +28,33 @@ impl fmt::Display for Chain {
 impl Error for Chain {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.cause.as_deref().map(|cause| cause as &(dyn Error + 'static))
+    }
+}
+
+/// A lookup that could not be answered.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Failure {
+    /// The half that holds the control plane is gone: its task ended.
+    Gone,
+    /// The control plane failed, or a deploy it holds could not be read.
+    Lookup(Chain),
+}
+
+impl fmt::Display for Failure {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Gone => out.write_str("the control plane's task has ended, so no host can be looked up"),
+            Self::Lookup(_) => out.write_str("the control plane could not say what the host serves"),
+        }
+    }
+}
+
+impl Error for Failure {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Gone => None,
+            Self::Lookup(chain) => Some(chain),
+        }
     }
 }

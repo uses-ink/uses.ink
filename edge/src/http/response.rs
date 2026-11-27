@@ -4,8 +4,8 @@ use std::fmt;
 
 use model::{HeaderName, HeaderValue};
 
-use crate::port::Blob;
-use crate::range::Span;
+use crate::http::range::Span;
+use crate::serve::port::Blob;
 
 /// The HTTP statuses the edge answers with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

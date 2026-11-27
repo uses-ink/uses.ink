@@ -2,15 +2,15 @@
 
 use std::fmt;
 
-use crate::condition::Conditions;
-use crate::encoding::Accepted;
-use crate::head::{Head, Singular};
-use crate::host::{Authority, Hostname, HostnameError};
-use crate::limits::Limits;
-use crate::range::Ranges;
-use crate::refusal::Refusal;
-use crate::tag::{Matching, Validator};
-use crate::target::Target;
+use crate::http::condition::Conditions;
+use crate::http::encoding::Accepted;
+use crate::http::etag::{Matching, Validator};
+use crate::http::head::{Head, Singular};
+use crate::http::limits::Limits;
+use crate::http::range::Ranges;
+use crate::http::refusal::Refusal;
+use crate::serve::hostname::{Authority, Hostname, HostnameError};
+use crate::serve::target::Target;
 
 /// The methods the edge serves.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

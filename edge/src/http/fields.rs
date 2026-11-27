@@ -5,8 +5,8 @@ use std::fmt;
 
 use model::{Header, HeaderValue, HeaderValueError};
 
-use crate::request::Scheme;
-use crate::response::{Field, Name};
+use crate::http::request::Scheme;
+use crate::http::response::{Field, Name};
 
 /// A header value the edge wrote that is not a header value. The edge writes only digits, hex,
 /// ASCII and percent escapes, so this is a bug, and it is reported as one.

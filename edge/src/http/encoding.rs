@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::condition::ConditionError;
+use crate::http::condition::ConditionError;
 
 /// A content coding a deploy may hold a variant in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

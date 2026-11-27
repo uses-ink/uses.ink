@@ -5,13 +5,13 @@ use std::fmt;
 
 use model::{Hash, Route};
 
-use crate::encoding::Encoding;
-use crate::fields::FieldError;
-use crate::host::Hostname;
-use crate::port::{Blob, BlobError};
-use crate::range::{Ignored, Span};
-use crate::refusal::Refusal;
-use crate::response::Response;
+use crate::http::encoding::Encoding;
+use crate::http::fields::FieldError;
+use crate::http::range::{Ignored, Span};
+use crate::http::refusal::Refusal;
+use crate::http::response::Response;
+use crate::serve::hostname::Hostname;
+use crate::serve::port::{Blob, BlobError};
 
 /// What went wrong on our side: a store failed, or the deploy holds what it should not.
 #[derive(Debug)]

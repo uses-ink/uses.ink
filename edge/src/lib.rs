@@ -11,37 +11,22 @@
 //! carries `nosniff`, a CSP and the cross-origin policy; a manifest entry's own headers (the
 //! engine's page policy) win over those, and `Strict-Transport-Security` is added over TLS.
 
-mod answer;
-mod condition;
-mod edge;
-mod encoding;
-mod entry;
-mod error;
-mod fields;
-mod head;
-mod host;
-mod limits;
-mod port;
-mod range;
-mod refusal;
-mod request;
-mod response;
-mod tag;
-mod target;
+mod http;
+mod serve;
 
-pub use answer::{Answer, Chain, Fault, Outcome, Ranging};
-pub use condition::{ConditionError, Conditions};
-pub use edge::{Caller, Edge, Hsts, Reply};
-pub use encoding::{Accepted, Encoding};
-pub use error::Error;
-pub use fields::FieldError;
-pub use head::{BodyError, HeaderError, Singular};
-pub use host::{Authority, Hostname, HostnameError};
-pub use limits::Limits;
-pub use port::{Blob, BlobError, Blobs, Chunks, Deploy, Moved, Resolved, Sites, Variants};
-pub use range::{Ignored, Pick, Ranges, Span};
-pub use refusal::{Refusal, Stage};
-pub use request::{Asked, Method, Request, Scheme};
-pub use response::{Body, Field, Name, Response, Status};
-pub use tag::{Matching, Strength, Tag, Validator};
-pub use target::{Target, TargetError};
+pub use http::answer::{Answer, Chain, Fault, Outcome, Ranging};
+pub use http::condition::{ConditionError, Conditions};
+pub use http::encoding::{Accepted, Encoding};
+pub use http::etag::{Matching, Strength, Tag, Validator};
+pub use http::fields::FieldError;
+pub use http::head::{BodyError, HeaderError, Singular};
+pub use http::limits::Limits;
+pub use http::range::{Ignored, Pick, Ranges, Span};
+pub use http::refusal::{Refusal, Stage};
+pub use http::request::{Asked, Method, Request, Scheme};
+pub use http::response::{Body, Field, Name, Response, Status};
+pub use serve::error::Error;
+pub use serve::hostname::{Authority, Hostname, HostnameError};
+pub use serve::port::{Blob, BlobError, Blobs, Chunks, Deploy, Moved, Resolved, Sites, Variants};
+pub use serve::target::{Target, TargetError};
+pub use serve::{Caller, Edge, Hsts, Reply};

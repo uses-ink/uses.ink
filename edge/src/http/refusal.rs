@@ -4,11 +4,11 @@ use std::error::Error;
 use std::fmt;
 use std::time::Duration;
 
-use crate::condition::ConditionError;
-use crate::head::{BodyError, HeaderError};
-use crate::host::{Hostname, HostnameError};
-use crate::response::Status;
-use crate::target::TargetError;
+use crate::http::condition::ConditionError;
+use crate::http::head::{BodyError, HeaderError};
+use crate::http::response::Status;
+use crate::serve::hostname::{Hostname, HostnameError};
+use crate::serve::target::TargetError;
 
 /// Which wait ran out.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

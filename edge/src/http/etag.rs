@@ -4,8 +4,8 @@ use std::fmt;
 
 use model::Hash;
 
-use crate::condition::ConditionError;
-use crate::encoding::Encoding;
+use crate::http::condition::ConditionError;
+use crate::http::encoding::Encoding;
 
 /// Whether a tag promises the same bytes or only the same meaning.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

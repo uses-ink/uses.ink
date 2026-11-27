@@ -4,8 +4,8 @@ use std::fmt;
 
 use model::{Route, RouteError};
 
-use crate::host::{Authority, HostnameError};
-use crate::limits::Limits;
+use crate::http::limits::Limits;
+use crate::serve::hostname::{Authority, HostnameError};
 
 /// A request target read into the path it names: percent-decoded once, a trailing `/` dropped, the
 /// query ignored. A target that could climb out of the site or name two things is refused, never

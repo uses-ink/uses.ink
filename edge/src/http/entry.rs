@@ -4,17 +4,17 @@ use std::fmt;
 
 use model::{Hash, HeaderName, Route, Served};
 
-use crate::answer::{Fault, Outcome, Ranging};
-use crate::condition::Conditions;
-use crate::edge::{Call, Edge, Made, Reply};
-use crate::encoding::Encoding;
-use crate::fields::{Fields, Hardening};
-use crate::port::{Blob, Blobs, Sites};
-use crate::range::{Ignored, Pick, Span};
-use crate::refusal::Refusal;
-use crate::request::Method;
-use crate::response::{Body, Name, Status};
-use crate::tag::Tag;
+use crate::http::answer::{Fault, Outcome, Ranging};
+use crate::http::condition::Conditions;
+use crate::http::encoding::Encoding;
+use crate::http::etag::Tag;
+use crate::http::fields::{Fields, Hardening};
+use crate::http::range::{Ignored, Pick, Span};
+use crate::http::refusal::Refusal;
+use crate::http::request::Method;
+use crate::http::response::{Body, Name, Status};
+use crate::serve::port::{Blob, Blobs, Sites};
+use crate::serve::{Call, Edge, Made, Reply};
 
 /// What an entry is served as.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -3,9 +3,9 @@
 
 use std::fmt;
 
-use crate::encoding::Accepted;
-use crate::range::Ranges;
-use crate::tag::{Matching, Validator};
+use crate::http::encoding::Accepted;
+use crate::http::etag::{Matching, Validator};
+use crate::http::range::Ranges;
 
 /// What the client said about the copy it holds and the bytes it wants.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

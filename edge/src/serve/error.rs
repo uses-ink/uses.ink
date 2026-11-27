@@ -4,7 +4,7 @@ use std::fmt;
 
 use model::RouteError;
 
-use crate::fields::FieldError;
+use crate::http::fields::FieldError;
 
 /// A setting that makes no edge.
 #[derive(Debug)]

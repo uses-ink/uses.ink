@@ -16,19 +16,13 @@
 //!
 //! [`Fallback`] puts a folder's deploys behind the control plane's, so one server answers both.
 
-mod back;
-mod chain;
-mod failure;
 mod fallback;
-mod fronts;
 mod locate;
-mod recent;
-mod settings;
+mod lookup;
 
-pub use back::Back;
-pub use chain::Chain;
-pub use failure::Failure;
 pub use fallback::{Either, Fallback};
-pub use fronts::Fronts;
 pub use locate::Locate;
-pub use settings::Settings;
+pub use lookup::cache::Settings;
+pub use lookup::caller::Fronts;
+pub use lookup::error::{Chain, Failure};
+pub use lookup::owner::Back;

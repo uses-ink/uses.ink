@@ -4,15 +4,20 @@ use std::time::Duration;
 
 use model::{HeaderName, Route};
 
-use crate::answer::{Answer, Chain, Fault, Outcome};
-use crate::error::Error;
-use crate::fields::{Fields, Hardening};
-use crate::host::Hostname;
-use crate::limits::Limits;
-use crate::port::{Blobs, Resolved, Sites};
-use crate::refusal::Refusal;
-use crate::request::{Asked, Request, Scheme};
-use crate::response::{Body, Name, Response, Status};
+use crate::http::answer::{Answer, Chain, Fault, Outcome};
+use crate::http::fields::{Fields, Hardening};
+use crate::http::limits::Limits;
+use crate::http::refusal::Refusal;
+use crate::http::request::{Asked, Request, Scheme};
+use crate::http::response::{Body, Name, Response, Status};
+use crate::serve::error::Error;
+use crate::serve::hostname::Hostname;
+use crate::serve::port::{Blobs, Resolved, Sites};
+
+pub(crate) mod error;
+pub(crate) mod hostname;
+pub(crate) mod port;
+pub(crate) mod target;
 
 /// How long browsers are told to remember that HTTPS is the only way to this host name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -119,7 +124,7 @@ impl<S: Sites, B: Blobs<Scope = S::Scope>> Edge<S, B> {
         fields.set(Name::ContentLength, text.len());
         fields.set(Name::Entry(HeaderName::CacheControl), "no-store");
         match &refusal {
-            Refusal::Method { .. } => fields.set(Name::Allow, crate::request::Method::ALLOWED),
+            Refusal::Method { .. } => fields.set(Name::Allow, crate::http::request::Method::ALLOWED),
             Refusal::Unsatisfiable { length } => fields.set(Name::ContentRange, format_args!("bytes */{length}")),
             Refusal::Busy { .. } => fields.set(Name::RetryAfter, 1),
             _ => {}
@@ -170,14 +175,14 @@ pub(crate) struct Call<'a, Scope> {
 
 /// A response before every response's headers are added.
 #[derive(Debug)]
-pub(crate) struct Made<R: crate::port::Blob, F> {
+pub(crate) struct Made<R: crate::serve::port::Blob, F> {
     pub(crate) status: Status,
     pub(crate) fields: Fields,
     pub(crate) body: Body<R>,
     pub(crate) outcome: Outcome<F>,
 }
 
-impl<R: crate::port::Blob, F> Made<R, F> {
+impl<R: crate::serve::port::Blob, F> Made<R, F> {
     pub(crate) fn new(status: Status, fields: Fields, body: Body<R>, outcome: Outcome<F>) -> Self {
         Self { status, fields, body, outcome }
     }

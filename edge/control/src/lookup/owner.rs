@@ -13,8 +13,8 @@ use jiff::{SignedDuration, Timestamp};
 use model::{ContentPath, DeployId};
 use tokio::sync::mpsc;
 
-use crate::fronts::{Answer, Call};
-use crate::recent::Recent;
+use crate::lookup::cache::Recent;
+use crate::lookup::caller::{Answer, Call};
 use crate::{Chain, Failure, Fronts, Locate, Settings};
 
 /// The deploy a handle serves.

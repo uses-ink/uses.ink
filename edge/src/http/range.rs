@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::condition::ConditionError;
+use crate::http::condition::ConditionError;
 
 /// A run of bytes of a blob.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

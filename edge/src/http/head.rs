@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::limits::Limits;
+use crate::http::limits::Limits;
 
 /// A header that may appear once. Two of them are two requests to a proxy and one to us.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
