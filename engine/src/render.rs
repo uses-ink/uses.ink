@@ -13,6 +13,7 @@ mod sitemap;
 mod theme;
 mod xml;
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use model::{Diagnostic, Hash, Manifest, Notice, Route, Site};
@@ -143,7 +144,15 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
         };
         let mut out = Output::new(&policy, &settings.base);
         let pictures = Prepare { blobs: &self.blobs, images }.run(site, &mut out);
-        let site = &site.clone().pictured(|asset| pictures.picture(asset));
+        // A copy of every page only when a picture changes an asset: a site without raster
+        // images is rendered as interpreted.
+        let unchanged = site.assets().iter().all(|asset| pictures.picture(asset) == asset.picture);
+        let site: Cow<'_, Site> = if unchanged {
+            Cow::Borrowed(site)
+        } else {
+            Cow::Owned(site.clone().pictured(|asset| pictures.picture(asset)))
+        };
+        let site = &*site;
         let theme = &self.theme;
         let artifacts = (
             Pages { theme },
