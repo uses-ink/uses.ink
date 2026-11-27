@@ -25,12 +25,25 @@ pub(crate) struct Host;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct Part;
 
+/// The name of a job in the repo's `.config/farm.toml`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct Task;
+
 /// An ssh destination: a `user@host` or an alias of the user's ssh config.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct Dest;
 
 impl Kind for Host {
     const WHAT: &'static str = "host name";
+    const MOST: usize = 32;
+
+    fn allows(found: char) -> bool {
+        found.is_ascii_lowercase() || found.is_ascii_digit() || matches!(found, '-' | '_')
+    }
+}
+
+impl Kind for Task {
+    const WHAT: &'static str = "job name";
     const MOST: usize = 32;
 
     fn allows(found: char) -> bool {
@@ -61,6 +74,8 @@ pub(crate) struct Word<K>(String, PhantomData<K>);
 
 /// A host's name.
 pub(crate) type HostName = Word<Host>;
+/// A job's name in the repo's job file.
+pub(crate) type JobName = Word<Task>;
 /// A repo or workspace name in a path.
 pub(crate) type Segment = Word<Part>;
 /// Where `ssh` connects.

@@ -4,15 +4,15 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use crate::error::Listed;
-use crate::farm::cli::Usage;
-use crate::farm::config;
-use crate::farm::event;
-use crate::farm::exit::Exit;
-use crate::farm::host::ReadFault;
-use crate::farm::name::{Fault, HostName, JobId};
-use crate::farm::place::Need;
-use crate::farm::workspace;
+use crate::cli::Usage;
+use crate::config;
+use crate::event;
+use crate::exit::Exit;
+use crate::host::ReadFault;
+use crate::jobs;
+use crate::name::{Fault, HostName, JobId};
+use crate::place::Need;
+use crate::workspace;
 use crate::process::Failure;
 
 /// One failure of the farm: it could not do what was asked, or would not.
@@ -21,7 +21,11 @@ pub(crate) enum Error {
     Usage(Usage),
     /// The config file.
     Config { path: PathBuf, fault: config::Fault },
+    /// The repo's job file.
+    Jobs { path: PathBuf, fault: jobs::Fault },
     Io { path: PathBuf, source: std::io::Error },
+    /// No jj workspace around the current directory.
+    NoRepo { start: PathBuf },
     /// A path that is not UTF-8, so it cannot be an argument.
     Utf8 { path: PathBuf },
     /// The workspace's directory names are not usable as path segments.
@@ -45,7 +49,7 @@ pub(crate) enum Error {
     /// A thread running a job panicked.
     Crashed { label: String },
     /// A changed snapshot path that cannot be trusted.
-    Snap { host: HostName, source: crate::farm::snap::Fault },
+    Snap { host: HostName, source: crate::snap::Fault },
     Workspace(workspace::Fault),
 }
 
@@ -54,10 +58,13 @@ impl Error {
     pub(crate) fn exit(&self) -> Exit {
         match self {
             Self::Usage(_) => Exit::Usage,
+            Self::Jobs { fault, .. } if fault.is_usage() => Exit::Usage,
             Self::NotGolden { .. } => Exit::Refused,
             Self::Workspace(fault) if fault.is_refusal() => Exit::Refused,
             Self::Config { .. }
+            | Self::Jobs { .. }
             | Self::Io { .. }
+            | Self::NoRepo { .. }
             | Self::Utf8 { .. }
             | Self::Name { .. }
             | Self::Call { .. }
@@ -91,7 +98,9 @@ impl fmt::Display for Error {
         match self {
             Self::Usage(usage) => write!(out, "{usage}"),
             Self::Config { path, fault } => write!(out, "the farm config {} {fault}", path.display()),
+            Self::Jobs { path, fault } => write!(out, "the job file {} {fault}", path.display()),
             Self::Io { path, .. } => write!(out, "cannot read {}", path.display()),
+            Self::NoRepo { start } => write!(out, "{} is not inside a jj workspace", start.display()),
             Self::Utf8 { path } => write!(out, "{} is not UTF-8", path.display()),
             Self::Name { path, .. } => write!(out, "{} cannot name a farm directory", path.display()),
             Self::Call { host, what, .. } => write!(out, "{what} on `{host}` failed"),
@@ -117,6 +126,7 @@ impl std::error::Error for Error {
         match self {
             Self::Usage(source) => source.source(),
             Self::Config { fault, .. } => std::error::Error::source(fault),
+            Self::Jobs { fault, .. } => std::error::Error::source(fault),
             Self::Io { source, .. } => Some(source),
             Self::Name { source, .. } => Some(source),
             Self::Call { source, .. } => Some(source),
@@ -124,7 +134,8 @@ impl std::error::Error for Error {
             Self::Said { source, .. } => Some(source),
             Self::Workspace(fault) => fault.source(),
             Self::Snap { source, .. } => Some(source),
-            Self::Utf8 { .. }
+            Self::NoRepo { .. }
+            | Self::Utf8 { .. }
             | Self::Silent { .. }
             | Self::NoHost { .. }
             | Self::NotGolden { .. }
@@ -132,6 +143,39 @@ impl std::error::Error for Error {
             | Self::NoJob { .. }
             | Self::Crashed { .. } => None,
         }
+    }
+}
+
+/// An error and its causes as the person reads them: `error: ...`, then a `caused by: ...` line each.
+#[derive(Debug)]
+pub(crate) struct Chain<'a>(pub(crate) &'a Error);
+
+impl fmt::Display for Chain<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "error: {}", self.0)?;
+        let mut cause = std::error::Error::source(self.0);
+        while let Some(error) = cause {
+            write!(out, "\n  caused by: {error}")?;
+            cause = error.source();
+        }
+        Ok(())
+    }
+}
+
+/// Items in backticks, as a sentence lists them: `a`, `b` and `c`.
+pub(crate) struct Listed<'a, T>(pub(crate) &'a [T]);
+
+impl<T: fmt::Display> fmt::Display for Listed<'_, T> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let last = self.0.len().saturating_sub(1);
+        self.0.iter().enumerate().try_for_each(|(i, item)| {
+            let sep = match i {
+                0 => "",
+                i if i == last => " and ",
+                _ => ", ",
+            };
+            write!(out, "{sep}`{item}`")
+        })
     }
 }
 
@@ -162,21 +206,5 @@ mod tests {
     fn no_golden_host_says_what_golden_is() {
         let text = Error::NoHost { need: Need::Golden, up: vec![host()] }.to_string();
         assert!(text.contains("x86_64") && text.contains("`petal`"), "{text}");
-    }
-}
-
-/// An error and its causes as the person reads them: `error: ...`, then a `caused by: ...` line each.
-#[derive(Debug)]
-pub(crate) struct Chain<'a>(pub(crate) &'a Error);
-
-impl fmt::Display for Chain<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "error: {}", self.0)?;
-        let mut cause = std::error::Error::source(self.0);
-        while let Some(error) = cause {
-            write!(out, "\n  caused by: {error}")?;
-            cause = error.source();
-        }
-        Ok(())
     }
 }

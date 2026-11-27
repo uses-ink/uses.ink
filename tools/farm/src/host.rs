@@ -5,7 +5,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::farm::name::{Destination, HostName, JobId, JobFault};
+use crate::name::{Destination, HostName, JobId, JobFault};
 
 /// A CPU architecture.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,7 +53,7 @@ pub(crate) enum Via {
 }
 
 impl FromStr for Via {
-    type Err = crate::farm::name::Fault;
+    type Err = crate::name::Fault;
 
     fn from_str(given: &str) -> Result<Self, Self::Err> {
         match given {

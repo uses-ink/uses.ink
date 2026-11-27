@@ -1,7 +1,8 @@
-//! `cargo xtask farm <verb>`: the build farm client. The gate and the inner loop run on the
-//! hosts of the user's config, each in a slot of its own, so six agents do not make one machine
-//! thrash and a test budget is measured on a quiet core. See docs/workflow.md for the verbs and
-//! docs/decisions.md (0045) for why it is built this way.
+//! `farm <verb>`: the build farm client. A repo's jobs and any cargo command run on the hosts of
+//! the user's config, each in a slot of its own, so six agents do not make one machine thrash and
+//! a test budget is measured on a quiet core. It knows no project: the jobs are the repo's own
+//! `.config/farm.toml`. See docs/workflow.md for the verbs and docs/decisions.md (0047) for why
+//! it is built this way.
 //!
 //! - [`transport`]: how a call reaches a host: [`transport::Local`] and [`transport::Ssh`]
 //!   behind the [`transport::Transport`] trait.
@@ -10,19 +11,24 @@
 //! - [`fleet`]: [`fleet::Member`] and [`fleet::Fleet`], generic over the transport.
 //! - [`place`]: [`place::Placement`], which host gets a job.
 //! - [`run`]: [`run::Farm`], the verbs. [`summary`], [`job`] and [`event`] read what comes back.
+//! - [`jobs`]: the repo's job file.
+//! - [`version`]: the hash of the source the binary was built from.
 //! - [`workspace`]: `farm workspace`, which needs no host.
 
 mod cli;
 mod config;
 mod console;
+mod digest;
 mod error;
 mod event;
 mod exit;
 mod fleet;
 mod host;
 mod job;
+mod jobs;
 mod name;
 mod place;
+mod process;
 mod program;
 mod quote;
 mod run;
@@ -30,9 +36,9 @@ mod snap;
 mod summary;
 mod transport;
 mod tree;
+mod version;
 mod workspace;
 
-use std::path::Path;
 use std::process::ExitCode;
 use std::sync::Arc;
 
@@ -49,16 +55,16 @@ use transport::{Exec, Link, Local, Ssh};
 use tree::Tree;
 use workspace::Workspaces;
 
-/// The entry point: `cargo xtask farm ...`.
+/// The entry point.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Entry;
+struct Entry;
 
 impl Entry {
-    /// Runs the farm command `args` from the workspace at `root`; the exit code is the farm's own
-    /// (see [`Exit`]).
-    pub(crate) fn main(root: &Path, args: Vec<String>) -> ExitCode {
+    /// Runs the farm command `args`, from the workspace the current directory is in; the exit
+    /// code is the farm's own (see [`Exit`]).
+    fn main(args: Vec<String>) -> ExitCode {
         let console = Arc::new(Console::default());
-        let exit = match Self::exec(root, args) {
+        let exit = match Self::exec(args) {
             Ok(exit) => exit,
             Err(error) => {
                 console.fail(Chain(&error));
@@ -68,10 +74,15 @@ impl Entry {
         exit.into()
     }
 
-    fn exec(root: &Path, args: Vec<String>) -> Result<Exit, Error> {
+    fn exec(args: Vec<String>) -> Result<Exit, Error> {
         let Command { flags, verb } = Command::parse(args)?;
         let console = Arc::new(Console::new(flags.verbose));
-        let tree = Tree::locate(root)?;
+        if verb == Verb::Version {
+            console.out(version::Version::current());
+            return Ok(Exit::Passed);
+        }
+        let here = std::env::current_dir().map_err(|source| Error::Io { path: ".".into(), source })?;
+        let tree = Tree::find(&here)?;
         match &verb {
             Verb::Make(name) => {
                 let made = Workspaces::new(&tree).make(name, flags.at.as_deref())?;
@@ -101,16 +112,19 @@ impl Entry {
     }
 }
 
+fn main() -> ExitCode {
+    Entry::main(std::env::args().skip(1).collect())
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
 
     use super::*;
-    use crate::check::Stage;
-    use crate::farm::cli::{Action, Flags};
-    use crate::farm::exit::Exit;
-    use crate::farm::job::Verdict;
-    use crate::farm::name::HostName;
+    use crate::cli::{Action, Flags};
+    use crate::exit::Exit;
+    use crate::job::Verdict;
+    use crate::name::HostName;
 
     /// A farm of this machine alone, in a temp dir: the real `sh`, `flock`, `timeout` and `tail`.
     struct Rig {
@@ -157,7 +171,7 @@ mod tests {
     }
 
     fn job(label: &str, script: &str) -> job::Job {
-        job::Job { label: label.to_owned(), words: cargo_free(&[script]), need: place::Need::Any, env: vec![] }
+        job::Job { label: label.to_owned(), words: cargo_free(&[script]), need: place::Need::Any, env: vec![], limit: None }
     }
 
     fn run_one(rig: &Rig, job: &job::Job, attach: job::Attach, slots: u32) -> job::Finished {
@@ -182,7 +196,7 @@ mod tests {
     #[test]
     fn the_limit_stops_a_job_and_says_so() {
         let rig = Rig::new("limit");
-        let flags = Flags { limit: cli::Seconds(1), ..Flags::default() };
+        let flags = Flags { limit: Some(cli::Seconds(1)), ..Flags::default() };
         let farm = rig.farm(1, flags);
         let snap = farm.fleet_probe().remove(0);
         let finished = farm.run_for_test(&job("slow", "sleep 30"), &snap, job::Attach::Hold(Duration::from_secs(30))).unwrap();
@@ -306,9 +320,35 @@ mod tests {
     }
 
     #[test]
-    fn the_host_name_of_a_local_member_is_local() {
-        let name: HostName = "local".parse().unwrap();
-        assert_eq!(name, HostName::local());
-        assert!(Stage::ALL.len() == 5 && Action::ALL.len() == 7);
+    fn the_slot_locks_are_where_the_host_dir_says() {
+        let rig = Rig::new("slots");
+        let dir = rig.dir();
+        let path = |n| std::path::PathBuf::from(dir.slot(n));
+        assert!(!path(0).exists());
+        let farm = rig.farm(2, Flags::default());
+        let snap = farm.fleet_probe().remove(0);
+        farm.run_for_test(&job("x", "true"), &snap, job::Attach::Hold(Duration::from_secs(30))).unwrap();
+        assert!(path(0).exists() && path(1).exists(), "the probe tries every slot's lock, which makes the file");
+        assert_eq!(dir.slot(1), format!("{}/slots/1.lock", rig.root.join("farm").display()));
+    }
+
+    #[test]
+    fn the_workflow_doc_names_every_verb_flag_exit_code_and_config_key() {
+        let doc = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/workflow.md")).unwrap();
+        for action in Action::ALL {
+            assert!(doc.contains(&format!("`farm {action}")), "verb {action}");
+        }
+        for exit in Exit::ALL {
+            assert!(doc.contains(&format!("| {} | {exit} |", exit.code())), "exit {exit}");
+        }
+        for word in [".config/farm.toml", "[job.", "cargo install --path tools/farm --locked", "--version"] {
+            assert!(doc.contains(word), "{word}");
+        }
+        for word in ["--detach", "--timeout", "--limit", "--host", "--json", "--verbose", "--tail", "--at", "--forget", "INK_FARM_CONFIG", "uses.farm/v1"] {
+            assert!(doc.contains(word), "{word}");
+        }
+        for key in ["name", "ssh", "slots", "arch", "golden", "mold", "dir"] {
+            assert!(doc.contains(&format!("\n{key} = ")), "config key {key}");
+        }
     }
 }

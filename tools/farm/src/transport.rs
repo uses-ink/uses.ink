@@ -1,7 +1,7 @@
 //! How a call reaches a host. [`Transport`] is the one seam: [`Local`] is this machine through
 //! `sh`, [`Ssh`] is another through the system `ssh` and `rsync`, and the logic above them is
 //! tested with a fake. Every process is started from an argument vector; the one shell line,
-//! the remote command of `ssh`, is made of [`Quoted`](crate::farm::quote::Quoted) words.
+//! the remote command of `ssh`, is made of [`Quoted`](crate::quote::Quoted) words.
 
 use std::io::{BufRead as _, BufReader, Read as _, Write as _};
 use std::path::{Path, PathBuf};
@@ -11,10 +11,10 @@ use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::farm::console::Console;
-use crate::farm::name::Destination;
-use crate::farm::program::{Call, Stdin};
-use crate::farm::quote::Line;
+use crate::console::Console;
+use crate::name::Destination;
+use crate::program::{Call, Stdin};
+use crate::quote::Line;
 use crate::process::Failure;
 
 /// What a call left: how it ended and what it said on stderr.
@@ -290,7 +290,7 @@ impl Ssh {
 
     /// The `rsync` that makes the host's tree equal to the workspace.
     pub(crate) fn sync(&self, push: &Push<'_>) -> Vec<String> {
-        let wrapped = format!("flock {} rsync", crate::farm::quote::Quoted::new(push.lock));
+        let wrapped = format!("flock {} rsync", crate::quote::Quoted::new(push.lock));
         let mut argv = self.rsync();
         argv.extend(["--delete".to_owned(), "--filter=:- .gitignore".to_owned(), format!("--rsync-path={wrapped}")]);
         argv.extend(EXCLUDES.map(|pattern| format!("--exclude={pattern}")));
@@ -333,7 +333,7 @@ impl Transport for Ssh {
     }
 }
 
-/// Either way of reaching a host: what a [`Fleet`](crate::farm::fleet::Fleet) is made of.
+/// Either way of reaching a host: what a [`Fleet`](crate::fleet::Fleet) is made of.
 #[derive(Debug, Clone)]
 pub(crate) enum Link {
     Local(Local),
@@ -370,7 +370,7 @@ impl Transport for Link {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::farm::program::Program;
+    use crate::program::Program;
 
     fn ssh() -> Ssh {
         let mut ssh = Ssh::new(Exec::new(Arc::new(Console::new(false))), "me@box.lan".parse().unwrap());

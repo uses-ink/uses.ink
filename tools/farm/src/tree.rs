@@ -3,9 +3,9 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::farm::error::Error;
-use crate::farm::host::{Host, Via};
-use crate::farm::name::Segment;
+use crate::error::Error;
+use crate::host::{Host, Via};
+use crate::name::Segment;
 
 /// A jj workspace of the repo: `<repo>-ws/<name>` beside the main checkout `<repo>`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,6 +20,13 @@ impl Tree {
     const MAIN: &'static str = "main";
     /// What the directory holding a repo's other workspaces adds to its name.
     pub(crate) const SUFFIX: &'static str = "-ws";
+
+    /// Finds the workspace `start` is in: the nearest directory above it with a `.jj`.
+    pub(crate) fn find(start: &Path) -> Result<Self, Error> {
+        let start = start.canonicalize().map_err(|source| Error::Io { path: start.to_path_buf(), source })?;
+        let root = start.ancestors().find(|dir| dir.join(".jj").is_dir()).ok_or_else(|| Error::NoRepo { start: start.clone() })?;
+        Self::locate(root)
+    }
 
     /// Finds the repo and workspace names from where `root` is.
     pub(crate) fn locate(root: &Path) -> Result<Self, Error> {
@@ -81,6 +88,11 @@ mod tests {
         assert_eq!(tree.on(&host), "farm/uses.ink/main");
         assert_eq!(tree.lock(&host), "farm/locks/main.lock");
         assert_eq!(tree.on(&Host::local()), tree.root.to_string_lossy());
+        let inside = ws.join(".jj");
+        std::fs::create_dir_all(inside.join("repo")).unwrap();
+        std::fs::create_dir_all(ws.join("a").join("b")).unwrap();
+        assert_eq!(Tree::find(&ws.join("a").join("b")).unwrap().root, ws.canonicalize().unwrap());
+        assert!(matches!(Tree::find(&main), Err(Error::NoRepo { .. })));
         std::fs::remove_dir_all(&base).unwrap();
     }
 }

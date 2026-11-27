@@ -5,21 +5,22 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::check::Stage;
-use crate::farm::cli::{Action, Flags, Usage, Verb};
-use crate::farm::console::Console;
-use crate::farm::error::{Chain, Error};
-use crate::farm::event::{Event, Seeded};
-use crate::farm::exit::Exit;
-use crate::farm::fleet::{Fleet, Start};
-use crate::farm::host::Snapshot;
-use crate::farm::job::{Attach, Document, Finished, Flow, Job, LogFile, Verdict};
-use crate::farm::name::{HostName, JobId};
-use crate::farm::place::{Need, Placement};
-use crate::farm::snap::Snaps;
-use crate::farm::summary::Summary;
-use crate::farm::transport::Transport;
-use crate::farm::tree::Tree;
+use crate::cli::{Action, Flags, Seconds, Usage, Verb};
+use crate::console::Console;
+use crate::error::{Chain, Error};
+use crate::event::{Event, Seeded};
+use crate::exit::Exit;
+use crate::fleet::{Fleet, Start};
+use crate::jobs::Jobs;
+use crate::host::Snapshot;
+use crate::job::{Attach, Document, Finished, Flow, Job, LogFile, Verdict};
+use crate::name::{HostName, JobId, JobName};
+use crate::place::{Need, Placement};
+use crate::snap::Snaps;
+use crate::summary::Summary;
+use crate::transport::Transport;
+use crate::tree::Tree;
+use crate::version::{Freshness, Version};
 
 /// Where a job's log is kept here, below the workspace: `target/farm/<job>.log`.
 const LOGS: [&str; 2] = ["target", "farm"];
@@ -62,13 +63,13 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     /// Runs a verb, prints its report and returns how it ended.
     pub(crate) fn go(&self, verb: &Verb) -> Result<Exit, Error> {
         let batch = match verb {
-            Verb::Check(stages) => self.check(stages)?,
+            Verb::Check(names) => self.check(names)?,
             Verb::Cargo(args) => self.cargo(args)?,
             Verb::Bless(args) => self.bless(args)?,
             Verb::Wait(id) => self.wait(id)?,
             Verb::Status => return self.status(),
             Verb::Log(id) => return self.log(id),
-            Verb::Make(_) | Verb::Forget(_) => return Err(Usage::NoVerb.into()),
+            Verb::Make(_) | Verb::Forget(_) | Verb::Version => return Err(Usage::NoVerb.into()),
         };
         Ok(self.report(&batch))
     }
@@ -133,7 +134,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         let log = self.tree.root.join(LOGS[0]).join(LOGS[1]).join(format!("{id}.log"));
         let file = LogFile::create(&log).map_err(|source| Error::Io { path: log.clone(), source })?;
         let mut flow = Flow { file: Some(file), ..Flow::default() };
-        let call = member.launch(&Start { tree: &self.tree, snap, job, id: &id }, attach, self.flags.limit);
+        let call = member.launch(&Start { tree: &self.tree, snap, job, id: &id }, attach, self.flags.limit.or(job.limit).unwrap_or(Seconds::LIMIT));
         let eta = snap.eta().map_or_else(|| "unknown".to_owned(), |eta| format!("about {} s", eta.as_secs()));
         member.run(&call, &mut |text| {
             if let Some(Event::Queued { behind }) = flow.feed(text) {
@@ -184,19 +185,10 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         batch
     }
 
-    /// The whole gate, one job per stage, all placed at once: the wall time is the slowest
-    /// stage, not the sum.
-    fn check(&self, stages: &[Stage]) -> Result<Batch, Error> {
-        let stages: Vec<Stage> = if stages.is_empty() { Stage::ALL.to_vec() } else { stages.to_vec() };
-        let jobs: Vec<Job> = stages
-            .iter()
-            .map(|stage| Job {
-                label: stage.name().to_owned(),
-                words: ["cargo", "xtask", "check", stage.name()].map(str::to_owned).to_vec(),
-                need: Need::from(*stage),
-                env: Vec::new(),
-            })
-            .collect();
+    /// The repo's declared jobs, one per job, all placed at once: the wall time is the slowest
+    /// job, not the sum.
+    fn check(&self, names: &[JobName]) -> Result<Batch, Error> {
+        let jobs: Vec<Job> = Jobs::load(&self.tree.root)?.pick(names)?.into_iter().map(Job::from).collect();
         let needs: Vec<Need> = jobs.iter().map(|job| job.need).collect();
         let snaps = self.place(&needs)?;
         Ok(self.fan(&jobs, &snaps))
@@ -206,7 +198,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     fn cargo(&self, args: &[String]) -> Result<Batch, Error> {
         let mut words = vec!["cargo".to_owned()];
         words.extend(args.iter().cloned());
-        let job = Job { label: words.join(" "), need: Need::of_cargo(args), words, env: Vec::new() };
+        let job = Job { label: words.join(" "), need: Need::of_cargo(args), words, env: Vec::new(), limit: None };
         let snaps = self.place(&[job.need])?;
         Ok(self.fan(&[job], &snaps))
     }
@@ -220,7 +212,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         let mut words: Vec<String> = ["cargo", "nextest", "run", "--locked"].map(str::to_owned).to_vec();
         words.extend(args.iter().cloned());
         let env = ["INSTA_UPDATE=always", "INSTA_FORCE_PASS=1"].map(str::to_owned).to_vec();
-        let job = Job { label: "bless".to_owned(), words, need: Need::Golden, env };
+        let job = Job { label: "bless".to_owned(), words, need: Need::Golden, env, limit: None };
         let snaps = self.place(&[Need::Golden])?;
         let mut batch = self.fan(std::slice::from_ref(&job), &snaps);
         if let Some(done) = batch.done.first().filter(|done| matches!(done.verdict, Verdict::Done { .. })) {
@@ -290,6 +282,15 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         if self.flags.json {
             return Err(Usage::Extra { verb: Action::Status, given: "--json".to_owned() }.into());
         }
+        match Version::current().against(&self.tree.root) {
+            Freshness::Current => {}
+            other => {
+                self.console.note(&other);
+                if let Some(cause) = std::error::Error::source(&other) {
+                    self.console.note(format!("caused by: {cause}"));
+                }
+            }
+        }
         let probed = self.fleet.probe(&self.console);
         probed.up.iter().for_each(|snap| self.console.out(snap));
         for (host, error) in &probed.down {
@@ -338,16 +339,6 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     }
 }
 
-impl From<Stage> for Need {
-    /// The stages that run tests and build the sites compare output with goldens.
-    fn from(stage: Stage) -> Self {
-        match stage {
-            Stage::Test | Stage::Sites => Self::Golden,
-            Stage::Lint | Stage::Docs | Stage::Wasm => Self::Any,
-        }
-    }
-}
-
 impl Need {
     /// A cargo command needs a golden host when it runs tests: its first word is `test` or `nextest`.
     pub(crate) fn of_cargo(args: &[String]) -> Self {
@@ -362,10 +353,10 @@ impl Need {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::farm::fleet::fake::{Fake, Reply};
-    use crate::farm::fleet::Member;
-    use crate::farm::host::{Host, Via};
-    use crate::farm::place::LeastLoaded;
+    use crate::fleet::fake::{Fake, Reply};
+    use crate::fleet::Member;
+    use crate::host::{Host, Via};
+    use crate::place::LeastLoaded;
 
     fn host(name: &str) -> Host {
         Host { name: name.parse().unwrap(), via: Via::Ssh("x".parse().unwrap()), ..Host::local() }
@@ -381,12 +372,11 @@ mod tests {
     }
 
     #[test]
-    fn a_gate_fans_out_one_job_per_stage_with_golden_stages_on_golden_hosts() {
+    fn a_check_fans_out_one_job_per_job_with_golden_jobs_on_golden_hosts() {
         let x86 = Member::new(host("x86"), Fake::saying(vec![probe(12, "x86_64")]));
         let arm = Member::new(host("arm"), Fake::saying(vec![probe(12, "aarch64")]));
         let farm = farm(vec![x86, arm]);
-        let needs: Vec<Need> = Stage::ALL.iter().map(|stage| Need::from(*stage)).collect();
-        assert_eq!(needs, [Need::Any, Need::Golden, Need::Any, Need::Any, Need::Golden]);
+        let needs = [Need::Any, Need::Golden, Need::Any, Need::Any, Need::Golden];
         let chosen = farm.place(&needs).unwrap();
         let hosts: Vec<&str> = chosen.iter().map(|snap| snap.name.as_str()).collect();
         // lint takes the one free slot on `arm` or `x86`; both golden stages must be on x86

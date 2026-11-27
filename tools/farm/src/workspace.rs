@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 
-use crate::farm::name::Segment;
-use crate::farm::tree::Tree;
+use crate::name::Segment;
+use crate::tree::Tree;
 use crate::process::{Failure, Process};
 
 /// How a new workspace got its `target/`.

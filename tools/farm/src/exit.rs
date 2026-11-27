@@ -1,4 +1,4 @@
-//! The exit codes of `cargo xtask farm`: typed, one meaning each, documented in
+//! The exit codes of `farm`: typed, one meaning each, documented in
 //! docs/workflow.md.
 
 use std::fmt;

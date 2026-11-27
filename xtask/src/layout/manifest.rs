@@ -11,6 +11,10 @@ const OWN: &[&str] = &["freehand", "freehand-web"];
 /// The repo's task runner: named as cargo expects, not published.
 const TASKS: &str = "xtask";
 
+/// The build farm client (`tools/farm`): installed as `farm`, so named as it is run, depending on
+/// no crate of ours.
+const FARM: &str = "farm";
+
 /// A crate's name is its path: `plugin/theme/quiet` is `uses-ink-theme-quiet`.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Names;
@@ -19,7 +23,7 @@ impl Names {
     /// The name `krate`'s path predicts.
     fn expected(krate: &Crate) -> String {
         let path = krate.place();
-        if krate.name == TASKS || OWN.contains(&krate.name.as_str()) {
+        if krate.name == TASKS || krate.name == FARM || OWN.contains(&krate.name.as_str()) {
             path.rsplit('/').next().unwrap_or(&path).to_owned()
         } else {
             // the slot directory drops
@@ -103,6 +107,7 @@ impl Order {
         ("uses-ink-theme-quiet-guest", &["uses-ink-model", "uses-ink-engine", "uses-ink-sdk", "uses-ink-theme-quiet"]),
         ("uses-ink-host-wasmtime-hostile", &["uses-ink-sdk"]),
         (TASKS, &["freehand", "uses-ink-token"]),
+        (FARM, &[]),
         (Self::FIXTURE, &[]),
     ];
 }

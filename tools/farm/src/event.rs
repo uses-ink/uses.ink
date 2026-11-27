@@ -5,7 +5,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::farm::program::MARK;
+use crate::program::MARK;
 
 /// One thing a program said.
 #[derive(Debug, Clone, PartialEq, Eq)]

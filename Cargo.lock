@@ -1230,6 +1230,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "farm"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "fast_image_resize"
 version = "6.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

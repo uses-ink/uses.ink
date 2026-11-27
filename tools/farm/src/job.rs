@@ -8,12 +8,14 @@ use std::time::Duration;
 
 use serde::Serialize;
 
-use crate::farm::event::{Event, Line};
-use crate::farm::exit::Exit;
-use crate::farm::host::Snapshot;
-use crate::farm::name::{HostName, JobId};
-use crate::farm::place::Need;
-use crate::farm::summary::Summary;
+use crate::cli::Seconds;
+use crate::event::{Event, Line};
+use crate::exit::Exit;
+use crate::host::Snapshot;
+use crate::jobs::Recipe;
+use crate::name::{HostName, JobId};
+use crate::place::Need;
+use crate::summary::Summary;
 
 /// A command to run on a host.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +27,14 @@ pub(crate) struct Job {
     pub(crate) need: Need,
     /// Variables beyond the farm's own, as `NAME=value`; they win over them.
     pub(crate) env: Vec<String>,
+    /// Its own hard limit, when the repo declares one.
+    pub(crate) limit: Option<Seconds>,
+}
+
+impl From<Recipe> for Job {
+    fn from(recipe: Recipe) -> Self {
+        Self { label: recipe.name.to_string(), words: recipe.words, need: recipe.need, env: Vec::new(), limit: recipe.limit }
+    }
 }
 
 impl Job {
@@ -92,7 +102,7 @@ pub(crate) struct Flow {
     pub(crate) detached: bool,
     pub(crate) started: bool,
     /// The first line that carried the mark and was not an event.
-    pub(crate) fault: Option<crate::farm::event::Fault>,
+    pub(crate) fault: Option<crate::event::Fault>,
     /// The job's own output.
     pub(crate) log: String,
     pub(crate) file: Option<LogFile>,
@@ -221,7 +231,7 @@ impl fmt::Display for Finished {
         writeln!(out, "\n   $ {}", self.command)?;
         match self.verdict {
             Verdict::Done { code, .. } => writeln!(out, "{} (exit {code}), log {}", self.exit().to_string().to_uppercase(), self.log.display())?,
-            Verdict::Running => writeln!(out, "RUNNING as {}; continue with `cargo xtask farm wait {}`", self.id, self.id)?,
+            Verdict::Running => writeln!(out, "RUNNING as {}; continue with `farm wait {}`", self.id, self.id)?,
             Verdict::Aborted => writeln!(out, "ABORTED on the host")?,
             Verdict::Lost => writeln!(out, "LOST: the connection ended and no result came")?,
         }
@@ -301,9 +311,9 @@ mod tests {
 
     #[test]
     fn the_environment_is_the_same_every_time_and_never_sets_the_target_dir() {
-        let job = Job { label: "x".to_owned(), words: vec!["cargo".to_owned()], need: Need::Any, env: vec!["INSTA_UPDATE=always".to_owned()] };
-        let snap = crate::farm::host::Snapshot::read(
-            &crate::farm::host::Host::local(),
+        let job = Job { label: "x".to_owned(), words: vec!["cargo".to_owned()], need: Need::Any, env: vec!["INSTA_UPDATE=always".to_owned()], limit: None };
+        let snap = crate::host::Snapshot::read(
+            &crate::host::Host::local(),
             "now 1\narch x86_64\ncores 14\nload 0.1\nslots 2\nslot 0 free\nslot 1 free\nqueued 0\n",
         )
         .unwrap();

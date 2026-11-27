@@ -2,9 +2,9 @@
 
 use std::fmt;
 
-use crate::farm::error::Error;
-use crate::farm::host::Snapshot;
-use crate::farm::name::HostName;
+use crate::error::Error;
+use crate::host::Snapshot;
+use crate::name::HostName;
 
 /// What a host must be for a job.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,7 +89,7 @@ impl Placement for LeastLoaded {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::farm::host::{Arch, Load};
+    use crate::host::{Arch, Load};
 
     fn snap(name: &str, [slots, busy, queued, load]: [u32; 4]) -> Snapshot {
         Snapshot {

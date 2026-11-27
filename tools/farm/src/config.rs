@@ -10,9 +10,9 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::farm::error::Error;
-use crate::farm::host::{Arch, Host, HostDir, Via};
-use crate::farm::name::HostName;
+use crate::error::Error;
+use crate::host::{Arch, Host, HostDir, Via};
+use crate::name::HostName;
 
 /// The variables the config's location depends on.
 #[derive(Debug, Clone, Default)]
@@ -118,7 +118,7 @@ struct Entry {
 struct Ssh(Via);
 
 impl TryFrom<String> for Ssh {
-    type Error = crate::farm::name::Fault;
+    type Error = crate::name::Fault;
 
     fn try_from(given: String) -> Result<Self, Self::Error> {
         given.parse().map(Self)
@@ -142,7 +142,7 @@ impl From<String> for ArchText {
 struct DirText(HostDir);
 
 impl TryFrom<String> for DirText {
-    type Error = crate::farm::host::DirFault;
+    type Error = crate::host::DirFault;
 
     fn try_from(given: String) -> Result<Self, Self::Error> {
         given.parse().map(Self)

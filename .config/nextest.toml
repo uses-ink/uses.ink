@@ -23,6 +23,14 @@ slow-timeout = { period = "500ms", terminate-after = 1 }
 filter = "binary(git)"
 slow-timeout = { period = "250ms", terminate-after = 1 }
 
+# The farm's tests run its programs on this machine with the real `sh`, `flock`, `timeout` and
+# `tail`, whose waits poll in steps of 0.25 s and 1 s: a job that ends at once still takes a
+# second to be seen. Those tests (every one in the binary's own `tests` module) have this budget
+# instead; the rest of the farm's tests keep 100 ms.
+[[profile.default.overrides]]
+filter = "package(farm) & test(/^tests::/)"
+slow-timeout = { period = "6s", terminate-after = 1 }
+
 # A component's tests pay a Cranelift compile on a cold cache (tens of milliseconds for the
 # hostile component, about a second for the markdown format) and the spinning plugin's 50 ms
 # deadline; the components themselves are built once per run by `cargo xtask component`.

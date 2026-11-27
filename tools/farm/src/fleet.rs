@@ -1,20 +1,20 @@
 //! The hosts, as one thing to ask. A [`Member`] is a host with the way to reach it; a [`Fleet`]
 //! is all of them, probed together. Both are generic over the [`Transport`], so the logic is
-//! tested against a fake and runs over [`Link`](crate::farm::transport::Link).
+//! tested against a fake and runs over [`Link`](crate::transport::Link).
 
 use std::sync::Mutex;
 use std::thread;
 
-use crate::farm::cli::Seconds;
-use crate::farm::console::Console;
-use crate::farm::error::Error;
-use crate::farm::event::{Event, Line, Seeded};
-use crate::farm::host::{Host, Snapshot};
-use crate::farm::job::{Attach, Job};
-use crate::farm::name::{HostName, JobId};
-use crate::farm::program::{Call, Program};
-use crate::farm::transport::{Done, Pull, Push, Transport};
-use crate::farm::tree::Tree;
+use crate::cli::Seconds;
+use crate::console::Console;
+use crate::error::Error;
+use crate::event::{Event, Line, Seeded};
+use crate::host::{Host, Snapshot};
+use crate::job::{Attach, Job};
+use crate::name::{HostName, JobId};
+use crate::program::{Call, Program};
+use crate::transport::{Done, Pull, Push, Transport};
+use crate::tree::Tree;
 use crate::process::Failure;
 
 /// What a quick call printed: its events, and every other line.
@@ -290,8 +290,8 @@ pub(crate) mod fake {
 mod tests {
     use super::fake::{Fake, Reply};
     use super::*;
-    use crate::farm::host::Via;
-    use crate::farm::place::Need;
+    use crate::host::Via;
+    use crate::place::Need;
 
     fn remote(name: &str) -> Host {
         Host { name: name.parse().unwrap(), via: Via::Ssh("x".parse().unwrap()), ..Host::local() }
@@ -340,7 +340,7 @@ mod tests {
     fn the_launch_passes_every_value_as_its_own_argument_and_the_command_after_env() {
         let member = Member::new(Host { mold: true, ..remote("petal") }, Fake::default());
         let snap = Snapshot::read(&member.host, &PROBE.join("\n")).unwrap();
-        let job = Job { label: "x".to_owned(), words: ["cargo", "test", "-E", "test(a b;c)"].map(str::to_owned).to_vec(), need: Need::Any, env: vec![] };
+        let job = Job { label: "x".to_owned(), words: ["cargo", "test", "-E", "test(a b;c)"].map(str::to_owned).to_vec(), need: Need::Any, env: vec![], limit: None };
         let id = JobId::new(member.host.name.clone(), 255, 1);
         let call = member.launch(&Start { tree: &tree(), snap: &snap, job: &job, id: &id }, Attach::Detach, Seconds(1500));
         assert_eq!(call.program, Program::Run);
@@ -357,11 +357,11 @@ mod tests {
     fn a_held_launch_holds_stdin_for_the_timeout() {
         let member = Member::new(remote("petal"), Fake::default());
         let snap = Snapshot::read(&member.host, &PROBE.join("\n")).unwrap();
-        let job = Job { label: "x".to_owned(), words: vec!["cargo".to_owned()], need: Need::Any, env: vec![] };
+        let job = Job { label: "x".to_owned(), words: vec!["cargo".to_owned()], need: Need::Any, env: vec![], limit: None };
         let id = JobId::new(member.host.name.clone(), 1, 1);
         let start = Start { tree: &tree(), snap: &snap, job: &job, id: &id };
         let call = member.launch(&start, Attach::Hold(std::time::Duration::from_secs(540)), Seconds(1500));
-        assert_eq!(call.stdin, crate::farm::program::Stdin::Held(std::time::Duration::from_secs(540)));
+        assert_eq!(call.stdin, crate::program::Stdin::Held(std::time::Duration::from_secs(540)));
         assert_eq!(call.args.first().map(String::as_str), Some("held"));
     }
 

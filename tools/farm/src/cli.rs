@@ -1,4 +1,4 @@
-//! The command line of `cargo xtask farm`: flags, then a verb and its arguments.
+//! The command line of `farm`: flags, then a verb and its arguments.
 //!
 //! The farm's flags come before the verb, or right after it; `cargo` and `bless` pass everything
 //! after their own flags to cargo untouched (`--` ends the flags at once).
@@ -8,9 +8,8 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::check::Stage;
 use crate::error::Listed;
-use crate::farm::name::{Fault, HostName, JobFault, JobId, Segment};
+use crate::name::{Fault, HostName, JobFault, JobId, JobName, Segment};
 
 /// A verb, by name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,6 +61,9 @@ impl FromStr for Action {
 pub(crate) struct Seconds(pub(crate) u64);
 
 impl Seconds {
+    /// The hard limit of a job that names none.
+    pub(crate) const LIMIT: Self = Self(1500);
+
     pub(crate) const fn duration(self) -> Duration {
         Duration::from_secs(self.0)
     }
@@ -87,8 +89,8 @@ pub(crate) struct Flags {
     pub(crate) detach: bool,
     /// `--timeout`: how long a call blocks; 540 s, under the 10 minutes a tool call may take.
     pub(crate) timeout: Seconds,
-    /// `--limit`: the hard limit of a job's command; 1500 s.
-    pub(crate) limit: Seconds,
+    /// `--limit`: the hard limit of a job's command; else the job's own, else 1500 s.
+    pub(crate) limit: Option<Seconds>,
     /// `--host`: the only host to use.
     pub(crate) host: Option<HostName>,
     /// `--tail`: the last lines of a log.
@@ -106,7 +108,7 @@ impl Default for Flags {
             verbose: false,
             detach: false,
             timeout: Seconds(540),
-            limit: Seconds(1500),
+            limit: None,
             host: None,
             tail: None,
             at: None,
@@ -126,7 +128,7 @@ impl Flags {
             "--detach" => self.detach = true,
             "--forget" => self.forget = true,
             "--timeout" => self.timeout = value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?,
-            "--limit" => self.limit = value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?,
+            "--limit" => self.limit = Some(value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?),
             "--tail" => self.tail = Some(value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?),
             "--host" => self.host = Some(value(arg)?.parse().map_err(|e| bad(arg, Why::Word(e)))?),
             "--at" => {
@@ -145,8 +147,8 @@ impl Flags {
 /// A verb with its arguments.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Verb {
-    /// The gate, fanned out: these stages, or all.
-    Check(Vec<Stage>),
+    /// The repo's jobs, fanned out: these, or all.
+    Check(Vec<JobName>),
     /// A cargo command, as given.
     Cargo(Vec<String>),
     /// Nextest with its snapshots accepted; the arguments are nextest's.
@@ -158,6 +160,8 @@ pub(crate) enum Verb {
     Forget(Segment),
     Wait(JobId),
     Log(JobId),
+    /// `--version`: what the binary was built from.
+    Version,
 }
 
 /// A parsed command line.
@@ -174,6 +178,9 @@ impl Command {
         let mut rest = args.into_iter().peekable();
         let action = loop {
             let arg = rest.next().ok_or(Usage::NoVerb)?;
+            if arg == "--version" {
+                return Ok(Self { flags, verb: Verb::Version });
+            }
             if !flags.take(&arg, &mut rest)? {
                 break arg.parse::<Action>()?;
             }
@@ -209,8 +216,8 @@ impl Command {
         let mut words = words.into_iter();
         let verb = match action {
             Action::Check => {
-                let stages = words.by_ref().map(|given| given.parse().map_err(|_| Usage::Stage { given })).collect::<Result<_, _>>()?;
-                Verb::Check(stages)
+                let names = words.by_ref().map(|given| given.parse().map_err(Usage::Task)).collect::<Result<_, _>>()?;
+                Verb::Check(names)
             }
             Action::Status => Verb::Status,
             Action::Workspace => {
@@ -239,7 +246,7 @@ pub(crate) enum Usage {
     Unknown { given: String },
     Missing { verb: Action, what: &'static str },
     Extra { verb: Action, given: String },
-    Stage { given: String },
+    Task(Fault),
     Value { flag: String },
     Flag { flag: String, why: Why },
     Name(Fault),
@@ -261,7 +268,7 @@ impl fmt::Display for Usage {
             Self::Unknown { given } => write!(out, "no verb `{given}`; the verbs are {}", Listed(&Action::ALL)),
             Self::Missing { verb, what } => write!(out, "`farm {verb}` needs {what}"),
             Self::Extra { verb, given } => write!(out, "`farm {verb}` takes no `{given}`"),
-            Self::Stage { given } => write!(out, "no stage `{given}`; the stages are {}", Listed(&Stage::ALL)),
+            Self::Task(_) => write!(out, "that is not a job name"),
             Self::Value { flag } => write!(out, "`{flag}` needs a value"),
             Self::Flag { flag, why } => match why {
                 Why::Number(_) => write!(out, "`{flag}` takes a whole number"),
@@ -278,7 +285,7 @@ impl std::error::Error for Usage {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Flag { why: Why::Number(source), .. } => Some(source),
-            Self::Flag { why: Why::Word(source), .. } | Self::Name(source) => Some(source),
+            Self::Flag { why: Why::Word(source), .. } | Self::Name(source) | Self::Task(source) => Some(source),
             Self::Job(source) => Some(source),
             _ => None,
         }
@@ -294,10 +301,10 @@ mod tests {
     }
 
     #[test]
-    fn a_check_names_stages_or_none() {
+    fn a_check_names_jobs_or_none() {
         assert_eq!(parse("check").unwrap().verb, Verb::Check(vec![]));
-        assert_eq!(parse("check lint test").unwrap().verb, Verb::Check(vec![Stage::Lint, Stage::Test]));
-        assert!(matches!(parse("check nope"), Err(Usage::Stage { .. })));
+        assert_eq!(parse("check lint test").unwrap().verb, Verb::Check(vec!["lint".parse().unwrap(), "test".parse().unwrap()]));
+        assert!(matches!(parse("check ../x"), Err(Usage::Task(_))));
     }
 
     #[test]
@@ -341,7 +348,7 @@ mod tests {
     #[test]
     fn defaults_are_the_documented_ones_and_bad_input_is_usage() {
         let flags = parse("status").unwrap().flags;
-        assert_eq!((flags.timeout, flags.limit), (Seconds(540), Seconds(1500)));
+        assert_eq!((flags.timeout, flags.limit), (Seconds(540), None));
         for bad in ["", "frob", "status --timeout", "status --timeout x", "status --host A b", "status extra"] {
             assert!(parse(bad).is_err(), "{bad:?}");
         }

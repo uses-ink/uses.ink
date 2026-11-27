@@ -20,7 +20,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use crate::farm::quote::Line;
+use crate::quote::Line;
 
 /// A program that runs on a host.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

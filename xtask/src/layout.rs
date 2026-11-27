@@ -65,6 +65,7 @@ pub(crate) const ENFORCED: &[&str] = &[
     "uses-ink-theme-quiet",
     "uses-ink-token",
     "xtask",
+    "farm",
 ];
 
 /// A rule that fails only the crates in [`ENFORCED`]; another crate's problems are counted, so
