@@ -6528,6 +6528,8 @@ dependencies = [
 name = "uses-ink-diag"
 version = "0.0.0"
 dependencies = [
+ "serde",
+ "toml",
  "uses-ink-model",
 ]
 

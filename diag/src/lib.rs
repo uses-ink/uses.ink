@@ -9,12 +9,14 @@ use std::fmt;
 
 use model::{Announcement, ContentPath, Diagnostic, Notice, Problem};
 
+mod catalog;
 mod evidence;
 #[allow(clippy::too_many_lines, clippy::match_same_arms, reason = "generated: one match arm per catalog entry")]
 mod generated;
 mod plain;
 mod terminal;
 
+pub use catalog::{Catalog, Unreadable, Wording};
 pub use evidence::{Because, Pin, Short, Value};
 pub use plain::Plain;
 pub use terminal::Terminal;

@@ -1,17 +1,13 @@
 //! What `ink help <code>` says about a diagnostic, a notice or a decision code.
 
-use std::collections::BTreeMap;
 use std::fmt;
 
+use diag::{Catalog, Unreadable, Wording};
 use model::AnyCode;
 use model::decision::Scope;
-use serde::Deserialize;
 
 use super::page::{Page, Row};
 use super::paint::Paint;
-
-/// The catalog the diagnostics and notices are generated from, read as it was at build time.
-const CATALOG: &str = include_str!("../../../diag/catalog.toml");
 
 /// Why `ink help <word>` has nothing to say.
 #[derive(Debug)]
@@ -25,7 +21,7 @@ pub enum Refusal {
     /// The catalog this `ink` was built with does not parse.
     Catalog {
         /// Why not.
-        source: toml::de::Error,
+        source: Unreadable,
     },
 }
 
@@ -53,24 +49,6 @@ impl std::error::Error for Refusal {
     }
 }
 
-/// One entry of the catalog.
-#[derive(Debug, Deserialize)]
-pub(super) struct Said {
-    severity: Option<String>,
-    fault: Option<String>,
-    message: String,
-    fix: Option<String>,
-}
-
-/// The tables of the catalog this help reads.
-#[derive(Debug, Default, Deserialize)]
-struct Catalog {
-    #[serde(default)]
-    diagnostic: BTreeMap<String, Said>,
-    #[serde(default)]
-    notice: BTreeMap<String, Said>,
-}
-
 /// What a code means, ready to be written.
 #[derive(Debug)]
 pub(super) enum Meaning {
@@ -81,7 +59,7 @@ pub(super) enum Meaning {
         /// `diagnostic` or `notice`.
         kind: &'static str,
         /// The entry.
-        said: Said,
+        said: Wording,
     },
     /// A decision, which has a name and a subject and no wording of its own.
     Decision {
@@ -93,7 +71,7 @@ pub(super) enum Meaning {
 impl Meaning {
     /// What `word` is, when it is a code.
     pub(super) fn of(word: &str) -> Result<Self, Refusal> {
-        let mut catalog: Catalog = toml::from_str(CATALOG).map_err(|source| Refusal::Catalog { source })?;
+        let mut catalog = Catalog::read().map_err(|source| Refusal::Catalog { source })?;
         if let Some(said) = catalog.diagnostic.remove(word) {
             return Ok(Self::Said { code: word.to_owned(), kind: "diagnostic", said });
         }
