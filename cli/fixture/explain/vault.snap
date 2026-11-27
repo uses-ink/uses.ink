@@ -61,7 +61,7 @@ Notes/Rust.md
 Private.md
   page.publish       not published            by default
   page.kind          a page                   by default
-  page.title         “Private”                from the name of Private.md
+  page.title         “Private”                from the frontmatter of Private.md, bytes 11..18
   page.date          undated                  by default
   page.updated       never updated            by default
   page.slug          `private`                from the name of Private.md
