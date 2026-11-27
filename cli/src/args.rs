@@ -86,12 +86,13 @@ pub struct Build {
     pub origin: Origin,
     /// Build natively and through the plugins as wasm components, write nothing, and fail
     /// (exit 1) when the two deploys differ.
-    #[arg(long, requires = "components")]
+    #[arg(long)]
     pub check: bool,
-    /// The folder holding the components `--check` runs: `format-markdown.wasm` (or
-    /// `format-obsidian.wasm` for a vault) and `theme-quiet.wasm`, as `cargo xtask component`
-    /// writes them. Compiled components are kept
-    /// in its `cache/` folder.
+    /// A folder whose components replace the ones `ink` carries when `--check` runs them:
+    /// `format-markdown.wasm` (or `format-obsidian.wasm` for a vault) and `theme-quiet.wasm`, as
+    /// `cargo xtask component` writes them. A file the folder lacks is the bundled one; each
+    /// component run says which it used (`-v`, or `components` in `--json`). Compiled components
+    /// are kept in `components/` of the cache.
     #[arg(long, requires = "check")]
     pub components: Option<PathBuf>,
 }

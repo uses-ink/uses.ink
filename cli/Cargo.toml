@@ -34,6 +34,11 @@ serde_json.workspace = true
 theme-quiet.workspace = true
 tokio.workspace = true
 
+[build-dependencies]
+blake3.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
 [dev-dependencies]
 divan.workspace = true
 fixture.workspace = true

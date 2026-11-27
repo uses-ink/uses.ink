@@ -6,8 +6,9 @@
 #   docker run --read-only --tmpfs /tmp -v uses-ink:/data -p 8080:8080 uses-ink
 #
 # Release builds are the dist ones (dist-workspace.toml); this builds the same `dist`
-# profile from source, on musl, so the binary has no libc to match. docs/release.md says how
-# the image is published.
+# profile from source, on musl, so the binary has no libc to match. `ink` carries its components
+# (decision 0054), so they are built first, in the same step, by `cargo xtask component`.
+# docs/release.md says how the image is published.
 
 # The toolchain tag equals `channel` in rust-toolchain.toml; `cargo xtask layout` checks it.
 FROM rust:1.100.0-alpine3.24@sha256:8d0e82abfdf9a38071e07cabc5afba4ddbe077631a80e4e742a760c38beadc33 AS build
@@ -15,20 +16,25 @@ FROM rust:1.100.0-alpine3.24@sha256:8d0e82abfdf9a38071e07cabc5afba4ddbe077631a80
 # A C compiler for the tree-sitter grammars; nothing else links C.
 RUN apk add --no-cache build-base
 
-# The image's own toolchain, so rustup does not fetch the wasm targets rust-toolchain.toml names.
+# The image's own toolchain, so rustup does not fetch the targets rust-toolchain.toml names; the
+# one target the components need is added below.
 ENV RUSTUP_TOOLCHAIN=1.100.0 \
     CARGO_INCREMENTAL=0 \
     CARGO_TERM_COLOR=never \
     RUSTFLAGS="--remap-path-prefix=/src=/build --remap-path-prefix=/usr/local/cargo=/cargo"
 
+RUN rustup target add --toolchain 1.100.0 wasm32-unknown-unknown
+
 WORKDIR /src
 COPY . .
 
 # The registry and build state live in cache mounts: a rebuild after a source change compiles
-# our crates only. The binary is copied out of the mount in the same step.
+# our crates only. The components are built into target/plugin first, which the build script
+# of `ink` embeds, and the binary is copied out of the mount in the same step.
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/src/target,sharing=locked \
-    cargo build --locked --profile dist --package uses-ink-cli --bin ink \
+    cargo --locked xtask component \
+ && cargo build --locked --profile dist --package uses-ink-cli --bin ink \
  && install -D target/dist/ink /out/ink
 
 FROM busybox:1.37.0-musl@sha256:f6a95d611e0a8780fabdb2aec43e31275b2720dfefa3e41b16835bfc42454478

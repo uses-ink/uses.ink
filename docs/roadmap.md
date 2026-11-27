@@ -83,8 +83,9 @@ Progress (2026-11-27): `wit/` holds `ink:model`, `ink:host` (pen, text, highligh
 components through the engine's own `Format` and `Theme` traits, with fuel, time and memory
 budgets and a `.cwasm` cache (decision 0041); `ink build --check` builds every CLI site fixture
 natively and through the components and refuses a different deploy, and `cargo xtask check`
-runs it. Left: bundling the components into `ink` instead of reading them from a folder, and
-the theme's design (owner).
+runs it. Bundled (decision 0054): `ink` carries `ink:format-markdown`, `ink:format-obsidian`,
+`ink:theme-quiet` and `ink:source-git`, built by `cargo xtask component` and embedded by its build
+script, and a `--components` folder overrides one explicitly. Left: the theme's design (owner).
 
 
 ## Code rework (closes M1)

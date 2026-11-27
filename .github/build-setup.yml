@@ -1,0 +1,5 @@
+# Steps dist inserts into every build job of release.yml, before it builds `ink` (decision 0054):
+# the binary embeds its components, and its build script refuses a release build without them.
+# rust-toolchain.toml makes rustup fetch the wasm target on the first cargo call.
+- name: Build the components ink embeds
+  run: cargo --locked xtask component

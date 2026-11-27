@@ -151,6 +151,11 @@ pub enum Error {
         /// What the system said.
         source: std::io::Error,
     },
+    /// A component this `ink` does not carry: it was built without them.
+    Unbundled {
+        /// The plugin id asked for.
+        id: String,
+    },
     /// A component could not be loaded.
     Plugin {
         /// Why.
@@ -232,6 +237,7 @@ impl Error {
             Self::Server { .. } => "serve.server.invalid",
             Self::Terminal { .. } => "cli.terminal.unwritable",
             Self::Component { .. } => "component.file.unreadable",
+            Self::Unbundled { .. } => "component.bundled.missing",
             Self::Plugin { .. } => "component.load.failed",
             Self::Json { .. } => "cli.json.unwritable",
         }
@@ -286,6 +292,10 @@ impl fmt::Display for Error {
             Self::Server { .. } => write!(out, "the server could not be started"),
             Self::Terminal { .. } => write!(out, "the terminal could not be written to"),
             Self::Component { path, .. } => write!(out, "the component {} could not be read", path.display()),
+            Self::Unbundled { id } => write!(
+                out,
+                "this ink carries no component `{id}`: it was built without them; run `cargo xtask component`, then build ink again (release builds require it)"
+            ),
             Self::Plugin { .. } => write!(out, "a component could not be loaded"),
             Self::Json { .. } => write!(out, "the result could not be written as JSON"),
         }
@@ -317,6 +327,7 @@ impl std::error::Error for Error {
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),
             Self::Output(_)
+            | Self::Unbundled { .. }
             | Self::Format { .. }
             | Self::Unknown { .. }
             | Self::Unselectable { .. }

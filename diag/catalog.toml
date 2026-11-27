@@ -12,6 +12,8 @@
 # and the generated field carries that doc; a name without one, or a doc no entry uses, fails.
 
 [field]
+hash = "The BLAKE3 of its bytes, in hex."
+origin = "Where it came from: `bundled`, or the file it was read from."
 address = "The address used, as written."
 anchor = "The anchor given to the heading."
 asked = "How many were asked for."
@@ -638,6 +640,10 @@ fix = "nothing to do: this build writes a record the next one reads"
 fields = { address = "text" }
 message = "no address was given, so feeds, the sitemap and canonical links use {address}"
 fix = "pass `--base <url>` with the address the site is served at"
+
+[notice."plugin.component.used"]
+fields = { plugin = "text", hash = "text", origin = "text" }
+message = "the plugin `{plugin}` ran from {origin} (BLAKE3 {hash})"
 
 [notice."code.language.unknown"]
 fields = { language = "text" }

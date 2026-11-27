@@ -138,6 +138,8 @@ jobs:
       - name: Install dependencies
         run: |
           ${{ matrix.packages_install }}
+      - name: Build the components ink embeds
+        run: cargo --locked xtask component
       - name: Build artifacts
         run: |
           # Actually do builds and make zips and whatnot

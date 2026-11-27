@@ -47,7 +47,8 @@ impl Build {
     /// interprets and renders the whole site; only a build that ends with [`Exit::Done`] touches
     /// the output folder.
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        if let (true, Some(components)) = (self.check, &self.components) {
+        if self.check {
+            let components = crate::bundle::Components::new(self.components.as_deref());
             return crate::component::Compare { build: &self, components }.run(io);
         }
         let address = Address::from_flag(self.base.as_deref())?;

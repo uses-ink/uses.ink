@@ -19,4 +19,6 @@ checksum = "sha256"
 pr-run-mode = "skip"
 # release.yml is generated, then checkout is raised to v7 by hand (dist 0.34 emits v6)
 allow-dirty = ["ci"]
+# `ink` embeds its components (decision 0054): every build job runs `cargo xtask component` first
+github-build-setup = "../build-setup.yml"
 install-path = "CARGO_HOME"

@@ -38,6 +38,12 @@ pub(crate) enum Drift {
     Entrypoint { expected: String, found: Option<String> },
     /// The image's command is not a command of the binary.
     Command { found: Option<String>, known: Vec<String> },
+    /// The image builds the binary before it builds the components the binary embeds, or never
+    /// builds them (decision 0054).
+    ImageComponents,
+    /// The release workflow never runs `xtask component`, so a release binary would not
+    /// build (its build script refuses a release build with no components).
+    WorkflowComponents { path: PathBuf },
     /// A command the image runs before it exists is listed as pending, and now it exists.
     Pending { command: &'static str },
 }
@@ -90,6 +96,13 @@ impl Drift {
                 shown(found),
                 known.join(", ")
             ),
+            Self::ImageComponents => write!(
+                out,
+                "the Dockerfile must run `xtask component` in a RUN before the `cargo build` that embeds them"
+            ),
+            Self::WorkflowComponents { path } => {
+                write!(out, "`{}` never runs `xtask component` before dist builds the binary", path.display())
+            }
             Self::Pending { command } => {
                 write!(out, "`{command}` exists now: remove it from Release::PENDING in xtask's release rule")
             }
@@ -173,6 +186,11 @@ impl Release {
         if tag.as_deref() != Some(channel.as_str()) {
             found.push(Drift::Toolchain { expected: channel, found: tag });
         }
+        let runs = dockerfile.keyword("RUN").collect::<Vec<_>>().join("\n");
+        let (built, embedded) = (runs.find("xtask component"), runs.find("cargo build"));
+        if built.is_none() || embedded.is_none() || built > embedded {
+            found.push(Drift::ImageComponents);
+        }
         let package = dockerfile.after("--package");
         if package.as_deref() != Some(krate.name.as_str()) {
             found.push(Drift::Package { expected: krate.name.clone(), found: package });
@@ -207,6 +225,9 @@ impl Release {
         let workflow = Self::text(root, Self::WORKFLOW)?;
         if !workflow.contains(&format!("cargo-dist/releases/download/v{version}/")) {
             found.push(Drift::Version { expected: version, path: Self::WORKFLOW.into() });
+        }
+        if !workflow.contains("xtask component") {
+            found.push(Drift::WorkflowComponents { path: Self::WORKFLOW.into() });
         }
         for on in ["pull_request:", "pull_request_target:", "workflow_dispatch:", "schedule:", "branches:"] {
             if workflow.lines().any(|line| line.trim_start().starts_with(on)) {

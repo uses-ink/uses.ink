@@ -2,7 +2,7 @@
 //! default output. The folder is marked, so no command reads it as content, and nothing is
 //! written to it until there is something to keep (decision 0040, as measured).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use host_image::{Pixels, Settings};
@@ -12,6 +12,7 @@ use model::Notice;
 /// The cache of one command.
 #[derive(Debug)]
 pub(crate) struct Caching {
+    root: PathBuf,
     disk: Arc<Disk>,
 }
 
@@ -22,7 +23,12 @@ impl Caching {
     /// The cache `flag` names, or the default one in `dir`.
     pub(crate) fn new(dir: &Path, flag: Option<&Path>) -> Self {
         let root = flag.map_or_else(|| dir.join(Self::DEFAULT), Path::to_path_buf);
-        Self { disk: Arc::new(Disk::open(root)) }
+        Self { disk: Arc::new(Disk::open(&root)), root }
+    }
+
+    /// The folder it lives in.
+    pub(crate) fn root(&self) -> &Path {
+        &self.root
     }
 
     /// The image work, taking and keeping copies in the cache.

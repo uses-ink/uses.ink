@@ -26,14 +26,6 @@ impl Native {
             Self::Obsidian => "ink:format-obsidian",
         }
     }
-
-    /// The file of its component, as `cargo xtask component` names it.
-    pub(crate) const fn file(self) -> &'static str {
-        match self {
-            Self::Markdown => "format-markdown.wasm",
-            Self::Obsidian => "format-obsidian.wasm",
-        }
-    }
 }
 
 impl TryFrom<&PluginId> for Native {

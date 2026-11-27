@@ -365,6 +365,9 @@ impl Message<'_> {
             Announcement::BuildAddressDefault { address, .. } => {
                 write!(out, "no address was given, so feeds, the sitemap and canonical links use {address}")
             }
+            Announcement::PluginComponentUsed { plugin, origin, hash, .. } => {
+                write!(out, "the plugin `{plugin}` ran from {origin} (BLAKE3 {hash})")
+            }
             Announcement::CodeLanguageUnknown { language, .. } => {
                 write!(out, "no grammar knows the language `{language}`, so its code is shown without highlighting")
             }
@@ -513,6 +516,7 @@ impl Fix<'_> {
             Announcement::SourceLfsPointer { .. } => true,
             Announcement::BuildRecordUnread { .. } => true,
             Announcement::BuildAddressDefault { .. } => true,
+            Announcement::PluginComponentUsed { .. } => false,
             Announcement::CodeLanguageUnknown { .. } => true,
             Announcement::ImageAnimationKept { .. } => false,
             Announcement::ImageFormatKept { .. } => true,
@@ -793,6 +797,7 @@ impl Fix<'_> {
             Announcement::BuildAddressDefault { .. } => {
                 write!(out, "pass `--base <url>` with the address the site is served at")
             }
+            Announcement::PluginComponentUsed { .. } => Ok(()),
             Announcement::CodeLanguageUnknown { .. } => {
                 write!(out, "write a language the highlighter knows after the opening fence, such as `rust` or `toml`")
             }

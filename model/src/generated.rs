@@ -1018,6 +1018,16 @@ pub enum Announcement {
         /// The address used, as written.
         address: String,
     },
+    /// `plugin.component.used`: the plugin `{plugin}` ran from {origin} (BLAKE3 {hash})
+    #[serde(rename = "plugin.component.used")]
+    PluginComponentUsed {
+        /// The plugin's name.
+        plugin: String,
+        /// The BLAKE3 of its bytes, in hex.
+        hash: String,
+        /// Where it came from: `bundled`, or the file it was read from.
+        origin: String,
+    },
     /// `code.language.unknown`: no grammar knows the language `{language}`, so its code is shown without highlighting
     #[serde(rename = "code.language.unknown")]
     CodeLanguageUnknown {
@@ -1115,6 +1125,7 @@ impl Announcement {
         "source.lfs.pointer",
         "build.record.unread",
         "build.address.default",
+        "plugin.component.used",
         "code.language.unknown",
         "image.animation.kept",
         "image.format.kept",
@@ -1158,6 +1169,7 @@ impl Announcement {
             Self::SourceLfsPointer { .. } => "source.lfs.pointer",
             Self::BuildRecordUnread { .. } => "build.record.unread",
             Self::BuildAddressDefault { .. } => "build.address.default",
+            Self::PluginComponentUsed { .. } => "plugin.component.used",
             Self::CodeLanguageUnknown { .. } => "code.language.unknown",
             Self::ImageAnimationKept { .. } => "image.animation.kept",
             Self::ImageFormatKept { .. } => "image.format.kept",
@@ -1571,6 +1583,10 @@ impl From<&Announcement> for Coded {
             Announcement::BuildAddressDefault { address, .. } => {
                 Coded::new("build.address.default", vec![Field::from(address.clone())])
             }
+            Announcement::PluginComponentUsed { plugin, hash, origin, .. } => Coded::new(
+                "plugin.component.used",
+                vec![Field::from(plugin.clone()), Field::from(hash.clone()), Field::from(origin.clone())],
+            ),
             Announcement::CodeLanguageUnknown { language, .. } => {
                 Coded::new("code.language.unknown", vec![Field::from(language.clone())])
             }
@@ -1642,6 +1658,9 @@ impl TryFrom<Coded> for Announcement {
             "source.lfs.pointer" => Self::SourceLfsPointer { path: fields.next()? },
             "build.record.unread" => Self::BuildRecordUnread { reason: fields.next()? },
             "build.address.default" => Self::BuildAddressDefault { address: fields.next()? },
+            "plugin.component.used" => {
+                Self::PluginComponentUsed { plugin: fields.next()?, hash: fields.next()?, origin: fields.next()? }
+            }
             "code.language.unknown" => Self::CodeLanguageUnknown { language: fields.next()? },
             "image.animation.kept" => Self::ImageAnimationKept { path: fields.next()? },
             "image.format.kept" => Self::ImageFormatKept { path: fields.next()? },

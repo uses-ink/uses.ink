@@ -13,6 +13,7 @@
 mod args;
 mod asked;
 mod build;
+mod bundle;
 mod cache;
 mod change;
 mod component;

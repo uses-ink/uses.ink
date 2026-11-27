@@ -82,6 +82,11 @@ pub(crate) enum Error {
     },
     /// Progress could not be written to stderr.
     Progress(std::io::Error),
+    /// The list of bundled components could not be written as JSON.
+    Bundle {
+        path: PathBuf,
+        source: serde_json::Error,
+    },
     /// A guest's core module that `wit-component` would not wrap.
     Wrap {
         path: PathBuf,
@@ -139,6 +144,7 @@ impl fmt::Display for Error {
                 tool.install()
             ),
             Self::Progress(_) => write!(out, "cannot write progress to stderr"),
+            Self::Bundle { path, .. } => write!(out, "{} could not be written as JSON", path.display()),
             Self::Wrap { path, .. } => write!(out, "{} could not be wrapped into a component", path.display()),
             Self::Site { path, .. } => write!(out, "`ink build --check {}` failed", path.display()),
             Self::Mismatch { path, native, component } => write!(
@@ -174,6 +180,7 @@ impl std::error::Error for Error {
             | Self::Step { source, .. }
             | Self::Site { source, .. } => Some(source),
             Self::Wrap { source, .. } => Some(source.as_ref()),
+            Self::Bundle { source, .. } => Some(source),
             // Each of these is the whole failure: its data says what is wrong.
             Self::Missing
             | Self::Unknown { .. }
