@@ -1,6 +1,8 @@
 //! The command tree seen from outside: help, completions, the manual, the exit table, the codes,
 //! the new argument shapes and the verbs that are not built yet.
 
+#![allow(clippy::unwrap_used, clippy::indexing_slicing, reason = "tests stop at the first surprise")]
+
 use std::ffi::OsString;
 
 use uses_ink_cli::{Cli, Exit};

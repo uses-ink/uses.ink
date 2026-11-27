@@ -112,7 +112,7 @@ impl Cli {
             Err(error) => return io.fail(&error),
         };
         let site = self.dir.unwrap_or_else(|| std::path::PathBuf::from("."));
-        match self.command.run(site, &settings, &mut io) {
+        match self.command.run(site, settings, &mut io) {
             Ok(exit) => exit,
             Err(error) => io.fail(&error),
         }

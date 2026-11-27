@@ -54,6 +54,15 @@ impl Columns {
     }
 }
 
+/// A command's place in the tree and in the clap command, and how much help is asked for.
+#[derive(Clone, Copy, Debug)]
+struct View<'a> {
+    at: &'a Located<'a>,
+    entry: &'a crate::tree::Entry,
+    command: &'a Command,
+    depth: Depth,
+}
+
 /// Writes help for a tree, with `command` its decorated clap command, in the faces of `paint`.
 #[derive(Debug)]
 pub(crate) struct Help<'a, P> {
@@ -76,7 +85,7 @@ impl<'a, P: Paint> Help<'a, P> {
         let mut page = Page::new(&self.paint, self.width);
         let command = at.path.iter().try_fold(&self.command, |command, name| command.find_subcommand(name));
         match (at.entry, command) {
-            (Some(entry), Some(command)) => self.command_page(&mut page, at, entry, command, depth),
+            (Some(entry), Some(command)) => self.command_page(&mut page, &View { at, entry, command, depth }),
             _ => self.root_page(&mut page, depth),
         }
         page.finish()
@@ -145,21 +154,15 @@ impl<'a, P: Paint> Help<'a, P> {
         }
         page.table(&format!("{}:", Heading::GLOBAL), &self.globals());
         if depth == Depth::Long {
-            self.examples(page, self.tree.examples);
-            self.environment_block(page, self.tree.env);
+            Self::examples(page, self.tree.examples);
+            Self::environment_block(page, self.tree.env);
         }
         page.line("See `ink help <command>` for one command, and `ink help exit` for exit codes.");
     }
 
     /// A command: a group of commands, or one with options.
-    fn command_page(
-        &self,
-        page: &mut Page<'_, P>,
-        at: &Located<'_>,
-        entry: &crate::tree::Entry,
-        command: &Command,
-        depth: Depth,
-    ) {
+    fn command_page(&self, page: &mut Page<'_, P>, view: &View<'_>) {
+        let View { at, entry, command, depth } = *view;
         page.paragraph(&format!("{}.", entry.about));
         if depth == Depth::Long && !entry.detail.is_empty() {
             page.paragraph(entry.detail);
@@ -174,13 +177,13 @@ impl<'a, P: Paint> Help<'a, P> {
             let rows: Vec<Row> = entry.children.iter().map(Self::entry_row).collect();
             page.table("Commands", &rows);
         }
-        self.option_groups(page, command, depth);
+        Self::option_groups(page, command, depth);
         if depth == Depth::Long {
-            self.examples(page, entry.examples);
+            Self::examples(page, entry.examples);
             let rows: Vec<Row> =
                 entry.endings.iter().map(|ending| Row::keyed(ending.exit.code().to_string(), ending.about)).collect();
             page.table("Exit codes:", &rows);
-            self.environment_block(page, entry.env);
+            Self::environment_block(page, entry.env);
         }
         page.line(&self.global_pointer(!entry.children.is_empty()));
     }
@@ -205,15 +208,14 @@ impl<'a, P: Paint> Help<'a, P> {
         if command.has_subcommands() {
             words.push("<COMMAND>".to_owned());
         }
-        let head = words.split_first().map_or_else(String::new, |(first, rest)| {
+        words.split_first().map_or_else(String::new, |(first, rest)| {
             let mut line = format!("Usage: {}", self.paint.paint(Face::Literal, first));
             for word in rest {
                 line.push(' ');
                 line.push_str(word);
             }
             line
-        });
-        head
+        })
     }
 
     /// The arguments of `command` that help lists: not its own help and version, not hidden and
@@ -226,7 +228,7 @@ impl<'a, P: Paint> Help<'a, P> {
 
     /// The options of a command under their headings, in the order the headings first appear;
     /// positionals first under `Arguments`.
-    fn option_groups(&self, page: &mut Page<'_, P>, command: &Command, depth: Depth) {
+    fn option_groups(page: &mut Page<'_, P>, command: &Command, depth: Depth) {
         let mut headings: Vec<(&str, Vec<Row>)> = Vec::new();
         for arg in Self::shown(command) {
             let heading = if arg.is_positional() { "Arguments" } else { arg.get_help_heading().unwrap_or("Options") };
@@ -273,7 +275,7 @@ impl<'a, P: Paint> Help<'a, P> {
     }
 
     /// An `Examples:` table.
-    fn examples(&self, page: &mut Page<'_, P>, examples: &[crate::tree::Example]) {
+    fn examples(page: &mut Page<'_, P>, examples: &[crate::tree::Example]) {
         if !examples.is_empty() {
             let rows: Vec<Row> = examples.iter().map(|example| Row::typed(example.line, example.about)).collect();
             page.table("Examples:", &rows);
@@ -281,7 +283,7 @@ impl<'a, P: Paint> Help<'a, P> {
     }
 
     /// An `Environment:` table.
-    fn environment_block(&self, page: &mut Page<'_, P>, variables: &[Variable]) {
+    fn environment_block(page: &mut Page<'_, P>, variables: &[Variable]) {
         if !variables.is_empty() {
             let rows: Vec<Row> = variables.iter().map(|variable| Row::typed(variable.name, variable.about)).collect();
             page.table("Environment:", &rows);
@@ -325,19 +327,19 @@ impl<'a, P: Paint> Help<'a, P> {
             Depth::Long => arg.get_long_help().or_else(|| arg.get_help()),
             Depth::Short => arg.get_help(),
         };
-        let mut right = text.map(ToString::to_string).unwrap_or_default();
+        let mut notes: Vec<String> = text.map(ToString::to_string).into_iter().collect();
         let defaults: Vec<String> =
             arg.get_default_values().iter().map(|value| value.to_string_lossy().into_owned()).collect();
         if arg.get_action().takes_values()
             && !defaults.is_empty()
             && !arg.is_hide_default_value_set()
-            && !right.contains("[default")
+            && !notes.iter().any(|note| note.contains("[default"))
         {
-            right.push_str(&format!(" [default: {}]", defaults.join(", ")));
+            notes.push(format!("[default: {}]", defaults.join(", ")));
         }
         if let Some(variable) = arg.get_env() {
-            right.push_str(&format!(" [env: {}]", variable.to_string_lossy()));
+            notes.push(format!("[env: {}]", variable.to_string_lossy()));
         }
-        Row::typed(left, right)
+        Row::typed(left, notes.join(" "))
     }
 }

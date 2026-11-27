@@ -22,7 +22,7 @@ impl<'a> Manual<'a> {
     }
 
     /// The page as roff.
-    pub(crate) fn render(&self) -> std::io::Result<String> {
+    pub(crate) fn render(self) -> std::io::Result<String> {
         let man = Man::new(self.tree.command());
         let mut bytes: Vec<u8> = Vec::new();
         man.render_title(&mut bytes)?;
@@ -37,7 +37,7 @@ impl<'a> Manual<'a> {
     }
 
     /// The sections clap has no place for.
-    fn sections(&self) -> Roff {
+    fn sections(self) -> Roff {
         let mut roff = Roff::new();
         roff.control("SH", ["EXAMPLES"]);
         for example in self.every(|entry| entry.examples.iter().map(|example| (example.line, example.about)).collect())
@@ -61,9 +61,9 @@ impl<'a> Manual<'a> {
     }
 
     /// What `pick` gives for the root, then for every entry.
-    fn every(&self, pick: impl Fn(&Entry) -> Vec<(&'static str, &'static str)>) -> Vec<(&'static str, &'static str)> {
+    fn every(self, pick: impl Fn(&Entry) -> Vec<(&'static str, &'static str)>) -> Vec<(&'static str, &'static str)> {
         let root = self.tree.examples.iter().map(|example| (example.line, example.about));
-        root.chain(self.entries().flat_map(|entry| pick(entry))).collect()
+        root.chain(self.entries().flat_map(pick)).collect()
     }
 }
 

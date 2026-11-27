@@ -30,10 +30,10 @@ use wire::{Listed, Pointer as Moved, Row, Shown};
 #[derive(Debug, Args)]
 #[command(next_help_heading = Heading::ACCOUNT)]
 pub struct Remote {
-    /// The API's address, `http://host[:port]` [env: INK_API; config: account.api].
+    /// The API's address, `http://host[:port]`; `account.api` in the config file.
     #[arg(long, value_name = "URL", env = "INK_API")]
     pub api: Option<String>,
-    /// The site's id [env: INK_SITE; config: account.site].
+    /// The site's id; `account.site` in the config file.
     #[arg(long, value_name = "ID", env = "INK_SITE")]
     pub site: Option<String>,
     /// Seconds one call may take.
@@ -347,7 +347,6 @@ mod test {
         let history = History(&rows);
         assert_eq!(history.find("1").unwrap().files, 61);
         assert!(matches!(history.find("3"), Err(Failure::Unknown { .. })));
-        let both = format!("{FIRST}");
-        assert!(history.find(&both).is_ok());
+        assert!(history.find(FIRST).is_ok());
     }
 }

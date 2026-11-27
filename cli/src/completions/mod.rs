@@ -51,7 +51,7 @@ impl Shell {
 
     /// The shell's name as `--help` shows it.
     pub(crate) fn name(self) -> String {
-        self.to_possible_value().map(|value| value.get_name().to_owned()).unwrap_or_default()
+        self.to_possible_value().map_or_else(String::new, |value| value.get_name().to_owned())
     }
 }
 

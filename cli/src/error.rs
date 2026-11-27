@@ -369,6 +369,7 @@ impl std::error::Error for Error {
             | Self::Run { source }
             | Self::Terminal { source }
             | Self::Listen { source, .. }
+            | Self::Manual { source }
             | Self::Component { source, .. } => Some(source),
             Self::Plugin { source } => Some(source),
             Self::Deploys { source } => Some(source),
@@ -381,7 +382,6 @@ impl std::error::Error for Error {
             Self::Deploy { source } => source.source(),
             Self::Preferences { source } => source.source(),
             Self::Help { source } => source.source(),
-            Self::Manual { source } => Some(source),
             Self::Output(_)
             | Self::Unbundled { .. }
             | Self::Format { .. }

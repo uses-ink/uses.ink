@@ -28,7 +28,8 @@ struct Said<'a> {
 struct Script<'a> {
     schema: &'static str,
     name: &'a str,
-    script: &'a str,
+    #[serde(rename = "script")]
+    content: &'a str,
 }
 
 impl Explain {
@@ -58,14 +59,14 @@ impl Completions {
     fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
         let script = self.shell.script(&Tree::ink().command());
         io.line(script.trim_end())?;
-        io.json(&Script { schema: "uses.script/v1", name: &self.shell.name(), script: &script })?;
+        io.json(&Script { schema: "uses.script/v1", name: &self.shell.name(), content: &script })?;
         Ok(Exit::Done)
     }
 }
 
 impl Topic {
     /// Prints the help of a topic.
-    fn run(self, settings: &Settings, io: &mut Io<'_>) -> Result<Exit, Error> {
+    fn run(self, settings: Settings, io: &mut Io<'_>) -> Result<Exit, Error> {
         let help = Help::new(Tree::ink(), Painter::of(settings.color), crate::help::Columns::of(&Process));
         let text = help.topic(&self.words).map_err(|source| Error::Help { source })?;
         io.line(text.trim_end())?;
@@ -77,7 +78,7 @@ impl Topic {
 impl Command {
     /// Runs the command in the site's folder `site`.
     #[expect(clippy::too_many_lines, reason = "one arm for each command")]
-    pub(crate) fn run(self, site: PathBuf, settings: &Settings, io: &mut Io<'_>) -> Result<Exit, Error> {
+    pub(crate) fn run(self, site: PathBuf, settings: Settings, io: &mut Io<'_>) -> Result<Exit, Error> {
         match self {
             Self::Check(mut check) => {
                 check.dir = site;
@@ -112,7 +113,7 @@ impl Command {
             Self::Man => {
                 let page = Manual::of(Tree::ink()).render().map_err(|source| Error::Manual { source })?;
                 io.line(page.trim_end())?;
-                io.json(&Script { schema: "uses.script/v1", name: "man", script: &page })?;
+                io.json(&Script { schema: "uses.script/v1", name: "man", content: &page })?;
                 Ok(Exit::Done)
             }
             Self::Help(topic) => topic.run(settings, io),

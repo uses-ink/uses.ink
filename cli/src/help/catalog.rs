@@ -128,7 +128,7 @@ impl Meaning {
                 page.heading(code.name());
                 let scope = match code.scope() {
                     Scope::Site => "decided once for the site",
-                    _ => "decided for each file",
+                    Scope::File => "decided for each file",
                 };
                 page.paragraph(&format!("A decision, {scope}. `ink explain` lists what was decided, `ink explain --why {}` replays the ladder that decided it, and `ink pin` writes the value into ink.toml.", code.name()));
             }

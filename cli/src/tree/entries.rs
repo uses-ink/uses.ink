@@ -72,37 +72,39 @@ const SITE_ENV: &[Variable] = &[
     },
 ];
 
-/// A command that has not been built: it is in help, marked, and refuses with a typed error.
-const fn pending(name: &'static str, group: Group, about: &'static str) -> Entry {
-    Entry {
-        name,
-        aliases: &[],
-        group,
-        hidden: false,
-        about,
-        detail: "",
-        status: Status::Pending { milestone: "M3" },
-        examples: &[],
-        endings: PENDING,
-        env: SOURCE_ENV,
-        children: &[],
+impl Entry {
+    /// A command that has not been built: it is in help, marked, and refuses with a typed error.
+    pub(super) const fn pending(name: &'static str, group: Group, about: &'static str) -> Entry {
+        Entry {
+            name,
+            aliases: &[],
+            group,
+            hidden: false,
+            about,
+            detail: "",
+            status: Status::Pending { milestone: "M3" },
+            examples: &[],
+            endings: PENDING,
+            env: SOURCE_ENV,
+            children: &[],
+        }
     }
-}
 
-/// A command that works, with nothing yet said about it but its name and what it does.
-const fn built(name: &'static str, group: Group, about: &'static str) -> Entry {
-    Entry {
-        name,
-        aliases: &[],
-        group,
-        hidden: false,
-        about,
-        detail: "",
-        status: Status::Built,
-        examples: &[],
-        endings: READ,
-        env: SOURCE_ENV,
-        children: &[],
+    /// A command that works, with nothing yet said about it but its name and what it does.
+    pub(super) const fn built(name: &'static str, group: Group, about: &'static str) -> Entry {
+        Entry {
+            name,
+            aliases: &[],
+            group,
+            hidden: false,
+            about,
+            detail: "",
+            status: Status::Built,
+            examples: &[],
+            endings: READ,
+            env: SOURCE_ENV,
+            children: &[],
+        }
     }
 }
 
@@ -111,7 +113,7 @@ const DEPLOY_CHILDREN: &[Entry] = &[
         examples: &[Example { line: "ink deploy list --limit 5", about: "The five newest deploys" }],
         endings: REMOTE,
         env: SITE_ENV,
-        ..built("list", Group::Publish, "History, newest first (also: ink deploys)")
+        ..Entry::built("list", Group::Publish, "History, newest first (also: ink deploys)")
     },
     Entry {
         examples: &[Example {
@@ -120,24 +122,24 @@ const DEPLOY_CHILDREN: &[Entry] = &[
         }],
         endings: REMOTE,
         env: SITE_ENV,
-        ..built("show", Group::Publish, "One deploy: its build and its log")
+        ..Entry::built("show", Group::Publish, "One deploy: its build and its log")
     },
     Entry {
         examples: &[Example { line: "ink deploy rollback 4mq8c1", about: "Serve the earlier deploy again" }],
         endings: REMOTE,
         env: SITE_ENV,
-        ..built("rollback", Group::Publish, "Make an earlier deploy the live one, and pause new deploys")
+        ..Entry::built("rollback", Group::Publish, "Make an earlier deploy the live one, and pause new deploys")
     },
     Entry {
         examples: &[Example { line: "ink deploy resume", about: "Deploy new pushes again" }],
         endings: REMOTE,
         env: SITE_ENV,
-        ..built("resume", Group::Publish, "Let the site deploy new pushes again after a rollback")
+        ..Entry::built("resume", Group::Publish, "Let the site deploy new pushes again after a rollback")
     },
 ];
 
 const ENTRIES: &[Entry] = &[
-    Entry { ..pending("init", Group::Write, "Link this folder to a site, without publishing it") },
+    Entry { ..Entry::pending("init", Group::Write, "Link this folder to a site, without publishing it") },
     Entry {
         aliases: &["c"],
         detail: "The folder is read and interpreted exactly as a build would; nothing is written.",
@@ -146,7 +148,7 @@ const ENTRIES: &[Entry] = &[
             Example { line: "ink check --strict", about: "The same, but a warning is an exit 6" },
         ],
         endings: CHECK,
-        ..built("check", Group::Write, "Read the folder and report what is wrong; writes nothing")
+        ..Entry::built("check", Group::Write, "Read the folder and report what is wrong; writes nothing")
     },
     Entry {
         aliases: &["b"],
@@ -157,12 +159,12 @@ const ENTRIES: &[Entry] = &[
             Example { line: "ink -C garden build -o public", about: "Build another folder into ./public" },
         ],
         endings: BUILD,
-        ..built("build", Group::Write, "Build the folder into an output folder and print its deploy id")
+        ..Entry::built("build", Group::Write, "Build the folder into an output folder and print its deploy id")
     },
     Entry {
         examples: &[Example { line: "ink preview --port 4100", about: "Preview on 127.0.0.1:4100" }],
         endings: SERVER,
-        ..built("preview", Group::Write, "Build in memory and serve it on 127.0.0.1 while you write")
+        ..Entry::built("preview", Group::Write, "Build in memory and serve it on 127.0.0.1 while you write")
     },
     Entry {
         detail: "Unlike preview, this serves what `ink build` already wrote, through the edge crate the product uses: conditional and range requests, the host and path refusals, the request and response budgets, and the manifest's headers as they are in production.",
@@ -171,35 +173,35 @@ const ENTRIES: &[Entry] = &[
             Example { line: "ink -C garden serve", about: "Serve .ink/out of another folder" },
         ],
         endings: SERVER,
-        ..built("serve", Group::Write, "Serve a built deploy the way production does")
+        ..Entry::built("serve", Group::Write, "Serve a built deploy the way production does")
     },
     Entry {
         examples: &[
             Example { line: "ink explain posts/a.md", about: "Why one file looks the way it does" },
             Example { line: "ink explain posts/a.md --why page.title", about: "Replay one decision, rung by rung" },
         ],
-        ..built("explain", Group::Understand, "Show the decisions behind the site, or behind one file")
+        ..Entry::built("explain", Group::Understand, "Show the decisions behind the site, or behind one file")
     },
     Entry {
         examples: &[
             Example { line: "ink pin posts/a.md page.title", about: "Write that file's title decision into ink.toml" },
             Example { line: "ink pin site.title --dry-run", about: "Print the pin and write nothing" },
         ],
-        ..built("pin", Group::Understand, "Write one decision's value into ink.toml")
+        ..Entry::built("pin", Group::Understand, "Write one decision's value into ink.toml")
     },
     Entry {
         examples: &[
             Example { line: "ink select", about: "List every page, whether it is published, and why" },
             Example { line: "ink select notes/trip.md", about: "Publish one page of a vault" },
         ],
-        ..built("select", Group::Understand, "List what is published and why, or choose what to publish")
+        ..Entry::built("select", Group::Understand, "List what is published and why, or choose what to publish")
     },
-    pending("login", Group::Publish, "Sign in to uses.ink"),
-    pending("logout", Group::Publish, "Sign out"),
-    pending("whoami", Group::Publish, "Show who you are signed in as"),
-    pending("push", Group::Publish, "Send the folder to its site and start a deploy"),
-    pending("status", Group::Publish, "Show what is live and what is building"),
-    pending("watch", Group::Publish, "Wait for the next deploy of this commit and report it"),
+    Entry::pending("login", Group::Publish, "Sign in to uses.ink"),
+    Entry::pending("logout", Group::Publish, "Sign out"),
+    Entry::pending("whoami", Group::Publish, "Show who you are signed in as"),
+    Entry::pending("push", Group::Publish, "Send the folder to its site and start a deploy"),
+    Entry::pending("status", Group::Publish, "Show what is live and what is building"),
+    Entry::pending("watch", Group::Publish, "Wait for the next deploy of this commit and report it"),
     Entry {
         children: DEPLOY_CHILDREN,
         examples: &[
@@ -208,29 +210,29 @@ const ENTRIES: &[Entry] = &[
         ],
         endings: REMOTE,
         env: SITE_ENV,
-        ..built("deploy", Group::Publish, "List, read, roll back and resume deploys")
+        ..Entry::built("deploy", Group::Publish, "List, read, roll back and resume deploys")
     },
     Entry {
         hidden: true,
         endings: REMOTE,
         env: SITE_ENV,
-        ..built("deploys", Group::Publish, "History of deploys, newest first")
+        ..Entry::built("deploys", Group::Publish, "History of deploys, newest first")
     },
-    pending("export", Group::Publish, "Write the whole site, source and history, to a folder"),
+    Entry::pending("export", Group::Publish, "Write the whole site, source and history, to a folder"),
     Entry {
         examples: &[
             Example { line: "ink completions bash", about: "Print the bash script; see `ink help completions`" },
             Example { line: "ink completions nushell", about: "Print the nushell script" },
         ],
-        ..built("completions", Group::Tools, "Print a completion script for your shell")
+        ..Entry::built("completions", Group::Tools, "Print a completion script for your shell")
     },
-    built("man", Group::Tools, "Print the manual page"),
+    Entry::built("man", Group::Tools, "Print the manual page"),
     Entry {
         examples: &[
             Example { line: "ink help exit", about: "The exit codes" },
             Example { line: "ink help page.title", about: "What a decision or diagnostic code means" },
         ],
-        ..built("help", Group::Tools, "Show this message, or the help of one command")
+        ..Entry::built("help", Group::Tools, "Show this message, or the help of one command")
     },
 ];
 
