@@ -56,6 +56,20 @@ fn build(root: &Path) -> PathBuf {
     out
 }
 
+/// Copies the folder `from` into `to`, whole.
+fn copy(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for entry in std::fs::read_dir(from).unwrap() {
+        let entry = entry.unwrap();
+        let target = to.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            copy(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), target).unwrap();
+        }
+    }
+}
+
 /// Runs `ink serve <args>` in a thread and returns its port.
 fn serve(args: &[&str]) -> u16 {
     let mut full = vec!["ink", "serve"];
@@ -186,13 +200,7 @@ fn serves_a_folder_of_deploys_by_host() {
     let hosts = root.join("hosts");
     let one = hosts.join("notes.example");
     std::fs::create_dir_all(&one).unwrap();
-    for entry in std::fs::read_dir(&out).unwrap() {
-        let entry = entry.unwrap();
-        if entry.file_type().unwrap().is_dir() {
-            continue;
-        }
-        std::fs::copy(entry.path(), one.join(entry.file_name())).unwrap();
-    }
+    copy(&out, &one);
     let port = serve(&[hosts.to_str().unwrap(), "--host-mode", "folders"]);
     assert_eq!(fetch(port, "GET", "/tea", "notes.example", &[]).status(), "200");
     assert_eq!(fetch(port, "GET", "/tea", "NOTES.example:8080", &[]).status(), "200");
@@ -207,9 +215,9 @@ fn a_folder_that_is_no_deploy_is_refused() {
     let root = scratch("empty");
     let (exit, _, err) = ink(&["serve", root.to_str().unwrap(), "--host-mode", "single", "--addr", "127.0.0.1:0"]);
     assert_eq!(exit, cli::Exit::Usage);
-    assert!(err.contains("serve.folder.unservable"), "{err}");
+    assert!(err.contains("is not a deploy `ink serve` can serve"), "{err}");
     let missing = root.join("nothing-here");
     let (exit, _, err) = ink(&["serve", missing.to_str().unwrap(), "--addr", "127.0.0.1:0"]);
     assert_eq!(exit, cli::Exit::Usage, "a folder that does not exist serves nothing, said aloud: {err}");
-    assert!(err.contains("serve.folder.unservable"), "{err}");
+    assert!(err.contains("is not a deploy `ink serve` can serve"), "{err}");
 }
