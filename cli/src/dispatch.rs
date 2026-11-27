@@ -67,7 +67,11 @@ impl Completions {
 impl Topic {
     /// Prints the help of a topic.
     fn run(self, settings: Settings, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let help = Help::new(Tree::ink(), Painter::of(settings.color), crate::help::Columns::of(&Process));
+        let help = Help::new(
+            Tree::ink(),
+            Painter::of(settings.color, &crate::help::Detect::new(&Process, crate::help::Stream::Out.is_terminal())),
+            crate::help::Columns::of(&Process),
+        );
         let text = help.topic(&self.words).map_err(|source| Error::Help { source })?;
         io.line(text.trim_end())?;
         io.json(&Said { schema: "uses.help/v1", text: &text })?;

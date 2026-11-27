@@ -81,10 +81,10 @@ impl Cli {
             Ok(cli) => Ok(cli.run(out, err)),
             Err(error) => match error.kind() {
                 clap::error::ErrorKind::DisplayHelp => {
-                    Self::help(&args, help::Depth::of(&args), out).map(|()| Exit::Done)
+                    Self::help(&args, help::Depth::of(&args), (out, help::Stream::Out)).map(|()| Exit::Done)
                 }
                 clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
-                    Self::help(&args, help::Depth::Short, err).map(|()| Exit::Usage)
+                    Self::help(&args, help::Depth::Short, (err, help::Stream::Err)).map(|()| Exit::Usage)
                 }
                 _ if json && error.use_stderr() => {
                     let mut io = output::Io::new(out, err, true, output::Level::Warning);
@@ -99,10 +99,14 @@ impl Cli {
     }
 
     /// Writes the help of the command `args` name to `into`.
-    fn help(args: &[std::ffi::OsString], depth: help::Depth, into: &mut dyn std::io::Write) -> Result<(), clap::Error> {
+    fn help(
+        args: &[std::ffi::OsString],
+        depth: help::Depth,
+        (into, stream): (&mut dyn std::io::Write, help::Stream),
+    ) -> Result<(), clap::Error> {
         let words: Vec<String> = args.iter().skip(1).filter_map(|arg| arg.to_str()).map(str::to_owned).collect();
         let tree = tree::Tree::ink();
-        let painter = help::Painter::declared(args, &settings::Process);
+        let painter = help::Painter::declared(args, &settings::Process, stream);
         let text = help::Help::new(tree, painter, help::Columns::of(&settings::Process))
             .render(&tree::Located::walk(tree, &words), depth);
         write!(into, "{text}").map_err(clap::Error::from)
