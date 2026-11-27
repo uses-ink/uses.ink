@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ink CLI preview</title>
+<style>
+:root{--bg:#ffffff;--fg:#000000;--bad:#c4160b;--good:#1a7f37;--warn:#8a5a00;--lit:#0b6b7e;--work:#0b6b7e;--id:#a4308a;--place:#1f5fbf;--code:#1f5fbf;--quiet:#5c5c5c;--paper:#f6f6f4;--line:#dcdcd6}
+@media (prefers-color-scheme: dark){:root{--bg:#171717;--fg:#e8e8e8;--bad:#ff7a6e;--good:#62d68f;--warn:#e6c34a;--lit:#5fd0e0;--work:#5fd0e0;--id:#e08ae0;--place:#7aa7ff;--code:#7aa7ff;--quiet:#9a9a9a;--paper:#202020;--line:#333}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{max-width:60rem;margin:0 auto;padding:2rem 1rem 4rem}
+h1{font-size:1.4rem;margin:0 0 .25rem} h2{font-size:1.05rem;margin:2.5rem 0 .75rem;border-bottom:1px solid var(--line);padding-bottom:.25rem}
+p.lead{color:var(--quiet);margin:0 0 1rem;max-width:44rem}
+figure{margin:1rem 0} figcaption{font-size:.85rem;margin-bottom:.3rem} figcaption .d{color:var(--quiet)}
+pre{margin:0;padding:.9rem 1rem;background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow-x:auto;font:13.5px/1.45 ui-monospace,"Monaspace Radon",Menlo,Consolas,monospace;color:var(--fg);white-space:pre}
+table{border-collapse:collapse;font-size:.85rem} td{padding:.2rem 1rem .2rem 0;vertical-align:top}
+td:first-child{font:13.5px ui-monospace,Menlo,Consolas,monospace}
+.r-head,.r-subject,.r-bold{font-weight:700}
+.r-lit{color:var(--lit);font-weight:700} .r-good{color:var(--good)} .r-goodb{color:var(--good);font-weight:700}
+.r-warn{color:var(--warn)} .r-warnb{color:var(--warn);font-weight:700} .r-bad{color:var(--bad)} .r-badb{color:var(--bad);font-weight:700}
+.r-work{color:var(--work)} .r-id{color:var(--id)} .r-place{color:var(--place)} .r-code{color:var(--code)} .r-quiet{color:var(--quiet)}
+</style></head><body><main>
+<h1>ink CLI preview</h1>
+<p class="lead">The mock-ups of docs/cli.md with the colour roles applied. Colours are stand-ins for the 8 ANSI colours of a light and a dark terminal theme; a real terminal uses its own. Follows your system light or dark setting. Proposed, decision 0061.</p>
+<h2>Colour roles</h2>
+<table><tr><td></td><td>style</td><td>used for</td></tr><tr><td><span class="r-head">Heading</span></td><td>bold, no colour</td><td>section headings, subjects</td></tr><tr><td><span class="r-lit">Literal</span></td><td>cyan bold</td><td>what you can type</td></tr><tr><td><span class="r-good">Good</span></td><td>green</td><td>finished, added, live</td></tr><tr><td><span class="r-warn">Warn</span></td><td>yellow</td><td>look at this</td></tr><tr><td><span class="r-bad">Bad</span></td><td>red</td><td>errors, removed, failed</td></tr><tr><td><span class="r-work">Work</span></td><td>cyan</td><td>in progress</td></tr><tr><td><span class="r-id">Id</span></td><td>magenta</td><td>ids, pins</td></tr><tr><td><span class="r-place">Place</span></td><td>blue</td><td>file:line, gutters</td></tr><tr><td><span class="r-code">Code</span></td><td>blue</td><td>catalog codes</td></tr><tr><td><span class="r-quiet">Quiet</span></td><td>faint</td><td>evidence, rails, headers</td></tr></table>
+<h2>Help</h2>
+<figure><figcaption><strong>ink --help</strong> <span class="d">The root help: commands in titled groups, then global options, examples.</span></figcaption><pre>Turn a folder of writing into a site, and publish it.
+
+<span class="r-head">Usage:</span> <span class="r-lit">ink</span> [OPTIONS] &lt;COMMAND&gt;
+
+<span class="r-head">Write</span>
+  <span class="r-lit">init</span>         Link this folder to a site, without publishing it
+  <span class="r-lit">check, c</span>     Read the folder and report what is wrong; writes nothing
+  <span class="r-lit">build, b</span>     Build the folder into an output folder and print its deploy id
+  <span class="r-lit">preview</span>      Build in memory and serve it on 127.0.0.1 while you write
+  <span class="r-lit">serve</span>        Serve a built deploy the way production does
+
+<span class="r-head">Understand</span>
+  <span class="r-lit">explain</span>      Show the decisions behind the site, or behind one file
+  <span class="r-lit">pin</span>          Write one decision's value into ink.toml
+  <span class="r-lit">select</span>       List what is published and why, or choose what to publish
+
+<span class="r-head">Publish</span>
+  <span class="r-lit">login</span>        Sign in to uses.ink
+  <span class="r-lit">logout</span>       Sign out
+  <span class="r-lit">whoami</span>       Show who you are signed in as
+  <span class="r-lit">push</span>         Send the folder to its site and start a deploy
+  <span class="r-lit">status</span>       Show what is live and what is building
+  <span class="r-lit">watch</span>        Wait for the next deploy of this commit and report it
+  <span class="r-lit">deploy</span>       List, read, roll back and resume deploys
+  <span class="r-lit">export</span>       Write the whole site, source and history, to a folder
+
+<span class="r-head">Tools</span>
+  <span class="r-lit">completions</span>  Print a completion script for your shell
+  <span class="r-lit">man</span>          Print the manual page
+  <span class="r-lit">help</span>         Show this message, or the help of one command
+
+<span class="r-head">Global options:</span>
+  <span class="r-lit">-C, --dir</span> &lt;DIR&gt;     The site's folder [default: .]
+  <span class="r-lit">    --json</span>          One JSON document on stdout, diagnostics as NDJSON on stderr
+  <span class="r-lit">-q, --quiet</span>...      Say less: -q drops progress, -qq leaves only errors
+  <span class="r-lit">-v, --verbose</span>...    Say more: -v adds notices, -vv adds every file
+  <span class="r-lit">    --color</span> &lt;WHEN&gt;  auto, always or never [default: auto]
+  <span class="r-lit">    --no-progress</span>   Print log lines only, no live redraw
+  <span class="r-lit">-h, --help</span>          Print help (-h is short, --help is long)
+  <span class="r-lit">-V, --version</span>       Print the version
+
+<span class="r-head">Examples:</span>
+  <span class="r-lit">ink check</span>                 Read this folder and list its problems
+  <span class="r-lit">ink build -o public</span>       Build into ./public
+  <span class="r-lit">ink explain posts/a.md</span>    Why one file looks the way it does
+  <span class="r-lit">ink select notes/trip.md</span>  Publish one page of a vault
+
+See <span class="r-lit">ink help &lt;command&gt;</span> for one command, and <span class="r-lit">ink help exit</span> for exit codes.</pre></figure>
+<figure><figcaption><strong>ink deploy --help</strong> <span class="d">A noun group lists its verbs and nothing else of its own.</span></figcaption><pre>List, read, roll back and resume the deploys of a site.
+
+<span class="r-head">Usage:</span> <span class="r-lit">ink deploy</span> [OPTIONS] &lt;COMMAND&gt;
+
+<span class="r-head">Commands</span>
+  <span class="r-lit">list</span>      History, newest first <span class="r-quiet">(also: ink deploys)</span>
+  <span class="r-lit">show</span>      One deploy: its log, its diagnostics and what its decisions changed
+  <span class="r-lit">rollback</span>  Make an earlier deploy the live one, and pause new deploys
+  <span class="r-lit">resume</span>    Let the site deploy new pushes again after a rollback
+
+<span class="r-head">Examples:</span>
+  <span class="r-lit">ink deploy list --limit 5</span>         The five newest deploys
+  <span class="r-lit">ink deploy show 5kq3v9m2tj7r</span>      What that deploy built, and why it differs
+  <span class="r-lit">ink deploy rollback 4mq8c1d0wz5e</span>  Serve the earlier deploy again
+
+<span class="r-head">Global options:</span> <span class="r-quiet">(as in `ink --help`)</span>
+<span class="r-head">Exit codes:</span> <span class="r-quiet">(see `ink help exit`)</span></pre></figure>
+<figure><figcaption><strong>ink build --help</strong> <span class="d">A leaf: option groups, examples, only the exit codes it can end with.</span></figcaption><pre>Build the folder into an output folder and print its deploy id.
+
+The folder is read, interpreted and rendered in full before the output folder is
+touched. A build that fails, or warns under --strict, writes nothing: the previous
+build stays as it was.
+
+<span class="r-head">Usage:</span> <span class="r-lit">ink build</span> [OPTIONS]
+
+<span class="r-head">Output</span>
+  <span class="r-lit">-o, --out</span> &lt;DIR&gt;         Where to write the site [default: .ink/out]
+  <span class="r-lit">    --base</span> &lt;URL&gt;        The address the site is served at, for feeds and canonical links
+  <span class="r-lit">    --strict</span>            Exit 6 on warnings, and write nothing
+
+<span class="r-head">Source</span>
+  <span class="r-lit">    --source</span> &lt;KIND&gt;     folder reads the files on disk, git reads a commit
+  <span class="r-quiet"></span>                        <span class="r-quiet">[default: git when .git exists, said as a notice]</span>
+  <span class="r-lit">    --rev</span> &lt;REV&gt;         The commit to read, as `git rev-parse` takes it [default: HEAD]
+
+<span class="r-head">Work</span>
+  <span class="r-lit">    --cache</span> &lt;DIR&gt;       Where to keep work between builds [default: .ink/cache]
+
+<span class="r-head">Verification</span>
+  <span class="r-lit">    --check</span>             Build natively and through the wasm components; fail if they differ
+  <span class="r-lit">    --components</span> &lt;DIR&gt;  Components that replace the bundled ones (with --check)
+
+<span class="r-head">Examples:</span>
+  <span class="r-lit">ink build</span>                      Build this folder into .ink/out
+  <span class="r-lit">ink build --strict</span>             The same, but a warning stops the build
+  <span class="r-lit">ink -C garden build -o public</span>  Build another folder into ./public
+
+<span class="r-head">Exit codes:</span>
+  <span class="r-lit">0</span>  Built; warnings, if any, were printed
+  <span class="r-lit">1</span>  The site has errors; nothing was written
+  <span class="r-lit">2</span>  Wrong usage, or an output folder ink will not write into; nothing was changed
+  <span class="r-lit">6</span>  --strict was given and there were warnings; nothing was written
+
+<span class="r-head">Global options:</span> <span class="r-quiet">-C, --json, -q, -v, --color, --no-progress (see `ink --help`)</span></pre></figure>
+<h2>Build and check</h2>
+<figure><figcaption><strong>ink build, success</strong> <span class="d">Stage lines on stderr, the deploy id alone on stdout.</span></figcaption><pre>        <span class="r-good">Read</span>  214 files from git <span class="r-id">9f3c2a1b4d7e</span>
+  <span class="r-good">Understood</span>  61 pages, 312 decisions
+    <span class="r-good">Rendered</span>  61 pages, 118 images in 1.4 s <span class="r-quiet">(97 reused, 21 made)</span>
+     <span class="r-good">Changes</span>  first build in .ink/out
+       <span class="r-goodb">Built</span>  187 files in .ink/out, 1.9 s
+<span class="r-id">5kq3v9m2tj7r</span></pre></figure>
+<figure><figcaption><strong>ink build, with a warning and a change set</strong> <span class="d">A diagnostic between stage lines; newly public heads the change set.</span></figcaption><pre>        <span class="r-good">Read</span>  214 files from git <span class="r-id">9f3c2a1b4d7e</span>
+  <span class="r-good">Understood</span>  61 pages, 312 decisions
+
+<span class="r-warnb">warning</span><span class="r-warn">[link.target.ambiguous]</span><span class="r-head">: `[[trip]]` could be any of notes/trip.md, archive/trip.md</span>
+  <span class="r-place">--&gt;</span> journal/2026-01-04.md:9:12
+   <span class="r-place">|</span>
+ <span class="r-place">9 |</span> We left on [[trip]] day, early.
+   <span class="r-place">|</span>            <span class="r-warn">^^^^^^^^</span>
+   <span class="r-place">|</span>
+  <span class="r-lit">fix:</span> write the path of the one you mean
+
+    <span class="r-good">Rendered</span>  61 pages, 118 images in 1.4 s <span class="r-quiet">(97 reused, 21 made)</span>
+     <span class="r-good">Changes</span>  2 newly public, 1 no longer public, 1 moved, 5 decisions changed
+
+<span class="r-head">newly public</span> (2)
+  <span class="r-good">+</span> notes/trip.md        /notes/trip/
+  <span class="r-good">+</span> notes/trip/day-1.md  /notes/trip/day-1/
+<span class="r-quiet">  ... and 3 more; the full change set is in `ink build --json`</span>
+
+       <span class="r-goodb">Built</span>  187 files in .ink/out, 1.9 s, <span class="r-warn">1 warning</span> <span class="r-quiet">(ink check lists it again)</span>
+<span class="r-id">5kq3v9m2tj7r</span></pre></figure>
+<figure><figcaption><strong>ink check, with diagnostics</strong> <span class="d">An error without a span, a warning with a styled snippet, a verdict in the colour of the worst count.</span></figcaption><pre><span class="r-badb">error</span><span class="r-bad">[page.route.collision]</span><span class="r-head">: notes/a.md, notes/a/index.md and notes/a/README.md all route to /notes/a/</span>
+  <span class="r-lit">fix:</span> pin a different `page.slug` on all but one
+
+<span class="r-warnb">warning</span><span class="r-warn">[frontmatter.value.invalid]</span><span class="r-head">: the frontmatter's `date` takes a date, so it is ignored</span>
+  <span class="r-place">--&gt;</span> posts/b.md:3:7
+   <span class="r-place">|</span>
+ <span class="r-place">3 |</span> date: sometime in May
+   <span class="r-place">|</span>       <span class="r-warn">^^^^^^^^^^^^^^^</span>
+   <span class="r-place">|</span>
+  <span class="r-lit">fix:</span> change the value at the marked place, or remove the key
+
+     <span class="r-badb">Checked</span>  61 pages, 312 decisions: <span class="r-bad">1 error</span>, <span class="r-warn">2 warnings</span></pre></figure>
+<figure><figcaption><strong>ink check, clean</strong></figcaption><pre>     <span class="r-goodb">Checked</span>  61 pages, 312 decisions: no errors, no warnings</pre></figure>
+<figure><figcaption><strong>A notice (-v)</strong></figcaption><pre><span class="r-head">note</span><span class="r-quiet">[source.git.default]</span><span class="r-head">: reading the git repository, since .git exists</span>
+  <span class="r-lit">fix:</span> pass <span class="r-lit">--source folder</span> to read the files on disk, uncommitted changes included</pre></figure>
+<h2>Errors</h2>
+<figure><figcaption><strong>An error: cause chain, fix, state</strong> <span class="d">Code, sentence, caused by with a rail, fix as the command to type, then what was left behind.</span></figcaption><pre><span class="r-badb">error</span><span class="r-bad">[output.manifest.invalid]</span><span class="r-head">: the earlier build's manifest .ink/out/ink.json does not parse</span>
+  <span class="r-quiet">caused by</span>
+  <span class="r-quiet">╰─</span> expected `,` or `}` at line 1 column 8210
+  <span class="r-lit">fix:</span> build into an empty folder with <span class="r-lit">-o</span>, or remove .ink/out yourself
+  nothing was changed</pre></figure>
+<figure><figcaption><strong>An error with two causes</strong></figcaption><pre><span class="r-badb">error</span><span class="r-bad">[serve.edge.invalid]</span><span class="r-head">: the edge could not be built</span>
+  <span class="r-quiet">caused by</span>
+  <span class="r-quiet">├─</span> the host limits do not describe a server
+  <span class="r-quiet">╰─</span> the request budget (0 B) is below the response budget minimum (4 KiB)
+  <span class="r-lit">fix:</span> raise the budget, or leave it out to use the default
+  nothing was changed</pre></figure>
+<figure><figcaption><strong>A mistyped decision code</strong></figcaption><pre><span class="r-badb">error</span><span class="r-bad">[decision.code.unknown]</span><span class="r-head">: no decision has the code `page.titel`</span>
+  <span class="r-quiet">caused by</span>
+  <span class="r-quiet">╰─</span> the closest codes are page.title and page.tags
+  <span class="r-lit">fix:</span> <span class="r-lit">ink explain</span> lists every decision of the site with its code</pre></figure>
+<figure><figcaption><strong>A usage error</strong> <span class="d">Parsed by clap, worded and coloured by ink.</span></figcaption><pre><span class="r-badb">error</span><span class="r-bad">[cli.usage]</span><span class="r-head">: unexpected argument `--wy`</span>
+  <span class="r-lit">fix:</span> a similar argument exists: <span class="r-lit">--why</span>
+
+<span class="r-head">Usage:</span> <span class="r-lit">ink explain</span> [OPTIONS] [PATH]
+
+For more information, try <span class="r-lit">ink explain --help</span>.</pre></figure>
+<h2>Decisions</h2>
+<figure><figcaption><strong>ink explain</strong> <span class="d">A tree per subject. A pin shows in magenta.</span></figcaption><pre><span class="r-head">garden</span>  <span class="r-quiet">the files on disk, 214 files, 61 pages</span>
+
+<span class="r-head">the source</span>
+<span class="r-quiet">├─</span> version  the files on disk
+<span class="r-quiet">├─</span> has      snapshot, watch
+<span class="r-quiet">╰─</span> lacks    history, so <span class="r-code">page.date</span> is not taken from it
+
+<span class="r-head">site</span>
+<span class="r-quiet">├─</span> <span class="r-code">site.title</span>    Quiet garden         <span class="r-quiet">from the first heading of README.md, line 1</span>
+<span class="r-quiet">├─</span> <span class="r-code">site.format</span>   ink:format-obsidian  <span class="r-quiet">because .obsidian/app.json is there</span>
+<span class="r-quiet">╰─</span> <span class="r-code">site.home</span>     README.md            <span class="r-quiet">by default</span>
+
+<span class="r-head">posts/a.md</span>
+<span class="r-quiet">├─</span> <span class="r-code">page.publish</span>  published            <span class="r-quiet">by default</span>
+<span class="r-quiet">├─</span> <span class="r-code">page.title</span>    A walk in the rain   <span class="r-quiet">from the first heading of posts/a.md, line 1</span>
+<span class="r-quiet">├─</span> <span class="r-code">page.date</span>     2026-01-04           <span class="r-quiet">from the file's modification time</span>
+<span class="r-quiet">╰─</span> <span class="r-code">page.slug</span>     walk                 <span class="r-id">pinned in ink.toml, line 14</span>
+
+<span class="r-quiet">58 more files. ink explain &lt;path&gt; shows one; --all lists the decisions made by default.</span></pre></figure>
+<figure><figcaption><strong>ink explain posts/a.md</strong></figcaption><pre><span class="r-head">posts/a.md</span>  <span class="r-quiet">a page, one of 61</span>
+<span class="r-quiet">├─</span> <span class="r-code">page.publish</span>  published           <span class="r-quiet">by default</span>
+<span class="r-quiet">├─</span> <span class="r-code">page.title</span>    A walk in the rain  <span class="r-quiet">from the first heading of posts/a.md, line 1</span>
+<span class="r-quiet">├─</span> <span class="r-code">page.date</span>     2026-01-04          <span class="r-quiet">from the file's modification time</span>
+<span class="r-quiet">╰─</span> <span class="r-code">page.slug</span>     walk                <span class="r-id">pinned in ink.toml, line 14</span>
+
+<span class="r-quiet">ink explain --why posts/a.md page.date    replays one decision, rung by rung</span></pre></figure>
+<figure><figcaption><strong>ink explain posts/a.md --why page.title</strong> <span class="d">A rail down the rungs; the mark says what each did.</span></figcaption><pre><span class="r-code">page.title</span> on <span class="r-head">posts/a.md</span>
+<span class="r-quiet">╭─</span> <span class="r-head">A walk in the rain</span>, from the first heading of posts/a.md, line 1: rung 3 of 5
+<span class="r-quiet">│</span>
+<span class="r-quiet">│</span> <span class="r-quiet">·</span> <span class="r-quiet">1</span>  pin          <span class="r-quiet">nothing</span>
+<span class="r-quiet">│</span> <span class="r-quiet">·</span> <span class="r-quiet">2</span>  frontmatter  <span class="r-quiet">nothing</span>
+<span class="r-quiet">│</span> <span class="r-goodb">✓</span> <span class="r-goodb">3</span>  heading      A walk in the rain  <span class="r-good">chosen</span>
+<span class="r-quiet">│</span> <span class="r-quiet">–</span> <span class="r-quiet">4</span>  filename     walk                <span class="r-quiet">outranked</span>
+<span class="r-quiet">│</span> <span class="r-quiet">–</span> <span class="r-quiet">5</span>  default      Untitled            <span class="r-quiet">outranked</span>
+<span class="r-quiet">╰─</span> to pin it: <span class="r-lit">ink pin posts/a.md page.title</span></pre></figure>
+<figure><figcaption><strong>ink select</strong> <span class="d">Published first, then private; a glyph and a word for each.</span></figcaption><pre><span class="r-head">garden</span>  <span class="r-quiet">a vault: a page is private until it is selected</span>
+
+<span class="r-good">published</span> (3 of 38)
+  <span class="r-good">●</span> notes/trip.md          publish: true in the frontmatter, line 2
+  <span class="r-good">●</span> notes/trip/day-1.md    matched by `notes/trip/**` in ink.toml, line 7
+  <span class="r-good">●</span> README.md              <span class="r-id">pinned in ink.toml, line 4</span>
+
+<span class="r-quiet">private (35)</span>
+  <span class="r-quiet">○</span> journal/2026-01-04.md  <span class="r-quiet">nothing selected it</span>
+  <span class="r-quiet">○</span> journal/2026-01-05.md  <span class="r-quiet">nothing selected it</span>
+  <span class="r-quiet">  ... and 33 more; --all lists them</span></pre></figure>
+<figure><figcaption><strong>ink select notes/trip.md</strong></figcaption><pre>    <span class="r-goodb">Selected</span>  1 page
+  <span class="r-good">+</span> notes/trip.md  <span class="r-quiet">publish: true added to the frontmatter</span>
+
+<span class="r-quiet">Nothing is public until you build and push: ink build shows it as newly public.</span></pre></figure>
+<figure><figcaption><strong>ink pin posts/a.md page.slug</strong></figcaption><pre>      <span class="r-goodb">Pinned</span>  <span class="r-code">page.slug</span> of posts/a.md in ink.toml, line 14
+  <span class="r-quiet">@@ ink.toml</span>
+  <span class="r-quiet"> [pages."posts/a.md"]</span>
+  <span class="r-good">+page.slug = "walk"</span></pre></figure>
+<figure><figcaption><strong>ink pin --dry-run</strong></figcaption><pre>   <span class="r-work">Would pin</span>  <span class="r-code">page.slug</span> of posts/a.md; ink.toml is unchanged
+  <span class="r-quiet">@@ ink.toml</span>
+  <span class="r-quiet"> [pages."posts/a.md"]</span>
+  <span class="r-good">+page.slug = "walk"</span></pre></figure>
+<h2>Change set</h2>
+<figure><figcaption><strong>The change set</strong> <span class="d">Newly public first. The engine cause is yellow: ink caused that change.</span></figcaption><pre><span class="r-head">Changes</span>  against the previous build in .ink/out, deploy <span class="r-id">4mq8c1d0wz5e</span>
+
+<span class="r-goodb">newly public</span> (2)
+  <span class="r-good">+</span> notes/trip.md        /notes/trip/
+  <span class="r-good">+</span> notes/trip/day-1.md  /notes/trip/day-1/
+
+<span class="r-badb">no longer public</span> (1)
+  <span class="r-bad">-</span> drafts/idea.md       /drafts/idea/    <span class="r-quiet">the address is no longer served</span>
+
+<span class="r-warnb">moved</span> (1)
+  <span class="r-warn">~</span> posts/a.md           /a/ → /posts/a/  <span class="r-quiet">the old address is no longer served</span>
+
+<span class="r-head">decisions changed</span> (5)
+<span class="r-head">posts/b.md</span>
+<span class="r-quiet">├─</span> <span class="r-code">page.title</span>    Notes from the river → River notes  <span class="r-quiet">content</span>
+<span class="r-quiet">╰─</span> <span class="r-code">page.slug</span>     notes-from-the-river → river-notes  <span class="r-quiet">content</span>
+<span class="r-head">notes/trip.md</span>
+<span class="r-quiet">╰─</span> <span class="r-code">page.publish</span>  private → published                 <span class="r-quiet">config, ink.toml line 7</span>
+<span class="r-head">posts/c.md</span>
+<span class="r-quiet">╰─</span> <span class="r-code">page.date</span>     2026-01-04 → 2026-01-05             <span class="r-warn">engine: a change ink caused</span>
+
+2 newly public, 1 no longer public, 1 moved, 5 decisions changed</pre></figure>
+<figure><figcaption><strong>The change set, no change</strong></figcaption><pre><span class="r-head">Changes</span>  against the previous build in .ink/out, deploy <span class="r-id">4mq8c1d0wz5e</span>
+no change</pre></figure>
+<h2>Listings (M3)</h2>
+<figure><figcaption><strong>ink status</strong> <span class="d">A record: keys dim, values in role colours.</span></figcaption><pre><span class="r-head">garden</span>  <span class="r-place">garden.uses.ink</span>
+
+  <span class="r-quiet">live</span>      <span class="r-good">●</span> <span class="r-id">5kq3v9m2tj7r</span>  git <span class="r-id">9f3c2a1b4d7e</span>  2026-11-27 14:03Z  61 pages
+  <span class="r-quiet">latest</span>    <span class="r-work">◐</span> <span class="r-id">7tw2c9d4h8mn</span>  git <span class="r-id">b81e04d2a7c9</span>  building: rendering, 41 of 118 images
+  <span class="r-quiet">source</span>    github.com/ada/garden, branch main
+  <span class="r-quiet">warnings</span>  <span class="r-warn">2</span> on the live deploy; <span class="r-lit">ink deploy show 5kq3v9m2tj7r</span> lists them</pre></figure>
+<figure><figcaption><strong>ink deploy list</strong> <span class="d">A table: state glyph, ids in magenta, header dim (terminal only).</span></figcaption><pre>  <span class="r-quiet">deploy</span>        <span class="r-quiet">when</span>               <span class="r-quiet">source</span>            <span class="r-quiet">pages</span>  <span class="r-quiet">state</span>
+<span class="r-work">◐</span> <span class="r-id">7tw2c9d4h8mn</span>  2026-11-27 14:21Z  git <span class="r-id">b81e04d2a7c9</span>      -  <span class="r-work">building</span>
+<span class="r-good">●</span> <span class="r-id">5kq3v9m2tj7r</span>  2026-11-27 14:03Z  git <span class="r-id">9f3c2a1b4d7e</span>     61  <span class="r-good">live</span>
+<span class="r-bad">✗</span> <span class="r-id">3mj0w2n8c5ab</span>  2026-11-26 09:40Z  git <span class="r-id">71de0c4b9a3f</span>      -  <span class="r-bad">failed</span>: 1 error
+<span class="r-quiet">·</span> <span class="r-id">4mq8c1d0wz5e</span>  2026-11-25 18:12Z  git <span class="r-id">e2a7f60c1d58</span>     58  <span class="r-quiet">superseded</span>
+
+<span class="r-quiet">4 of 31 deploys; --limit shows more</span></pre></figure>
+<h2>Progress</h2>
+<figure><figcaption><strong>Live progress on a terminal</strong> <span class="d">The last line is redrawn in place; finished lines stay.</span></figcaption><pre><span class="r-quiet">(each redraw replaces the last line; the finished lines stay)</span>
+        <span class="r-good">Read</span>  214 files from git <span class="r-id">9f3c2a1b4d7e</span>
+  <span class="r-good">Understood</span>  61 pages, 312 decisions
+   <span class="r-work">Rendering</span>  <span class="r-work">━━━━━━━━━━╸─────────────</span>  41/118 images  <span class="r-quiet">photos/trip-04.jpg</span></pre></figure>
+<figure><figcaption><strong>The same in a log</strong> <span class="d">A heartbeat every five seconds for a long stage, then the finished line.</span></figcaption><pre>        <span class="r-good">Read</span>  214 files from git <span class="r-id">9f3c2a1b4d7e</span>
+  <span class="r-good">Understood</span>  61 pages, 312 decisions
+   <span class="r-work">Rendering</span>  118 images, 41 done, 6 s
+   <span class="r-work">Rendering</span>  118 images, 97 done, 11 s
+    <span class="r-good">Rendered</span>  61 pages, 118 images in 13.4 s <span class="r-quiet">(97 reused, 21 made)</span>
+</pre></figure>
+</main></body></html>

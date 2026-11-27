@@ -1139,7 +1139,6 @@ and the engine, and is trusted as the builder's own code, not as input.
 **Why:** with `network = local`, a plugin that could fetch any locator could publish a private
 repository on the builder's disk. **Reversal:** a source that must fetch a repository it finds
 while reading (submodules) needs a way for the want to name more than one repository.
-
 ## 0058 Review fixes of the control plane and the edge: what a failure now does
 
 Built (2026-11-27), from a read-only review of the control plane and the serving edge.
@@ -1176,3 +1175,41 @@ Built (2026-11-27), from a read-only review of the control plane and the serving
 **Why:** each was a way for a failure to leave a job running forever, a store to lie, or a
 budget to be a number nothing read. **Reversal:** none expected; the connection default of 1024
 follows the common soft descriptor limit and is the number to change if it bites.
+
+## 0061 The `ink` CLI has one output grammar, one renderer and a grouped command tree
+
+Accepted by the owner after reviewing `docs/cli.md` (with `docs/cli-preview.html`); every open choice takes the recommendation in that document.
+The CLI is redesigned on the model of cargo (verb gutter, `error[code]` blocks, `-q`/`-v`/`--color`),
+jj (colour as named roles, global options under their own heading), vun and baudelaire (one
+declarative command tree that help, completions and the manual all read; help written by ink, not
+clap). In short:
+
+- **Grammar.** Verbs for what you do to the folder in front of you (`build`, `check`, `explain`),
+  a noun group where a noun has three or more verbs (`deploy list|show|rollback|resume`). `-C
+  <DIR>` is one global option; the positional `<DIR>` of `build`, `check` and `preview` goes. A
+  decision is addressed `[PATH] CODE`: `ink pin posts/a.md page.title`, `ink explain posts/a.md
+  --why page.title`. Help has titled command groups (Write, Understand, Publish, Tools).
+- **Output.** Ten typed blocks (stage line, diagnostic, notice, error, tree, ladder, change set,
+  table, record, result), each both rendered as text through the theme and serialized as JSON: the
+  `Shown`/`Event` pair of `report.rs` becomes the rule. One module owns colour, width, glyphs and
+  TTY handling; no command builds output with `format!`. Results are stdout in one shape; the rest
+  is stderr.
+- **Colour.** A closed set of roles mapped once to the 8 ANSI colours, bold and faint, with no
+  background, bright, 256 or truecolour, so the person's terminal theme decides the hue. Meaning
+  also sits in a word or glyph; `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `TERM=dumb` and non-TTY
+  are honoured per stream.
+- **Errors.** Every failure shows `error[code]`, a `caused by` rail, a typed `fix` and a `state`
+  line; `uses.error/v1` gains `fix` and `state`. Snippets stay on `annotate-snippets`, styled.
+- **Kept.** Every schema (`uses.build/v2`, `uses.check/v1`, `uses.explain/v2`, `uses.trace/v1`,
+  `uses.select/v1`, `uses.error/v1`, `uses.event/v1`), the exit codes 0 to 6, nothing silent. New:
+  `-q`, `--color`, `--no-progress`, `INK_*` variables with one precedence, `uses.progress/v1`
+  events, `ink completions` (nushell included), `ink man`, `ink help exit`.
+
+Refines `research/flow.md` section 7 (names `deploys`, `rollback`, `resume` become `deploy ...`,
+and the `--json-stream` flag is dropped in favour of events under `--json`) and the "CLI output"
+rules of `conventions.md`; it supersedes no decision. **Why:** today three conventions name the
+site's folder, the same two global flags repeat under every command, errors are plain strings
+without a fix, and the M3 verbs would each add a fourth output style. **Reversal:** a renderer that
+costs more than it clarifies, or a grammar the M3 verbs do not fit: keep the typed blocks and the
+colour roles, and go back to clap's help and the per-command folder. The open choices are the
+last section of `docs/cli.md`.

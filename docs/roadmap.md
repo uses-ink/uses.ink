@@ -199,6 +199,9 @@ ports. Not run by `ink serve`: the watch (no remote adapter for `Heads` yet) and
 - Sign-in for self-host: email magic link over SMTP, plus a first-run admin link printed once.
 - `ink push` and `ink:source-upload`; `ink status`, `watch`, `deploys`, `rollback`, `resume`,
   `export`.
+- CLI redesign (0061, Accepted; `docs/cli.md`): the typed output grammar and one renderer, then the
+  grouped command tree with global `-C`, help, completions and `ink man`, before the verbs above are
+  built, so each uses the blocks. **(owner: review the design and its open choices)**
 
 **Exit:** on a fresh machine, `ink serve`, sign in, add a repo, see it live, push a change, see
 the update, roll back, export, delete: every step with no flags and every default printed.
