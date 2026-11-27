@@ -173,13 +173,7 @@ impl Event {
 
     /// An error and its causes on one line.
     fn chain(error: &Chain) -> String {
-        let mut said = vec![error.to_string()];
-        let mut cause = std::error::Error::source(error);
-        while let Some(next) = cause {
-            said.push(next.to_string());
-            cause = next.source();
-        }
-        said.join(": ")
+        model::Chain::new(error).to_string()
     }
 }
 
