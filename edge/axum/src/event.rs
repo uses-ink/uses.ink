@@ -150,10 +150,10 @@ impl fmt::Display for Answered {
         let host = self.hostname.as_ref().map_or("-", |hostname| hostname.as_str());
         write!(out, "{} {host} {:?} {} {} {:?}", self.method, self.path, self.status, self.kind, self.took)?;
         if let Some(refusal) = &self.refusal {
-            write!(out, ": {}", Chain(refusal))?;
+            write!(out, ": {}", Chain::new(refusal))?;
         }
         if let Some(fault) = &self.fault {
-            write!(out, ": {}", Chain(fault))?;
+            write!(out, ": {}", Chain::new(fault))?;
         }
         Ok(())
     }
@@ -170,7 +170,7 @@ impl fmt::Display for Event {
             Self::Cut(Cut { stage, limit, sent }) => {
                 write!(out, "response cut after {sent} bytes: {stage} took more than {limit:?}")
             }
-            Self::Connection { source } => write!(out, "connection: {}", Chain(source)),
+            Self::Connection { source } => write!(out, "connection: {}", Chain::new(source)),
             Self::Stopping => write!(out, "stopping"),
             Self::Stopped(Stopped::Drained) => write!(out, "stopped"),
             Self::Stopped(Stopped::Abandoned { limit }) => write!(out, "stopped with connections left after {limit:?}"),

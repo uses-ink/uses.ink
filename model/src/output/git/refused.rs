@@ -1,7 +1,7 @@
 //! Everything the host refuses, with its numbers.
 
 use super::{Auth, Budget, Grant, Network, Revision, Scheme};
-use crate::{Diagnostic, Problem};
+use crate::{Chain, Diagnostic, Problem};
 use std::fmt;
 
 /// What the host refused of a fetch or a read. `E` is the cause of a failure with no case of its
@@ -84,22 +84,7 @@ impl<E: std::error::Error> From<&Refused<E>> for Diagnostic {
             }
             Refused::Revision { written } => Problem::SourceGitRevision { written: written.to_string() },
             Refused::Transport { scheme } => Problem::SourceGitTransport { scheme: scheme.to_string() },
-            Refused::Failed(error) => Problem::SourceRepositoryUnreadable { reason: Chain(error).to_string() },
+            Refused::Failed(error) => Problem::SourceRepositoryUnreadable { reason: Chain::new(error).to_string() },
         })
-    }
-}
-
-/// An error and its causes as one line, for a diagnostic's `reason`.
-struct Chain<'e, E>(&'e E);
-
-impl<E: std::error::Error> fmt::Display for Chain<'_, E> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "{}", self.0)?;
-        let mut cause = self.0.source();
-        while let Some(error) = cause {
-            write!(out, ": {error}")?;
-            cause = error.source();
-        }
-        Ok(())
     }
 }

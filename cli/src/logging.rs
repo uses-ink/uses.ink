@@ -4,6 +4,7 @@
 
 use std::io::Write;
 
+use model::Chain;
 use trace::{Entered, Guard, Logging, Process, Variables, Vars};
 
 use crate::settings::{Log, Preferences, Process as Terminal};
@@ -88,12 +89,10 @@ impl Cli {
             Ok(guard) => guard,
             Err(error) => {
                 if !self.json {
-                    let mut source = std::error::Error::source(&error);
                     // the stream has nowhere to report its own failure
                     writeln!(err, "warning: logging is off: {error}").ok();
-                    while let Some(cause) = source {
+                    for cause in Chain::new(&error).causes() {
                         writeln!(err, "  caused by: {cause}").ok();
-                        source = cause.source();
                     }
                 }
                 return None;

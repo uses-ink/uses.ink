@@ -58,22 +58,6 @@ impl<S: Error + 'static, B: Error + 'static> Error for Fault<S, B> {
     }
 }
 
-/// An error and its causes, each after a `: `. The one place an error chain becomes text.
-#[derive(Clone, Copy, Debug)]
-pub struct Chain<'a>(pub &'a (dyn Error + 'static));
-
-impl fmt::Display for Chain<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "{}", self.0)?;
-        let mut cause = self.0.source();
-        while let Some(source) = cause {
-            write!(out, ": {source}")?;
-            cause = source.source();
-        }
-        Ok(())
-    }
-}
-
 /// How a file's bytes were chosen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]

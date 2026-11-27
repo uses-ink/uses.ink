@@ -2,9 +2,9 @@
 
 use std::time::Duration;
 
-use model::{HeaderName, Route};
+use model::{Chain, HeaderName, Route};
 
-use crate::http::answer::{Answer, Chain, Fault, Outcome};
+use crate::http::answer::{Answer, Fault, Outcome};
 use crate::http::fields::{Fields, Hardening};
 use crate::http::limits::Limits;
 use crate::http::refusal::Refusal;
@@ -118,7 +118,7 @@ impl<S: Sites, B: Blobs<Scope = S::Scope>> Edge<S, B> {
     /// The answer for a refusal: its status, its reason as text, and no caching. The adapter
     /// uses it for the refusals only it can make (too busy, too slow).
     pub fn refuse(&self, refusal: Refusal, caller: &Caller) -> Reply<S, B> {
-        let text = Chain(&refusal).to_string();
+        let text = Chain::new(&refusal).to_string();
         let mut fields = Fields::default();
         fields.set(Name::ContentType, model::MediaType::Text);
         fields.set(Name::ContentLength, text.len());

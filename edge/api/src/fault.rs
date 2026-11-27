@@ -9,8 +9,8 @@ use control::keys::{Refused, Right};
 use control::{Failed, Ports, Refusal};
 use db::Db;
 use jiff::Timestamp;
-use model::Hash;
 use model::git::Scheme;
+use model::{Chain, Hash};
 
 use crate::archive;
 use crate::body::Unreadable;
@@ -417,12 +417,11 @@ impl<P: Ports + 'static> Fault<P> {
     /// did, each cause below it. A failure of the server's own gives its message and no causes.
     pub fn reply(&self) -> Reply {
         let status = self.status();
-        let mut causes = Vec::new();
-        let mut below = self.source();
-        while let Some(cause) = below.filter(|_| status != Status::Internal) {
-            causes.push(cause.to_string());
-            below = cause.source();
-        }
+        let causes = if status == Status::Internal {
+            Vec::new()
+        } else {
+            Chain::new(self).causes().map(ToString::to_string).collect()
+        };
         let fields = match self {
             Self::Denied(denied) => denied.fields(),
             _ => BTreeMap::new(),

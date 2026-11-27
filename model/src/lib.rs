@@ -18,6 +18,7 @@
 //! Nothing here reads a clock, the environment or a file: these are values. The crate is
 //! MIT OR Apache-2.0, unlike the engine, because every plugin speaks it (decision 0026).
 
+mod chain;
 mod content;
 pub mod decision;
 #[allow(clippy::too_many_lines, clippy::match_same_arms, reason = "generated: one match arm per catalog entry")]
@@ -30,6 +31,7 @@ pub use decision::{code, coded};
 pub use output::{git, record};
 pub use site::highlight;
 
+pub use chain::Chain;
 pub use content::hash::{Hash, HashError};
 pub use content::language::{Language, LanguageError};
 pub use content::path::{ContentPath, PathError};

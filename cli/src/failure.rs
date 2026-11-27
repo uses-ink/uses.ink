@@ -5,7 +5,7 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use model::Diagnostic;
+use model::{Chain, Diagnostic};
 use serde::Serialize;
 
 use crate::error::Error;
@@ -219,12 +219,7 @@ impl Failure {
 
     /// The block for `error`, which ended the command with `exit`.
     pub(crate) fn of(error: &Error, exit: Exit) -> Self {
-        let mut causes = Vec::new();
-        let mut cause = std::error::Error::source(error);
-        while let Some(next) = cause {
-            causes.push(next.to_string());
-            cause = next.source();
-        }
+        let causes = Chain::new(error).causes().map(ToString::to_string).collect();
         let diagnostic = match error {
             Error::Refused(refused) => Some(Event::diagnostic(&Diagnostic::from(refused), Texts::NONE)),
             _ => None,

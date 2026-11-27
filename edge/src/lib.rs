@@ -14,7 +14,7 @@
 mod http;
 mod serve;
 
-pub use http::answer::{Answer, Chain, Fault, Outcome, Ranging};
+pub use http::answer::{Answer, Fault, Outcome, Ranging};
 pub use http::condition::{ConditionError, Conditions};
 pub use http::encoding::{Accepted, Encoding};
 pub use http::etag::{Matching, Strength, Tag, Validator};
@@ -25,6 +25,7 @@ pub use http::range::{Ignored, Pick, Ranges, Span};
 pub use http::refusal::{Refusal, Stage};
 pub use http::request::{Asked, Method, Request, Scheme};
 pub use http::response::{Body, Field, Name, Response, Status};
+pub use model::Chain;
 pub use serve::error::Error;
 pub use serve::hostname::{Authority, Hostname, HostnameError};
 pub use serve::port::{Blob, BlobError, Blobs, Chunks, Deploy, Moved, Resolved, Sites, Variants};

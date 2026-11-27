@@ -5,7 +5,7 @@ use std::fmt;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use model::{Bytes, Diagnostic, Problem};
+use model::{Bytes, Chain, Diagnostic, Problem};
 
 use crate::mirror::{Malformed, Unmirrored};
 
@@ -142,7 +142,9 @@ impl Failure {
             Self::Time { limit } => Problem::PluginBudgetTime { plugin, limit: *limit },
             Self::Memory { limit, .. } => Problem::PluginBudgetMemory { plugin, limit: *limit },
             Self::Trapped { source } => Problem::PluginCallTrapped { plugin, reason: Trace(source).to_string() },
-            Self::Malformed { source } => Problem::PluginValueMalformed { plugin, reason: Chain(source).to_string() },
+            Self::Malformed { source } => {
+                Problem::PluginValueMalformed { plugin, reason: Chain::new(source).to_string() }
+            }
             Self::Unmirrored { source } => Problem::PluginValueUnmirrored { reason: source.to_string() },
             Self::Table { limit, .. } => Problem::PluginBudgetTable { plugin, limit: u64::from(*limit) },
             Self::Ended => Problem::PluginCallTrapped { plugin, reason: self.to_string() },
@@ -177,22 +179,6 @@ impl std::error::Error for Failure {
             Self::Unmirrored { source } => Some(source),
             Self::Fuel { .. } | Self::Time { .. } | Self::Memory { .. } | Self::Table { .. } | Self::Ended => None,
         }
-    }
-}
-
-/// An error and its causes as one line, for a diagnostic's `reason`: the plugin boundary is an
-/// edge, where a cause becomes text once.
-struct Chain<'e, E: ?Sized>(&'e E);
-
-impl<E: std::error::Error + ?Sized> fmt::Display for Chain<'_, E> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "{}", self.0)?;
-        let mut cause = self.0.source();
-        while let Some(error) = cause {
-            write!(out, ": {error}")?;
-            cause = error.source();
-        }
-        Ok(())
     }
 }
 
