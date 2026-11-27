@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"9d3e37481bb506b6b63e72f20e13d9fa1dbaa44e088db67637cbe5ee82871984","written":true,"out":"<out>","entries":19,"errors":0,"warnings":0}
+{"schema":"uses.build/v1","deploy":"13e307a0fc96a83a57698eb3402d181392b5ed8bbbfb62896f2a0c59eeace842","written":true,"out":"<out>","entries":19,"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
@@ -13,13 +13,13 @@ feed.xml
 index.html
 posts/blink.gif
 posts/first-steps/index.html
-posts/leaf.48.12f3a867408ca789.avif
+posts/leaf.48.57c8b5bffee92ff9.avif
 posts/leaf.48.5b6cb8cacc12719c.png
 posts/nib.svg
 posts/pictures/index.html
 posts/second/index.html
 posts/turned.32.3d4dcdf16c26ec7b.jpeg
-posts/turned.32.c5b21ef0926a29e6.avif
+posts/turned.32.548b561923e5cd96.avif
 posts/turned.placeholder.ed696fe0c714c4f7.png
 robots.txt
 rss.xml
@@ -345,7 +345,7 @@ it started.</p>
 <span class="quiet-picture">
 <img src="/posts/turned.placeholder.ed696fe0c714c4f7.png" alt="" width="32" height="64">
 <picture>
-<source type="image/avif" srcset="/posts/turned.32.c5b21ef0926a29e6.avif 32w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">
+<source type="image/avif" srcset="/posts/turned.32.548b561923e5cd96.avif 32w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">
 <img src="/posts/turned.32.3d4dcdf16c26ec7b.jpeg" srcset="/posts/turned.32.3d4dcdf16c26ec7b.jpeg 32w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="32" height="64" alt="a red stripe over a blue one" loading="lazy" decoding="async">
 </picture>
 </span>
@@ -353,7 +353,7 @@ it started.</p>
 <p>A leaf with nothing around it, and a light that blinks:</p>
 <p>
 <picture>
-<source type="image/avif" srcset="/posts/leaf.48.12f3a867408ca789.avif 48w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">
+<source type="image/avif" srcset="/posts/leaf.48.57c8b5bffee92ff9.avif 48w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">
 <img src="/posts/leaf.48.5b6cb8cacc12719c.png" srcset="/posts/leaf.48.5b6cb8cacc12719c.png 48w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="48" height="32" alt="a green leaf" loading="lazy" decoding="async">
 </picture> <img src="/posts/blink.gif" alt="a blinking light" width="16" height="16" loading="lazy" decoding="async">
 </p>

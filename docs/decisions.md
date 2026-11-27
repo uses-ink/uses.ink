@@ -367,7 +367,7 @@ learns of them; the host does the pixel work behind `engine::Images`, as with hi
 is decoded within a pixel budget (50 million by default; a header over it is
 `image.budget.pixels`, refused before a pixel is decoded), its EXIF orientation applied, resized
 with Catmull-Rom to the widths 480, 960 and 1440 that are narrower than it (plus its own width;
-never wider), and encoded as AVIF (ravif, quality 70, speed 10) and JPEG (quality 80,
+never wider), and encoded as AVIF (ravif, quality 70, speed 9) and JPEG (quality 80,
 progressive), or PNG when it has transparency. Re-encoding leaves every bit of metadata behind,
 so the original is not served. Each copy is served at `<name>.<width>.<hash>.<ext>` with
 `cache-control: public, max-age=31536000, immutable`; the asset carries a `model::Picture` (its
@@ -386,8 +386,8 @@ the hash of every copy. A `Key` (the source's hash, the settings, the crates' ve
 one image's work; `host_image::Pixels` keeps what it made by key, and keeps it across builds
 in an `engine::Cache` (as measured, below). **Why:** layout stability and small pages for readers,
 no metadata leaks, no C. **Reversal:** encode time on hosted builders (a 4000 by 3000 photo
-costs about 2 s of one core) pushes builds past their budget: a slower AVIF speed only behind
-the cache, or fewer widths.
+costs about 5 s of one core at speed 9) pushes builds past their budget: speed 10 again, or
+fewer widths.
 
 As measured (2026-11-27, performance pass; ten 4000 by 3000 photos cut from one wallpaper, 8
 workers, release build, on a 14-thread laptop shared with other builds):
@@ -430,10 +430,10 @@ core, SSIM against the resized original:
 
 | Change | Cost | Bytes | SSIM |
 |---|---|---|---|
-| AVIF speed 9 instead of 10 | +40% to +55% | -13% to -15% | 0.932 to 0.935 at 1440, 0.924 to 0.942 at 480 |
+| AVIF speed 9 instead of 10 (taken, below) | +40% to +55% | -13% to -15% | 0.932 to 0.935 at 1440, 0.924 to 0.942 at 480 |
 | AVIF speed 8 or 6 | x2.6 to x3.9 | -15% to -19% | at most 0.004 over speed 9 |
 | AVIF 8-bit instead of 10-bit (ravif's default) | 0% to -19% | +5% to +7% | 0.006 to 0.010 lower |
-| JPEG baseline with optimized Huffman tables | same | -16% at 1440, -13% at 480 | identical pixels |
+| JPEG baseline with optimized Huffman tables (refused, below) | same | -16% at 1440, -13% at 480 | identical pixels in libjpeg |
 | JPEG progressive with optimized tables | same | -6% to -8% | identical pixels |
 | No 1440 copy | -60% of AVIF time | | 3x screens get 960 |
 
@@ -441,6 +441,30 @@ The 1440 AVIF is 1.4 to 1.7 s of a photo's 2.5 s; the 960 is 0.66 s, the 480 0.2
 together under 0.1 s, the decode 65 ms and the three resizes 130 ms. Speed 9 behind the cache and
 optimized Huffman tables are the two worth taking; jpeg-encoder's progressive mode makes files
 larger, not smaller, and the placeholder already covers what progressive loading would show.
+
+Speed 9 is taken (2026-11-27), behind the cache. Measured on the same machine, 8 workers,
+release build, but on generated photos (ten seeded `magick plasma:fractal` images, 4000 by 3000,
+with noise), since the wallpaper is not in the repo:
+
+| Build | Wall | CPU | Peak memory | AVIF bytes, 30 copies |
+|---|---|---|---|---|
+| 10 photos, speed 10, cold cache | 5.1 to 5.6 s | 39 to 42 s | 586 MB | 1,022,036 |
+| 10 photos, speed 9, cold cache | 8.7 to 8.9 s | 65 to 67 s | 644 MB | 871,687 (-14.7%) |
+| 10 photos, either, warm cache | 0.05 s | 0.05 s | 60 MB | |
+| 1 photo, speed 10, cold cache | 1.8 to 2.1 s | 2.7 to 3.0 s | 124 MB | |
+| 1 photo, speed 9, cold cache | 3.1 to 3.4 s | 4.6 to 5.2 s | 133 MB | |
+
+A cold build costs about 65% more CPU on these photos, more than the one-core estimate in the
+table above; a warm build costs the same. The JPEG copies are unchanged.
+
+Baseline JPEG with optimized Huffman tables is refused for now. jpeg-encoder 0.7.1 writes
+optimized tables only in its sequential mode, one scan per component, and zune-jpeg 0.5.15 (the
+decoder `image` uses, and so the one the image work reads sources with) misreads such a file
+with 4:2:0 chroma: against the source, libjpeg's decode of the 48 by 36 fixture is 31 dB and
+zune-jpeg's 5 dB, and a 1600 by 1200 photo's copies come out at 8 dB beside libjpeg's at every
+width. The file is valid and browsers decode it with libjpeg-turbo, but the CMYK colour test
+fails on it, and a copy our own decoder cannot read is not shipped. **Reversal:** a zune-jpeg
+that reads it, or jpeg-encoder writing optimized tables in an interleaved scan.
 
 ## 0041 Components as built: values across, one shared mirror
 

@@ -27,10 +27,10 @@ pub struct Settings {
 
 impl Default for Settings {
     /// Copies at 480, 960 and 1440 pixels (a 40rem column at one, two and three device pixels
-    /// per CSS pixel, near enough), AVIF at quality 70 and speed 10, JPEG at 80, and 50 million
+    /// per CSS pixel, near enough), AVIF at quality 70 and speed 9, JPEG at 80, and 50 million
     /// pixels: a 48 megapixel phone photo is read, a decompression bomb is not.
     fn default() -> Self {
-        Self { widths: vec![480, 960, 1440], avif_quality: 70, avif_speed: 10, jpeg_quality: 80, pixels: 50_000_000 }
+        Self { widths: vec![480, 960, 1440], avif_quality: 70, avif_speed: 9, jpeg_quality: 80, pixels: 50_000_000 }
     }
 }
 
