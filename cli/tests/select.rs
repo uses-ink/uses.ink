@@ -234,7 +234,7 @@ fn json_is_one_document_with_the_pages_and_the_steps() {
     assert_eq!(listing["selection"], "explicit");
     assert_eq!(listing["written"], 0);
     let pages = listing["pages"].as_array().unwrap();
-    let private = pages.iter().find(|page| page["subject"] == "Private.md").unwrap();
+    let private = pages.iter().find(|page| page["subject"]["file"] == "Private.md").unwrap();
     assert_eq!((&private["code"], &private["value"]), (&"page.publish".into(), &false.into()));
     assert_eq!(private["evidence"]["default"]["reason"], "not-selected");
 
