@@ -5,6 +5,9 @@
 #   docker build -t uses-ink .
 #   docker run --read-only --tmpfs /tmp -v uses-ink:/data -p 8080:8080 uses-ink
 #
+# The image builds no site: `/data/.ink/out` (the folder `ink serve` reads by default) must hold
+# a deploy that `ink build` wrote.
+#
 # Release builds are the dist ones (dist-workspace.toml); this builds the same `dist`
 # profile from source, on musl, so the binary has no libc to match. `ink` carries its components
 # (decision 0054), so they are built first, in the same step, by `cargo xtask component`.
@@ -50,15 +53,14 @@ ENV HOME=/data XDG_CACHE_HOME=/data/cache
 WORKDIR /data
 VOLUME /data
 
-# `ink serve` must listen on this port on every interface; it is the address the healthcheck
-# and the example above use. Once `ink serve` exists, keep this and its default in step.
-ARG PORT=8080
-ENV INK_PORT=${PORT}
-EXPOSE ${PORT}
+# `ink serve` listens on 127.0.0.1 unless told otherwise, which a published port cannot reach, so
+# CMD names every interface (`cargo xtask layout` checks it). The port is the one the healthcheck
+# and the example above use.
+EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget -q -O /dev/null "http://127.0.0.1:${INK_PORT}/" || exit 1
+    CMD wget -q -O /dev/null "http://127.0.0.1:8080/" || exit 1
 
 # The command prints every default it chose as a notice (decision 0005), so
 # `docker logs` is where a first run's settings are read.
 ENTRYPOINT ["ink"]
-CMD ["serve"]
+CMD ["serve", "--addr", "0.0.0.0:8080"]

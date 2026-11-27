@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   # No incremental state and no debug info: a CI build is compiled once, so both only cost time
@@ -26,15 +29,19 @@ jobs:
       matrix:
         stage: [lint, test, docs, wasm, sites]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       # rust-toolchain.toml pins the version, components and wasm targets.
       - run: rustup show active-toolchain
       # Dependencies and the build state, saved by pushes to main and restored by every run.
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           key: ${{ matrix.stage }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: taiki-e/install-action@v2
+      # Actions are pinned to a commit (xtask layout, release rule); the tag is the comment. Tools
+      # are pinned too, so a new release cannot change a gate with no change here.
+      - uses: taiki-e/install-action@073e1fd0bc889c9aee68dbaaa927cde1b5653a83 # v2
         with:
-          tool: cargo-nextest,cargo-deny,wasmtime
+          tool: cargo-nextest@0.9.152,cargo-deny@0.22.2,wasmtime@51.0.0
       - run: cargo --locked xtask check ${{ matrix.stage }}

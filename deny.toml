@@ -8,7 +8,10 @@ all-features = true
 yanked = "deny"
 ignore = [
     # `paste` is unmaintained, not unsound: a proc macro rav1e 0.8.1 (the latest) runs at build
-    # time, so none of its code ships. Drop this when rav1e moves to `pastey`.
+    # time, so none of its code ships. Drop this when rav1e moves to `pastey`. cargo-deny cannot
+    # scope an ignore to a crate, so this one silences `paste` for every dependent: `cargo tree -i
+    # paste --workspace --all-features` must list `rav1e` alone (checked 2026-11-27, Cargo.lock),
+    # and any other dependent is a new decision.
     { id = "RUSTSEC-2024-0436", reason = "build-time macro of rav1e, no maintained rav1e without it" },
 ]
 

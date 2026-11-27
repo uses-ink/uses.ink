@@ -1,12 +1,44 @@
-# Only what the build reads goes into the context.
-target/
-.git/
-.jj/
-.github/
-.impeccable/
-spikes/
+# An allowlist: nothing enters the build context unless it is named here, so a stray local file
+# (an `.env`, a key, `.ink/` output) cannot reach an image layer. `cargo xtask layout` fails when
+# this file does not start with `*`, or leaves out a workspace member or a root file the build reads.
+*
+
+# Root files
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!clippy.toml
+!rustfmt.toml
+!.cargo
+
+# The crates of the workspace, by their top folder, and the WIT worlds they bind
+!blob
+!build
+!cli
+!clock
+!config
+!control
+!db
+!diag
+!edge
+!engine
+!fixture
+!freehand
+!freehand-web
+!host
+!model
+!plugin
+!queue
+!secret
+!token
+!watch
+!tools
+!wit
+!xtask
+
+# Local state inside an allowed folder
+**/target/
 **/node_modules/
+**/.ink/
 **/*.snap.new
 **/*.pending-snap
-Dockerfile
-.dockerignore

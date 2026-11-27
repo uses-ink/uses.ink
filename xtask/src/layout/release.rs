@@ -46,6 +46,27 @@ pub(crate) enum Drift {
     WorkflowComponents { path: PathBuf },
     /// A command the image runs before it exists is listed as pending, and now it exists.
     Pending { command: &'static str },
+    /// The image runs `ink serve` without an address on every interface, which a published port
+    /// cannot reach (`serve` listens on the loopback by default).
+    Listen { command: Vec<String> },
+    /// A workflow step uses an action by a tag or branch, which its owner can move.
+    Unpinned { path: PathBuf, uses: String },
+    /// A workflow has no top-level `permissions:`, so every job gets the repository's default.
+    NoPermissions { path: PathBuf },
+    /// A workflow grants write at the top level, to every job; a job that needs it asks for it.
+    WidePermissions { path: PathBuf },
+    /// A tag pattern with `*`, which lets a tag name hold shell syntax into the release jobs.
+    Glob { path: PathBuf, pattern: String },
+    /// A `gh release` command with a `${{ }}` expression in the script text.
+    Interpolated { path: PathBuf, line: String },
+    /// A tool the install action fetches without a version.
+    Floating { path: PathBuf, tool: String },
+    /// The release workflow does not check that the tagged commit is on `main`.
+    Ancestry { path: PathBuf },
+    /// The Docker context is not an allowlist.
+    OpenContext,
+    /// The Docker context leaves out a folder or file the build reads.
+    Excluded { place: String },
 }
 
 impl std::fmt::Display for Drift {
@@ -71,12 +92,56 @@ impl std::fmt::Display for Drift {
                 "`{}` runs on `{on}`; releases run on version tags only (`pr-run-mode = \"skip\"`)",
                 path.display()
             ),
-            _ => self.image(out),
+            _ => self.rest(out),
         }
     }
 }
 
 impl Drift {
+    /// The problems with the workflows and the Docker context.
+    fn rest(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unpinned { path, uses } => {
+                write!(out, "`{}` uses `{uses}`: pin it to a full commit hash, the tag in a comment", path.display())
+            }
+            Self::NoPermissions { path } => {
+                write!(
+                    out,
+                    "`{}` has no top-level `permissions:`; set `contents: read` and widen per job",
+                    path.display()
+                )
+            }
+            Self::WidePermissions { path } => {
+                write!(out, "`{}` grants write to every job; grant it to the one job that needs it", path.display())
+            }
+            Self::Glob { path, pattern } => {
+                write!(
+                    out,
+                    "`{}` triggers on `{pattern}`; a tag pattern holds no `*`, so the name is shell-safe",
+                    path.display()
+                )
+            }
+            Self::Interpolated { path, line } => {
+                write!(out, "`{}` puts an expression in a script: `{line}`; pass it through `env:`", path.display())
+            }
+            Self::Floating { path, tool } => {
+                write!(out, "`{}` installs `{tool}` with no version; write `{tool}@X.Y.Z`", path.display())
+            }
+            Self::Ancestry { path } => write!(
+                out,
+                "`{}` never runs `git merge-base --is-ancestor` on the tagged commit and `origin/main`",
+                path.display()
+            ),
+            Self::OpenContext => {
+                write!(out, "`.dockerignore` must start with `*`, then allow what the build reads with `!`")
+            }
+            Self::Excluded { place } => {
+                write!(out, "`.dockerignore` leaves out `{place}`, which the image build reads")
+            }
+            _ => self.image(out),
+        }
+    }
+
     /// The problems with the Dockerfile.
     fn image(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let shown = |found: &Option<String>| found.as_deref().map_or("nothing".to_owned(), |f| format!("`{f}`"));
@@ -106,6 +171,11 @@ impl Drift {
             Self::Pending { command } => {
                 write!(out, "`{command}` exists now: remove it from Release::PENDING in xtask's release rule")
             }
+            Self::Listen { command } => write!(
+                out,
+                "the Dockerfile's CMD is `{}`; `serve` needs `--addr 0.0.0.0:<port>` to be reachable from the host",
+                command.join(" ")
+            ),
             _ => Ok(()),
         }
     }
@@ -115,6 +185,10 @@ impl Release {
     /// The dist config.
     pub(crate) const CONFIG: &'static str = "dist-workspace.toml";
     const WORKFLOW: &'static str = ".github/workflows/release.yml";
+    const WORKFLOWS: &'static str = ".github/workflows";
+    const IGNORE: &'static str = ".dockerignore";
+    /// Files outside every crate that the image build reads.
+    const ROOT: &'static [&'static str] = &["Cargo.toml", "Cargo.lock", "rust-toolchain.toml"];
     const DOCKERFILE: &'static str = "Dockerfile";
     const TOOLCHAIN: &'static str = "rust-toolchain.toml";
 
@@ -199,8 +273,13 @@ impl Release {
         if entry.as_deref() != Some(binary) {
             found.push(Drift::Entrypoint { expected: binary.to_owned(), found: entry });
         }
-        let command = dockerfile.exec("CMD").into_iter().next();
+        let words = dockerfile.exec("CMD");
+        let command = words.first().cloned();
         let known = Self::commands(krate);
+        let on_all = words.windows(2).any(|pair| pair[0] == "--addr" && pair[1].starts_with("0.0.0.0:"));
+        if command.as_deref() == Some("serve") && !on_all {
+            found.push(Drift::Listen { command: words.clone() });
+        }
         match command.as_deref() {
             Some(name) if known.iter().any(|k| k == name) => {
                 if let Some(pending) = Self::PENDING.iter().find(|p| **p == name) {
@@ -235,8 +314,129 @@ impl Release {
             }
         }
 
+        if !workflow.contains("merge-base --is-ancestor") {
+            found.push(Drift::Ancestry { path: Self::WORKFLOW.into() });
+        }
+        for flow in Workflow::all(root)? {
+            found.extend(flow.drift());
+        }
+
+        found.extend(Self::context(root, workspace)?);
         found.extend(Self::image(root, krate, &binary)?);
         Ok(found)
+    }
+
+    /// The Docker context against the folders and files the build reads.
+    fn context(root: &Path, workspace: &Workspace) -> Result<Vec<Drift>, Drift> {
+        let text = Self::text(root, Self::IGNORE)?;
+        let rules = text.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')).collect::<Vec<_>>();
+        let mut found = Vec::new();
+        if rules.first() != Some(&"*") {
+            found.push(Drift::OpenContext);
+        }
+        let allowed = rules.iter().filter_map(|rule| rule.strip_prefix('!')).map(|a| a.trim_end_matches('/'));
+        let allowed = allowed.collect::<Vec<_>>();
+        let places = workspace.crates.iter().map(Crate::place).chain(Self::ROOT.iter().map(|r| (*r).to_owned()));
+        for place in places {
+            if !allowed.iter().any(|a| place == *a || place.starts_with(&format!("{a}/"))) {
+                found.push(Drift::Excluded { place });
+            }
+        }
+        Ok(found)
+    }
+}
+
+/// A workflow file, read for the rules every one of them keeps.
+#[derive(Debug)]
+struct Workflow {
+    path: PathBuf,
+    text: String,
+}
+
+impl Workflow {
+    /// Every workflow under `.github/workflows`, in name order.
+    fn all(root: &Path) -> Result<Vec<Self>, Drift> {
+        let dir = root.join(Release::WORKFLOWS);
+        let unread = |source| Drift::Unreadable { path: Release::WORKFLOWS.into(), source };
+        let mut names = std::fs::read_dir(&dir)
+            .map_err(unread)?
+            .map(|entry| entry.map(|e| e.file_name()))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(unread)?;
+        names.sort();
+        let mut flows = Vec::new();
+        for name in names.into_iter().filter(|n| n.to_string_lossy().ends_with(".yml")) {
+            let path = PathBuf::from(Release::WORKFLOWS).join(name);
+            let text = std::fs::read_to_string(root.join(&path))
+                .map_err(|source| Drift::Unreadable { path: path.clone(), source })?;
+            flows.push(Self { path, text });
+        }
+        Ok(flows)
+    }
+
+    fn drift(&self) -> Vec<Drift> {
+        let mut found = self.pins();
+        found.extend(self.permits());
+        found.extend(self.globs());
+        found.extend(self.shells());
+        found.extend(self.tools());
+        found
+    }
+
+    /// The value of every `key:` line, comment cut off, quotes and list dashes removed.
+    fn values<'a>(&'a self, key: &'a str) -> impl Iterator<Item = &'a str> {
+        self.text.lines().filter_map(move |line| {
+            let rest = line.trim().trim_start_matches("- ").strip_prefix(key)?;
+            Some(rest.split(" #").next().unwrap_or(rest).trim().trim_matches(['"', '\'']))
+        })
+    }
+
+    /// Every `uses:` that is not a local path or a full commit hash.
+    fn pins(&self) -> Vec<Drift> {
+        let hashed = |rev: &str| rev.len() == 40 && rev.chars().all(|c| c.is_ascii_hexdigit());
+        let unpinned = self.values("uses:").filter(|uses| !uses.starts_with("./"));
+        unpinned
+            .filter(|uses| !uses.split_once('@').is_some_and(|(_, rev)| hashed(rev)))
+            .map(|uses| Drift::Unpinned { path: self.path.clone(), uses: uses.to_owned() })
+            .collect()
+    }
+
+    /// The top-level `permissions:` block: present, and with no write in it.
+    fn permits(&self) -> Option<Drift> {
+        let mut lines = self.text.lines().skip_while(|line| !line.starts_with("permissions:"));
+        let Some(head) = lines.next() else { return Some(Drift::NoPermissions { path: self.path.clone() }) };
+        let body = lines.take_while(|line| line.is_empty() || line.starts_with(char::is_whitespace));
+        let wide = std::iter::once(head).chain(body).any(|line| line.contains("write"));
+        wide.then(|| Drift::WidePermissions { path: self.path.clone() })
+    }
+
+    /// Tag patterns under `tags:` that hold a `*`.
+    fn globs(&self) -> Vec<Drift> {
+        let after = self.text.lines().map(str::trim).skip_while(|line| *line != "tags:").skip(1);
+        let patterns = after.take_while(|line| line.starts_with("- "));
+        patterns
+            .filter(|pattern| pattern.contains('*'))
+            .map(|pattern| Drift::Glob { path: self.path.clone(), pattern: pattern.to_owned() })
+            .collect()
+    }
+
+    /// `gh release` lines that carry a `${{ }}` expression.
+    fn shells(&self) -> Vec<Drift> {
+        let lines = self.text.lines().map(str::trim);
+        lines
+            .filter(|line| line.contains("gh release") && line.contains("${{"))
+            .map(|line| Drift::Interpolated { path: self.path.clone(), line: line.to_owned() })
+            .collect()
+    }
+
+    /// Tools of the install action that name no version.
+    fn tools(&self) -> Vec<Drift> {
+        let entries = self.values("tool:").flat_map(|list| list.split(','));
+        entries
+            .map(str::trim)
+            .filter(|tool| !tool.contains('@'))
+            .map(|tool| Drift::Floating { path: self.path.clone(), tool: tool.to_owned() })
+            .collect()
     }
 }
 
@@ -289,5 +489,53 @@ impl Dockerfile {
         let Some(rest) = self.keyword(keyword).last() else { return Vec::new() };
         let inner = rest.trim().trim_start_matches('[').trim_end_matches(']');
         inner.split(',').map(|word| word.trim().trim_matches('"').to_owned()).filter(|w| !w.is_empty()).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Drift, Workflow};
+
+    fn flow(text: &str) -> Workflow {
+        Workflow { path: "w.yml".into(), text: text.to_owned() }
+    }
+
+    const HASH: &str = "3d3c42e5aac5ba805825da76410c181273ba90b1";
+
+    #[test]
+    fn a_moving_tag_is_unpinned() {
+        let text = format!("- uses: actions/checkout@v7\n- uses: a/b@{HASH} # v1\n- uses: ./local\n");
+        let found = flow(&text).pins();
+        assert!(
+            matches!(found.as_slice(), [Drift::Unpinned { uses, .. }] if uses == "actions/checkout@v7"),
+            "{found:?}"
+        );
+    }
+
+    #[test]
+    fn write_at_the_top_is_wide() {
+        assert!(matches!(flow("permissions:\n  contents: write\n").permits(), Some(Drift::WidePermissions { .. })));
+        assert!(matches!(flow("name: x\njobs: {}\n").permits(), Some(Drift::NoPermissions { .. })));
+        let jobs =
+            "permissions:\n  \"contents\": \"read\"\n\njobs:\n  host:\n    permissions:\n      contents: write\n";
+        assert!(flow(jobs).permits().is_none());
+    }
+
+    #[test]
+    fn a_star_in_a_tag_pattern_is_found() {
+        let found = flow("on:\n  push:\n    tags:\n      - 'v[0-9]+'\n      - '**[0-9]*'\n").globs();
+        assert!(matches!(found.as_slice(), [Drift::Glob { pattern, .. }] if pattern.contains("**")), "{found:?}");
+    }
+
+    #[test]
+    fn an_expression_in_a_release_command_is_found() {
+        let text = "gh release create \"${{ needs.plan.outputs.tag }}\"\ngh release create \"$TAG\"\n";
+        assert_eq!(flow(text).shells().len(), 1);
+    }
+
+    #[test]
+    fn a_tool_with_no_version_is_floating() {
+        let found = flow("  tool: cargo-nextest@0.9.1,wasmtime\n").tools();
+        assert!(matches!(found.as_slice(), [Drift::Floating { tool, .. }] if tool == "wasmtime"), "{found:?}");
     }
 }
