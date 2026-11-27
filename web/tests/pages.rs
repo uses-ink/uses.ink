@@ -4,10 +4,6 @@
 
 #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
 #![allow(missing_docs, reason = "a test file")]
-#![allow(clippy::too_many_lines, reason = "a fixture builder lists every page")]
-#![allow(clippy::unused_async_trait_impl, reason = "the fake answers the trait's futures without waiting")]
-#![allow(clippy::unnecessary_wraps, reason = "the fake follows the trait's signatures")]
-#![allow(clippy::range_plus_one, reason = "a slice end past the tag's closing bracket")]
 
 use std::time::Duration;
 
@@ -29,6 +25,15 @@ use uses_ink_web::{
     Action, Asked, Body, Cause, Dashboard, Document, Download, Failure, Field, FieldError, Follow, Form, Frame, Logged,
     Method, Only, Reply, Request, Screen, Screens, Status, View,
 };
+
+/// The pages made so far, by name.
+struct Pages(Vec<(String, String)>);
+
+impl Pages {
+    fn put(&mut self, name: &str, view: &dyn Pageable) {
+        self.0.push((name.to_owned(), view.page()));
+    }
+}
 
 struct Fixtures;
 
@@ -205,10 +210,16 @@ impl Fixtures {
 
     /// Every page, by name.
     fn pages() -> Vec<(String, String)> {
-        let handle = Self::handle();
-        let mut pages: Vec<(String, String)> = Vec::new();
-        let mut put = |name: &str, view: &dyn Pageable| pages.push((name.to_owned(), view.page()));
+        let mut pages = Pages(Vec::new());
+        Self::site_pages(&mut pages);
+        Self::deploy_pages(&mut pages);
+        Self::account_pages(&mut pages);
+        Self::build_pages(&mut pages);
+        pages.0
+    }
 
+    fn site_pages(pages: &mut Pages) {
+        let handle = Self::handle();
         let mut live = Site::new(handle.clone(), Self::address(), Serving::Live(Self::pointer('a')));
         live.recent = vec![
             Self::attempt(1, JobState::Succeeded, Some(Self::made('a', true))),
@@ -216,22 +227,25 @@ impl Fixtures {
         ];
         live.observed = model::Observed::new(vec![model::Ability::Snapshot, model::Ability::History], vec![]);
         live.problems = vec![Self::problem()];
-        put("site_live", &live);
+        pages.put("site_live", &live);
         let mut paused = Site::new(handle.clone(), Self::address(), Serving::Paused(Self::pointer('b')));
         paused.recent = vec![Self::attempt(3, JobState::Running, None)];
-        put("site_paused_building", &paused);
-        put("site_empty", &Site::new(handle.clone(), Self::address(), Serving::Nothing));
+        pages.put("site_paused_building", &paused);
+        pages.put("site_empty", &Site::new(handle.clone(), Self::address(), Serving::Nothing));
 
         let mut understood = Understood::new(handle.clone(), Self::source(), Self::decisions());
         understood.deploy = Some(Self::deploy('a'));
-        put("understood", &understood);
+        pages.put("understood", &understood);
         understood.only = Only::Check;
-        put("understood_check_only", &understood);
-        put("understood_empty", &Understood::new(handle.clone(), Self::source(), vec![]));
-        put("why", &Self::why());
-        put("why_empty", &Why { rungs: vec![], ..Self::why() });
+        pages.put("understood_check_only", &understood);
+        pages.put("understood_empty", &Understood::new(handle.clone(), Self::source(), vec![]));
+        pages.put("why", &Self::why());
+        pages.put("why_empty", &Why { rungs: vec![], ..Self::why() });
+    }
 
-        put(
+    fn deploy_pages(pages: &mut Pages) {
+        let handle = Self::handle();
+        pages.put(
             "deploys",
             &Deploys::new(
                 handle.clone(),
@@ -243,15 +257,18 @@ impl Fixtures {
                 ],
             ),
         );
-        put("deploys_empty", &Deploys::new(handle.clone(), Serving::Nothing, vec![]));
+        pages.put("deploys_empty", &Deploys::new(handle.clone(), Serving::Nothing, vec![]));
+    }
 
+    fn account_pages(pages: &mut Pages) {
+        let handle = Self::handle();
         let mut settings =
             Settings::new(handle.clone(), Self::address(), Self::source(), Serving::Live(Self::pointer('a')));
         settings.credentials = vec![Held { purpose: Purpose::GitToken, created: Self::at("2026-11-20T08:00:00Z") }];
-        put("settings", &settings);
-        put("settings_empty", &Settings::new(handle.clone(), Self::address(), Self::source(), Serving::Nothing));
+        pages.put("settings", &settings);
+        pages.put("settings_empty", &Settings::new(handle.clone(), Self::address(), Self::source(), Serving::Nothing));
 
-        put(
+        pages.put(
             "account",
             &Account::new(
                 Self::at("2026-11-01T12:00:00Z"),
@@ -269,9 +286,12 @@ impl Fixtures {
                 ],
             ),
         );
-        put("account_empty", &Account::new(Self::at("2026-11-01T12:00:00Z"), vec![]));
+        pages.put("account_empty", &Account::new(Self::at("2026-11-01T12:00:00Z"), vec![]));
+    }
 
-        put(
+    fn build_pages(pages: &mut Pages) {
+        let handle = Self::handle();
+        pages.put(
             "build_done",
             &Build::new(
                 handle.clone(),
@@ -284,7 +304,7 @@ impl Fixtures {
                 }),
             ),
         );
-        put(
+        pages.put(
             "build_refused",
             &Build::new(
                 handle.clone(),
@@ -293,15 +313,14 @@ impl Fixtures {
                 How::Finished(Outcome { status: Ended::Refused, deploy: None, wall: Duration::from_millis(210) }),
             ),
         );
-        put(
+        pages.put(
             "build_empty",
             &Build::new(handle.clone(), Self::build(4), vec![], How::Cut(Failure::Cut { build: Self::build(4) })),
         );
 
         for (name, failure) in Self::failures() {
-            put(name, &Failed::new(Frame::of(&handle, Screen::Site), failure));
+            pages.put(name, &Failed::new(Frame::of(&handle, Screen::Site), failure));
         }
-        pages
     }
 }
 
@@ -330,7 +349,7 @@ impl Structure<'_> {
         self.0
             .match_indices(&open)
             .filter(|(at, _)| self.0[at + open.len()..].starts_with([' ', '>', '/']))
-            .map(|(at, _)| &self.0[at..at + self.0[at..].find('>').unwrap() + 1])
+            .map(|(at, _)| &self.0[at..=at + self.0[at..].find('>').unwrap()])
             .collect()
     }
 
@@ -386,40 +405,61 @@ struct Fake;
 struct Replay(std::vec::IntoIter<Event>);
 
 impl Follow for Replay {
-    async fn next(&mut self) -> Result<Option<Event>, Failure> {
-        Ok(self.0.next())
+    fn next(&mut self) -> impl Future<Output = Result<Option<Event>, Failure>> + Send {
+        std::future::ready(Ok(self.0.next()))
     }
 }
 
 impl Screens for Fake {
     type Follow = Replay;
 
-    async fn site(&self, _: Id<AccountKind>, handle: &Handle) -> Result<Site, Failure> {
-        Ok(Site::new(handle.clone(), Fixtures::address(), Serving::Nothing))
+    fn site(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Site, Failure>> + Send {
+        std::future::ready(Ok(Site::new(handle.clone(), Fixtures::address(), Serving::Nothing)))
     }
-    async fn understood(&self, _: Id<AccountKind>, handle: &Handle, _: Only) -> Result<Understood, Failure> {
-        Ok(Understood::new(handle.clone(), Fixtures::source(), vec![]))
+
+    fn understood(
+        &self,
+        _: Id<AccountKind>,
+        handle: &Handle,
+        _: Only,
+    ) -> impl Future<Output = Result<Understood, Failure>> + Send {
+        std::future::ready(Ok(Understood::new(handle.clone(), Fixtures::source(), vec![])))
     }
-    async fn why(&self, _: Id<AccountKind>, _: &Handle, _: &Asked) -> Result<Why, Failure> {
-        Ok(Fixtures::why())
+
+    fn why(&self, _: Id<AccountKind>, _: &Handle, _: &Asked) -> impl Future<Output = Result<Why, Failure>> + Send {
+        std::future::ready(Ok(Fixtures::why()))
     }
-    async fn deploys(&self, _: Id<AccountKind>, handle: &Handle) -> Result<Deploys, Failure> {
-        Ok(Deploys::new(handle.clone(), Serving::Nothing, vec![]))
+
+    fn deploys(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Deploys, Failure>> + Send {
+        std::future::ready(Ok(Deploys::new(handle.clone(), Serving::Nothing, vec![])))
     }
-    async fn settings(&self, _: Id<AccountKind>, _: &Handle) -> Result<Settings, Failure> {
-        Err(Failure::NoSite { handle: Fixtures::handle() })
+
+    fn settings(&self, _: Id<AccountKind>, _: &Handle) -> impl Future<Output = Result<Settings, Failure>> + Send {
+        std::future::ready(Err(Failure::NoSite { handle: Fixtures::handle() }))
     }
-    async fn account(&self, _: Id<AccountKind>) -> Result<Account, Failure> {
-        Ok(Account::new(Fixtures::at("2026-11-01T12:00:00Z"), vec![]))
+
+    fn account(&self, _: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>> + Send {
+        std::future::ready(Ok(Account::new(Fixtures::at("2026-11-01T12:00:00Z"), vec![])))
     }
-    async fn log(&self, _: Id<AccountKind>, handle: &Handle, build: BuildId) -> Result<Logged<Replay>, Failure> {
-        Ok(Logged::Running(Live::new(handle.clone(), build), Replay(Fixtures::events().into_iter())))
+
+    fn log(
+        &self,
+        _: Id<AccountKind>,
+        handle: &Handle,
+        build: BuildId,
+    ) -> impl Future<Output = Result<Logged<Replay>, Failure>> + Send {
+        std::future::ready(Ok(Logged::Running(
+            Live::new(handle.clone(), build),
+            Replay(Fixtures::events().into_iter()),
+        )))
     }
-    async fn act(&self, _: Id<AccountKind>, _: &Handle, _: &Action) -> Result<(), Failure> {
-        Ok(())
+
+    fn act(&self, _: Id<AccountKind>, _: &Handle, _: &Action) -> impl Future<Output = Result<(), Failure>> + Send {
+        std::future::ready(Ok(()))
     }
-    async fn export(&self, _: Id<AccountKind>, handle: &Handle) -> Result<Download, Failure> {
-        Ok(Download { of: handle.clone(), bytes: vec![1, 2, 3] })
+
+    fn export(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Download, Failure>> + Send {
+        std::future::ready(Ok(Download { of: handle.clone(), bytes: vec![1, 2, 3] }))
     }
 }
 
@@ -434,8 +474,8 @@ impl Ask {
         Request { method: Method::Post, path, query: Form::default(), body: Form::from(body) }
     }
 
-    fn who() -> Option<Id<AccountKind>> {
-        Some(Id::from_bytes([9; 16]))
+    fn who() -> Id<AccountKind> {
+        Id::from_bytes([9; 16])
     }
 }
 
@@ -451,7 +491,7 @@ fn a_form_is_answered_by_a_redirect_to_the_page_it_changed() {
         ("/ada-notes/rollback", &format!("deploy={}", "a".repeat(64)), "/ada-notes/deploys"),
         ("/ada-notes/remove", "confirm=ada-notes", "/account"),
     ] {
-        let reply = reply(&Ask::post(body_path, body), Ask::who());
+        let reply = reply(&Ask::post(body_path, body), Some(Ask::who()));
         assert_eq!(reply.status, Status::SeeOther, "{body_path}");
         assert_eq!(reply.location.unwrap().as_str(), goes, "{body_path}");
         assert!(matches!(reply.body, Body::Empty));
@@ -462,12 +502,12 @@ fn a_form_is_answered_by_a_redirect_to_the_page_it_changed() {
 fn a_failure_is_a_page_with_its_code_and_status() {
     let cases = [
         (Ask::get("/ada-notes"), None, Status::Unauthorized, "account.session.missing"),
-        (Ask::get("/a/b/c/d"), Ask::who(), Status::NotFound, "page.route.unknown"),
-        (Ask::get("/Not_A_Handle"), Ask::who(), Status::NotFound, "page.route.unknown"),
-        (Ask::get("/ada-notes/build"), Ask::who(), Status::MethodNotAllowed, "page.method.refused"),
-        (Ask::post("/ada-notes/rollback", ""), Ask::who(), Status::BadRequest, "form.field.missing"),
-        (Ask::post("/ada-notes/rollback", "deploy=zz"), Ask::who(), Status::BadRequest, "form.field.invalid"),
-        (Ask::get("/ada-notes/settings"), Ask::who(), Status::NotFound, "site.handle.unknown"),
+        (Ask::get("/a/b/c/d"), Some(Ask::who()), Status::NotFound, "page.route.unknown"),
+        (Ask::get("/Not_A_Handle"), Some(Ask::who()), Status::NotFound, "page.route.unknown"),
+        (Ask::get("/ada-notes/build"), Some(Ask::who()), Status::MethodNotAllowed, "page.method.refused"),
+        (Ask::post("/ada-notes/rollback", ""), Some(Ask::who()), Status::BadRequest, "form.field.missing"),
+        (Ask::post("/ada-notes/rollback", "deploy=zz"), Some(Ask::who()), Status::BadRequest, "form.field.invalid"),
+        (Ask::get("/ada-notes/settings"), Some(Ask::who()), Status::NotFound, "site.handle.unknown"),
     ];
     for (request, who, status, code) in cases {
         let reply = reply(&request, who);
@@ -480,10 +520,11 @@ fn a_failure_is_a_page_with_its_code_and_status() {
 
 #[test]
 fn the_export_is_a_download_and_the_log_of_a_running_build_is_streamed() {
-    let download = reply(&Ask::get("/ada-notes/export"), Ask::who());
+    let download = reply(&Ask::get("/ada-notes/export"), Some(Ask::who()));
     assert!(matches!(download.body, Body::Download(ref file) if file.to_string() == "ada-notes.export"));
     let build = "01".repeat(16);
-    let Body::Streamed(mut stream) = reply(&Ask::get(&format!("/ada-notes/deploys/{build}")), Ask::who()).body else {
+    let Body::Streamed(mut stream) = reply(&Ask::get(&format!("/ada-notes/deploys/{build}")), Some(Ask::who())).body
+    else {
         panic!("a running build streams")
     };
     let mut chunks = Vec::new();
