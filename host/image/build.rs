@@ -1,6 +1,6 @@
 //! Hands the crate `INK_IMAGE_CODECS`: every registry crate it reaches through `Cargo.lock`'s
-//! dependency graph, direct or not, with the version the lock holds. The image cache key hashes it, so bumping a codec changes every key and
-//! nobody keeps a list of versions by hand.
+//! dependency graph, direct or not, with the version the lock holds. The image cache key hashes
+//! it, so bumping a codec changes every key and nobody keeps a list of versions by hand.
 
 use std::collections::BTreeSet;
 use std::io::Write as _;
@@ -22,6 +22,12 @@ enum Failure {
     NoPackage(String),
     /// The lock names a dependency it holds no package for.
     NoVersion(String),
+    /// Cargo did not say where the crate is (`CARGO_MANIFEST_DIR` is unset).
+    NoManifestDir,
+    /// A manifest has no `[package] name`.
+    NoName(PathBuf),
+    /// The lines for cargo could not be written to standard output.
+    Write(std::io::Error),
 }
 
 impl std::fmt::Display for Failure {
@@ -32,6 +38,9 @@ impl std::fmt::Display for Failure {
             Self::NoLock(dir) => write!(out, "no Cargo.lock in {} or above it", dir.display()),
             Self::NoPackage(name) => write!(out, "Cargo.lock holds no package {name}"),
             Self::NoVersion(entry) => write!(out, "Cargo.lock names {entry} and holds no package for it"),
+            Self::NoManifestDir => out.write_str("CARGO_MANIFEST_DIR is not set"),
+            Self::NoName(path) => write!(out, "{} has no [package] name", path.display()),
+            Self::Write(error) => write!(out, "cargo lines could not be written: {error}"),
         }
     }
 }
@@ -106,14 +115,14 @@ impl Manifest {
     fn name(dir: &Path) -> Result<String, Failure> {
         let path = dir.join("Cargo.toml");
         let text = std::fs::read_to_string(&path).map_err(|error| Failure::Read(path.clone(), error))?;
-        let table: Table = text.parse().map_err(|error| Failure::Parse(path, error))?;
-        Ok(table
+        let table: Table = text.parse().map_err(|error| Failure::Parse(path.clone(), error))?;
+        table
             .get("package")
             .and_then(Value::as_table)
             .and_then(|package| package.get("name"))
             .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_owned())
+            .map(str::to_owned)
+            .ok_or(Failure::NoName(path))
     }
 }
 
@@ -123,15 +132,15 @@ struct Codecs;
 impl Codecs {
     /// Writes `INK_IMAGE_CODECS` and what it depends on for cargo.
     fn emit() -> Result<(), Failure> {
-        let dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").unwrap_or_default());
+        let dir = std::env::var_os("CARGO_MANIFEST_DIR").map(PathBuf::from).ok_or(Failure::NoManifestDir)?;
         let name = Manifest::name(&dir)?;
         let (path, lock) = Lock::find(&dir)?;
         let codecs = lock.codecs(&name)?.join(" ");
         let mut out = std::io::stdout().lock();
-        let _ = writeln!(out, "cargo:rerun-if-changed={}", path.display());
-        let _ = writeln!(out, "cargo:rerun-if-changed=Cargo.toml");
-        let _ = writeln!(out, "cargo:rustc-env=INK_IMAGE_CODECS={codecs}");
-        Ok(())
+        let written = writeln!(out, "cargo:rerun-if-changed={}", path.display())
+            .and_then(|()| writeln!(out, "cargo:rerun-if-changed=Cargo.toml"))
+            .and_then(|()| writeln!(out, "cargo:rustc-env=INK_IMAGE_CODECS={codecs}"));
+        written.map_err(Failure::Write)
     }
 }
 
@@ -139,7 +148,10 @@ fn main() -> ExitCode {
     match Codecs::emit() {
         Ok(()) => ExitCode::SUCCESS,
         Err(failure) => {
-            let _ = writeln!(std::io::stderr(), "{failure}");
+            if let Err(closed) = writeln!(std::io::stderr(), "{failure}") {
+                // stderr is closed too: the failing exit code is the only report left
+                drop(closed);
+            }
             ExitCode::FAILURE
         }
     }
