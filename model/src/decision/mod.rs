@@ -10,9 +10,12 @@ use serde::{Deserialize, Serialize};
 use crate::code::Code;
 use crate::{ContentPath, Provenance, Span};
 
-mod subject;
+pub mod code;
+pub mod coded;
+mod scope;
+pub(crate) mod subject;
 
-pub use subject::{File, Mismatch, Scope, Site, Subject};
+pub use scope::{File, Mismatch, Scope, Site, Subject};
 
 /// One recorded inference of code `C`. Its pin is derived from its code and subject, never
 /// stored.

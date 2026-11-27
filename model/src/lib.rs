@@ -18,61 +18,49 @@
 //! Nothing here reads a clock, the environment or a file: these are values. The crate is
 //! MIT OR Apache-2.0, unlike the engine, because every plugin speaks it (decision 0026).
 
-pub mod code;
-pub mod coded;
+mod content;
 pub mod decision;
-mod diagnostic;
-mod document;
-mod format;
 #[allow(clippy::too_many_lines, clippy::match_same_arms, reason = "generated: one match arm per catalog entry")]
 mod generated;
-pub mod git;
-mod hash;
-pub mod highlight;
-mod language;
-mod manifest;
-mod path;
-mod picture;
-pub mod record;
-mod route;
+mod output;
 mod site;
-mod size;
-mod snapshot;
-mod span;
-mod subject;
-mod time;
-mod url;
 mod value;
 
-pub use code::{AnyCode, AnyDecision, AnyOf, Code, Each, Family, Keyed, Typed, UnknownDecision, Word, Worded};
-pub use decision::{Basis, Decision, DefaultReason, Evidence};
-pub use diagnostic::{Diagnostic, Fault, Notice, Record, Said, Severity};
-pub use document::{
-    Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Folding, Footnote, FootnoteName, ImageSource,
-    Inline, Item, Level, LevelError, LinkTarget, Task, Visit,
+pub use decision::{code, coded};
+pub use output::{git, record};
+pub use site::highlight;
+
+pub use content::hash::{Hash, HashError};
+pub use content::language::{Language, LanguageError};
+pub use content::path::{ContentPath, PathError};
+pub use content::size::Bytes;
+pub use content::snapshot::{
+    Ability, Entry, FileFacts, Gap, Known, Lack, Observed, Oid, Provenance, Snapshot, SnapshotError, UnknownReason,
+    UploadId, Version, VersionError,
 };
-pub use format::{Front, Read, Spanned};
+pub use content::span::{Backwards, Span};
+pub use content::time::{Timestamp, When, WhenError};
+pub use content::url::{ExternalUrl, UrlError};
+pub use decision::code::{
+    AnyCode, AnyDecision, AnyOf, Code, Each, Family, Keyed, Typed, UnknownDecision, Word, Worded,
+};
+pub use decision::subject::Subject;
+pub use decision::{Basis, Decision, DefaultReason, Evidence};
 pub use generated::{Announcement, Problem};
-pub use hash::{Hash, HashError};
-pub use language::{Language, LanguageError};
-pub use manifest::{
+pub use output::diagnostic::{Diagnostic, Fault, Notice, Record, Said, Severity};
+pub use output::format::{Front, Read, Spanned};
+pub use output::manifest::{
     Canonical, DeployId, DuplicateRoute, File, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType,
     MediaUnknown, Served, Status,
 };
-pub use path::{ContentPath, PathError};
-pub use picture::{Dimensions, Picture, Variant};
-pub use route::{Route, RouteError, Slug, SlugError};
+pub use site::document::{
+    Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Folding, Footnote, FootnoteName, ImageSource,
+    Inline, Item, Level, LevelError, LinkTarget, Task, Visit,
+};
+pub use site::picture::{Dimensions, Picture, Variant};
+pub use site::route::{Route, RouteError, Slug, SlugError};
 pub use site::{
     Asset, Author, EmptyAuthor, Excluded, Identity, Layout, Page, PageId, PageKind, Root, Site, SiteError, SiteParts,
     Tag, TagError,
 };
-pub use size::Bytes;
-pub use snapshot::{
-    Ability, Entry, FileFacts, Gap, Known, Lack, Observed, Oid, Provenance, Snapshot, SnapshotError, UnknownReason,
-    UploadId, Version, VersionError,
-};
-pub use span::{Backwards, Span};
-pub use subject::Subject;
-pub use time::{Timestamp, When, WhenError};
-pub use url::{ExternalUrl, UrlError};
 pub use value::{Cause, Expected, Form, FromFront, Raw, Refusal, Shown, Value, Wanted};

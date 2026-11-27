@@ -5,6 +5,11 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod document;
+pub mod highlight;
+pub(crate) mod picture;
+pub(crate) mod route;
+
 use crate::{AnyCode, ContentPath, Document, Hash, Language, Picture, Route, Slug, When};
 
 /// Where a site's content starts in the snapshot.

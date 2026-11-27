@@ -5,13 +5,7 @@
 
 use serde::Serialize;
 
-use crate::diagnostic::{Diagnostic, Notice};
-use crate::document::Document;
-use crate::language::Language;
-use crate::route::Slug;
-use crate::site::{PageKind, Tag};
-use crate::span::Span;
-use crate::time::When;
+use crate::{Diagnostic, Document, Language, Notice, PageKind, Slug, Span, Tag, When};
 
 /// A value and where in the file it was written: the evidence a decision cites.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
