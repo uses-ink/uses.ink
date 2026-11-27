@@ -4,7 +4,7 @@
 use std::fmt;
 use std::path::Path;
 
-use crate::digest::Digest;
+use crate::cli::digest::Digest;
 
 /// The crate's directory below a workspace root.
 const CRATE: [&str; 2] = ["tools", "farm"];

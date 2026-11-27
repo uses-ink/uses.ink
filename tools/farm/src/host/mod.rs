@@ -1,12 +1,15 @@
 //! A host as the config describes it, and as a probe finds it.
 
+pub(crate) mod fleet;
+pub(crate) mod transport;
+
 use std::fmt;
 use std::num::{ParseIntError, TryFromIntError};
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::name::{Destination, HostName, JobFault, JobId};
-use crate::wake::Wake;
+use crate::cli::name::{Destination, HostName, JobFault, JobId};
+use crate::place::wake::Wake;
 
 /// A CPU architecture.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,7 +57,7 @@ pub(crate) enum Via {
 }
 
 impl FromStr for Via {
-    type Err = crate::name::Fault;
+    type Err = crate::cli::name::Fault;
 
     fn from_str(given: &str) -> Result<Self, Self::Err> {
         match given {

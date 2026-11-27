@@ -9,9 +9,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 
-use crate::name::{Disposable, Segment};
-use crate::process::{Failure, Process};
-use crate::tree::Tree;
+use crate::cli::name::{Disposable, Segment};
+use crate::config::tree::Tree;
+use crate::host::transport::process::{Failure, Process};
 
 /// How a new workspace got its `target/`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -269,7 +269,7 @@ impl Fault {
             out,
             "workspace `{name}` has {} file(s) that jj does not track, outside target/: {}{}; removing it would delete them; move or commit them, or list their names under `disposable` in the `[workspace]` table of .config/farm.toml",
             paths.len(),
-            crate::error::Listed(shown),
+            crate::cli::error::Listed(shown),
             if paths.len() > shown.len() { " and more" } else { "" }
         )
     }

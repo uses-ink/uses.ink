@@ -1,6 +1,10 @@
 //! A job: a command with what it needs, and what became of it. [`Flow`] reads a running job's
 //! output line by line; [`Finished`] is the result a verb prints, as text or as `uses.farm/v1`.
 
+pub(crate) mod event;
+pub(crate) mod quote;
+pub(crate) mod summary;
+
 use std::fmt;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -9,16 +13,16 @@ use std::time::Duration;
 use serde::Serialize;
 
 use crate::cache::Ago;
+use crate::cache::inputs::glob::Selection;
 use crate::cli::Seconds;
-use crate::event::{Event, Line};
-use crate::exit::Exit;
-use crate::glob::Selection;
-use crate::history::Key;
+use crate::cli::exit::Exit;
+use crate::cli::name::{HostName, JobId};
+use crate::config::jobs::Recipe;
 use crate::host::Snapshot;
-use crate::jobs::Recipe;
-use crate::name::{HostName, JobId};
+use crate::job::event::{Event, Line};
+use crate::job::summary::Summary;
 use crate::place::Need;
-use crate::summary::Summary;
+use crate::place::history::Key;
 
 /// Whether a pass of a job may be reused, and which files it depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -203,7 +207,7 @@ pub(crate) struct Flow {
     /// What the host said about the job's body.
     pub(crate) body: Body,
     /// The first line that carried the mark and was not an event.
-    pub(crate) fault: Option<crate::event::Fault>,
+    pub(crate) fault: Option<crate::job::event::Fault>,
     /// The job's own output.
     pub(crate) log: String,
     pub(crate) file: Option<LogFile>,
@@ -251,21 +255,26 @@ impl Flow {
     }
 
     /// The error for a job that ended with no word: its body never showed, or the connection ended.
-    pub(crate) fn lost(&self, job: JobId) -> crate::error::Error {
+    pub(crate) fn lost(&self, job: JobId) -> crate::cli::error::Error {
         match self.body {
-            Body::Missing => crate::error::Error::NoBody { job },
-            Body::Unsaid | Body::Started => crate::error::Error::Lost { job },
+            Body::Missing => crate::cli::error::Error::NoBody { job },
+            Body::Unsaid | Body::Started => crate::cli::error::Error::Lost { job },
         }
     }
 
     /// How the job ended, or the error that stopped it on the way: a fault the host said, the
     /// local log file failing, or a connection that ended with no word.
-    pub(crate) fn settle(&mut self, host: &HostName, id: &JobId, log: &Path) -> Result<Verdict, crate::error::Error> {
+    pub(crate) fn settle(
+        &mut self,
+        host: &HostName,
+        id: &JobId,
+        log: &Path,
+    ) -> Result<Verdict, crate::cli::error::Error> {
         if let Some(source) = self.fault.take() {
-            return Err(crate::error::Error::Said { host: host.clone(), source });
+            return Err(crate::cli::error::Error::Said { host: host.clone(), source });
         }
         if let Some(source) = self.log_error() {
-            return Err(crate::error::Error::Io { path: log.to_path_buf(), source });
+            return Err(crate::cli::error::Error::Io { path: log.to_path_buf(), source });
         }
         match self.verdict() {
             Verdict::Lost => Err(self.lost(id.clone())),
@@ -529,7 +538,7 @@ mod tests {
             need: Need::Any,
             env: vec!["INSTA_UPDATE=always".to_owned()],
             limit: None,
-            key: crate::history::Key::stage("x"),
+            key: crate::place::history::Key::stage("x"),
             reuse: Reuse::Never,
         };
         let snap = crate::host::Snapshot::read(

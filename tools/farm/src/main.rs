@@ -15,85 +15,32 @@
 //! - [`version`]: the hash of the source the binary was built from.
 //! - [`workspace`]: `farm workspace`, which needs no host.
 
-#[path = "cache/mod.rs"]
 mod cache;
-#[path = "run/changes.rs"]
-mod changes;
-#[path = "cli/mod.rs"]
 mod cli;
-#[path = "config/hosts.rs"]
 mod config;
-#[path = "cli/console.rs"]
-mod console;
-#[path = "cli/digest.rs"]
-mod digest;
-#[path = "cli/error.rs"]
-mod error;
-#[path = "job/event.rs"]
-mod event;
-#[path = "cli/exit.rs"]
-mod exit;
-#[path = "host/fleet.rs"]
-mod fleet;
-#[path = "cache/inputs/glob.rs"]
-mod glob;
-#[path = "cache/hash.rs"]
-mod hash;
-#[path = "place/history.rs"]
-mod history;
-#[path = "host/mod.rs"]
 mod host;
-#[path = "cache/inputs/mod.rs"]
-mod inputs;
-#[path = "job/mod.rs"]
 mod job;
-#[path = "config/jobs.rs"]
-mod jobs;
-#[path = "cli/name.rs"]
-mod name;
-#[path = "run/overview.rs"]
-mod overview;
-#[path = "place/mod.rs"]
 mod place;
-#[path = "host/transport/process.rs"]
-mod process;
-#[path = "host/transport/program.rs"]
-mod program;
-#[path = "job/quote.rs"]
-mod quote;
-#[path = "run/mod.rs"]
 mod run;
-#[path = "job/summary/mod.rs"]
-mod summary;
-#[path = "host/transport/mod.rs"]
-mod transport;
-#[path = "config/tree.rs"]
-mod tree;
-#[path = "cli/version.rs"]
-mod version;
-#[path = "place/wake.rs"]
-mod wake;
-#[path = "config/workspace.rs"]
-mod workspace;
 
 use std::process::ExitCode;
 use std::sync::Arc;
 
 use cache::Cache;
+use cache::inputs::{Inputs, Jj};
+use cli::console::Console;
+use cli::error::{Chain, Error};
+use cli::exit::Exit;
 use cli::{Command, Verb};
-use config::{Config, Environment};
-use console::Console;
-use error::{Chain, Error};
-use exit::Exit;
-use fleet::{Fleet, Member};
+use config::hosts::{Config, Environment};
+use config::jobs::Jobs;
+use config::tree::Tree;
+use config::workspace::Workspaces;
+use host::fleet::{Fleet, Member};
+use host::transport::{Exec, Link, Local, Ssh};
 use host::{Host, Via};
-use inputs::{Inputs, Jj};
-use jobs::Jobs;
 use place::Fastest;
 use run::{Farm, Setup};
-use transport::{Exec, Link, Local, Ssh};
-use tree::Tree;
-use workspace::Workspaces;
 
 /// The entry point.
 #[derive(Debug, Clone, Copy)]
@@ -118,7 +65,7 @@ impl Entry {
         let Command { flags, verb } = Command::parse(args)?;
         let console = Arc::new(Console::new(flags.verbose));
         if verb == Verb::Version {
-            console.out(version::Version::current());
+            console.out(cli::version::Version::current());
             return Ok(Exit::Passed);
         }
         let here = std::env::current_dir().map_err(|source| Error::Io { path: ".".into(), source })?;
@@ -150,18 +97,18 @@ impl Entry {
 
     /// The timings placement uses; a history that cannot be read is said and placement goes on
     /// without it.
-    fn table(cache: Option<&Cache>, console: &Console) -> history::Table {
+    fn table(cache: Option<&Cache>, console: &Console) -> place::history::Table {
         let Some(cache) = cache else {
-            return history::Table::default();
+            return place::history::Table::default();
         };
-        cache.history.load(&history::Wall).unwrap_or_else(|fault| {
+        cache.history.load(&place::history::Wall).unwrap_or_else(|fault| {
             console.note(format!("timing history not used: {}", cache::Causes(&cache::Trouble::Store(fault))));
-            history::Table::default()
+            place::history::Table::default()
         })
     }
 
     /// What the farm remembers on this machine, unless there is nowhere to keep it.
-    fn cache(env: &Environment, tree: &Tree, settings: &jobs::Settings) -> Result<Option<Cache>, Error> {
+    fn cache(env: &Environment, tree: &Tree, settings: &config::jobs::Settings) -> Result<Option<Cache>, Error> {
         let Some(dir) = env.cache_dir(tree.repo.as_str()) else {
             return Ok(None);
         };
@@ -188,10 +135,10 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+    use crate::cli::exit::Exit;
+    use crate::cli::name::HostName;
     use crate::cli::{Action, Flags, Verb};
-    use crate::exit::Exit;
     use crate::job::Verdict;
-    use crate::name::HostName;
     use crate::place::LeastLoaded;
 
     /// A farm of this machine alone, in a temp dir: the real `sh`, `flock`, `timeout` and `tail`.
@@ -217,9 +164,9 @@ mod tests {
         }
 
         fn build(&self, slots: u32, flags: Flags, cached: bool) -> Farm<Link, LeastLoaded> {
-            let settings = jobs::Settings::default();
+            let settings = config::jobs::Settings::default();
             let cache = cached.then(|| {
-                let inputs = inputs::Inputs::new(Arc::new(inputs::Walk), &settings.exclude).unwrap();
+                let inputs = cache::inputs::Inputs::new(Arc::new(cache::inputs::Walk), &settings.exclude).unwrap();
                 Cache::at(&self.root.join("cache"), settings.limits, settings.memory, inputs)
             });
             let host = Host { slots: Some(slots), dir: self.dir(), ..Host::local() };
@@ -268,7 +215,7 @@ mod tests {
             env: vec![],
             limit: None,
             reuse: job::Reuse::Never,
-            key: history::Key::stage(label),
+            key: place::history::Key::stage(label),
         }
     }
 
@@ -319,7 +266,9 @@ mod tests {
         std::fs::write(tree.join("docs").join("a.md"), "one").unwrap();
         std::fs::write(tree.join("a.rs"), "one").unwrap();
         let mut job = counting(&rig, "true");
-        job.reuse = job::Reuse::Files(glob::Selection::parse(&["**".to_owned(), "!docs/**".to_owned()]).unwrap());
+        job.reuse = job::Reuse::Files(
+            cache::inputs::glob::Selection::parse(&["**".to_owned(), "!docs/**".to_owned()]).unwrap(),
+        );
         again(&rig, &job, Flags::default());
         std::fs::write(tree.join("docs").join("a.md"), "two").unwrap();
         assert!(matches!(again(&rig, &job, Flags::default()).served, job::Served::Cached { .. }));
@@ -447,21 +396,21 @@ mod tests {
         assert_eq!(started.verdict, Verdict::Running);
         let member = rig.member();
         let said = member.wait(&started.id, cli::Seconds(0)).unwrap();
-        assert_eq!(said.events, [event::Event::Running], "not done yet: still running, safe to call again");
+        assert_eq!(said.events, [job::event::Event::Running], "not done yet: still running, safe to call again");
         std::fs::write(&latch, "").unwrap();
         let said = member.wait(&started.id, cli::Seconds(20)).unwrap();
-        assert!(matches!(said.events.first(), Some(event::Event::Done { code: 7, .. })), "{:?}", said.events);
+        assert!(matches!(said.events.first(), Some(job::event::Event::Done { code: 7, .. })), "{:?}", said.events);
         assert_eq!(member.log(&started.id, None).unwrap().output, ["finished"]);
         assert_eq!(member.log(&started.id, Some(1)).unwrap().output, ["finished"]);
         let missing = JobIdHack::other(&started.id);
-        assert_eq!(member.wait(&missing, cli::Seconds(1)).unwrap().events, [event::Event::NoJob]);
+        assert_eq!(member.wait(&missing, cli::Seconds(1)).unwrap().events, [job::event::Event::NoJob]);
     }
 
     /// A job id of the same host that no job has.
     struct JobIdHack;
 
     impl JobIdHack {
-        fn other(id: &name::JobId) -> name::JobId {
+        fn other(id: &cli::name::JobId) -> cli::name::JobId {
             format!("{}.deadbeef", id.host).parse().unwrap()
         }
     }
@@ -509,7 +458,7 @@ mod tests {
         assert_eq!(finished.verdict, Verdict::Running);
         std::fs::write(&latch, "").unwrap();
         let said = member.wait(&finished.id, cli::Seconds(20)).unwrap();
-        assert!(matches!(said.events.first(), Some(event::Event::Done { code: 0, .. })), "{:?}", said.events);
+        assert!(matches!(said.events.first(), Some(job::event::Event::Done { code: 0, .. })), "{:?}", said.events);
         // the slot is free again
         let probe = member.probe().unwrap();
         assert_eq!((probe.busy, probe.queued), (0, 0));
@@ -532,9 +481,9 @@ mod tests {
         let member = rig.member();
         let farm = rig.farm(1, Flags::default());
         let snap = farm.fleet_probe().remove(0);
-        let id = name::JobId::new(HostName::local(), 1, 1);
+        let id = cli::name::JobId::new(HostName::local(), 1, 1);
         let job = job("held", "sleep 60");
-        let start = fleet::Start { tree: &farm_tree(&rig), snap: &snap, job: &job, id: &id };
+        let start = host::fleet::Start { tree: &farm_tree(&rig), snap: &snap, job: &job, id: &id };
         let call = member.launch(&start, job::Attach::Hold(Duration::from_secs(60)), cli::Seconds(120));
         let argv = call.argv();
         let mut child = std::process::Command::new("sh")
@@ -548,7 +497,7 @@ mod tests {
         child.wait().unwrap();
         assert!(within(|| member.probe().is_ok_and(|probe| probe.busy == 0)), "the slot came free");
         let log = member.wait(&id, cli::Seconds(5)).unwrap();
-        assert!(matches!(log.events.first(), Some(event::Event::Done { code: 143, .. })), "{:?}", log.events);
+        assert!(matches!(log.events.first(), Some(job::event::Event::Done { code: 143, .. })), "{:?}", log.events);
     }
 
     #[test]

@@ -3,9 +3,9 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::error::Error;
+use crate::cli::error::Error;
+use crate::cli::name::Segment;
 use crate::host::{Host, Via};
-use crate::name::Segment;
 
 /// A jj workspace of the repo: `<repo>-ws/<name>` beside the main checkout `<repo>`.
 #[derive(Debug, Clone, PartialEq, Eq)]

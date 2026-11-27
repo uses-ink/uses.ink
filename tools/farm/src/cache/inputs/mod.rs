@@ -5,6 +5,8 @@
 //! out) and hashes their bytes. A cache of file hashes under `target/farm/`, keyed by (path,
 //! size, mtime, inode), makes a second digest of an unchanged tree a stat per file.
 
+pub(crate) mod glob;
+
 use std::collections::HashMap;
 use std::fmt::{self, Write as _};
 use std::io::Read as _;
@@ -14,10 +16,10 @@ use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::glob::{self, Selection};
-use crate::hash::{Hash, Hasher};
-use crate::name::Excluded;
-use crate::process::{Failure, Process};
+use crate::cache::hash::{Hash, Hasher};
+use crate::cache::inputs::glob::Selection;
+use crate::cli::name::Excluded;
+use crate::host::transport::process::{Failure, Process};
 
 /// What the sync never ships and a digest never reads: build output and anything that looks like
 /// a secret. The repo's own list (`[sync] exclude`) comes on top.

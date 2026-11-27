@@ -38,13 +38,13 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::cache::hash::{Hash, Hasher};
+use crate::cache::inputs::glob::{self, Selection};
 use crate::cli::Seconds;
-use crate::error::{Error, Listed};
-use crate::glob::{self, Selection};
-use crate::hash::{Hash, Hasher};
-use crate::history::Memory;
-use crate::name::{Disposable, Excluded, JobName};
+use crate::cli::error::{Error, Listed};
+use crate::cli::name::{Disposable, Excluded, JobName};
 use crate::place::Need;
+use crate::place::history::Memory;
 
 /// Where the repo's job file is, below the workspace root.
 const FILE: [&str; 2] = [".config", "farm.toml"];
@@ -358,7 +358,7 @@ pub(crate) enum Fault {
     Read(std::io::Error),
     Toml(Box<toml::de::Error>),
     /// A job name the farm does not allow.
-    Name(crate::name::Fault),
+    Name(crate::cli::name::Fault),
     /// A `[job.<name>]` table that is not one.
     Entry {
         name: JobName,
@@ -430,7 +430,7 @@ impl std::error::Error for Fault {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::Error;
+    use crate::cli::error::Error;
 
     const FILE: &str = "[job.lint]\nrun = \"cargo xtask check lint\"\ngolden = false\n\n[job.test]\nrun = \"cargo  xtask check test\"\ngolden = true\nlimit = 900\n";
 
@@ -450,7 +450,7 @@ mod tests {
         let asked: Vec<JobName> = vec!["test".parse().unwrap()];
         assert_eq!(jobs.pick(&asked).unwrap().len(), 1);
         let nope = jobs.pick(&["nope".parse().unwrap()]).unwrap_err();
-        assert_eq!(nope.exit(), crate::exit::Exit::Usage);
+        assert_eq!(nope.exit(), crate::cli::exit::Exit::Usage);
         assert!(nope.to_string().contains("declares no job `nope`"), "{nope}");
     }
 
@@ -499,11 +499,14 @@ mod tests {
         let settings = jobs.settings();
         assert_eq!((settings.limits.hours.get(), settings.limits.entries.get()), (2, 5));
         assert_eq!(settings.budget.map(NonZeroU32::get), Some(3));
-        assert_eq!(settings.exclude.iter().map(crate::name::Word::as_str).collect::<Vec<_>>(), [".jj", ".impeccable"]);
+        assert_eq!(
+            settings.exclude.iter().map(crate::cli::name::Word::as_str).collect::<Vec<_>>(),
+            [".jj", ".impeccable"]
+        );
         let plain = Jobs::parse(FILE, PathBuf::new()).unwrap();
         let defaults = plain.settings();
         assert_eq!((defaults.limits.hours.get(), defaults.limits.entries.get(), defaults.budget), (168, 256, None));
-        assert_eq!(defaults.exclude.iter().map(crate::name::Word::as_str).collect::<Vec<_>>(), [".jj", ".git"]);
+        assert_eq!(defaults.exclude.iter().map(crate::cli::name::Word::as_str).collect::<Vec<_>>(), [".jj", ".git"]);
         assert_ne!(defaults.config, settings.config, "a changed file is a new config digest");
     }
 

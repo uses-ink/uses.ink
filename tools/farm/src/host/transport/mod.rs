@@ -1,7 +1,10 @@
 //! How a call reaches a host. [`Transport`] is the one seam: [`Local`] is this machine through
 //! `sh`, [`Ssh`] is another through the system `ssh` and `rsync`, and the logic above them is
 //! tested with a fake. Every process is started from an argument vector; the one shell line,
-//! the remote command of `ssh`, is made of [`Quoted`](crate::quote::Quoted) words.
+//! the remote command of `ssh`, is made of [`Quoted`](crate::job::quote::Quoted) words.
+
+pub(crate) mod process;
+pub(crate) mod program;
 
 use std::io::{BufRead as _, BufReader, Read as _, Write as _};
 use std::path::{Path, PathBuf};
@@ -11,11 +14,11 @@ use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::console::Console;
-use crate::name::Destination;
-use crate::process::Failure;
-use crate::program::{Call, Stdin};
-use crate::quote::Line;
+use crate::cli::console::Console;
+use crate::cli::name::Destination;
+use crate::host::transport::process::Failure;
+use crate::host::transport::program::{Call, Stdin};
+use crate::job::quote::Line;
 
 /// What a call left: how it ended and what it said on stderr.
 #[derive(Debug)]
@@ -45,7 +48,7 @@ pub(crate) struct Push<'a> {
     /// The lock that keeps two syncs of it from overlapping.
     pub(crate) lock: &'a str,
     /// Names the repo keeps out of the sync, beside the built-in ones.
-    pub(crate) exclude: &'a [crate::name::Excluded],
+    pub(crate) exclude: &'a [crate::cli::name::Excluded],
 }
 
 /// Files to bring back from a host's tree into the workspace.
@@ -357,11 +360,11 @@ impl Ssh {
 
     /// The `rsync` that makes the host's tree equal to the workspace.
     pub(crate) fn sync(&self, push: &Push<'_>) -> Vec<String> {
-        let wrapped = format!("flock {} rsync", crate::quote::Quoted::new(push.lock));
+        let wrapped = format!("flock {} rsync", crate::job::quote::Quoted::new(push.lock));
         let mut argv = self.rsync();
         argv.extend(Self::PLACE.map(str::to_owned));
         argv.extend(["--delete".to_owned(), "--filter=:- .gitignore".to_owned(), format!("--rsync-path={wrapped}")]);
-        argv.extend(crate::inputs::BUILT_IN.map(|pattern| format!("--exclude={pattern}")));
+        argv.extend(crate::cache::inputs::BUILT_IN.map(|pattern| format!("--exclude={pattern}")));
         argv.extend(push.exclude.iter().map(|name| format!("--exclude={name}")));
         argv.push(format!("{}/", push.root.display()));
         argv.push(format!("{}:{}/", self.destination, push.tree));
@@ -404,7 +407,7 @@ impl Transport for Ssh {
     }
 }
 
-/// Either way of reaching a host: what a [`Fleet`](crate::fleet::Fleet) is made of.
+/// Either way of reaching a host: what a [`Fleet`](crate::host::fleet::Fleet) is made of.
 #[derive(Debug, Clone)]
 pub(crate) enum Link {
     Local(Local),
@@ -441,7 +444,7 @@ impl Transport for Link {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::Program;
+    use crate::host::transport::program::Program;
 
     fn ssh() -> Ssh {
         let mut ssh = Ssh::new(Exec::new(Arc::new(Console::new(false))), "me@box.lan".parse().unwrap());
@@ -465,7 +468,7 @@ mod tests {
 
     #[test]
     fn the_sync_is_a_delete_with_the_excludes_and_the_lock_around_the_remote_rsync() {
-        let exclude: Vec<crate::name::Excluded> =
+        let exclude: Vec<crate::cli::name::Excluded> =
             [".jj", ".git", ".impeccable"].iter().map(|name| name.parse().unwrap()).collect();
         let push = Push {
             root: Path::new("/w/farm"),
@@ -498,7 +501,8 @@ mod tests {
 
     /// The real sync argv, pointed at two local directories: no `ssh`, no remote lock.
     fn local_sync(from: &Path, to: &Path) -> Vec<String> {
-        let exclude: Vec<crate::name::Excluded> = [".jj", ".git"].iter().map(|name| name.parse().unwrap()).collect();
+        let exclude: Vec<crate::cli::name::Excluded> =
+            [".jj", ".git"].iter().map(|name| name.parse().unwrap()).collect();
         let push = Push { root: from, tree: "t", lock: "l", exclude: &exclude };
         let mut argv = ssh().sync(&push);
         argv.truncate(argv.len() - 2);

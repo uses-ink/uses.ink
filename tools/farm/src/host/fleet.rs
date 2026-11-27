@@ -1,24 +1,24 @@
 //! The hosts, as one thing to ask. A [`Member`] is a host with the way to reach it; a [`Fleet`]
 //! is all of them, probed together. Both are generic over the [`Transport`], so the logic is
-//! tested against a fake and runs over [`Link`](crate::transport::Link).
+//! tested against a fake and runs over [`Link`](crate::host::transport::Link).
 
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::changes::Kind;
 use crate::cli::Seconds;
-use crate::console::Console;
-use crate::error::Error;
-use crate::event::{Event, Line, Seeded};
+use crate::cli::console::Console;
+use crate::cli::error::Error;
+use crate::cli::name::{Excluded, HostName, JobId};
+use crate::config::tree::Tree;
+use crate::host::transport::process::Failure;
+use crate::host::transport::program::{Call, Program};
+use crate::host::transport::{Done, Pull, Push, Transport};
 use crate::host::{Host, Snapshot};
+use crate::job::event::{Event, Line, Seeded};
 use crate::job::{Attach, Job};
-use crate::name::{Excluded, HostName, JobId};
-use crate::process::Failure;
-use crate::program::{Call, Program};
-use crate::transport::{Done, Pull, Push, Transport};
-use crate::tree::Tree;
-use crate::wake::Fault as WakeFault;
+use crate::place::wake::Fault as WakeFault;
+use crate::run::changes::Kind;
 
 /// What a quick call printed: its events, and every other line.
 #[derive(Debug, Default)]
@@ -395,7 +395,7 @@ mod tests {
             env: vec![],
             reuse: crate::job::Reuse::Never,
             limit: None,
-            key: crate::history::Key::stage("x"),
+            key: crate::place::history::Key::stage("x"),
         };
         let id = JobId::new(member.host.name.clone(), 255, 1);
         let call =
@@ -443,7 +443,7 @@ mod tests {
         let script = dir.join("wake.sh");
         std::fs::write(&script, format!("#!/bin/sh\necho \"$@\" >> {}/marker\n{body}\n", dir.display())).unwrap();
         std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
-        let wake = crate::wake::Wake::new(&script.display().to_string(), Some(Seconds(1)), None);
+        let wake = crate::place::wake::Wake::new(&script.display().to_string(), Some(Seconds(1)), None);
         Member::new(Host { wake, ..remote("farm-a") }, Fake::saying(replies))
     }
 
@@ -468,17 +468,17 @@ mod tests {
         let dir = scratch("fail");
         let failing = sleeper(&dir, "exit 7", vec![]);
         let error = failing.wake().unwrap_err();
-        let text = crate::error::Chain(&error).to_string();
+        let text = crate::cli::error::Chain(&error).to_string();
         assert!(matches!(error, Error::Wake { .. }) && text.contains("exit status: 7"), "{text}");
         let silent = Reply { lines: vec![], code: 255 };
         let quiet = sleeper(&dir, "true", vec![silent.clone(), silent.clone(), silent]);
         let started = std::time::Instant::now();
         let error = quiet.wake().unwrap_err();
-        let text = crate::error::Chain(&error).to_string();
+        let text = crate::cli::error::Chain(&error).to_string();
         assert!(text.contains("still did not answer within 1 s"), "{text}");
         assert!(started.elapsed() < std::time::Duration::from_secs(8));
         let plain = Member::new(remote("petal"), Fake::default());
-        assert!(matches!(plain.wake(), Err(Error::Wake { source: crate::wake::Fault::Blank, .. })));
+        assert!(matches!(plain.wake(), Err(Error::Wake { source: crate::place::wake::Fault::Blank, .. })));
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -507,13 +507,13 @@ mod tests {
             need: Need::Any,
             env: vec![],
             limit: None,
-            key: crate::history::Key::stage("x"),
+            key: crate::place::history::Key::stage("x"),
             reuse: crate::job::Reuse::Never,
         };
         let id = JobId::new(member.host.name.clone(), 1, 1);
         let start = Start { tree: &tree(), snap: &snap, job: &job, id: &id };
         let call = member.launch(&start, Attach::Hold(std::time::Duration::from_secs(540)), Seconds(1500));
-        assert_eq!(call.stdin, crate::program::Stdin::Held(std::time::Duration::from_secs(540)));
+        assert_eq!(call.stdin, crate::host::transport::program::Stdin::Held(std::time::Duration::from_secs(540)));
         assert_eq!(call.args.first().map(String::as_str), Some("held"));
     }
 

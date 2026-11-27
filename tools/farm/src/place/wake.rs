@@ -16,9 +16,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::cache::Fault as Stored;
 use crate::cli::Seconds;
-use crate::error::Error;
+use crate::cli::error::Error;
+use crate::cli::name::HostName;
 use crate::host::{Arch, Host, Load, Snapshot};
-use crate::name::HostName;
 
 /// How to wake a host: the `wake`, `wake_timeout` and `wake_cost` keys of its `[[host]]`.
 #[derive(Debug, Clone, PartialEq, Eq)]

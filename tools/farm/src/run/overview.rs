@@ -5,8 +5,8 @@ use std::fmt;
 
 use serde::Serialize;
 
-use crate::error::Chain;
-use crate::fleet::Probed;
+use crate::cli::error::Chain;
+use crate::host::fleet::Probed;
 use crate::host::{Host, Snapshot};
 use crate::job::Job;
 use crate::place::{Ask, Placement};

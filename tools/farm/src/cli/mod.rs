@@ -3,13 +3,20 @@
 //! The farm's flags come before the verb, or right after it; `cargo` and `bless` pass everything
 //! after their own flags to cargo untouched (`--` ends the flags at once).
 
+pub(crate) mod console;
+pub(crate) mod digest;
+pub(crate) mod error;
+pub(crate) mod exit;
+pub(crate) mod name;
+pub(crate) mod version;
+
 use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::error::Listed;
-use crate::name::{Fault, HostName, JobFault, JobId, JobName, Segment};
+use crate::cli::error::Listed;
+use crate::cli::name::{Fault, HostName, JobFault, JobId, JobName, Segment};
 
 /// A verb, by name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

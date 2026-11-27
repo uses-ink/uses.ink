@@ -11,10 +11,10 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 
 use crate::cli::Seconds;
-use crate::error::Error;
+use crate::cli::error::Error;
+use crate::cli::name::HostName;
 use crate::host::{Arch, Host, HostDir, Via};
-use crate::name::HostName;
-use crate::wake::Wake;
+use crate::place::wake::Wake;
 
 /// The variables the config's location depends on.
 #[derive(Debug, Clone, Default)]
@@ -153,7 +153,7 @@ impl Entry {
 struct Ssh(Via);
 
 impl TryFrom<String> for Ssh {
-    type Error = crate::name::Fault;
+    type Error = crate::cli::name::Fault;
 
     fn try_from(given: String) -> Result<Self, Self::Error> {
         given.parse().map(Self)

@@ -8,17 +8,20 @@
 //! - [`Marks`]: the jobs running now, so an identical job attaches to the one running.
 //! - [`Journal`]: what each workspace ran, for `farm status` and the budget.
 
+pub(crate) mod hash;
+pub(crate) mod inputs;
+
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use crate::hash::{Hash, Hasher};
-use crate::history::{History, Memory};
-use crate::inputs::Inputs;
-use crate::jobs::Limits;
-use crate::wake::Seen;
+use crate::cache::hash::{Hash, Hasher};
+use crate::cache::inputs::Inputs;
+use crate::config::jobs::Limits;
+use crate::place::history::{History, Memory};
+use crate::place::wake::Seen;
 
 /// A time as whole seconds since the epoch: what the cache files hold.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -86,16 +89,16 @@ impl std::error::Error for Fault {
 /// Why the cache was not used for a job: said once, and the job runs as if there were none.
 #[derive(Debug)]
 pub(crate) enum Trouble {
-    Inputs(crate::inputs::Fault),
+    Inputs(crate::cache::inputs::Fault),
     Store(Fault),
     /// Waiting for an identical job failed.
-    Attach(crate::error::Error),
+    Attach(crate::cli::error::Error),
     /// There is no cache.
     Off,
 }
 
-impl From<crate::inputs::Fault> for Trouble {
-    fn from(fault: crate::inputs::Fault) -> Self {
+impl From<crate::cache::inputs::Fault> for Trouble {
+    fn from(fault: crate::cache::inputs::Fault) -> Self {
         Self::Inputs(fault)
     }
 }

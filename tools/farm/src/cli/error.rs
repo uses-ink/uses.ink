@@ -5,15 +5,13 @@ use std::fmt;
 use std::path::PathBuf;
 
 use crate::cli::Usage;
-use crate::config;
-use crate::event;
-use crate::exit::Exit;
+use crate::cli::exit::Exit;
+use crate::cli::name::{Fault, HostName, JobId};
+use crate::config::{hosts, jobs, workspace};
 use crate::host::ReadFault;
-use crate::jobs;
-use crate::name::{Fault, HostName, JobId};
+use crate::host::transport::process::Failure;
+use crate::job::event;
 use crate::place::Need;
-use crate::process::Failure;
-use crate::workspace;
 
 /// One failure of the farm: it could not do what was asked, or would not.
 #[derive(Debug)]
@@ -22,7 +20,7 @@ pub(crate) enum Error {
     /// The config file.
     Config {
         path: PathBuf,
-        fault: config::Fault,
+        fault: hosts::Fault,
     },
     /// The repo's job file.
     Jobs {
@@ -55,7 +53,7 @@ pub(crate) enum Error {
     /// A host that could not be woken.
     Wake {
         host: HostName,
-        source: crate::wake::Fault,
+        source: crate::place::wake::Fault,
     },
     /// A probe that printed what a probe does not.
     Probe {
@@ -100,7 +98,7 @@ pub(crate) enum Error {
     /// A changed path that cannot be trusted.
     Changes {
         host: HostName,
-        source: crate::changes::Fault,
+        source: crate::run::changes::Fault,
     },
     /// Files edited here after the sync started, which bringing the host's copy back would overwrite.
     Edited {

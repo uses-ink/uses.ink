@@ -1,11 +1,14 @@
 //! Where a job goes: which hosts may run it, and which of them is the best one now.
 
+pub(crate) mod history;
+pub(crate) mod wake;
+
 use std::fmt;
 
-use crate::error::Error;
-use crate::history::{Key, Median, Table};
+use crate::cli::error::Error;
+use crate::cli::name::HostName;
 use crate::host::Snapshot;
-use crate::name::HostName;
+use crate::place::history::{Key, Median, Table};
 
 /// What a host must be for a job.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -282,8 +285,8 @@ impl Placement for Fastest {
 mod tests {
     use super::*;
     use crate::cache::Moment;
-    use crate::history::Sample;
     use crate::host::{Arch, Load};
+    use crate::place::history::Sample;
 
     fn snap(name: &str, [slots, busy, queued, load]: [u32; 4]) -> Snapshot {
         Snapshot {

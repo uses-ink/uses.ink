@@ -1,35 +1,38 @@
 //! The verbs that use the hosts: [`Farm`] places jobs, runs them, and reports.
 
+pub(crate) mod changes;
+pub(crate) mod overview;
+
 use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use crate::cache::hash::Hash;
+use crate::cache::inputs::Toolchain;
 use crate::cache::{
     Cache, Causes, Claim, Claimed, Entry, Facts, Flaky, Key, Kind as Tick, Mark, Marks, Moment, Record, Trouble,
 };
-use crate::hash::Hash;
-use crate::history::{self, Clock, Sample, Wall};
-use crate::inputs::Toolchain;
+use crate::place::history::{self, Clock, Sample, Wall};
 
-use crate::changes::{Changes, Kind};
+use crate::cli::console::Console;
+use crate::cli::error::{Chain, Error};
+use crate::cli::exit::Exit;
+use crate::cli::name::{HostName, JobId, JobName};
+use crate::cli::version::{Freshness, Version};
 use crate::cli::{Action, Flags, Seconds, Usage, Verb};
-use crate::console::Console;
-use crate::error::{Chain, Error};
-use crate::event::{Event, Seeded};
-use crate::exit::Exit;
-use crate::fleet::{Fleet, Probed, Start};
+use crate::config::jobs::{Jobs, Settings};
+use crate::config::tree::Tree;
+use crate::host::fleet::{Fleet, Probed, Start};
+use crate::host::transport::Transport;
 use crate::host::{Arch, Snapshot};
+use crate::job::event::{Event, Seeded};
+use crate::job::summary::Summary;
 use crate::job::{Attach, Document, Finished, Flow, Job, LogFile, Reuse, Served, Totals, Verdict};
-use crate::jobs::{Jobs, Settings};
-use crate::name::{HostName, JobId, JobName};
-use crate::overview::Overview;
 use crate::place::{Ask, Need, Placement, Why};
-use crate::summary::Summary;
-use crate::transport::Transport;
-use crate::tree::Tree;
-use crate::version::{Freshness, Version};
+use crate::run::changes::{Changes, Kind};
+use crate::run::overview::Overview;
 
 /// Where a job's log is kept here, below the workspace: `target/farm/<host>.<token>.log`.
 const LOGS: [&str; 2] = ["target", "farm"];
@@ -167,7 +170,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         thread::scope(|scope| {
             let running: Vec<_> = names
                 .iter()
-                .map(|name| scope.spawn(move || self.fleet.member(name).map(crate::fleet::Member::wake)))
+                .map(|name| scope.spawn(move || self.fleet.member(name).map(crate::host::fleet::Member::wake)))
                 .collect();
             names
                 .iter()
@@ -571,7 +574,11 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     }
 
     /// Copies a finished job's log from its host into this workspace; the path and the text.
-    fn fetch_log(&self, member: &crate::fleet::Member<T>, id: &JobId) -> Result<(std::path::PathBuf, String), Error> {
+    fn fetch_log(
+        &self,
+        member: &crate::host::fleet::Member<T>,
+        id: &JobId,
+    ) -> Result<(std::path::PathBuf, String), Error> {
         let path = self.log_path(id);
         let text = member.log(id, None)?.output.join("\n");
         std::fs::create_dir_all(path.parent().unwrap_or(&self.tree.root))
@@ -999,11 +1006,11 @@ impl Reuse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fleet::Member;
-    use crate::fleet::fake::{Fake, Reply};
+    use crate::host::fleet::Member;
+    use crate::host::fleet::fake::{Fake, Reply};
     use crate::host::{Host, Via};
     use crate::place::LeastLoaded;
-    use crate::wake::Wake;
+    use crate::place::wake::Wake;
 
     fn host(name: &str) -> Host {
         Host { name: name.parse().unwrap(), via: Via::Ssh("x".parse().unwrap()), ..Host::local() }
@@ -1033,7 +1040,8 @@ mod tests {
         fn with(members: Vec<Member<Fake>>, flags: Flags, cache: Option<&std::path::Path>) -> Self {
             let settings = Settings::default();
             let cache = cache.map(|dir| {
-                let inputs = crate::inputs::Inputs::new(Arc::new(crate::inputs::Walk), &settings.exclude).unwrap();
+                let inputs =
+                    crate::cache::inputs::Inputs::new(Arc::new(crate::cache::inputs::Walk), &settings.exclude).unwrap();
                 Cache::at(dir, settings.limits, settings.memory, inputs)
             });
             Self::built(members, flags, cache)
