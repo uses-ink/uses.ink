@@ -1,0 +1,257 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/repeated.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "intro",
+          "inlines": [
+            {
+              "text": "Intro"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "intro-1",
+          "inlines": [
+            {
+              "text": "Intro"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "intro-2",
+          "inlines": [
+            {
+              "text": "Intro"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "intro-2-1",
+          "inlines": [
+            {
+              "text": "Intro 2"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "intro-3",
+          "inlines": [
+            {
+              "text": "Intro"
+            }
+          ]
+        }
+      },
+      {
+        "heading": {
+          "level": 3,
+          "anchor": "intro-4",
+          "inlines": [
+            {
+              "text": "intro"
+            }
+          ]
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Text with one "
+          },
+          {
+            "superscript": [
+              {
+                "text": "two three and then a close"
+              }
+            ]
+          },
+          {
+            "text": " after, and left open."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Outer"
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Outer text."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Inner text."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Innermost"
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Deepest text."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "block": null
+  },
+  "heading": {
+    "value": "Intro",
+    "span": [
+      0,
+      7
+    ]
+  },
+  "diagnostics": [
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "sub"
+        }
+      },
+      "subject": {
+        "file": "repeated.md"
+      },
+      "span": [
+        113,
+        118
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "mark"
+        }
+      },
+      "subject": {
+        "file": "repeated.md"
+      },
+      "span": [
+        90,
+        96
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "kbd"
+        }
+      },
+      "subject": {
+        "file": "repeated.md"
+      },
+      "span": [
+        141,
+        146
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "kbd"
+        }
+      },
+      "subject": {
+        "file": "repeated.md"
+      },
+      "span": [
+        72,
+        77
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "details"
+        }
+      },
+      "subject": {
+        "file": "repeated.md"
+      },
+      "span": [
+        231,
+        240
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "details"
+        }
+      },
+      "subject": {
+        "file": "repeated.md"
+      },
+      "span": [
+        207,
+        216
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "details"
+        }
+      },
+      "subject": {
+        "file": "repeated.md"
+      },
+      "span": [
+        158,
+        167
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}
