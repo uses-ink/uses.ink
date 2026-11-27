@@ -15,6 +15,11 @@ pub(crate) trait Kind {
 
     /// Whether `found` may appear after the first character. The first is always a letter or a digit.
     fn allows(found: char) -> bool;
+
+    /// Whether `found` may be the first character: a letter or a digit that is allowed.
+    fn begins(found: char) -> bool {
+        found.is_ascii_alphanumeric() && Self::allows(found)
+    }
 }
 
 /// The name of a host in the config.
@@ -28,6 +33,11 @@ pub(crate) struct Part;
 /// The name of a job in the repo's `.config/farm.toml`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct Task;
+
+/// A file or directory name the repo's `.config/farm.toml` declares disposable: no slash, so it
+/// matches at any depth, and a leading dot is fine (`.ink`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct Bare;
 
 /// An ssh destination: a `user@host` or an alias of the user's ssh config.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -48,6 +58,18 @@ impl Kind for Task {
 
     fn allows(found: char) -> bool {
         found.is_ascii_lowercase() || found.is_ascii_digit() || matches!(found, '-' | '_')
+    }
+}
+
+impl Kind for Bare {
+    const WHAT: &'static str = "disposable name";
+
+    fn allows(found: char) -> bool {
+        found.is_ascii_alphanumeric() || matches!(found, '-' | '_' | '.')
+    }
+
+    fn begins(found: char) -> bool {
+        Self::allows(found)
     }
 }
 
@@ -76,6 +98,8 @@ pub(crate) struct Word<K>(String, PhantomData<K>);
 pub(crate) type HostName = Word<Host>;
 /// A job's name in the repo's job file.
 pub(crate) type JobName = Word<Task>;
+/// A name of a file or directory that may be lost with a workspace.
+pub(crate) type Disposable = Word<Bare>;
 /// A repo or workspace name in a path.
 pub(crate) type Segment = Word<Part>;
 /// Where `ssh` connects.
@@ -103,13 +127,16 @@ impl<K: Kind> FromStr for Word<K> {
         let mut chars = given.chars();
         match chars.next() {
             None => return Err(fault(Flaw::Empty)),
-            Some(first) if !(first.is_ascii_alphanumeric() && K::allows(first)) => {
+            Some(first) if !K::begins(first) => {
                 return Err(fault(Flaw::Start { found: first }));
             }
             Some(_) => {}
         }
         if let Some(found) = chars.find(|found| !K::allows(*found)) {
             return Err(fault(Flaw::Char { found }));
+        }
+        if given.chars().all(|found| found == '.') {
+            return Err(fault(Flaw::Dots));
         }
         if given.chars().count() > K::MOST {
             return Err(fault(Flaw::Long { most: K::MOST }));
@@ -154,6 +181,7 @@ enum Flaw {
     Start { found: char },
     Char { found: char },
     Long { most: usize },
+    Dots,
 }
 
 impl fmt::Display for Fault {
@@ -163,6 +191,7 @@ impl fmt::Display for Fault {
             Flaw::Empty => write!(out, "a {what} is empty"),
             Flaw::Start { found } => write!(out, "{what} `{given}` starts with {found:?}, not a letter or a digit"),
             Flaw::Char { found } => write!(out, "{what} `{given}` holds {found:?}, which is not allowed in it"),
+            Flaw::Dots => write!(out, "{what} `{given}` is only dots, which name no file"),
             Flaw::Long { most } => write!(out, "{what} `{given}` is longer than {most} characters"),
         }
     }

@@ -19,3 +19,7 @@ golden = false
 [job.sites]
 run = "cargo xtask check sites"
 golden = true
+
+# Ignored files `farm workspace --forget` may delete with the workspace: build caches by name, at any depth.
+[workspace]
+disposable = [".ink"]

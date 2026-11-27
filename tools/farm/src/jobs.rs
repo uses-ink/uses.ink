@@ -10,6 +10,9 @@
 //! run = "cargo xtask check test"
 //! golden = true
 //! limit = 900          # optional: the job's hard limit in seconds
+//!
+//! [workspace]           # optional
+//! disposable = [".ink"] # names of files and directories `farm workspace --forget` may delete
 //! ```
 
 use std::fmt;
@@ -20,7 +23,7 @@ use serde::Deserialize;
 
 use crate::cli::Seconds;
 use crate::error::{Error, Listed};
-use crate::name::JobName;
+use crate::name::{Disposable, JobName};
 use crate::place::Need;
 
 /// Where the repo's job file is, below the workspace root.
@@ -41,6 +44,7 @@ pub(crate) struct Recipe {
 pub(crate) struct Jobs {
     path: PathBuf,
     all: Vec<Recipe>,
+    disposable: Vec<Disposable>,
 }
 
 impl Jobs {
@@ -70,7 +74,12 @@ impl Jobs {
         if recipes.is_empty() {
             return Err(Fault::Empty);
         }
-        Ok(Self { path, all: recipes })
+        Ok(Self { path, all: recipes, disposable: raw.workspace.disposable })
+    }
+
+    /// The names of files and directories, at any depth, that removing a workspace may lose.
+    pub(crate) fn disposable(&self) -> &[Disposable] {
+        &self.disposable
     }
 
     /// The jobs named, in the order given, or every job when none is named.
@@ -99,6 +108,16 @@ impl Jobs {
 struct Raw {
     #[serde(default)]
     job: toml::Table,
+    #[serde(default)]
+    workspace: Area,
+}
+
+/// The `[workspace]` table.
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Area {
+    #[serde(default)]
+    disposable: Vec<Disposable>,
 }
 
 /// One `[job.<name>]` table.
@@ -222,6 +241,30 @@ mod tests {
         let all = Jobs::load(&root).unwrap().pick(&[]).unwrap();
         assert!(all.iter().any(|job| job.need == Need::Golden) && all.iter().any(|job| job.need == Need::Any));
         assert!(all.iter().all(|job| job.words.first().is_some_and(|word| word == "cargo")));
+    }
+
+    #[test]
+    fn the_workspace_table_declares_disposable_names() {
+        let text = format!("{FILE}\n[workspace]\ndisposable = [\".ink\", \"node_modules\"]\n");
+        let jobs = Jobs::parse(&text, PathBuf::new()).unwrap();
+        assert_eq!(jobs.disposable().iter().map(Disposable::as_str).collect::<Vec<_>>(), [".ink", "node_modules"]);
+        assert!(Jobs::parse(FILE, PathBuf::new()).unwrap().disposable().is_empty());
+        for bad in [
+            "disposable = [\"a/b\"]",
+            "disposable = [\"..\"]",
+            "disposable = [\"\"]",
+            "disposable = [\"a b\"]",
+            "keep = []",
+        ] {
+            let text = format!("{FILE}\n[workspace]\n{bad}\n");
+            assert!(Jobs::parse(&text, PathBuf::new()).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn this_repo_declares_its_ink_cache_disposable() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+        assert!(Jobs::load(&root).unwrap().disposable().iter().any(|name| name.as_str() == ".ink"));
     }
 
     #[test]

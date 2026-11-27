@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 
-use crate::name::Segment;
+use crate::name::{Disposable, Segment};
 use crate::process::{Failure, Process};
 use crate::tree::Tree;
 
@@ -118,7 +118,7 @@ impl<'a> Workspaces<'a> {
     /// Forgets the workspace `name` and removes its directory, if it is a workspace of this repo
     /// and holds nothing that is not in a commit: no change, and no file outside `target/` that jj
     /// does not track (jj's diff leaves out ignored files, and removing the directory would not).
-    pub(crate) fn forget(&self, name: &Segment) -> Result<PathBuf, Fault> {
+    pub(crate) fn forget(&self, name: &Segment, disposable: &[Disposable]) -> Result<PathBuf, Fault> {
         let container = self.tree.container();
         let path = container.join(name.as_str());
         let missing = |_| Fault::Missing { path: path.clone() };
@@ -142,7 +142,8 @@ impl<'a> Workspaces<'a> {
         let mut files = Command::new("jj");
         files.arg("-R").arg(&real).args(["file", "list"]).current_dir(&real);
         let listing = Process::from(files).text(&[]).map_err(|source| Fault::Jj { what: "file list", source })?;
-        let strays = Strays::find(&real, &listing).map_err(|source| Fault::Io { path: real.clone(), source })?;
+        let strays =
+            Strays::find(&real, &listing, disposable).map_err(|source| Fault::Io { path: real.clone(), source })?;
         if !strays.is_empty() {
             return Err(Fault::Untracked { name: name.clone(), paths: strays.into_paths() });
         }
@@ -160,9 +161,10 @@ impl<'a> Workspaces<'a> {
 struct Strays(Vec<String>);
 
 impl Strays {
-    /// Walks `root`, skipping `.jj`, `.git` and the top `target`, and keeps every file that is
-    /// not a line of `listing`, `jj file list`'s output run in `root`.
-    fn find(root: &Path, listing: &str) -> Result<Self, std::io::Error> {
+    /// Walks `root`, skipping `.jj`, `.git`, the top `target` and any file or directory named in
+    /// `disposable`, and keeps every file that is not a line of `listing`, `jj file list`'s
+    /// output run in `root`.
+    fn find(root: &Path, listing: &str, disposable: &[Disposable]) -> Result<Self, std::io::Error> {
         let tracked: HashSet<&str> = listing.lines().collect();
         let mut strays = Vec::new();
         let mut dirs = vec![root.to_path_buf()];
@@ -170,6 +172,9 @@ impl Strays {
             for entry in std::fs::read_dir(&dir)? {
                 let entry = entry?;
                 let path = entry.path();
+                if disposable.iter().any(|name| entry.file_name() == name.as_str()) {
+                    continue;
+                }
                 let relative = path.strip_prefix(root).unwrap_or(&path).to_string_lossy().into_owned();
                 if dir == root && matches!(relative.as_str(), ".jj" | ".git" | "target") {
                     continue;
@@ -257,6 +262,18 @@ pub(crate) enum Fault {
 }
 
 impl Fault {
+    /// Says which files are in the way and how to allow losing them.
+    fn untracked(out: &mut fmt::Formatter<'_>, name: &Segment, paths: &[String]) -> fmt::Result {
+        let shown = paths.get(..Self::SHOWN).unwrap_or(paths);
+        write!(
+            out,
+            "workspace `{name}` has {} file(s) that jj does not track, outside target/: {}{}; removing it would delete them; move or commit them, or list their names under `disposable` in the `[workspace]` table of .config/farm.toml",
+            paths.len(),
+            crate::error::Listed(shown),
+            if paths.len() > shown.len() { " and more" } else { "" }
+        )
+    }
+
     /// How many untracked paths the message names.
     const SHOWN: usize = 5;
 
@@ -291,16 +308,7 @@ impl fmt::Display for Fault {
             Self::Dirty { name } => {
                 write!(out, "workspace `{name}` has changes that are not committed; commit or abandon them first")
             }
-            Self::Untracked { name, paths } => {
-                let shown = paths.get(..Self::SHOWN).unwrap_or(paths);
-                write!(
-                    out,
-                    "workspace `{name}` has {} file(s) that jj does not track, outside target/: {}{}; removing it would delete them; move or commit them first",
-                    paths.len(),
-                    crate::error::Listed(shown),
-                    if paths.len() > shown.len() { " and more" } else { "" }
-                )
-            }
+            Self::Untracked { name, paths } => Self::untracked(out, name, paths),
             Self::Jj { what, .. } => write!(out, "`jj {what}` failed"),
             Self::Seed { from, .. } => write!(out, "copying target/ from {} failed", from.display()),
             Self::Io { path, .. } => write!(out, "cannot use {}", path.display()),
@@ -372,9 +380,9 @@ mod tests {
         let plain = base.join("r-ws").join("plain");
         std::fs::create_dir_all(&plain).unwrap();
         let spaces = Workspaces::new(&tree);
-        assert!(matches!(spaces.forget(&"plain".parse().unwrap()), Err(Fault::Foreign { .. })));
-        assert!(matches!(spaces.forget(&"nothing".parse().unwrap()), Err(Fault::Missing { .. })));
-        assert!(matches!(spaces.forget(&"here".parse().unwrap()), Err(Fault::Current { .. })));
+        assert!(matches!(spaces.forget(&"plain".parse().unwrap(), &[]), Err(Fault::Foreign { .. })));
+        assert!(matches!(spaces.forget(&"nothing".parse().unwrap(), &[]), Err(Fault::Missing { .. })));
+        assert!(matches!(spaces.forget(&"here".parse().unwrap(), &[]), Err(Fault::Current { .. })));
         assert!(plain.exists(), "a refusal removes nothing");
         std::fs::remove_dir_all(&base).unwrap();
     }
@@ -388,9 +396,21 @@ mod tests {
         for file in ["Cargo.toml", "src/lib.rs", "src/notes.txt", ".env", ".jj/store", ".git/HEAD", "target/debug/x"] {
             std::fs::write(base.join(file), "x").unwrap();
         }
-        let strays = Strays::find(&base, "Cargo.toml\nsrc/lib.rs\n").unwrap();
+        let strays = Strays::find(&base, "Cargo.toml\nsrc/lib.rs\n", &[]).unwrap();
         assert_eq!(strays, Strays(vec![".env".to_owned(), "src/notes.txt".to_owned()]));
-        assert!(Strays::find(&base, ".env\nCargo.toml\nsrc/lib.rs\nsrc/notes.txt\n").unwrap().is_empty());
+        assert!(Strays::find(&base, ".env\nCargo.toml\nsrc/lib.rs\nsrc/notes.txt\n", &[]).unwrap().is_empty());
+        std::fs::create_dir_all(base.join("site/.ink/cache")).unwrap();
+        std::fs::write(base.join("site/.ink/cache/blob"), "x").unwrap();
+        std::fs::write(base.join(".ink-note"), "x").unwrap();
+        let ink: Vec<Disposable> = vec![".ink".parse().unwrap(), "notes.txt".parse().unwrap()];
+        let kept = Strays::find(&base, "Cargo.toml\nsrc/lib.rs\n", &ink).unwrap();
+        assert_eq!(
+            kept,
+            Strays(vec![".env".to_owned(), ".ink-note".to_owned()]),
+            "`.ink` at any depth and a file name are skipped, `.env` is not"
+        );
+        let text = Fault::Untracked { name: "w".parse().unwrap(), paths: kept.into_paths() }.to_string();
+        assert!(text.contains("`.env`") && text.contains("disposable"), "{text}");
         assert!(Fault::Untracked { name: "w".parse().unwrap(), paths: vec![] }.is_refusal());
         std::fs::remove_dir_all(&base).unwrap();
     }
@@ -402,7 +422,7 @@ mod tests {
         let elsewhere = base.join("elsewhere");
         std::fs::create_dir_all(&elsewhere).unwrap();
         std::os::unix::fs::symlink(&elsewhere, base.join("r-ws").join("sneaky")).unwrap();
-        let err = Workspaces::new(&tree).forget(&"sneaky".parse().unwrap()).unwrap_err();
+        let err = Workspaces::new(&tree).forget(&"sneaky".parse().unwrap(), &[]).unwrap_err();
         assert!(matches!(err, Fault::Outside { .. }), "{err}");
         assert!(elsewhere.exists());
         std::fs::remove_dir_all(&base).unwrap();

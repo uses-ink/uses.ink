@@ -40,6 +40,18 @@ golden = true
 limit = 900                      # optional: this job's hard limit in seconds
 ```
 
+An optional `[workspace]` table lists names that `farm workspace --forget` may delete although jj
+does not track them (see New workspaces):
+
+```toml
+[workspace]
+disposable = [".ink"]            # file or directory names, matched at any depth
+```
+
+A disposable name is letters, digits, `-`, `_` and `.`, at most 64 characters, with no slash, and
+not only dots; any other key under `[workspace]` is an error. This repo declares `.ink`, the
+fixture builds' cache.
+
 Jobs run in the order of the file. A job name is lowercase letters, digits, `-` and `_`, at most
 32 characters. `farm check` with no names runs every job at once; `farm check lint test` runs
 those, in that order. This repo declares `lint`, `test`, `docs`, `wasm` and `sites`, the stages
@@ -302,6 +314,10 @@ crates rebuild, the third-party crates do not. Where the filesystem has no refli
 and copies in full. `--forget` refuses unless the path is a direct child of `uses.ink-ws`, is a
 jj workspace of this repo, is not the one you are in, has no uncommitted changes and holds no
 file outside `target/` that jj does not track (an ignored `.env`, say), since removing the directory would delete it.
+The refusal names the first five such files. To allow losing a kind of file, such as a build cache,
+list its name under `disposable` in the `[workspace]` table of `.config/farm.toml` (see The jobs
+file); otherwise move the file out or commit it. `--forget` reads that file from the workspace you
+run it in.
 
 ## Briefing an agent
 

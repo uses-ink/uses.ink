@@ -49,6 +49,7 @@ use error::{Chain, Error};
 use exit::Exit;
 use fleet::{Fleet, Member};
 use host::{Host, Via};
+use jobs::Jobs;
 use place::LeastLoaded;
 use run::{Farm, Setup};
 use transport::{Exec, Link, Local, Ssh};
@@ -90,7 +91,8 @@ impl Entry {
                 return Ok(Exit::Passed);
             }
             Verb::Forget(name) => {
-                let path = Workspaces::new(&tree).forget(name)?;
+                let jobs = Jobs::load(&tree.root)?;
+                let path = Workspaces::new(&tree).forget(name, jobs.disposable())?;
                 console.out(format!("workspace `{name}` forgotten and {} removed", path.display()));
                 return Ok(Exit::Passed);
             }
