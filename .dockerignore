@@ -32,6 +32,7 @@
 !queue
 !secret
 !token
+!trace
 !watch
 !web
 !tools

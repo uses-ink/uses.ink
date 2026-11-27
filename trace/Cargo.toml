@@ -1,0 +1,27 @@
+[package]
+name = "uses-ink-trace"
+description = "Logging for debugging and tracing: typed span and event fields, redaction by construction, and the one place a subscriber is set up (decision 0065)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+# The crates of the workspace take `default-features = false` and name what they need; the
+# defaults are what this crate's own tests run with.
+default = ["layers", "capture"]
+# The subscriber: filter, the human, JSON lines and timing layers, and `Logging`. Only the CLI
+# turns it on, so the wasm plugins that reach this crate through the engine carry `tracing` alone.
+layers = ["dep:tracing-subscriber", "dep:serde_json"]
+# `Capture`, the test subscriber. A dev-dependency feature.
+capture = ["dep:tracing-subscriber"]
+
+[dependencies]
+serde_json = { workspace = true, optional = true }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, optional = true }
+
+[lints]
+workspace = true

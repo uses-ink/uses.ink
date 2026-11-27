@@ -61,13 +61,15 @@ impl Order {
         ("uses-ink-model", &[]),
         ("uses-ink-config", &["uses-ink-model"]),
         ("uses-ink-diag", &["uses-ink-model"]),
-        ("uses-ink-engine", &["uses-ink-model", "uses-ink-diag", "uses-ink-config"]),
+        ("uses-ink-engine", &["uses-ink-model", "uses-ink-diag", "uses-ink-config", "uses-ink-trace"]),
         // Serving a deploy (decision 0051): the edge speaks the model alone; its adapters add the
         // runtime (axum) or a folder of deploys, never each other.
-        ("uses-ink-edge", &["uses-ink-model"]),
-        ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge", "uses-ink-edge-api"]),
+        ("uses-ink-edge", &["uses-ink-model", "uses-ink-trace"]),
+        ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge", "uses-ink-edge-api", "uses-ink-trace"]),
         ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge"]),
         ("uses-ink-token", &[]),
+        // Logging (decision 0065): a leaf every crate that instruments takes; it knows no crate of ours.
+        ("uses-ink-trace", &[]),
         // The API and the polling watch (decision 0052) read time and randomness through the
         // clock's ports and know the control plane; the adapters they run on are dev-only here.
         ("uses-ink-clock", &[]),
@@ -86,6 +88,7 @@ impl Order {
                 "uses-ink-model",
                 "uses-ink-queue-local",
                 "uses-ink-secret-local",
+                "uses-ink-trace",
             ],
         ),
         // The edge's host-to-deploy port over the control plane (decision 0067): the edge's port
@@ -124,14 +127,15 @@ impl Order {
                 "uses-ink-queue-local",
                 "uses-ink-secret",
                 "uses-ink-secret-local",
+                "uses-ink-trace",
             ],
         ),
         // A format's native core speaks the model; its guest crate speaks the WIT (0041).
         ("uses-ink-format-markdown", &["uses-ink-model"]),
         // A dialect of markdown reads through the markdown format's comrak setup.
         ("uses-ink-format-obsidian", &["uses-ink-model", "uses-ink-format-markdown"]),
-        ("uses-ink-host-image", &["uses-ink-model", "uses-ink-engine"]),
-        ("uses-ink-host-native", &["uses-ink-model", "uses-ink-engine"]),
+        ("uses-ink-host-image", &["uses-ink-model", "uses-ink-engine", "uses-ink-trace"]),
+        ("uses-ink-host-native", &["uses-ink-model", "uses-ink-engine", "uses-ink-trace"]),
         // A theme's native core implements the engine's Theme trait; its guest crate exports it.
         ("uses-ink-theme-quiet", &["uses-ink-model", "uses-ink-engine"]),
         (
@@ -167,6 +171,7 @@ impl Order {
                 "uses-ink-format-obsidian",
                 "uses-ink-theme-quiet",
                 "uses-ink-host-wasmtime",
+                "uses-ink-trace",
             ],
         ),
         // The plugin boundary (decision 0035): the host runs components and tests them against
@@ -183,11 +188,12 @@ impl Order {
                 "uses-ink-format-obsidian",
                 "uses-ink-theme-quiet",
                 "uses-ink-source-git",
+                "uses-ink-trace",
             ],
         ),
         // The git source's native core speaks the model's `Git` trait; its tests run it over the
         // host's own fetching.
-        ("uses-ink-source-git", &["uses-ink-model", "uses-ink-host-native"]),
+        ("uses-ink-source-git", &["uses-ink-model", "uses-ink-host-native", "uses-ink-trace"]),
         ("uses-ink-source-git-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-source-git"]),
         ("uses-ink-sdk", &["freehand", "uses-ink-model"]),
         ("uses-ink-format-markdown-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-format-markdown"]),
@@ -196,10 +202,10 @@ impl Order {
         ("uses-ink-host-wasmtime-hostile", &["uses-ink-sdk"]),
         // The control plane (decision 0045): ports are crates that know the model and nothing of
         // an adapter; an adapter knows its port and its conformance suite, which is dev-only.
-        ("uses-ink-blob", &["uses-ink-model"]),
+        ("uses-ink-blob", &["uses-ink-model", "uses-ink-trace"]),
         ("uses-ink-blob-conformance", &["uses-ink-blob", "uses-ink-model"]),
-        ("uses-ink-blob-dir", &["uses-ink-blob", "uses-ink-blob-conformance", "uses-ink-model"]),
-        ("uses-ink-build", &["uses-ink-blob", "uses-ink-model"]),
+        ("uses-ink-blob-dir", &["uses-ink-blob", "uses-ink-blob-conformance", "uses-ink-model", "uses-ink-trace"]),
+        ("uses-ink-build", &["uses-ink-blob", "uses-ink-model", "uses-ink-trace"]),
         ("uses-ink-build-conformance", &["uses-ink-blob", "uses-ink-build", "uses-ink-model"]),
         (
             "uses-ink-build-local",
@@ -216,18 +222,19 @@ impl Order {
                 "uses-ink-host-native",
                 "uses-ink-model",
                 "uses-ink-theme-quiet",
+                "uses-ink-trace",
             ],
         ),
         // The row port holds only typed statement builders (0049); its adapters and suite are the
         // only crates that know a driver.
-        ("uses-ink-db", &[]),
+        ("uses-ink-db", &["uses-ink-trace"]),
         ("uses-ink-db-conformance", &["uses-ink-db"]),
-        ("uses-ink-db-sqlite", &["uses-ink-db", "uses-ink-db-conformance"]),
+        ("uses-ink-db-sqlite", &["uses-ink-db", "uses-ink-db-conformance", "uses-ink-trace"]),
         ("uses-ink-queue", &["uses-ink-model"]),
         ("uses-ink-queue-conformance", &["uses-ink-model", "uses-ink-queue"]),
         (
             "uses-ink-queue-local",
-            &["uses-ink-db", "uses-ink-db-sqlite", "uses-ink-model", "uses-ink-queue", "uses-ink-queue-conformance"],
+            &["uses-ink-db", "uses-ink-db-sqlite", "uses-ink-model", "uses-ink-queue", "uses-ink-queue-conformance", "uses-ink-trace"],
         ),
         // The mail port (decision 0066): typed messages and a trait, no adapter; the SMTP adapter
         // takes the port and the secret type that holds its password.
@@ -251,6 +258,7 @@ impl Order {
                 "uses-ink-queue-local",
                 "uses-ink-secret",
                 "uses-ink-secret-local",
+                "uses-ink-trace",
             ],
         ),
         // The dashboard (decision 0053): typed views of the control plane's values, rendered with

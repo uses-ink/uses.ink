@@ -79,6 +79,7 @@ pub(crate) const ENFORCED: &[&str] = &[
     "uses-ink-theme-quiet-guest",
     "uses-ink-theme-quiet",
     "uses-ink-token",
+    "uses-ink-trace",
     "uses-ink-blob",
     "uses-ink-blob-conformance",
     "uses-ink-blob-dir",
