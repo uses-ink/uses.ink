@@ -137,10 +137,13 @@ fn the_same_bytes_give_the_same_copies_image() {
 #[test]
 fn an_image_is_prepared_once_per_key_image() {
     let pixels = Pixels::default();
+    let start = std::time::Instant::now();
     let first = prepare(&pixels, "gradient.jpg").unwrap();
+    let made = start.elapsed();
     let start = std::time::Instant::now();
     assert_eq!(prepare(&pixels, "gradient.jpg").unwrap(), first);
-    assert!(start.elapsed().as_millis() < 5, "taken from what was made");
+    // against the first call, not a number of milliseconds: a slow or busy machine slows both
+    assert!(start.elapsed() < made / 10, "taken from what was made, not made again");
 }
 
 #[test]
