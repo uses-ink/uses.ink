@@ -135,6 +135,9 @@ where
             Call::Log { site, build } => self.log(principal, site, build).await,
             Call::Export { site, deploy } => self.export(principal, Route { site, deploy }).await,
             Call::Intake(site) => self.intake(principal, site, body).await,
+            Call::Source(site) => self.probe(principal, site, body).await,
+            Call::Parts(site) => self.parts(principal, site, body).await,
+            Call::Bundle(site) => self.bundle(principal, site).await,
             Call::Whoami => Self::whoami(&principal),
             Call::Keys => self.keys(&principal).await,
             Call::Revoke(print) => self.revoke(&principal, &print).await,
@@ -183,13 +186,13 @@ where
     }
 
     /// A JSON reply.
-    fn json<T: Serialize>(status: Status, value: &T) -> Result<Reply, Fault<P>> {
+    pub(crate) fn json<T: Serialize>(status: Status, value: &T) -> Result<Reply, Fault<P>> {
         let body = serde_json::to_vec(value).map_err(|source| Fault::Control(control::Error::Log(source)))?;
         Ok(Reply::new(status, Media::Json, body))
     }
 
     /// A fresh id.
-    fn drawn(&self) -> Result<[u8; 16], Fault<P>> {
+    pub(crate) fn drawn(&self) -> Result<[u8; 16], Fault<P>> {
         self.draw.bytes().map_err(|error| Fault::Draw(Box::new(error)))
     }
 
@@ -223,11 +226,13 @@ where
     async fn status(&self, principal: Principal, id: Id<SiteKind>) -> Result<Reply, Fault<P>> {
         let site = self.owned(principal, id).await?;
         let live = self.control.live(id).await?;
-        let jobs = self.control.jobs(id, 1).await?;
+        let jobs = self.control.jobs(id, self.limits.rows.max(1)).await?;
+        let waiting = |job: &&control::Job| matches!(job.state, control::JobState::Queued | control::JobState::Running);
         let overview = Overview {
             site: self.view(&site),
             live: live.as_ref().map(LiveView::from),
             build: jobs.first().map(BuildView::from),
+            pending: jobs.iter().filter(waiting).map(BuildView::from).collect(),
         };
         Self::json(Status::Ok, &overview)
     }

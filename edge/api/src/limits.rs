@@ -22,6 +22,11 @@ pub struct Limits {
     pub export: u64,
     /// Rows in a list.
     pub rows: u32,
+    /// A tree sent by `ink push`, in bytes of JSON.
+    pub tree: u64,
+    /// The files one upload request carries together, in bytes: the most memory a request of a
+    /// push holds.
+    pub part: u64,
 }
 
 impl Default for Limits {
@@ -35,6 +40,8 @@ impl Default for Limits {
             name: 1024,
             export: 256 * MIB,
             rows: 50,
+            tree: 8 * MIB,
+            part: 64 * MIB,
         }
     }
 }
@@ -57,6 +64,10 @@ pub enum Limit {
     Export,
     /// [`Limits::rows`].
     Rows,
+    /// [`Limits::tree`].
+    Tree,
+    /// [`Limits::part`].
+    Part,
 }
 
 impl fmt::Display for Limit {
@@ -69,6 +80,8 @@ impl fmt::Display for Limit {
             Self::Name => "name",
             Self::Export => "export",
             Self::Rows => "rows",
+            Self::Tree => "tree",
+            Self::Part => "part",
         })
     }
 }
@@ -111,6 +124,10 @@ pub struct Asked {
     pub export: Option<u64>,
     /// [`Limits::rows`].
     pub rows: Option<u32>,
+    /// [`Limits::tree`].
+    pub tree: Option<u64>,
+    /// [`Limits::part`].
+    pub part: Option<u64>,
 }
 
 impl Limit {
@@ -137,6 +154,8 @@ impl Limits {
             name: self.name,
             export: Limit::Export.under(self.export, asked.export)?,
             rows: u32::try_from(rows).unwrap_or(self.rows),
+            tree: Limit::Tree.under(self.tree, asked.tree)?,
+            part: Limit::Part.under(self.part, asked.part)?,
         })
     }
 
@@ -145,6 +164,8 @@ impl Limits {
     pub fn budget(&self, method: crate::Method, path: &str) -> u64 {
         match crate::Call::parse(method, path) {
             Ok(crate::Call::Intake(_)) => self.archive,
+            Ok(crate::Call::Source(_)) => self.tree,
+            Ok(crate::Call::Parts(_)) => self.part,
             _ => self.body,
         }
     }

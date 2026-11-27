@@ -32,7 +32,7 @@ impl From<&Source> for SourceView {
             Source::Git { url, revision } => {
                 Self::Git { url: url.to_string(), revision: revision.as_ref().map(ToString::to_string) }
             }
-            Source::Upload => Self::Upload,
+            Source::Upload | Source::Bundle(_) => Self::Upload,
             _ => Self::Folder,
         }
     }
@@ -157,6 +157,8 @@ pub struct Status {
     pub live: Option<LiveView>,
     /// The latest build, if there is one.
     pub build: Option<BuildView>,
+    /// Builds that are queued or running, newest first, among the recent ones.
+    pub pending: Vec<BuildView>,
 }
 
 /// A list.

@@ -50,6 +50,13 @@ pub enum Call {
         /// A deploy that is not the live one.
         deploy: Option<DeployId>,
     },
+    /// `POST /v1/sites/{site}/source`: a tree of files, answered with the blobs it is missing or
+    /// a build of it.
+    Source(Id<SiteKind>),
+    /// `PUT /v1/sites/{site}/source`: a tar archive of blobs named by their hashes.
+    Parts(Id<SiteKind>),
+    /// `GET /v1/sites/{site}/source`: the files of the latest tree, as a tar archive.
+    Bundle(Id<SiteKind>),
     /// `PUT /v1/sites/{site}/deploy`: a built folder as a tar archive, made a deploy.
     Intake(Id<SiteKind>),
     /// `POST /v1/enrol`: a key asks to be enrolled. The one call that is not signed.
@@ -195,6 +202,9 @@ impl Call {
             },
             ["export"] => by(&[(Method::Get, Self::Export { site, deploy: None })]),
             ["deploy"] => by(&[(Method::Put, Self::Intake(site))]),
+            ["source"] => {
+                by(&[(Method::Post, Self::Source(site)), (Method::Put, Self::Parts(site)), (Method::Get, Self::Bundle(site))])
+            }
             _ => return None,
         })
     }
@@ -209,11 +219,15 @@ impl Call {
             | Self::Deploys(site)
             | Self::Builds(site)
             | Self::Log { site, .. }
+            | Self::Bundle(site)
             | Self::Export { site, .. } => (Right::Read, Some(*site)),
             Self::Remove(site) => (Right::Destroy, Some(*site)),
-            Self::Rollback(site) | Self::Resume(site) | Self::Build(site) | Self::Intake(site) => {
-                (Right::Deploy, Some(*site))
-            }
+            Self::Rollback(site)
+            | Self::Resume(site)
+            | Self::Build(site)
+            | Self::Intake(site)
+            | Self::Source(site)
+            | Self::Parts(site) => (Right::Deploy, Some(*site)),
             Self::Keys | Self::Revoke(_) => (Right::Keys, None),
             Self::Enrol | Self::Polled(_) | Self::Whoami => return None,
         })
@@ -245,6 +259,9 @@ impl trace::Kind for &Call {
             Call::Log { .. } => "log",
             Call::Export { .. } => "export",
             Call::Intake(_) => "intake",
+            Call::Source(_) => "source",
+            Call::Parts(_) => "parts",
+            Call::Bundle(_) => "bundle",
             Call::Enrol => "enrol",
             Call::Polled(_) => "polled",
             Call::Whoami => "whoami",

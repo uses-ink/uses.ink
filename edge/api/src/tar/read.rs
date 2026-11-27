@@ -29,6 +29,11 @@ impl Tree {
         self.0.get(path).map(Vec::as_slice)
     }
 
+    /// Every file with its path, in order of path.
+    pub fn files(&self) -> impl Iterator<Item = (&ContentPath, &[u8])> {
+        self.0.iter().map(|(path, bytes)| (path, bytes.as_slice()))
+    }
+
     /// How many files.
     pub fn len(&self) -> usize {
         self.0.len()

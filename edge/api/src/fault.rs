@@ -17,6 +17,7 @@ use crate::limits::Raised;
 use crate::refusal::Turned;
 use crate::reply::{Media, Reply, Status};
 use crate::route::RouteError;
+use crate::source::Sourced;
 use crate::tar;
 use crate::view::Problem;
 
@@ -250,6 +251,8 @@ pub enum Fault<P: Ports> {
     Intake(Intake),
     /// A limit set lower than the operator's is above it.
     Raised(Raised),
+    /// An upload of source is refused.
+    Source(Sourced),
 }
 
 impl<P: Ports> fmt::Debug for Fault<P> {
@@ -281,6 +284,7 @@ impl<P: Ports> fmt::Display for Fault<P> {
             Self::Folder(error) => error.fmt(out),
             Self::Intake(error) => error.fmt(out),
             Self::Raised(error) => error.fmt(out),
+            Self::Source(error) => error.fmt(out),
         }
     }
 }
@@ -298,6 +302,7 @@ impl<P: Ports + 'static> Error for Fault<P> {
             Self::Archive(inner) => inner.source(),
             Self::Folder(inner) => inner.source(),
             Self::Raised(inner) => inner.source(),
+            Self::Source(inner) => Some(inner),
             _ => None,
         }
     }
@@ -354,6 +359,7 @@ impl<P: Ports> Fault<P> {
             Self::Folder(_) => "manifest",
             Self::Intake(_) => "intake",
             Self::Raised(_) => "raised",
+            Self::Source(error) => error.name(),
         }
     }
 
@@ -373,6 +379,7 @@ impl<P: Ports> Fault<P> {
             Self::Scheme { .. } | Self::Unbuilt | Self::Folder(_) | Self::Intake(_) | Self::Raised(_) => {
                 Status::Unprocessable
             }
+            Self::Source(error) => error.status(),
             Self::Control(error) => error.refusal().map_or(Status::Internal, Self::refused),
             Self::Credentials(_) | Self::Draw(_) | Self::Export(_) => Status::Internal,
         }
