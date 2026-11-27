@@ -13,6 +13,7 @@ use model::{Manifest, Route};
 use serde::Serialize;
 
 use crate::args;
+use crate::cache::Caching;
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::output::{Io, Strict};
@@ -47,7 +48,9 @@ impl args::Preview {
         let address = Address { chosen: None, ..Address::from_flag(Some(&address))? };
         let loaded = Source::new(&self.dir, &self.origin).load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
-        let rendered = loaded.render(&address);
+        let caching = Caching::new(&self.dir, self.cache.as_deref());
+        let mut rendered = loaded.render(&address, &caching.pixels());
+        rendered.notices.extend(caching.finish());
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
         let preview = Preview::assemble(loaded, rendered);
         io.json(&Served {
@@ -65,11 +68,12 @@ impl args::Preview {
 
 impl Preview {
     /// The site in `dir` built for `base`, or `None` when it has errors. What the build said is
-    /// not reported: `ink preview` reports it.
+    /// not reported: `ink preview` reports it. Nothing is kept between builds: the work is all
+    /// in memory.
     pub fn of(dir: &Path, base: &str) -> Result<Option<Self>, Error> {
         let address = Address::from_flag(Some(base))?;
         let loaded = Source::new(dir, &args::Origin::default()).load()?;
-        let rendered = loaded.render(&address);
+        let rendered = loaded.render(&address, &host_image::Pixels::default());
         Ok(Self::assemble(loaded, rendered))
     }
 

@@ -10,6 +10,7 @@ use model::{DeployId, Diagnostic, Manifest, Problem};
 use serde::Serialize;
 
 use crate::args::Build;
+use crate::cache::Caching;
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::output::{Io, Strict};
@@ -60,7 +61,9 @@ impl Compare<'_> {
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
         let address = Address::from_flag(self.build.base.as_deref())?;
         let loaded = Source::new(&self.build.dir, &self.build.origin).load()?;
-        let native = loaded.render(&address);
+        let caching = Caching::new(&self.build.dir, self.build.cache.as_deref());
+        let images = caching.pixels();
+        let native = loaded.render(&address, &images);
 
         let runtime =
             Runtime::new(Budget::default(), Some(Cache::new(self.components.join("cache")))).map_err(Self::plugin)?;
@@ -69,11 +72,12 @@ impl Compare<'_> {
         let theme =
             runtime.theme(&Plugin::Theme.bytes(self.components)?, address.base.clone()).map_err(Self::plugin)?;
         let through = Source::new(&self.build.dir, &self.build.origin).interpret((&format,))?;
-        let built = through.through(&address, &theme);
+        let built = through.through(&address, &theme, &images);
 
         // the native build's diagnostics, then what only the components said
         let mut diagnostics = native.diagnostics.clone();
         let mut notices = native.notices.clone();
+        notices.extend(caching.finish());
         for aside in [Self::aside(&format), Self::aside(&theme)] {
             diagnostics.extend(aside.diagnostics);
             notices.extend(aside.notices);

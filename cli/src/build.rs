@@ -4,6 +4,7 @@ use model::{DeployId, Manifest};
 use serde::Serialize;
 
 use crate::args::{Build, Check};
+use crate::cache::Caching;
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::out::OutFolder;
@@ -51,7 +52,9 @@ impl Build {
         source.output.extend(folder.inside(&self.dir).filter(|inside| !source.output.contains(inside)));
         let loaded = source.load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
-        let rendered = loaded.render(&address);
+        let caching = Caching::new(&self.dir, self.cache.as_deref());
+        let mut rendered = loaded.render(&address, &caching.pixels());
+        rendered.notices.extend(caching.finish());
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
         let exit = tally.exit(Strict::from(self.strict));
         let deploy = rendered.deploy.as_ref();

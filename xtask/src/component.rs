@@ -104,6 +104,9 @@ impl Sites {
     /// The site fixtures, relative to the root.
     const DIR: &'static str = "cli/fixture/site";
 
+    /// The cache their builds share, relative to the root.
+    const CACHE: &'static str = "target/ink-cache";
+
     const BUILD: Cargo<[&'static str; 1]> =
         Cargo { command: Command::Build, scope: ["uses-ink-cli"], flags: &[], target: Target::Host };
 
@@ -141,7 +144,10 @@ impl Step for Sites {
                 .args(["--json", "build", "--check"])
                 .arg(&fixture)
                 .arg("--components")
-                .arg(root.join(Components::DIR));
+                .arg(root.join(Components::DIR))
+                // kept under target/, never in the fixture
+                .arg("--cache")
+                .arg(root.join(Self::CACHE));
             let path = fixture.strip_prefix(root).unwrap_or(&fixture).to_owned();
             match Process::from(command).answer::<Compared>() {
                 Ok(compared) if compared.native == compared.component => report.line(Line::Matched(path)),

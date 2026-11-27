@@ -41,6 +41,12 @@ fn scratch(name: &str) -> PathBuf {
     path
 }
 
+/// The cache every build here shares, under target/ so it outlives the run and never lands in
+/// a fixture: after the first run the blog's photos are taken from it, not encoded.
+fn cache() -> String {
+    Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-cache").to_str().unwrap().to_owned()
+}
+
 /// `ink <args>`: the exit, stdout and stderr.
 fn ink(args: &[&str]) -> (Exit, String, String) {
     let cli = Cli::try_parse_from(std::iter::once("ink").chain(args.iter().copied())).unwrap();
@@ -51,7 +57,8 @@ fn ink(args: &[&str]) -> (Exit, String, String) {
 
 /// Builds `dir` into `out` and returns the deploy id.
 fn build(dir: &Path, out: &Path) -> String {
-    let (exit, stdout, stderr) = ink(&["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE]);
+    let (exit, stdout, stderr) =
+        ink(&["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--cache", &cache()]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     stdout.trim().to_owned()
 }
@@ -98,8 +105,17 @@ fn refuse_script(page: &Path, html: &str) {
 fn report(name: &str) -> String {
     let out = scratch(&format!("report/{name}"));
     let dir = fixtures().join(name);
-    let (exit, stdout, stderr) =
-        ink(&["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--json"]);
+    let (exit, stdout, stderr) = ink(&[
+        "build",
+        dir.to_str().unwrap(),
+        "-o",
+        out.to_str().unwrap(),
+        "--base",
+        BASE,
+        "--json",
+        "--cache",
+        &cache(),
+    ]);
     let mut report = String::new();
     let _infallible = writeln!(report, "# exit {}", exit.code());
     for line in stderr.lines().filter(|line| !line.contains(r#""severity":"notice""#)) {
@@ -158,19 +174,48 @@ fn highlight_a_build_twice_is_the_same_deploy() {
     }
 }
 
+/// `ink explain --pin` of `name`, written as its `ink.toml`, builds the same deploy again. One
+/// test per fixture, so each stays within its budget: ten builds in one process did not.
+fn pins_round_trip(name: &str) {
+    let dir = scratch(&format!("pin/{name}/site"));
+    copy(&fixtures().join(name), &dir);
+    let before = build(&dir, &scratch(&format!("pin/{name}/before")));
+    let (exit, pins, stderr) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap()]);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    // Codes config cannot write yet are listed as `# not pinned`; they decide the same again.
+    std::fs::write(dir.join("ink.toml"), &pins).unwrap();
+    let after = build(&dir, &scratch(&format!("pin/{name}/after")));
+    assert_eq!(before, after, "{name}: the pins of\n{pins}");
+}
+
 #[test]
-fn highlight_pins_written_back_build_the_same_deploy() {
-    for name in BUILDS {
-        let dir = scratch(&format!("pin/{name}/site"));
-        copy(&fixtures().join(name), &dir);
-        let before = build(&dir, &scratch(&format!("pin/{name}/before")));
-        let (exit, pins, stderr) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap()]);
-        assert_eq!(exit, Exit::Done, "{stderr}");
-        // Codes config cannot write yet are listed as `# not pinned`; they decide the same again.
-        std::fs::write(dir.join("ink.toml"), &pins).unwrap();
-        let after = build(&dir, &scratch(&format!("pin/{name}/after")));
-        assert_eq!(before, after, "{name}: the pins of\n{pins}");
-    }
+fn highlight_pins_written_back_build_the_blog_again() {
+    pins_round_trip("blog");
+}
+
+#[test]
+fn pins_written_back_build_broken_frontmatter_again() {
+    pins_round_trip("broken-frontmatter");
+}
+
+#[test]
+fn pins_written_back_build_the_docs_again() {
+    pins_round_trip("docs");
+}
+
+#[test]
+fn pins_written_back_build_the_notes_again() {
+    pins_round_trip("notes");
+}
+
+#[test]
+fn pins_written_back_build_the_readme_again() {
+    pins_round_trip("readme");
+}
+
+#[test]
+fn every_site_that_builds_has_its_pins_test() {
+    assert_eq!(BUILDS, ["blog", "broken-frontmatter", "docs", "notes", "readme"]);
 }
 
 #[test]
@@ -314,4 +359,30 @@ fn every_golden_has_a_site() {
         .filter(|path| path.extension().is_none_or(|e| e != "snap") || !path.with_extension("").is_dir())
         .collect();
     assert!(orphans.is_empty(), "files in fixture/site/ that are not a site's golden: {orphans:?}");
+}
+
+#[test]
+fn highlight_a_cache_changes_no_byte_of_the_deploy() {
+    let cache = scratch("own-cache");
+    let cache_text = cache.to_str().unwrap();
+    let dir = fixtures().join("blog");
+    let out = scratch("own-cache-out");
+    let args =
+        ["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--cache", cache_text, "-v"];
+    let (exit, cold, said) = ink(&args);
+    assert_eq!(exit, Exit::Done, "{said}");
+    assert!(said.contains("note[render.cache.cold]"), "{said}");
+    let (_, warm, said) = ink(&args);
+    assert_eq!(warm, cold);
+    assert!(!said.contains("render.cache.cold"), "{said}");
+    for value in std::fs::read_dir(cache.join("value")).unwrap() {
+        let path = value.unwrap().path();
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes.push(0);
+        std::fs::write(&path, bytes).unwrap();
+    }
+    let (_, rebuilt, said) = ink(&args);
+    assert_eq!(rebuilt, cold);
+    assert!(said.contains("note[cache.entry.corrupt]"), "{said}");
+    assert!(!dir.join(".ink").exists(), "the fixture holds no cache");
 }

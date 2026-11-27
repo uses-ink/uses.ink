@@ -71,6 +71,10 @@ pub struct Build {
     /// Exit with 6 when there are warnings, writing nothing.
     #[arg(long)]
     pub strict: bool,
+    /// Where to keep work between builds, such as image copies [default: <dir>/.ink/cache,
+    /// which no command reads as content].
+    #[arg(long, value_name = "DIR")]
+    pub cache: Option<PathBuf>,
     /// Where the files are read from.
     #[command(flatten)]
     pub origin: Origin,
@@ -122,6 +126,10 @@ pub struct Preview {
     /// The port on 127.0.0.1.
     #[arg(long, default_value_t = 4000)]
     pub port: u16,
+    /// Where to keep work between builds, such as image copies [default: <dir>/.ink/cache,
+    /// which no command reads as content].
+    #[arg(long, value_name = "DIR")]
+    pub cache: Option<PathBuf>,
     /// Where the files are read from.
     #[command(flatten)]
     pub origin: Origin,

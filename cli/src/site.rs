@@ -173,12 +173,12 @@ pub(crate) struct Rendering {
 impl Loaded {
     /// Renders the site through `ink:theme-quiet`, its images through the host's image work, if
     /// interpreting gave one.
-    pub(crate) fn render(&self, address: &Address) -> Rendering {
-        self.through(address, &Quiet::new(address.base.clone(), Grammars::default()))
+    pub(crate) fn render(&self, address: &Address, images: &Pixels) -> Rendering {
+        self.through(address, &Quiet::new(address.base.clone(), Grammars::default()), images)
     }
 
-    /// Renders the site through `theme`, if interpreting gave one.
-    pub(crate) fn through<T: Theme>(&self, address: &Address, theme: &T) -> Rendering {
+    /// Renders the site through `theme`, its images through `images`, if interpreting gave one.
+    pub(crate) fn through<T: Theme>(&self, address: &Address, theme: &T, images: &Pixels) -> Rendering {
         let understood = &self.understood;
         let mut diagnostics = understood.diagnostics.clone();
         let mut notices = understood.notices.clone();
@@ -187,7 +187,7 @@ impl Loaded {
             return Rendering { deploy: None, blobs: BTreeMap::new(), diagnostics, notices };
         };
         let engine = Engine::new(&self.store, NoPins, (), theme);
-        let rendered = engine.render(site, &RenderSettings { base: address.base.clone() }, &Pixels::default());
+        let rendered = engine.render(site, &RenderSettings { base: address.base.clone() }, images);
         diagnostics.extend(rendered.diagnostics);
         notices.extend(rendered.notices);
         Rendering { deploy: Some(rendered.manifest), blobs: rendered.blobs, diagnostics, notices }
