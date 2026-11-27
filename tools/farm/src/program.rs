@@ -174,10 +174,10 @@ exec 7<&0
 setsid -f sh -c "$text" body "$dir" "$id" "$slots" "$limit" "$tree" "$mold" "$lease" "$shown" "$@" </dev/null >/dev/null 2>&1
 if [ "$mode" = detach ]; then echo "@@farm:started"; exit 0; fi
 n=0
-while [ ! -s "$job/body" ] && [ "$n" -lt 50 ]; do sleep 0.1; n=$((n + 1)); done
+while [ ! -s "$job/body" ] && [ "$n" -lt 500 ]; do sleep 0.01; n=$((n + 1)); done
 bodypid=$(cat "$job/body" 2>/dev/null)
 [ -n "$bodypid" ] || { echo "@@farm:nobody"; exit 70; }
-tail -q -n +1 -f --pid="$bodypid" "$job/events" "$job/log" &
+tail -q -n +1 -f -s 0.05 --pid="$bodypid" "$job/events" "$job/log" &
 follower=$!
 ( while IFS= read -r word; do
     if [ "$word" = detach ]; then : > "$job/detached"; kill "$follower" 2>/dev/null; exit 0; fi
@@ -232,7 +232,7 @@ while [ -z "$slot" ]; do
   [ -n "$slot" ] && break
   at=$(now)
   if [ $((at - last)) -ge 30 ]; then say "queued $behind"; last=$at; fi
-  sleep 1
+  sleep 0.2
 done
 rm -f "$ticket"
 ticket=
@@ -247,9 +247,11 @@ if [ "$mold" = mold ] && [ -z "${RUSTFLAGS-}" ]; then RUSTFLAGS='-C link-arg=-fu
   echo $! > "$job/pid"
   wait $!
   echo $? > "$job/rc" ) &
+t=10
 while [ ! -f "$job/rc" ]; do
   gone && quit
-  sleep 0.25
+  sleep "0.$(printf %03d "$t")"
+  t=$((t * 2)); [ "$t" -le 250 ] || t=250
 done
 rc=$(cat "$job/rc")
 ran=$(($(now) - began))
@@ -264,12 +266,13 @@ const WAIT: &str = concat!(
     home!("dir"),
     r#"job=$dir/jobs/$id
 [ -d "$job" ] || { echo "@@farm:nojob"; exit 0; }
-n=0
-while [ ! -f "$job/done" ] && [ "$n" -lt "$((limit * 4))" ]; do
+waited=0 t=10
+while [ ! -f "$job/done" ] && [ "$waited" -lt "$((limit * 1000))" ]; do
   body=$(cat "$job/body" 2>/dev/null)
   if [ -n "$body" ] && ! kill -0 "$body" 2>/dev/null && [ ! -f "$job/done" ]; then echo "@@farm:lost"; exit 0; fi
-  sleep 0.25
-  n=$((n + 1))
+  sleep "0.$(printf %03d "$t")"
+  waited=$((waited + t))
+  t=$((t * 2)); [ "$t" -le 250 ] || t=250
 done
 if [ -f "$job/done" ]; then echo "@@farm:done $(cat "$job/done")"; else echo "@@farm:running"; fi
 "#

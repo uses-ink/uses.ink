@@ -360,7 +360,8 @@ becomes a `Summary` (nextest counts and failures, compiler diagnostics, `check:`
 codes are an `Exit` enum. `Version` is the hash (`Digest`, computed by `build.rs` over the crate's
 files) of the source the binary was built from; `farm status` compares it with the checkout. The
 `Local` transport and the programs are tested for real (`flock`, `timeout`, `tail`) on temp
-directories, with a wider budget in `.config/nextest.toml` because the programs poll; placement,
+directories, with a 1 s budget in `.config/nextest.toml` for those that start a job (about
+40 processes each); placement,
 flags, config, the job file, summaries and the exit mapping are table tests, the summaries over
 real nextest and cargo output.
 

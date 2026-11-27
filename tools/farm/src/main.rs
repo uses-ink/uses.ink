@@ -224,11 +224,14 @@ mod tests {
     #[test]
     fn a_detached_job_outlives_the_client_and_wait_returns_its_result() {
         let rig = Rig::new("detach");
-        let started = run_one(&rig, &job("bg", "sleep 1; echo finished; exit 7"), job::Attach::Detach, 1);
+        let latch = rig.root.join("latch");
+        let script = format!("while [ ! -f {} ]; do sleep 0.01; done; echo finished; exit 7", latch.display());
+        let started = run_one(&rig, &job("bg", &script), job::Attach::Detach, 1);
         assert_eq!(started.verdict, Verdict::Running);
         let member = rig.member();
         let said = member.wait(&started.id, cli::Seconds(0)).unwrap();
         assert_eq!(said.events, [event::Event::Running], "not done yet: still running, safe to call again");
+        std::fs::write(&latch, "").unwrap();
         let said = member.wait(&started.id, cli::Seconds(20)).unwrap();
         assert!(matches!(said.events.first(), Some(event::Event::Done { code: 7, .. })), "{:?}", said.events);
         assert_eq!(member.log(&started.id, None).unwrap().output, ["finished"]);
@@ -253,13 +256,21 @@ mod tests {
         let order = rig.root.join("order");
         let farm = rig.farm(1, Flags::default());
         let snap = farm.fleet_probe().remove(0);
-        let script = |n: u32| format!("echo start{n} >> {o}; sleep 0.5; echo end{n} >> {o}", o = order.display());
+        let latch = rig.root.join("latch");
+        let hold = format!("while [ ! -f {} ]; do sleep 0.01; done; ", latch.display());
+        let script =
+            |n: u32, gate: &str| format!("echo start{n} >> {o}; {gate}echo end{n} >> {o}", o = order.display());
         let mut ids = Vec::new();
         for n in 0..3 {
-            let finished = farm.run_for_test(&job("q", &script(n)), &snap, job::Attach::Detach).unwrap();
+            let gate = if n == 0 { hold.as_str() } else { "" };
+            let finished = farm.run_for_test(&job("q", &script(n, gate)), &snap, job::Attach::Detach).unwrap();
             ids.push(finished.id);
-            std::thread::sleep(Duration::from_millis(150));
+            assert!(
+                within(|| member.probe().is_ok_and(|probe| probe.busy + probe.queued == n + 1)),
+                "job {n} is placed"
+            );
         }
+        std::fs::write(&latch, "").unwrap();
         for id in &ids {
             member.wait(id, cli::Seconds(30)).unwrap();
         }
@@ -273,10 +284,13 @@ mod tests {
         let member = rig.member();
         let farm = rig.farm(1, Flags::default());
         let snap = farm.fleet_probe().remove(0);
-        // a held run that outlives its 1 s timeout is let go: the job survives, as `detach` says
+        // a held run that outlives its timeout is let go: the job survives, as `detach` says
+        let latch = rig.root.join("latch");
+        let script = format!("while [ ! -f {} ]; do sleep 0.01; done", latch.display());
         let finished =
-            farm.run_for_test(&job("held", "sleep 3"), &snap, job::Attach::Hold(Duration::from_secs(1))).unwrap();
+            farm.run_for_test(&job("held", &script), &snap, job::Attach::Hold(Duration::from_millis(50))).unwrap();
         assert_eq!(finished.verdict, Verdict::Running);
+        std::fs::write(&latch, "").unwrap();
         let said = member.wait(&finished.id, cli::Seconds(20)).unwrap();
         assert!(matches!(said.events.first(), Some(event::Event::Done { code: 0, .. })), "{:?}", said.events);
         // the slot is free again
@@ -286,11 +300,11 @@ mod tests {
 
     /// Polls `check` for up to five seconds.
     fn within(mut check: impl FnMut() -> bool) -> bool {
-        for _ in 0..50 {
+        for _ in 0..1000 {
             if check() {
                 return true;
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(5));
         }
         false
     }

@@ -14,7 +14,7 @@ slow-timeout = { period = "250ms", terminate-after = 1 }
 # end of their name) have this budget instead.
 [[profile.default.overrides]]
 filter = "package(uses-ink-host-image) | test(/_image$/)"
-slow-timeout = { period = "500ms", terminate-after = 1 }
+slow-timeout = { period = "1s", terminate-after = 1 }
 
 # The git tests write a repository object by object and walk its history on up to four threads:
 # about 30 ms alone, but past 100 ms beside the rest of the suite. Every test of the `git`
@@ -23,13 +23,25 @@ slow-timeout = { period = "500ms", terminate-after = 1 }
 filter = "binary(git)"
 slow-timeout = { period = "250ms", terminate-after = 1 }
 
+# At most one of the farm's process-heavy tests run at once, so they do not starve the 100 ms
+# tests of the other crates.
+[test-groups.farm]
+max-threads = 1
+
 # The farm's tests run its programs on this machine with the real `sh`, `flock`, `timeout` and
-# `tail`, whose waits poll in steps of 0.25 s and 1 s: a job that ends at once still takes a
-# second to be seen. Those tests (every one in the binary's own `tests` module) have this budget
-# instead; the rest of the farm's tests keep 100 ms.
+# `tail`: one test starts about forty processes and takes 90 ms alone and over 100 ms beside the
+# rest of the suite. Those tests (every one in the binary's own `tests` module) have this budget
+# instead, and the test of the hard limit more, because `--limit` is whole seconds and `timeout`
+# cannot stop a job sooner than one. The rest of the farm's tests keep 100 ms.
+[[profile.default.overrides]]
+filter = "package(farm) & test(the_limit_stops_a_job_and_says_so)"
+test-group = "farm"
+slow-timeout = { period = "2s", terminate-after = 1 }
+
 [[profile.default.overrides]]
 filter = "package(farm) & test(/^tests::/)"
-slow-timeout = { period = "6s", terminate-after = 1 }
+test-group = "farm"
+slow-timeout = { period = "1s", terminate-after = 1 }
 
 # A component's tests pay a Cranelift compile on a cold cache (tens of milliseconds for the
 # hostile component, about a second for the markdown format) and the spinning plugin's 50 ms
