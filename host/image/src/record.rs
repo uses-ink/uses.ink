@@ -18,6 +18,9 @@ impl Record {
     /// How every record starts; a new layout is a new version here and in `Key::VERSION`.
     const START: &'static [u8] = b"uses.ink/image/record/v1\n";
 
+    /// The formats a copy can be, each with the byte it is written as.
+    const FORMATS: [(MediaType, u8); 3] = [(MediaType::Avif, 0), (MediaType::Jpeg, 1), (MediaType::Png, 2)];
+
     /// `prepared` as the values a cache keeps, or `None` when it holds something a record
     /// cannot say (a kind of keeping or a format added since), which is then not kept.
     pub(crate) fn values(prepared: &Prepared) -> Option<Vec<Vec<u8>>> {
@@ -99,13 +102,13 @@ impl Record {
     }
 
     /// The byte a format is written as: only the formats the work makes.
-    const fn media(media: MediaType) -> Option<u8> {
-        match media {
-            MediaType::Avif => Some(0),
-            MediaType::Jpeg => Some(1),
-            MediaType::Png => Some(2),
-            _ => None,
-        }
+    fn media(media: MediaType) -> Option<u8> {
+        Self::FORMATS.iter().find(|(known, _)| *known == media).map(|&(_, code)| code)
+    }
+
+    /// The format a byte names, the reverse of [`Record::media`].
+    fn format(code: u8) -> Option<MediaType> {
+        Self::FORMATS.iter().find(|(_, known)| *known == code).map(|&(media, _)| media)
     }
 }
 
@@ -128,12 +131,7 @@ impl Reader<'_> {
 
     /// One copy: its format and size from the record, its bytes from `bytes`.
     fn copy(&mut self, bytes: Vec<u8>) -> Option<Encoded> {
-        let media = match self.byte()? {
-            0 => MediaType::Avif,
-            1 => MediaType::Jpeg,
-            2 => MediaType::Png,
-            _ => return None,
-        };
+        let media = Record::format(self.byte()?)?;
         Some(Encoded::new(media, self.size()?, bytes))
     }
 }
