@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
+use tokio::io::AsyncReadExt as _;
+
 use edge::{Deploy, Hostname, Resolved, Sites};
 use model::ContentPath;
 use model::Hash;
@@ -56,6 +58,11 @@ pub struct Deploys {
 }
 
 impl Deploys {
+    /// The most bytes of a manifest the edge reads: 16 MiB, far over what a site of tens of
+    /// thousands of pages writes. A larger manifest is [`Error::Large`], so a corrupt or hostile
+    /// one is never held in memory.
+    pub const MANIFEST_LIMIT: u64 = 16 * 1024 * 1024;
+
     /// The deploys under `root`. [`Mode::Auto`] is decided here, once, from whether `root` holds
     /// a manifest, and [`Mode::Single`] refuses a folder that holds none.
     pub fn new(root: impl Into<PathBuf>, mode: Mode) -> Result<Self, Error> {
@@ -86,6 +93,31 @@ impl Deploys {
         }
     }
 
+    /// The manifest's bytes, at most [`Deploys::MANIFEST_LIMIT`] of them.
+    async fn slurp(path: &std::path::Path) -> Result<Vec<u8>, Error> {
+        let read = |source| Error::Read { path: path.to_path_buf(), source };
+        let mut bytes = Vec::new();
+        let file = tokio::fs::File::open(path).await.map_err(read)?;
+        file.take(Self::MANIFEST_LIMIT + 1).read_to_end(&mut bytes).await.map_err(read)?;
+        if bytes.len() as u64 > Self::MANIFEST_LIMIT {
+            return Err(Error::Large { path: path.to_path_buf(), limit: Self::MANIFEST_LIMIT });
+        }
+        Ok(bytes)
+    }
+
+    /// Refuses a site folder that is a link, in the mode where a request names it.
+    async fn unlinked(&self, folder: &std::path::Path) -> Result<(), Error> {
+        if self.mode != Mode::Folders {
+            return Ok(());
+        }
+        match tokio::fs::symlink_metadata(folder).await {
+            Ok(meta) if meta.is_symlink() => Err(Error::Linked { path: folder.to_path_buf() }),
+            Ok(_) => Ok(()),
+            Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(source) => Err(Error::Read { path: folder.to_path_buf(), source }),
+        }
+    }
+
     /// The deploy in `folder`, read now or taken from the cache when its manifest is unchanged.
     async fn load(&self, folder: PathBuf) -> Result<Option<Resolved<Arc<Placed>>>, Error> {
         let path = folder.join(MANIFEST);
@@ -100,13 +132,16 @@ impl Deploys {
         if !meta.is_file() {
             return Err(Error::NotFile { path });
         }
+        if meta.len() > Self::MANIFEST_LIMIT {
+            return Err(Error::Large { path, limit: Self::MANIFEST_LIMIT });
+        }
         let stamp = Stamp { modified: meta.modified().ok(), length: meta.len() };
         if let Some(cached) =
             self.cache.lock().unwrap_or_else(PoisonError::into_inner).get(&folder).filter(|c| c.stamp == stamp)
         {
             return Ok(Some(Resolved { deploy: Arc::clone(&cached.deploy), scope: Arc::clone(&cached.placed) }));
         }
-        let bytes = tokio::fs::read(&path).await.map_err(|source| Error::Read { path: path.clone(), source })?;
+        let bytes = Self::slurp(&path).await?;
         let written: Written =
             serde_json::from_slice(&bytes).map_err(|source| Error::Manifest { path: path.clone(), source })?;
         let checked = written.check(&path)?;
@@ -128,7 +163,10 @@ impl Sites for Deploys {
 
     async fn resolve(&self, hostname: &Hostname) -> Result<Option<Resolved<Arc<Placed>>>, Error> {
         match self.folder(hostname) {
-            Some(folder) => self.load(folder).await,
+            Some(folder) => {
+                self.unlinked(&folder).await?;
+                self.load(folder).await
+            }
             None => Ok(None),
         }
     }

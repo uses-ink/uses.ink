@@ -157,6 +157,51 @@ fn never_follows_a_link() {
 }
 
 #[test]
+fn never_follows_a_linked_site_folder() {
+    let root = scratch("linked-folder");
+    let real = scratch("linked-folder-real");
+    deploy(&real, b"tea");
+    std::os::unix::fs::symlink(&real, root.join("a.example")).unwrap();
+    deploy(&root.join("b.example"), b"tea");
+    let deploys = Deploys::new(&root, Mode::Folders).unwrap();
+    assert!(matches!(block(deploys.resolve(&host("a.example"))), Err(Error::Linked { .. })));
+    assert!(block(deploys.resolve(&host("b.example"))).unwrap().is_some(), "a plain folder is served");
+}
+
+#[test]
+fn an_opened_file_is_read_through_its_handle_not_its_name() {
+    let dir = scratch("pinned");
+    deploy(&dir, b"tea");
+    let outside = scratch("pinned-outside").join("secret");
+    std::fs::write(&outside, b"xyz").unwrap();
+    let deploys = Deploys::new(&dir, Mode::Single).unwrap();
+    let resolved = block(deploys.resolve(&host("a.example"))).unwrap().unwrap();
+    let bytes = block(async {
+        let blob = Files.open(&resolved.scope, Hash::of(b"tea")).await.unwrap();
+        // the name now leads to another file, after the blob was opened
+        std::fs::remove_file(dir.join("tea.html")).unwrap();
+        std::os::unix::fs::symlink(&outside, dir.join("tea.html")).unwrap();
+        let mut chunks = blob.read(Span::whole(3));
+        let mut bytes = Vec::new();
+        while let Some(chunk) = chunks.next().await.unwrap() {
+            bytes.extend_from_slice(&chunk);
+        }
+        bytes
+    });
+    assert_eq!(bytes, b"tea");
+}
+
+#[test]
+fn a_manifest_over_the_cap_is_refused_unread() {
+    let dir = scratch("large");
+    deploy(&dir, b"tea");
+    let manifest = std::fs::OpenOptions::new().write(true).open(dir.join(".ink-manifest.json")).unwrap();
+    manifest.set_len(Deploys::MANIFEST_LIMIT + 1).unwrap();
+    let deploys = Deploys::new(&dir, Mode::Single).unwrap();
+    assert!(matches!(block(deploys.resolve(&host("a.example"))), Err(Error::Large { .. })));
+}
+
+#[test]
 fn a_file_that_shrank_is_an_error_not_a_short_body() {
     let dir = scratch("shrunk");
     deploy(&dir, b"0123456789");

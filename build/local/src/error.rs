@@ -28,6 +28,8 @@ pub enum Error<E> {
     Missing {
         /// The blob.
         blob: Hash,
+        /// What the store said.
+        source: engine::BlobMissing,
     },
 }
 
@@ -37,7 +39,7 @@ impl<E> fmt::Display for Error<E> {
             Self::Blob(_) => out.write_str("a blob of the deploy could not be stored"),
             Self::Base { .. } => out.write_str("the base URL is not one a site is served under"),
             Self::Format { id } => write!(out, "this builder holds no format {id}"),
-            Self::Missing { blob } => write!(out, "the manifest names {blob}, which the build did not make"),
+            Self::Missing { blob, .. } => write!(out, "the manifest names {blob}, which the build did not make"),
         }
     }
 }
@@ -47,7 +49,8 @@ impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
         match self {
             Self::Blob(source) => Some(source),
             Self::Base { source } => Some(source),
-            Self::Format { .. } | Self::Missing { .. } => None,
+            Self::Missing { source, .. } => Some(source),
+            Self::Format { .. } => None,
         }
     }
 }

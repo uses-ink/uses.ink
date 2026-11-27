@@ -97,8 +97,11 @@ impl<P: Ports> Control<P> {
     ///
     /// A site that does not build is not a failure: the job ends `refused` and the log says why.
     /// A failure of the builder is retried up to [`Control::ATTEMPTS`] times, [`Control::RETRY`]
-    /// apart, then the job ends `failed`; the error is returned either way. A request that names
-    /// nothing, a build that has no job, or a site that is gone is dropped and said so.
+    /// apart, then the job ends `failed`; the error is returned either way. So is a failure after
+    /// the build (recording the deploy, storing the log): it counts as an attempt too, so a
+    /// request that cannot be settled is not redelivered forever. A request that names nothing,
+    /// a build that has no job, a job that already ended or a site that is gone is dropped and
+    /// said so.
     pub async fn work<W: Build>(
         &self,
         builder: &W,
@@ -122,14 +125,27 @@ impl<P: Ports> Control<P> {
                 self.give_up(&delivery, &job, now).await?;
                 Err(Failed::Other(error))
             }
-            Ok(outcome) => Ok(self.settle(Settling { job, delivery, tenant, events, now }, outcome).await?),
+            Ok(outcome) => {
+                let settling = Settling { job: job.clone(), tenant, events, now };
+                match self.settle(settling, outcome).await {
+                    Ok(worked) => {
+                        self.ports.queue().ack(&delivery).await.map_err(Error::from)?;
+                        Ok(worked)
+                    }
+                    Err(error) => {
+                        // a failure to give up is the one returned: the job is still running
+                        self.give_up(&delivery, &job, now).await?;
+                        Err(Failed::Control(error))
+                    }
+                }
+            }
         }
     }
 
-    /// Ends a job whose build ran: records and publishes what it made, stores its log, and acks
-    /// the request.
+    /// Ends a job whose build ran: records and publishes what it made and stores its log. The
+    /// request is acked by the caller, once the job has ended.
     async fn settle(&self, running: Settling, outcome: Outcome) -> Result<Worked, Error<P>> {
-        let Settling { job, delivery, tenant, mut events, now } = running;
+        let Settling { job, tenant, mut events, now } = running;
         let (ended, worked) = match outcome {
             Outcome::Built(built) => {
                 let new = deploy::New { site: job.site, manifest: built.manifest, build: Some(job.id), at: now };
@@ -148,12 +164,12 @@ impl<P: Ports> Control<P> {
         };
         let log = self.log(&tenant, &events).await?;
         self.finish(&job, Ended { state: ended, deploy, log }, now).await?;
-        self.ports.queue().ack(&delivery).await?;
         Ok(worked)
     }
 
     /// The job a delivery is for, marked running; none if the request is not one this plane can
-    /// work, in which case [`Control::drop_request`] says why.
+    /// work, in which case [`Control::drop_request`] says why. A job that is neither queued nor
+    /// running has ended, and a redelivery does not reopen it.
     async fn claim(&self, delivery: &Delivery, _now: Timestamp) -> Result<Option<Job>, Error<P>> {
         let Ok(id) = String::from_utf8_lossy(&delivery.body).parse::<BuildId>() else { return Ok(None) };
         let Some(job) = self.job(id).await? else { return Ok(None) };
@@ -168,7 +184,10 @@ impl<P: Ports> Control<P> {
             .and_where(Expr::col(table::Job::Id).eq(id.to_string()))
             .and_where(Expr::col(table::Job::State).is_in([State::Queued.name(), State::Running.name()]))
             .to_owned();
-        self.ports.db().run(running.into()).await?;
+        let outcome = self.ports.db().run(running.into()).await?;
+        if outcome.changes != 1 {
+            return Ok(None);
+        }
         Ok(Some(Job { state: State::Running, ..job }))
     }
 
@@ -179,7 +198,10 @@ impl<P: Ports> Control<P> {
             None => Dropped::Unnamed,
             Some(build) => match self.job(build).await? {
                 None => Dropped::NoJob { build },
-                Some(job) => Dropped::NoSite { build, site: job.site },
+                Some(job) => match job.state {
+                    State::Queued | State::Running => Dropped::NoSite { build, site: job.site },
+                    _ => Dropped::Settled { build },
+                },
             },
         };
         self.ports.queue().ack(delivery).await?;
@@ -228,7 +250,6 @@ impl<P: Ports> Control<P> {
 #[derive(Debug)]
 struct Settling {
     job: Job,
-    delivery: Delivery,
     tenant: blob::Tenant,
     events: Vec<build::Event>,
     now: Timestamp,

@@ -61,7 +61,7 @@ impl fmt::Display for Kind {
 pub struct Answered {
     /// The method, as sent.
     pub method: String,
-    /// The target up to its `?`, cut at 200 bytes.
+    /// The target up to its `?`, cut at 200 characters.
     pub path: String,
     /// The host, when the request named a valid one.
     pub hostname: Option<Hostname>,

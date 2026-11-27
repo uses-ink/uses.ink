@@ -1,6 +1,13 @@
 //! The rule that keeps SQL text out of the code (decision 0049): queries and schema are built
 //! from typed values, and one renderer turns them into text. So no string literal of code starts
 //! with a SQL keyword, no method writes raw SQL into a builder, and no `.sql` file is committed.
+//!
+//! The rule reads tokens, not types, so it has gaps: a lower case literal is not flagged (prose
+//! is, and SQL is written in upper case); text built at run time (`format!`, `concat!`, a joined
+//! string) is not seen; a raw escape under a name this file does not list is not seen; and
+//! `custom`, which sea-query's `ColumnType` and `ColumnDef` write into DDL as text, is flagged
+//! only as a method call or as a path call on those two types, since other crates have a
+//! `custom` that is not SQL (serde's `Error::custom`).
 
 use std::fmt;
 
@@ -49,6 +56,12 @@ impl Sql {
     const ESCAPES: &'static [&'static str] =
         &["cust", "cust_with_values", "cust_with_expr", "cust_with_exprs", "custom_keyword", "raw_sql", "raw_query"];
 
+    /// The name sea-query's column builders write into DDL as raw text.
+    const CUSTOM: &'static str = "custom";
+
+    /// The types whose `custom` function is the raw escape.
+    const OWNERS: &'static [&'static str] = &["ColumnType", "ColumnDef"];
+
     /// This file, whose list of keywords is the one place they are written.
     const OWN: &'static str = "xtask/src/layout/sql.rs";
 
@@ -62,9 +75,26 @@ impl Sql {
         Ok(found)
     }
 
+    /// Whether the tokens before a `custom` make it the raw escape: a method call, or a path
+    /// call on a type that has one.
+    fn raw(trail: &[String]) -> bool {
+        let method = trail.last().is_some_and(|last| last == ".");
+        let path = match trail {
+            [.., owner, first, second] => first == ":" && second == ":" && Self::OWNERS.contains(&owner.as_str()),
+            _ => false,
+        };
+        method || path
+    }
+
     fn within(tokens: TokenStream, found: &mut Vec<Found>) {
         let mut attribute = false;
+        let mut trail: Vec<String> = Vec::new();
         for token in tokens {
+            let text = match &token {
+                TokenTree::Ident(ident) => ident.to_string(),
+                TokenTree::Punct(punct) => punct.as_char().to_string(),
+                _ => String::new(),
+            };
             // the group after a `#` is an attribute, which holds doc text and lint reasons
             let skipped = attribute;
             // `#![..]` is an inner attribute: the `!` keeps the flag up for the group after it
@@ -77,7 +107,7 @@ impl Sql {
                 TokenTree::Group(group) => Self::within(group.stream(), found),
                 TokenTree::Ident(ident) => {
                     let name = ident.to_string();
-                    if Self::ESCAPES.contains(&name.as_str()) {
+                    if Self::ESCAPES.contains(&name.as_str()) || (name == Self::CUSTOM && Self::raw(&trail)) {
                         found.push(Found::Escape(name));
                     }
                 }
@@ -85,6 +115,10 @@ impl Sql {
                     found.extend(Self::keyword(&literal.to_string()).map(|word| Found::Literal(word.to_owned())));
                 }
                 TokenTree::Punct(_) => {}
+            }
+            trail.push(text);
+            if trail.len() > 3 {
+                trail.remove(0);
             }
         }
     }
@@ -171,6 +205,13 @@ mod tests {
         assert_eq!(find(r#"let e = Expr::cust("1");"#), [Found::Escape("cust".into())]);
         assert_eq!(find("let e = raw_sql!(x);"), [Found::Escape("raw_sql".into())]);
         assert_eq!(find("let customer = 1;"), Vec::<Found>::new());
+    }
+
+    #[test]
+    fn custom_is_raw_on_the_column_builders_only() {
+        assert_eq!(find("let t = ColumnType::custom(name);"), [Found::Escape("custom".into())]);
+        assert_eq!(find("let c = ColumnDef::new(A).custom(name);"), [Found::Escape("custom".into())]);
+        assert_eq!(find("let e = D::Error::custom(message);"), Vec::<Found>::new());
     }
 
     #[test]

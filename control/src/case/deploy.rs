@@ -96,23 +96,33 @@ impl<P: Ports> Control<P> {
     /// Makes an older deploy live again and pauses automatic publishing until [`Control::resume`]
     /// (architecture section 11): a build finishing later is recorded, and does not undo the
     /// rollback. The deploy replaced becomes the previous one, so rolling back twice returns.
+    ///
+    /// The pointer moves only if it still points where this call read it, so the event's
+    /// `previous` is the deploy the pointer really left. A deploy that moved it in between makes
+    /// this call read again.
     pub async fn rollback(&self, site: Id<SiteKind>, to: DeployId, at: Timestamp) -> Result<Live, Error<P>> {
         self.active(site).await?;
-        let before = self.live(site).await?.ok_or(Refusal::NotLive { site })?;
-        let step = Move::new(site, to, at);
-        let batch = vec![
-            step.rollback(),
-            step.history(Cause::Rollback)?,
-            Event::DeployRolledBack { deploy: to, previous: before.deploy }.moved(site, at, to)?,
-        ];
-        let outcomes = self.ports.db().batch(batch).await?;
-        if outcomes.first().is_some_and(|outcome| outcome.changes == 1) {
-            return self.live(site).await?.ok_or_else(|| Refusal::NotLive { site }.into());
+        loop {
+            let before = self.live(site).await?.ok_or(Refusal::NotLive { site })?;
+            let step = Move::new(site, to, at);
+            let batch = vec![
+                step.rollback(before.deploy),
+                step.history(Cause::Rollback)?,
+                Event::DeployRolledBack { deploy: to, previous: before.deploy }.moved(site, at, to)?,
+            ];
+            let outcomes = self.ports.db().batch(batch).await?;
+            if outcomes.first().is_some_and(|outcome| outcome.changes == 1) {
+                return self.live(site).await?.ok_or_else(|| Refusal::NotLive { site }.into());
+            }
+            let after = self.live(site).await?.ok_or(Refusal::NotLive { site })?;
+            if after.deploy != before.deploy {
+                continue;
+            }
+            if before.deploy == to {
+                return Err(Refusal::AlreadyLive { site, deploy: to }.into());
+            }
+            return Err(Refusal::NoDeploy { site, deploy: to }.into());
         }
-        if before.deploy == to {
-            return Err(Refusal::AlreadyLive { site, deploy: to }.into());
-        }
-        Err(Refusal::NoDeploy { site, deploy: to }.into())
     }
 
     /// Lets builds publish again after a rollback paused them. It does not publish anything
@@ -235,9 +245,9 @@ impl Move {
             .into())
     }
 
-    /// The statement that points the site back at the deploy, when the site records it and it
-    /// is not already live, and pauses publishing.
-    fn rollback(&self) -> Statement {
+    /// The statement that points the site back at the deploy, when the site records it, it is
+    /// not already live and the pointer is still at `from`, and pauses publishing.
+    fn rollback(&self, from: DeployId) -> Statement {
         let held = Query::select()
             .column(table::Deploy::Id)
             .from(table::Deploy::Table)
@@ -252,6 +262,7 @@ impl Move {
             .value(table::Live::SetAt, self.at)
             .and_where(Expr::col(table::Live::SiteId).eq(self.site.as_str()))
             .and_where(Expr::col(table::Live::DeployId).ne(self.deploy.as_str()))
+            .and_where(Expr::col(table::Live::DeployId).eq(from.to_string()))
             .and_where(Expr::exists(held))
             .to_owned()
             .into()

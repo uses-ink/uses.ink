@@ -83,6 +83,18 @@ pub enum Error {
         /// Where.
         path: PathBuf,
     },
+    /// A file opened is not the file that was checked: it was replaced while it was opened.
+    Swapped {
+        /// The file.
+        path: PathBuf,
+    },
+    /// A manifest is larger than the edge reads.
+    Large {
+        /// The manifest.
+        path: PathBuf,
+        /// The most bytes it may hold.
+        limit: u64,
+    },
     /// A file ended before the bytes asked for: it changed since the manifest was read.
     Short {
         /// The file.
@@ -123,6 +135,10 @@ impl fmt::Display for Error {
             }
             Self::Linked { path } => write!(out, "{} is a link, which is never followed", path.display()),
             Self::NotFile { path } => write!(out, "{} is not a plain file", path.display()),
+            Self::Swapped { path } => write!(out, "{} was replaced while it was opened", path.display()),
+            Self::Large { path, limit } => {
+                write!(out, "the manifest {} is over the {limit} bytes the edge reads", path.display())
+            }
             Self::Short { path, owed } => {
                 write!(out, "{} ended {owed} bytes early: it changed since the manifest was read", path.display())
             }

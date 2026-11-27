@@ -159,6 +159,12 @@ pub enum Dropped {
         /// The build.
         build: BuildId,
     },
+    /// The job already ended: the request is a redelivery of one that was settled, and the job
+    /// is as it was left.
+    Settled {
+        /// The build.
+        build: BuildId,
+    },
     /// The job's site is gone or being removed.
     NoSite {
         /// The build.

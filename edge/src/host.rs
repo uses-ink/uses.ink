@@ -104,6 +104,10 @@ impl Hostname {
         if text.len() > Self::LIMIT {
             return Err(HostnameError::TooLong { length: text.len(), limit: Self::LIMIT });
         }
+        let plain = |byte: &u8| byte.is_ascii_alphanumeric() || b".-".contains(byte);
+        if let Some(at) = text.as_bytes().iter().position(|byte| !plain(byte)) {
+            return Err(HostnameError::Character { at, found: text.as_bytes().get(at).copied().unwrap_or_default() });
+        }
         for (index, label) in text.split('.').enumerate() {
             let edged = label.starts_with('-') || label.ends_with('-');
             if label.is_empty() || label.len() > Self::LABEL || edged {
@@ -201,6 +205,9 @@ mod test {
     fn refuses_what_is_no_host() {
         assert_eq!(parse(""), Err(HostnameError::Missing));
         assert_eq!(parse("a b"), Err(HostnameError::Character { at: 1, found: b' ' }));
+        assert_eq!(parse("a]b"), Err(HostnameError::Character { at: 1, found: b']' }));
+        assert_eq!(parse("[a.com"), Err(HostnameError::Literal));
+        assert_eq!(parse("a[b.com:80"), Err(HostnameError::Character { at: 1, found: b'[' }));
         assert_eq!(parse("a@b.com"), Err(HostnameError::Character { at: 1, found: b'@' }));
         assert_eq!(parse("a.com/x"), Err(HostnameError::Character { at: 5, found: b'/' }));
         assert_eq!(parse("a..b"), Err(HostnameError::Label { index: 1 }));

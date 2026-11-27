@@ -83,6 +83,11 @@ pub enum Unsupported {
     },
     /// A database enum value, which D1 does not have.
     Enum,
+    /// A kind of value this adapter does not know how to bind.
+    Kind {
+        /// The kind.
+        kind: crate::Kind,
+    },
 }
 
 impl fmt::Display for Unsupported {
@@ -90,6 +95,7 @@ impl fmt::Display for Unsupported {
         match self {
             Self::Wide { found } => write!(out, "the integer {found} does not fit in 64 signed bits"),
             Self::Enum => out.write_str("a database enum value cannot be stored"),
+            Self::Kind { kind } => write!(out, "this adapter cannot bind {kind}"),
         }
     }
 }

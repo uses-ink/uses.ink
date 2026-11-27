@@ -930,8 +930,8 @@ The owner has not read it yet; the choices below are the ones to push back on.
   (escaped or not), `%2f` and `%5c`, a `%` that survives one decode (`%252e`), NUL and other
   controls, `//` (so `//evil.example/` is never a redirect target), a raw non-ASCII byte, a
   fragment, a target over the limit, an absolute-form target for another host than `Host`, two
-  `Host` headers, a `Host` that is not a lower-case DNS name or address (so it can be joined to a
-  folder), a `Content-Length` above zero or any `Transfer-Encoding` on a read, and the same
+  `Host` headers, a `Host` that is not a DNS name or address (so it can be joined to a
+  folder; it is read in any case and lowered once, 0058), a `Content-Length` above zero or any `Transfer-Encoding` on a read, and the same
   header twice where two values would be two requests (`Range`, `If-Range`, `If-None-Match`,
   `Accept-Encoding`). A trailing `/` is dropped without a redirect; a path that is no route
   (`/Tea`, `/tea.html`) is a 404, not a refusal, because it names nothing. No NFC normalisation:
@@ -964,9 +964,9 @@ The owner has not read it yet; the choices below are the ones to push back on.
   compresses and its coding. Until then the 301 and the `br`/`gzip` paths are tested with
   in-memory ports, and `ink serve` answers 404 for a renamed route. Not added: JavaScript.
 - **Budgets are `Limits`** (0044, operator bucket 2), a struct with a `Default`: target 4 KiB, 32
-  segments, 64 headers, 8 KiB a value, 32 KiB of head, 16 tags, 1 GiB a file, 64 KiB a chunk;
-  10 s to send the head, 5 s to look a site and a blob up, 30 s idle, 10 min a response, 30 s to
-  drain, 1024 in flight. A size over its limit is a refusal with `{value, limit}`. The
+  segments, 64 headers, 8 KiB a value, 32 KiB of head, 16 tags, 1 GiB a file; 10 s to send the
+  head, 5 s to look a site and a blob up, 30 s idle, 10 min a response, 30 s to drain, 1024
+  requests in flight and 1024 connections (0058 changed the last two and dropped the chunk). A size over its limit is a refusal with `{value, limit}`. The
   edge keeps the sizes; the adapter keeps the times, because only it has timers.
 - **Why hyper under axum.** `axum::serve` exposes no header-read timeout and no header buffer,
   and a slow client is the first attack on a self-hosted edge. The accept loop is hyper's
@@ -1139,3 +1139,40 @@ and the engine, and is trusted as the builder's own code, not as input.
 **Why:** with `network = local`, a plugin that could fetch any locator could publish a private
 repository on the builder's disk. **Reversal:** a source that must fetch a repository it finds
 while reading (submodules) needs a way for the want to name more than one repository.
+
+## 0058 Review fixes of the control plane and the edge: what a failure now does
+
+Built (2026-11-27), from a read-only review of the control plane and the serving edge.
+
+- **A job that ended stays ended.** `claim` moves a job to `running` only if it is `queued` or
+  `running` and reads the change count: a redelivered request for a job that succeeded, failed
+  or was refused is `Dropped::Settled`, acked, and the job is left as it was.
+- **Every failure after the claim is an attempt.** A failed deploy record or log write calls
+  `give_up` like a builder failure: released for [`Control::RETRY`], then the job ends `failed`
+  at `ATTEMPTS`. The ack follows the job's end, so a crash between the two is redelivered and
+  dropped as settled. If `give_up` itself fails, that error is the one returned.
+- **Rollback moves the pointer only from what it read.** The update adds `deploy = <read>` to
+  its guard, so the event's `previous` is the deploy the pointer left; a deploy that moved it in
+  between makes `rollback` read again. `deploy` (publish) still reads the pointer outside its
+  batch for the event's `previous`; the pointer and the history row take it from the row, only
+  the event can name a stale one. Not changed.
+- **Smaller.** Blob partial names count per process, not per `Directory`. The `sql` rule flags
+  `custom` as a method call or on `ColumnType` and `ColumnDef` (its doc lists what it still
+  misses). `Steps::apply` refuses a ledger that is not a prefix of the set (`Unapplied::Order`).
+  The sqlite adapter fails a value kind it does not know (`Unsupported::Kind`) instead of
+  binding NULL. An unreadable `.git` refuses the build as `SourceRepositoryUnreadable` instead
+  of falling back to plain files. `Error::Missing`, `Unreadable::Url` and `Unreadable::Revision`
+  keep their source.
+- **Edge.** `Limits::connections` now counts accepted connections: the accept loop takes a slot
+  before it accepts, so slow heads cannot use every descriptor. What it counted before, requests
+  in flight, is `Limits::requests`. `Limits::chunk` is gone: the folder adapter's chunk is its
+  own constant, and no adapter read the field. `Files::open` opens the file once, checks the
+  handle is the file it inspected and reads through it (a replaced name is `Error::Swapped`).
+  A site folder that is a link is refused in `Folders` mode. A manifest is read through a
+  `Deploys::MANIFEST_LIMIT` of 16 MiB (`Error::Large`). `dns()` checks label bytes. `ink serve`
+  failures that are not the preview are `serve.run.failed`. A `Host` is lowered, not refused,
+  when it is not lower case; 0051 said it was refused.
+
+**Why:** each was a way for a failure to leave a job running forever, a store to lie, or a
+budget to be a number nothing read. **Reversal:** none expected; the connection default of 1024
+follows the common soft descriptor limit and is the number to change if it bites.

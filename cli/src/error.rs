@@ -139,6 +139,11 @@ pub enum Error {
         /// What the system said.
         source: std::io::Error,
     },
+    /// `ink serve` could not start its runtime or wait for Ctrl-C.
+    Run {
+        /// What the system said.
+        source: std::io::Error,
+    },
     /// Stdout or stderr could not be written.
     Terminal {
         /// What the system said.
@@ -236,6 +241,7 @@ impl Error {
             Self::Write { .. } => "output.file.unwritable",
             Self::Manifest { .. } => "output.manifest.invalid",
             Self::Serve { .. } => "preview.serve.failed",
+            Self::Run { .. } => "serve.run.failed",
             Self::Deploys { .. } => "serve.folder.unservable",
             Self::Listen { .. } => "serve.address.unusable",
             Self::Edge { .. } => "serve.edge.invalid",
@@ -292,6 +298,7 @@ impl fmt::Display for Error {
                 write!(out, "the earlier build's manifest {} does not parse", path.display())
             }
             Self::Serve { .. } => write!(out, "the preview could not be served"),
+            Self::Run { .. } => write!(out, "`ink serve` could not keep running"),
             Self::Deploys { .. } => write!(out, "the folder is not a deploy `ink serve` can serve"),
             Self::Listen { address, .. } => write!(out, "`ink serve` could not listen on {address}"),
             Self::Edge { .. } => write!(out, "the edge could not be built"),
@@ -323,6 +330,7 @@ impl std::error::Error for Error {
             Self::Write { source, .. }
             | Self::Read { source, .. }
             | Self::Serve { source }
+            | Self::Run { source }
             | Self::Terminal { source }
             | Self::Listen { source, .. }
             | Self::Component { source, .. } => Some(source),
@@ -351,5 +359,17 @@ impl From<std::io::Error> for Error {
     /// A failed write to stdout or stderr.
     fn from(source: std::io::Error) -> Self {
         Self::Terminal { source }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn serve_and_preview_failures_have_their_own_codes() {
+        let run = Error::Run { source: std::io::Error::other("no signal") };
+        let preview = Error::Serve { source: std::io::Error::other("no socket") };
+        assert_eq!((run.kind(), preview.kind()), ("serve.run.failed", "preview.serve.failed"));
     }
 }

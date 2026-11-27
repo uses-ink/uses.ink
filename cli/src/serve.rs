@@ -112,7 +112,7 @@ impl args::Serve {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .map_err(|source| Error::Serve { source })?;
+            .map_err(|source| Error::Run { source })?;
         let listen = |source| Error::Listen { address: self.address, source };
         let listener = runtime.block_on(tokio::net::TcpListener::bind(self.address)).map_err(listen)?;
         let address = listener.local_addr().map_err(listen)?;
@@ -133,7 +133,7 @@ impl args::Serve {
         };
         runtime.block_on(serving).map_err(|source| Error::Server { source })?;
         match signal.into_inner().unwrap_or_else(std::sync::PoisonError::into_inner) {
-            Some(source) => Err(Error::Serve { source }),
+            Some(source) => Err(Error::Run { source }),
             None => Ok(Exit::Done),
         }
     }

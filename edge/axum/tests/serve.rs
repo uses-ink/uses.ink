@@ -237,13 +237,33 @@ fn a_client_that_never_finishes_its_head_is_cut_off() {
 #[test]
 fn over_the_concurrency_limit_is_a_503() {
     let site = Site::new();
-    let limits = Limits { connections: 0, ..Limits::default() };
+    let limits = Limits { requests: 0, ..Limits::default() };
     let mut server = Running::start(site.hosts, site.store, limits);
     let response = server.get("/tea", "");
     assert_eq!(status(&response), "503");
     assert_eq!(header(&response, "retry-after"), Some("1"));
     assert_eq!(header(&response, "x-content-type-options"), Some("nosniff"));
     assert_eq!(server.kinds(), [Kind::Refused]);
+    assert!(server.stop().is_ok());
+}
+
+#[test]
+fn connections_over_the_limit_wait_to_be_accepted() {
+    let site = Site::new();
+    let limits = Limits { connections: 1, ..Limits::default() };
+    let mut server = Running::start(site.hosts, site.store, limits);
+    let holder = TcpStream::connect(server.address).unwrap();
+    let mut waiting = TcpStream::connect(server.address).unwrap();
+    waiting.write_all(b"GET /tea HTTP/1.1\r\nHost: notes.example\r\nConnection: close\r\n\r\n").unwrap();
+    waiting.set_read_timeout(Some(Duration::from_millis(300))).unwrap();
+    let early = waiting.read(&mut [0_u8; 1]);
+    let timed_out = matches!(&early, Err(error) if matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut));
+    assert!(timed_out, "the second connection was served while the first held the only slot: {early:?}");
+    drop(holder);
+    waiting.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    let mut response = Vec::new();
+    let _ = waiting.read_to_end(&mut response);
+    assert_eq!(status(&String::from_utf8_lossy(&response)), "200");
     assert!(server.stop().is_ok());
 }
 

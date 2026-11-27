@@ -61,15 +61,15 @@ struct Execution<'a> {
 }
 
 impl Execution<'_> {
-    fn stored(value: &Value) -> Stored {
-        match value {
+    fn stored(value: &Value) -> Result<Stored, db::Unsupported> {
+        Ok(match value {
+            Value::Null => Stored::Null,
             Value::Integer(n) => Stored::Integer(*n),
             Value::Real(n) => Stored::Real(*n),
             Value::Text(text) => Stored::Text(text.clone()),
             Value::Blob(bytes) => Stored::Blob(bytes.clone()),
-            // null, and any kind D1 does not know
-            _ => Stored::Null,
-        }
+            other => return Err(db::Unsupported::Kind { kind: other.kind() }),
+        })
     }
 
     fn value(name: &str, value: ValueRef<'_>) -> Result<Value, Error> {
@@ -92,7 +92,11 @@ impl Execution<'_> {
         let mut prepared = self.connection.prepare_cached(rendered.text()).map_err(failed)?;
         let readonly = prepared.readonly();
         let names: Vec<String> = prepared.column_names().map(str::to_owned).collect();
-        let bound = rusqlite::params_from_iter(rendered.values().iter().map(Self::stored));
+        let mut stored = Vec::with_capacity(rendered.values().len());
+        for value in rendered.values() {
+            stored.push(Self::stored(value).map_err(|source| Error::Render { index, source: source.into() })?);
+        }
+        let bound = rusqlite::params_from_iter(stored);
         let mut rows = prepared.query(bound).map_err(failed)?;
         let mut found = Vec::new();
         while let Some(row) = rows.next().map_err(failed)? {

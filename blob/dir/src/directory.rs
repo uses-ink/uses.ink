@@ -16,7 +16,6 @@ type Failure = blob::Error<Error>;
 #[derive(Debug)]
 pub struct Directory {
     root: PathBuf,
-    writes: AtomicU64,
 }
 
 impl Directory {
@@ -26,7 +25,7 @@ impl Directory {
         for folder in [root.join("t"), root.join("tmp")] {
             fs::create_dir_all(&folder).map_err(|source| Error::Create { path: folder, source })?;
         }
-        Ok(Self { root, writes: AtomicU64::new(0) })
+        Ok(Self { root })
     }
 
     /// The folder a tenant's blobs are in.
@@ -39,9 +38,11 @@ impl Directory {
         self.folder(tenant).join(hash.to_string())
     }
 
-    /// A fresh name in `tmp/` for a write in progress.
+    /// A fresh name in `tmp/` for a write in progress. The count is the process's, not the
+    /// store's, so two stores on one root never draw the same name.
     fn partial(&self, hash: Hash) -> PathBuf {
-        let n = self.writes.fetch_add(1, Ordering::Relaxed);
+        static WRITES: AtomicU64 = AtomicU64::new(0);
+        let n = WRITES.fetch_add(1, Ordering::Relaxed);
         self.root.join("tmp").join(format!("{}-{n}-{hash}.part", std::process::id()))
     }
 
@@ -182,5 +183,20 @@ impl Blob for Directory {
             Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(Deleted::Absent),
             Err(source) => Err(Error::Remove { path, source }.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
+
+    use super::*;
+
+    #[test]
+    fn two_stores_on_one_root_draw_different_partials() {
+        let folder = tempfile::tempdir().unwrap();
+        let (one, two) = (Directory::open(folder.path()).unwrap(), Directory::open(folder.path()).unwrap());
+        let hash = Hash::of(b"same");
+        assert_ne!(one.partial(hash), two.partial(hash));
     }
 }

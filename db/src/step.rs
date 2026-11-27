@@ -102,6 +102,14 @@ pub enum Unapplied<E> {
         /// The ledger's name for it.
         name: String,
     },
+    /// The ledger holds a migration where this set has another: one was applied out of order,
+    /// or the ledger skips one this set has before it.
+    Order {
+        /// The ledger's name at the first place it differs.
+        held: String,
+        /// The name this set has there.
+        expected: String,
+    },
     /// The ledger has a row that cannot be read.
     Ledger(ColumnError),
     /// The ledger's row for a migration could not be built.
@@ -115,6 +123,9 @@ impl<E> fmt::Display for Unapplied<E> {
             Self::Unknown { name } => {
                 write!(out, "the database has applied `{name}`, which this version does not know")
             }
+            Self::Order { held, expected } => {
+                write!(out, "the database has applied `{held}` where this version expects `{expected}`")
+            }
             Self::Ledger(_) => out.write_str("the migration ledger has a row that cannot be read"),
             Self::Statement(_) => out.write_str("the migration ledger's row could not be built"),
         }
@@ -127,7 +138,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Unapplied<E> {
             Self::Db(source) => Some(source),
             Self::Ledger(source) => Some(source),
             Self::Statement(source) => Some(source),
-            Self::Unknown { .. } => None,
+            Self::Unknown { .. } | Self::Order { .. } => None,
         }
     }
 }
@@ -165,8 +176,18 @@ impl Steps {
         self.steps.iter().map(Step::ledger)
     }
 
+    /// Whether the ledger's names are the first of the set's, in order.
+    fn prefix<E>(held: &[String], known: &[String]) -> Result<(), Unapplied<E>> {
+        match held.iter().zip(known).find(|(held, expected)| held != expected) {
+            Some((held, expected)) => Err(Unapplied::Order { held: held.clone(), expected: expected.clone() }),
+            None => Ok(()),
+        }
+    }
+
     /// Applies every migration the ledger does not hold, in order, each with its ledger row as
-    /// one atomic batch. A database that already has them all is left alone.
+    /// one atomic batch. A database that already has them all is left alone. A ledger that is
+    /// not a prefix of this set (a name it does not know, or a gap before one it holds) is
+    /// refused before anything runs.
     pub async fn apply<D: Db>(&self, db: &D) -> Result<Applied, Unapplied<D::Error>> {
         db.run(Statement::from(
             Table::create()
@@ -187,6 +208,7 @@ impl Steps {
         if let Some(name) = held.iter().find(|name| !known.contains(name)) {
             return Err(Unapplied::Unknown { name: name.clone() });
         }
+        Self::prefix(&held, &known)?;
         let mut applied = Applied::default();
         for (step, name) in self.steps.iter().zip(known) {
             if held.contains(&name) {

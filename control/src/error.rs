@@ -196,10 +196,24 @@ pub enum Unreadable {
         /// What it holds.
         found: String,
     },
-    /// The column holds a URL, revision or route that is no longer valid.
+    /// The column holds a kind of source this version does not know.
     Locator {
         /// The column.
         column: &'static str,
+    },
+    /// The column holds a URL that is no longer valid.
+    Url {
+        /// The column.
+        column: &'static str,
+        /// Why.
+        source: model::UrlError,
+    },
+    /// The column holds a revision that is no longer valid.
+    Revision {
+        /// The column.
+        column: &'static str,
+        /// Why.
+        source: build::RevisionError,
     },
 }
 
@@ -216,7 +230,11 @@ impl fmt::Display for Unreadable {
             Self::Name { column, found } => {
                 write!(out, "column `{column}` holds `{found}`, which this version does not know")
             }
-            Self::Locator { column } => write!(out, "column `{column}` holds a locator that is no longer valid"),
+            Self::Locator { column } => {
+                write!(out, "column `{column}` holds a kind of source this version does not know")
+            }
+            Self::Url { column, .. } => write!(out, "column `{column}` holds a URL that is no longer valid"),
+            Self::Revision { column, .. } => write!(out, "column `{column}` holds a revision that is no longer valid"),
         }
     }
 }
@@ -231,6 +249,8 @@ impl std::error::Error for Unreadable {
             Self::Deploy { source, .. } => Some(source),
             Self::Hash { source, .. } => Some(source),
             Self::Time { source, .. } => Some(source),
+            Self::Url { source, .. } => Some(source),
+            Self::Revision { source, .. } => Some(source),
             Self::Name { .. } | Self::Locator { .. } => None,
         }
     }

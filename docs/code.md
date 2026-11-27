@@ -449,7 +449,11 @@ a statement is a builder expression, `Query::select().column(Site::Id).from(Site
 `db::Migration` (a number, a name, statements), and `Steps::new().with::<A>()?.with::<B>()?`
 applies what the ledger lacks. When a CHECK lists the values of a column, it is built from the
 `NAMES` table the code reads the column back with. The layout rule `sql` fails a literal that
-starts with a SQL keyword, a raw escape of the builders and any `.sql` file.
+starts with a SQL keyword, a raw escape of the builders (`cust*`, `raw_sql`, and `custom` as a
+method or on `ColumnType` and `ColumnDef`) and any `.sql` file; it reads tokens, so a lower case
+literal and text built at run time are not seen (its doc lists the gaps). `Steps::apply` refuses
+a ledger that is not a prefix of its set. A job that ended is never reopened by a redelivered
+request, and a failure after the build counts as an attempt like a builder failure (0058).
 ## 10. The edge: a pure answer over two ports
 
 Serving is one function of a typed request, and everything that touches the world is a port the
@@ -484,7 +488,8 @@ The reply is an `Answer`: a `Response` (status, `Field`s, a `Body` that is empty
 or an opened blob with its span) and an `Outcome` (`Served`, `Unchanged`, `Moved`, `Missing`,
 `Probed`, `Refused(Refusal)`, `Failed(Fault)`) that says why. A log line, a test and the
 status all come from the same value. The adapter streams `Body::Blob` and keeps the times
-(`Limits::{read, open, idle, send, drain}`); the edge keeps the sizes. Headers are built once in
+(`Limits::{read, open, idle, send, drain}`) and the caps on accepted connections and requests in
+flight (`Limits::{connections, requests}`); the edge keeps the sizes. Headers are built once in
 `Fields`, which remembers the first value that is no header value, and `Hardening` adds what
 every response carries (`nosniff`, a CSP, the cross-origin policy, HSTS over TLS) wherever the
 manifest entry did not already say.

@@ -128,12 +128,12 @@ impl TryFrom<Stored> for Source {
             Kind::Upload => Ok(Self::Upload),
             Kind::Git => {
                 let url = ExternalUrl::parse(stored.locator)
-                    .map_err(|_| Unreadable::Locator { column: table::Source::Locator.as_str() })?;
+                    .map_err(|source| Unreadable::Url { column: table::Source::Locator.as_str(), source })?;
                 let revision = stored
                     .revision
                     .map(|text| {
                         text.parse::<Revision>()
-                            .map_err(|_| Unreadable::Locator { column: table::Source::Revision.as_str() })
+                            .map_err(|source| Unreadable::Revision { column: table::Source::Revision.as_str(), source })
                     })
                     .transpose()?;
                 Ok(Self::Git { url, revision })

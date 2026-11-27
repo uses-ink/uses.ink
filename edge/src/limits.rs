@@ -23,8 +23,6 @@ pub struct Limits {
     pub tags: usize,
     /// The largest file served.
     pub file: Bytes,
-    /// How much of a file is read at a time.
-    pub chunk: Bytes,
     /// Time for a client to send its request head.
     pub read: Duration,
     /// Time to resolve a host and open a blob.
@@ -35,7 +33,12 @@ pub struct Limits {
     pub send: Duration,
     /// Time open connections get to finish when the server is told to stop.
     pub drain: Duration,
-    /// Requests in flight at once.
+    /// Requests in flight at once, from a head read to the last byte sent. A request over it is
+    /// refused with a 503.
+    pub requests: usize,
+    /// Connections open at once, including ones that have sent no head yet. The accept loop takes
+    /// a slot before it takes a connection, so a flood waits in the system's backlog instead of
+    /// using descriptors. Keep it under the process's descriptor limit, with room for files.
     pub connections: usize,
 }
 
@@ -50,12 +53,12 @@ impl Default for Limits {
             head: Bytes(32 * KIB),
             tags: 16,
             file: Bytes(1024 * 1024 * KIB),
-            chunk: Bytes(64 * KIB),
             read: Duration::from_secs(10),
             open: Duration::from_secs(5),
             idle: Duration::from_secs(30),
             send: Duration::from_secs(600),
             drain: Duration::from_secs(30),
+            requests: 1024,
             connections: 1024,
         }
     }

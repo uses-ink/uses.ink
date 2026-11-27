@@ -5,10 +5,10 @@ use std::collections::VecDeque;
 use std::fmt;
 use std::time::Duration;
 
-use blob::{Blob, Chunks, Tenant};
-use blob_dir::Directory;
-use build::{Build, BuildId, Built, Event, Events, Outcome, Request, Status, Trigger};
-use control::{Dropped, JobState, NewJob, Ports, Published, Requested, Worked};
+use blob::{Blob, Chunks, Deleted, Listed, Stored, Tenant};
+use blob_dir::{Directory, Error as Fault, Reading};
+use build::{Build, BuildId, Built, Event, Events, Outcome, Request, Source, Status, Trigger};
+use control::{Dropped, JobState, NewAccount, NewJob, NewSite, Ports, Published, Requested, Worked};
 use model::{Bytes, Hash, Manifest, MediaType, Route, Served};
 use queue::Dedupe;
 
@@ -41,8 +41,12 @@ pub(crate) struct Scripted {
 
 impl Scripted {
     pub(crate) fn new(world: &World, steps: impl IntoIterator<Item = Step>) -> Self {
+        Self::in_folder(&world.root, steps)
+    }
+
+    fn in_folder(root: &std::path::Path, steps: impl IntoIterator<Item = Step>) -> Self {
         Self {
-            store: Directory::open(&world.root).unwrap(),
+            store: Directory::open(root).unwrap(),
             steps: RefCell::new(steps.into_iter().collect()),
             seen: RefCell::default(),
         }
@@ -198,4 +202,90 @@ fn a_message_that_names_no_build_is_dropped() {
     let builder = Scripted::new(&world, []);
     assert_eq!(world.run(world.control.work(&builder, at(2), LEASE)).unwrap(), Worked::Dropped(Dropped::Unnamed));
     assert_eq!(world.run(world.control.work(&builder, at(500), LEASE)).unwrap(), Worked::Idle);
+}
+
+#[test]
+fn a_redelivered_request_does_not_reopen_an_ended_job() {
+    let world = World::new();
+    let site = world.site("cstef");
+    let (id, new) = request(&site, 10, None);
+    world.run(world.control.request_build(new)).unwrap();
+    let builder = Scripted::new(&world, [Step::Build("hello"), Step::Refuse]);
+    let worked = world.run(world.control.work(&builder, at(11), LEASE)).unwrap();
+    let Worked::Built { recorded, .. } = worked else { panic!("{worked:?}") };
+    // the queue delivers the same build again, as it may after a crash between settling and acking
+    let queue = world.control.ports().queue();
+    let message = queue::Message { body: id.to_string().into_bytes(), dedupe: None };
+    world.run(queue::Queue::send(queue, message, at(12))).unwrap();
+    assert_eq!(
+        world.run(world.control.work(&builder, at(13), LEASE)).unwrap(),
+        Worked::Dropped(Dropped::Settled { build: id })
+    );
+    let job = world.run(world.control.job(id)).unwrap().unwrap();
+    assert_eq!((job.state, job.deploy), (JobState::Succeeded, Some(recorded.deploy)));
+    assert_eq!(world.run(world.control.work(&builder, at(500), LEASE)).unwrap(), Worked::Idle);
+}
+
+/// A directory that cannot be written to, so a build's log cannot be stored.
+struct Unwritable {
+    inner: Directory,
+}
+
+impl Blob for Unwritable {
+    type Error = Fault;
+    type Read = Reading;
+
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async; this stand-in does no waiting")]
+    async fn put(
+        &self,
+        _: &Tenant,
+        _: Hash,
+        _: impl IntoIterator<Item = impl AsRef<[u8]>>,
+    ) -> Result<Stored, blob::Error<Fault>> {
+        Err(blob::Error::Backend {
+            source: Fault::Write { path: "injected".into(), source: std::io::Error::other("injected") },
+        })
+    }
+
+    async fn get(&self, t: &Tenant, h: Hash) -> Result<Option<Reading>, blob::Error<Fault>> {
+        self.inner.get(t, h).await
+    }
+
+    async fn stat(&self, t: &Tenant, h: Hash) -> Result<Option<Bytes>, blob::Error<Fault>> {
+        self.inner.stat(t, h).await
+    }
+
+    async fn list(&self, t: &Tenant) -> Result<Vec<Listed>, blob::Error<Fault>> {
+        self.inner.list(t).await
+    }
+
+    async fn delete(&self, t: &Tenant, h: Hash) -> Result<Deleted, blob::Error<Fault>> {
+        self.inner.delete(t, h).await
+    }
+}
+
+#[test]
+fn a_failure_after_the_build_counts_as_an_attempt_and_ends_the_job() {
+    let folder = tempfile::tempdir().unwrap();
+    let control = World::over(Unwritable { inner: Directory::open(folder.path()).unwrap() });
+    let account = control::Id::from_bytes([1; 16]);
+    pollster::block_on(control.add_account(NewAccount { id: account, at: at(0) })).unwrap();
+    let site = pollster::block_on(control.add_site(NewSite {
+        id: control::Id::from_bytes([2; 16]),
+        account,
+        handle: "cstef".parse().unwrap(),
+        source: Source::Folder("/srv".into()),
+        at: at(1),
+    }))
+    .unwrap();
+    let (id, new) = request(&site, 10, None);
+    pollster::block_on(control.request_build(new)).unwrap();
+    let builder = Scripted::in_folder(folder.path(), [Step::Refuse, Step::Refuse, Step::Refuse]);
+    for (n, now) in [(1, 11), (2, 100), (3, 200)] {
+        let failed = pollster::block_on(control.work(&builder, at(now), LEASE)).unwrap_err();
+        assert!(matches!(failed, control::Failed::Control(control::Error::Blob(_))), "attempt {n}: {failed:?}");
+        let state = pollster::block_on(control.job(id)).unwrap().unwrap().state;
+        assert_eq!(state, if n < 3 { JobState::Running } else { JobState::Failed }, "after attempt {n}");
+    }
+    assert_eq!(pollster::block_on(control.work(&builder, at(1000), LEASE)).unwrap(), Worked::Idle);
 }

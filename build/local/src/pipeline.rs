@@ -1,6 +1,7 @@
 //! The pipeline, as `ink build` runs it: read, interpret, render.
 
 use std::collections::BTreeMap;
+use std::io::ErrorKind;
 use std::path::Path;
 
 use build::{Event, Events};
@@ -38,7 +39,15 @@ impl Pipeline<'_> {
     /// Reads the folder: as a repository when it holds `.git`, so dates come from history, else
     /// as plain files. A refusal is the diagnostic that says why.
     fn read(&self, store: &mut Memory) -> Result<Read, Box<Diagnostic>> {
-        let versioned = std::fs::symlink_metadata(self.dir.join(".git")).is_ok();
+        let versioned = match std::fs::symlink_metadata(self.dir.join(".git")) {
+            Ok(_) => true,
+            Err(source) if matches!(source.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory) => false,
+            Err(source) => {
+                let problem =
+                    Problem::SourceRepositoryUnreadable { reason: format!("`.git` could not be inspected: {source}") };
+                return Err(Box::new(Diagnostic::new(problem)));
+            }
+        };
         let read = if versioned {
             Repository { revision: Revision::Head, ..Repository::new(self.dir) }.read(store)
         } else {
@@ -128,5 +137,32 @@ impl Pipeline<'_> {
             return Ok(None);
         }
         Ok(Some(Made { manifest: rendered.manifest, blobs: rendered.blobs, store }))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
+
+    use std::os::unix::fs::PermissionsExt as _;
+
+    use super::*;
+
+    #[test]
+    fn an_unreadable_git_entry_is_refused_not_read_as_plain_files() {
+        let folder = tempfile::tempdir().unwrap();
+        let dir = folder.path().join("site");
+        std::fs::create_dir(&dir).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o000)).unwrap();
+        let readable = std::fs::read_dir(&dir).is_ok();
+        let pipeline = Pipeline { dir: &dir, base: "https://uses.ink/".parse().unwrap() };
+        let refused = pipeline.read(&mut Memory::default()).err();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        if readable {
+            // running as a user the mode does not bind: nothing to observe
+            return;
+        }
+        let refused = refused.unwrap();
+        assert!(matches!(refused.problem, Problem::SourceRepositoryUnreadable { .. }), "{refused:?}");
     }
 }

@@ -479,6 +479,17 @@ impl Migrations {
         assert!(matches!(behind, Unapplied::Unknown { ref name } if name == "0002_second.sql"));
     }
 
+    /// A ledger that holds a later migration but not an earlier one is refused, not filled in.
+    pub async fn order<D: Db>(db: &D) {
+        Steps::new().with::<Second>().unwrap().apply(db).await.unwrap();
+        let both = Steps::new().with::<First>().unwrap().with::<Second>().unwrap();
+        let skipped = both.apply(db).await.unwrap_err();
+        assert!(matches!(
+            skipped,
+            Unapplied::Order { ref held, ref expected } if held == "0002_second.sql" && expected == "0001_first.sql"
+        ));
+    }
+
     /// A step that fails leaves neither its tables nor its ledger row.
     pub async fn broken<D: Db>(db: &D) {
         let steps = Steps::new().with::<First>().unwrap().with::<Second>().unwrap().with::<Broken>().unwrap();
@@ -515,6 +526,7 @@ macro_rules! suite {
         $crate::suite!(@case $make, refuses_a_value_d1_cannot_carry, Limit, unsupported);
         $crate::suite!(@case $make, applies_migrations_once, Migrations, check);
         $crate::suite!(@case $make, leaves_nothing_of_a_failed_migration, Migrations, broken);
+        $crate::suite!(@case $make, refuses_a_ledger_with_a_gap, Migrations, order);
     };
     (@case $make:expr, $name:ident, $case:ident, $method:ident) => {
         #[test]

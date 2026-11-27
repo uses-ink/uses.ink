@@ -33,7 +33,7 @@ impl<B: Blob> Local<B> {
             let hash = entry.blob();
             let body = match made.blobs.get(&hash) {
                 Some(body) => std::borrow::Cow::Borrowed(body.as_slice()),
-                None => made.store.read(&hash).map_err(|_| Self::fail(Error::Missing { blob: hash }))?,
+                None => made.store.read(&hash).map_err(|source| Self::fail(Error::Missing { blob: hash, source }))?,
             };
             bytes = bytes.saturating_add(body.len() as u64);
             if seen.insert(hash) {

@@ -62,7 +62,7 @@ where
             return Err(Error::Head { limit, least: LEAST_HEAD });
         }
         let edge = edge.with_probe("/healthz".parse().map_err(Error::Probe)?);
-        let gate = Arc::new(Semaphore::new(edge.limits().connections));
+        let gate = Arc::new(Semaphore::new(edge.limits().requests));
         Ok(Self { inner: Arc::new(Inner { edge, observe: Arc::new(observe), gate, scheme, api: None }) })
     }
 
@@ -82,8 +82,9 @@ where
     }
 
     /// Serves one accepted connection under hyper's head and read budgets, until it ends or the
-    /// shutdown drains it.
-    fn connect(&self, graceful: &GracefulShutdown, router: Router, stream: TcpStream) {
+    /// shutdown drains it. Its slot is free again when it ends.
+    fn connect(&self, graceful: &GracefulShutdown, router: Router, accepted: Accepted) {
+        let Accepted { stream, slot } = accepted;
         let limits = self.inner.edge.limits();
         let service = TowerToHyperService::new(router);
         let mut http = http1::Builder::new();
@@ -94,6 +95,7 @@ where
         let connection = graceful.watch(http.serve_connection(TokioIo::new(stream), service));
         let observe = Arc::clone(&self.inner.observe);
         tokio::spawn(async move {
+            let _slot = slot;
             if let Err(source) = connection.await {
                 observe.event(&Event::Connection { source: Box::new(source) });
             }
@@ -110,10 +112,18 @@ where
         let router = self.router();
         let graceful = GracefulShutdown::new();
         let mut shutdown = pin!(shutdown);
+        let slots = Arc::new(Semaphore::new(limits.connections));
         loop {
+            // a slot first: at the limit nothing is accepted, and the backlog holds the rest
+            let slot = tokio::select! {
+                slot = Arc::clone(&slots).acquire_owned() => slot,
+                () = &mut shutdown => break,
+            };
+            // the semaphore is private and never closed, so this is always a slot
+            let Ok(slot) = slot else { break };
             tokio::select! {
                 accepted = listener.accept() => match accepted {
-                    Ok((stream, _)) => self.connect(&graceful, router.clone(), stream),
+                    Ok((stream, _)) => self.connect(&graceful, router.clone(), Accepted { stream, slot }),
                     Err(source) => {
                         observe.event(&Event::Connection { source: Box::new(source) });
                         tokio::time::sleep(REST).await;
@@ -130,6 +140,13 @@ where
         observe.event(&Event::Stopped(stopped));
         Ok(())
     }
+}
+
+/// A connection the listener gave, and the slot of [`Limits::connections`] it holds until it ends.
+#[derive(Debug)]
+struct Accepted {
+    stream: TcpStream,
+    slot: tokio::sync::OwnedSemaphorePermit,
 }
 
 /// What a request said before the edge saw it: kept for the event.
@@ -163,7 +180,7 @@ where
         let limits = *inner.edge.limits();
         let caller = Caller { hostname: None, scheme: inner.scheme };
         let (permit, reply) = match Arc::clone(&inner.gate).try_acquire_owned() {
-            Err(_) => (None, inner.edge.refuse(Refusal::Busy { limit: limits.connections }, &caller)),
+            Err(_) => (None, inner.edge.refuse(Refusal::Busy { limit: limits.requests }, &caller)),
             Ok(permit) => match tokio::time::timeout(limits.open, inner.edge.respond(&asked)).await {
                 Ok(reply) => (Some(permit), reply),
                 Err(_) => (None, inner.edge.refuse(Refusal::Slow { stage: Stage::Open, limit: limits.open }, &caller)),
