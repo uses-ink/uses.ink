@@ -26,7 +26,7 @@ jobs:
       matrix:
         stage: [lint, test, docs, wasm, sites]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # rust-toolchain.toml pins the version, components and wasm targets.
       - run: rustup show active-toolchain
       # Dependencies and the build state, saved by pushes to main and restored by every run.
