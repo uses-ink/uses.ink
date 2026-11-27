@@ -132,11 +132,8 @@ impl Export {
         let target = if self.target.is_absolute() { self.target.clone() } else { self.dir.join(&self.target) };
         Self::free(&target)?;
         let deploy = self.pick(&calls)?;
-        let archive = if self.source {
-            calls.block(calls.api.bundle())?
-        } else {
-            calls.block(calls.api.export(deploy))?
-        };
+        let archive =
+            if self.source { calls.block(calls.api.bundle())? } else { calls.block(calls.api.export(deploy))? };
         let limits = Limits { files: self.max_files, file: self.max_file, total: self.max_bytes, name: self.max_name };
         let tree = Tree::read(&archive, &limits).map_err(|source| Failure::Archive { source })?;
         let staging = Staging::beside(&target)?;

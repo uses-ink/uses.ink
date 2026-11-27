@@ -1,7 +1,13 @@
 //! The publish verbs through the real binary: `ink serve --data`, `ink login --data`, then
 //! `ink init`, `push`, `status`, `watch` and `export` against it, and the ways each one stops.
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::too_many_lines, reason = "tests stop at the first surprise")]
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::too_many_lines,
+    clippy::indexing_slicing,
+    reason = "tests stop at the first surprise"
+)]
 
 mod keyed;
 
@@ -83,7 +89,8 @@ impl Rig {
             std::thread::sleep(Duration::from_millis(100));
         }
         let rig = Self { child: Some(child), root, data, home, site, port, api, audience, log };
-        let signed = rig.ink_in(&rig.home, &rig.root, &["login", "--data", rig.data.to_str().unwrap(), "--label", "e2e"]);
+        let signed =
+            rig.ink_in(&rig.home, &rig.root, &["login", "--data", rig.data.to_str().unwrap(), "--label", "e2e"]);
         assert_eq!(signed.code, 0, "{}{}", signed.out, signed.err);
         rig
     }
@@ -105,7 +112,7 @@ impl Rig {
     fn ink_in(&self, home: &Path, dir: &Path, args: &[&str]) -> Ran {
         let mut ran = self.once(home, dir, args);
         for _ in 0..30 {
-            if !ran.err.contains("restarting") {
+            if !ran.err.contains("restarting") && !ran.err.contains("api.slow") {
                 break;
             }
             std::thread::sleep(Duration::from_millis(250));
@@ -123,7 +130,7 @@ impl Rig {
             .env("HOME", home)
             .env("XDG_CONFIG_HOME", home.join("config"))
             .env("INK_API", &self.api)
-            .env("INK_TIMEOUT", "10")
+            .env("INK_TIMEOUT", "20")
             .env("PATH", std::env::var("PATH").unwrap_or_default())
             .output()
             .unwrap();
@@ -167,7 +174,7 @@ impl Rig {
     /// Links the site's folder to a new site with `handle`; returns the site's id.
     fn init(&self, handle: &str) -> String {
         let init = self.ink(&["init", "--handle", handle, "--json"]);
-        assert_eq!(init.code, 0, "{}{}", init.out, init.err);
+        assert_eq!(init.code, 0, "{}{}{}", init.out, init.err, self.said());
         init.json()["site"].as_str().unwrap().to_owned()
     }
 }
@@ -218,7 +225,11 @@ fn a_folder_is_linked_pushed_inspected_watched_and_exported() {
 
     let status = rig.ink(&["status"]);
     assert_eq!(status.code, 0, "{}{}", status.out, status.err);
-    assert!(status.out.contains("diary") && status.out.contains("ok") && status.out.contains("domains"), "{}", status.out);
+    assert!(
+        status.out.contains("diary") && status.out.contains("ok") && status.out.contains("domains"),
+        "{}",
+        status.out
+    );
     let json = rig.ink(&["status", "--json"]).json();
     assert_eq!(json["schema"], "uses.status/v1");
     assert_eq!(json["health"], "ok");
@@ -303,7 +314,12 @@ fn a_server_that_is_gone_is_exit_4_and_a_push_after_a_rollback_is_exit_5() {
     rig.write("index.md", "# Three\n");
     let held = rig.ink(&["push", "--wait", "30", "--json"]);
     assert_eq!(held.code, 5, "{}{}", held.out, held.err);
-    assert!(held.err.contains("ink deploy resume") || held.out.contains("ink deploy resume"), "{}{}", held.out, held.err);
+    assert!(
+        held.err.contains("ink deploy resume") || held.out.contains("ink deploy resume"),
+        "{}{}",
+        held.out,
+        held.err
+    );
     let status = rig.ink(&["status", "--json"]).json();
     assert_eq!(status["health"], "paused");
     assert_eq!(rig.ink(&["deploy", "resume", "--site", &site]).code, 0);

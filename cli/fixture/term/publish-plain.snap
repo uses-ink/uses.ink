@@ -1,0 +1,22 @@
+---
+source: fixture/src/lib.rs
+---
+garden  https://garden.uses.ink
+
+  site     q3x9m2tj7r5kw8va
+  state    active
+  created  2026-11-02 09:00Z
+  source   upload: ink push sends the folder
+  health   paused
+  live     4d4d4d4d4d4d  since 2026-11-20 10:30Z
+  paused   new deploys are recorded, not live: ink deploy resume
+  latest   7a1f  running  upload, requested 2026-11-27 08:00Z
+  pending  7a1f  running  upload, requested 2026-11-27 08:00Z
+  domains  not listed: this API has no domains yet
+  site     q3x9m2tj7r5kw8va
+  handle   garden
+  address  https://garden.uses.ink
+  api      https://api.uses.ink
+  file     .uses/site
+  result   made, and linked to this folder
+61 files, 1.2 MB of site into out

@@ -10,8 +10,8 @@ use build::Source;
 use control::signin::Entry;
 use control::table::Event;
 use control::{
-    AccountKind, Control, CredentialKind, Domain, Handle, Id, NewAccount, NewSite, Origin, Ports, Remembered, Site, Treed,
-    SiteKind,
+    AccountKind, Control, CredentialKind, Domain, Handle, Id, NewAccount, NewSite, Origin, Ports, Remembered, Site,
+    SiteKind, Treed,
 };
 use db::{Db, Row, Steps};
 use db_sqlite::Sqlite;

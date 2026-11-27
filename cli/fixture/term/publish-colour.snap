@@ -1,0 +1,22 @@
+---
+source: fixture/src/lib.rs
+---
+\e[1mgarden\e[0m\e[2m  https://garden.uses.ink\e[0m
+
+  \e[2msite\e[0m     \e[35mq3x9m2tj7r5kw8va\e[0m
+  \e[2mstate\e[0m    active
+  \e[2mcreated\e[0m  2026-11-02 09:00Z
+  \e[2msource\e[0m   upload: ink push sends the folder
+  \e[2mhealth\e[0m   \e[33mpaused\e[0m
+  \e[2mlive\e[0m     \e[32m4d4d4d4d4d4d\e[0m\e[2m  since 2026-11-20 10:30Z\e[0m
+  \e[2mpaused\e[0m   \e[33mnew deploys are recorded, not live: \e[0m\e[1m\e[36mink deploy resume\e[0m
+  \e[2mlatest\e[0m   \e[35m7a1f\e[0m\e[33m  running\e[0m\e[2m  upload, requested 2026-11-27 08:00Z\e[0m
+  \e[2mpending\e[0m  \e[35m7a1f\e[0m\e[33m  running\e[0m\e[2m  upload, requested 2026-11-27 08:00Z\e[0m
+  \e[2mdomains\e[0m  \e[2mnot listed: this API has no domains yet\e[0m
+  \e[2msite\e[0m     \e[35mq3x9m2tj7r5kw8va\e[0m
+  \e[2mhandle\e[0m   garden
+  \e[2maddress\e[0m  https://garden.uses.ink
+  \e[2mapi\e[0m      https://api.uses.ink
+  \e[2mfile\e[0m     .uses/site
+  \e[2mresult\e[0m   \e[32mmade, and linked to this folder\e[0m
+61 files, 1.2 MB of site into out

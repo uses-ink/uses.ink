@@ -15,7 +15,12 @@ use serde_json::{Value, json};
 use support::Rig;
 
 fn leaf(path: &str, text: &str) -> Leaf {
-    Leaf { path: ContentPath::parse(path).unwrap(), hash: Hash::of(text), size: Bytes(text.len() as u64), modified: None }
+    Leaf {
+        path: ContentPath::parse(path).unwrap(),
+        hash: Hash::of(text),
+        size: Bytes(text.len() as u64),
+        modified: None,
+    }
 }
 
 /// A batch of blobs named by their hashes.

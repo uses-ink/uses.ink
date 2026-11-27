@@ -40,7 +40,9 @@ impl fmt::Display for State {
         match self {
             Self::Unchanged => write!(out, "nothing was changed"),
             Self::Partial { path } => write!(out, "`{path}` may be partly written"),
-            Self::Uploaded { sent } => write!(out, "the site holds {sent} files of this push: run it again to send the rest"),
+            Self::Uploaded { sent } => {
+                write!(out, "the site holds {sent} files of this push: run it again to send the rest")
+            }
             Self::Unknown => write!(out, "what the command had written is not known: run it again"),
         }
     }

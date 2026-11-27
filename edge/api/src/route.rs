@@ -202,9 +202,11 @@ impl Call {
             },
             ["export"] => by(&[(Method::Get, Self::Export { site, deploy: None })]),
             ["deploy"] => by(&[(Method::Put, Self::Intake(site))]),
-            ["source"] => {
-                by(&[(Method::Post, Self::Source(site)), (Method::Put, Self::Parts(site)), (Method::Get, Self::Bundle(site))])
-            }
+            ["source"] => by(&[
+                (Method::Post, Self::Source(site)),
+                (Method::Put, Self::Parts(site)),
+                (Method::Get, Self::Bundle(site)),
+            ]),
             _ => return None,
         })
     }

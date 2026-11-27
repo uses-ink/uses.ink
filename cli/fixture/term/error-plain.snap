@@ -16,6 +16,22 @@ error[decision.code.unknown]: no decision has that code
   ╰─ `page.titel` is no decision code
   fix: `ink explain` lists every decision of the site with its code
   nothing was changed
+error[link.file.missing]: /home/me/garden is linked to no site: it has no .uses/site
+  fix: run `ink init --handle NAME` to link this folder, or give `--site ID`
+  nothing was changed
+error[deploy.api.slow]: the upload stopped after the server took 212 files
+  caused by
+  ╰─ the API did not answer in 30 seconds
+  fix: run `ink push` again to send what is left
+  the site holds 212 files of this push: run it again to send the rest
+error[push.build.refused]: the build 4mq8c1d0wz5e was refused: 2 problems stop the site
+  caused by
+  ╰─ refused: {"code":"page.slug.clash"}
+  fix: fix what the build said, then push again
+  nothing was changed
+error[export.folder.occupied]: out is not empty
+  fix: give an empty or new folder
+  nothing was changed
 error[cli.usage]: unexpected argument `--wy` found
   fix: to pass `--wy` as a value, use `-- --wy`
   nothing was changed

@@ -117,7 +117,9 @@ impl fmt::Display for Sourced {
                 "{path} is {} bytes, more than the {limit} one upload request carries: the operator raises `--upload-part`",
                 size.count()
             ),
-            Self::Total { size, limit } => write!(out, "the files hold {} bytes, over the limit of {limit}", size.count()),
+            Self::Total { size, limit } => {
+                write!(out, "the files hold {} bytes, over the limit of {limit}", size.count())
+            }
             Self::Name { path, limit } => write!(out, "the path {path} is longer than the limit of {limit} bytes"),
             Self::Size { path, listed, held } => {
                 write!(out, "{path} is listed as {} bytes, and the blob held is {} bytes", listed.count(), held.count())
@@ -163,11 +165,9 @@ impl Sourced {
     pub const fn status(&self) -> Status {
         match self {
             Self::Tree(_) => Status::BadRequest,
-            Self::Files { .. }
-            | Self::File { .. }
-            | Self::Part { .. }
-            | Self::Total { .. }
-            | Self::Name { .. } => Status::TooLarge,
+            Self::Files { .. } | Self::File { .. } | Self::Part { .. } | Self::Total { .. } | Self::Name { .. } => {
+                Status::TooLarge
+            }
             Self::NoSource => Status::NotFound,
             _ => Status::Unprocessable,
         }
@@ -319,8 +319,10 @@ impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
         let batch = tar::Tree::read(body, &self.limits.parts()).map_err(Fault::Archive)?;
         let mut named = Vec::new();
         for (path, bytes) in batch.files() {
-            let name: Hash =
-                path.as_str().parse().map_err(|_| Fault::Source(Sourced::Unnamed { name: path.as_str().to_owned() }))?;
+            let name: Hash = path
+                .as_str()
+                .parse()
+                .map_err(|_| Fault::Source(Sourced::Unnamed { name: path.as_str().to_owned() }))?;
             let found = Hash::of(bytes);
             if found != name {
                 return Err(Fault::Source(Sourced::Mismatch { name, found }));
@@ -343,7 +345,8 @@ impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
         let site = self.owned(principal, id).await?;
         let tenant = Tenant::try_from(site.id).map_err(control::Refusal::Tenant)?;
         let hash = self.control.latest_tree(id).await?.ok_or(Fault::Source(Sourced::NoSource))?;
-        let tree = Tree::read(&self.held(&tenant, hash).await?).map_err(|source| Fault::Source(Sourced::Tree(source)))?;
+        let tree =
+            Tree::read(&self.held(&tenant, hash).await?).map_err(|source| Fault::Source(Sourced::Tree(source)))?;
         let mut writer = Writer::new(self.limits.export);
         for leaf in tree.files() {
             writer.file(leaf.path.as_str(), &self.held(&tenant, leaf.hash).await?).map_err(Fault::Archive)?;

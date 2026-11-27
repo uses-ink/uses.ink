@@ -72,12 +72,11 @@ impl Scanned {
     /// Reads the folder `dir`, without the folders that are not content.
     fn read(dir: &std::path::Path) -> Result<Self, Error> {
         let mut store = Memory::default();
-        let output: Vec<ContentPath> = DEFAULT_OUT.parse().ok().filter(|_| dir.join(DEFAULT_OUT).is_dir()).into_iter().collect();
+        let output: Vec<ContentPath> =
+            DEFAULT_OUT.parse().ok().filter(|_| dir.join(DEFAULT_OUT).is_dir()).into_iter().collect();
         let read = Folder { output, ..Folder::new(dir) }.read(&mut store).map_err(Error::Refused)?;
         let snapshot = read.snapshot;
-        let modified = |path: &ContentPath| {
-            snapshot.facts_of(path).and_then(|facts| facts.updated.exact()).copied()
-        };
+        let modified = |path: &ContentPath| snapshot.facts_of(path).and_then(|facts| facts.updated.exact()).copied();
         let leaves = snapshot
             .tree()
             .iter()
@@ -156,23 +155,24 @@ impl Push {
             pushed
         };
         if self.no_wait {
-            let pending = crate::deploy::wire::Step::Queued;
-            let mut pushed = Follow::document(Pushed::PUSH, site, &crate::deploy::wire::Built::named(&build, pending), None);
-            pushed = counts(pushed);
+            let queued = crate::deploy::wire::Built::named(&build, crate::deploy::wire::Step::Queued);
+            let pushed = counts(Follow::document(Pushed::PUSH, site, &queued, None));
             io.result(&Answer::of(&build))?;
             io.json(&pushed)?;
             return Ok(Exit::Done);
         }
-        let follow = Follow {
-            calls: &calls,
-            poll: Duration::from_millis(self.poll),
-            wait: Duration::from_secs(self.wait),
-        };
+        let follow =
+            Follow { calls: &calls, poll: Duration::from_millis(self.poll), wait: Duration::from_secs(self.wait) };
         let ended = follow.until(&build, io)?;
         let row = follow.settle(&ended)?;
         io.stage(&StageLine::new(
             Verb::Built,
-            format!("deploy {} is live: {}, {}", Short(row.id), Plural(Self::count(row.files), "file"), Size(row.bytes)),
+            format!(
+                "deploy {} is live: {}, {}",
+                Short(row.id),
+                Plural(Self::count(row.files), "file"),
+                Size(row.bytes)
+            ),
         ))?;
         io.result(&Answer::of(row.id))?;
         io.json(&counts(Follow::document(Pushed::PUSH, site, &ended, Some(&row))))?;
@@ -190,14 +190,19 @@ impl Push {
                 Probed::Duplicate => {
                     let overview = calls.block(calls.api.overview())?;
                     let queued = overview.pending.first().or(overview.build.as_ref());
-                    let build = queued.map(|build| build.id.clone()).ok_or(Failure::Incomplete {
-                        missing: 0,
-                        rounds: self.rounds,
-                    })?;
+                    let build = queued
+                        .map(|build| build.id.clone())
+                        .ok_or(Failure::Incomplete { missing: 0, rounds: self.rounds })?;
                     return Ok((build, sent));
                 }
                 Probed::Missing { missing, part } => {
-                    let round = Round { calls, scanned, limit: self.batch.map_or(part, |most| most.min(part)), most: self.batch_files.max(1), before: sent };
+                    let round = Round {
+                        calls,
+                        scanned,
+                        limit: self.batch.map_or(part, |most| most.min(part)),
+                        most: self.batch_files.max(1),
+                        before: sent,
+                    };
                     sent += Self::upload(&round, &missing, io)?;
                 }
             }

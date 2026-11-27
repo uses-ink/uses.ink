@@ -10,10 +10,10 @@ use clap::Parser as _;
 use model::{Announcement, ContentPath, Diagnostic, Notice, Problem, Span, Subject};
 
 use crate::args::{Cli, Origin};
-use crate::deploy::wire::{Overview, Step};
-use crate::deploy::Logged;
-use crate::error::Error;
 use crate::deploy::Failure as Refused;
+use crate::deploy::Logged;
+use crate::deploy::wire::{Overview, Step};
+use crate::error::Error;
 use crate::failure::Failure;
 use crate::output::Tally;
 use crate::publish::view::{Exported, Linked, Standing};
@@ -234,9 +234,8 @@ impl Cases {
                 files: 61,
                 bytes: 1_204_331,
             };
-            let publish = shot.text(&Standing::of(&standing))
-                + &shot.text(&linked)
-                + &shot.text(&Answer::of(exported.said()));
+            let publish =
+                shot.text(&Standing::of(&standing)) + &shot.text(&linked) + &shot.text(&Answer::of(exported.said()));
             cases.push((format!("publish-{}", shot.name), publish));
 
             cases.push((format!("record-{}", shot.name), shot.text(&record) + &shot.text(&Answer::of("5kq3v9m2tj7r"))));

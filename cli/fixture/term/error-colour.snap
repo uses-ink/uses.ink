@@ -16,6 +16,22 @@ source: fixture/src/lib.rs
   \e[2m╰─\e[0m `\e[1m\e[36mpage.titel\e[0m` is no decision code
   \e[1m\e[36mfix:\e[0m `\e[1m\e[36mink explain\e[0m` lists every decision of the site with its code
   \e[2mnothing was changed\e[0m
+\e[1m\e[31merror[link.file.missing]\e[0m: \e[1m/home/me/garden is linked to no site: it has no .uses/site\e[0m
+  \e[1m\e[36mfix:\e[0m run `\e[1m\e[36mink init --handle NAME\e[0m` to link this folder, or give `\e[1m\e[36m--site ID\e[0m`
+  \e[2mnothing was changed\e[0m
+\e[1m\e[31merror[deploy.api.slow]\e[0m: \e[1mthe upload stopped after the server took 212 files\e[0m
+  caused by
+  \e[2m╰─\e[0m the API did not answer in 30 seconds
+  \e[1m\e[36mfix:\e[0m run `\e[1m\e[36mink push\e[0m` again to send what is left
+  \e[2mthe site holds 212 files of this push: run it again to send the rest\e[0m
+\e[1m\e[31merror[push.build.refused]\e[0m: \e[1mthe build 4mq8c1d0wz5e was refused: 2 problems stop the site\e[0m
+  caused by
+  \e[2m╰─\e[0m refused: {"code":"page.slug.clash"}
+  \e[1m\e[36mfix:\e[0m fix what the build said, then push again
+  \e[2mnothing was changed\e[0m
+\e[1m\e[31merror[export.folder.occupied]\e[0m: \e[1mout is not empty\e[0m
+  \e[1m\e[36mfix:\e[0m give an empty or new folder
+  \e[2mnothing was changed\e[0m
 \e[1m\e[31merror[cli.usage]\e[0m: \e[1munexpected argument \e[0m\e[1m`\e[0m\e[1m\e[36m--wy\e[0m\e[1m`\e[0m\e[1m found\e[0m
   \e[1m\e[36mfix:\e[0m to pass `\e[1m\e[36m--wy\e[0m` as a value, use `\e[1m\e[36m-- --wy\e[0m`
   \e[2mnothing was changed\e[0m

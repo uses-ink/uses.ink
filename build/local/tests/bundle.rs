@@ -43,7 +43,7 @@ fn an_uploaded_tree_builds_like_its_folder() {
         let mut events: Vec<Event> = Vec::new();
         let outcome = builder.run(&request(hash), &mut events).await.unwrap();
         let Outcome::Built(built) = outcome else { panic!("not built: {events:?}") };
-        assert!(!built.manifest.entries().is_empty());
+        assert_ne!(built.manifest.entries().len(), 0);
         assert!(events.iter().any(|event| matches!(event, Event::SourceFetched { files: 1, .. })), "{events:?}");
     });
 }

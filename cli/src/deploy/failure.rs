@@ -407,7 +407,9 @@ impl Failure {
             Self::Linked { .. } => "run `ink init --force` to link it to another site",
             Self::Nameless => "give `--handle NAME` to make a site, or `--site ID` to link one that exists",
             Self::Incomplete { .. } | Self::Waited { .. } => "run the command again",
-            Self::Uploading { source, .. } => return source.remedy().or(Some("run `ink push` again to send what is left")),
+            Self::Uploading { source, .. } => {
+                return source.remedy().or(Some("run `ink push` again to send what is left"));
+            }
             Self::Ended { state: Step::Refused, .. } => "fix what the build said, then push again",
             Self::Ended { .. } => "run `ink push` again; if it keeps failing, report it",
             Self::Held { .. } => "run `ink deploy resume` to deploy this and new pushes",
@@ -463,7 +465,9 @@ impl fmt::Display for Failure {
             }
             Self::Unlinked { dir } => write!(out, "{} is linked to no site: it has no .uses/site", dir.display()),
             Self::Link { path, .. } => write!(out, "the link file {} cannot be used", path.display()),
-            Self::Linked { path, site } => write!(out, "{} links this folder to the site {site} already", path.display()),
+            Self::Linked { path, site } => {
+                write!(out, "{} links this folder to the site {site} already", path.display())
+            }
             Self::Nameless => write!(out, "no site is named: `ink init` links a folder to a site or makes one"),
             Self::Tree { .. } => write!(out, "the folder's files do not make a tree"),
             Self::Incomplete { missing, rounds } => {

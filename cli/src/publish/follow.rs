@@ -91,9 +91,10 @@ impl Follow<'_> {
         }
         let deploys = self.calls.block(self.calls.api.deploys())?;
         let made = built.deploy.ok_or_else(|| Failure::Absent { build: built.id.clone() })?;
-        let row = deploys.into_iter().find(|row| row.id == made).ok_or_else(|| Failure::Absent {
-            build: format!("deploy {} of build {}", Short(made), built.id),
-        })?;
+        let row = deploys
+            .into_iter()
+            .find(|row| row.id == made)
+            .ok_or_else(|| Failure::Absent { build: format!("deploy {} of build {}", Short(made), built.id) })?;
         if row.live {
             return Ok(row);
         }

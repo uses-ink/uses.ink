@@ -47,6 +47,59 @@ source: fixture/src/lib.rs
 {
   "schema": "uses.error/v1",
   "exit": 2,
+  "error": "link.file.missing",
+  "what": "/home/me/garden is linked to no site: it has no .uses/site",
+  "causes": [],
+  "fix": "run `ink init --handle NAME` to link this folder, or give `--site ID`",
+  "state": {
+    "kind": "unchanged"
+  },
+  "diagnostic": null
+}
+{
+  "schema": "uses.error/v1",
+  "exit": 2,
+  "error": "deploy.api.slow",
+  "what": "the upload stopped after the server took 212 files",
+  "causes": [
+    "the API did not answer in 30 seconds"
+  ],
+  "fix": "run `ink push` again to send what is left",
+  "state": {
+    "kind": "uploaded",
+    "sent": 212
+  },
+  "diagnostic": null
+}
+{
+  "schema": "uses.error/v1",
+  "exit": 2,
+  "error": "push.build.refused",
+  "what": "the build 4mq8c1d0wz5e was refused: 2 problems stop the site",
+  "causes": [
+    "refused: {\"code\":\"page.slug.clash\"}"
+  ],
+  "fix": "fix what the build said, then push again",
+  "state": {
+    "kind": "unchanged"
+  },
+  "diagnostic": null
+}
+{
+  "schema": "uses.error/v1",
+  "exit": 2,
+  "error": "export.folder.occupied",
+  "what": "out is not empty",
+  "causes": [],
+  "fix": "give an empty or new folder",
+  "state": {
+    "kind": "unchanged"
+  },
+  "diagnostic": null
+}
+{
+  "schema": "uses.error/v1",
+  "exit": 2,
   "error": "cli.usage",
   "what": "unexpected argument `--wy` found",
   "causes": [],
@@ -75,6 +128,45 @@ source: fixture/src/lib.rs
   "what": "no home page was found, so the home page lists every page",
   "why": null,
   "fix": "add index.md or README.md at the root, or pin `site.home`"
+}
+{
+  "schema": "uses.status/v1",
+  "site": {
+    "id": "q3x9m2tj7r5kw8va",
+    "handle": "garden",
+    "url": "https://garden.uses.ink",
+    "state": "active",
+    "created": "2026-11-02T09:00:00Z",
+    "source": {
+      "kind": "upload"
+    }
+  },
+  "live": {
+    "deploy": "4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+    "previous": null,
+    "paused": true,
+    "since": "2026-11-20T10:30:00Z"
+  },
+  "build": {
+    "id": "7a1f",
+    "trigger": "upload",
+    "state": "running",
+    "requested": "2026-11-27T08:00:00Z",
+    "finished": null,
+    "deploy": null
+  },
+  "pending": [
+    {
+      "id": "7a1f",
+      "trigger": "upload",
+      "state": "running",
+      "requested": "2026-11-27T08:00:00Z",
+      "finished": null,
+      "deploy": null
+    }
+  ],
+  "health": "paused",
+  "domains": "not listed: this API has no domains yet"
 }
 {
   "schema": "uses.progress/v1",

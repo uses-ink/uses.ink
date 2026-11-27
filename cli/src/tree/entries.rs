@@ -64,8 +64,14 @@ const PUSH: &[Ending] = &[
     Ending { exit: Exit::Content, about: "The build was refused: the site does not build" },
     Ending { exit: Exit::Usage, about: "Wrong usage: the folder is linked to no site, or the folder cannot be read" },
     Ending { exit: Exit::Auth, about: "Not signed in, or the signature was refused" },
-    Ending { exit: Exit::Network, about: "The API could not be reached, the build failed or the wait ran out; safe to run again" },
-    Ending { exit: Exit::Conflict, about: "The deploy is recorded and not live, because publishing is paused after a rollback" },
+    Ending {
+        exit: Exit::Network,
+        about: "The API could not be reached, the build failed or the wait ran out; safe to run again",
+    },
+    Ending {
+        exit: Exit::Conflict,
+        about: "The deploy is recorded and not live, because publishing is paused after a rollback",
+    },
 ];
 
 const SOURCE_ENV: &[Variable] = &[];
@@ -172,7 +178,10 @@ const ENTRIES: &[Entry] = &[
     Entry {
         detail: "Writes .uses/site, which holds the site's id and the API's address and no credential. A folder with no link refuses push, status, watch and export; the [account] table of the config file never stands in for it.",
         examples: &[
-            Example { line: "ink init --handle garden", about: "Make a site that takes uploads, and link this folder to it" },
+            Example {
+                line: "ink init --handle garden",
+                about: "Make a site that takes uploads, and link this folder to it",
+            },
             Example { line: "ink init --site 0123abcd", about: "Link this folder to a site that exists" },
         ],
         endings: REMOTE,

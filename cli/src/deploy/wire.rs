@@ -91,7 +91,14 @@ pub(crate) struct Built {
 impl Built {
     /// A build that was just queued: it has an id and a step, and nothing else yet.
     pub(crate) fn named(id: &str, state: Step) -> Self {
-        Self { id: id.to_owned(), trigger: "upload".to_owned(), state, requested: Timestamp::UNIX_EPOCH, finished: None, deploy: None }
+        Self {
+            id: id.to_owned(),
+            trigger: "upload".to_owned(),
+            state,
+            requested: Timestamp::UNIX_EPOCH,
+            finished: None,
+            deploy: None,
+        }
     }
 }
 

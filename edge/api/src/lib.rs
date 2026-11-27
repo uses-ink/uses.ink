@@ -56,6 +56,6 @@ pub use limits::{Asked, Limit, Limits, Raised};
 pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Unreadable as OperatorError};
 pub use reply::{Media, Method, Payload, Reply, Request, Status, UnknownMethod};
 pub use route::{Call, RouteError};
-pub use source::{Probed, Sourced, Stored};
 pub use signature::{Claimed, Config as Signing, Failed, Nonces, Signatures, Window, WindowError};
+pub use source::{Probed, Sourced, Stored};
 pub use webauthn::{Failed as Unavailable, Webauthn};

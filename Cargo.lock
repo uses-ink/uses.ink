@@ -6302,6 +6302,7 @@ name = "uses-ink-build"
 version = "0.0.0"
 dependencies = [
  "serde",
+ "serde_json",
  "uses-ink-blob",
  "uses-ink-model",
  "uses-ink-trace",

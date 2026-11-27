@@ -132,7 +132,9 @@ impl Render for Standing<'_> {
         if self.overview.live.as_ref().is_some_and(|live| live.paused) {
             fields = fields.field(
                 "paused",
-                Line::new().with(Role::Warn, "new deploys are recorded, not live: ").with(Role::Literal, "ink deploy resume"),
+                Line::new()
+                    .with(Role::Warn, "new deploys are recorded, not live: ")
+                    .with(Role::Literal, "ink deploy resume"),
             );
         }
         if let Some(build) = &self.overview.build {
