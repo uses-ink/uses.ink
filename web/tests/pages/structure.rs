@@ -51,7 +51,9 @@ fn every_page_has_one_heading_and_every_form_a_label() {
                 assert!(form.contains("<label"), "{name}: a control without a label: {form}");
             }
         }
-        assert!(!page.contains("<script"), "{name}: no script");
+        // the one first-party script is the passkey one, as this exact tag; any other script is refused
+        let bare = page.replace(r#"<script src="/passkey.js"></script>"#, "");
+        assert!(!bare.contains("<script"), "{name}: no script but /passkey.js");
         assert!(!page.contains("javascript:"), "{name}: no script url");
     }
 }
