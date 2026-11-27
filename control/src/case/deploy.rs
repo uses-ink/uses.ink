@@ -31,8 +31,8 @@ impl<P: Ports> Control<P> {
         let step = Move::new(site.id, id, new.at);
         let batch = vec![
             Event::DeployAdded { deploy: id }.fresh(site.id, new.at, id)?,
-            step.record(new.build, new.manifest.entries().len() as u64, bytes),
-            step.publish(),
+            step.record(new.build, new.manifest.entries().len() as u64, bytes)?,
+            step.publish()?,
             step.history(Cause::Publish)?,
             Event::DeployPublished { deploy: id, previous: before.map(|live| live.deploy) }
                 .moved(site.id, new.at, id)?,
@@ -177,8 +177,8 @@ impl Move {
     }
 
     /// The statement that records the deploy, once.
-    fn record(&self, build: Option<BuildId>, files: u64, bytes: Bytes) -> Statement {
-        Query::insert()
+    fn record(&self, build: Option<BuildId>, files: u64, bytes: Bytes) -> Result<Statement, sea_query::error::Error> {
+        Ok(Query::insert()
             .into_table(table::Deploy::Table)
             .columns([
                 table::Deploy::SiteId,
@@ -188,26 +188,26 @@ impl Move {
                 table::Deploy::Files,
                 table::Deploy::Bytes,
             ])
-            .values_panic([
+            .values([
                 Expr::val(self.site.as_str()),
                 Expr::val(self.deploy.as_str()),
                 Expr::val(self.at),
                 Expr::val(build.map(|build| build.to_string())),
                 Expr::val(files.cast_signed()),
                 Expr::val(bytes.count().cast_signed()),
-            ])
+            ])?
             .on_conflict(OnConflict::columns([table::Deploy::SiteId, table::Deploy::Id]).do_nothing().to_owned())
             .to_owned()
-            .into()
+            .into())
     }
 
     /// The statement that points the site at the deploy, unless it is paused or already there,
     /// keeping what it replaced as the previous one.
-    fn publish(&self) -> Statement {
+    fn publish(&self) -> Result<Statement, sea_query::error::Error> {
         let replace = Self::live(table::Live::Paused)
             .eq(0_i64)
             .and(Self::live(table::Live::DeployId).ne(Self::proposed(table::Live::DeployId)));
-        Query::insert()
+        Ok(Query::insert()
             .into_table(table::Live::Table)
             .columns([
                 table::Live::SiteId,
@@ -216,13 +216,13 @@ impl Move {
                 table::Live::Paused,
                 table::Live::SetAt,
             ])
-            .values_panic([
+            .values([
                 Expr::val(self.site.as_str()),
                 Expr::val(self.deploy.as_str()),
                 Expr::val(None::<String>),
                 Expr::val(0_i64),
                 Expr::val(self.at),
-            ])
+            ])?
             .on_conflict(
                 OnConflict::column(table::Live::SiteId)
                     .value(table::Live::PreviousId, Self::live(table::Live::DeployId))
@@ -232,7 +232,7 @@ impl Move {
                     .to_owned(),
             )
             .to_owned()
-            .into()
+            .into())
     }
 
     /// The statement that points the site back at the deploy, when the site records it and it

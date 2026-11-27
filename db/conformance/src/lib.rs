@@ -460,8 +460,8 @@ impl Migrations {
     pub async fn check<D: Db>(db: &D) {
         let first = Steps::new().with::<First>().unwrap();
         let both = Steps::new().with::<First>().unwrap().with::<Second>().unwrap();
-        assert_eq!(first.apply(db).await.unwrap().names, ["0001_first"]);
-        assert_eq!(both.apply(db).await.unwrap().names, ["0002_second"]);
+        assert_eq!(first.apply(db).await.unwrap().names, ["0001_first.sql"]);
+        assert_eq!(both.apply(db).await.unwrap().names, ["0002_second.sql"]);
         assert!(both.apply(db).await.unwrap().names.is_empty());
         let listing = Query::select()
             .columns([Ledger::Id, Ledger::Name, Ledger::AppliedAt])
@@ -470,13 +470,13 @@ impl Migrations {
             .into();
         let ledger = db.rows(listing).await.unwrap();
         let names: Vec<String> = ledger.iter().map(|row| row.get(Ledger::Name).unwrap()).collect();
-        assert_eq!(names, ["0001_first", "0002_second"]);
+        assert_eq!(names, ["0001_first.sql", "0002_second.sql"]);
         assert!(ledger.iter().all(|row| row.get::<String>(Ledger::AppliedAt).is_ok()));
         let one = db.first(Query::select().column(Alpha::X).from(Alpha::Table).into()).await.unwrap().unwrap();
         assert_eq!(one.get::<String>(Alpha::X).unwrap(), "one");
         // a database ahead of the code is refused, not migrated backwards
         let behind = first.apply(db).await.unwrap_err();
-        assert!(matches!(behind, Unapplied::Unknown { ref name } if name == "0002_second"));
+        assert!(matches!(behind, Unapplied::Unknown { ref name } if name == "0002_second.sql"));
     }
 
     /// A step that fails leaves neither its tables nor its ledger row.

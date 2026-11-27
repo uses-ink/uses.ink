@@ -123,7 +123,7 @@ impl Event {
         let insert = Query::insert()
             .into_table(table::Event::Table)
             .columns(Self::COLUMNS)
-            .values_panic(self.row(site, at)?)
+            .values(self.row(site, at)?)?
             .to_owned();
         Ok(insert.into())
     }

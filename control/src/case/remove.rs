@@ -96,7 +96,7 @@ impl<P: Ports> Control<P> {
         let tombstone = Query::insert()
             .into_table(table::Tombstone::Table)
             .columns([table::Tombstone::Handle, table::Tombstone::SiteId, table::Tombstone::RemovedAt])
-            .values_panic([Expr::val(handle), Expr::val(key), Expr::val(at.as_millisecond())])
+            .values([Expr::val(handle), Expr::val(key), Expr::val(at.as_millisecond())])?
             .on_conflict(OnConflict::column(table::Tombstone::Handle).do_nothing().to_owned())
             .to_owned();
         batch.push(tombstone.into());

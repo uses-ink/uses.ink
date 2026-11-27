@@ -145,16 +145,14 @@ impl TryFrom<sea_query::Value> for Value {
             Built::TinyUnsigned(n) => wide(n.map(i64::from)),
             Built::SmallUnsigned(n) => wide(n.map(i64::from)),
             Built::Unsigned(n) => wide(n.map(i64::from)),
-            Built::BigUnsigned(Some(n)) => {
-                Self::Integer(i64::try_from(n).map_err(|_| Unsupported { kind: "u64 above i64::MAX" })?)
-            }
+            Built::BigUnsigned(Some(n)) => Self::Integer(i64::try_from(n).map_err(|_| Unsupported::Wide { found: n })?),
             Built::BigUnsigned(None) => Self::Null,
             Built::Float(n) => n.map_or(Self::Null, |n| Self::Real(n.into())),
             Built::Double(n) => n.map_or(Self::Null, Self::Real),
             Built::String(text) => text.map_or(Self::Null, Self::Text),
             Built::Char(letter) => letter.map_or(Self::Null, |letter| Self::Text(letter.to_string())),
             Built::Bytes(bytes) => bytes.map_or(Self::Null, Self::Blob),
-            Built::Enum(_) => return Err(Unsupported { kind: "enum" }),
+            Built::Enum(_) => return Err(Unsupported::Enum),
         })
     }
 }

@@ -40,9 +40,9 @@ struct Step {
 }
 
 impl Step {
-    /// The name the ledger records: `0001_words`.
+    /// The name the ledger records, as wrangler records a file: `0001_words.sql`.
     fn ledger(&self) -> String {
-        format!("{:04}_{}", self.number, self.name)
+        format!("{:04}_{}.sql", self.number, self.name)
     }
 }
 
@@ -104,6 +104,8 @@ pub enum Unapplied<E> {
     },
     /// The ledger has a row that cannot be read.
     Ledger(ColumnError),
+    /// The ledger's row for a migration could not be built.
+    Statement(sea_query::error::Error),
 }
 
 impl<E> fmt::Display for Unapplied<E> {
@@ -114,6 +116,7 @@ impl<E> fmt::Display for Unapplied<E> {
                 write!(out, "the database has applied `{name}`, which this version does not know")
             }
             Self::Ledger(_) => out.write_str("the migration ledger has a row that cannot be read"),
+            Self::Statement(_) => out.write_str("the migration ledger's row could not be built"),
         }
     }
 }
@@ -123,6 +126,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Unapplied<E> {
         match self {
             Self::Db(source) => Some(source),
             Self::Ledger(source) => Some(source),
+            Self::Statement(source) => Some(source),
             Self::Unknown { .. } => None,
         }
     }
@@ -193,7 +197,8 @@ impl Steps {
                 Query::insert()
                     .into_table(Ledger::Table)
                     .columns([Ledger::Name])
-                    .values_panic([Expr::val(name.as_str())]),
+                    .values([Expr::val(name.as_str())])
+                    .map_err(Unapplied::Statement)?,
             ));
             db.batch(batch).await?;
             applied.names.push(name);
@@ -236,7 +241,7 @@ mod test {
 
     #[test]
     fn checks_names_and_order() {
-        assert_eq!(Steps::new().with::<One>().unwrap().names().collect::<Vec<_>>(), ["0001_a"]);
+        assert_eq!(Steps::new().with::<One>().unwrap().names().collect::<Vec<_>>(), ["0001_a.sql"]);
         assert_eq!(
             Steps::new().with::<One>().unwrap().with::<Two>().unwrap_err(),
             StepError::Order { before: 1, after: 1 }

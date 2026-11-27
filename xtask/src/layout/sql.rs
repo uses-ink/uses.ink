@@ -67,7 +67,11 @@ impl Sql {
         for token in tokens {
             // the group after a `#` is an attribute, which holds doc text and lint reasons
             let skipped = attribute;
-            attribute = matches!(&token, TokenTree::Punct(punct) if punct.as_char() == '#');
+            // `#![..]` is an inner attribute: the `!` keeps the flag up for the group after it
+            attribute = match &token {
+                TokenTree::Punct(punct) => punct.as_char() == '#' || (punct.as_char() == '!' && attribute),
+                _ => false,
+            };
             match token {
                 TokenTree::Group(_) if skipped => {}
                 TokenTree::Group(group) => Self::within(group.stream(), found),
@@ -149,6 +153,12 @@ mod tests {
         assert_eq!(find(r#"#[doc = "SELECT 1"] fn f() {}"#), Vec::<Found>::new());
         assert_eq!(find(r#"#![expect(clippy::x, reason = "DELETE the row")]"#), Vec::<Found>::new());
         assert_eq!(find(r"/// SELECT the row"), Vec::<Found>::new());
+    }
+
+    #[test]
+    fn inner_attributes_and_doc_lines_are_attributes_too() {
+        assert_eq!(find("//! SELECT the rows\nfn f() {}"), Vec::<Found>::new());
+        assert_eq!(find("#![doc = \"DELETE all\"]"), Vec::<Found>::new());
     }
 
     #[test]

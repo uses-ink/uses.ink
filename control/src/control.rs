@@ -15,7 +15,7 @@ pub struct Control<P> {
 }
 
 impl<P: Ports> Control<P> {
-    /// A control plane on `ports`, serving sites under `origin`. The database must have had [`crate::MIGRATIONS`] applied.
+    /// A control plane on `ports`, serving sites under `origin`. The database must have had the [`Domain`](crate::Domain) migration applied.
     pub const fn new(ports: P, origin: Origin) -> Self {
         Self { ports, origin }
     }

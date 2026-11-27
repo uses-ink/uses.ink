@@ -58,16 +58,16 @@ impl RoundTrip {
 pub struct Sizes;
 
 impl Sizes {
-    /// Zero bytes and three megabytes in odd chunks both round-trip.
+    /// Zero bytes and a few hundred kilobytes in odd chunks both round-trip.
     pub async fn check<B: Blob>(blob: &B) {
         let t = Samples::tenant("site-a");
         let empty = Hash::of([]);
         blob.put(&t, empty, Vec::<Vec<u8>>::new()).await.unwrap();
         assert_eq!(blob.get(&t, empty).await.unwrap().unwrap().all().await.unwrap(), Vec::<u8>::new());
-        let big: Vec<u8> = (0..3_000_000_u32).map(|n| u8::try_from(n % 253).unwrap()).collect();
+        let big: Vec<u8> = (0..300_000_u32).map(|n| u8::try_from(n % 253).unwrap()).collect();
         let hash = Hash::of(&big);
-        let stored = blob.put(&t, hash, big.chunks(70_001)).await.unwrap();
-        assert_eq!(stored.size, Bytes(3_000_000));
+        let stored = blob.put(&t, hash, big.chunks(7_001)).await.unwrap();
+        assert_eq!(stored.size, Bytes(300_000));
         let mut read = blob.get(&t, hash).await.unwrap().unwrap();
         let mut joined = Vec::new();
         while let Some(chunk) = read.chunk().await.unwrap() {

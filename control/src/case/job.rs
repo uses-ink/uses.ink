@@ -40,13 +40,13 @@ impl<P: Ports> Control<P> {
                 table::Job::State,
                 table::Job::RequestedAt,
             ])
-            .values_panic([
+            .values([
                 Expr::val(new.id.to_string()),
                 Expr::val(site.id.to_string()),
                 Expr::val(job::Stored(new.trigger).name()),
                 Expr::val(State::Queued.name()),
                 Expr::val(new.at.as_millisecond()),
-            ])
+            ])?
             .to_owned();
         let batch = vec![insert.into(), Event::BuildRequested { build: new.id }.insert(site.id, new.at)?];
         self.ports.db().batch(batch).await?;

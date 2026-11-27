@@ -59,11 +59,8 @@ impl<D: Db> Queue for Local<D> {
             let insert = Query::insert()
                 .into_table(Table::Table)
                 .columns([Table::Body, Table::Dedupe, Table::VisibleAt])
-                .values_panic([
-                    Expr::val(message.body.clone()),
-                    Expr::val(key.clone()),
-                    Expr::val(now.as_millisecond()),
-                ])
+                .values([Expr::val(message.body.clone()), Expr::val(key.clone()), Expr::val(now.as_millisecond())])
+                .map_err(|source| Self::backend(Error::Statement { source }))?
                 .on_conflict(OnConflict::column(Table::Dedupe).do_nothing().to_owned())
                 .returning_col(Table::Id)
                 .to_owned();

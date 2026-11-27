@@ -15,7 +15,7 @@ impl<P: Ports> Control<P> {
         let insert = Query::insert()
             .into_table(table::Account::Table)
             .columns([table::Account::Id, table::Account::CreatedAt])
-            .values_panic([Expr::val(new.id.to_string()), Expr::val(new.at.as_millisecond())])
+            .values([Expr::val(new.id.to_string()), Expr::val(new.at.as_millisecond())])?
             .to_owned();
         match self.ports.db().run(insert.into()).await {
             Ok(_) => Ok(Account { id: new.id, created: new.at }),
@@ -43,7 +43,7 @@ impl<P: Ports> Control<P> {
             return Err(Refusal::Tombstoned { handle: new.handle }.into());
         }
         let added = Event::SiteAdded { handle: new.handle.clone() };
-        let batch = vec![Self::site_row(&new), Self::source_row(new.id, stored), added.insert(new.id, new.at)?];
+        let batch = vec![Self::site_row(&new)?, Self::source_row(new.id, stored)?, added.insert(new.id, new.at)?];
         match db.batch(batch).await {
             Ok(_) => Ok(Site {
                 id: new.id,
@@ -126,8 +126,8 @@ impl<P: Ports> Control<P> {
     }
 
     /// The statement that adds the site's row.
-    fn site_row(new: &site::New) -> Statement {
-        Query::insert()
+    fn site_row(new: &site::New) -> Result<Statement, sea_query::error::Error> {
+        Ok(Query::insert()
             .into_table(table::Site::Table)
             .columns([
                 table::Site::Id,
@@ -136,30 +136,30 @@ impl<P: Ports> Control<P> {
                 table::Site::State,
                 table::Site::CreatedAt,
             ])
-            .values_panic([
+            .values([
                 Expr::val(new.id.to_string()),
                 Expr::val(new.account.to_string()),
                 Expr::val(new.handle.as_str()),
                 Expr::val(site::State::Active.name()),
                 Expr::val(new.at.as_millisecond()),
-            ])
+            ])?
             .to_owned()
-            .into()
+            .into())
     }
 
     /// The statement that adds the row of the site's source.
-    fn source_row(id: Id<SiteKind>, stored: Stored) -> Statement {
-        Query::insert()
+    fn source_row(id: Id<SiteKind>, stored: Stored) -> Result<Statement, sea_query::error::Error> {
+        Ok(Query::insert()
             .into_table(table::Source::Table)
             .columns([table::Source::SiteId, table::Source::Kind, table::Source::Locator, table::Source::Revision])
-            .values_panic([
+            .values([
                 Expr::val(id.to_string()),
                 Expr::val(Stored::name(stored.kind)),
                 Expr::val(stored.locator),
                 Expr::val(stored.revision),
-            ])
+            ])?
             .to_owned()
-            .into()
+            .into())
     }
 
     /// The tenant a site's blobs are under.

@@ -29,13 +29,13 @@ impl<P: Ports> Control<P> {
                 table::Credential::Sealed,
                 table::Credential::CreatedAt,
             ])
-            .values_panic([
+            .values([
                 Expr::val(new.id.to_string()),
                 Expr::val(new.site.to_string()),
                 Expr::val(new.purpose.name()),
                 Expr::val(sealed.as_ref()),
                 Expr::val(new.at.as_millisecond()),
-            ])
+            ])?
             .to_owned();
         match self.ports.db().run(insert.into()).await {
             Ok(_) => Ok(Credential { id: new.id, site: new.site, purpose: new.purpose, created: new.at }),

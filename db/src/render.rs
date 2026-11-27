@@ -74,14 +74,23 @@ impl std::error::Error for TooMany {}
 
 /// A bound value D1 cannot carry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Unsupported {
-    /// The kind of value `sea_query` held.
-    pub kind: &'static str,
+#[non_exhaustive]
+pub enum Unsupported {
+    /// An unsigned integer above the largest signed one, which D1 would wrap.
+    Wide {
+        /// The integer.
+        found: u64,
+    },
+    /// A database enum value, which D1 does not have.
+    Enum,
 }
 
 impl fmt::Display for Unsupported {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "a bound value of type `{}` cannot be stored", self.kind)
+        match self {
+            Self::Wide { found } => write!(out, "the integer {found} does not fit in 64 signed bits"),
+            Self::Enum => out.write_str("a database enum value cannot be stored"),
+        }
     }
 }
 

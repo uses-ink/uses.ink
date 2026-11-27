@@ -10,6 +10,11 @@ pub enum Error<E> {
     Db(db::Error<E>),
     /// A row of the queue table cannot be read.
     Row(db::ColumnError),
+    /// A statement could not be built: its columns and values do not match.
+    Statement {
+        /// What the builder said.
+        source: sea_query::error::Error,
+    },
     /// A time that does not fit: a lease or delay too long to add to the clock.
     Time {
         /// What the clock arithmetic said.
@@ -22,6 +27,7 @@ impl<E> fmt::Display for Error<E> {
         match self {
             Self::Db(_) => out.write_str("the queue table could not be used"),
             Self::Row(_) => out.write_str("a queue row cannot be read"),
+            Self::Statement { .. } => out.write_str("a queue statement could not be built"),
             Self::Time { .. } => out.write_str("the lease or delay does not fit in the clock"),
         }
     }
@@ -32,6 +38,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
         match self {
             Self::Db(source) => Some(source),
             Self::Row(source) => Some(source),
+            Self::Statement { source } => Some(source),
             Self::Time { source } => Some(source),
         }
     }
