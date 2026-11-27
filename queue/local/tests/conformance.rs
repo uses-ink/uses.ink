@@ -6,12 +6,12 @@ extern crate uses_ink_queue_local as queue_local;
 
 use db::Steps;
 use db_sqlite::Sqlite;
-use queue_local::Local;
+use queue_local::{Local, Queued};
 
 /// A queue in a new database with its table made.
 fn fresh() -> (Local<Sqlite>, ()) {
     let db = Sqlite::memory().unwrap();
-    pollster::block_on(Steps::new(Local::<Sqlite>::STEPS).unwrap().apply(&db)).unwrap();
+    pollster::block_on(Steps::new().with::<Queued>().unwrap().apply(&db)).unwrap();
     (Local::new(db), ())
 }
 

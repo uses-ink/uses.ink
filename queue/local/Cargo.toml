@@ -13,6 +13,7 @@ db.workspace = true
 jiff.workspace = true
 model.workspace = true
 queue.workspace = true
+sea-query.workspace = true
 
 [dev-dependencies]
 db-sqlite.workspace = true

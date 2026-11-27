@@ -2,10 +2,12 @@
 
 use std::time::Duration;
 
-use db::{Db, Row, Statement, Step};
+use db::{Db, Row, Statement};
 use model::Timestamp;
 use queue::{Delivery, Message, MessageId, Queue, Sent, Settled};
+use sea_query::{Expr, ExprTrait, OnConflict, Order, Query};
 
+use crate::schema::Message as Table;
 use crate::Error;
 
 type Failure<D> = queue::Error<Error<<D as Db>::Error>>;
@@ -17,10 +19,7 @@ pub struct Local<D> {
 }
 
 impl<D: Db> Local<D> {
-    /// The migrations that make the queue's table: apply them with the host's other steps.
-    pub const STEPS: [Step; 1] = [Step::new("0100_queue.sql", include_str!("../../../migration/0100_queue.sql"))];
-
-    /// A queue in `db`, whose table [`Local::STEPS`] made.
+    /// A queue in `db`, whose table the [`Queued`](crate::Queued) migration made.
     pub const fn new(db: D) -> Self {
         Self { db }
     }
@@ -43,7 +42,7 @@ impl<D: Db> Local<D> {
     }
 
     fn id(row: &Row) -> Result<MessageId, Failure<D>> {
-        row.get::<u64>("id").map(MessageId).map_err(|error| Self::backend(error.into()))
+        row.get::<u64>(Table::Id).map(MessageId).map_err(|error| Self::backend(error.into()))
     }
 
     fn settled(outcome: &db::Outcome) -> Settled {
@@ -55,45 +54,68 @@ impl<D: Db> Queue for Local<D> {
     type Error = Error<D::Error>;
 
     async fn send(&self, message: Message, now: Timestamp) -> Result<Sent, Failure<D>> {
-        const INSERT: &str = "INSERT INTO queue_message (body, dedupe, visible_at) VALUES (?, ?, ?) \
-            ON CONFLICT (dedupe) DO NOTHING RETURNING id";
-        const HELD: &str = "SELECT id FROM queue_message WHERE dedupe = ?";
         let key = message.dedupe.as_ref().map(|dedupe| dedupe.as_str().to_owned());
         loop {
-            let insert = Statement::prepare(INSERT).bind(message.body.clone()).bind(key.clone()).bind(now.as_millisecond());
-            if let Some(row) = self.run(insert).await?.rows.first() {
+            let insert = Query::insert()
+                .into_table(Table::Table)
+                .columns([Table::Body, Table::Dedupe, Table::VisibleAt])
+                .values_panic([Expr::val(message.body.clone()), Expr::val(key.clone()), Expr::val(now.as_millisecond())])
+                .on_conflict(OnConflict::column(Table::Dedupe).do_nothing().to_owned())
+                .returning_col(Table::Id)
+                .to_owned();
+            if let Some(row) = self.run(insert.into()).await?.rows.first() {
                 return Ok(Sent::Queued(Self::id(row)?));
             }
             // not inserted, so the key is held; unless the holder was acked in between, then try again
-            if let Some(row) = self.run(Statement::prepare(HELD).bind(key.clone())).await?.rows.first() {
+            let held = Query::select().column(Table::Id).from(Table::Table).and_where(Expr::col(Table::Dedupe).eq(key.clone())).to_owned();
+            if let Some(row) = self.run(held.into()).await?.rows.first() {
                 return Ok(Sent::Duplicate(Self::id(row)?));
             }
         }
     }
 
     async fn receive(&self, now: Timestamp, lease: Duration) -> Result<Option<Delivery>, Failure<D>> {
-        const CLAIM: &str = "UPDATE queue_message SET visible_at = ?, attempt = attempt + 1 \
-            WHERE id = (SELECT id FROM queue_message WHERE visible_at <= ? ORDER BY visible_at, id LIMIT 1) \
-            RETURNING id, body, attempt";
         let until = Self::later(now, lease).map_err(Self::backend)?;
-        let claimed = self.run(Statement::prepare(CLAIM).bind(until).bind(now.as_millisecond())).await?;
+        let next = Query::select()
+            .column(Table::Id)
+            .from(Table::Table)
+            .and_where(Expr::col(Table::VisibleAt).lte(now.as_millisecond()))
+            .order_by(Table::VisibleAt, Order::Asc)
+            .order_by(Table::Id, Order::Asc)
+            .limit(1)
+            .to_owned();
+        let claim = Query::update()
+            .table(Table::Table)
+            .value(Table::VisibleAt, until)
+            .value(Table::Attempt, Expr::col(Table::Attempt).add(1))
+            .and_where(Expr::col(Table::Id).in_subquery(next))
+            .returning(Query::returning().columns([Table::Id, Table::Body, Table::Attempt]))
+            .to_owned();
+        let claimed = self.run(claim.into()).await?;
         let Some(row) = claimed.rows.first() else { return Ok(None) };
         let read = |row: &Row| -> Result<Delivery, db::ColumnError> {
-            Ok(Delivery { id: MessageId(row.get("id")?), attempt: row.get("attempt")?, body: row.get("body")? })
+            Ok(Delivery { id: MessageId(row.get(Table::Id)?), attempt: row.get(Table::Attempt)?, body: row.get(Table::Body)? })
         };
         read(row).map(Some).map_err(|error| Self::backend(error.into()))
     }
 
     async fn ack(&self, delivery: &Delivery) -> Result<Settled, Failure<D>> {
-        const DELETE: &str = "DELETE FROM queue_message WHERE id = ? AND attempt = ?";
-        let outcome = self.run(Statement::prepare(DELETE).bind(delivery.id.0.cast_signed()).bind(delivery.attempt)).await?;
-        Ok(Self::settled(&outcome))
+        let delete = Query::delete()
+            .from_table(Table::Table)
+            .and_where(Expr::col(Table::Id).eq(delivery.id.0.cast_signed()))
+            .and_where(Expr::col(Table::Attempt).eq(delivery.attempt))
+            .to_owned();
+        Ok(Self::settled(&self.run(delete.into()).await?))
     }
 
     async fn release(&self, delivery: &Delivery, now: Timestamp, delay: Duration) -> Result<Settled, Failure<D>> {
-        const RELEASE: &str = "UPDATE queue_message SET visible_at = ? WHERE id = ? AND attempt = ?";
         let at = Self::later(now, delay).map_err(Self::backend)?;
-        let outcome = self.run(Statement::prepare(RELEASE).bind(at).bind(delivery.id.0.cast_signed()).bind(delivery.attempt)).await?;
-        Ok(Self::settled(&outcome))
+        let release = Query::update()
+            .table(Table::Table)
+            .value(Table::VisibleAt, at)
+            .and_where(Expr::col(Table::Id).eq(delivery.id.0.cast_signed()))
+            .and_where(Expr::col(Table::Attempt).eq(delivery.attempt))
+            .to_owned();
+        Ok(Self::settled(&self.run(release.into()).await?))
     }
 }
