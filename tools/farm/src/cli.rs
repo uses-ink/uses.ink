@@ -69,6 +69,9 @@ impl Seconds {
     /// The hard limit of a job that names none.
     pub(crate) const LIMIT: Self = Self(1500);
 
+    /// How long a call blocks by default: under the ten minutes a tool call may take.
+    pub(crate) const TIMEOUT: Self = Self(540);
+
     pub(crate) const fn duration(self) -> Duration {
         Duration::from_secs(self.0)
     }
@@ -112,7 +115,7 @@ impl Default for Flags {
             json: false,
             verbose: false,
             detach: false,
-            timeout: Seconds(540),
+            timeout: Seconds::TIMEOUT,
             limit: None,
             host: None,
             tail: None,
@@ -365,7 +368,7 @@ mod tests {
     #[test]
     fn defaults_are_the_documented_ones_and_bad_input_is_usage() {
         let flags = parse("status").unwrap().flags;
-        assert_eq!((flags.timeout, flags.limit), (Seconds(540), None));
+        assert_eq!((flags.timeout, flags.limit), (Seconds::TIMEOUT, None));
         for bad in ["", "frob", "status --timeout", "status --timeout x", "status --host A b", "status extra"] {
             assert!(parse(bad).is_err(), "{bad:?}");
         }

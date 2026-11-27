@@ -97,6 +97,22 @@ pub(crate) struct Exec {
 /// How long a process gets to end after `detach`, before it is killed.
 const GRACE: Duration = Duration::from_secs(10);
 
+/// How long a wait with no deadline sleeps before it asks again: a call with no limit still
+/// wakes once an hour, so a dead one is noticed.
+const UNBOUNDED_WAIT: Duration = Duration::from_secs(3600);
+
+/// How long `ssh` keeps a shared connection open after its last call, in seconds.
+const CONTROL_PERSIST_SECS: u32 = 120;
+
+/// `ssh`'s connect timeout, in seconds: a host that does not answer in this time is down.
+const CONNECT_SECS: u32 = 8;
+
+/// How often `ssh` sends a keep-alive on a quiet connection, in seconds.
+const ALIVE_SECS: u32 = 15;
+
+/// How many keep-alives may go unanswered before `ssh` gives the connection up.
+const ALIVE_MISSES: u32 = 3;
+
 impl Exec {
     pub(crate) fn new(console: Arc<Console>) -> Self {
         Self { console }
@@ -242,9 +258,7 @@ impl<'a> Follow<'a> {
     /// How long to wait for the next line: until the deadline, or the end of the grace after it.
     fn next_wait(&self) -> Duration {
         let limit = self.detaching.or(self.deadline);
-        limit.map_or(Duration::from_secs(3600), |at| {
-            at.saturating_duration_since(Instant::now()).max(Duration::from_millis(10))
-        })
+        limit.map_or(UNBOUNDED_WAIT, |at| at.saturating_duration_since(Instant::now()).max(Duration::from_millis(10)))
     }
 }
 
@@ -309,21 +323,26 @@ impl Ssh {
     /// `ssh`'s options, which `rsync -e` repeats.
     fn options(&self) -> Vec<String> {
         let mut words: Vec<String> = [
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=8",
-            "-o",
-            "ServerAliveInterval=15",
-            "-o",
-            "ServerAliveCountMax=3",
-            "-o",
-            "LogLevel=ERROR",
+            "-o".to_owned(),
+            "BatchMode=yes".to_owned(),
+            "-o".to_owned(),
+            format!("ConnectTimeout={CONNECT_SECS}"),
+            "-o".to_owned(),
+            format!("ServerAliveInterval={ALIVE_SECS}"),
+            "-o".to_owned(),
+            format!("ServerAliveCountMax={ALIVE_MISSES}"),
+            "-o".to_owned(),
+            "LogLevel=ERROR".to_owned(),
         ]
-        .map(str::to_owned)
         .to_vec();
         if let Some(path) = self.control.as_ref().and_then(|path| path.to_str()) {
-            words.extend(["-o", "ControlMaster=auto", "-o", "ControlPersist=120", "-o"].map(str::to_owned));
+            words.extend([
+                "-o".to_owned(),
+                "ControlMaster=auto".to_owned(),
+                "-o".to_owned(),
+                format!("ControlPersist={CONTROL_PERSIST_SECS}"),
+                "-o".to_owned(),
+            ]);
             words.push(format!("ControlPath={path}"));
         }
         words
