@@ -54,6 +54,13 @@ impl Job {
     /// and the build and the link are faster), no colour, and the cores of one slot for cargo
     /// and for the test threads. `CARGO_TARGET_DIR` is never set.
     pub(crate) fn vars(&self, snap: &Snapshot) -> Vec<String> {
+        self.vars_with(snap, std::env::var("NEXTEST_PROFILE").ok().as_deref())
+    }
+
+    /// [`Self::vars`] with the nextest profile the caller set, if any. The farm's hosts are
+    /// shared, so a job runs the `ci` profile (the 100 ms budgets are for a quiet machine) unless
+    /// the caller chose one.
+    pub(crate) fn vars_with(&self, snap: &Snapshot, caller: Option<&str>) -> Vec<String> {
         let share = snap.share();
         let mut vars = vec![
             "CARGO_PROFILE_DEV_DEBUG=line-tables-only".to_owned(),
@@ -62,6 +69,9 @@ impl Job {
             format!("NEXTEST_TEST_THREADS={share}"),
             "INSTA_UPDATE=no".to_owned(),
         ];
+        if caller.is_none_or(str::is_empty) {
+            vars.push("NEXTEST_PROFILE=ci".to_owned());
+        }
         vars.extend(self.env.iter().cloned());
         vars
     }
@@ -273,6 +283,8 @@ pub(crate) struct Document {
     pub(crate) jobs: Vec<Wire>,
     /// Files a bless changed, relative to the workspace.
     pub(crate) blessed: Vec<String>,
+    /// Files a fmt changed, relative to the workspace.
+    pub(crate) formatted: Vec<String>,
 }
 
 impl Document {
@@ -331,7 +343,7 @@ mod tests {
             "now 1\narch x86_64\ncores 14\nload 0.1\nslots 2\nslot 0 free\nslot 1 free\nqueued 0\n",
         )
         .unwrap();
-        let vars = job.vars(&snap);
+        let vars = job.vars_with(&snap, None);
         assert!(vars.contains(&"CARGO_BUILD_JOBS=7".to_owned()));
         assert!(vars.contains(&"NEXTEST_TEST_THREADS=7".to_owned()));
         assert!(vars.contains(&"CARGO_PROFILE_DEV_DEBUG=line-tables-only".to_owned()));
@@ -341,6 +353,9 @@ mod tests {
             "the job's own variable comes last and wins"
         );
         assert!(!vars.iter().any(|var| var.starts_with("CARGO_TARGET_DIR")));
-        assert_eq!(vars, job.vars(&snap));
+        assert_eq!(vars, job.vars_with(&snap, Some("")), "an empty profile counts as none");
+        assert!(vars.contains(&"NEXTEST_PROFILE=ci".to_owned()), "shared hosts run the ci profile");
+        let chosen = job.vars_with(&snap, Some("default"));
+        assert!(!chosen.iter().any(|var| var.starts_with("NEXTEST_PROFILE")), "the caller's choice is left alone");
     }
 }

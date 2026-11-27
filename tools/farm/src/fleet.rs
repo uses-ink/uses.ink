@@ -5,6 +5,7 @@
 use std::sync::Mutex;
 use std::thread;
 
+use crate::changes::Kind;
 use crate::cli::Seconds;
 use crate::console::Console;
 use crate::error::Error;
@@ -156,10 +157,16 @@ impl<T: Transport> Member<T> {
         self.say(&Call::new(Program::Log, args), "reading the log")
     }
 
-    /// The `.snap` files the job changed, relative to the tree.
-    pub(crate) fn changed(&self, tree: &Tree, id: &JobId) -> Result<Said, Error> {
-        let args = [self.host.dir.as_str(), &id.dir(), &tree.on(&self.host)].map(str::to_owned).to_vec();
-        self.say(&Call::new(Program::Changed, args), "listing changed snapshots")
+    /// The files of `kind` the job changed, relative to the tree.
+    pub(crate) fn changed(&self, tree: &Tree, id: &JobId, kind: Kind) -> Result<Said, Error> {
+        let args =
+            [self.host.dir.as_str(), &id.dir(), &tree.on(&self.host), &kind.pattern()].map(str::to_owned).to_vec();
+        self.say(&Call::new(Program::Changed, args), "listing changed files")
+    }
+
+    /// Whether the host runs in the workspace itself, so there is nothing to bring back.
+    pub(crate) fn is_local(&self) -> bool {
+        self.transport.is_local()
     }
 
     /// Brings `files` (relative paths, one per line) from the host's tree into the workspace.

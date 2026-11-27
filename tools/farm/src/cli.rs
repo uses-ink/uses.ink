@@ -17,6 +17,7 @@ pub(crate) enum Action {
     Check,
     Cargo,
     Bless,
+    Fmt,
     Status,
     Workspace,
     Wait,
@@ -25,8 +26,8 @@ pub(crate) enum Action {
 
 impl Action {
     /// Every verb, in the order the docs list them.
-    pub(crate) const ALL: [Self; 7] =
-        [Self::Check, Self::Cargo, Self::Bless, Self::Status, Self::Workspace, Self::Wait, Self::Log];
+    pub(crate) const ALL: [Self; 8] =
+        [Self::Check, Self::Cargo, Self::Bless, Self::Fmt, Self::Status, Self::Workspace, Self::Wait, Self::Log];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -34,6 +35,7 @@ impl Action {
             Self::Check => "check",
             Self::Cargo => "cargo",
             Self::Bless => "bless",
+            Self::Fmt => "fmt",
             Self::Status => "status",
             Self::Workspace => "workspace",
             Self::Wait => "wait",
@@ -156,6 +158,8 @@ pub(crate) enum Verb {
     Cargo(Vec<String>),
     /// Nextest with its snapshots accepted; the arguments are nextest's.
     Bless(Vec<String>),
+    /// `cargo fmt --all` on a host, the changed `.rs` files brought back.
+    Fmt,
     Status,
     /// A new workspace of this name.
     Make(Segment),
@@ -223,6 +227,7 @@ impl Command {
                 Verb::Check(names)
             }
             Action::Status => Verb::Status,
+            Action::Fmt => Verb::Fmt,
             Action::Workspace => {
                 let name = words.next().ok_or(Usage::Missing { verb: action, what: "a workspace name" })?;
                 let name: Segment = name.parse().map_err(Usage::Name)?;
@@ -324,6 +329,12 @@ mod tests {
         assert_eq!(command.verb, Verb::Cargo(["--json", "nextest"].map(str::to_owned).to_vec()));
         assert!(matches!(parse("cargo"), Err(Usage::Missing { .. })));
         assert!(matches!(parse("cargo --json"), Err(Usage::Missing { .. })));
+    }
+
+    #[test]
+    fn fmt_takes_nothing() {
+        assert_eq!(parse("fmt").unwrap().verb, Verb::Fmt);
+        assert!(matches!(parse("fmt -p cli"), Err(Usage::Extra { .. })));
     }
 
     #[test]

@@ -854,9 +854,10 @@ slot. `cargo xtask check` is unchanged for CI and humans.
 - **A job's lifetime is its client's, unless it was let go.** A foreground job is tied to its
   connection: ctrl-c or a dropped connection stops it on the host and frees the slot. A detached
   job, or one past its timeout, is let go on purpose and ends by itself, or at `--limit`.
-- **Budgets are not touched.** The 100 ms budgets are for a quiet machine, and a slot is what
-  makes a machine quiet for one job. The farm never widens a budget, never retries a test and
-  never changes `.config/nextest.toml`.
+- **Jobs run the `ci` nextest profile.** The 100 ms budgets are for the owner's quiet machine;
+  the farm's hosts are shared and a pure-logic test took 118 ms beside four agents. The farm sets
+  `NEXTEST_PROFILE=ci` unless the caller chose a profile; its 5 s cap still stops a hang. The
+  farm never retries a test and never changes `.config/nextest.toml`.
 - **Everything is argv.** A host's program is fixed text with positional parameters; the one
   shell line, ssh's remote command, is made of `Quoted` words. Nothing from the config or the
   arguments is shell syntax. Hosts are reached with the user's own `ssh` and `rsync`, so

@@ -88,10 +88,15 @@ pub(crate) enum Error {
     Crashed {
         label: String,
     },
-    /// A changed snapshot path that cannot be trusted.
-    Snap {
+    /// A changed path that cannot be trusted.
+    Changes {
         host: HostName,
-        source: crate::snap::Fault,
+        source: crate::changes::Fault,
+    },
+    /// Files edited here after the sync started, which bringing the host's copy back would overwrite.
+    Edited {
+        host: HostName,
+        paths: Vec<String>,
     },
     Workspace(workspace::Fault),
 }
@@ -102,7 +107,7 @@ impl Error {
         match self {
             Self::Usage(_) => Exit::Usage,
             Self::Jobs { fault, .. } if fault.is_usage() => Exit::Usage,
-            Self::NotGolden { .. } => Exit::Refused,
+            Self::NotGolden { .. } | Self::Edited { .. } => Exit::Refused,
             Self::Workspace(fault) if fault.is_refusal() => Exit::Refused,
             Self::Config { .. }
             | Self::Jobs { .. }
@@ -118,7 +123,7 @@ impl Error {
             | Self::Lost { .. }
             | Self::NoJob { .. }
             | Self::Crashed { .. }
-            | Self::Snap { .. }
+            | Self::Changes { .. }
             | Self::Workspace(_) => Exit::Farm,
         }
     }
@@ -168,7 +173,12 @@ impl fmt::Display for Error {
                 write!(out, "the host has no record of job `{job}`; it may be older than seven days")
             }
             Self::Crashed { label } => write!(out, "the thread running `{label}` crashed"),
-            Self::Snap { host, .. } => write!(out, "`{host}` listed a changed snapshot that is not safe to copy"),
+            Self::Changes { host, .. } => write!(out, "`{host}` listed a changed file that is not safe to copy"),
+            Self::Edited { host, paths } => write!(
+                out,
+                "{} edited here after the sync to `{host}` started; nothing was brought back, so run `farm fmt` again once you are done editing",
+                Listed(paths)
+            ),
             Self::Workspace(fault) => write!(out, "{fault}"),
         }
     }
@@ -186,12 +196,13 @@ impl std::error::Error for Error {
             Self::Probe { source, .. } => Some(source),
             Self::Said { source, .. } => Some(source),
             Self::Workspace(fault) => fault.source(),
-            Self::Snap { source, .. } => Some(source),
+            Self::Changes { source, .. } => Some(source),
             Self::NoRepo { .. }
             | Self::Utf8 { .. }
             | Self::Silent { .. }
             | Self::NoHost { .. }
             | Self::NotGolden { .. }
+            | Self::Edited { .. }
             | Self::Lost { .. }
             | Self::NoJob { .. }
             | Self::Crashed { .. } => None,
@@ -245,6 +256,7 @@ mod tests {
         let table = [
             (Error::Usage(Usage::NoVerb), Exit::Usage),
             (Error::NotGolden { host: host() }, Exit::Refused),
+            (Error::Edited { host: host(), paths: vec!["a.rs".to_owned()] }, Exit::Refused),
             (Error::NoHost { need: Need::Golden, up: vec![] }, Exit::Farm),
             (Error::Silent { host: host(), what: "x" }, Exit::Farm),
             (Error::Workspace(workspace::Fault::Dirty { name: "a".parse().unwrap() }), Exit::Refused),

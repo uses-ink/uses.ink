@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::changes::{Changes, Kind};
 use crate::cli::{Action, Flags, Seconds, Usage, Verb};
 use crate::console::Console;
 use crate::error::{Chain, Error};
@@ -16,7 +17,6 @@ use crate::job::{Attach, Document, Finished, Flow, Job, LogFile, Verdict};
 use crate::jobs::Jobs;
 use crate::name::{HostName, JobId, JobName};
 use crate::place::{Need, Placement};
-use crate::snap::Snaps;
 use crate::summary::Summary;
 use crate::transport::Transport;
 use crate::tree::Tree;
@@ -25,12 +25,14 @@ use crate::version::{Freshness, Version};
 /// Where a job's log is kept here, below the workspace: `target/farm/<job>.log`.
 const LOGS: [&str; 2] = ["target", "farm"];
 
-/// What a verb produced: the jobs that ran, the farm's own failures, and the files a bless changed.
+/// What a verb produced: the jobs that ran, the farm's own failures, and the files a bless or a
+/// fmt brought back.
 #[derive(Debug, Default)]
 pub(crate) struct Batch {
     pub(crate) done: Vec<Finished>,
     pub(crate) failed: Vec<Error>,
     pub(crate) blessed: Vec<String>,
+    pub(crate) formatted: Vec<String>,
 }
 
 /// What a [`Farm`] is made of.
@@ -66,6 +68,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             Verb::Check(names) => self.check(names)?,
             Verb::Cargo(args) => self.cargo(args)?,
             Verb::Bless(args) => self.bless(args)?,
+            Verb::Fmt => self.fmt()?,
             Verb::Wait(id) => self.wait(id)?,
             Verb::Status => return self.status(),
             Verb::Log(id) => return self.log(id),
@@ -243,7 +246,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         let snaps = self.place(&[Need::Golden])?;
         let mut batch = self.fan(std::slice::from_ref(&job), &snaps);
         if let Some(done) = batch.done.first().filter(|done| matches!(done.verdict, Verdict::Done { .. })) {
-            match self.fetch(done) {
+            match self.fetch(done, Kind::Snap, None) {
                 Ok(snaps) => batch.blessed = snaps.paths().to_vec(),
                 Err(error) => batch.failed.push(error),
             }
@@ -251,18 +254,49 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         Ok(batch)
     }
 
-    /// Brings back the snapshots a bless job changed.
-    fn fetch(&self, done: &Finished) -> Result<Snaps, Error> {
+    /// `cargo fmt --all` on any host, then only the `.rs` files whose bytes changed come back.
+    /// A file edited here after the sync started is never overwritten: nothing comes back.
+    fn fmt(&self) -> Result<Batch, Error> {
+        if self.flags.detach {
+            return Err(Usage::Extra { verb: Action::Fmt, given: "--detach".to_owned() }.into());
+        }
+        let words: Vec<String> = ["cargo", "fmt", "--all"].map(str::to_owned).to_vec();
+        let job = Job { label: "fmt".to_owned(), words, need: Need::Any, env: Vec::new(), limit: None };
+        let snaps = self.place(&[Need::Any])?;
+        let started = SystemTime::now();
+        let mut batch = self.fan(std::slice::from_ref(&job), &snaps);
+        if let Some(done) = batch.done.first().filter(|done| matches!(done.verdict, Verdict::Done { code: 0, .. })) {
+            match self.fetch(done, Kind::Rust, Some(started)) {
+                Ok(changes) => batch.formatted = changes.paths().to_vec(),
+                Err(error) => batch.failed.push(error),
+            }
+        }
+        Ok(batch)
+    }
+
+    /// Brings back the files of `kind` a job changed; with `since`, only if none of them was
+    /// edited here after that time.
+    fn fetch(&self, done: &Finished, kind: Kind, since: Option<SystemTime>) -> Result<Changes, Error> {
         let member = self
             .fleet
             .member(&done.host)
             .ok_or_else(|| Error::Silent { host: done.host.clone(), what: "anything: it left the fleet" })?;
-        let said = member.changed(&self.tree, &done.id)?;
-        let snaps = Snaps::read(&said.output).map_err(|source| Error::Snap { host: done.host.clone(), source })?;
-        if !snaps.is_empty() {
-            member.pull(&self.tree, &snaps.list())?;
+        let said = member.changed(&self.tree, &done.id, kind)?;
+        let changes =
+            Changes::read(kind, &said.output).map_err(|source| Error::Changes { host: done.host.clone(), source })?;
+        if changes.is_empty() {
+            return Ok(changes);
         }
-        Ok(snaps)
+        if let Some(since) = since.filter(|_| !member.is_local()) {
+            let paths = changes
+                .edited(&self.tree.root, since)
+                .map_err(|source| Error::Io { path: self.tree.root.clone(), source })?;
+            if !paths.is_empty() {
+                return Err(Error::Edited { host: done.host.clone(), paths });
+            }
+        }
+        member.pull(&self.tree, &changes.list())?;
+        Ok(changes)
     }
 
     /// Blocks until a detached job is done, or the timeout passes.
@@ -356,6 +390,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
                 exit: exit.code(),
                 jobs: batch.done.iter().map(Finished::wire).collect(),
                 blessed: batch.blessed.clone(),
+                formatted: batch.formatted.clone(),
             };
             match serde_json::to_string_pretty(&document) {
                 Ok(text) => self.console.out(text),
@@ -368,6 +403,10 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         if !self.flags.json && !batch.blessed.is_empty() {
             self.console.out("blessed (read each diff before committing):");
             batch.blessed.iter().for_each(|path| self.console.out(format!("  {path}")));
+        }
+        if !self.flags.json && !batch.formatted.is_empty() {
+            self.console.out("formatted (`jj diff` shows what changed):");
+            batch.formatted.iter().for_each(|path| self.console.out(format!("  {path}")));
         }
         if self.console.is_broken() { exit.worst(Exit::Farm) } else { exit }
     }
@@ -408,9 +447,16 @@ mod tests {
         ])
     }
 
+    /// Each test's own workspace directory, so tests that write files do not meet.
+    static NEXT: AtomicU32 = AtomicU32::new(0);
+
     fn farm(members: Vec<Member<Fake>>) -> Farm<Fake, LeastLoaded> {
         let tree = Tree {
-            root: std::env::temp_dir().join(format!("farm-run-{}", std::process::id())),
+            root: std::env::temp_dir().join(format!(
+                "farm-run-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            )),
             repo: "r".parse().unwrap(),
             workspace: "w".parse().unwrap(),
         };
@@ -533,8 +579,61 @@ mod tests {
         );
         let farm_bad = farm(vec![bad]);
         let batch = farm_bad.bless(&[]).unwrap();
-        assert!(matches!(batch.failed.first(), Some(Error::Snap { .. })));
+        assert!(matches!(batch.failed.first(), Some(Error::Changes { .. })));
         assert!(farm_bad.fleet.members().first().unwrap().transport().pulled.lock().unwrap().is_empty());
         std::fs::remove_dir_all(&farm_bad.tree.root).ok();
+    }
+
+    /// A host that formats: it runs the job, then lists `listed`.
+    fn formats(listed: &[&str]) -> Member<Fake> {
+        Member::new(
+            host("x86"),
+            Fake::saying(vec![
+                probe(12, "x86_64"),
+                Reply::ok(&["@@farm:seed empty"]),
+                Reply::ok(&["@@farm:slot 0 0", "@@farm:done 0 1"]),
+                Reply::ok(listed),
+            ]),
+        )
+    }
+
+    fn stamped(farm: &Farm<Fake, LeastLoaded>, name: &str, at: SystemTime) {
+        std::fs::create_dir_all(&farm.tree.root).unwrap();
+        let path = farm.tree.root.join(name);
+        std::fs::write(&path, "x").unwrap();
+        std::fs::File::options().write(true).open(path).unwrap().set_modified(at).unwrap();
+    }
+
+    #[test]
+    fn fmt_brings_back_only_the_listed_rust_files() {
+        let ok = farm(vec![formats(&["./a.rs"])]);
+        stamped(&ok, "a.rs", SystemTime::now() - Duration::from_secs(60));
+        let batch = ok.fmt().unwrap();
+        assert_eq!(batch.formatted, ["a.rs"]);
+        assert!(batch.failed.is_empty(), "{:?}", batch.failed);
+        let call = ok.fleet.members().first().unwrap().transport().calls.lock().unwrap().get(3).cloned().unwrap();
+        assert_eq!(call.args.last().map(String::as_str), Some("*.rs"));
+        assert_eq!(*ok.fleet.members().first().unwrap().transport().pulled.lock().unwrap(), ["a.rs\n"]);
+        assert_eq!(ok.report(&batch), Exit::Passed);
+        std::fs::remove_dir_all(&ok.tree.root).ok();
+        let hostile = farm(vec![formats(&["./Cargo.toml"])]);
+        let batch = hostile.fmt().unwrap();
+        assert!(matches!(batch.failed.first(), Some(Error::Changes { .. })));
+        assert!(hostile.fleet.members().first().unwrap().transport().pulled.lock().unwrap().is_empty());
+        std::fs::remove_dir_all(&hostile.tree.root).ok();
+    }
+
+    #[test]
+    fn fmt_refuses_to_overwrite_a_file_edited_after_the_sync_started() {
+        let farm = farm(vec![formats(&["./a.rs", "./b.rs"])]);
+        stamped(&farm, "a.rs", SystemTime::now() - Duration::from_secs(60));
+        stamped(&farm, "b.rs", SystemTime::now() + Duration::from_secs(3600));
+        let batch = farm.fmt().unwrap();
+        assert_eq!(batch.formatted, Vec::<String>::new());
+        let Some(Error::Edited { paths, .. }) = batch.failed.first() else { panic!("{:?}", batch.failed) };
+        assert_eq!(paths, &["b.rs"]);
+        assert!(farm.fleet.members().first().unwrap().transport().pulled.lock().unwrap().is_empty());
+        assert_eq!(farm.report(&batch), Exit::Refused);
+        std::fs::remove_dir_all(&farm.tree.root).ok();
     }
 }

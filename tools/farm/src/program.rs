@@ -37,7 +37,7 @@ pub(crate) enum Program {
     Log,
     /// Makes a workspace's directory from the newest sibling by a reflink copy.
     Seed,
-    /// Lists the `.snap` files a job changed.
+    /// Lists the files of one extension a job changed.
     Changed,
     /// Removes the state of jobs older than seven days.
     Sweep,
@@ -313,11 +313,11 @@ echo "@@farm:seed $how $newest"
 );
 
 const CHANGED: &str = concat!(
-    "dir=$1 id=$2 tree=$3\n",
+    "dir=$1 id=$2 tree=$3 pattern=$4\n",
     home!("dir"),
     home!("tree"),
     r#"cd "$tree" || exit 66
-find . -path ./target -prune -o -type f -name '*.snap' -newer "$dir/jobs/$id/started" -print
+find . -path ./target -prune -o -type f -name "$pattern" -newer "$dir/jobs/$id/started" -print
 "#
 );
 

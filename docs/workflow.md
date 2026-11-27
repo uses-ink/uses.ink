@@ -97,6 +97,7 @@ ssh = "local"           # this machine, in the workspace itself, with no copy
 | `farm check [job...]` | The repo's jobs from `.config/farm.toml` (here `lint test docs wasm sites`), all placed at once. |
 | `farm cargo <args...>` | Any cargo command on a placed host, in the synced workspace. |
 | `farm bless [nextest args]` | Nextest with `INSTA_UPDATE=always` on a golden host; brings back only changed `*.snap`. |
+| `farm fmt` | `cargo fmt --all` on a placed host; brings back only the `.rs` files whose bytes changed. |
 | `farm status` | Each host: arch, load, slots used, queue, and its running and queued jobs. |
 | `farm workspace <name>` | A new jj workspace with a warm `target/`. `--forget <name>` removes one safely. |
 | `farm wait <id>` | Blocks until a detached job ends, or the timeout passes. |
@@ -130,7 +131,7 @@ anywhere.
 | 1 | failed | The command ran and failed: a test, a lint, a compile error. |
 | 2 | usage | The command line is wrong. |
 | 3 | farm | The farm could not do it: bad config, no host, an unreachable host, a failed sync, a lost connection. |
-| 4 | refused | The farm will not: a golden job on a host that is not golden, a workspace with uncommitted work, a path outside the workspaces. |
+| 4 | refused | The farm will not: a golden job on a host that is not golden, a workspace with uncommitted work, a path outside the workspaces, a `farm fmt` that would overwrite a file you edited after it started. |
 | 75 | running | The job is still running after the time given. Call `farm wait <id>` again; it is safe. |
 | 124 | timed out | The command hit `--limit` and was stopped. |
 
@@ -179,6 +180,21 @@ Only the `*.snap` files that changed come back (never a `.snap.new`, never sourc
 list is printed. Read each diff (`jj diff <path>`) before you commit: a blessed snapshot is a
 claim that the new output is right.
 
+Formatting comes back the same way:
+
+```sh
+farm fmt
+```
+
+It runs `cargo fmt --all` on any host and brings back only the `.rs` files whose bytes changed
+there (never a `.rs` that rustfmt left alone, never another kind of file), and prints the list.
+Run it instead of `cargo fmt` here: the farm is the only place you build, and a plain `farm cargo
+fmt --all` formats the host's copy and loses the result. It takes no arguments and no `--detach`.
+If you edit a listed file in the workspace after `farm fmt` started, it brings nothing back, names
+the files, and exits 4; save your work and run it again. On the `local` host the files are
+formatted in place and the list says which. Exit codes are the table above: 0 formatted (also
+when nothing changed), 1 `cargo fmt` failed (a syntax error), 3 farm trouble, 4 refused.
+
 ## Never poll
 
 Do not write `until grep ...` loops and do not call `sleep`. A job that may take long is
@@ -205,13 +221,15 @@ At most the total number of slots of the hosts: the sum of `slots` in the file, 
 the call prints `queued behind N, host X free in about Y` at most every 30 seconds. No agent
 needs to coordinate with another: the slot locks on the hosts do it.
 
-## Why the budgets are honest
+## The test budgets
 
-The 100 ms test budgets of `.config/nextest.toml` are for a quiet machine. Six agents building
-at once on one host made them fail for want of CPU, not for a bug. A slot gives each job its own
-cores for as long as it runs, which is what makes a budget mean what it says. So `farm` never
-widens a budget, never retries a failed test and never changes the nextest config. A test that
-is over budget on the farm is slow.
+The 100 ms test budgets of `.config/nextest.toml` are for the owner's quiet machine. The farm's
+hosts are shared: six agents building at once made them fail for want of CPU, and a pure-logic
+test took 118 ms while four agents shared `here`. So every job runs with `NEXTEST_PROFILE=ci`
+(unless your environment already sets a profile), whose 5 s cap still stops a hang. A slot gives
+each job its own cores for as long as it runs, so a test that takes seconds is slow. The farm
+never retries a failed test and never changes the nextest config; the 100 ms budgets are checked
+on a quiet machine.
 
 ## Golden hosts
 
@@ -227,6 +245,11 @@ Every farm run of a host uses the same environment, so the host's `target/` stay
 - `CARGO_PROFILE_DEV_DEBUG=line-tables-only`: debug info with line tables only. The build and
   the link are smaller and faster, and panics and backtraces still show file and line. You lose
   local variable inspection in a debugger, which farm runs are not for.
+- `NEXTEST_PROFILE=ci`, unless the caller's environment already sets a profile. The 100 ms
+  budgets of the default profile are for the owner's quiet machine. The farm's hosts are shared
+  (a pure-logic model test took 118 ms while four agents shared `here`), so a job runs the `ci`
+  profile, which keeps a 5 s cap against hangs. A test that is over 100 ms on the farm is
+  therefore no longer a failure there; the budgets are checked on a quiet machine.
 - `CARGO_TERM_COLOR=never`, `INSTA_UPDATE=no` (`always` for `bless`), `CARGO_BUILD_JOBS` and
   `NEXTEST_TEST_THREADS` set to the cores of one slot.
 - `CARGO_TARGET_<HOST TRIPLE>_RUSTFLAGS=-C link-arg=-fuse-ld=mold` only when the host says
@@ -289,10 +312,10 @@ Paste this into an agent's prompt:
 > <crate>`, `farm cargo clippy -p <crate>`, `farm cargo nextest run -p
 > <crate> -E 'test(<name>)'`. Do not run the whole gate per edit. When a state is ready to
 > commit, run `farm check` once and fix what it reports; if a golden file changed on
-> purpose, run `farm bless` and read every diff it lists. Never poll and never write
+> purpose, run `farm bless` and read every diff it lists. Format with `farm fmt`, never with
+> plain `cargo fmt`. Never poll and never write
 > sleep loops: start long jobs with `--detach` and block with `farm wait <id>`; exit
 > code 75 means still running, call `wait` again. If the queue says you are waiting, wait: the
-> slots are what keep the 100 ms test budgets honest, so do not widen a budget or retry a test
-> to get past a failure. Make a workspace with `farm workspace <name>`, not `jj
+> slots keep jobs from starving each other, so do not retry a test to get past a failure. Make a workspace with `farm workspace <name>`, not `jj
 > workspace add`. Exit codes: 0 passed, 1 failed, 2 usage, 3 farm trouble, 4 refused, 75 still
 > running, 124 hit its limit.

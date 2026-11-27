@@ -15,6 +15,7 @@
 //! - [`version`]: the hash of the source the binary was built from.
 //! - [`workspace`]: `farm workspace`, which needs no host.
 
+mod changes;
 mod cli;
 mod config;
 mod console;
@@ -32,7 +33,6 @@ mod process;
 mod program;
 mod quote;
 mod run;
-mod snap;
 mod summary;
 mod transport;
 mod tree;
