@@ -545,3 +545,11 @@ is the one `Answers` the server gets. `Door::ask` puts a `mail::Message` in the 
 source; `Jar` sets and reads the cookie. `Credentials` has three adapters: `Owner`, `Sessions`
 and `Either<A, B>`, so the API takes `Either(owner, Sessions::new(entry, clock))` and a later
 credential is one more arm. Decision 0066 has the reasons and what is not built.
+`edge/control`'s `Back<P, K, L>` is the edge's `Sites` over `Control`: `Back::pair(control, clock,
+locate, settings)` gives `Fronts` (a `Clone`, `Send` `Sites` that sends a host down a channel) and
+the `Back` that answers on the caller's task, so `back.run()` is joined with the server. A host is
+`Origin::handle`, a site `Control::serving`, a deploy `Control::manifest`; `Fallback` puts another
+`Sites` behind it. `ink serve --data` also runs `cli/src/tasks.rs`: `Tasks::start(task, restart,
+events, body)` puts a loop on a thread and runtime of its own under a supervisor, and `Event` is
+everything it says. A git source is built by `build_local::Local::with_remote(Fetching)` and its
+head read by `watch_git::Remotes`, both with the site's `watch::Access`.

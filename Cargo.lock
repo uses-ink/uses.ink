@@ -4723,7 +4723,10 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
+ "uses-ink-blob",
  "uses-ink-blob-dir",
+ "uses-ink-build",
+ "uses-ink-build-local",
  "uses-ink-clock",
  "uses-ink-config",
  "uses-ink-control",
@@ -4733,6 +4736,7 @@ dependencies = [
  "uses-ink-edge",
  "uses-ink-edge-api",
  "uses-ink-edge-axum",
+ "uses-ink-edge-control",
  "uses-ink-edge-folder",
  "uses-ink-engine",
  "uses-ink-fixture",
@@ -4749,6 +4753,7 @@ dependencies = [
  "uses-ink-secret-local",
  "uses-ink-theme-quiet",
  "uses-ink-watch",
+ "uses-ink-watch-git",
 ]
 
 [[package]]
@@ -4877,6 +4882,28 @@ dependencies = [
  "uses-ink-edge",
  "uses-ink-edge-api",
  "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-edge-control"
+version = "0.0.0"
+dependencies = [
+ "jiff",
+ "pollster",
+ "tempfile",
+ "tokio",
+ "uses-ink-blob",
+ "uses-ink-blob-dir",
+ "uses-ink-build",
+ "uses-ink-clock",
+ "uses-ink-control",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
+ "uses-ink-edge",
+ "uses-ink-edge-folder",
+ "uses-ink-model",
+ "uses-ink-queue-local",
+ "uses-ink-secret-local",
 ]
 
 [[package]]
@@ -5173,7 +5200,21 @@ dependencies = [
  "uses-ink-model",
  "uses-ink-queue",
  "uses-ink-queue-local",
+ "uses-ink-secret",
  "uses-ink-secret-local",
+]
+
+[[package]]
+name = "uses-ink-watch-git"
+version = "0.0.0"
+dependencies = [
+ "gix",
+ "tempfile",
+ "tokio",
+ "uses-ink-build",
+ "uses-ink-model",
+ "uses-ink-secret",
+ "uses-ink-watch",
 ]
 
 [[package]]

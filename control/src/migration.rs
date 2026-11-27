@@ -10,7 +10,7 @@ use crate::deploy::Cause;
 use crate::job::{State as JobState, Stored as Trigger};
 use crate::site::{State as SiteState, Stored as SourceKind};
 use crate::table::{
-    Account, Allowed, Credential, Deploy, Event, Job, Live, Named, Publication, Site, Source, Tombstone,
+    Account, Allowed, Credential, Deploy, Event, Job, Live, Named, Publication, Seen, Site, Source, Tombstone,
 };
 
 /// The two kinds of column most of the schema is made of.
@@ -38,6 +38,28 @@ impl Migration for Domain {
 
     fn statements() -> Vec<Statement> {
         [Self::identity(), Self::history(), Self::pointer(), Self::moves(), Self::builds(), Self::log()].concat()
+    }
+}
+
+/// The migration that remembers, per site, the commit the watch last queued a build for, so a
+/// restart queues nothing for a source that has not moved.
+#[derive(Clone, Copy, Debug)]
+pub struct Remembered;
+
+impl Migration for Remembered {
+    const NUMBER: u32 = 2;
+    const NAME: &'static str = "seen";
+
+    fn statements() -> Vec<Statement> {
+        vec![
+            Table::create()
+                .table(Seen::Table)
+                .col(ColumnDef::new(Seen::SiteId).text().not_null().primary_key())
+                .col(Typed::text(Seen::Head))
+                .col(Typed::time(Seen::At))
+                .foreign_key(ForeignKey::create().from(Seen::Table, Seen::SiteId).to(Site::Table, Site::Id))
+                .into(),
+        ]
     }
 }
 

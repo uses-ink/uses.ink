@@ -177,6 +177,10 @@ const ENTRIES: &[Entry] = &[
             Example { line: "ink serve", about: "Serve .ink/out of this folder on 127.0.0.1:8080" },
             Example { line: "ink -C garden serve", about: "Serve .ink/out of another folder" },
             Example {
+                line: "ink serve --data state --git-scheme file --restart-limit 3",
+                about: "Self-host: serve, watch and build git sites from disk, restarting a crashed loop three times",
+            },
+            Example {
                 line: "ink serve --data state --mail smtp --mail-from ink@example.org --smtp-host mail.example.org",
                 about: "Turn on the API and send sign-in links by SMTP",
             },

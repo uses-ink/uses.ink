@@ -1,0 +1,33 @@
+[package]
+name = "uses-ink-edge-control"
+description = "The edge's host-to-deploy port over the control plane: a site's live deploy, read from its manifest, with the blobs served from the blob store's files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+blob.workspace = true
+blob-dir.workspace = true
+clock.workspace = true
+control.workspace = true
+edge.workspace = true
+edge-folder.workspace = true
+jiff.workspace = true
+model.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+db.workspace = true
+db-sqlite.workspace = true
+build.workspace = true
+clock.workspace = true
+pollster.workspace = true
+queue-local.workspace = true
+secret-local.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

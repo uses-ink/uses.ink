@@ -30,16 +30,15 @@ pub(crate) struct Made {
 
 /// A folder to build, and where its site will be served.
 #[derive(Debug)]
-pub(crate) struct Pipeline<'a> {
-    pub(crate) dir: &'a Path,
+pub(crate) struct Pipeline {
     pub(crate) base: BaseUrl,
 }
 
-impl Pipeline<'_> {
+impl Pipeline {
     /// Reads the folder: as a repository when it holds `.git`, so dates come from history, else
     /// as plain files. A refusal is the diagnostic that says why.
-    fn read(&self, store: &mut Memory) -> Result<Read, Box<Diagnostic>> {
-        let versioned = match std::fs::symlink_metadata(self.dir.join(".git")) {
+    pub(crate) fn read(dir: &Path, store: &mut Memory) -> Result<Read, Box<Diagnostic>> {
+        let versioned = match std::fs::symlink_metadata(dir.join(".git")) {
             Ok(_) => true,
             Err(source) if matches!(source.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory) => false,
             Err(source) => {
@@ -49,9 +48,9 @@ impl Pipeline<'_> {
             }
         };
         let read = if versioned {
-            Repository { revision: Revision::Head, ..Repository::new(self.dir) }.read(store)
+            Repository { revision: Revision::Head, ..Repository::new(dir) }.read(store)
         } else {
-            Folder::new(self.dir).read(store)
+            Folder::new(dir).read(store)
         };
         read.map_err(|refused| Box::new(Diagnostic::from(&refused)))
     }
@@ -97,11 +96,16 @@ impl Pipeline<'_> {
         }
     }
 
-    /// Runs the pipeline, saying everything to `events`. `Ok(None)` is a site that does not
-    /// build; its diagnostics have been said. An error is a format pinned that is not held.
-    pub(crate) fn run(&self, events: &mut impl Events) -> Result<Option<Made>, PluginId> {
-        let mut store = Memory::default();
-        let read = match self.read(&mut store) {
+    /// Runs the pipeline on what was `read` into `store`, saying everything to `events`.
+    /// `Ok(None)` is a site that does not build; its diagnostics have been said. An error is a
+    /// format pinned that is not held.
+    pub(crate) fn run(
+        &self,
+        read: Result<Read, Box<Diagnostic>>,
+        store: Memory,
+        events: &mut impl Events,
+    ) -> Result<Option<Made>, PluginId> {
+        let read = match read {
             Ok(read) => read,
             Err(diagnostic) => {
                 events.event(Event::Refused(*diagnostic));
@@ -155,8 +159,7 @@ mod test {
         std::fs::create_dir(&dir).unwrap();
         std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o000)).unwrap();
         let readable = std::fs::read_dir(&dir).is_ok();
-        let pipeline = Pipeline { dir: &dir, base: "https://uses.ink/".parse().unwrap() };
-        let refused = pipeline.read(&mut Memory::default()).err();
+        let refused = Pipeline::read(&dir, &mut Memory::default()).err();
         std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
         if readable {
             // running as a user the mode does not bind: nothing to observe

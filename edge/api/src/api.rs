@@ -3,6 +3,7 @@
 use build::{BuildId, Trigger};
 use clock::{Clock, Draw};
 use control::{Control, Id, NewJob, NewSite, Ports, Requested, Resumed, Site, SiteKind};
+use model::git::Scheme;
 use serde::Serialize;
 
 use crate::Route;
@@ -27,12 +28,21 @@ pub struct Api<P: Ports, C, K, D> {
     pub(crate) clock: K,
     draw: D,
     pub(crate) limits: Limits,
+    schemes: Vec<Scheme>,
 }
 
 impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
     /// The API of `control`, for the callers `credentials` knows, within `limits`.
     pub fn new(control: Control<P>, credentials: C, clocks: (K, D), limits: Limits) -> Self {
-        Self { control, credentials, clock: clocks.0, draw: clocks.1, limits }
+        Self { control, credentials, clock: clocks.0, draw: clocks.1, limits, schemes: vec![Scheme::Https] }
+    }
+
+    /// The same API, taking git sources over `schemes` only. A new API takes `https`; a server
+    /// that builds from its own disk adds `file`.
+    #[must_use]
+    pub fn with_schemes(mut self, schemes: Vec<Scheme>) -> Self {
+        self.schemes = schemes;
+        self
     }
 
     /// The control plane the API answers from.
@@ -113,9 +123,9 @@ impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
     async fn add(&self, principal: Principal, body: &[u8]) -> Result<Reply, Fault<P>> {
         let new: AddSite = Unreadable::read(body).map_err(Fault::Body)?;
         if let body::Origin::Git { url, .. } = &new.source
-            && !url.0.as_str().starts_with("https://")
+            && !self.schemes.contains(&url.0.scheme())
         {
-            return Err(Fault::Scheme { url: url.0.to_string() });
+            return Err(Fault::Scheme { scheme: url.0.scheme(), allowed: self.schemes.clone() });
         }
         let new = NewSite {
             id: Id::from_bytes(self.drawn()?),

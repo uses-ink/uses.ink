@@ -8,7 +8,9 @@ use secret::Secret;
 /// The four ports a [`crate::Control`] is made of. The build port is not here: it is handed to
 /// the one use case that runs builds, so a control plane that only serves reads needs none.
 ///
-/// A tuple of the four is the usual implementation: `(db, blob, queue, secret)`.
+/// A tuple of the four is the usual implementation: `(db, blob, queue, secret)`; an `Arc` of any
+/// implementation is one too, so two control planes (the API's and a worker's thread) share one set
+/// of ports.
 pub trait Ports {
     /// The rows.
     type Db: Db;
@@ -49,5 +51,28 @@ impl<D: Db, B: Blob, Q: Queue, S: Secret> Ports for (D, B, Q, S) {
 
     fn secret(&self) -> &S {
         &self.3
+    }
+}
+
+impl<P: Ports + ?Sized> Ports for std::sync::Arc<P> {
+    type Db = P::Db;
+    type Blob = P::Blob;
+    type Queue = P::Queue;
+    type Secret = P::Secret;
+
+    fn db(&self) -> &P::Db {
+        (**self).db()
+    }
+
+    fn blob(&self) -> &P::Blob {
+        (**self).blob()
+    }
+
+    fn queue(&self) -> &P::Queue {
+        (**self).queue()
+    }
+
+    fn secret(&self) -> &P::Secret {
+        (**self).secret()
     }
 }

@@ -351,4 +351,7 @@ pub struct Serve {
     /// Sign-in: mail, lifetimes, who may sign up and the limits on asking for a link.
     #[command(flatten)]
     pub signin: Box<crate::signin::Flags>,
+    /// How the lookups and loops behind the API run.
+    #[command(flatten)]
+    pub hosting: Box<crate::hosting::Hosting>,
 }

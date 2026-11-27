@@ -23,6 +23,8 @@ pub enum Error<E> {
         /// The format's plugin id.
         id: PluginId,
     },
+    /// The remote's fetch failed in its own right, not as a repository that cannot be read.
+    Remote(Box<dyn std::error::Error>),
     /// The manifest names a blob that neither the render nor the snapshot holds: a bug in the
     /// engine, never a user's mistake.
     Missing {
@@ -38,6 +40,7 @@ impl<E> fmt::Display for Error<E> {
         match self {
             Self::Blob(_) => out.write_str("a blob of the deploy could not be stored"),
             Self::Base { .. } => out.write_str("the base URL is not one a site is served under"),
+            Self::Remote(_) => out.write_str("the remote could not fetch the repository"),
             Self::Format { id } => write!(out, "this builder holds no format {id}"),
             Self::Missing { blob, .. } => write!(out, "the manifest names {blob}, which the build did not make"),
         }
@@ -50,6 +53,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
             Self::Blob(source) => Some(source),
             Self::Base { source } => Some(source),
             Self::Missing { source, .. } => Some(source),
+            Self::Remote(source) => Some(source.as_ref()),
             Self::Format { .. } => None,
         }
     }

@@ -24,8 +24,10 @@ use serde::{Deserialize, Serialize};
 use crate::{ContentPath, Hash, HashError, Route};
 
 mod header;
+mod read;
 
 pub use header::{Header, HeaderName, HeaderValue, HeaderValueError};
+pub use read::Canonical;
 
 /// The bytes every manifest's canonical form starts with.
 const PREFIX: &[u8] = b"uses.ink/manifest/v2\n";
@@ -97,6 +99,31 @@ pub enum MediaType {
 }
 
 impl MediaType {
+    /// Every media type, in declaration order.
+    pub const ALL: [Self; 16] = [
+        Self::Html,
+        Self::Css,
+        Self::Xml,
+        Self::Atom,
+        Self::Rss,
+        Self::Json,
+        Self::Text,
+        Self::Svg,
+        Self::Png,
+        Self::Jpeg,
+        Self::Avif,
+        Self::Webp,
+        Self::Gif,
+        Self::Ico,
+        Self::Woff2,
+        Self::Pdf,
+    ];
+
+    /// The media type whose [`MediaType::essence`] is `text`.
+    pub fn from_essence(text: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|media| media.essence() == text)
+    }
+
     /// The type without parameters: `text/html`.
     pub const fn essence(self) -> &'static str {
         match self {
@@ -186,6 +213,15 @@ pub enum Status {
 }
 
 impl Status {
+    /// The status whose [`Status::code`] is `code`.
+    pub const fn from_code(code: u64) -> Option<Self> {
+        match code {
+            200 => Some(Self::Ok),
+            404 => Some(Self::NotFound),
+            _ => None,
+        }
+    }
+
     /// The HTTP status code: `200`, `404`.
     pub const fn code(self) -> u16 {
         match self {

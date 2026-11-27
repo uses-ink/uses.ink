@@ -5,8 +5,8 @@
 //! A build is blocking CPU work inside an async fn, which suits a self-host that runs builds on
 //! a worker thread of its own. A site that does not build (an error in `ink.toml`, a file that
 //! cannot be read, a diagnostic that stops the render) is an [`build::Outcome::Refused`] with
-//! its diagnostics in the event stream, never an [`Error`]. Only a git source that needs the
-//! network is [`build::Error::Unsupported`] here: fetching is the source plugin's job.
+//! its diagnostics in the event stream, never an [`Error`]. A git source is read through the
+//! [`Remote`] the builder is given; with none ([`Offline`]) it is [`build::Error::Unsupported`].
 //!
 //! The pipeline repeats what `cli/src/site.rs` does, because the CLI keeps it private; both
 //! should call one shared function when the CLI next changes (decision 0045).
@@ -16,6 +16,8 @@ mod local;
 mod pins;
 mod pipeline;
 mod reader;
+mod remote;
 
 pub use error::Error;
 pub use local::Local;
+pub use remote::{Offline, Remote};

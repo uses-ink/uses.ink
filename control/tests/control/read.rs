@@ -32,10 +32,7 @@ fn watches_the_active_git_sites_only() {
         id: world.id::<SiteKind>(),
         account: folder.account,
         handle: handle.parse().unwrap(),
-        source: Source::Git {
-            url: model::ExternalUrl::parse("https://codeberg.org/cstef/blog").unwrap(),
-            revision: None,
-        },
+        source: Source::Git { url: "https://codeberg.org/cstef/blog".parse().unwrap(), revision: None },
         at: at(n),
     };
     let watched = world.run(world.control.add_site(git("watched", 5))).unwrap();

@@ -19,11 +19,13 @@ use std::time::Duration;
 use blob_dir::Directory;
 use build::{Revision, Source};
 use clock::{Clock, Counter, Manual};
-use control::{AccountKind, Control, Domain, Id, JobState, NewAccount, NewSite, Origin, SiteKind};
+use control::Ports as _;
+use control::{AccountKind, Control, Domain, Id, JobState, NewAccount, NewSite, Origin, Remembered, SiteKind};
 use db::Steps;
 use db_sqlite::Sqlite;
 use jiff::Timestamp;
 use model::ExternalUrl;
+use model::git::Locator;
 use queue_local::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 use watch::{Head, Heads, Interval, IntervalError, Outcome, Report, Round, Watch};
@@ -57,7 +59,12 @@ impl Remote {
 impl Heads for &Remote {
     type Error = Down;
 
-    fn head(&self, _: &ExternalUrl, _: Option<&Revision>) -> impl Future<Output = Result<Head, Down>> {
+    fn head(
+        &self,
+        _: &Locator,
+        _: Option<&Revision>,
+        _: Option<&watch::Access>,
+    ) -> impl Future<Output = Result<Head, Down>> {
         self.asked.set(self.asked.get() + 1);
         std::future::ready(self.at.borrow().clone().ok_or(Down))
     }
@@ -85,7 +92,7 @@ impl World {
     fn new() -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap();
+        let steps = Steps::new().with::<Domain>().unwrap().with::<Remembered>().unwrap().with::<Queued>().unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
             db.clone(),
@@ -97,7 +104,7 @@ impl World {
         let control = Control::new(ports, origin);
         let account: Id<AccountKind> = Id::from_bytes([1; 16]);
         pollster::block_on(control.add_account(NewAccount { id: account, at: start() })).unwrap();
-        let source = Source::Git { url: ExternalUrl::parse("https://codeberg.org/a/b").unwrap(), revision: None };
+        let source = Source::Git { url: "https://codeberg.org/a/b".parse().unwrap(), revision: None };
         let site = Id::from_bytes([2; 16]);
         let new = NewSite { id: site, account, handle: "journal".parse().unwrap(), source, at: start() };
         pollster::block_on(control.add_site(new)).unwrap();
@@ -157,13 +164,38 @@ fn a_remote_that_does_not_answer_is_asked_less_often_and_queues_nothing() {
 }
 
 #[test]
-fn a_restart_asks_again_and_a_queued_build_of_the_same_commit_is_not_doubled() {
+fn a_restart_queues_nothing_for_a_source_that_did_not_move() {
+    let world = World::new();
+    let remote = Remote::default();
+    remote.move_to('a');
+    let clock = Manual::new(start(), 100);
+    let ids = Counter::new();
+    let mut first = Watch::new(&world.control, &remote, (&clock, &ids), Interval::default());
+    assert!(matches!(pollster::block_on(first.step()).polled[0].outcome, Outcome::Queued { .. }));
+    let mut second = Watch::new(&world.control, &remote, (&clock, &ids), Interval::default());
+    let outcome = pollster::block_on(second.step()).polled.remove(0).outcome;
+    assert!(matches!(outcome, Outcome::Unchanged), "{outcome:?}");
+    assert_eq!(world.builds(), 1);
+    // moved while the watch was down: the next one queues a build, once
+    remote.move_to('b');
+    clock.advance(Duration::from_secs(600));
+    let mut third = Watch::new(&world.control, &remote, (&clock, &ids), Interval::default());
+    let outcome = pollster::block_on(third.step()).polled.remove(0).outcome;
+    assert!(matches!(outcome, Outcome::Queued { .. }), "{outcome:?}");
+    assert_eq!(world.builds(), 2);
+}
+
+#[test]
+fn a_queued_build_of_the_same_commit_is_not_doubled_when_the_memory_is_lost() {
     let world = World::new();
     let remote = Remote::default();
     remote.move_to('a');
     let clock = Manual::new(start(), 100);
     let mut first = Watch::new(&world.control, &remote, (&clock, Counter::new()), Interval::default());
     pollster::block_on(first.step());
+    let forget = control::table::Seen::Table;
+    let wipe = db::sea_query::Query::delete().from_table(forget).to_owned();
+    pollster::block_on(db::Db::run(world.control.ports().db(), wipe.into())).unwrap();
     let mut second = Watch::new(&world.control, &remote, (&clock, Counter::new()), Interval::default());
     let outcome = pollster::block_on(second.step()).polled.remove(0).outcome;
     assert!(matches!(outcome, Outcome::Duplicate { .. }), "{outcome:?}");
@@ -181,7 +213,11 @@ fn the_loop_rests_between_rounds_and_never_spins() {
     pollster::block_on(watch.run(&seen));
     assert_eq!(seen.0.borrow().len(), 5, "four rests, and the fifth says stop");
     assert!(clock.sleeps().iter().all(|rest| *rest >= Duration::from_secs(1)), "{:?}", clock.sleeps());
-    assert_eq!(clock.sleeps()[0], Duration::from_secs(600));
+    assert_eq!(
+        clock.sleeps()[0],
+        Interval::default().lookout(),
+        "a site added meanwhile is noticed within the lookout"
+    );
     assert!(clock.now() > start());
 }
 
@@ -189,6 +225,7 @@ fn the_loop_rests_between_rounds_and_never_spins() {
 fn an_interval_has_a_floor_and_a_direction() {
     assert!(Interval::new(Duration::from_secs(10), Duration::from_secs(10)).is_ok());
     assert!(matches!(Interval::new(Duration::from_secs(1), Duration::from_secs(60)), Err(IntervalError::Fast { .. })));
+    assert!(matches!(Interval::default().with_lookout(Duration::from_millis(10)), Err(IntervalError::Lookout { .. })));
     assert!(matches!(
         Interval::new(Duration::from_secs(60), Duration::from_secs(30)),
         Err(IntervalError::Backwards { .. })

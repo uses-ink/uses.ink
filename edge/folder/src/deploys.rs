@@ -35,6 +35,13 @@ pub struct Placed {
     pub(crate) files: BTreeMap<Hash, ContentPath>,
 }
 
+impl Placed {
+    /// A deploy whose blobs are files under `root`, each at the path `files` gives its hash.
+    pub const fn new(root: PathBuf, files: BTreeMap<Hash, ContentPath>) -> Self {
+        Self { root, files }
+    }
+}
+
 /// When a manifest was last read: a change of either number reads it again.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Stamp {

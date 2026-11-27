@@ -8,9 +8,10 @@ use build::{BuildId, Source, Trigger};
 use clock::{Clock, Draw, Slept};
 use control::{Control, Id, NewJob, Ports, Requested, SiteKind};
 use jiff::{SignedDuration, Timestamp};
+use model::Oid;
 use queue::Dedupe;
 
-use crate::{Head, Heads, Interval};
+use crate::{Access, Head, Heads, Interval};
 
 /// What polling one site came to.
 #[derive(Debug)]
@@ -82,8 +83,8 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
     /// The shortest time the loop rests between rounds.
     pub const REST: Duration = Duration::from_secs(1);
 
-    /// A watch that polls every `interval`. It remembers nothing across restarts: the first poll
-    /// of a site after one queues a build, which is the same deploy when nothing changed.
+    /// A watch that polls every `interval`. What it saw last is kept in the control plane, so a
+    /// restart queues a build only for a source that moved while it was down.
     pub fn new(control: &'c Control<P>, heads: H, clocks: (K, D), interval: Interval) -> Self {
         Self { control, heads, clock: clocks.0, draw: clocks.1, interval, tracked: BTreeMap::new() }
     }
@@ -99,12 +100,30 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
         let mut round = Round::default();
         for site in sites {
             let Source::Git { url, revision } = &site.source else { continue };
-            let base = self.interval.base();
-            let tracked = self.tracked.entry(site.id).or_insert(Tracked { seen: None, wait: base, due: now });
+            if !self.tracked.contains_key(&site.id) {
+                match self.control.seen(site.id).await {
+                    Ok(seen) => {
+                        let seen = seen.and_then(|oid| oid.as_str().parse().ok());
+                        let wait = self.interval.base();
+                        self.tracked.insert(site.id, Tracked { seen, wait, due: now });
+                    }
+                    Err(error) => {
+                        round.polled.push(Polled { site: site.id, outcome: Outcome::Failed(Box::new(error)) });
+                        continue;
+                    }
+                }
+            }
+            let Some(tracked) = self.tracked.get(&site.id) else { continue };
             if tracked.due > now {
                 continue;
             }
-            let head = self.heads.head(url, revision.as_ref()).await;
+            let head = match Access::of(self.control, site.id).await {
+                Ok(access) => {
+                    let asked = self.heads.head(url, revision.as_ref(), access.as_ref()).await;
+                    asked.map_err(|error| Box::new(error) as Box<dyn Error>)
+                }
+                Err(error) => Err(error),
+            };
             let outcome = self.settle(site.id, head, now).await;
             round.polled.push(Polled { site: site.id, outcome });
         }
@@ -113,11 +132,11 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
 
     /// What a poll's answer means for the site: queues a build when the commit is new, and sets
     /// the next time to ask.
-    async fn settle(&mut self, site: Id<SiteKind>, head: Result<Head, H::Error>, now: Timestamp) -> Outcome {
+    async fn settle(&mut self, site: Id<SiteKind>, head: Result<Head, Box<dyn Error>>, now: Timestamp) -> Outcome {
         let interval = self.interval;
         let seen = self.tracked.get(&site).and_then(|tracked| tracked.seen.clone());
         let (outcome, moved) = match head {
-            Err(error) => (Outcome::Failed(Box::new(error)), None),
+            Err(error) => (Outcome::Failed(error), None),
             Ok(head) if seen.as_ref() == Some(&head) => (Outcome::Unchanged, None),
             Ok(head) => match self.queue(site, &head, now).await {
                 Ok(outcome) => (outcome, Some(head)),
@@ -138,25 +157,27 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
     /// Queues the build of a new commit.
     async fn queue(&self, site: Id<SiteKind>, head: &Head, now: Timestamp) -> Result<Outcome, Outcome> {
         let failed = |error: Box<dyn Error>| Outcome::Failed(error);
+        let oid = Oid::parse(head.as_str()).map_err(|error| failed(Box::new(error)))?;
         let bytes = self.draw.bytes().map_err(|error| failed(Box::new(error)))?;
         let dedupe: Dedupe = format!("poll-{site}-{head}").parse().map_err(|error| failed(Box::new(error)))?;
         let new =
             NewJob { id: BuildId::from_bytes(bytes), site, trigger: Trigger::Poll, dedupe: Some(dedupe), at: now };
-        match self.control.request_build(new).await {
-            Ok(Requested::Queued(build)) => Ok(Outcome::Queued { build, head: head.clone() }),
-            Ok(_) => Ok(Outcome::Duplicate { head: head.clone() }),
-            Err(error) => Err(failed(Box::new(error))),
+        let requested = self.control.request_build(new).await.map_err(|error| failed(Box::new(error)))?;
+        self.control.see(site, &oid, now).await.map_err(|error| failed(Box::new(error)))?;
+        match requested {
+            Requested::Queued(build) => Ok(Outcome::Queued { build, head: head.clone() }),
+            _ => Ok(Outcome::Duplicate { head: head.clone() }),
         }
     }
 
     /// How long to rest before the next round: until the first site is due, never less than
-    /// [`Watch::REST`] and never more than the longest wait.
+    /// [`Watch::REST`] and never more than the lookout, so a site added meanwhile is noticed.
     fn rest(&self) -> Duration {
         let now = self.clock.now();
         let soonest = self.tracked.values().map(|tracked| tracked.due).min();
         let until = soonest
             .map_or(self.interval.base(), |due| Duration::try_from(due.duration_since(now)).unwrap_or(Duration::ZERO));
-        until.clamp(Self::REST, self.interval.max())
+        until.clamp(Self::REST, self.interval.lookout().max(Self::REST))
     }
 
     /// Polls, tells `report`, rests, and does it again, until the clock says it is stopped. The

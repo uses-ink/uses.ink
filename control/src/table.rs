@@ -165,6 +165,16 @@ pub enum Session {
     RevokedAt,
 }
 
+/// `seen`: the commit of a site's source the watch queued a build for last.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "seen"]
+pub enum Seen {
+    Table,
+    SiteId,
+    Head,
+    At,
+}
+
 /// SQLite's row number, which orders rows that tie on a column.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 pub enum Row {

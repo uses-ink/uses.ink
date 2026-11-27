@@ -40,6 +40,16 @@ pub trait Clock {
     async fn sleep(&self, time: Duration) -> Slept;
 }
 
+impl<C: Clock + ?Sized> Clock for std::sync::Arc<C> {
+    fn now(&self) -> Timestamp {
+        (**self).now()
+    }
+
+    async fn sleep(&self, time: Duration) -> Slept {
+        (**self).sleep(time).await
+    }
+}
+
 impl<C: Clock + ?Sized> Clock for &C {
     fn now(&self) -> Timestamp {
         (**self).now()

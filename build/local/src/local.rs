@@ -6,25 +6,35 @@ use std::time::Instant;
 use blob::Blob;
 use build::{Build, Built, Event, Events, Outcome, Request, Source, Status};
 use engine::{BaseUrl, Blobs};
+use host_native::Memory;
 use model::Bytes;
 
 use crate::Error;
 use crate::pipeline::{Made, Pipeline};
+use crate::remote::{Offline, Remote};
 
 type Failure<E> = build::Error<Error<E>>;
 
 /// The local builder, storing deploys in `B`.
 #[derive(Debug)]
-pub struct Local<B> {
+pub struct Local<B, R = Offline> {
     blobs: B,
+    remote: R,
 }
 
 impl<B: Blob> Local<B> {
-    /// A builder that stores the blobs of every deploy in `blobs`.
+    /// A builder that stores the blobs of every deploy in `blobs` and reads only its own disk.
     pub const fn new(blobs: B) -> Self {
-        Self { blobs }
+        Self { blobs, remote: Offline }
     }
 
+    /// The same builder, reading a git source through `remote`.
+    pub fn with_remote<R: Remote>(self, remote: R) -> Local<B, R> {
+        Local { blobs: self.blobs, remote }
+    }
+}
+
+impl<B: Blob, R: Remote> Local<B, R> {
     /// Stores every blob the manifest names, each once, under the request's tenant.
     async fn store(&self, request: &Request, made: Made) -> Result<Built, Failure<B::Error>> {
         let mut seen = BTreeSet::new();
@@ -49,11 +59,17 @@ impl<B: Blob> Local<B> {
 
     /// Everything of a build but its first and last event.
     async fn attempt(&self, request: &Request, events: &mut impl Events) -> Result<Outcome, Failure<B::Error>> {
-        let Source::Folder(dir) = &request.source else {
-            return Err(build::Error::Unsupported { kind: request.source.kind() });
+        let mut store = Memory::default();
+        let read = match &request.source {
+            Source::Folder(dir) => Pipeline::read(dir, &mut store),
+            Source::Git { .. } if self.remote.reaches() => {
+                let fetched = self.remote.fetch(request, &mut store).await;
+                fetched.map_err(|source| Self::fail(Error::Remote(Box::new(source))))?
+            }
+            other => return Err(build::Error::Unsupported { kind: other.kind() }),
         };
         let base: BaseUrl = request.base.as_str().parse().map_err(|source| Self::fail(Error::Base { source }))?;
-        let made = Pipeline { dir, base }.run(events).map_err(|id| Self::fail(Error::Format { id }))?;
+        let made = Pipeline { base }.run(read, store, events).map_err(|id| Self::fail(Error::Format { id }))?;
         let Some(made) = made else { return Ok(Outcome::Refused) };
         let built = self.store(request, made).await?;
         events.event(Event::Rendered { files: built.manifest.entries().len() as u64, bytes: built.bytes });
@@ -61,7 +77,7 @@ impl<B: Blob> Local<B> {
     }
 }
 
-impl<B: Blob> Build for Local<B> {
+impl<B: Blob, R: Remote> Build for Local<B, R> {
     type Error = Error<B::Error>;
 
     async fn run(&self, request: &Request, events: &mut impl Events) -> Result<Outcome, Failure<B::Error>> {

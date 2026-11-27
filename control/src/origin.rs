@@ -59,6 +59,22 @@ impl TryFrom<&ExternalUrl> for Origin {
 }
 
 impl Origin {
+    /// The name of the origin's host, without its port.
+    fn name(&self) -> &str {
+        match self.host.rsplit_once(':') {
+            Some((name, port)) if port.bytes().all(|byte| byte.is_ascii_digit()) => name,
+            _ => &self.host,
+        }
+    }
+
+    /// The handle a host name is under this origin: `cstef` for `cstef.uses.ink` under
+    /// `https://uses.ink`. A name with no handle in front of the origin's, or with a label that
+    /// is no handle, has none. The name is the request's, in lower case and without a port.
+    pub fn handle(&self, hostname: &str) -> Option<Handle> {
+        let label = hostname.strip_suffix(self.name())?.strip_suffix('.')?;
+        label.parse().ok()
+    }
+
     /// The address `handle`'s site is served at.
     pub fn site(&self, handle: &Handle) -> Result<ExternalUrl, UrlError> {
         ExternalUrl::parse(format!("{}{}.{}", self.scheme, handle, self.host))
@@ -78,6 +94,11 @@ mod test {
             origin("http://localhost:4000/").unwrap().site(&handle).unwrap().as_str(),
             "http://cstef.localhost:4000"
         );
+        let local = origin("http://localhost:4000").unwrap();
+        assert_eq!(local.handle("cstef.localhost"), Some(handle));
+        assert_eq!(local.handle("localhost"), None);
+        assert_eq!(local.handle("a.b.localhost"), None);
+        assert_eq!(local.handle("cstef.example.com"), None);
         assert_eq!(origin("mailto:a@b.c").unwrap_err(), OriginError::Scheme);
         assert_eq!(origin("https://uses.ink/blog").unwrap_err(), OriginError::Path);
     }

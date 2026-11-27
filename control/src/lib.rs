@@ -38,6 +38,7 @@ pub mod table;
 
 pub use account::{Account, New as NewAccount};
 pub use case::export::{Exported, Sink, Summary};
+pub use case::serve::Serving;
 pub use control::Control;
 pub use credential::{Credential, New as NewCredential, Use as Purpose};
 pub use deploy::{Deploy, Live, New as NewDeploy, Published, Recorded, Resumed};
@@ -50,7 +51,7 @@ pub use id::{
 };
 pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked};
 pub use listed::{Canonical, Listed};
-pub use migration::Domain;
+pub use migration::{Domain, Remembered};
 pub use origin::{Origin, OriginError};
 pub use ports::Ports;
 pub use receipt::Receipt;

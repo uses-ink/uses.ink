@@ -3,7 +3,7 @@
 use build::{Kind, Revision, Source};
 use db::Row;
 use jiff::Timestamp;
-use model::ExternalUrl;
+use model::git::Locator;
 use sea_query::IdenStatic;
 
 use crate::fields::Fields;
@@ -97,7 +97,7 @@ impl TryFrom<&Source> for Stored {
             }),
             Source::Git { url, revision } => Ok(Self {
                 kind: Kind::Git,
-                locator: url.as_str().to_owned(),
+                locator: url.to_string(),
                 revision: revision.as_ref().map(|revision| revision.as_str().to_owned()),
             }),
             Source::Upload => Ok(Self { kind: Kind::Upload, locator: String::new(), revision: None }),
@@ -127,7 +127,9 @@ impl TryFrom<Stored> for Source {
             Kind::Folder => Ok(Self::Folder(stored.locator.into())),
             Kind::Upload => Ok(Self::Upload),
             Kind::Git => {
-                let url = ExternalUrl::parse(stored.locator)
+                let url = stored
+                    .locator
+                    .parse::<Locator>()
                     .map_err(|source| Unreadable::Url { column: table::Source::Locator.as_str(), source })?;
                 let revision = stored
                     .revision

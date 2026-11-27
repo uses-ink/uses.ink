@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use blob_dir::Directory;
 use clock::{Counter, Manual};
-use control::{AccountKind, Control, Domain, Id, NewAccount, Origin};
+use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Remembered};
 use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::tar::Writer;
@@ -45,7 +45,7 @@ impl Fixture {
     fn new(limits: Limits) -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap();
+        let steps = Steps::new().with::<Domain>().unwrap().with::<Remembered>().unwrap().with::<Queued>().unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
             db.clone(),
@@ -177,9 +177,11 @@ fn a_bad_site_is_refused_with_its_reason() {
     let (bad, problem) = add(json!({ "handle": "-no-", "source": { "kind": "upload" } }));
     assert_eq!(bad.status, Status::BadRequest);
     assert!(!problem["causes"].as_array().unwrap().is_empty(), "{problem}");
-    let (file, problem) =
-        add(json!({ "handle": "local", "source": { "kind": "git", "url": "http://insecure.example/r" } }));
+    let (file, problem) = add(json!({ "handle": "local", "source": { "kind": "git", "url": "file:///srv/repo" } }));
     assert_eq!((file.status, problem["problem"].as_str()), (Status::Unprocessable, Some("scheme")));
+    let (insecure, _) =
+        add(json!({ "handle": "plain", "source": { "kind": "git", "url": "http://insecure.example/r" } }));
+    assert_eq!(insecure.status, Status::BadRequest, "an address that is no repository locator is no body");
     let (garbage, _) = fixture.call(Method::Post, "/v1/sites", b"not json");
     assert_eq!(garbage.status, Status::BadRequest);
 }

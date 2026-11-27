@@ -25,7 +25,7 @@ fn stores_a_git_source_as_the_user_wrote_it() {
     let account = world.id::<AccountKind>();
     world.run(world.control.add_account(NewAccount { id: account, at: at(0) })).unwrap();
     let source = Source::Git {
-        url: model::ExternalUrl::parse("https://codeberg.org/cstef/blog").unwrap(),
+        url: "https://codeberg.org/cstef/blog".parse().unwrap(),
         revision: Some("main".parse().unwrap()),
     };
     let new = NewSite {

@@ -54,7 +54,7 @@ impl Fixtures {
     }
 
     fn source() -> build::Source {
-        build::Source::Git { url: ExternalUrl::parse("https://github.com/ada/notes").unwrap(), revision: None }
+        build::Source::Git { url: "https://github.com/ada/notes".parse().unwrap(), revision: None }
     }
 
     fn pointer(digit: char) -> Pointer {

@@ -15,6 +15,7 @@ control.workspace = true
 jiff.workspace = true
 model.workspace = true
 queue.workspace = true
+secret.workspace = true
 
 [dev-dependencies]
 blob-dir.workspace = true

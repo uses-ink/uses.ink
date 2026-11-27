@@ -32,6 +32,25 @@ pub enum HeaderName {
 }
 
 impl HeaderName {
+    /// Every header a manifest may set.
+    pub const ALL: [Self; 10] = [
+        Self::CacheControl,
+        Self::ContentSecurityPolicy,
+        Self::CrossOriginOpenerPolicy,
+        Self::CrossOriginResourcePolicy,
+        Self::Link,
+        Self::PermissionsPolicy,
+        Self::ReferrerPolicy,
+        Self::StrictTransportSecurity,
+        Self::XContentTypeOptions,
+        Self::XFrameOptions,
+    ];
+
+    /// The header whose [`HeaderName::name`] is `text`.
+    pub fn from_name(text: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|name| name.name() == text)
+    }
+
     /// Lower case, as HTTP/2 writes it.
     pub const fn name(self) -> &'static str {
         match self {

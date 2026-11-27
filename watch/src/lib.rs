@@ -10,11 +10,13 @@
 //! Both read time and ids only through the [`clock`] ports, and both wait with
 //! [`clock::Clock::sleep`], so a test runs a loop for a fixed number of rounds in no time.
 
+mod access;
 mod head;
 mod interval;
 mod watch;
 mod worker;
 
+pub use access::{Access, AccessError};
 pub use head::{Head, HeadError, Heads};
 pub use interval::{Interval, IntervalError};
 pub use watch::{Outcome, Polled, Report, Round, Watch};

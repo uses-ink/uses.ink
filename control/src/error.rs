@@ -201,12 +201,12 @@ pub enum Unreadable {
         /// The column.
         column: &'static str,
     },
-    /// The column holds a URL that is no longer valid.
+    /// The column holds a repository address that is no longer valid.
     Url {
         /// The column.
         column: &'static str,
         /// Why.
-        source: model::UrlError,
+        source: model::git::LocatorError,
     },
     /// The column holds a revision that is no longer valid.
     Revision {
@@ -227,6 +227,11 @@ pub enum Unreadable {
         /// The column.
         column: &'static str,
     },
+    /// The `seen` table holds a commit id that is no commit id.
+    Commit {
+        /// Why.
+        source: model::VersionError,
+    },
 }
 
 impl fmt::Display for Unreadable {
@@ -245,10 +250,13 @@ impl fmt::Display for Unreadable {
             Self::Locator { column } => {
                 write!(out, "column `{column}` holds a kind of source this version does not know")
             }
-            Self::Url { column, .. } => write!(out, "column `{column}` holds a URL that is no longer valid"),
+            Self::Url { column, .. } => {
+                write!(out, "column `{column}` holds a repository address that is no longer valid")
+            }
             Self::Revision { column, .. } => write!(out, "column `{column}` holds a revision that is no longer valid"),
             Self::Address { column, .. } => write!(out, "column `{column}` holds an address that is no longer valid"),
             Self::Digest { column } => write!(out, "column `{column}` holds a digest that is not 32 bytes"),
+            Self::Commit { .. } => out.write_str("a stored commit id is bad"),
         }
     }
 }
@@ -266,6 +274,7 @@ impl std::error::Error for Unreadable {
             Self::Url { source, .. } => Some(source),
             Self::Revision { source, .. } => Some(source),
             Self::Address { source, .. } => Some(source),
+            Self::Commit { source } => Some(source),
             Self::Name { .. } | Self::Locator { .. } | Self::Digest { .. } => None,
         }
     }

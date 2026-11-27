@@ -114,6 +114,12 @@ impl FromStr for Locator {
     }
 }
 
+impl serde::Serialize for Locator {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
 impl fmt::Display for Locator {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(out, "{}://{}", self.scheme, self.rest)

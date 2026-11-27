@@ -56,7 +56,7 @@ pub use generated::{Announcement, Problem};
 pub use hash::{Hash, HashError};
 pub use language::{Language, LanguageError};
 pub use manifest::{
-    DeployId, DuplicateRoute, File, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType,
+    Canonical, DeployId, DuplicateRoute, File, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType,
     MediaUnknown, Served, Status,
 };
 pub use path::{ContentPath, PathError};

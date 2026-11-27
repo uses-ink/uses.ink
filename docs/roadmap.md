@@ -197,6 +197,14 @@ its own host, `ink serve --data`), with the `Credentials` port and a single-owne
 bounded tar intake of a built folder, and the polling `watch` and in-process `worker` over `clock`
 ports. Not run by `ink serve`: the watch (no remote adapter for `Heads` yet) and the worker.
 `ink serve --data` does not yet serve the control plane's deploys.
+
+Progress (2026-11-27, 0067): `ink serve --data` runs the loop. It serves the control plane's
+deploys by host (`edge/control`), runs the watch and the worker as supervised threads with typed
+events, remembers the watch's last-seen commit, reads remote heads with `gix` (`watch/git`) and
+builds git sources through the `ink:source-git` component. `cli/tests/selfhost.rs` adds a
+`file://` repository, sees it served, pushes, sees the update, rolls back, exports and deletes,
+over the real binary with no network. Not done: git over HTTPS (no TLS stack on the licence
+list), `ink push`, streaming intake and export.
 - `edge` and `edge/axum`: serve, API, intake; polling watch; on-demand ACME. **Serving built
   (0051), gate green on the farm:** `edge` (ports, refusals, limits, conditional, range, 404, headers), `edge/axum`
   (hyper loop, streaming, budgets, events, `/healthz`, graceful stop), `edge/folder` and

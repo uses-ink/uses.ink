@@ -28,8 +28,8 @@ impl Directory {
         Ok(Self { root })
     }
 
-    /// The folder a tenant's blobs are in.
-    fn folder(&self, tenant: &Tenant) -> PathBuf {
+    /// The folder a tenant's blobs are in: one file a blob, named by its hash.
+    pub fn folder(&self, tenant: &Tenant) -> PathBuf {
         self.root.join("t").join(tenant.as_str()).join("b")
     }
 

@@ -10,7 +10,8 @@ use build::Source;
 use control::signin::Entry;
 use control::table::Event;
 use control::{
-    AccountKind, Control, CredentialKind, Domain, Handle, Id, NewAccount, NewSite, Origin, Ports, Site, SiteKind,
+    AccountKind, Control, CredentialKind, Domain, Handle, Id, NewAccount, NewSite, Origin, Ports, Remembered, Site,
+    SiteKind,
 };
 use db::{Db, Row, Steps};
 use db_sqlite::Sqlite;
@@ -57,7 +58,15 @@ impl World {
         let folder = tempfile::tempdir().unwrap();
         let root = folder.path().join("blobs");
         let db = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap().with::<Entry>().unwrap();
+        let steps = Steps::new()
+            .with::<Domain>()
+            .unwrap()
+            .with::<Remembered>()
+            .unwrap()
+            .with::<Queued>()
+            .unwrap()
+            .with::<Entry>()
+            .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (db.clone(), Directory::open(&root).unwrap(), Queue::new(db), Sealer::ephemeral().unwrap());
         Self { control: Control::new(ports, Self::origin()), root, _folder: folder, next: Cell::new(1) }
@@ -66,7 +75,15 @@ impl World {
     /// A control plane over these ports instead, with every migration applied.
     pub(crate) fn over<B: Blob>(blob: B) -> Control<Wiring<B>> {
         let db = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap().with::<Entry>().unwrap();
+        let steps = Steps::new()
+            .with::<Domain>()
+            .unwrap()
+            .with::<Remembered>()
+            .unwrap()
+            .with::<Queued>()
+            .unwrap()
+            .with::<Entry>()
+            .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         Control::new((db.clone(), blob, Queue::new(db), Sealer::ephemeral().unwrap()), Self::origin())
     }

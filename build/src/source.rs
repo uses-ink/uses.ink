@@ -4,7 +4,7 @@ use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use model::ExternalUrl;
+use model::git::Locator;
 use serde::Serialize;
 
 /// A git revision as the user wrote it: a branch, tag or commit. Not empty, with no whitespace
@@ -106,10 +106,11 @@ impl fmt::Display for Kind {
 pub enum Source {
     /// A folder on the builder's disk.
     Folder(PathBuf),
-    /// A git repository over HTTPS, at a revision or its default branch.
+    /// A git repository, at a revision or its default branch: over HTTPS, or on the builder's own
+    /// disk when the operator allows it.
     Git {
         /// Where to fetch it.
-        url: ExternalUrl,
+        url: Locator,
         /// What to build, or the remote's default.
         revision: Option<Revision>,
     },

@@ -37,6 +37,8 @@ impl Heading {
     pub(crate) const MAIL: &'static str = "Mail";
     /// How a person signs in to a server and for how long.
     pub(crate) const SIGN_IN: &'static str = "Sign-in";
+    /// How the loops and lookups behind a server's API run and restart.
+    pub(crate) const HOSTING: &'static str = "Hosting";
     /// Which site and which account a remote call is made as.
     pub(crate) const ACCOUNT: &'static str = "Account";
     /// The options every command takes.

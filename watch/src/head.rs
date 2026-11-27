@@ -5,7 +5,9 @@ use std::fmt;
 use std::str::FromStr;
 
 use build::Revision;
-use model::ExternalUrl;
+use model::git::Locator;
+
+use crate::Access;
 
 /// A commit as the remote names it: 40 or 64 lower-case hex digits.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -72,6 +74,12 @@ pub trait Heads {
     type Error: Error + 'static;
 
     /// The commit `revision` names at `url` now, or the remote's default branch when none is
-    /// named. It reads the remote's list of references and fetches no objects.
-    async fn head(&self, url: &ExternalUrl, revision: Option<&Revision>) -> Result<Head, Self::Error>;
+    /// named, read with `access` when the site has a credential. It reads the remote's list of
+    /// references and fetches no objects.
+    async fn head(
+        &self,
+        url: &Locator,
+        revision: Option<&Revision>,
+        access: Option<&Access>,
+    ) -> Result<Head, Self::Error>;
 }

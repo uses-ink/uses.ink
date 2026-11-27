@@ -5,6 +5,7 @@ use std::fmt;
 
 use control::{Failed, Ports, Refusal};
 use model::Hash;
+use model::git::Scheme;
 
 use crate::body::Unreadable;
 use crate::credential::BearerError;
@@ -99,10 +100,12 @@ pub enum Fault<P: Ports> {
         /// The limit it went over.
         limit: u64,
     },
-    /// A git source with a scheme that is not `https`.
+    /// A git source with a scheme this server does not fetch over.
     Scheme {
-        /// The URL as sent.
-        url: String,
+        /// The scheme of the address as sent.
+        scheme: Scheme,
+        /// The schemes the operator allows.
+        allowed: Vec<Scheme>,
     },
     /// A site whose content nothing builds.
     Unbuilt,
@@ -137,7 +140,10 @@ impl<P: Ports> fmt::Display for Fault<P> {
             Self::Draw(_) => out.write_str("no random bytes were available"),
             Self::Body(error) => error.fmt(out),
             Self::Large { limit } => write!(out, "the body is over the limit of {limit} bytes"),
-            Self::Scheme { .. } => out.write_str("a git source is fetched over https"),
+            Self::Scheme { scheme, allowed } => {
+                let allowed: Vec<&str> = allowed.iter().map(|scheme| scheme.name()).collect();
+                write!(out, "this server fetches git sources over {}, not {scheme}", allowed.join(" or "))
+            }
             Self::Unbuilt => out.write_str("nothing builds this site: it takes uploads"),
             Self::NoLog => out.write_str("the build has written no log yet"),
             Self::Control(error) => error.fmt(out),

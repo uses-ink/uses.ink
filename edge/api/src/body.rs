@@ -6,7 +6,8 @@ use std::str::FromStr;
 
 use build::{Revision, Source};
 use control::Handle;
-use model::{DeployId, ExternalUrl};
+use model::DeployId;
+use model::git::Locator;
 use serde::de::{DeserializeOwned, Visitor};
 use serde::{Deserialize, Deserializer};
 
@@ -47,10 +48,10 @@ where
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum Origin {
-    /// A git repository over HTTPS.
+    /// A git repository: over HTTPS, or on the builder's disk when the operator allows it.
     Git {
         /// Where to fetch it.
-        url: Parsed<ExternalUrl>,
+        url: Parsed<Locator>,
         /// A branch, tag or commit; the remote's default when absent.
         revision: Option<Parsed<Revision>>,
     },

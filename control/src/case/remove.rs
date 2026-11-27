@@ -85,6 +85,7 @@ impl<P: Ports> Control<P> {
         let key = id.to_string();
         let mut batch: Vec<Statement> = vec![
             Self::wipe(table::Event::Table, table::Event::SiteId, &key),
+            Self::wipe(table::Seen::Table, table::Seen::SiteId, &key),
             Self::wipe(table::Live::Table, table::Live::SiteId, &key),
             Self::wipe(table::Publication::Table, table::Publication::SiteId, &key),
             Self::wipe(table::Job::Table, table::Job::SiteId, &key),

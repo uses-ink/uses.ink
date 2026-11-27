@@ -71,9 +71,21 @@ slow-timeout = { period = "2s", terminate-after = 1 }
 [profile.ci]
 inherits = "default"
 
+# The self-host loop comes first: the first override that matches a test wins.
+[[profile.ci.overrides]]
+filter = "binary_id(uses-ink-cli::selfhost)"
+slow-timeout = { period = "60s", terminate-after = 2 }
+
 [[profile.ci.overrides]]
 filter = "all()"
 slow-timeout = { period = "5s", terminate-after = 1 }
+
+# The self-host loop runs the real `ink serve` and builds a git site through the source component
+# (a Cranelift compile on a cold cache), then a second build and a rollback: it waits on the
+# loops' events, so this is only the ceiling for a hang.
+[[profile.default.overrides]]
+filter = "binary_id(uses-ink-cli::selfhost)"
+slow-timeout = { period = "30s", terminate-after = 2 }
 
 # The incremental properties build a site cold and again after each of many edits: every test of
 # the `incremental` binaries (the engine's and the CLI's) has this budget instead.

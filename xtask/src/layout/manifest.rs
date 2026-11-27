@@ -88,6 +88,28 @@ impl Order {
                 "uses-ink-secret-local",
             ],
         ),
+        // The edge's host-to-deploy port over the control plane (decision 0067): the edge's port
+        // traits, the folder adapter's reads and the control plane, over the clock's ports.
+        (
+            "uses-ink-edge-control",
+            &[
+                "uses-ink-blob",
+                "uses-ink-blob-dir",
+                "uses-ink-build",
+                "uses-ink-clock",
+                "uses-ink-control",
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-edge",
+                "uses-ink-edge-folder",
+                "uses-ink-model",
+                "uses-ink-queue-local",
+                "uses-ink-secret-local",
+            ],
+        ),
+        // The watch's Heads port over git's protocol (decision 0067): the watch's trait, git
+        // through gix, the build port's revision and the model's locator.
+        ("uses-ink-watch-git", &["uses-ink-build", "uses-ink-model", "uses-ink-secret", "uses-ink-watch"]),
         (
             "uses-ink-watch",
             &[
@@ -100,6 +122,7 @@ impl Order {
                 "uses-ink-model",
                 "uses-ink-queue",
                 "uses-ink-queue-local",
+                "uses-ink-secret",
                 "uses-ink-secret-local",
             ],
         ),
@@ -122,9 +145,14 @@ impl Order {
                 "uses-ink-edge-axum",
                 "uses-ink-edge-folder",
                 "uses-ink-edge-api",
+                "uses-ink-edge-control",
                 "uses-ink-clock",
                 "uses-ink-control",
                 "uses-ink-watch",
+                "uses-ink-watch-git",
+                "uses-ink-blob",
+                "uses-ink-build",
+                "uses-ink-build-local",
                 "uses-ink-blob-dir",
                 "uses-ink-db",
                 "uses-ink-db-sqlite",

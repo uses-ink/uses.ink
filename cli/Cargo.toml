@@ -15,12 +15,16 @@ path = "src/main.rs"
 [dependencies]
 annotate-snippets.workspace = true
 axum.workspace = true
+blob.workspace = true
 blob-dir.workspace = true
+build.workspace = true
+build-local.workspace = true
 clock.workspace = true
 control.workspace = true
 db.workspace = true
 db-sqlite.workspace = true
 edge-api.workspace = true
+edge-control.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 clap_complete_nushell.workspace = true
@@ -53,6 +57,7 @@ theme-quiet.workspace = true
 tokio.workspace = true
 toml.workspace = true
 watch.workspace = true
+watch-git.workspace = true
 
 [build-dependencies]
 blake3.workspace = true
