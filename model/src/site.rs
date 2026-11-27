@@ -1,5 +1,6 @@
 //! The interpreted site: pages with routes, assets, navigation, and what was left out and why.
 
+use std::collections::BTreeMap;
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -338,6 +339,10 @@ pub struct Site {
     assets: Vec<Asset>,
     nav: Vec<PageId>,
     excluded: Vec<Excluded>,
+    /// Where each page is in `pages`, by id: a theme looks a page up for every link it writes.
+    /// Built from `pages`, so it is not part of what the site is.
+    #[serde(skip)]
+    ids: BTreeMap<PageId, usize>,
 }
 
 /// Why parts do not make a [`Site`].
@@ -425,10 +430,15 @@ impl Site {
                 return Err(SiteError::Collision { route: (*route).clone(), files: [(*a).clone(), (*b).clone()] });
             }
         }
-        if let Some(page) = home.iter().chain(&nav).find(|id| !pages.iter().any(|p| p.id == **id)) {
+        let mut ids = BTreeMap::new();
+        for (at, page) in pages.iter().enumerate() {
+            // the first in route order, as a search through `pages` finds it
+            ids.entry(page.id).or_insert(at);
+        }
+        if let Some(page) = home.iter().chain(&nav).find(|id| !ids.contains_key(*id)) {
             return Err(SiteError::Missing { page: *page });
         }
-        Ok(Self { identity, root, layout, home, pages, assets, nav, excluded })
+        Ok(Self { identity, root, layout, home, pages, assets, nav, excluded, ids })
     }
 
     /// What the site says about itself.
@@ -482,6 +492,6 @@ impl Site {
 
     /// The page `id`, if the site holds it.
     pub fn page(&self, id: PageId) -> Option<&Page> {
-        self.pages.iter().find(|page| page.id == id)
+        self.ids.get(&id).and_then(|&at| self.pages.get(at))
     }
 }
