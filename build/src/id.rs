@@ -3,7 +3,8 @@
 use std::fmt;
 use std::str::FromStr;
 
-use serde::{Serialize, Serializer};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// One run of the pipeline: 128 bits the control plane draws once and never reuses, shown as 32
 /// lower-case hex digits.
@@ -31,6 +32,13 @@ impl fmt::Display for BuildId {
 impl Serialize for BuildId {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for BuildId {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        text.parse().map_err(D::Error::custom)
     }
 }
 

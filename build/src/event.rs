@@ -3,12 +3,12 @@
 use std::time::Duration;
 
 use model::{AnyDecision, Bytes, DeployId, Diagnostic, Notice, Observed, Version};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::BuildId;
 
 /// What set a build off.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Trigger {
@@ -20,6 +20,17 @@ pub enum Trigger {
     Poll,
     /// Someone uploaded the source.
     Upload,
+}
+
+impl std::fmt::Display for Trigger {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(match self {
+            Self::Manual => "manual",
+            Self::Push => "push",
+            Self::Poll => "poll",
+            Self::Upload => "upload",
+        })
+    }
 }
 
 /// How a build ended.
