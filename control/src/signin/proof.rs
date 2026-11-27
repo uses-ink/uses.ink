@@ -5,6 +5,8 @@ use std::str::FromStr;
 
 use secret::Plain;
 
+use crate::digest::Digest;
+
 use crate::id::{Account as AccountKind, Factor as FactorKind, Id, Session as SessionKind};
 
 /// A random 256-bit secret as 64 lower-case hex digits: a one-time sign-in token, or the secret
@@ -91,66 +93,17 @@ pub enum Context {
 }
 
 impl Context {
+    /// The digest of `proof` for this context.
+    pub fn digest(self, proof: &Proof) -> Digest {
+        Digest::derive(self.key(), proof.reveal().as_bytes())
+    }
+
     const fn key(self) -> &'static str {
         match self {
             Self::Challenge => "uses.ink 2026-11-27 sign-in challenge",
             Self::Session => "uses.ink 2026-11-27 sign-in session",
             Self::Ceremony => "uses.ink 2026-11-27 passkey ceremony",
         }
-    }
-}
-
-/// The BLAKE3 digest of a proof under a [`Context`]. Proofs are 256 random bits, so a digest of
-/// one cannot be reversed or guessed at, and no salt or stretching is needed. Two digests are
-/// compared in constant time.
-#[derive(Clone, Copy)]
-pub struct Digest(blake3::Hash);
-
-impl Digest {
-    /// The digest of `proof` for `context`.
-    pub fn of(context: Context, proof: &Proof) -> Self {
-        Self(blake3::Hash::from(blake3::derive_key(context.key(), proof.reveal().as_bytes())))
-    }
-
-    /// The 32 bytes that are stored.
-    pub fn as_bytes(&self) -> &[u8; 32] {
-        self.0.as_bytes()
-    }
-}
-
-impl PartialEq for Digest {
-    /// `blake3::Hash` compares in constant time.
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl Eq for Digest {}
-
-impl fmt::Debug for Digest {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.write_str("Digest(..)")
-    }
-}
-
-/// Bytes that are no digest.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct NotDigest;
-
-impl fmt::Display for NotDigest {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.write_str("a digest is 32 bytes")
-    }
-}
-
-impl std::error::Error for NotDigest {}
-
-impl TryFrom<&[u8]> for Digest {
-    type Error = NotDigest;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, NotDigest> {
-        let bytes: [u8; 32] = bytes.try_into().map_err(|_| NotDigest)?;
-        Ok(Self(blake3::Hash::from(bytes)))
     }
 }
 
@@ -185,6 +138,7 @@ impl Drawn {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::digest::NotDigest;
 
     #[test]
     fn a_proof_is_64_hex_digits_and_never_prints() {
@@ -205,11 +159,11 @@ mod test {
     #[test]
     fn a_digest_is_keyed_by_what_it_is_for() {
         let proof = Proof::from_bytes([[7; 16], [8; 16]]);
-        let one = Digest::of(Context::Challenge, &proof);
-        assert_eq!(one, Digest::of(Context::Challenge, &proof));
-        assert_ne!(one, Digest::of(Context::Session, &proof));
-        assert_ne!(one, Digest::of(Context::Ceremony, &proof));
-        assert_ne!(Digest::of(Context::Session, &proof), Digest::of(Context::Ceremony, &proof));
+        let one = Context::Challenge.digest(&proof);
+        assert_eq!(one, Context::Challenge.digest(&proof));
+        assert_ne!(one, Context::Session.digest(&proof));
+        assert_ne!(one, Context::Ceremony.digest(&proof));
+        assert_ne!(Context::Session.digest(&proof), Context::Ceremony.digest(&proof));
         assert_eq!(Digest::try_from(&one.as_bytes()[..]).unwrap(), one);
         assert_eq!(Digest::try_from(&[1_u8; 5][..]), Err(NotDigest));
     }

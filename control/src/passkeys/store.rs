@@ -14,7 +14,7 @@ use crate::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Account as AccountKind, Factor as FactorKind, Id};
 use crate::keys::Label;
-use crate::signin::{Context, Digest, Proof};
+use crate::signin::{Context, Proof};
 use crate::table;
 
 /// What a ceremony is for. A registration's reply cannot complete a sign-in, and the reverse.
@@ -243,7 +243,7 @@ impl<D: Db> Registry<D> {
                 table::Ceremony::ExpiresAt,
             ])
             .values([
-                Expr::val(Digest::of(Context::Ceremony, begin.proof).as_bytes().as_slice()),
+                Expr::val(Context::Ceremony.digest(begin.proof).as_bytes().as_slice()),
                 Expr::val(begin.flow.name()),
                 Expr::val(begin.account.map(|account| account.to_string())),
                 Expr::val(begin.state.as_slice()),
@@ -258,7 +258,7 @@ impl<D: Db> Registry<D> {
     /// for another flow, it ended, or it was spent (the four look the same). A replay finds
     /// nothing, because the row is gone after the first reply, right or wrong.
     pub async fn spend(&self, proof: &Proof, flow: Flow, now: Timestamp) -> Result<Option<Spent>, Error<D::Error>> {
-        let digest = Digest::of(Context::Ceremony, proof);
+        let digest = Context::Ceremony.digest(proof);
         let select = Query::select()
             .columns([
                 table::Ceremony::Digest,

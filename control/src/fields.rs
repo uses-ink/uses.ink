@@ -66,9 +66,9 @@ impl Fields<'_> {
         text.map(|text| text.parse().map_err(|source| Unreadable::Id { column: column.as_str(), source })).transpose()
     }
 
-    pub(crate) fn digest(self, column: impl IdenStatic) -> Result<crate::signin::Digest, Unreadable> {
+    pub(crate) fn digest(self, column: impl IdenStatic) -> Result<crate::digest::Digest, Unreadable> {
         let bytes: Vec<u8> = self.0.get(column)?;
-        crate::signin::Digest::try_from(bytes.as_slice()).map_err(|_| Unreadable::Digest { column: column.as_str() })
+        crate::digest::Digest::try_from(bytes.as_slice()).map_err(|_| Unreadable::Digest { column: column.as_str() })
     }
 
     pub(crate) fn key(self, column: impl IdenStatic) -> Result<sig::KeyId, Unreadable> {

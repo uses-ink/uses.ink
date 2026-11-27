@@ -20,6 +20,7 @@ mod case;
 mod control;
 mod credential;
 mod deploy;
+mod digest;
 mod error;
 mod event;
 mod fields;

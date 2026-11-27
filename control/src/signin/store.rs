@@ -105,7 +105,7 @@ impl<D: Db> SignIn<D> {
     }
 
     async fn issue(&self, draft: Draft<'_>, now: Timestamp) -> Result<Issued, Error<D::Error>> {
-        let digest = Digest::of(Context::Challenge, &draft.proof);
+        let digest = Context::Challenge.digest(&draft.proof);
         let insert = Query::insert()
             .into_table(table::Challenge::Table)
             .columns([
@@ -214,7 +214,7 @@ impl<D: Db> SignIn<D> {
     /// What a link is for and when it stops working, without using it. `None` for a link that
     /// was never made, was used, or ended, which look the same.
     pub async fn peek(&self, proof: &Proof, now: Timestamp) -> Result<Option<Pending>, Error<D::Error>> {
-        Ok(self.live(&Digest::of(Context::Challenge, proof), now).await?.map(|(_, pending)| pending))
+        Ok(self.live(&Context::Challenge.digest(proof), now).await?.map(|(_, pending)| pending))
     }
 
     /// Uses a link and signs in. For the first-run link, `address` is the one to give the
@@ -229,7 +229,7 @@ impl<D: Db> SignIn<D> {
         now: Timestamp,
     ) -> Result<Entered, Error<D::Error>> {
         let Presented { proof, address } = presented;
-        let digest = Digest::of(Context::Challenge, proof);
+        let digest = Context::Challenge.digest(proof);
         let (link, _) = self.live(&digest, now).await?.ok_or(Refused::Unusable)?;
         let (attach, fresh) = self.target(&link, address).await?;
         let account = link.account.unwrap_or(drawn.account);
@@ -246,7 +246,7 @@ impl<D: Db> SignIn<D> {
         let ends = self.settings.session.begin(now)?;
         let session =
             Session { id: drawn.session, account, created: now, seen: now, expires: ends.expires, limit: ends.limit };
-        let digest = Digest::of(Context::Session, &drawn.proof);
+        let digest = Context::Session.digest(&drawn.proof);
         let making = Making { session, digest, account, fresh, attach, factor: drawn.factor, now };
         self.db.batch(Self::statements(&making)?).await?;
         Ok(Entered { session, secret: drawn.proof, account, created: fresh })
@@ -261,7 +261,7 @@ impl<D: Db> SignIn<D> {
         let ends = self.settings.session.begin(now)?;
         let session =
             Session { id: drawn.session, account, created: now, seen: now, expires: ends.expires, limit: ends.limit };
-        let digest = Digest::of(Context::Session, &drawn.proof);
+        let digest = Context::Session.digest(&drawn.proof);
         let link = Query::insert()
             .into_table(table::PasskeySession::Table)
             .columns([table::PasskeySession::SessionId, table::PasskeySession::PasskeyId])
@@ -362,7 +362,7 @@ impl<D: Db> SignIn<D> {
     /// The session a secret belongs to, if it was not revoked and has not ended. A sliding
     /// session is moved on by the use, as far as its limit.
     pub async fn resolve(&self, proof: &Proof, now: Timestamp) -> Result<Option<Session>, Error<D::Error>> {
-        let digest = Digest::of(Context::Session, proof);
+        let digest = Context::Session.digest(proof);
         let select = Query::select()
             .columns(Session::COLUMNS)
             .from(table::Session::Table)
@@ -403,7 +403,7 @@ impl<D: Db> SignIn<D> {
 
     /// Ends the session a secret belongs to. Whether there was one to end.
     pub async fn end(&self, proof: &Proof, now: Timestamp) -> Result<bool, Error<D::Error>> {
-        let digest = Digest::of(Context::Session, proof);
+        let digest = Context::Session.digest(proof);
         let filter = Expr::col(table::Session::Digest).eq(digest.as_bytes().as_slice());
         Ok(self.revoked(filter, now).await? == 1)
     }
