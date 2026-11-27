@@ -331,8 +331,9 @@ a permissive one), `Alias`, `Banned`, `Unsafe` (on tokens, so comments
 and literals never count), `Words` and `Free`. `Gradual<R>` wraps a rule so it fails only the
 crates in `ENFORCED` and counts the rest in a note; every crate is in it, so a new crate joins
 it with its first commit. Lists of generators, steps and rules are tuples, given their list
-trait by one `tuples!` macro. `cargo xtask check` runs every step and reports every failure; a
-new check is a new `Rule` added to `Layout::RULES`.
+trait by one `tuples!` macro. `cargo xtask check` runs every step and reports every failure; `cargo xtask check <stage>`
+(`lint`, `test`, `docs`, `wasm`, `sites`) runs one `Stage`, which is how CI runs them in parallel
+jobs. A new check is a new `Rule` added to `Layout::RULES`.
 
 ## 8. Generic, and where it stops
 

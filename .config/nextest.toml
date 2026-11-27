@@ -29,3 +29,13 @@ slow-timeout = { period = "250ms", terminate-after = 1 }
 [[profile.default.overrides]]
 filter = "binary_id(uses-ink-host-wasmtime::component)"
 slow-timeout = { period = "2s", terminate-after = 1 }
+
+# CI: a shared runner is two to three times slower than a developer machine, so the budgets above
+# would fail good code. `cargo xtask check` locally still enforces them; CI keeps a ceiling that
+# catches a hang or a runaway test. The selected profile's overrides win over the default's.
+[profile.ci]
+inherits = "default"
+
+[[profile.ci.overrides]]
+filter = "all()"
+slow-timeout = { period = "5s", terminate-after = 1 }

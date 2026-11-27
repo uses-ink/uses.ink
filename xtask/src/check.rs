@@ -1,9 +1,10 @@
-//! `cargo xtask check`: the whole gate, in the order CI runs it. CI runs this one command, so the
-//! list of steps lives here ([`Gate::steps`]) and nowhere else.
+//! `cargo xtask check [stage]`: the whole gate, or one [`Stage`] of it, which CI runs as a job of
+//! its own. The list of steps lives here ([`Gate`]) and nowhere else.
 
 use std::fmt;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use crate::component::{Components, Sites};
 use crate::error::Error;
@@ -37,8 +38,8 @@ impl Gate {
         Self { root: root.into(), report: Report::default() }
     }
 
-    /// Every step of the gate, in CI's order, each with `--locked`.
-    fn steps() -> impl Steps {
+    /// The checks that read the source: formatting, lints, licences and the layout rules.
+    fn lint() -> impl Steps {
         (
             Cargo { command: Command::Fmt, scope: Every, flags: &[Flag::Check], target: Target::Host },
             Cargo { command: Command::Clippy, scope: Every, flags: &[Flag::AllTargets], target: Target::Host },
@@ -60,11 +61,24 @@ impl Gate {
                 flags: &[],
                 target: Target::Browser,
             },
-            // the plugins as components, which the tests and `Sites` load
-            Components,
-            Cargo { command: Command::Nextest, scope: Every, flags: &[], target: Target::Host },
-            Cargo { command: Command::Test, scope: Every, flags: &[Flag::Doc], target: Target::Host },
             Cargo { command: Command::Deny, scope: (), flags: &[], target: Target::Host },
+            Layout,
+        )
+    }
+
+    /// The tests: the plugins as components, which the tests load, then every test.
+    fn test() -> impl Steps {
+        (Components, Cargo { command: Command::Nextest, scope: Every, flags: &[], target: Target::Host })
+    }
+
+    /// The doc tests, each compiled and linked on its own, which makes them the slowest step.
+    fn docs() -> impl Steps {
+        (Cargo { command: Command::Test, scope: Every, flags: &[Flag::Doc], target: Target::Host },)
+    }
+
+    /// The crates that also run on wasm.
+    fn wasm() -> impl Steps {
+        (
             // the pen's goldens hold on wasm too
             Cargo { command: Command::Test, scope: ["freehand"], flags: &[], target: Target::Wasi },
             // the browser pen as it ships
@@ -74,15 +88,20 @@ impl Gate {
                 flags: &[Flag::Release],
                 target: Target::Browser,
             },
-            // every site fixture, natively and through the components
-            Sites,
-            Layout,
         )
     }
 
-    /// Runs every step and reports every failure, then whether all passed.
-    pub(crate) fn run(mut self) -> Report {
-        Self::steps().run(&mut self);
+    /// Every site fixture, built natively and through the components.
+    fn sites() -> impl Steps {
+        (Components, Sites)
+    }
+
+    /// Runs the stage, or every stage in order, and reports every failure, then whether all passed.
+    pub(crate) fn run(mut self, stage: Option<Stage>) -> Report {
+        match stage {
+            Some(stage) => stage.run(&mut self),
+            None => Stage::ALL.into_iter().for_each(|stage| stage.run(&mut self)),
+        }
         if self.report.failures().is_empty() {
             self.report.line(Line::Passed);
         }
@@ -95,6 +114,61 @@ impl Gate {
             self.report.fail(Error::Progress(error));
         }
         step.run(&self.root, &mut self.report);
+    }
+}
+
+/// A part of the gate that CI runs as a job of its own: `cargo xtask check <stage>`. Without a
+/// stage the gate runs all of them in this order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Stage {
+    Lint,
+    Test,
+    Docs,
+    Wasm,
+    Sites,
+}
+
+impl Stage {
+    /// Every stage, in the order the whole gate runs them.
+    pub(crate) const ALL: [Self; 5] = [Self::Lint, Self::Test, Self::Docs, Self::Wasm, Self::Sites];
+
+    /// Its name on the command line.
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Lint => "lint",
+            Self::Test => "test",
+            Self::Docs => "docs",
+            Self::Wasm => "wasm",
+            Self::Sites => "sites",
+        }
+    }
+
+    /// Runs its steps in `gate`.
+    fn run(self, gate: &mut Gate) {
+        match self {
+            Self::Lint => Gate::lint().run(gate),
+            Self::Test => Gate::test().run(gate),
+            Self::Docs => Gate::docs().run(gate),
+            Self::Wasm => Gate::wasm().run(gate),
+            Self::Sites => Gate::sites().run(gate),
+        }
+    }
+}
+
+impl fmt::Display for Stage {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(self.name())
+    }
+}
+
+impl FromStr for Stage {
+    type Err = Error;
+
+    fn from_str(given: &str) -> Result<Self, Error> {
+        Self::ALL
+            .into_iter()
+            .find(|stage| stage.name() == given)
+            .ok_or_else(|| Error::Stage { given: given.to_owned() })
     }
 }
 

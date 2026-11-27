@@ -5,7 +5,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use crate::Task;
-use crate::check::{Invocation, Tool};
+use crate::check::{Invocation, Stage, Tool};
 use crate::layout::Problem;
 use crate::output::Stale;
 use crate::process::Failure;
@@ -18,6 +18,14 @@ pub(crate) enum Error {
     /// A task that does not exist.
     Unknown {
         given: String,
+    },
+    /// A stage of the gate that does not exist.
+    Stage {
+        given: String,
+    },
+    /// A stage given to a task that has none.
+    Stageless {
+        task: Task,
     },
     Read {
         path: PathBuf,
@@ -110,6 +118,8 @@ impl fmt::Display for Error {
         match self {
             Self::Missing => write!(out, "no task given; the tasks are {}", Listed(&Task::ALL)),
             Self::Unknown { given } => write!(out, "no task `{given}`; the tasks are {}", Listed(&Task::ALL)),
+            Self::Stage { given } => write!(out, "no stage `{given}`; the stages are {}", Listed(&Stage::ALL)),
+            Self::Stageless { task } => write!(out, "`{task}` has no stages; only `check` does"),
             Self::Read { path, .. } => write!(out, "cannot read {}", path.display()),
             Self::Write { path, .. } => write!(out, "cannot write {}", path.display()),
             Self::Source { path, flaw } => write!(out, "{path}: {flaw}"),
@@ -167,6 +177,8 @@ impl std::error::Error for Error {
             // Each of these is the whole failure: its data says what is wrong.
             Self::Missing
             | Self::Unknown { .. }
+            | Self::Stage { .. }
+            | Self::Stageless { .. }
             | Self::Source { .. }
             | Self::Module { .. }
             | Self::Layout(_)

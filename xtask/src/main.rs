@@ -7,9 +7,11 @@
 //!   every problem listed.
 //! - `component`: build the plugins' guest crates for `wasm32-unknown-unknown` and wrap each
 //!   into a component under `target/plugin/`.
-//! - `check`: the whole gate, in CI's order: fmt, clippy (native and wasm32), nextest, doc tests,
-//!   the components, nextest, doc tests, `cargo deny`, the pen's tests on wasm32-wasip2, the
-//!   browser pen's release build, `ink build --check` on every CLI site fixture, then `layout`. Runs every step and fails with every failed step listed.
+//! - `check [stage]`: the whole gate, or one of its stages (`lint`, `test`, `docs`, `wasm`,
+//!   `sites`), which CI runs as parallel jobs: fmt, clippy (native and wasm32), `cargo deny` and
+//!   `layout`; the components and nextest; doc tests; the pen on wasm32-wasip2 and in the browser;
+//!   `ink build --check` on every CLI site fixture. Runs every step and fails with every failed
+//!   step listed.
 //!
 //! Each task is a type: the generators implement [`output::Generator`], the gate's steps
 //! [`check::Step`], the layout rules [`layout::Rule`].
@@ -91,7 +93,10 @@ impl Task {
     }
 
     /// Runs it from the workspace at `root`; the report holds every line and every failure.
-    fn run(self, root: &Path) -> Report {
+    fn run(self, root: &Path, stage: Option<check::Stage>) -> Report {
+        if let (Some(_), false) = (stage, self == Self::Check) {
+            return Report::from(Error::Stageless { task: self });
+        }
         let mut report = Report::default();
         let mut output = Output::new(root, Mode::Write);
         let generated = match self {
@@ -106,7 +111,7 @@ impl Task {
                 check::Step::run(&component::Components, root, &mut report);
                 return report;
             }
-            Self::Check => return check::Gate::new(root).run(),
+            Self::Check => return check::Gate::new(root).run(stage),
         };
         report.take(generated);
         output.settle(&mut report);
@@ -148,10 +153,13 @@ impl fmt::Display for Chain<'_> {
 
 fn main() -> ExitCode {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-    let report = match std::env::args().nth(1).map(|arg| arg.parse::<Task>()) {
-        Some(Ok(task)) => task.run(&root),
-        Some(Err(error)) => Report::from(error),
-        None => Report::from(Error::Missing),
+    let mut args = std::env::args().skip(1);
+    let report = match (args.next().map(|arg| arg.parse::<Task>()), args.next().map(|arg| arg.parse::<check::Stage>()))
+    {
+        (Some(Ok(task)), None) => task.run(&root, None),
+        (Some(Ok(task)), Some(Ok(stage))) => task.run(&root, Some(stage)),
+        (Some(Err(error)), _) | (Some(Ok(_)), Some(Err(error))) => Report::from(error),
+        (None, _) => Report::from(Error::Missing),
     };
     let mut err = std::io::stderr();
     // A report that cannot be written fails the task: nothing it did goes unsaid.

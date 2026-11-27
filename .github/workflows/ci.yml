@@ -7,17 +7,34 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # No incremental state and no debug info: a CI build is compiled once, so both only cost time
+  # and cache size.
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  # The per-test time budgets are for a developer machine (.config/nextest.toml); a shared
+  # runner is slower, so CI runs the `ci` profile, which keeps a ceiling only.
+  NEXTEST_PROFILE: ci
 
 jobs:
+  # `cargo xtask check <stage>` is one stage of the gate (xtask/src/check.rs); the stages run in
+  # parallel, and `cargo xtask check` with no stage runs them all, which is what a developer runs.
   check:
+    name: ${{ matrix.stage }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stage: [lint, test, docs, wasm, sites]
     steps:
       - uses: actions/checkout@v4
       # rust-toolchain.toml pins the version, components and wasm targets.
       - run: rustup show active-toolchain
+      # Dependencies and the build state, saved by pushes to main and restored by every run.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.stage }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest,cargo-deny,wasmtime
-      # The whole gate, in one place: fmt, clippy, nextest, doc tests, cargo deny, wasm tests and
-      # builds, layout and generated files (xtask/src/check.rs).
-      - run: cargo --locked xtask check
+      - run: cargo --locked xtask check ${{ matrix.stage }}
