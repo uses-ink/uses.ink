@@ -276,11 +276,26 @@ added again was created when it came back. A shallow boundary gives the rest `No
 `Provenance::GitHistory`; a change seen only in a merge is `Unknown { Merged }`. What the
 history lacked is a `Lack` with a `Gap` (`Shallow`, or `Renames` with the count of files a
 move created), said as a notice and shown by `ink explain`. gix is opened isolated (no user or
-system configuration) with a 32 MiB delta-base cache per thread and without
-`pack-cache-lru-static`, whose `uluru` is MPL-2.0; `foldhash` and `zlib-rs` (Zlib) are
+system configuration) with an 8 MiB delta-base cache per thread (as measured, below) and
+without `pack-cache-lru-static`, whose `uluru` is MPL-2.0; `foldhash` and `zlib-rs` (Zlib) are
 licence exceptions in `deny.toml`. Measured on tldr (40,943 files, 24,903 commits, full clone,
 release build): the whole read, every blob and every date, takes 10.1 s on 1 thread, 3.3 s on 4
 and 2.6 s on 8, in 150 MiB; it matches the spike's 732 files created by a move.
+
+As measured (2026-11-27, performance pass, `cargo bench -p uses-ink-host-native` with
+`INK_BENCH_REPO` naming tldr; the machine shared with other builds, so CPU counts are the firmer
+numbers): the `core.deltaBaseCacheLimit=32m` override above never took effect. gix sets a
+delta-base cache from it only under its `max-performance` feature, which pulls the MPL code, so
+every tree was inflated from its pack again, and zlib was 68% of the profile. The cache is now set
+on each thread's handle in code, 8 MiB each: the read with dates went from 4.6 s to 2.7 s on 4
+threads and from about 170 to about 85 billion instructions, at 224 MiB peak instead of 156 MiB.
+4, 8, 16 and 32 MiB all land at 2.7 s; 64 MiB is slower. An object cache on top of it made the
+diffs slower, not faster. Of the 2.7 s, the tree read (every blob inflated and hashed) is 0.35 s
+and the commit walk 0.2 s; the rest is the parallel tree diff, still mostly inflate. Left alone:
+the diff algorithm (gix's tree diff is a merge of sorted entries, already linear), object lookups
+(the pack index lookup is under 1%), and allocation (`memmove` is 8%, mostly delta application).
+The folder walk reads a generated tree of 20,000 one-kilobyte notes in about 160 ms, almost all
+of it system calls and BLAKE3; it stays on one thread, which keeps its order trivially fixed.
 
 ## 0037 Container egress from Rust through `Reflect`; no JS shim
 
@@ -368,11 +383,64 @@ core count; the work runs rav1e on one thread (one tile) without assembly, jpeg-
 its SIMD feature, `fast_image_resize`'s SIMD paths give the scalar path's bytes for this filter,
 and the ported thumbhash takes its cosines from `libm`. The goldens in `host/image/fixture` hold
 the hash of every copy. A `Key` (the source's hash, the settings, the crates' versions) names
-one image's work; `host_image::Pixels` keeps what it made by key, and the render unit index
-reuses it across builds when it lands. **Why:** layout stability and small pages for readers,
+one image's work; `host_image::Pixels` keeps what it made by key, and keeps it across builds
+in an `engine::Cache` (as measured, below). **Why:** layout stability and small pages for readers,
 no metadata leaks, no C. **Reversal:** encode time on hosted builders (a 4000 by 3000 photo
 costs about 2 s of one core) pushes builds past their budget: a slower AVIF speed only behind
 the cache, or fewer widths.
+
+As measured (2026-11-27, performance pass; ten 4000 by 3000 photos cut from one wallpaper, 8
+workers, release build, on a 14-thread laptop shared with other builds):
+
+| Build | Wall | CPU | Peak memory |
+|---|---|---|---|
+| 10 photos, before | 7.1 s | 39 s | 733 MB |
+| 10 photos, cold cache | 5.1 s | 37 s | 564 MB |
+| 10 photos, warm cache | 0.37 s | 0.2 s | 45 MB |
+| 1 photo, before | 2.6 s | 2.5 s | 111 MB |
+| 1 photo, cold cache | 1.7 s | 2.4 s | 122 MB |
+
+Every build gives the same deploy, byte for byte. Three changes. **The cache:** an
+`engine::Cache` port (typed `cache::Key` of a `Kind` and a digest, values as bytes), the first
+piece of the render unit index; `host_native::Disk` keeps it in a folder, `--cache <dir>` or
+`<site>/.ink/cache` by default, so `rm -r .ink` resets everything ink owns and a hosted
+builder's cache stays per tenant. Values are files named by their BLAKE3 hash, each key an
+entry listing its values and ending with the hash of that list; every file is written under a
+name of its own and renamed into place. A value or entry that does not check out is removed and
+said (`cache.entry.corrupt`) and the image made again; a folder made for the first time says
+`render.cache.cold`; past 2 GiB the entries used longest ago go (`cache.entry.evicted`). The
+folder holds `.ink-cache`, so the folder walk and the git tree skip it wherever it is
+(`source.cache.skipped`). **The work:** an image is decoded on one thread, cut into its widths,
+and its full-size pixels dropped; every copy is then a job, the costliest first across all
+images, so one photo uses several cores and ten do not wait on the last one's widest AVIF. The
+resizer no longer copies the full-size pixels for each width. **The memory:** at most two images
+are decoded at once; what is left is mostly eight rav1e encoders at once (a 1440-wide encode
+holds some 40 MB), and one decode slot instead of two saved about 3%. The bytes do not follow the
+number of threads: a test prepares every fixture on 1, 2, 3 and 8 and compares.
+
+The CLI site tests share one cache under `target/`, so after the first run the blog's photos
+are taken from it; their photos (64 by 32 and 48 by 32) were already small enough to encode
+within budget cold, so the `HACK(performance pass)` override in `.config/nextest.toml` is gone
+and the blog tests run under the highlighting budget they carry anyway. The override also hid
+that the test writing pins back built all five sites in one process, 300 ms beside the rest of
+the suite even with every photo cached; it is one test per site now.
+
+Not changed, since each changes what readers get; each measured on one photo, CPU time on one
+core, SSIM against the resized original:
+
+| Change | Cost | Bytes | SSIM |
+|---|---|---|---|
+| AVIF speed 9 instead of 10 | +40% to +55% | -13% to -15% | 0.932 to 0.935 at 1440, 0.924 to 0.942 at 480 |
+| AVIF speed 8 or 6 | x2.6 to x3.9 | -15% to -19% | at most 0.004 over speed 9 |
+| AVIF 8-bit instead of 10-bit (ravif's default) | 0% to -19% | +5% to +7% | 0.006 to 0.010 lower |
+| JPEG baseline with optimized Huffman tables | same | -16% at 1440, -13% at 480 | identical pixels |
+| JPEG progressive with optimized tables | same | -6% to -8% | identical pixels |
+| No 1440 copy | -60% of AVIF time | | 3x screens get 960 |
+
+The 1440 AVIF is 1.4 to 1.7 s of a photo's 2.5 s; the 960 is 0.66 s, the 480 0.22 s, every JPEG
+together under 0.1 s, the decode 65 ms and the three resizes 130 ms. Speed 9 behind the cache and
+optimized Huffman tables are the two worth taking; jpeg-encoder's progressive mode makes files
+larger, not smaller, and the placeholder already covers what progressive loading would show.
 
 ## 0041 Components as built: values across, one shared mirror
 
