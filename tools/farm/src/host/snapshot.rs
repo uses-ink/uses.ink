@@ -272,19 +272,19 @@ mod tests {
     use super::*;
 
     const PROBE: &str = "now 1700000100
-    arch x86_64
-    cores 14
-    load 3.52
-    slots 2
-    slot 0 busy
-    slot 1 free
-    queued 3
-    job petal.1a2 running 1700000040 cargo clippy -p engine
-    job petal.1a1 done 1700000000 0 85 cargo nextest run
-    job petal.1a0 done 1699999000 101 40 cargo nextest run
-    job petal.19f lost 1699990000 cargo check
-    job petal.19e queued 1699990000 cargo xtask check lint
-    ";
+arch x86_64
+cores 14
+load 3.52
+slots 2
+slot 0 busy
+slot 1 free
+queued 3
+job petal.1a2 running 1700000040 cargo clippy -p engine
+job petal.1a1 done 1700000000 0 85 cargo nextest run
+job petal.1a0 done 1699999000 101 40 cargo nextest run
+job petal.19f lost 1699990000 cargo check
+job petal.19e queued 1699990000 cargo xtask check lint
+";
 
     fn host(name: &str) -> Host {
         Host { name: name.parse().unwrap(), ..Host::local() }
