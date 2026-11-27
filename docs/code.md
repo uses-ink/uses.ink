@@ -183,7 +183,7 @@ knows its size and copies; `Assets` then serves the copies at hashed routes, `Ca
 order; adding an output is adding an artifact to that tuple. An artifact that fails is recorded
 and the next still runs.
 
-A page is a render unit (0045). `Engine::render_with(site, settings, Host::new(&images).cached(&cache))`
+A page is a render unit (0048). `Engine::render_with(site, settings, Host::new(&images).cached(&cache))`
 keys each page by the hash of everything the theme may read to write it: the engine's release,
 `Theme::identity` (a component's hash, its tokens), the base address, the page, and the part of
 the site `Theme::reads(page)` names (`Reads::Linked`: identity, nav, linked pages without their

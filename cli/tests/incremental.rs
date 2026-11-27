@@ -1,6 +1,6 @@
 //! Incremental builds on the site fixtures: after any single edit of one file, a build that takes
 //! what it can from the cache gives the deploy a cold build gives, and an untouched page is not
-//! rendered again (decision 0045). The pages are rendered by `ink:theme-quiet`, so what its
+//! rendered again (decision 0048). The pages are rendered by `ink:theme-quiet`, so what its
 //! `reads` say is held to what it reads.
 //!
 //! The properties run the theme over several fixtures and many edits: the file's name has

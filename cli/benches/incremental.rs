@@ -1,4 +1,4 @@
-//! What a render costs with the page cache (decision 0045): a generated blog of 10, 500 and
+//! What a render costs with the page cache (decision 0048): a generated blog of 10, 500 and
 //! 2,000 posts rendered cold (a cache folder that holds nothing), warm (nothing changed) and
 //! after an edit of one post, through the quiet theme and a cache folder on disk. Interpreting is
 //! not in it: it is not cached. `cargo bench -p uses-ink-cli --bench incremental`.

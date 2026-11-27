@@ -66,7 +66,7 @@ impl fmt::Display for Missing {
 
 /// Every page through the theme, then a generated home when no page is the home. The page at
 /// `/404`, if the author wrote one, is served as the not-found page. A page whose key the cache
-/// holds is not rendered: its bytes are taken (decision 0045).
+/// holds is not rendered: its bytes are taken (decision 0048).
 #[derive(Debug)]
 pub(crate) struct Pages<'t, T, C> {
     pub(crate) theme: &'t T,

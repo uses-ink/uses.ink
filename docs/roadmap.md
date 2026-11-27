@@ -115,7 +115,7 @@ The two real audiences, locally.
 - Selection: `publish` frontmatter, `include`/`exclude`, `ink select` **(owner: Q16, Q17)**.
 - `ink:source-git` over `git.fetch`, `Known<T>` dates, abilities observed and shown.
 - Images: variants, AVIF and JPEG, dimensions, EXIF stripped, thumbhash placeholders.
-- Incremental builds through the render unit index (0045); `render.cache.cold` and `render.cache.used` notices.
+- Incremental builds through the render unit index (0048); `render.cache.cold` and `render.cache.used` notices.
 - `ink:theme-notebook` as a component, the pen drawing measured marks **(owner: its design)**.
 - `ink build --check` in CI on every fixture.
 
@@ -130,7 +130,7 @@ the `page.tags` ladder), and `site.format` pins the format (`ink pin site.format
 format = "ink:format-obsidian"`), with the pin, the `.obsidian/` marker and the default each
 replayable by `ink explain --why site.format`.
 
-Progress (2026-11-27): incremental builds are built (0045). A page is a render unit keyed by the
+Progress (2026-11-27): incremental builds are built (0048). A page is a render unit keyed by the
 theme's identity and what `Theme::reads` says it reads; `ink build` keeps pages in `--cache`
 (`host_native::Disk`) and says `render.cache.cold` or `render.cache.used`. Properties over the
 fixtures and the generated blog hold that any single edit gives the deploy a cold build gives and

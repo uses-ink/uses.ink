@@ -364,7 +364,7 @@ generated yet; it has to come from the decision codes, not from a second set of 
   no cross-tenant dedup, exact deletion, no timing leak.
 - **Render unit**: one page, cache key `blake3(engine release, theme identity, base address, the
   page, the part of the site the theme says it reads)`. The theme declares what it reads
-  (`Reads`), since it is handed the whole site and a read cannot be observed (0045, refining
+  (`Reads`), since it is handed the whole site and a read cannot be observed (0048, refining
   0006). Unchanged keys serve the kept HTML without asking the theme. A cache folder made for
   the first time says `render.cache.cold`; every build with a cache says `render.cache.used`.
 - **Deploy**: the manifest, stored as a blob, id = its hash. Identical builds give the same deploy.

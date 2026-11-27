@@ -155,7 +155,7 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
 
     /// As [`Engine::render`], taking each page from the host's cache when the cache holds it
     /// under the key of everything the page was made from, and keeping it there when not
-    /// (decision 0045). What the render gives is the same, byte for byte, with a cache, a cold
+    /// (decision 0048). What the render gives is the same, byte for byte, with a cache, a cold
     /// one, or none.
     pub fn render_with<I: Images, C: Cache>(
         &self,

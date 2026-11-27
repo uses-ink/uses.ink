@@ -82,7 +82,7 @@ impl fmt::Display for Key {
 pub enum Kind {
     /// One image's copies and placeholder, as the host's image work made them.
     Image,
-    /// One page as the theme rendered it: its HTML (decision 0045).
+    /// One page as the theme rendered it: its HTML (decision 0048).
     Page,
 }
 
