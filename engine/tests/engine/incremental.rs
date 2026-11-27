@@ -65,7 +65,7 @@ impl Counted {
 }
 
 impl Theme for Counted {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "counted"
     }
 
@@ -183,7 +183,7 @@ fn a_theme_that_says_nothing_of_what_it_reads_renders_everything_when_anything_c
     same(&warm, &cold(&edited, &theme));
     theme.asked.borrow_mut().clear();
     render(&edited, &theme, &cache);
-    assert!(theme.asked().is_empty());
+    assert_eq!(theme.asked(), Vec::<String>::new());
 }
 
 #[test]

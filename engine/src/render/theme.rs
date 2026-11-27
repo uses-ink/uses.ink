@@ -73,12 +73,19 @@ pub(crate) struct Pages<'t, T, C> {
     pub(crate) units: &'t Units<'t, C>,
 }
 
+/// A page and the unit it is recorded as.
+pub(crate) struct Served<'p> {
+    unit: Unit,
+    page: &'p Page,
+}
+
 impl<T: Theme, C: Kept> Pages<'_, T, C> {
     /// Serves `page` as the theme renders it, or as the cache kept it, recording what the
     /// theme says on the way; the page at `/404` is served with status 404. A page the theme
     /// refuses is `theme.page.refused`, caused by the theme's diagnostic. Only a page the theme
     /// wrote without a word to say is kept: what it says is said again by the next build.
-    fn serve(&self, unit: Unit, page: &Page, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
+    fn serve(&self, served: Served<'_>, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
+        let Served { unit, page } = served;
         let status = if page.route == Reserved::NotFound.route()? { Status::NotFound } else { Status::Ok };
         let entry = |body| Entry {
             route: page.route.clone(),
@@ -119,12 +126,12 @@ impl<T: Theme, C: Kept> Pages<'_, T, C> {
 impl<T: Theme, C: Kept> Artifact for Pages<'_, T, C> {
     fn files(&self, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
         for page in site.pages() {
-            self.serve(Unit::Page(page.file.clone()), page, site, out)?;
+            self.serve(Served { unit: Unit::Page(page.file.clone()), page }, site, out)?;
         }
         let root = Route::root();
         if site.home().is_none() && out.owner(&root).is_none() {
             let home = Generated::Home;
-            self.serve(Unit::Generated(home), &home.page(site, root)?, site, out)?;
+            self.serve(Served { unit: Unit::Generated(home), page: &home.page(site, root)? }, site, out)?;
         }
         Ok(())
     }
@@ -145,7 +152,11 @@ impl<T: Theme, C: Kept> Artifact for NotFound<'_, T, C> {
         }
         let missing = Generated::NotFound;
         let page = missing.page(site, route)?;
-        Pages { theme: self.theme, units: self.units }.serve(Unit::Generated(missing), &page, site, out)?;
+        Pages { theme: self.theme, units: self.units }.serve(
+            Served { unit: Unit::Generated(missing), page: &page },
+            site,
+            out,
+        )?;
         Ok(())
     }
 }

@@ -59,10 +59,7 @@ impl Build {
         source.output.extend(folder.inside(&self.dir).filter(|inside| !source.output.contains(inside)));
         let loaded = source.load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
-        let caching = Caching::new(&self.dir, self.cache.as_deref());
-        let images = caching.pixels();
-        let mut rendered = loaded.render(&address, Host::new(&images).cached(caching.disk()));
-        rendered.notices.extend(caching.finish());
+        let mut rendered = self.render(&loaded, &address);
         let record = loaded.record();
         let compared = baseline.compare(&loaded, &record, &mut rendered);
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
@@ -88,6 +85,17 @@ impl Build {
             warnings: tally.warnings,
         })?;
         Ok(if written.is_none() && exit == Exit::Done { Exit::Content } else { exit })
+    }
+}
+
+impl Build {
+    /// The site rendered through the image and page caches, which say what they did.
+    fn render(&self, loaded: &Loaded, address: &Address) -> Rendering {
+        let caching = Caching::new(&self.dir, self.cache.as_deref());
+        let images = caching.pixels();
+        let mut rendered = loaded.render(address, Host::new(&images).cached(caching.disk()));
+        rendered.notices.extend(caching.finish());
+        rendered
     }
 }
 

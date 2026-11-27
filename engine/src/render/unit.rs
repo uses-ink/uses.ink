@@ -287,13 +287,11 @@ impl<'a, C: Cache> Units<'a, C> {
     pub(crate) fn take(&self, key: &Key) -> Option<Vec<u8>> {
         let cache = self.cache?;
         let mut values = cache.get(key)?;
-        match (values.pop(), values.is_empty()) {
-            (Some(html), true) => Some(html),
-            _ => {
-                cache.reject(key);
-                None
-            }
+        if let (Some(html), true) = (values.pop(), values.is_empty()) {
+            return Some(html);
         }
+        cache.reject(key);
+        None
     }
 
     /// Keeps `html` under `key`.

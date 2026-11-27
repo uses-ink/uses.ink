@@ -54,6 +54,19 @@ pub struct Rendered {
     pub steps: Vec<Step>,
 }
 
+impl Rendered {
+    /// A render that could not start: nothing is served, and `error` says why.
+    fn refused(error: Error) -> Self {
+        Self {
+            manifest: Manifest::default(),
+            blobs: BTreeMap::new(),
+            diagnostics: vec![error.into()],
+            notices: vec![],
+            steps: vec![],
+        }
+    }
+}
+
 /// One output of a render: files it serves for `site`. A tuple of artifacts is an artifact,
 /// each producing its files in order; one that fails is recorded and the next still runs.
 pub(crate) trait Artifact {
@@ -153,16 +166,7 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
         let images = host.images;
         let policy = match Policy::new() {
             Ok(policy) => policy,
-            Err(error) => {
-                let diagnostics = vec![error.into()];
-                return Rendered {
-                    manifest: Manifest::default(),
-                    blobs: BTreeMap::new(),
-                    diagnostics,
-                    notices: vec![],
-                    steps: vec![],
-                };
-            }
+            Err(error) => return Rendered::refused(error),
         };
         let mut out = Output::new(&policy, &settings.base);
         let pictures = Prepare { blobs: &self.blobs, images }.run(site, &mut out);

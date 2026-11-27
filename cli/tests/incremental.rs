@@ -17,7 +17,9 @@ use engine::image::{Kept, Prepared, Source};
 use engine::{Engine, Format, Host, NoPins, Outcome, RenderSettings, Rendered};
 use fixture::corpus::Blog;
 use host_native::{Grammars, Memory};
-use model::{Announcement, Bytes, ContentPath, Diagnostic, Dimensions, Entry, Hash, Notice, Observed, Read, Snapshot, Version};
+use model::{
+    Announcement, Bytes, ContentPath, Diagnostic, Dimensions, Entry, Hash, Notice, Observed, Read, Snapshot, Version,
+};
 use proptest::prelude::*;
 use theme_quiet::Quiet;
 
@@ -40,6 +42,7 @@ struct Asis;
 impl engine::Images for Asis {
     type Refusal = Diagnostic;
 
+    #[expect(clippy::result_large_err, reason = "a refusal is the diagnostic the engine records")]
     fn prepare(&self, sources: &[Source<'_>]) -> Vec<Result<Prepared, Diagnostic>> {
         let dimensions = Dimensions::new(40, 30);
         sources.iter().map(|_| Ok(Prepared::Kept { dimensions, reason: Kept::Format })).collect()
@@ -103,7 +106,7 @@ impl Tree {
     }
 
     fn markdown(&self) -> Vec<&String> {
-        self.0.keys().filter(|name| name.ends_with(".md")).collect()
+        self.0.keys().filter(|name| Path::new(name).extension().is_some_and(|ext| ext == "md")).collect()
     }
 
     /// Builds it through the quiet theme, taking and keeping pages in `cache` when there is one.
@@ -171,6 +174,13 @@ impl Built {
     }
 }
 
+/// Where an edit lands: the file, another file it may reach, and a number that makes the text.
+struct Aim<'a> {
+    file: &'a str,
+    other: &'a str,
+    n: u32,
+}
+
 /// One edit of one file.
 #[derive(Clone, Debug)]
 enum Edit {
@@ -202,7 +212,8 @@ impl Edit {
         text.strip_prefix("---\n").and_then(|rest| rest.find("\n---\n").map(|end| 4 + end + 5)).unwrap_or(0)
     }
 
-    fn apply(&self, tree: &Tree, file: &str, other: &str, n: u32) -> Tree {
+    fn apply(&self, tree: &Tree, aim: Aim<'_>) -> Tree {
+        let Aim { file, other, n } = aim;
         let mut edited = tree.clone();
         let text = String::from_utf8(edited.0[file].clone()).unwrap();
         match self {
@@ -271,7 +282,7 @@ proptest! {
         let (file, other) = (files[at % files.len()].clone(), files[with % files.len()].clone());
         let cache = Memorized::default();
         tree.build(Some(&cache)).unwrap();
-        let edited = kind.apply(tree, &file, &other, n);
+        let edited = kind.apply(tree, Aim { file: &file, other: &other, n });
         let cold = edited.build(None);
         let warm = edited.build(Some(&cache));
         prop_assert_eq!(cold.is_some(), warm.is_some(), "{} {:?} {}", name, kind, file);
@@ -298,7 +309,7 @@ fn an_edit_of_one_post_renders_that_post_and_no_other() {
     let tree = Tree::generated(40);
     let cache = Memorized::default();
     tree.build(Some(&cache)).unwrap();
-    let edited = Edit::Append.apply(&tree, "posts/post-7.md", "", 1);
+    let edited = Edit::Append.apply(&tree, Aim { file: "posts/post-7.md", other: "", n: 1 });
     let warm = edited.build(Some(&cache)).unwrap();
     assert_eq!(warm.rendered(), ["posts/post-7.md"]);
     warm.assert_same(&edited.build(None).unwrap());
@@ -309,7 +320,7 @@ fn a_new_title_renders_the_page_the_pages_that_link_to_it_and_the_index() {
     let tree = Tree::generated(40);
     let cache = Memorized::default();
     tree.build(Some(&cache)).unwrap();
-    let edited = Edit::Retitle.apply(&tree, "posts/post-7.md", "", 1);
+    let edited = Edit::Retitle.apply(&tree, Aim { file: "posts/post-7.md", other: "", n: 1 });
     let warm = edited.build(Some(&cache)).unwrap();
     let rendered = warm.rendered();
     assert!(rendered.contains(&"posts/post-7.md".to_owned()));
@@ -367,7 +378,7 @@ fn a_cache_folder_says_it_is_cold_once_and_a_damaged_page_is_rendered_again() {
     assert!(said.iter().any(|n| matches!(n.announcement, Announcement::RenderCacheCold { .. })), "{said:?}");
     let (second, said) = on_disk(&tree, &folder);
     assert!(second.rendered().is_empty());
-    assert!(said.is_empty(), "{said:?}");
+    assert_eq!(said, Vec::<Notice>::new());
     first.assert_same(&second);
 
     // damage the bytes of one page, keeping the name its entry knows them by

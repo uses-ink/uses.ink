@@ -38,6 +38,7 @@ struct Asis;
 impl engine::Images for Asis {
     type Refusal = Diagnostic;
 
+    #[expect(clippy::result_large_err, reason = "a refusal is the diagnostic the engine records")]
     fn prepare(&self, sources: &[Source<'_>]) -> Vec<Result<Prepared, Diagnostic>> {
         sources.iter().map(|_| Ok(Prepared::Kept { dimensions: Dimensions::new(1, 1), reason: Kept::Format })).collect()
     }
