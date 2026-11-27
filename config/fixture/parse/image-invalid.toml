@@ -1,0 +1,5 @@
+[image]
+widths = [640, 640]
+avif-quality = 0
+jpeg-quality = 101
+speed = 3

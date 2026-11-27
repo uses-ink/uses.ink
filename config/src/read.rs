@@ -14,7 +14,7 @@ pub(crate) use node::{Key, Node, Refused, Table};
 use crate::pin::{KeyPath, Place};
 use crate::theme::{Kebab, Theme, Token};
 use crate::value::{Cause, Expected, Shape, Toml};
-use crate::{Config, Offsets, Parsed, Patterns, Pinned};
+use crate::{Config, Image, Offsets, Parsed, Patterns, Pinned, Quality, Width, Widths};
 
 /// The walk: what read cleanly so far, and every problem.
 #[derive(Debug, Default)]
@@ -85,6 +85,7 @@ impl Reader {
         let path = KeyPath(vec![key.name]);
         match key.name {
             "theme" => self.theme(&path, node),
+            "image" => self.image(&path, node),
             "include" => self.config.include = self.patterns(&path, node),
             "exclude" => self.config.exclude = self.patterns(&path, node),
             table if Place::holds(table, Scope::Site) || Place::holds(table, Scope::File) => {
@@ -138,6 +139,54 @@ impl Reader {
         // every item is checked and said, and a list with a bad item is applied not at all
         let parsed: Vec<_> = items.map(|item| self.parsed(path, item, shape)).collect();
         parsed.into_iter().collect::<Option<Patterns>>().unwrap_or_default()
+    }
+
+    /// The `T` the whole number `node` is, or a diagnostic saying `key` takes `shape`, with the
+    /// reason `T` gave.
+    fn number<T>(&mut self, key: &KeyPath<'_>, node: Node<'_>, shape: Shape<'_>) -> Option<Spanned<T>>
+    where
+        T: TryFrom<i64, Error: Into<Cause>>,
+    {
+        let expected = match node.whole().map(T::try_from) {
+            Ok(Ok(value)) => return Some(Spanned::new(value, node.span())),
+            Ok(Err(error)) => Expected::because(shape, error),
+            Err(_) => shape.into(),
+        };
+        self.invalid(key, &expected, node.span());
+        None
+    }
+
+    /// The widths `node` lists: every item is checked and said, and a list with a bad item, or
+    /// one out of order, is applied not at all.
+    fn widths(&mut self, path: &KeyPath<'_>, node: Node<'_>) -> Option<Spanned<Widths>> {
+        let Ok(items) = node.items() else {
+            self.invalid(path, &Shape::Widths.into(), node.span());
+            return None;
+        };
+        let parsed: Vec<_> = items.map(|item| self.number::<Width>(path, item, Shape::Width)).collect();
+        let widths = parsed.into_iter().map(|width| width.map(|width| width.value)).collect::<Option<Vec<_>>>()?;
+        match Widths::try_from(widths) {
+            Ok(widths) => Some(Spanned::new(widths, node.span())),
+            Err(error) => {
+                self.invalid(path, &Expected::because(Shape::Widths, error), node.span());
+                None
+            }
+        }
+    }
+
+    fn image(&mut self, path: &KeyPath<'_>, node: Node<'_>) {
+        let Some(table) = self.table(path, node, Shape::Image) else { return };
+        let mut image = Image { span: Some(node.span()), ..Image::default() };
+        for (key, value) in table.entries() {
+            let path = path.and(key.name);
+            match key.name {
+                "widths" => image.widths = self.widths(&path, value),
+                "avif-quality" => image.avif_quality = self.number::<Quality>(&path, value, Shape::Quality),
+                "jpeg-quality" => image.jpeg_quality = self.number::<Quality>(&path, value, Shape::Quality),
+                _ => self.unknown(&path, key.span),
+            }
+        }
+        self.config.image = image;
     }
 
     fn theme(&mut self, path: &KeyPath<'_>, node: Node<'_>) {

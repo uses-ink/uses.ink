@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/parse/image.toml
+---
+image widths [320, 640, 1280] at 17..33 `[320, 640, 1280]`
+image avif-quality 55 at 49..51 `55`
+image jpeg-quality 90 at 67..69 `90`

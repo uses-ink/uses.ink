@@ -52,7 +52,7 @@ impl args::Preview {
         loaded.staged(io)?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let caching = Caching::new(&self.dir, self.cache.as_deref());
-        let images = caching.pixels();
+        let images = caching.pixels(loaded.config.image());
         let watched = Watched::new(&images, io);
         let mut rendered = loaded.render(&address, Host::new(&watched).cached(caching.disk()));
         watched.finish()?;

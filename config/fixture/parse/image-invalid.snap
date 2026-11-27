@@ -1,0 +1,8 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/parse/image-invalid.toml
+---
+error config.value.invalid: ConfigValueInvalid { key: "image.widths", expected: "an array of widths in pixels, narrowest first, each from 1 to 65535, and each width must be wider than the one before it" } at 17..27 `[640, 640]`
+error config.value.invalid: ConfigValueInvalid { key: "image.avif-quality", expected: "a whole number from 1 to 100, and 0 is not from 1 to 100" } at 43..44 `0`
+error config.value.invalid: ConfigValueInvalid { key: "image.jpeg-quality", expected: "a whole number from 1 to 100, and 101 is not from 1 to 100" } at 60..63 `101`
+error config.key.unknown: ConfigKeyUnknown { key: "image.speed" } at 64..69 `speed`

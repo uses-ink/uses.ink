@@ -47,7 +47,7 @@ impl Compare<'_> {
         let address = Address::from_flag(self.build.base.as_deref())?;
         let loaded = Source::new(&self.build.dir, &self.build.origin).load()?;
         let caching = Caching::new(&self.build.dir, self.build.cache.as_deref());
-        let images = caching.pixels();
+        let images = caching.pixels(loaded.config.image());
         let native = loaded.render(&address, Host::new(&images));
 
         let runtime = Runtime::new(Budget::default(), Some(Cache::new(caching.root().join("components"))))

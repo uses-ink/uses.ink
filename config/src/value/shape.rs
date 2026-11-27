@@ -8,7 +8,7 @@ use model::{ContentPath, PathError, Word};
 
 use super::Toml;
 use crate::pin::KeyPath;
-use crate::{PatternError, ThemeIdError};
+use crate::{ImageError, PatternError, ThemeIdError};
 
 /// The shape a value must have.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,6 +62,14 @@ pub(crate) enum Shape<'a> {
     Theme,
     /// `use` in `[theme]`.
     ThemeId,
+    /// `[image]`.
+    Image,
+    /// An encoder quality.
+    Quality,
+    /// A width in pixels.
+    Width,
+    /// `widths` in `[image]`.
+    Widths,
 }
 
 impl Shape<'static> {
@@ -110,6 +118,10 @@ impl fmt::Display for Shape<'_> {
             Self::FileKey => out.write_str("the path of a file as its key"),
             Self::Theme => out.write_str("a table: `[theme]` with `use = \"<scope>:theme-<variant>\"` and tokens"),
             Self::ThemeId => out.write_str("a theme plugin id, such as \"ink:theme-quiet\""),
+            Self::Image => out.write_str("a table: `[image]` with `widths`, `avif-quality` and `jpeg-quality`"),
+            Self::Quality => out.write_str("a whole number from 1 to 100"),
+            Self::Width => out.write_str("a whole number of pixels from 1 to 65535"),
+            Self::Widths => out.write_str("an array of widths in pixels, narrowest first, each from 1 to 65535"),
         }
     }
 }
@@ -173,6 +185,8 @@ pub(crate) enum Cause {
     Pattern(PatternError),
     /// Not a theme plugin id.
     Theme(ThemeIdError),
+    /// Not an image setting.
+    Image(ImageError),
 }
 
 impl fmt::Display for Cause {
@@ -181,6 +195,7 @@ impl fmt::Display for Cause {
             Self::Path(error) => fmt::Display::fmt(error, out),
             Self::Pattern(error) => fmt::Display::fmt(error, out),
             Self::Theme(error) => fmt::Display::fmt(error, out),
+            Self::Image(error) => fmt::Display::fmt(error, out),
         }
     }
 }
@@ -200,5 +215,11 @@ impl From<PatternError> for Cause {
 impl From<ThemeIdError> for Cause {
     fn from(error: ThemeIdError) -> Self {
         Self::Theme(error)
+    }
+}
+
+impl From<ImageError> for Cause {
+    fn from(error: ImageError) -> Self {
+        Self::Image(error)
     }
 }

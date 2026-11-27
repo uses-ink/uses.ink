@@ -1,0 +1,4 @@
+[image]
+widths = [320, 640, 1280]
+avif-quality = 55
+jpeg-quality = 90

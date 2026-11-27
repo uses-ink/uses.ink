@@ -5,6 +5,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use config::Image;
 use host_image::{Pixels, Settings};
 use host_native::Disk;
 use model::Notice;
@@ -31,9 +32,20 @@ impl Caching {
         &self.root
     }
 
-    /// The image work, taking and keeping copies in the cache.
-    pub(crate) fn pixels(&self) -> Pixels {
-        Pixels::cached(Settings::default(), self.disk.clone())
+    /// The image work, taking and keeping copies in the cache, under the settings `ink.toml`
+    /// gave in `[image]` and the defaults for the keys it left out.
+    pub(crate) fn pixels(&self, image: &Image) -> Pixels {
+        let mut settings = Settings::default();
+        if let Some(widths) = &image.widths {
+            settings.widths = widths.value.get().iter().map(|width| u32::from(width.get())).collect();
+        }
+        if let Some(quality) = &image.avif_quality {
+            settings.avif_quality = quality.value.get();
+        }
+        if let Some(quality) = &image.jpeg_quality {
+            settings.jpeg_quality = quality.value.get();
+        }
+        Pixels::cached(settings, self.disk.clone())
     }
 
     /// The cache itself, for the pages a render takes from it and keeps in it.

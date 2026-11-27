@@ -142,7 +142,7 @@ impl Build {
     /// image work, which says how far it has got.
     fn render(&self, loaded: &Loaded, address: &Address, io: &mut Io<'_>) -> Result<Rendering, Error> {
         let caching = Caching::new(&self.dir, self.cache.as_deref());
-        let images = caching.pixels();
+        let images = caching.pixels(loaded.config.image());
         let watched = Watched::new(&images, io);
         let mut rendered = loaded.render(address, Host::new(&watched).cached(caching.disk()));
         watched.finish()?;

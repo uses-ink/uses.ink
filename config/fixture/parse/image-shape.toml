@@ -1,0 +1,4 @@
+[image]
+widths = [320, "wide", 0, 70000]
+avif-quality = "high"
+jpeg-quality = 0x10

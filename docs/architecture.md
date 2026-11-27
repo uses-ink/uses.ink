@@ -354,7 +354,7 @@ Rules that hold for every inferrer:
 ## 10. `ink.toml`
 
 One file at the source root. Optional. Every key is either a pin of a decision code, the theme
-choice with its tokens, or a file pattern. Built in `config/` (`uses-ink-config`). A sketch:
+choice with its tokens, the image settings, or a file pattern. Built in `config/` (`uses-ink-config`). A sketch:
 
 ```toml
 include = ["notes/2023.md"]          # top-level keys go before the first table
@@ -363,6 +363,11 @@ exclude = ["notes/private/**"]
 [theme]
 use = "ink:theme-quiet"              # slot choice; omitted means the default, recorded as a notice
 accent = "#2b59c3"                   # every other key is a token the chosen theme declared
+
+[image]                              # defaults shown; every key is optional and range-checked
+widths = [480, 960, 1440]            # pixel widths of the copies, narrowest first, each 1 to 65535
+avif-quality = 70                    # 1 to 100
+jpeg-quality = 80                    # 1 to 100
 
 [site]
 title = "Ann's notes"                # pins site.title

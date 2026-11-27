@@ -75,6 +75,12 @@ impl<'a> Node<'a> {
         self.0.get_ref().as_bool().ok_or_else(|| self.refused())
     }
 
+    /// The whole number it is.
+    pub(crate) fn whole(self) -> Result<i64, Refused> {
+        let number = self.0.get_ref().as_integer().ok_or_else(|| self.refused())?;
+        i64::from_str_radix(number.as_str(), number.radix()).map_err(|_| self.refused())
+    }
+
     /// Whether it is `false`, which says "none".
     pub(crate) fn is_false(self) -> bool {
         matches!(self.0.get_ref(), DeValue::Boolean(false))

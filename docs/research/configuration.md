@@ -48,9 +48,9 @@ old value now exists and is passed through; no CLI flag or `ink.toml` key exists
 
 | Value | Where | Bucket | Home, or why it stays fixed |
 |---|---|---|---|
-| widths 480, 960, 1440 | `settings.rs` `Settings::default` | 1 | `ink.toml` `[image] widths`. Built as `Settings.widths`; in `Key`. |
-| AVIF quality 70 | `settings.rs` `Settings::default` | 1 | `[image] avif-quality`. Built as `Settings.avif_quality`; in `Key`. |
-| JPEG quality 80 | `settings.rs` `Settings::default` | 1 | `[image] jpeg-quality`. Built as `Settings.jpeg_quality`; in `Key`. |
+| widths 480, 960, 1440 | `settings.rs` `Settings::default` | 1 | `ink.toml` `[image] widths`. Built as `Settings.widths`, read from `[image]` by `config::Image`; in `Key`. |
+| AVIF quality 70 | `settings.rs` `Settings::default` | 1 | `[image] avif-quality`. Built as `Settings.avif_quality`, read from `[image]`; in `Key`. |
+| JPEG quality 80 | `settings.rs` `Settings::default` | 1 | `[image] jpeg-quality`. Built as `Settings.jpeg_quality`, read from `[image]`; in `Key`. |
 | AVIF speed 9 | `settings.rs` `Settings::default` | 2 | Operator: it trades builder CPU for bytes (0040 reversal). In `Settings` and `Key`. A site may only choose a cheaper (higher) speed. |
 | pixel budget 50,000,000 | `settings.rs` `Limits::default` (was `Settings.pixels`) | 2 | Built as `Limits.pixels`; in `Key` so a lowered budget refuses a cached image. Error `Reason::Budget` carries width, height and limit. |
 | workers 8 (`WORKERS`) | `settings.rs` `Limits::default` (was `Pixels::WORKERS`) | 2 | Built as `Limits.workers`. Changes no byte; not in `Key`. |
@@ -62,7 +62,7 @@ old value now exists and is passed through; no CLI flag or `ink.toml` key exists
 | record `START` `uses.ink/image/record/v1` | `record.rs` | 3 | On-disk cache record format. |
 | thumbhash `SIDE` 100 and `DRAWN` 32 | `thumbhash.rs` | 3 | Changes the placeholder bytes. Covered by `Key::VERSION` only, so making it a setting means adding it to `Key` first. Not proposed. |
 | animation probe reads 2 frames | `decode.rs` | 3 | Decides kept-as-is versus re-encoded; fixed by 0040. |
-| encoder clamps: speed 1 to 10, JPEG quality 1 to 100 | `encode.rs` | 3 | The encoders' valid ranges. Surprise: they clamp silently. Keys arriving from `ink.toml` must be refused out of range with a typed error before they reach here (see 0044). |
+| encoder clamps: speed 1 to 10, JPEG quality 1 to 100 | `encode.rs` | 3 | The encoders' valid ranges. Surprise: they clamp silently. `[image]` keys are refused out of range in `config` with `config.value.invalid` and a typed cause (`ImageError`) before they reach here, so the clamps never act on a site's value (see 0044, 0060). |
 | Catmull-Rom filter, PNG `Best` and `Adaptive`, JPEG progressive, rav1e on 1 thread | `encode.rs` | 3 | Determinism and bytes (0040). Not settings; `Key::VERSION` covers them. |
 | JPEG side at most 65,535 | `encode.rs` | 3 | A limit of the JPEG format; `Reason::Large` carries the size. |
 

@@ -1,5 +1,5 @@
-//! `ink.toml`, the one optional file at a source's root: pins of decisions, the theme choice and
-//! which files are part of the site.
+//! `ink.toml`, the one optional file at a source's root: pins of decisions, the theme choice, the
+//! image settings and which files are part of the site.
 //!
 //! **The decision code is the `ink.toml` path.** A sitewide code `site.home` is pinned by
 //! `[site] home = ...`; a per-file code `page.title` on `posts/x.md` by
@@ -15,6 +15,9 @@
 //! use = "ink:theme-quiet"          # the theme plugin; omitted means the default theme
 //! accent = "#2b59c3"               # every other key is a token the theme declared
 //!
+//! [image]
+//! avif-quality = 70             # 1 to 100; `widths` and `jpeg-quality` too
+//!
 //! [site]
 //! home = "README.md"               # pins site.home; false pins a generated listing
 //!
@@ -29,6 +32,7 @@
 //!
 //! The `toml` crate is seen only by `read`, `toml_edit` only by `write`.
 
+mod image;
 mod pattern;
 mod pin;
 mod read;
@@ -41,6 +45,7 @@ use std::ops::Range;
 
 use model::{AnyCode, AnyDecision, AnyOf, Code, ContentPath, Diagnostic, Span, Subject};
 
+pub use image::{Image, ImageError, Quality, Width, Widths};
 pub use pattern::{Pattern, PatternError, Patterns};
 pub use pin::Pinned;
 pub use theme::{IdPart, Theme, ThemeId, ThemeIdError, Token};
@@ -85,6 +90,7 @@ pub struct Config {
     /// Every pin, by subject (the site first, then files in path order) and code.
     pins: BTreeMap<Subject, BTreeMap<AnyCode, AnyOf<pin::Pins>>>,
     theme: Option<Theme>,
+    image: Image,
     include: Patterns,
     exclude: Patterns,
 }
@@ -124,6 +130,11 @@ impl Config {
     /// The `[theme]` table, if there is one.
     pub fn theme(&self) -> Option<&Theme> {
         self.theme.as_ref()
+    }
+
+    /// The `[image]` table: the keys it has, and the empty table when there is none.
+    pub const fn image(&self) -> &Image {
+        &self.image
     }
 
     /// `include = [...]`: files to publish that inference would leave out.

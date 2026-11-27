@@ -60,6 +60,16 @@ fn print(text: &str, parsed: &Parsed) -> String {
                 .unwrap();
         }
     }
+    let image = config.image();
+    if let Some(widths) = &image.widths {
+        let widths: Vec<u16> = widths.value.get().iter().map(|width| width.get()).collect();
+        writeln!(out, "image widths {widths:?} {}", quote(text, image.widths.as_ref().unwrap().span)).unwrap();
+    }
+    for (name, quality) in [("avif-quality", &image.avif_quality), ("jpeg-quality", &image.jpeg_quality)] {
+        if let Some(quality) = quality {
+            writeln!(out, "image {name} {} {}", quality.value.get(), quote(text, quality.span)).unwrap();
+        }
+    }
     for (name, patterns) in [("include", config.include()), ("exclude", config.exclude())] {
         for pattern in patterns {
             writeln!(out, "{name} {} {}", pattern.value, quote(text, pattern.span)).unwrap();

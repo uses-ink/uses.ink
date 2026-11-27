@@ -1,0 +1,9 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/parse/image-shape.toml
+---
+image jpeg-quality 16 at 78..82 `0x10`
+error config.value.invalid: ConfigValueInvalid { key: "image.widths", expected: "a whole number of pixels from 1 to 65535" } at 23..29 `"wide"`
+error config.value.invalid: ConfigValueInvalid { key: "image.widths", expected: "a whole number of pixels from 1 to 65535, and 0 is not from 1 to 65535" } at 31..32 `0`
+error config.value.invalid: ConfigValueInvalid { key: "image.widths", expected: "a whole number of pixels from 1 to 65535, and 70000 is not from 1 to 65535" } at 34..39 `70000`
+error config.value.invalid: ConfigValueInvalid { key: "image.avif-quality", expected: "a whole number from 1 to 100" } at 56..62 `"high"`
