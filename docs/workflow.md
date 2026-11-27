@@ -25,8 +25,6 @@ Every verb blocks, prints a short report and exits with a typed code. Nothing he
 daemon, and nothing needs `ssh` or `rsync` typed by hand: agents are refused both, and
 `farm` is the only way they reach another host.
 
-## The hosts file
-
 ## The jobs file
 
 The repo says what `farm check` runs, in `.config/farm.toml`, committed:
@@ -119,7 +117,7 @@ word that is not a farm flag belongs to cargo (`--` ends the farm's flags at onc
 | `--at REV`, `--forget` | `workspace`: start from a revision; remove instead of make. |
 
 `farm cargo` runs on a golden host when the cargo command runs tests (`test`, `nextest`,
-`xtask`); everything else (`check`, `clippy`, `build`, `doc`) runs on any host. `farm check`
+`xtask`, `insta`); everything else (`check`, `clippy`, `build`, `doc`) runs on any host. `farm check`
 puts the jobs the file marks `golden` (here `test` and `sites`) on golden hosts and the rest
 anywhere.
 
@@ -131,12 +129,12 @@ anywhere.
 | 1 | failed | The command ran and failed: a test, a lint, a compile error. |
 | 2 | usage | The command line is wrong. |
 | 3 | farm | The farm could not do it: bad config, no host, an unreachable host, a failed sync, a lost connection. |
-| 4 | refused | The farm will not: a golden job on a host that is not golden, a workspace with uncommitted work, a path outside the workspaces, a `farm fmt` that would overwrite a file you edited after it started. |
+| 4 | refused | The farm will not: a golden job on a host that is not golden, a workspace with uncommitted or untracked work, a path outside the workspaces, a `farm fmt` that would overwrite a file you edited after it started. |
 | 75 | running | The job is still running after the time given. Call `farm wait <id>` again; it is safe. |
 | 124 | timed out | The command hit `--limit` and was stopped. |
 
-A call that has several jobs (`farm check`) exits with the worst of them: 3 over 4 over 124 over
-1 over 75 over 0.
+A call that has several jobs (`farm check`) exits with the worst of them: 3 over 2 over 4 over
+124 over 1 over 75 over 0.
 
 ## The inner loop
 
@@ -154,7 +152,7 @@ edit.
 The terminal gets a header (host, slot, time queued and run, the command), then a summary. For
 nextest it is the counts and every `FAIL` or `TIMEOUT` test with its output, at most 60 lines
 each. For cargo it is the number of errors and warnings and the first ten in short form. For a
-job that prints `check:` lines it is those lines. The full log is streamed to `target/farm/<job>.log`.
+job that prints `check:` lines it is those lines. The full log is streamed to `target/farm/<host>.<token>.log`.
 
 ## The finish
 
@@ -178,7 +176,8 @@ farm bless -p uses-ink-cli
 
 Only the `*.snap` files that changed come back (never a `.snap.new`, never source), and the
 list is printed. Read each diff (`jj diff <path>`) before you commit: a blessed snapshot is a
-claim that the new output is right.
+claim that the new output is right. A `.snap` you edited here after the bless started is never
+overwritten: nothing comes back and the call exits 4; run it again once you are done editing.
 
 Formatting comes back the same way:
 
@@ -301,7 +300,8 @@ It adds `../uses.ink-ws/<name>` and seeds its `target/` with `cp -a --reflink=al
 newest warm sibling, so the workspace builds in seconds instead of ten minutes: the workspace's
 crates rebuild, the third-party crates do not. Where the filesystem has no reflinks it says so
 and copies in full. `--forget` refuses unless the path is a direct child of `uses.ink-ws`, is a
-jj workspace of this repo, is not the one you are in and has no uncommitted changes.
+jj workspace of this repo, is not the one you are in, has no uncommitted changes and holds no
+file outside `target/` that jj does not track (an ignored `.env`, say), since removing the directory would delete it.
 
 ## Briefing an agent
 

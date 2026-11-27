@@ -1,7 +1,9 @@
 //! `farm workspace <name>`: a new jj workspace whose `target/` starts as a reflink copy of the
 //! newest warm sibling's, so it builds in seconds, not the minutes of a cold compile. And
-//! `--forget`, which removes one only when that cannot lose work.
+//! `--forget`, which removes one only when that cannot lose work: nothing uncommitted, and no
+//! file jj does not track, such as an ignored `.env`, outside `target/`.
 
+use std::collections::HashSet;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -114,7 +116,8 @@ impl<'a> Workspaces<'a> {
     }
 
     /// Forgets the workspace `name` and removes its directory, if it is a workspace of this repo
-    /// and holds nothing that is not in a commit.
+    /// and holds nothing that is not in a commit: no change, and no file outside `target/` that jj
+    /// does not track (jj's diff leaves out ignored files, and removing the directory would not).
     pub(crate) fn forget(&self, name: &Segment) -> Result<PathBuf, Fault> {
         let container = self.tree.container();
         let path = container.join(name.as_str());
@@ -136,11 +139,58 @@ impl<'a> Workspaces<'a> {
         if !changes.trim().is_empty() {
             return Err(Fault::Dirty { name: name.clone() });
         }
+        let mut files = Command::new("jj");
+        files.arg("-R").arg(&real).args(["file", "list"]).current_dir(&real);
+        let listing = Process::from(files).text(&[]).map_err(|source| Fault::Jj { what: "file list", source })?;
+        let strays = Strays::find(&real, &listing).map_err(|source| Fault::Io { path: real.clone(), source })?;
+        if !strays.is_empty() {
+            return Err(Fault::Untracked { name: name.clone(), paths: strays.into_paths() });
+        }
         let mut forget = Command::new("jj");
         forget.arg("-R").arg(&self.tree.root).args(["workspace", "forget"]).arg(name.as_str());
         Process::from(forget).text(&[]).map_err(|source| Fault::Jj { what: "workspace forget", source })?;
         std::fs::remove_dir_all(&real).map_err(|source| Fault::Io { path: real.clone(), source })?;
         Ok(real)
+    }
+}
+
+/// The files of a workspace that jj does not track, outside `target/`: what removing the
+/// directory would delete and no commit holds.
+#[derive(Debug, PartialEq, Eq)]
+struct Strays(Vec<String>);
+
+impl Strays {
+    /// Walks `root`, skipping `.jj`, `.git` and the top `target`, and keeps every file that is
+    /// not a line of `listing`, `jj file list`'s output run in `root`.
+    fn find(root: &Path, listing: &str) -> Result<Self, std::io::Error> {
+        let tracked: HashSet<&str> = listing.lines().collect();
+        let mut strays = Vec::new();
+        let mut dirs = vec![root.to_path_buf()];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(&dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                let relative = path.strip_prefix(root).unwrap_or(&path).to_string_lossy().into_owned();
+                if dir == root && matches!(relative.as_str(), ".jj" | ".git" | "target") {
+                    continue;
+                }
+                if entry.file_type()?.is_dir() {
+                    dirs.push(path);
+                } else if !tracked.contains(relative.as_str()) {
+                    strays.push(relative);
+                }
+            }
+        }
+        strays.sort();
+        Ok(Self(strays))
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    fn into_paths(self) -> Vec<String> {
+        self.0
     }
 }
 
@@ -187,6 +237,11 @@ pub(crate) enum Fault {
     Dirty {
         name: Segment,
     },
+    /// It holds files that no commit has and jj ignores, which removing it would delete.
+    Untracked {
+        name: Segment,
+        paths: Vec<String>,
+    },
     Jj {
         what: &'static str,
         source: Failure,
@@ -202,6 +257,9 @@ pub(crate) enum Fault {
 }
 
 impl Fault {
+    /// How many untracked paths the message names.
+    const SHOWN: usize = 5;
+
     /// Whether the farm refused, rather than failed.
     pub(crate) const fn is_refusal(&self) -> bool {
         matches!(
@@ -211,6 +269,7 @@ impl Fault {
                 | Self::Current { .. }
                 | Self::Foreign { .. }
                 | Self::Dirty { .. }
+                | Self::Untracked { .. }
         )
     }
 }
@@ -231,6 +290,16 @@ impl fmt::Display for Fault {
             }
             Self::Dirty { name } => {
                 write!(out, "workspace `{name}` has changes that are not committed; commit or abandon them first")
+            }
+            Self::Untracked { name, paths } => {
+                let shown = &paths[..paths.len().min(Self::SHOWN)];
+                write!(
+                    out,
+                    "workspace `{name}` has {} file(s) that jj does not track, outside target/: {}{}; removing it would delete them; move or commit them first",
+                    paths.len(),
+                    crate::error::Listed(shown),
+                    if paths.len() > shown.len() { " and more" } else { "" }
+                )
             }
             Self::Jj { what, .. } => write!(out, "`jj {what}` failed"),
             Self::Seed { from, .. } => write!(out, "copying target/ from {} failed", from.display()),
@@ -307,6 +376,22 @@ mod tests {
         assert!(matches!(spaces.forget(&"nothing".parse().unwrap()), Err(Fault::Missing { .. })));
         assert!(matches!(spaces.forget(&"here".parse().unwrap()), Err(Fault::Current { .. })));
         assert!(plain.exists(), "a refusal removes nothing");
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn the_strays_are_the_files_jj_does_not_list_outside_target() {
+        let base = base("strays");
+        for dir in [".jj", ".git", "target/debug", "src"] {
+            std::fs::create_dir_all(base.join(dir)).unwrap();
+        }
+        for file in ["Cargo.toml", "src/lib.rs", "src/notes.txt", ".env", ".jj/store", ".git/HEAD", "target/debug/x"] {
+            std::fs::write(base.join(file), "x").unwrap();
+        }
+        let strays = Strays::find(&base, "Cargo.toml\nsrc/lib.rs\n").unwrap();
+        assert_eq!(strays, Strays(vec![".env".to_owned(), "src/notes.txt".to_owned()]));
+        assert!(Strays::find(&base, ".env\nCargo.toml\nsrc/lib.rs\nsrc/notes.txt\n").unwrap().is_empty());
+        assert!(Fault::Untracked { name: "w".parse().unwrap(), paths: vec![] }.is_refusal());
         std::fs::remove_dir_all(&base).unwrap();
     }
 
