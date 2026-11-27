@@ -77,6 +77,7 @@ fixture.workspace = true
 # test repositories are written object by object
 gix.workspace = true
 insta.workspace = true
+trace = { workspace = true, features = ["capture"] }
 tempfile.workspace = true
 proptest.workspace = true
 

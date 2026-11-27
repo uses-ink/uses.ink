@@ -115,4 +115,48 @@ pub mod event {
     pub const WORKER_TICK: &str = "worker.tick";
     /// A command ended.
     pub const COMMAND_END: &str = "command.end";
+    /// A remote's head was read from its reference list.
+    pub const GIT_HEAD: &str = "git.head";
+    /// A supervised loop (the watch, the worker) started, or started again.
+    pub const TASK_STARTED: &str = "task.started";
+    /// A supervised loop ended without being stopped.
+    pub const TASK_CRASHED: &str = "task.crashed";
+    /// A crashed loop will start again after a delay.
+    pub const TASK_RESTARTING: &str = "task.restarting";
+    /// A loop crashed more often than its limit and is left stopped.
+    pub const TASK_GAVE_UP: &str = "task.gave_up";
+    /// A loop stopped when told to.
+    pub const TASK_STOPPED: &str = "task.stopped";
+    /// The lookup of hosts over the control plane started answering.
+    pub const SITES_SERVING: &str = "sites.serving";
+    /// The lookup of hosts stopped: every caller is gone.
+    pub const SITES_STOPPED: &str = "sites.stopped";
+    /// The lookup asked the control plane what a host serves.
+    pub const SITES_ASKED: &str = "sites.asked";
+    /// The lookup read a deploy back and placed its files.
+    pub const SITES_PLACED: &str = "sites.placed";
+    /// The lookup could not say what a host serves.
+    pub const SITES_FAILED: &str = "sites.failed";
+    /// A folder of deploys was opened for serving.
+    pub const FOLDER_OPENED: &str = "folder.opened";
+    /// A folder's manifest was read, not taken from the cache.
+    pub const FOLDER_LOADED: &str = "folder.loaded";
+    /// A folder or a file in it was refused: a link, a swap, a wrong kind, a manifest too large.
+    pub const FOLDER_REFUSED: &str = "folder.refused";
+    /// A message was put on the queue.
+    pub const QUEUE_SENT: &str = "queue.sent";
+    /// A message was taken off the queue.
+    pub const QUEUE_RECEIVED: &str = "queue.received";
+    /// A delivery was acknowledged or released, or its lease had already gone.
+    pub const QUEUE_SETTLED: &str = "queue.settled";
+    /// The sealing key was read from its file, or made.
+    pub const KEY_OPENED: &str = "key.opened";
+    /// The sealing key file was refused.
+    pub const KEY_REFUSED: &str = "key.refused";
+    /// A credential was sealed.
+    pub const SECRET_SEALED: &str = "secret.sealed";
+    /// A sealed credential was opened, or refused.
+    pub const SECRET_OPENED: &str = "secret.opened";
+    /// Cache files a sweep could not remove.
+    pub const CACHE_STAYED: &str = "cache.stayed";
 }

@@ -66,7 +66,7 @@ impl Order {
         // runtime (axum) or a folder of deploys, never each other.
         ("uses-ink-edge", &["uses-ink-model", "uses-ink-trace"]),
         ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge", "uses-ink-edge-api", "uses-ink-trace"]),
-        ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge"]),
+        ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge", "uses-ink-trace"]),
         ("uses-ink-token", &[]),
         // The signed-request profile (decision 0068): the CLI signs and the server verifies with the
         // same code; it knows no crate of ours.
@@ -112,13 +112,21 @@ impl Order {
                 "uses-ink-model",
                 "uses-ink-queue-local",
                 "uses-ink-secret-local",
+                "uses-ink-trace",
             ],
         ),
         // The watch's Heads port over git's protocol (decision 0067): the watch's trait, git
         // through gix, the build port's revision and the model's locator.
         (
             "uses-ink-watch-git",
-            &["uses-ink-build", "uses-ink-https", "uses-ink-model", "uses-ink-secret", "uses-ink-watch"],
+            &[
+                "uses-ink-build",
+                "uses-ink-https",
+                "uses-ink-model",
+                "uses-ink-secret",
+                "uses-ink-trace",
+                "uses-ink-watch",
+            ],
         ),
         // How git reaches an https remote (decision 0072): gix, rustls and reqwest; no crate of ours.
         ("uses-ink-https", &[]),
@@ -260,7 +268,7 @@ impl Order {
         ("uses-ink-mail-smtp", &["uses-ink-mail", "uses-ink-secret"]),
         ("uses-ink-secret", &[]),
         ("uses-ink-secret-conformance", &["uses-ink-secret"]),
-        ("uses-ink-secret-local", &["uses-ink-secret", "uses-ink-secret-conformance"]),
+        ("uses-ink-secret-local", &["uses-ink-secret", "uses-ink-secret-conformance", "uses-ink-trace"]),
         // The use cases know the ports; the adapters are what its tests run against.
         (
             "uses-ink-control",

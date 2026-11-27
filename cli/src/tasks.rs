@@ -16,6 +16,7 @@ use clock::{Clock, Slept, System};
 use control::{Dropped, Id, Published, SiteKind, Worked};
 use edge_control::Chain;
 use tokio::sync::{mpsc, watch as flag};
+use trace::Field as _;
 use watch::{Done, Head, Outcome, Report, Round};
 
 /// Which loop.
@@ -25,6 +26,15 @@ pub(crate) enum Task {
     Watch,
     /// Builds what the queue holds.
     Worker,
+}
+
+impl trace::Kind for Task {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Watch => "watch",
+            Self::Worker => "worker",
+        }
+    }
 }
 
 impl fmt::Display for Task {
@@ -73,6 +83,8 @@ impl fmt::Display for Cause {
         }
     }
 }
+
+impl std::error::Error for Cause {}
 
 /// What the loops and their supervisors did.
 #[derive(Debug)]
@@ -133,6 +145,32 @@ impl fmt::Display for Event {
 }
 
 impl Event {
+    /// Logs what a supervisor did. The watch's and the worker's own events are logged where they
+    /// happen (`watch.polled`, `worker.tick`), so they are not logged again here.
+    fn log(&self) {
+        match self {
+            Self::Started(task) => trace::info!(name: trace::event::TASK_STARTED, task = trace::Kind::kind(*task)),
+            Self::Crashed { task, attempt, cause } => trace::error!(
+                name: trace::event::TASK_CRASHED,
+                task = trace::Kind::kind(*task),
+                attempt = trace::Count(u64::from(*attempt)).field(),
+                error = trace::Failure(cause).field(),
+            ),
+            Self::Restarting { task, after } => trace::warn!(
+                name: trace::event::TASK_RESTARTING,
+                task = trace::Kind::kind(*task),
+                after_us = trace::Took(*after).field(),
+            ),
+            Self::GaveUp { task, attempts } => trace::error!(
+                name: trace::event::TASK_GAVE_UP,
+                task = trace::Kind::kind(*task),
+                attempt = trace::Count(u64::from(*attempts)).field(),
+            ),
+            Self::Stopped(task) => trace::info!(name: trace::event::TASK_STOPPED, task = trace::Kind::kind(*task)),
+            _ => {}
+        }
+    }
+
     /// An error and its causes on one line.
     fn chain(error: &Chain) -> String {
         let mut said = vec![error.to_string()];
@@ -156,8 +194,10 @@ impl Events {
         (Self(sender), receiver)
     }
 
-    /// Tells one event. A receiver that is gone has stopped listening, which ends nothing.
+    /// Tells one event, and logs it when it is the supervisor's. A receiver that is gone has
+    /// stopped listening, which ends nothing.
     pub(crate) fn tell(&self, event: Event) {
+        event.log();
         self.0.send(event).ok();
     }
 }
@@ -372,6 +412,30 @@ mod test {
         let seen = drained(receiver);
         assert!(seen.iter().any(|line| line == "worker: crashed (1): panicked: builder gone"), "{seen:?}");
         assert_eq!(seen.last().unwrap(), "worker: stopped for good after 3 crashes");
+    }
+
+    #[test]
+    fn supervision_is_logged_as_typed_events() {
+        let capture = trace::Capture::new();
+        let (events, _receiver) = Events::channel();
+        // the sender stays alive, so no wait ends as stopped
+        let (halt, clock) = flag::channel(false);
+        let supervised = Supervised { task: Task::Worker, restart: quick(), clock: Stoppable(clock), events };
+        capture.run(|| supervised.supervise(|_, _| Box::pin(async { panic!("builder gone") })));
+        drop(halt);
+        let names: Vec<_> = capture.events().iter().map(|seen| seen.name).collect();
+        let (started, crashed, restarting) =
+            (trace::event::TASK_STARTED, trace::event::TASK_CRASHED, trace::event::TASK_RESTARTING);
+        assert_eq!(
+            names,
+            [started, crashed, restarting, started, crashed, restarting, started, crashed, trace::event::TASK_GAVE_UP]
+        );
+        let ended = capture.named(crashed);
+        assert_eq!(ended.iter().map(|seen| seen.number("attempt")).collect::<Vec<_>>(), [Some(1), Some(2), Some(3)]);
+        assert_eq!(ended[0].text("task"), Some("worker"));
+        assert_eq!(ended[0].level, trace::Level::ERROR);
+        assert_eq!(capture.named(restarting)[0].level, trace::Level::WARN);
+        assert_eq!(capture.named(trace::event::TASK_GAVE_UP)[0].number("attempt"), Some(3));
     }
 
     #[test]

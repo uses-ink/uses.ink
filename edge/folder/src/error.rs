@@ -4,6 +4,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use model::{DeployId, DuplicateRoute, PathError, Route};
+use trace::Field as _;
 
 /// A folder that cannot be served, or a file that cannot be read.
 #[derive(Debug)]
@@ -102,6 +103,47 @@ pub enum Error {
         /// How many bytes were still owed.
         owed: u64,
     },
+}
+
+impl trace::Kind for &Error {
+    fn kind(self) -> &'static str {
+        match self {
+            Error::NotDeploy { .. } => "not-deploy",
+            Error::NotFolder { .. } => "not-folder",
+            Error::Read { .. } => "read",
+            Error::Manifest { .. } => "manifest",
+            Error::Schema { .. } => "schema",
+            Error::Id { .. } => "id",
+            Error::Duplicate { .. } => "duplicate",
+            Error::Path { .. } => "path",
+            Error::Escapes { .. } => "escapes",
+            Error::Unplaced { .. } => "unplaced",
+            Error::Linked { .. } => "linked",
+            Error::NotFile { .. } => "not-file",
+            Error::Swapped { .. } => "swapped",
+            Error::Large { .. } => "large",
+            Error::Short { .. } => "short",
+        }
+    }
+}
+
+impl Error {
+    /// Says what the folder refused: a `warn` for content the edge will not serve, an `error`
+    /// for a file the system would not read or one that changed under a read.
+    pub(crate) fn said(&self) {
+        match self {
+            Self::Read { .. } | Self::Short { .. } => trace::error!(
+                name: trace::event::FOLDER_REFUSED,
+                kind = trace::Kind::kind(self),
+                error = trace::Failure(self).field(),
+            ),
+            _ => trace::warn!(
+                name: trace::event::FOLDER_REFUSED,
+                kind = trace::Kind::kind(self),
+                error = trace::Failure(self).field(),
+            ),
+        }
+    }
 }
 
 impl fmt::Display for Error {

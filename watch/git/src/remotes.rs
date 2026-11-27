@@ -6,6 +6,7 @@ use build::Revision;
 use https::Https;
 use model::git::{Locator, Network, Scheme};
 use secret::Plain;
+use trace::Field as _;
 use watch::{Access, Head, Heads};
 
 use crate::Unlisted;
@@ -33,10 +34,53 @@ impl Remotes {
     }
 }
 
-impl Heads for Remotes {
-    type Error = Unlisted;
+impl trace::Kind for &Unlisted {
+    fn kind(self) -> &'static str {
+        match self {
+            Unlisted::Network { .. } => "network",
+            Unlisted::Https(_) => "https",
+            Unlisted::Scratch { .. } => "scratch",
+            Unlisted::Remote { .. } => "remote",
+            Unlisted::Missing(_) => "missing",
+            Unlisted::Commit(_) => "commit",
+            Unlisted::Task(_) => "task",
+        }
+    }
+}
 
-    async fn head(
+impl Remotes {
+    /// Says how a read went. A read is one poll of one site, which the watch reports itself
+    /// (`watch.polled`), so a failure here is `debug` detail; only a refusal by the operator's
+    /// network setting is a `warn`.
+    fn said(scheme: Scheme, revision: Option<&Revision>, read: &Result<Head, Unlisted>) {
+        let (scheme, named) = (trace::Shown(scheme), revision.is_some());
+        match read {
+            Ok(head) => trace::debug!(
+                name: trace::event::GIT_HEAD,
+                scheme = scheme.field(),
+                named,
+                outcome = "read",
+                head = trace::Shown(head).field(),
+            ),
+            Err(error @ Unlisted::Network { .. }) => trace::warn!(
+                name: trace::event::GIT_HEAD,
+                scheme = scheme.field(),
+                named,
+                outcome = trace::Kind::kind(error),
+                error = trace::Failure(error).field(),
+            ),
+            Err(error) => trace::debug!(
+                name: trace::event::GIT_HEAD,
+                scheme = scheme.field(),
+                named,
+                outcome = trace::Kind::kind(error),
+                error = trace::Failure(error).field(),
+            ),
+        }
+    }
+
+    /// The head, listed from the remote or refused before any connection.
+    async fn read(
         &self,
         url: &Locator,
         revision: Option<&Revision>,
@@ -56,5 +100,20 @@ impl Heads for Remotes {
             https: (scheme == Scheme::Https).then(|| self.https.clone()),
         };
         tokio::task::spawn_blocking(move || listing.run()).await.map_err(Unlisted::Task)?
+    }
+}
+
+impl Heads for Remotes {
+    type Error = Unlisted;
+
+    async fn head(
+        &self,
+        url: &Locator,
+        revision: Option<&Revision>,
+        access: Option<&Access>,
+    ) -> Result<Head, Unlisted> {
+        let read = self.read(url, revision, access).await;
+        Self::said(url.scheme(), revision, &read);
+        read
     }
 }

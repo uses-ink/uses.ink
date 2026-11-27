@@ -72,12 +72,9 @@ impl File {
     }
 }
 
-impl Blobs for Files {
-    type Scope = Arc<Placed>;
-    type Blob = File;
-    type Error = Error;
-
-    async fn open(&self, scope: &Arc<Placed>, hash: Hash) -> Result<File, BlobError<Error>> {
+impl Files {
+    /// The file of `hash` in `scope`, opened once and checked.
+    async fn find(scope: &Placed, hash: Hash) -> Result<File, BlobError<Error>> {
         let relative = scope.files.get(&hash).ok_or(BlobError::Missing { hash })?;
         let mut path = scope.root.clone();
         let mut parts = relative.as_str().split('/').peekable();
@@ -102,6 +99,20 @@ impl Blobs for Files {
         }
         let seen = last.ok_or(BlobError::Missing { hash })?;
         File::pin(path, &seen, hash).await
+    }
+}
+
+impl Blobs for Files {
+    type Scope = Arc<Placed>;
+    type Blob = File;
+    type Error = Error;
+
+    async fn open(&self, scope: &Arc<Placed>, hash: Hash) -> Result<File, BlobError<Error>> {
+        let opened = Self::find(scope, hash).await;
+        if let Err(BlobError::Failed { source, .. }) = &opened {
+            source.said();
+        }
+        opened
     }
 }
 

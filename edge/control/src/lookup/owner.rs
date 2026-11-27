@@ -12,6 +12,7 @@ use edge_folder::Placed;
 use jiff::{SignedDuration, Timestamp};
 use model::{ContentPath, DeployId};
 use tokio::sync::mpsc;
+use trace::Field as _;
 
 use crate::lookup::cache::Recent;
 use crate::lookup::caller::{Answer, Call};
@@ -63,10 +64,18 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
 
     /// Answers lookups until every [`Fronts`] is dropped.
     pub async fn run(mut self) {
+        trace::info!(name: trace::event::SITES_SERVING, ttl_us = trace::Took(self.ttl).field());
+        let mut asked = 0_u64;
         while let Some(Call { hostname, reply }) = self.calls.recv().await {
+            asked += 1;
+            let answer = self.answer(&hostname).await;
+            if let Err(failure) = &answer {
+                trace::warn!(name: trace::event::SITES_FAILED, error = trace::Failure(failure).field());
+            }
             // a caller that went away no longer wants its answer
-            reply.send(self.answer(&hostname).await).ok();
+            reply.send(answer).ok();
         }
+        trace::info!(name: trace::event::SITES_STOPPED, asked = trace::Count(asked).field());
     }
 
     /// What `hostname` serves now.
@@ -93,6 +102,11 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
             return Ok(Some(pointer));
         }
         let serving = self.control.serving(handle).await.map_err(|error| Failure::Lookup(Chain::of(&error)))?;
+        trace::debug!(
+            name: trace::event::SITES_ASKED,
+            handle = trace::Shown(handle).field(),
+            outcome = if serving.is_some() { "serving" } else { "none" },
+        );
         let Some(serving) = serving else { return Ok(None) };
         let pointer = Pointer { site: serving.site, deploy: serving.live.deploy, at: now };
         self.pointers.borrow_mut().put(handle.clone(), pointer);
@@ -114,10 +128,17 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
             let path = ContentPath::parse(entry.blob().to_string()).map_err(|error| lookup(&error))?;
             files.insert(entry.blob(), path);
         }
+        let count = trace::Count::from(files.len());
         let placed = Arc::new(Placed::new(self.locate.folder(&tenant), files));
         let deploy = Arc::new(Deploy { manifest, ..Deploy::default() });
         let loaded = Loaded { deploy, placed };
         self.deploys.borrow_mut().put(key, loaded.clone());
+        trace::debug!(
+            name: trace::event::SITES_PLACED,
+            site = trace::Shown(pointer.site).field(),
+            deploy = trace::Shown(pointer.deploy).field(),
+            files = count.field(),
+        );
         Ok(loaded)
     }
 }

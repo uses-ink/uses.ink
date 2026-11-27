@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
 use tokio::io::AsyncReadExt as _;
+use trace::Field as _;
 
 use edge::{Deploy, Hostname, Resolved, Sites};
 use model::ContentPath;
@@ -84,6 +85,11 @@ impl Deploys {
             (Mode::Auto, false) | (Mode::Folders, _) => Mode::Folders,
             (Mode::Single, false) => return Err(Error::NotDeploy { root }),
         };
+        trace::debug!(
+            name: trace::event::FOLDER_OPENED,
+            root = trace::Located(&root).field(),
+            mode = if mode == Mode::Single { "single" } else { "folders" },
+        );
         Ok(Self { root, mode, cache: Mutex::new(BTreeMap::new()) })
     }
 
@@ -125,24 +131,30 @@ impl Deploys {
         }
     }
 
+    /// When the manifest at `path` was last changed, or `None` when there is none; a link, a
+    /// thing that is no file and a file over the limit are refused.
+    async fn stamped(path: &std::path::Path) -> Result<Option<Stamp>, Error> {
+        let meta = match tokio::fs::symlink_metadata(path).await {
+            Ok(meta) => meta,
+            Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(source) => return Err(Error::Read { path: path.to_path_buf(), source }),
+        };
+        if meta.is_symlink() {
+            return Err(Error::Linked { path: path.to_path_buf() });
+        }
+        if !meta.is_file() {
+            return Err(Error::NotFile { path: path.to_path_buf() });
+        }
+        if meta.len() > Self::MANIFEST_LIMIT {
+            return Err(Error::Large { path: path.to_path_buf(), limit: Self::MANIFEST_LIMIT });
+        }
+        Ok(Some(Stamp { modified: meta.modified().ok(), length: meta.len() }))
+    }
+
     /// The deploy in `folder`, read now or taken from the cache when its manifest is unchanged.
     async fn load(&self, folder: PathBuf) -> Result<Option<Resolved<Arc<Placed>>>, Error> {
         let path = folder.join(MANIFEST);
-        let meta = match tokio::fs::symlink_metadata(&path).await {
-            Ok(meta) => meta,
-            Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(source) => return Err(Error::Read { path, source }),
-        };
-        if meta.is_symlink() {
-            return Err(Error::Linked { path });
-        }
-        if !meta.is_file() {
-            return Err(Error::NotFile { path });
-        }
-        if meta.len() > Self::MANIFEST_LIMIT {
-            return Err(Error::Large { path, limit: Self::MANIFEST_LIMIT });
-        }
-        let stamp = Stamp { modified: meta.modified().ok(), length: meta.len() };
+        let Some(stamp) = Self::stamped(&path).await? else { return Ok(None) };
         if let Some(cached) =
             self.cache.lock().unwrap_or_else(PoisonError::into_inner).get(&folder).filter(|c| c.stamp == stamp)
         {
@@ -156,6 +168,12 @@ impl Deploys {
         if let Some(entry) = checked.manifest.entries().iter().find(|entry| !files.contains_key(&entry.blob())) {
             return Err(Error::Unplaced { route: entry.route().clone() });
         }
+        trace::debug!(
+            name: trace::event::FOLDER_LOADED,
+            folder = trace::Located(&folder).field(),
+            bytes = trace::Size::from(bytes.len()).field(),
+            files = trace::Count::from(files.len()).field(),
+        );
         let deploy = Arc::new(Deploy { manifest: checked.manifest, ..Deploy::default() });
         let placed = Arc::new(Placed { root: folder.clone(), files });
         let resolved = Resolved { deploy: Arc::clone(&deploy), scope: Arc::clone(&placed) };
@@ -171,8 +189,11 @@ impl Sites for Deploys {
     async fn resolve(&self, hostname: &Hostname) -> Result<Option<Resolved<Arc<Placed>>>, Error> {
         match self.folder(hostname) {
             Some(folder) => {
-                self.unlinked(&folder).await?;
-                self.load(folder).await
+                let loaded = async {
+                    self.unlinked(&folder).await?;
+                    self.load(folder).await
+                };
+                loaded.await.inspect_err(Error::said)
             }
             None => Ok(None),
         }

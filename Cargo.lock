@@ -5559,6 +5559,7 @@ dependencies = [
  "uses-ink-model",
  "uses-ink-queue-local",
  "uses-ink-secret-local",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -5571,6 +5572,7 @@ dependencies = [
  "tokio",
  "uses-ink-edge",
  "uses-ink-model",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -5676,6 +5678,7 @@ dependencies = [
  "uses-ink-fixture",
  "uses-ink-https",
  "uses-ink-model",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -5771,6 +5774,7 @@ dependencies = [
  "uses-ink-model",
  "uses-ink-queue",
  "uses-ink-queue-conformance",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -5807,6 +5811,7 @@ dependencies = [
  "tempfile",
  "uses-ink-secret",
  "uses-ink-secret-conformance",
+ "uses-ink-trace",
  "zeroize",
 ]
 
@@ -5908,6 +5913,7 @@ dependencies = [
  "uses-ink-https",
  "uses-ink-model",
  "uses-ink-secret",
+ "uses-ink-trace",
  "uses-ink-watch",
 ]
 

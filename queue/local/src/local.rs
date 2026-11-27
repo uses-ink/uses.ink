@@ -6,6 +6,7 @@ use db::{Db, Row, Statement};
 use model::Timestamp;
 use queue::{Delivery, Message, MessageId, Queue, Sent, Settled};
 use sea_query::{Expr, ExprTrait, OnConflict, Order, Query};
+use trace::Field as _;
 
 use crate::Error;
 use crate::schema::Message as Table;
@@ -48,6 +49,18 @@ impl<D: Db> Local<D> {
     fn settled(outcome: &db::Outcome) -> Settled {
         if outcome.changes == 1 { Settled::Done } else { Settled::Stale }
     }
+
+    /// Says how settling `delivery` went, as `how`. A stale settlement changed nothing because
+    /// the lease had ended: a `warn`, since the work it was for may run twice.
+    fn said(how: &'static str, delivery: &Delivery, settled: Settled) -> Settled {
+        let id = trace::Count(delivery.id.0).field();
+        if settled == Settled::Done {
+            trace::debug!(name: trace::event::QUEUE_SETTLED, how, id, outcome = "done");
+        } else {
+            trace::warn!(name: trace::event::QUEUE_SETTLED, how, id, outcome = "stale");
+        }
+        settled
+    }
 }
 
 impl<D: Db> Queue for Local<D> {
@@ -65,7 +78,9 @@ impl<D: Db> Queue for Local<D> {
                 .returning_col(Table::Id)
                 .to_owned();
             if let Some(row) = self.run(insert.into()).await?.rows.first() {
-                return Ok(Sent::Queued(Self::id(row)?));
+                let id = Self::id(row)?;
+                trace::debug!(name: trace::event::QUEUE_SENT, id = trace::Count(id.0).field(), outcome = "queued");
+                return Ok(Sent::Queued(id));
             }
             // not inserted, so the key is held; unless the holder was acked in between, then try again
             let held = Query::select()
@@ -74,7 +89,13 @@ impl<D: Db> Queue for Local<D> {
                 .and_where(Expr::col(Table::Dedupe).eq(key.clone()))
                 .to_owned();
             if let Some(row) = self.run(held.into()).await?.rows.first() {
-                return Ok(Sent::Duplicate(Self::id(row)?));
+                let id = Self::id(row)?;
+                trace::debug!(
+                    name: trace::event::QUEUE_SENT,
+                    id = trace::Count(id.0).field(),
+                    outcome = "duplicate",
+                );
+                return Ok(Sent::Duplicate(id));
             }
         }
     }
@@ -105,7 +126,13 @@ impl<D: Db> Queue for Local<D> {
                 body: row.get(Table::Body)?,
             })
         };
-        read(row).map(Some).map_err(|error| Self::backend(error.into()))
+        let delivery = read(row).map_err(|error| Self::backend(error.into()))?;
+        trace::debug!(
+            name: trace::event::QUEUE_RECEIVED,
+            id = trace::Count(delivery.id.0).field(),
+            attempt = trace::Count(u64::from(delivery.attempt)).field(),
+        );
+        Ok(Some(delivery))
     }
 
     async fn ack(&self, delivery: &Delivery) -> Result<Settled, Failure<D>> {
@@ -114,7 +141,7 @@ impl<D: Db> Queue for Local<D> {
             .and_where(Expr::col(Table::Id).eq(delivery.id.0.cast_signed()))
             .and_where(Expr::col(Table::Attempt).eq(delivery.attempt))
             .to_owned();
-        Ok(Self::settled(&self.run(delete.into()).await?))
+        Ok(Self::said("ack", delivery, Self::settled(&self.run(delete.into()).await?)))
     }
 
     async fn release(&self, delivery: &Delivery, now: Timestamp, delay: Duration) -> Result<Settled, Failure<D>> {
@@ -125,6 +152,6 @@ impl<D: Db> Queue for Local<D> {
             .and_where(Expr::col(Table::Id).eq(delivery.id.0.cast_signed()))
             .and_where(Expr::col(Table::Attempt).eq(delivery.attempt))
             .to_owned();
-        Ok(Self::settled(&self.run(release.into()).await?))
+        Ok(Self::said("release", delivery, Self::settled(&self.run(release.into()).await?)))
     }
 }

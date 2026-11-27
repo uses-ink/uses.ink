@@ -15,6 +15,7 @@ https.workspace = true
 model.workspace = true
 secret.workspace = true
 tokio.workspace = true
+trace.workspace = true
 watch.workspace = true
 
 [dev-dependencies]
