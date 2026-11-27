@@ -42,9 +42,10 @@ impl Chunks for Reading {
             .read(&mut buffer)
             .map_err(|source| blob::Error::Backend { source: Error::Read { path: self.path.clone(), source } })?;
         if read == 0 {
-            self.done = true;
+            // `done` is set only on a match: a blob that fails is refused again by every call
             let found = Hash::from(self.hasher.finalize());
             return if found == self.expected {
+                self.done = true;
                 Ok(None)
             } else {
                 Err(blob::Error::Corrupt { expected: self.expected, found })
@@ -53,5 +54,25 @@ impl Chunks for Reading {
         buffer.truncate(read);
         self.hasher.update(&buffer);
         Ok(Some(buffer))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use blob::Chunks;
+    use blob_conformance::pollster::block_on;
+
+    use super::*;
+
+    #[test]
+    fn a_corrupt_blob_is_refused_by_every_call_after_its_bytes() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("blob");
+        std::fs::write(&path, b"not what its name says").unwrap();
+        let mut reading = Reading::new(File::open(&path).unwrap(), path, Hash::of(b"what it was named"));
+        assert!(block_on(reading.chunk()).unwrap().is_some());
+        for _ in 0..3 {
+            assert!(matches!(block_on(reading.chunk()), Err(blob::Error::Corrupt { .. })));
+        }
     }
 }
