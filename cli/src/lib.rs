@@ -26,6 +26,7 @@ mod output;
 mod pin;
 mod pins;
 mod preview;
+mod product;
 mod report;
 mod select;
 mod serve;

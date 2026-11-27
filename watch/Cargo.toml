@@ -1,0 +1,29 @@
+[package]
+name = "uses-ink-watch"
+description = "The polling watch: asks where a git source is now, and queues a build when it moved, on an interval that backs off"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+build.workspace = true
+clock.workspace = true
+control.workspace = true
+jiff.workspace = true
+model.workspace = true
+queue.workspace = true
+
+[dev-dependencies]
+blob-dir.workspace = true
+db-sqlite.workspace = true
+pollster.workspace = true
+queue-local.workspace = true
+secret-local.workspace = true
+tempfile.workspace = true
+db.workspace = true
+
+[lints]
+workspace = true

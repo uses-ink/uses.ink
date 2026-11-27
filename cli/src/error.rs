@@ -183,6 +183,11 @@ pub enum Error {
         /// Why.
         source: edge_axum::Error,
     },
+    /// The control plane `ink serve --data` runs could not be set up.
+    Product {
+        /// Why.
+        source: crate::product::Unready,
+    },
     /// A result could not be written as JSON.
     Json {
         /// Why it could not.
@@ -235,6 +240,7 @@ impl Error {
             Self::Listen { .. } => "serve.address.unusable",
             Self::Edge { .. } => "serve.edge.invalid",
             Self::Server { .. } => "serve.server.invalid",
+            Self::Product { .. } => "serve.data.unusable",
             Self::Terminal { .. } => "cli.terminal.unwritable",
             Self::Component { .. } => "component.file.unreadable",
             Self::Unbundled { .. } => "component.bundled.missing",
@@ -290,6 +296,7 @@ impl fmt::Display for Error {
             Self::Listen { address, .. } => write!(out, "`ink serve` could not listen on {address}"),
             Self::Edge { .. } => write!(out, "the edge could not be built"),
             Self::Server { .. } => write!(out, "the server could not be started"),
+            Self::Product { .. } => write!(out, "the control plane could not be set up"),
             Self::Terminal { .. } => write!(out, "the terminal could not be written to"),
             Self::Component { path, .. } => write!(out, "the component {} could not be read", path.display()),
             Self::Unbundled { id } => write!(
@@ -323,6 +330,7 @@ impl std::error::Error for Error {
             Self::Deploys { source } => Some(source),
             Self::Edge { source } => Some(source),
             Self::Server { source } => Some(source),
+            Self::Product { source } => Some(source),
             Self::Placed { source, .. } => Some(source),
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),

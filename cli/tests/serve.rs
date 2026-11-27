@@ -2,7 +2,7 @@
 //! headers, conditional and range requests, the site's 404, hostile paths refused, a folder of
 //! deploys by host.
 
-#![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
+#![allow(clippy::unwrap_used, clippy::too_many_lines, reason = "tests stop at the first surprise")]
 
 extern crate uses_ink_cli as cli;
 
@@ -236,4 +236,89 @@ fn a_folder_that_is_no_deploy_is_refused() {
     let (exit, _, err) = ink(&["serve", missing.to_str().unwrap(), "--addr", "127.0.0.1:0"]);
     assert_eq!(exit, cli::Exit::Usage, "a folder that does not exist serves nothing, said aloud: {err}");
     assert!(err.contains("is not a deploy `ink serve` can serve"), "{err}");
+}
+
+/// Every file under `root`, as a tar archive of paths relative to it.
+fn archive(root: &Path) -> Vec<u8> {
+    fn walk(dir: &Path, root: &Path, writer: &mut edge_api::tar::Writer) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                walk(&path, root, writer);
+            } else {
+                let name = path.strip_prefix(root).unwrap().to_str().unwrap();
+                writer.file(name, &std::fs::read(&path).unwrap()).unwrap();
+            }
+        }
+    }
+    let mut writer = edge_api::tar::Writer::new(1 << 30);
+    walk(root, root, &mut writer);
+    writer.finish()
+}
+
+impl Site {
+    /// An API call with a bearer token and a body, as raw bytes on the wire.
+    fn call(&self, (method, target): (&str, &str), token: &str, body: &[u8]) -> Got {
+        let mut stream = TcpStream::connect(("127.0.0.1", self.0)).unwrap();
+        let head = format!(
+            "{method} {target} HTTP/1.1\r\nHost: api.localhost:8080\r\nConnection: close\r\nAuthorization: Bearer {token}\r\nContent-Length: {}\r\n\r\n",
+            body.len()
+        );
+        stream.write_all(head.as_bytes()).unwrap();
+        stream.write_all(body).unwrap();
+        let mut bytes = Vec::new();
+        stream.read_to_end(&mut bytes).unwrap();
+        Got { text: String::from_utf8_lossy(&bytes).into_owned() }
+    }
+}
+
+#[test]
+fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
+    let root = scratch("api");
+    let out = build(&root);
+    let data = root.join("data");
+    let cli = cli::Cli::try_parse_from([
+        "ink",
+        "serve",
+        out.to_str().unwrap(),
+        "--data",
+        data.to_str().unwrap(),
+        "--addr",
+        "127.0.0.1:0",
+    ])
+    .unwrap();
+    let (sender, received) = std::sync::mpsc::channel();
+    let handle = std::thread::spawn(move || {
+        let mut err = Vec::new();
+        let exit = cli.run(&mut Sent(sender), &mut err);
+        (exit, String::from_utf8(err).unwrap())
+    });
+    let mut printed = String::new();
+    while !printed.ends_with('\n') {
+        let part = received.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
+        printed.push_str(std::str::from_utf8(&part).unwrap());
+    }
+    let site = Site(printed.trim().strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap());
+    let file = data.join("owner-token");
+    for _ in 0..100 {
+        if file.exists() && std::fs::metadata(&file).unwrap().len() > 0 {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(!handle.is_finished(), "ink serve ended before the API was used");
+    let token = std::fs::read_to_string(&file).unwrap();
+    let denied = site.call(("GET", "/v1/sites"), "wrong", b"");
+    assert_eq!(denied.status(), "401", "{}", denied.text);
+    assert_eq!(denied.header("www-authenticate"), Some("Bearer"));
+    let added = site.call(("POST", "/v1/sites"), &token, br#"{"handle":"diary","source":{"kind":"upload"}}"#);
+    assert_eq!(added.status(), "201", "{}", added.text);
+    let id = added.body().split("\"id\":\"").nth(1).unwrap().split('"').next().unwrap().to_owned();
+    let put = site.call(("PUT", &format!("/v1/sites/{id}/deploy")), &token, &archive(&out));
+    assert_eq!(put.status(), "201", "{}", put.text);
+    assert!(put.body().contains("\"published\":\"live\""), "{}", put.text);
+    let exported = site.call(("GET", &format!("/v1/sites/{id}/export")), &token, b"");
+    assert_eq!((exported.status(), exported.header("content-type")), ("200", Some("application/x-tar")));
+    // the folder is still served on every other host
+    assert_eq!(site.get("/tea", &[]).status(), "200");
 }

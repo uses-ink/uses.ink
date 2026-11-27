@@ -80,6 +80,9 @@ uses.ink/
   queue/  queue/cf/  queue/local/                build request port
   build/  build/container/  build/local/         builder port: start a build, stream its events
   secret/                uses-ink-secret        sealing credentials at rest
+  edge/api/              uses-ink-edge-api      the API and intake over the control plane (0052)
+  clock/                 uses-ink-clock         time and randomness as ports
+  watch/                 uses-ink-watch         the polling watch and the in-process worker
   edge/                  uses-ink-edge          serve, api, intake, independent of the HTTP runtime; the serving half is
                                                 built (0051): Sites and Blobs ports, Request to Reply, Limits, refusals
   edge/worker/           uses-ink-edge-worker   workers-rs entry point, bindings

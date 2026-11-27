@@ -20,6 +20,11 @@ impl<P: Ports> Control<P> {
         Self { ports, origin }
     }
 
+    /// Where sites are served: what makes a site's address from its handle.
+    pub const fn origin(&self) -> &Origin {
+        &self.origin
+    }
+
     /// The ports.
     pub const fn ports(&self) -> &P {
         &self.ports

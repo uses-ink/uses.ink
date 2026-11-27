@@ -17,3 +17,4 @@ mod written;
 pub use blobs::{Chunked, File, Files};
 pub use deploys::{Deploys, Mode, Placed};
 pub use error::Error;
+pub use written::{Checked, MANIFEST, Written};

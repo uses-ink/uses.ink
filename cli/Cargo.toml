@@ -15,6 +15,12 @@ path = "src/main.rs"
 [dependencies]
 annotate-snippets.workspace = true
 axum.workspace = true
+blob-dir.workspace = true
+clock.workspace = true
+control.workspace = true
+db.workspace = true
+db-sqlite.workspace = true
+edge-api.workspace = true
 clap.workspace = true
 config.workspace = true
 diag.workspace = true
@@ -28,11 +34,15 @@ host-image.workspace = true
 host-native.workspace = true
 host-wasmtime.workspace = true
 jiff.workspace = true
+queue-local.workspace = true
+secret-local.workspace = true
 model.workspace = true
+pollster.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 theme-quiet.workspace = true
 tokio.workspace = true
+watch.workspace = true
 
 [build-dependencies]
 blake3.workspace = true

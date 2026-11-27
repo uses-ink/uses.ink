@@ -218,4 +218,35 @@ pub struct Serve {
     /// How a request's host picks a deploy.
     #[arg(long, value_enum, default_value_t)]
     pub host_mode: HostMode,
+    /// Turns on the control plane and its API. Its database, blobs, sealing key and owner token
+    /// live in this folder. Without it only the folder is served.
+    #[arg(long)]
+    pub data: Option<PathBuf>,
+    /// The host name whose requests are API calls (`Authorization: Bearer <owner token>`).
+    #[arg(long, default_value = "api.localhost")]
+    pub api_host: String,
+    /// Where sites are served, for the addresses the API reports: `<handle>.<host>`.
+    #[arg(long, default_value = "http://localhost:8080")]
+    pub origin: String,
+    /// The largest JSON request body, in bytes. [default: 65536]
+    #[arg(long)]
+    pub api_body: Option<u64>,
+    /// The largest uploaded archive, in bytes. [default: 268435456]
+    #[arg(long)]
+    pub upload_bytes: Option<u64>,
+    /// The most files in an uploaded archive. [default: 10000]
+    #[arg(long)]
+    pub upload_files: Option<u64>,
+    /// The largest file in an uploaded archive, in bytes. [default: 67108864]
+    #[arg(long)]
+    pub upload_file: Option<u64>,
+    /// The largest exported archive, in bytes. [default: 268435456]
+    #[arg(long)]
+    pub export_bytes: Option<u64>,
+    /// Seconds between polls of a git source. At least 10. [default: 600]
+    #[arg(long)]
+    pub poll_interval: Option<u64>,
+    /// Seconds a source that does not change is backed off to. [default: 3600]
+    #[arg(long)]
+    pub poll_max: Option<u64>,
 }

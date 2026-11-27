@@ -1,0 +1,20 @@
+[package]
+name = "uses-ink-clock"
+description = "The two things a use case may not read for itself: what time it is and random bytes, as ports, with a system adapter and deterministic ones for tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+jiff.workspace = true
+rand_core.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+pollster.workspace = true
+
+[lints]
+workspace = true

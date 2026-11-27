@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local"]
+members = ["cli", "clock", "edge/api", "watch", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -19,6 +19,7 @@ blob-dir = { package = "uses-ink-blob-dir", path = "blob/dir" }
 build = { package = "uses-ink-build", path = "build" }
 build-conformance = { package = "uses-ink-build-conformance", path = "build/conformance" }
 build-local = { package = "uses-ink-build-local", path = "build/local" }
+clock = { package = "uses-ink-clock", path = "clock" }
 config = { package = "uses-ink-config", path = "config" }
 control = { package = "uses-ink-control", path = "control" }
 # test-only: a dev-dependency of any crate, a normal dependency of none
@@ -28,6 +29,7 @@ db-conformance = { package = "uses-ink-db-conformance", path = "db/conformance" 
 db-sqlite = { package = "uses-ink-db-sqlite", path = "db/sqlite" }
 diag = { package = "uses-ink-diag", path = "diag" }
 edge = { package = "uses-ink-edge", path = "edge" }
+edge-api = { package = "uses-ink-edge-api", path = "edge/api" }
 edge-axum = { package = "uses-ink-edge-axum", path = "edge/axum" }
 edge-folder = { package = "uses-ink-edge-folder", path = "edge/folder" }
 engine = { package = "uses-ink-engine", path = "engine" }
@@ -48,6 +50,7 @@ sdk = { package = "uses-ink-sdk", path = "plugin/sdk" }
 source-git = { package = "uses-ink-source-git", path = "plugin/source/git" }
 theme-quiet = { package = "uses-ink-theme-quiet", path = "plugin/theme/quiet" }
 token = { package = "uses-ink-token", path = "token" }
+watch = { package = "uses-ink-watch", path = "watch" }
 annotate-snippets = "0.12.18"
 # tree-sitter grammars, only the languages enabled here (decision 0039)
 arborium = { version = "2.18.2", features = [
@@ -63,7 +66,7 @@ bytes = "1.12.2"
 # for sealed credentials, zeroing for plaintext, a minimal executor for the conformance suites
 chacha20poly1305 = "0.10.1"
 # the 0.6 line chacha20poly1305 uses; `std` makes its `Error` a `std::error::Error`
-rand_core = { version = "0.6.4", features = ["std"] }
+rand_core = { version = "0.6.4", features = ["getrandom", "std"] }
 clap = { version = "4.6.9", features = ["derive"] }
 # benchmarks only: a dev-dependency of any crate, a normal dependency of none
 divan = "0.1.21"

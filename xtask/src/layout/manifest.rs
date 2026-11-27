@@ -65,9 +65,43 @@ impl Order {
         // Serving a deploy (decision 0051): the edge speaks the model alone; its adapters add the
         // runtime (axum) or a folder of deploys, never each other.
         ("uses-ink-edge", &["uses-ink-model"]),
-        ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge"]),
+        ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge", "uses-ink-edge-api"]),
         ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge"]),
         ("uses-ink-token", &[]),
+        // The API and the polling watch (decision 0052) read time and randomness through the
+        // clock's ports and know the control plane; the adapters they run on are dev-only here.
+        ("uses-ink-clock", &[]),
+        (
+            "uses-ink-edge-api",
+            &[
+                "uses-ink-blob",
+                "uses-ink-blob-dir",
+                "uses-ink-build",
+                "uses-ink-clock",
+                "uses-ink-control",
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-edge-folder",
+                "uses-ink-model",
+                "uses-ink-queue-local",
+                "uses-ink-secret-local",
+            ],
+        ),
+        (
+            "uses-ink-watch",
+            &[
+                "uses-ink-blob-dir",
+                "uses-ink-build",
+                "uses-ink-clock",
+                "uses-ink-control",
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-model",
+                "uses-ink-queue",
+                "uses-ink-queue-local",
+                "uses-ink-secret-local",
+            ],
+        ),
         // A format's native core speaks the model; its guest crate speaks the WIT (0041).
         ("uses-ink-format-markdown", &["uses-ink-model"]),
         // A dialect of markdown reads through the markdown format's comrak setup.
@@ -86,6 +120,15 @@ impl Order {
                 "uses-ink-edge",
                 "uses-ink-edge-axum",
                 "uses-ink-edge-folder",
+                "uses-ink-edge-api",
+                "uses-ink-clock",
+                "uses-ink-control",
+                "uses-ink-watch",
+                "uses-ink-blob-dir",
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-queue-local",
+                "uses-ink-secret-local",
                 "uses-ink-host-image",
                 "uses-ink-host-native",
                 "uses-ink-format-markdown",

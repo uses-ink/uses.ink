@@ -12,6 +12,7 @@ publish.workspace = true
 axum.workspace = true
 bytes.workspace = true
 edge.workspace = true
+edge-api.workspace = true
 futures-util.workspace = true
 hyper.workspace = true
 hyper-util.workspace = true

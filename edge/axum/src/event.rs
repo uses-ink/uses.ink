@@ -77,6 +77,20 @@ pub struct Answered {
     pub fault: Option<Box<dyn Error + Send + Sync>>,
 }
 
+/// One API call answered. It holds the path (site ids, never a token), the status and how long
+/// it took; the token and the body are never in an event.
+#[derive(Debug)]
+pub struct Called {
+    /// The method, as sent.
+    pub method: String,
+    /// The path, cut at 200 bytes.
+    pub path: String,
+    /// The status sent.
+    pub status: u16,
+    /// Time from the request to its reply.
+    pub took: Duration,
+}
+
 /// A response that stopped partway: its reader stopped taking it or it ran past its time.
 #[derive(Debug)]
 pub struct Cut {
@@ -112,6 +126,8 @@ pub enum Event {
     },
     /// A request answered.
     Answered(Answered),
+    /// An API call answered.
+    Called(Called),
     /// A response cut short.
     Cut(Cut),
     /// A connection or an accept failed; the server goes on.
@@ -144,6 +160,9 @@ impl fmt::Display for Event {
         match self {
             Self::Listening { address } => write!(out, "listening on {address}"),
             Self::Answered(answered) => write!(out, "{answered}"),
+            Self::Called(Called { method, path, status, took }) => {
+                write!(out, "api {method} {path:?} {status} {took:?}")
+            }
             Self::Cut(Cut { stage, limit, sent }) => {
                 write!(out, "response cut after {sent} bytes: {stage} took more than {limit:?}")
             }

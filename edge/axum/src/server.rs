@@ -19,8 +19,9 @@ use tokio::sync::Semaphore;
 use tokio::time::Instant;
 
 use crate::body::Pump;
+use crate::bridge::Mount;
 use crate::error::Error;
-use crate::event::{Answered, Event, Kind, Observe, Stopped};
+use crate::event::{Answered, Called, Event, Kind, Observe, Stopped};
 use crate::respond::{Code, Fields};
 
 /// What the smallest head hyper reads is.
@@ -42,6 +43,7 @@ struct Inner<S: Sites, B: Blobs<Scope = S::Scope>, O> {
     observe: Arc<O>,
     gate: Arc<Semaphore>,
     scheme: Scheme,
+    api: Option<Mount>,
 }
 
 impl<S, B, O> Server<S, B, O>
@@ -61,7 +63,17 @@ where
         }
         let edge = edge.with_probe("/healthz".parse().map_err(Error::Probe)?);
         let gate = Arc::new(Semaphore::new(edge.limits().connections));
-        Ok(Self { inner: Arc::new(Inner { edge, observe: Arc::new(observe), gate, scheme }) })
+        Ok(Self { inner: Arc::new(Inner { edge, observe: Arc::new(observe), gate, scheme, api: None }) })
+    }
+
+    /// Serves the API at `mount`: a request whose `Host` is the mount's host is an API call and
+    /// never reaches the edge, so no author's route is shadowed.
+    #[must_use]
+    pub fn with_api(mut self, mount: Mount) -> Self {
+        if let Some(inner) = Arc::get_mut(&mut self.inner) {
+            inner.api = Some(mount);
+        }
+        self
     }
 
     /// The axum router: the edge is its one route.
@@ -138,6 +150,9 @@ where
 {
     /// One request: within the concurrency limit, within the lookup budget, answered by the edge.
     async fn answer(State(inner): State<Arc<Self>>, request: Request) -> Response<Body> {
+        if let Some(mount) = inner.api.as_ref().filter(|mount| Self::names(mount, &request)) {
+            return inner.call(mount, request).await;
+        }
         let seen = Seen {
             method: request.method().as_str().to_owned(),
             target: request.uri().to_string(),
@@ -155,6 +170,27 @@ where
             },
         };
         inner.send(reply, &seen, permit)
+    }
+
+    /// Whether the request's `Host` is the API's: the name before any port, in lower case.
+    fn names(mount: &Mount, request: &Request) -> bool {
+        let host = request.headers().get("host").and_then(|value| value.to_str().ok()).unwrap_or_default();
+        let name = host
+            .rsplit_once(':')
+            .filter(|(_, port)| port.bytes().all(|b| b.is_ascii_digit()))
+            .map_or(host, |(name, _)| name);
+        name.eq_ignore_ascii_case(&mount.host)
+    }
+
+    /// One API call, and the event that says it was made.
+    async fn call(&self, mount: &Mount, request: Request) -> Response<Body> {
+        let started = Instant::now();
+        let method = request.method().as_str().to_owned();
+        let path: String = request.uri().path().chars().take(200).collect();
+        let response = mount.bridge.call(request).await;
+        let status = response.status().as_u16();
+        self.observe.event(&Event::Called(Called { method, path, status, took: started.elapsed() }));
+        response
     }
 
     /// The body of a response: a blob streamed under the idle and send budgets, or its text.

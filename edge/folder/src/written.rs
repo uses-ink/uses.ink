@@ -12,13 +12,15 @@ use serde::Deserialize;
 use crate::error::Error;
 
 /// The file's name in a build's output folder.
-pub(crate) const MANIFEST: &str = ".ink-manifest.json";
+pub const MANIFEST: &str = ".ink-manifest.json";
 
 /// The schema this reads.
 const SCHEMA: &str = "uses.manifest/v3";
 
+/// The file as `ink build` wrote it, parsed and not yet checked: [`Written::check`] says whether
+/// it is a deploy.
 #[derive(Debug, Deserialize)]
-pub(crate) struct Written {
+pub struct Written {
     schema: String,
     deploy: DeployId,
     files: Vec<Listed>,
@@ -53,14 +55,17 @@ struct Line {
 
 /// A manifest checked: its schema, its id, its files, its routes.
 #[derive(Debug)]
-pub(crate) struct Checked {
-    pub(crate) manifest: Manifest,
-    pub(crate) files: Vec<(model::Hash, model::ContentPath)>,
+#[non_exhaustive]
+pub struct Checked {
+    /// The routes, each with its blob, media type and headers.
+    pub manifest: Manifest,
+    /// Every file the build wrote: the hash of its bytes and where it sits.
+    pub files: Vec<(model::Hash, model::ContentPath)>,
 }
 
 impl Written {
     /// Checks everything the file says about itself; `path` is where it was read, for errors.
-    pub(crate) fn check(self, path: &Path) -> Result<Checked, Error> {
+    pub fn check(self, path: &Path) -> Result<Checked, Error> {
         if self.schema != SCHEMA {
             return Err(Error::Schema { path: path.to_path_buf(), found: self.schema });
         }

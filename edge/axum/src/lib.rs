@@ -11,11 +11,13 @@
 //! needs no signal and the CLI passes Ctrl-C.
 
 mod body;
+mod bridge;
 mod error;
 mod event;
 mod respond;
 mod server;
 
+pub use bridge::{Bridge, Local, Mount};
 pub use error::Error;
-pub use event::{Answered, Cut, Event, Kind, Observe, Stopped, Tracing};
+pub use event::{Answered, Called, Cut, Event, Kind, Observe, Stopped, Tracing};
 pub use server::Server;

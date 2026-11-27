@@ -495,3 +495,16 @@ streaming, graceful stop, `Observe` of typed `Event`s) and `edge/folder` (`Deplo
 an edit; the hostile-request table (`edge/tests/hostile.rs`) and the in-memory stand-ins
 (`edge/tests/support`) are what each one is held to.
 
+## 11. The API, intake and the watch
+
+`edge/api`'s `Api<P, C, K, D>` is `Control<P>` plus `Credentials`, `clock::Clock` and `clock::Draw`.
+`Api::respond(&Request) -> Reply` never fails: `Call::parse(method, path)` makes one typed call,
+the use case is a method that returns `Result<Reply, Fault<P>>`, and `Fault::reply` turns a failure
+into a status and a `Problem`. Request bodies are `body::*` types (`Parsed<T>` reads a string by
+its `FromStr`), replies are `view::*` types. Tar is read by `tar::Tree::read` under
+`tar::Limits` and written by `tar::Writer`. The control plane's futures are not `Send`, so
+`edge_axum::Bridge::new(api, limits)` gives a `Send` half for the server and a `Local` half that
+runs on the caller's task. `watch::Watch::step` polls what is due and `run` loops with
+`Clock::sleep`; a test uses `clock::Manual` (a sleep moves the time and is recorded, and stops the
+loop after N rounds) and `clock::Counter` (ids count up).
+

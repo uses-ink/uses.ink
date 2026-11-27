@@ -4365,13 +4365,20 @@ dependencies = [
  "gix",
  "insta",
  "jiff",
+ "pollster",
  "proptest",
  "serde",
  "serde_json",
  "tokio",
+ "uses-ink-blob-dir",
+ "uses-ink-clock",
  "uses-ink-config",
+ "uses-ink-control",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
  "uses-ink-diag",
  "uses-ink-edge",
+ "uses-ink-edge-api",
  "uses-ink-edge-axum",
  "uses-ink-edge-folder",
  "uses-ink-engine",
@@ -4382,7 +4389,20 @@ dependencies = [
  "uses-ink-host-native",
  "uses-ink-host-wasmtime",
  "uses-ink-model",
+ "uses-ink-queue-local",
+ "uses-ink-secret-local",
  "uses-ink-theme-quiet",
+ "uses-ink-watch",
+]
+
+[[package]]
+name = "uses-ink-clock"
+version = "0.0.0"
+dependencies = [
+ "jiff",
+ "pollster",
+ "rand_core 0.6.4",
+ "tokio",
 ]
 
 [[package]]
@@ -4462,6 +4482,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-edge-api"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "jiff",
+ "pollster",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "uses-ink-blob",
+ "uses-ink-blob-dir",
+ "uses-ink-build",
+ "uses-ink-clock",
+ "uses-ink-control",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
+ "uses-ink-edge-folder",
+ "uses-ink-model",
+ "uses-ink-queue-local",
+ "uses-ink-secret-local",
+]
+
+[[package]]
 name = "uses-ink-edge-axum"
 version = "0.0.0"
 dependencies = [
@@ -4473,6 +4516,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uses-ink-edge",
+ "uses-ink-edge-api",
  "uses-ink-model",
 ]
 
@@ -4736,6 +4780,25 @@ dependencies = [
 [[package]]
 name = "uses-ink-token"
 version = "0.0.0"
+
+[[package]]
+name = "uses-ink-watch"
+version = "0.0.0"
+dependencies = [
+ "jiff",
+ "pollster",
+ "tempfile",
+ "uses-ink-blob-dir",
+ "uses-ink-build",
+ "uses-ink-clock",
+ "uses-ink-control",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
+ "uses-ink-model",
+ "uses-ink-queue",
+ "uses-ink-queue-local",
+ "uses-ink-secret-local",
+]
 
 [[package]]
 name = "utf8parse"
