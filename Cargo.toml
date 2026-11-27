@@ -129,7 +129,6 @@ tracing = { version = "0.1.44", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["registry", "std"] }
 toml_edit = "0.25.21"
 unspliced = "0.1.3"
-web = { package = "uses-ink-web", path = "web" }
 # plugins as components (decision 0035): the host, the guests' bindings, and wrapping a guest's
 # core module into a component
 wasmtime = { version = "51.0.0", default-features = false, features = [
