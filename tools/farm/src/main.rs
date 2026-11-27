@@ -222,6 +222,22 @@ mod tests {
     }
 
     #[test]
+    fn a_job_that_never_stops_printing_is_still_let_go_at_the_timeout() {
+        let rig = Rig::new("chatty");
+        let farm = rig.farm(1, Flags::default());
+        let snap = farm.fleet_probe().remove(0);
+        let latch = rig.root.join("latch");
+        let script = format!("while [ ! -f {} ]; do echo x; done", latch.display());
+        let started = std::time::Instant::now();
+        let finished =
+            farm.run_for_test(&job("chatty", &script), &snap, job::Attach::Hold(Duration::from_millis(50))).unwrap();
+        std::fs::write(&latch, "").unwrap();
+        assert_eq!(finished.verdict, Verdict::Running);
+        assert!(started.elapsed() < Duration::from_millis(900), "{:?}", started.elapsed());
+        rig.member().wait(&finished.id, cli::Seconds(20)).unwrap();
+    }
+
+    #[test]
     fn a_detached_job_outlives_the_client_and_wait_returns_its_result() {
         let rig = Rig::new("detach");
         let latch = rig.root.join("latch");

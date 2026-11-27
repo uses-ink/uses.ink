@@ -47,6 +47,10 @@ pub(crate) enum Failure {
     Stdin(std::io::Error),
     /// Waiting for it, or reading its output, failed.
     Wait(std::io::Error),
+    /// It could not be stopped.
+    Kill(std::io::Error),
+    /// A thread reading its output panicked.
+    Panicked { thread: &'static str },
     /// It exited without success.
     Exit { status: ExitStatus, stderr: Vec<u8> },
     /// Its output is not UTF-8.
@@ -59,6 +63,8 @@ impl fmt::Display for Failure {
             Self::Spawn(_) => write!(out, "it could not be started"),
             Self::Stdin(_) => write!(out, "its input could not be written"),
             Self::Wait(_) => write!(out, "its output could not be read"),
+            Self::Kill(_) => write!(out, "it could not be stopped"),
+            Self::Panicked { thread } => write!(out, "the thread reading its {thread} panicked"),
             Self::Exit { status, stderr } => {
                 write!(out, "it ended with {status}")?;
                 match String::from_utf8_lossy(stderr).trim_end() {
@@ -74,8 +80,8 @@ impl fmt::Display for Failure {
 impl std::error::Error for Failure {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Spawn(source) | Self::Stdin(source) | Self::Wait(source) => Some(source),
-            Self::Exit { .. } => None,
+            Self::Spawn(source) | Self::Stdin(source) | Self::Wait(source) | Self::Kill(source) => Some(source),
+            Self::Exit { .. } | Self::Panicked { .. } => None,
             Self::Utf8(source) => Some(source),
         }
     }

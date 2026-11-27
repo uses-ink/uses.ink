@@ -5,7 +5,7 @@
 
 use std::io::{BufRead as _, BufReader, Read as _, Write as _};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
+use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
@@ -126,6 +126,8 @@ struct Follow<'a> {
     child: &'a mut Child,
     deadline: Option<Instant>,
     detaching: Option<Instant>,
+    /// The first thing that went wrong while following; it ends the call once the child is reaped.
+    fault: Option<Failure>,
 }
 
 impl<'a> Follow<'a> {
@@ -134,7 +136,7 @@ impl<'a> Follow<'a> {
             Feed::Open(until) => Some(Instant::now() + until),
             Feed::Nothing | Feed::Text(_) => None,
         };
-        Self { child, deadline, detaching: None }
+        Self { child, deadline, detaching: None, fault: None }
     }
 
     fn run(mut self, lines: &mut impl FnMut(&str)) -> Result<Done, Failure> {
@@ -142,53 +144,91 @@ impl<'a> Follow<'a> {
         let errors = Self::errors(self.child.stderr.take());
         let mut writer = self.child.stdin.take();
         loop {
-            let wait = self.next_wait();
-            match receiver.recv_timeout(wait) {
-                Ok(line) => {
-                    lines(&line);
-                }
+            match receiver.recv_timeout(self.next_wait()) {
+                Ok(line) => lines(&line),
                 Err(RecvTimeoutError::Disconnected) => break,
-                Err(RecvTimeoutError::Timeout) => {
-                    if let Some(mut input) = writer.take() {
-                        // the job outlives us from here: the host side sees `detach`, then the end of input
-                        input.write_all(b"detach\n").ok();
-                        self.detaching = Some(Instant::now() + GRACE);
-                    } else if self.detaching.is_some() {
-                        self.child.kill().ok();
-                    }
+                Err(RecvTimeoutError::Timeout) => {}
+            }
+            // checked after every line too: a job that never goes quiet still has its time
+            if self.due() {
+                if let Err(failure) = self.expire(&mut writer) {
+                    self.fail(failure);
                 }
             }
         }
-        reading.join().ok();
-        let status = self.child.wait().map_err(Failure::Wait)?;
-        let stderr = errors.join().unwrap_or_default();
-        Ok(Done { status, stderr })
+        let read = reading.join().map_err(|_| Failure::Panicked { thread: "output" });
+        let status = self.child.wait().map_err(Failure::Wait);
+        let stderr = errors.join().map_err(|_| Failure::Panicked { thread: "errors" });
+        if let Some(failure) = self.fault.take() {
+            return Err(failure);
+        }
+        read?.map_err(Failure::Wait)?;
+        Ok(Done { status: status?, stderr: stderr?.map_err(Failure::Wait)? })
+    }
+
+    /// Whether the time of the next step has come.
+    fn due(&self) -> bool {
+        self.detaching.or(self.deadline).is_some_and(|at| Instant::now() >= at)
+    }
+
+    /// The next step: say `detach` and close the input, or, when the grace is over, kill.
+    fn expire(&mut self, writer: &mut Option<ChildStdin>) -> Result<(), Failure> {
+        if let Some(mut input) = writer.take() {
+            // the job outlives us from here: the host side sees `detach`, then the end of input
+            if let Err(source) = input.write_all(b"detach\n") {
+                // a child that has already ended has no one to tell
+                if self.child.try_wait().map_err(Failure::Wait)?.is_none() {
+                    return Err(Failure::Stdin(source));
+                }
+            }
+            self.detaching = Some(Instant::now() + GRACE);
+        } else if self.detaching.is_some() {
+            self.stop();
+            self.child.kill().map_err(Failure::Kill)?;
+        }
+        Ok(())
+    }
+
+    /// Ends the call with `failure`, unless one came first: the child is killed.
+    fn fail(&mut self, failure: Failure) {
+        self.stop();
+        let killed = self.child.kill().map_err(Failure::Kill);
+        self.fault.get_or_insert(failure);
+        if let Err(failure) = killed {
+            self.fault.get_or_insert(failure);
+        }
+    }
+
+    /// No more steps are due.
+    fn stop(&mut self) {
+        self.deadline = None;
+        self.detaching = None;
     }
 
     /// A thread that reads `stdout` line by line into the channel.
-    fn lines(stdout: Option<ChildStdout>) -> (mpsc::Receiver<String>, thread::JoinHandle<()>) {
+    fn lines(stdout: Option<ChildStdout>) -> (mpsc::Receiver<String>, thread::JoinHandle<std::io::Result<()>>) {
         let (sender, receiver) = mpsc::channel();
         let reading = thread::spawn(move || {
             let mut reader = BufReader::new(Self::source(stdout));
             let mut raw = Vec::new();
-            while matches!(reader.read_until(b'\n', &mut raw), Ok(n) if n > 0) {
+            while reader.read_until(b'\n', &mut raw)? > 0 {
                 let line = String::from_utf8_lossy(&raw).trim_end_matches(['\n', '\r']).to_owned();
                 raw.clear();
                 if sender.send(line).is_err() {
                     break;
                 }
             }
+            Ok(())
         });
         (receiver, reading)
     }
 
     /// A thread that collects what `stderr` says, the first megabyte of it.
-    fn errors(stderr: Option<ChildStderr>) -> thread::JoinHandle<String> {
+    fn errors(stderr: Option<ChildStderr>) -> thread::JoinHandle<std::io::Result<String>> {
         thread::spawn(move || {
-            let mut text = String::new();
-            // a stderr that cannot be read leaves the text short; the exit status still says how it went
-            Self::source(stderr).take(1 << 20).read_to_string(&mut text).ok();
-            text
+            let mut bytes = Vec::new();
+            Self::source(stderr).take(1 << 20).read_to_end(&mut bytes)?;
+            Ok(String::from_utf8_lossy(&bytes).into_owned())
         })
     }
 
@@ -487,5 +527,25 @@ mod tests {
         let argv = ssh().fetch(&pull);
         assert!(argv.contains(&"--files-from=-".to_owned()));
         assert!(!argv.iter().any(|word| word.contains("a.snap")));
+    }
+
+    fn exec() -> Exec {
+        Exec::new(Arc::new(Console::new(false)))
+    }
+
+    fn sh(script: &str) -> Vec<String> {
+        ["sh", "-c", script].map(str::to_owned).to_vec()
+    }
+
+    #[test]
+    fn a_detach_that_cannot_be_written_to_a_live_child_is_a_typed_failure() {
+        let done = exec().spawn(&sh("exec 0<&-; sleep 5"), Feed::Open(Duration::from_millis(30)), &mut |_| {});
+        assert!(matches!(done, Err(Failure::Stdin(_))), "{done:?}");
+    }
+
+    #[test]
+    fn stderr_that_is_not_utf8_is_kept_lossily_not_dropped() {
+        let done = exec().spawn(&sh("printf 'a\\377b' >&2"), Feed::Nothing, &mut |_| {}).unwrap();
+        assert_eq!(done.stderr, "a\u{fffd}b");
     }
 }
