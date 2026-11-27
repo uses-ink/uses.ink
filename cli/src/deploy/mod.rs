@@ -7,7 +7,7 @@
 mod client;
 mod failure;
 mod view;
-mod wire;
+pub(crate) mod wire;
 
 use std::future::Future;
 use std::time::Duration;
@@ -15,18 +15,19 @@ use std::time::Duration;
 use clap::Args;
 use control::Id;
 
-pub(crate) use client::{Endpoint, Wire};
-pub(crate) use failure::{Failure, Needed};
+pub(crate) use client::{Api, Endpoint, Retry, Wire};
+pub(crate) use failure::{Failure, Logged, Needed};
+pub(crate) use view::{Moment, Short, Size};
 
 use crate::auth::Identity;
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::output::{Io, Say};
+use crate::publish::Link;
 use crate::settings::{Environment, Preferences, Process};
 use crate::term::Verbatim;
 use crate::tree::Heading;
-use client::Api;
-use view::{Listing, Pointer, Record, Short};
+use view::{Listing, Pointer, Record};
 use wire::{Listed, Pointer as Moved, Row, Shown};
 
 /// Which API and which site a remote command talks to.
@@ -42,6 +43,12 @@ pub struct Remote {
     /// Seconds one call may take.
     #[arg(long, value_name = "SECONDS", env = "INK_TIMEOUT", default_value_t = 30)]
     pub timeout: u64,
+    /// How many more times a call that is safe to repeat is tried when the network fails.
+    #[arg(long, value_name = "N", env = "INK_RETRIES", default_value_t = 2)]
+    pub retries: u32,
+    /// Milliseconds before the first retry; each wait is twice the one before.
+    #[arg(long, value_name = "MS", env = "INK_RETRY_WAIT", default_value_t = 500)]
+    pub retry_wait: u64,
 }
 
 /// `ink deploy list`.
@@ -77,42 +84,113 @@ pub struct Rollback {
 
 /// A connection ready to make calls: the API and the runtime they run on.
 #[derive(Debug)]
-struct Calls {
-    api: Api,
+pub(crate) struct Calls {
+    pub(crate) api: Api,
     runtime: tokio::runtime::Runtime,
 }
 
 impl Calls {
     /// Runs `future` to its end.
-    fn block<F: Future>(&self, future: F) -> F::Output {
+    pub(crate) fn block<F: Future>(&self, future: F) -> F::Output {
         self.runtime.block_on(future)
     }
 }
 
+/// The way to the API and the runtime to call it on, before a site is chosen.
+#[derive(Debug)]
+pub(crate) struct Reach {
+    pub(crate) wire: Wire,
+    runtime: tokio::runtime::Runtime,
+    /// The address, as it was given.
+    pub(crate) address: String,
+}
+
+impl Reach {
+    /// Runs `future` to its end.
+    pub(crate) fn block<F: Future>(&self, future: F) -> F::Output {
+        self.runtime.block_on(future)
+    }
+}
+
+/// Where a command looks for its site when no flag or variable names it.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Scope<'a> {
+    /// The `[account]` table of the config file: a command about the site, not the folder.
+    Account,
+    /// The folder's link file and nothing else, so a folder that is linked to no site never
+    /// publishes to the one the config file names.
+    Folder {
+        /// The folder.
+        dir: &'a std::path::Path,
+        /// Its link, when it has one.
+        link: Option<&'a Link>,
+    },
+}
+
 impl Remote {
-    /// The calls this asks for, with the environment and the config file under the flags.
-    fn connect(&self, env: &impl Environment, preferences: &Preferences) -> Result<Calls, Failure> {
+    /// The calls this asks for, with the environment, the link file and the config file under the
+    /// flags, in that order.
+    pub(crate) fn open(
+        &self,
+        scope: Scope<'_>,
+        env: &impl Environment,
+        preferences: &Preferences,
+    ) -> Result<Calls, Failure> {
         let account = &preferences.account;
-        let api = self
+        let linked = match scope {
+            Scope::Folder { link, .. } => link,
+            Scope::Account => None,
+        };
+        let site = match scope {
+            Scope::Account => self.site.clone().or_else(|| account.site.clone()),
+            Scope::Folder { .. } => self.site.clone().or_else(|| linked.map(|link| link.site.clone())),
+        };
+        let site = site.ok_or_else(|| match scope {
+            Scope::Folder { dir, .. } => Failure::Unlinked { dir: dir.to_path_buf() },
+            Scope::Account => Failure::Setting { needed: failure::Needed::Site },
+        })?;
+        let site = site.parse::<Id<_>>().map_err(|source| Failure::Site { written: site, source })?;
+        let reach = self.reach(linked, env, preferences)?;
+        Ok(Calls { api: Api { wire: reach.wire, site }, runtime: reach.runtime })
+    }
+
+    /// The way to the API, with the link's address under the flag and over the config file's.
+    pub(crate) fn reach(
+        &self,
+        link: Option<&Link>,
+        env: &impl Environment,
+        preferences: &Preferences,
+    ) -> Result<Reach, Failure> {
+        let address = self
             .api
             .clone()
-            .or_else(|| account.api.clone())
+            .or_else(|| link.map(|link| link.api.clone()))
+            .or_else(|| preferences.account.api.clone())
             .ok_or(Failure::Setting { needed: failure::Needed::Api })?;
-        let site = self
-            .site
-            .clone()
-            .or_else(|| account.site.clone())
-            .ok_or(Failure::Setting { needed: failure::Needed::Site })?;
-        let site = site.parse::<Id<_>>().map_err(|source| Failure::Site { written: site, source })?;
-        let endpoint = Endpoint::parse(&api)?;
+        let endpoint = Endpoint::parse(&address)?;
         let identity = Identity::find(env, endpoint.authority())?;
-        let api =
-            Api { wire: Wire { endpoint, identity: Some(identity), budget: Duration::from_secs(self.timeout) }, site };
+        let retry = Retry { times: self.retries, wait: Duration::from_millis(self.retry_wait) };
+        let wire = Wire { endpoint, identity: Some(identity), budget: Duration::from_secs(self.timeout), retry };
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .map_err(|source| Failure::Runtime { source })?;
-        Ok(Calls { api, runtime })
+        Ok(Reach { wire, runtime, address })
+    }
+
+    /// The calls of a command about the site, with the environment and the config file under the
+    /// flags.
+    fn connect(&self, env: &impl Environment, preferences: &Preferences) -> Result<Calls, Failure> {
+        self.open(Scope::Account, env, preferences)
+    }
+
+    /// The calls of a command about the folder `dir`, reading its link file, the process
+    /// environment and the user's config file.
+    pub(crate) fn folder(&self, dir: &std::path::Path) -> Result<Calls, Error> {
+        let link = Link::find(dir)?;
+        let preferences = Preferences::load(&Process).map_err(|source| Error::Preferences { source })?;
+        let scope = Scope::Folder { dir, link: link.as_ref() };
+        Ok(self.open(scope, &Process, &preferences)?)
     }
 
     /// The calls, reading the process environment and the user's config file.
@@ -270,7 +348,7 @@ mod test {
     }
 
     fn remote(api: &str) -> Remote {
-        Remote { api: Some(api.to_owned()), site: Some(SITE.to_owned()), timeout: 5 }
+        Remote { api: Some(api.to_owned()), site: Some(SITE.to_owned()), timeout: 5, retries: 0, retry_wait: 0 }
     }
 
     fn env() -> Fixed {
@@ -329,7 +407,7 @@ mod test {
     #[test]
     fn a_missing_setting_names_where_to_give_it() {
         let none = Fixed(BTreeMap::new());
-        let bare = Remote { api: None, site: None, timeout: 5 };
+        let bare = Remote { api: None, site: None, timeout: 5, retries: 0, retry_wait: 0 };
         let missing = |remote: &Remote, env: &Fixed| remote.connect(env, &Preferences::default()).unwrap_err();
         assert_eq!(missing(&bare, &none).exit(), Exit::Usage);
         let no_token = missing(&remote("http://127.0.0.1:1"), &none);
@@ -342,7 +420,7 @@ mod test {
     fn the_config_file_fills_what_the_flags_leave_out() {
         let preferences: Preferences =
             toml::from_str(&format!("[account]\napi = \"http://127.0.0.1:1\"\nsite = \"{SITE}\"\n")).unwrap();
-        let bare = Remote { api: None, site: None, timeout: 5 };
+        let bare = Remote { api: None, site: None, timeout: 5, retries: 0, retry_wait: 0 };
         assert!(bare.connect(&env(), &preferences).is_ok());
     }
 

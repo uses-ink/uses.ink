@@ -70,7 +70,7 @@ not group, so help cannot list "everything about deploys" in one place.
 ```
 ink
 ├─ Write
-│  ├─ init                   link this folder to a site                      (M3)
+│  ├─ init                   link this folder to a site
 │  ├─ check, c               read the folder, report diagnostics, write nothing
 │  ├─ build, b               build into an output folder, print the deploy id
 │  ├─ preview                build in memory, serve on 127.0.0.1
@@ -80,17 +80,17 @@ ink
 │  │    └─ --why CODE        replay one decision's ladder
 │  ├─ pin [PATH] CODE        write one decision's value into ink.toml
 │  └─ select [PATH...]       list or choose what is published
-├─ Publish                                                                    (M3)
+├─ Publish
 │  ├─ login, logout, whoami
 │  ├─ push                   send the folder, start a deploy
 │  ├─ status                 what is live, what is building
-│  ├─ watch                  wait for the next deploy of this commit
+│  ├─ watch [BUILD]          follow a build to its end
 │  ├─ deploy                 a group
 │  │    ├─ list              history, newest first       (alias: ink deploys)
 │  │    ├─ show <DEPLOY>     log, diagnostics, decision changes
 │  │    ├─ rollback <DEPLOY> serve an earlier deploy, pause new ones
 │  │    └─ resume            deploy new pushes again
-│  └─ export                 the whole site, source and history, to a folder
+│  └─ export [DIR]           the site, or the last push's files, to a folder
 └─ Tools
    ├─ completions <SHELL>
    ├─ man
@@ -717,18 +717,55 @@ Changes  against the previous build in .ink/out, deploy 4mq8c1d0wz5e
 no change
 ```
 
-### `ink status` and `ink deploy list` (M3)
+### `ink init`, `ink push`, `ink watch` and `ink export`
+
+Built (decision 0077). The result is on stdout, the stages on stderr.
+
+```text
+$ ink init --handle garden
+  site     q3x9m2tj7r5kw8va
+  handle   garden
+  api      https://api.uses.ink
+  file     .uses/site
+  result   made, and linked to this folder
+
+$ ink push
+      Read  214 files, 3.1 MB
+      Sent  12 files
+    Queued  build 7a1f09c2e4b8, 12 sent, 202 already held
+  Followed  build 7a1f09c2e4b8 is running
+     Built  deploy 5kq3v9m2tj7r is live: 61 files, 2.4 MB
+5kq3v9m2tj7r...  (the full deploy id, alone on stdout)
+
+$ ink export out
+  Exported  61 files, 2.4 MB of site into out
+```
+
+`push` stops with the fix `ink deploy resume` when the deploy is recorded and not live (exit 5), with
+the first problem of the build's log when the site does not build (exit 1), and with `the site holds
+N files of this push: run it again` when the upload was cut off. `watch` prints the same stages and
+the same stdout. A folder with no `.uses/site` is exit 2 with the fix `ink init`.
+
+### `ink status` and `ink deploy list`
 
 `status` is a record; `deploy list` is a table. Both are results, so both are on stdout.
 
 ```text
-garden  garden.uses.ink
+garden  https://garden.uses.ink
 
-  live      ● 5kq3v9m2tj7r  git 9f3c2a1b4d7e  2026-11-27 14:03Z  61 pages
-  latest    ◐ 7tw2c9d4h8mn  git b81e04d2a7c9  building: rendering, 41 of 118 images
-  source    github.com/ada/garden, branch main
-  warnings  2 on the live deploy; ink deploy show 5kq3v9m2tj7r lists them
+  site     q3x9m2tj7r5kw8va
+  state    active
+  created  2026-11-02 09:00Z
+  source   upload: ink push sends the folder
+  health   building
+  live     4d4d4d4d4d4d  since 2026-11-20 10:30Z
+  latest   7a1f  running  upload, requested 2026-11-27 08:00Z
+  pending  7a1f  running  upload, requested 2026-11-27 08:00Z
+  domains  not listed: this API has no domains yet
 ```
+
+What is built today is the block above (`uses.status/v1`); the warnings row and a stage in the build
+line wait for the server to keep a build's stages while it runs.
 
 ```text
   deploy        when               source            pages  state
@@ -832,7 +869,8 @@ Unchanged in shape; extended in coverage. The contract:
 - A command that writes nothing to stdout with `--json` has a bug.
 
 Schemas, kept exactly: `uses.build/v2`, `uses.check/v1`, `uses.explain/v2`, `uses.trace/v1`,
-`uses.select/v1`, `uses.error/v1`, `uses.event/v1`. New: `uses.progress/v1`. A command not yet
+`uses.select/v1`, `uses.error/v1`, `uses.event/v1`. New: `uses.progress/v1`, `uses.push/v1`,
+`uses.watch/v1`, `uses.status/v1`, `uses.link/v1` (init) and `uses.export/v1`. A command not yet
 built names its schema when it is built, as `uses.<command>/v1`.
 
 **Where text and JSON share one model.** Each block type implements two traits: `Render` (it
@@ -856,9 +894,9 @@ ones it can end with.
 | 0 | Done. Warnings, if any, were printed. |
 | 1 | Content error: the build or check failed on diagnostics, or `build --check` found the two builds differ. Nothing changed live; `ink build` wrote nothing. |
 | 2 | Usage error: a folder that is missing or cannot be listed, a path given wrong, an output folder `ink build` will not write into, or a confirmation was needed and not given. |
-| 3 | Not signed in, or access to a source was lost. (M3) |
-| 4 | Network or service unavailable after retries. Safe to retry. (M3) |
-| 5 | Conflict: site paused after a rollback, a mount conflict, an unpushed commit. (M3) |
+| 3 | Not signed in, or access to a source was lost. |
+| 4 | Network or service unavailable after retries, a build that failed, or a wait that ran out. Safe to retry. |
+| 5 | Conflict: site paused after a rollback (a push whose deploy is recorded and not live), a mount conflict, an unpushed commit. |
 | 6 | `--strict` was given and there were warnings. Nothing was written. |
 
 101 (a panic) and 130 (an interrupt) are not in the set; see section 9 and open choice 10.

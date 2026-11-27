@@ -210,6 +210,12 @@ builds git sources through the `ink:source-git` component. `cli/tests/selfhost.r
 over the real binary with no network. Not done: `ink push`, streaming intake and export.
 Git over HTTPS followed (0072): the watch's head read and the source fetch go through one rustls and
 `ring` client, with a licence exception for `webpki-root-certs` alone, tested against a local TLS server.
+Progress (2026-11-27, 0077): `ink init`, `push`, `status`, `watch` and `export` are built over the
+signed API: a tree is posted, the blobs the site lacks go up in bounded tar batches (resume is
+running the push again), the build is followed and the deploy printed, with exit codes 3, 4 and 5.
+Intake stays whole-body within the `tree` and `part` limits. `cli/tests/push.rs` runs all of it over
+the real binary. Not done: live build stages for `watch` (the log is stored when a build ends),
+domains in `status`, streaming intake.
 - `edge` and `edge/axum`: serve, API, intake; polling watch; on-demand ACME. **Serving built
   (0051), gate green on the farm:** `edge` (ports, refusals, limits, conditional, range, 404, headers), `edge/axum`
   (hyper loop, streaming, budgets, events, `/healthz`, graceful stop), `edge/folder` and

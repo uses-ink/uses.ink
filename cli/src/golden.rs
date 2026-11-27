@@ -10,9 +10,13 @@ use clap::Parser as _;
 use model::{Announcement, ContentPath, Diagnostic, Notice, Problem, Span, Subject};
 
 use crate::args::{Cli, Origin};
+use crate::deploy::wire::{Overview, Step};
+use crate::deploy::Logged;
 use crate::error::Error;
+use crate::deploy::Failure as Refused;
 use crate::failure::Failure;
 use crate::output::Tally;
+use crate::publish::view::{Exported, Linked, Standing};
 use crate::report::{Event, Noted, Shown, Texts};
 use crate::site::Source;
 use crate::stage::{StageLine, Verb};
@@ -107,6 +111,17 @@ impl Stopped {
             Error::Manifest { path: PathBuf::from(".ink/out/.ink-manifest.json"), source: broken },
             Error::Write { path: PathBuf::from(".ink/out/index.html"), source: std::io::Error::other("no space left") },
             Error::Code { source: "page.titel".parse::<model::AnyCode>().unwrap_err() },
+            Refused::Unlinked { dir: PathBuf::from("/home/me/garden") }.into(),
+            Refused::Uploading { sent: 212, source: Box::new(Refused::Timeout { after: Duration::from_secs(30) }) }
+                .into(),
+            Refused::Ended {
+                build: "4mq8c1d0wz5e".to_owned(),
+                state: Step::Refused,
+                count: 2,
+                first: Some(Logged("refused: {\"code\":\"page.slug.clash\"}".to_owned())),
+            }
+            .into(),
+            Refused::Occupied { path: PathBuf::from("out") }.into(),
         ]
     }
 
@@ -201,12 +216,58 @@ impl Cases {
                 .field("api", Line::plain("http://api.localhost/v1/sites (host api.localhost)"))
                 .field("owner token", Line::plain("in .data/owner-token"))
                 .field("limits", Line::plain("json body 65536 B, upload 268435456 B"));
+            let standing = Self::standing();
+            let linked = Linked {
+                schema: Linked::SCHEMA,
+                site: "q3x9m2tj7r5kw8va".to_owned(),
+                handle: "garden".to_owned(),
+                url: Some("https://garden.uses.ink".to_owned()),
+                api: "https://api.uses.ink".to_owned(),
+                file: PathBuf::from(".uses/site"),
+                created: true,
+                unchanged: false,
+            };
+            let exported = Exported {
+                schema: Exported::SCHEMA,
+                what: "site",
+                dir: PathBuf::from("out"),
+                files: 61,
+                bytes: 1_204_331,
+            };
+            let publish = shot.text(&Standing::of(&standing))
+                + &shot.text(&linked)
+                + &shot.text(&Answer::of(exported.said()));
+            cases.push((format!("publish-{}", shot.name), publish));
+
             cases.push((format!("record-{}", shot.name), shot.text(&record) + &shot.text(&Answer::of("5kq3v9m2tj7r"))));
         }
         cases.push(("roles".to_owned(), Self::roles()));
         cases.push(("glyphs".to_owned(), Self::glyphs()));
         cases.push(("json".to_owned(), Self::json()));
         cases
+    }
+
+    /// A site that is live, paused, with a build running.
+    fn standing() -> Overview {
+        serde_json::from_value(serde_json::json!({
+            "site": {
+                "id": "q3x9m2tj7r5kw8va", "handle": "garden", "url": "https://garden.uses.ink",
+                "state": "active", "created": "2026-11-02T09:00:00Z", "source": { "kind": "upload" }
+            },
+            "live": {
+                "deploy": "4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d", "previous": null, "paused": true,
+                "since": "2026-11-20T10:30:00Z"
+            },
+            "build": {
+                "id": "7a1f", "trigger": "upload", "state": "running", "requested": "2026-11-27T08:00:00Z",
+                "finished": null, "deploy": null
+            },
+            "pending": [{
+                "id": "7a1f", "trigger": "upload", "state": "running", "requested": "2026-11-27T08:00:00Z",
+                "finished": null, "deploy": null
+            }]
+        }))
+        .unwrap()
     }
 
     /// Each role as the ANSI theme styles it, and again in bold.
@@ -265,6 +326,9 @@ impl Cases {
             out.push_str(&serde_json::to_string_pretty(&event).unwrap());
             out.push('\n');
         }
+        let overview = Self::standing();
+        out.push_str(&serde_json::to_string_pretty(&Standing::of(&overview)).unwrap());
+        out.push('\n');
         let beat = StageLine::new(Verb::Read, "214 files from git 9f3c2a1b4d7e").beat().unwrap();
         out.push_str(&serde_json::to_string_pretty(&beat).unwrap());
         out.push('\n');
@@ -304,6 +368,7 @@ fn the_text_of_an_error_holds_every_field_of_its_json() {
         let state = match json["state"]["kind"].as_str().unwrap() {
             "unchanged" => "nothing was changed",
             "partial" => "may be partly written",
+            "uploaded" => "run it again to send the rest",
             _ => "is not known",
         };
         assert!(text.contains(state), "{state} in {text}");

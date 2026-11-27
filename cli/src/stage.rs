@@ -25,6 +25,11 @@ pub(crate) enum Verb {
     Unchanged,
     Pinned,
     WouldPin,
+    Linked,
+    Sent,
+    Queued,
+    Followed,
+    Exported,
 }
 
 impl Verb {
@@ -44,6 +49,11 @@ impl Verb {
             Self::Unchanged => "Unchanged",
             Self::Pinned => "Pinned",
             Self::WouldPin => "Would pin",
+            Self::Linked => "Linked",
+            Self::Sent => "Sent",
+            Self::Queued => "Queued",
+            Self::Followed => "Followed",
+            Self::Exported => "Exported",
         }
     }
 

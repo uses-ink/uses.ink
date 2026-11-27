@@ -64,7 +64,7 @@ pub enum When {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Link this folder to a site, without publishing it.
-    Init,
+    Init(crate::publish::Init),
     /// Read the folder and report what is wrong; writes nothing.
     Check(Check),
     /// Build the folder into an output folder and print its deploy id.
@@ -88,18 +88,18 @@ pub enum Command {
     /// List, make and end keys.
     Key(crate::auth::Key),
     /// Send the folder to its site and start a deploy.
-    Push,
+    Push(crate::publish::Push),
     /// Show what is live and what is building.
-    Status,
+    Status(crate::publish::Status),
     /// Wait for the next deploy of this commit and report it.
-    Watch,
+    Watch(crate::publish::Watch),
     /// List, read, roll back and resume deploys.
     Deploy(Deploy),
     /// `ink deploy list`, as `research/flow.md` spells it.
     #[command(hide = true)]
     Deploys(List),
     /// Write the whole site, source and history, to a folder.
-    Export,
+    Export(crate::publish::Export),
     /// Print a completion script for your shell.
     Completions(Completions),
     /// Print the manual page.
@@ -351,6 +351,13 @@ pub struct Serve {
     /// The largest file in an uploaded archive, in bytes. [default: 67108864]
     #[arg(long, help_heading = Heading::LIMITS)]
     pub upload_file: Option<u64>,
+    /// The largest tree `ink push` may send, in bytes; the tree is read whole. [default: 8388608]
+    #[arg(long, help_heading = Heading::LIMITS)]
+    pub upload_tree: Option<u64>,
+    /// The most bytes of files in one `ink push` request, held in memory while it is checked and
+    /// stored. [default: 67108864]
+    #[arg(long, help_heading = Heading::LIMITS)]
+    pub upload_part: Option<u64>,
     /// The largest exported archive, in bytes. [default: 268435456]
     #[arg(long, help_heading = Heading::LIMITS)]
     pub export_bytes: Option<u64>,

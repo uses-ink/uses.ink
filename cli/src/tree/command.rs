@@ -2,7 +2,7 @@
 
 use clap::{Command, CommandFactory};
 
-use super::{Entry, Status, Tree};
+use super::{Entry, Tree};
 use crate::args::Cli;
 
 impl Entry {
@@ -11,9 +11,6 @@ impl Entry {
         let mut command = command.about(self.about).visible_aliases(self.aliases.iter().copied());
         if !self.detail.is_empty() {
             command = command.long_about(format!("{}\n\n{}", self.about, self.detail));
-        }
-        if let Status::Pending { milestone } = self.status {
-            command = command.after_help(format!("Not built yet: it lands with {milestone}."));
         }
         for child in self.children {
             command = command.mut_subcommand(child.name, |sub| child.decorate(sub));

@@ -73,7 +73,7 @@ inherits = "default"
 
 # The self-host loop comes first: the first override that matches a test wins.
 [[profile.ci.overrides]]
-filter = "binary_id(uses-ink-cli::selfhost)"
+filter = "binary_id(uses-ink-cli::selfhost) | binary_id(uses-ink-cli::push)"
 slow-timeout = { period = "60s", terminate-after = 2 }
 
 [[profile.ci.overrides]]
@@ -85,6 +85,12 @@ slow-timeout = { period = "5s", terminate-after = 1 }
 # loops' events, so this is only the ceiling for a hang.
 [[profile.default.overrides]]
 filter = "binary_id(uses-ink-cli::selfhost)"
+slow-timeout = { period = "30s", terminate-after = 2 }
+
+# The publish verbs start `ink serve`, sign in and push over real HTTP; each test waits on a
+# build, so this is the ceiling for a hang.
+[[profile.default.overrides]]
+filter = "binary_id(uses-ink-cli::push)"
 slow-timeout = { period = "30s", terminate-after = 2 }
 
 # The incremental properties build a site cold and again after each of many edits: every test of

@@ -34,7 +34,7 @@ pub(crate) use flags::{Flags, Resolved};
 pub(crate) use identity::Identity;
 pub(crate) use store::{Keystore, StoreError};
 
-use crate::deploy::{Endpoint, Failure, Needed, Wire};
+use crate::deploy::{Endpoint, Failure, Needed, Retry, Wire};
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::output::{Io, Say};
@@ -161,7 +161,7 @@ impl Server {
             .enable_all()
             .build()
             .map_err(|source| Failure::Runtime { source })?;
-        let wire = Wire { endpoint, identity, budget: Duration::from_secs(self.timeout) };
+        let wire = Wire { endpoint, identity, budget: Duration::from_secs(self.timeout), retry: Retry::NONE };
         Ok(Calls { wire, runtime, api })
     }
 
@@ -221,6 +221,7 @@ impl Enrolment<'_> {
             endpoint: self.calls.wire.endpoint.clone(),
             identity: Some(identity),
             budget: self.calls.wire.budget,
+            retry: Retry::NONE,
         };
         let path = format!("/v1/enrol/{}", asked.id);
         let started = std::time::Instant::now();

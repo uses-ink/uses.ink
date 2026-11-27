@@ -16,7 +16,7 @@ pub(crate) use catalog::Refusal;
 use page::{Page, Row};
 pub(crate) use paint::{Face, Paint};
 
-use crate::tree::{Group, Heading, Located, Status, Tree, Variable};
+use crate::tree::{Group, Heading, Located, Tree, Variable};
 
 /// How much help is asked for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -167,11 +167,6 @@ impl<'a, P: Paint> Help<'a, P> {
         if depth == Depth::Long && !entry.detail.is_empty() {
             page.paragraph(entry.detail);
         }
-        if let Status::Pending { milestone } = entry.status {
-            page.paragraph(&format!(
-                "Not built yet: it lands with {milestone}. Until then it does nothing and exits 2."
-            ));
-        }
         page.line(&self.usage(at, command));
         if !entry.children.is_empty() {
             let rows: Vec<Row> = entry.children.iter().map(Self::entry_row).collect();
@@ -290,13 +285,9 @@ impl<'a, P: Paint> Help<'a, P> {
         }
     }
 
-    /// A command as a row of a listing: its names, what it does, and that it is not built yet.
+    /// A command as a row of a listing: its names and what it does.
     fn entry_row(entry: &crate::tree::Entry) -> Row {
-        let pending = matches!(entry.status, Status::Pending { .. });
-        Row::typed(
-            entry.names(),
-            if pending { format!("{} (not built yet)", entry.about) } else { entry.about.to_owned() },
-        )
+        Row::typed(entry.names(), entry.about.to_owned())
     }
 
     /// An option as a row: how it is typed, and what it does with its default and variable.

@@ -77,19 +77,6 @@ impl Group {
     }
 }
 
-/// Whether a command does its work yet.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Status {
-    /// It does.
-    Built,
-    /// It is in the tree and in help, and ends with a typed "not built yet" error: the milestone
-    /// that lands it is named.
-    Pending {
-        /// The milestone.
-        milestone: &'static str,
-    },
-}
-
 /// One line to type and what it does.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Example {
@@ -132,8 +119,6 @@ pub(crate) struct Entry {
     pub(crate) about: &'static str,
     /// A short paragraph, empty when the name says it all.
     pub(crate) detail: &'static str,
-    /// Whether it works yet.
-    pub(crate) status: Status,
     /// What to try.
     pub(crate) examples: &'static [Example],
     /// The codes it can end with.

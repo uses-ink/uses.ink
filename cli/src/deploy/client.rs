@@ -17,7 +17,7 @@ use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 
 use super::failure::{Failure, Said};
-use super::wire::{Built, Items, Moved, Row, Target};
+use super::wire::{Built, Items, Moved, Overview, Probed, Row, Target};
 use crate::auth::Identity;
 
 /// Where the API is: a host and port, and what to put in `Host`.
@@ -53,6 +53,21 @@ impl Endpoint {
     }
 }
 
+/// How a call that is safe to repeat is repeated when the network fails or the server is not
+/// there: how many more times, and how long to wait before the first, doubling after each.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Retry {
+    /// How many more attempts after the first.
+    pub(crate) times: u32,
+    /// The wait before the first more.
+    pub(crate) wait: Duration,
+}
+
+impl Retry {
+    /// No second attempt.
+    pub(crate) const NONE: Self = Self { times: 0, wait: Duration::ZERO };
+}
+
 /// The way to the API: where it is, who calls and how long a call may take. Every call is
 /// signed with the key, and sent again once when the server says it has just started.
 #[derive(Debug)]
@@ -62,6 +77,8 @@ pub(crate) struct Wire {
     pub(crate) identity: Option<Identity>,
     /// How long one call may take.
     pub(crate) budget: Duration,
+    /// How a read, or a write that can be sent twice, is repeated.
+    pub(crate) retry: Retry,
 }
 
 /// The calls of one site.
@@ -72,21 +89,61 @@ pub(crate) struct Api {
 }
 
 impl Api {
+    /// `GET /v1/sites/{site}`: the site, what is live, the latest build and the pending ones.
+    pub(crate) async fn overview(&self) -> Result<Overview, Failure> {
+        let body = self.wire.repeat(Method::GET, &format!("/v1/sites/{}", self.site), Vec::new()).await?;
+        serde_json::from_slice(&body).map_err(|source| Failure::Unreadable { source })
+    }
+
+    /// `POST /v1/sites/{site}/source`: the tree of the folder, answered with the blobs the site
+    /// lacks or the build of it. Sending the same tree twice is safe, so it is repeated.
+    pub(crate) async fn probe(&self, tree: Vec<u8>) -> Result<Probed, Failure> {
+        let body = self.wire.repeat(Method::POST, &self.path("source"), tree).await?;
+        serde_json::from_slice(&body).map_err(|source| Failure::Unreadable { source })
+    }
+
+    /// `PUT /v1/sites/{site}/source`: a tar archive of blobs named by their hashes.
+    pub(crate) async fn parts(&self, batch: Vec<u8>) -> Result<(), Failure> {
+        self.wire.repeat(Method::PUT, &self.path("source"), batch).await.map(drop)
+    }
+
+    /// `GET /v1/sites/{site}/source`: the files of the latest push, as a tar archive.
+    pub(crate) async fn bundle(&self) -> Result<Bytes, Failure> {
+        self.wire.repeat(Method::GET, &self.path("source"), Vec::new()).await
+    }
+
+    /// `GET /v1/sites/{site}/export`, or of one deploy: the files it serves, as a tar archive.
+    pub(crate) async fn export(&self, deploy: Option<DeployId>) -> Result<Bytes, Failure> {
+        let tail = deploy.map_or_else(|| "export".to_owned(), |deploy| format!("deploys/{deploy}/export"));
+        self.wire.repeat(Method::GET, &self.path(&tail), Vec::new()).await
+    }
+
     /// `GET /v1/sites/{site}/deploys`: the history, newest first.
     pub(crate) async fn deploys(&self) -> Result<Vec<Row>, Failure> {
-        let items: Items<Row> = self.read(Method::GET, "deploys", Vec::new()).await?;
+        let items: Items<Row> = self.look("deploys").await?;
         Ok(items.items)
     }
 
     /// `GET /v1/sites/{site}/builds`: recent builds, newest first.
     pub(crate) async fn builds(&self) -> Result<Vec<Built>, Failure> {
-        let items: Items<Built> = self.read(Method::GET, "builds", Vec::new()).await?;
+        let items: Items<Built> = self.look("builds").await?;
         Ok(items.items)
+    }
+
+    /// The path of `tail` under the site.
+    fn path(&self, tail: &str) -> String {
+        format!("/v1/sites/{}/{tail}", self.site)
+    }
+
+    /// A read of the site's `tail`, repeated when the network fails.
+    async fn look<T: DeserializeOwned>(&self, tail: &str) -> Result<T, Failure> {
+        let body = self.wire.repeat(Method::GET, &self.path(tail), Vec::new()).await?;
+        serde_json::from_slice(&body).map_err(|source| Failure::Unreadable { source })
     }
 
     /// `GET /v1/sites/{site}/builds/{build}/log`: the lines of the log, `None` when it has none.
     pub(crate) async fn log(&self, build: &str) -> Result<Option<Vec<String>>, Failure> {
-        match self.send(Method::GET, &format!("builds/{build}/log"), Vec::new()).await {
+        match self.wire.repeat(Method::GET, &self.path(&format!("builds/{build}/log")), Vec::new()).await {
             Ok(body) => Ok(Some(String::from_utf8_lossy(&body).lines().map(str::to_owned).collect())),
             Err(Failure::Refused { status: 404, .. }) => Ok(None),
             Err(other) => Err(other),
@@ -117,6 +174,24 @@ impl Api {
 }
 
 impl Wire {
+    /// A call that is safe to send twice, sent again after a failure of the network or of the
+    /// server's own, as often as [`Retry`] says, each wait twice the one before. A refusal that is
+    /// the caller's is never sent again.
+    pub(crate) async fn repeat(&self, method: Method, path: &str, body: Vec<u8>) -> Result<Bytes, Failure> {
+        let mut wait = self.retry.wait;
+        let mut left = self.retry.times;
+        loop {
+            match self.call(method.clone(), path, body.clone()).await {
+                Err(failure) if left > 0 && failure.transient() => {
+                    tokio::time::sleep(wait).await;
+                    wait = wait.saturating_mul(2);
+                    left -= 1;
+                }
+                done => return done,
+            }
+        }
+    }
+
     /// One call, within the budget, and once more when the server has just started and says so.
     pub(crate) async fn call(&self, method: Method, path: &str, body: Vec<u8>) -> Result<Bytes, Failure> {
         let first = self.once(method.clone(), path, body.clone()).await;

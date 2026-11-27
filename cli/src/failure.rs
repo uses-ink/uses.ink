@@ -25,6 +25,12 @@ pub(crate) enum State {
         /// Where.
         path: String,
     },
+    /// An upload stopped after the site took this many files: they stay, and the next push
+    /// sends only the rest.
+    Uploaded {
+        /// How many.
+        sent: u64,
+    },
     /// The command could not say what it had done before it stopped.
     Unknown,
 }
@@ -34,6 +40,7 @@ impl fmt::Display for State {
         match self {
             Self::Unchanged => write!(out, "nothing was changed"),
             Self::Partial { path } => write!(out, "`{path}` may be partly written"),
+            Self::Uploaded { sent } => write!(out, "the site holds {sent} files of this push: run it again to send the rest"),
             Self::Unknown => write!(out, "what the command had written is not known: run it again"),
         }
     }
@@ -67,8 +74,9 @@ pub(crate) enum Remedy {
     Retry,
     Bundle,
     FixConfig,
-    ListVerbs,
     ListTopics,
+    /// What a failure of the API says to do: a command in backticks, or a plain instruction.
+    Said(&'static str),
 }
 
 impl fmt::Display for Remedy {
@@ -116,8 +124,8 @@ impl fmt::Display for Remedy {
             Self::GiveData => write!(out, "give an empty folder, or the one `--data` used before"),
             Self::Retry => write!(out, "run the command again"),
             Self::FixConfig => write!(out, "fix the file, or remove the key it names"),
-            Self::ListVerbs => write!(out, "`ink help` lists the verbs that are built"),
             Self::ListTopics => write!(out, "`ink help` lists the topics"),
+            Self::Said(text) => write!(out, "{text}"),
             Self::Bundle => {
                 write!(out, "run `cargo xtask component`, then build ink again (release builds require it)")
             }
@@ -130,7 +138,8 @@ impl Error {
     #[allow(clippy::too_many_lines, reason = "one arm for each variant of the error")]
     pub(crate) fn remedy(&self) -> Option<Remedy> {
         Some(match self {
-            Self::Refused(_) | Self::Deploy { .. } => return None,
+            Self::Refused(_) => return None,
+            Self::Deploy { source } => Remedy::Said(source.remedy()?),
             Self::Unversioned { .. } => Remedy::DropRev,
             Self::Base { .. } => Remedy::GiveAddress,
             Self::Path { .. } => Remedy::GivePath,
@@ -161,7 +170,6 @@ impl Error {
             Self::Run { .. } | Self::Terminal { .. } => Remedy::Retry,
             Self::Unbundled { .. } => Remedy::Bundle,
             Self::Preferences { .. } => Remedy::FixConfig,
-            Self::Pending { .. } => Remedy::ListVerbs,
             Self::Help { .. } => Remedy::ListTopics,
         })
     }
@@ -172,6 +180,7 @@ impl Error {
         match self {
             Self::Write { path, .. } => State::Partial { path: Self::shown(path) },
             Self::Terminal { .. } | Self::Json { .. } => State::Unknown,
+            Self::Deploy { source } => source.stored().map_or(State::Unchanged, |sent| State::Uploaded { sent }),
             _ => State::Unchanged,
         }
     }

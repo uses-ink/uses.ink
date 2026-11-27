@@ -317,6 +317,8 @@ impl Product {
         limits.archive = settings.upload_bytes.unwrap_or(ceiling.archive);
         limits.files = settings.upload_files.unwrap_or(ceiling.files);
         limits.file = settings.upload_file.unwrap_or(ceiling.file);
+        limits.tree = settings.upload_tree.unwrap_or(ceiling.tree);
+        limits.part = settings.upload_part.unwrap_or(ceiling.part);
         limits.export = settings.export_bytes.unwrap_or(ceiling.export);
         limits.lower(&asked).map_err(|e| Unready::Setting { flag: "the limits", source: Box::new(e) })
     }

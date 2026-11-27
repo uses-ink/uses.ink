@@ -25,6 +25,8 @@ pub(crate) enum Phase {
     Rendering,
     Writing,
     Checking,
+    Uploading,
+    Building,
 }
 
 impl Phase {
@@ -36,6 +38,8 @@ impl Phase {
             Self::Rendering => "Rendering",
             Self::Writing => "Writing",
             Self::Checking => "Checking",
+            Self::Uploading => "Uploading",
+            Self::Building => "Building",
         }
     }
 }

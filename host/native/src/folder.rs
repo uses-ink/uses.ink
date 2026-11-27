@@ -16,8 +16,9 @@ use crate::error::Refused;
 use crate::handle::{Handle, Identity};
 use crate::read::{Read, Skip, Skipped};
 
-/// Folders of version control, never part of a snapshot and never said.
-const VERSION_CONTROL: &[&str] = &[".git", ".jj"];
+/// Folders of version control, and the one `ink init` keeps its link in, never part of a
+/// snapshot and never said.
+const VERSION_CONTROL: &[&str] = &[".git", ".jj", ".uses"];
 
 /// What [`Version::Folder`] hashes, before the sorted tree.
 const PREFIX: &[u8] = b"uses.ink/folder/v1\n";

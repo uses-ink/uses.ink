@@ -21,7 +21,7 @@ impl Command {
     /// The verb, as the `command` span names it.
     const fn verb(&self) -> &'static str {
         match self {
-            Self::Init => "init",
+            Self::Init(_) => "init",
             Self::Check(_) => "check",
             Self::Build(_) => "build",
             Self::Preview(_) => "preview",
@@ -33,11 +33,11 @@ impl Command {
             Self::Logout(_) => "logout",
             Self::Whoami(_) => "whoami",
             Self::Key(_) => "key",
-            Self::Push => "push",
-            Self::Status => "status",
-            Self::Watch => "watch",
+            Self::Push(_) => "push",
+            Self::Status(_) => "status",
+            Self::Watch(_) => "watch",
             Self::Deploy(_) | Self::Deploys(_) => "deploy",
-            Self::Export => "export",
+            Self::Export(_) => "export",
             Self::Completions(_) => "completions",
             Self::Man => "man",
             Self::Help(_) => "help",

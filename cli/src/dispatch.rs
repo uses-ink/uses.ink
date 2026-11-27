@@ -117,15 +117,30 @@ impl Command {
                 Ok(Exit::Done)
             }
             Self::Help(topic) => topic.run(io),
-            Self::Init => Err(Error::Pending { verb: "init" }),
+            Self::Init(mut init) => {
+                init.dir = site;
+                init.run(io)
+            }
             Self::Login(login) => login.run(io),
             Self::Logout(server) => server.logout(io),
             Self::Whoami(server) => server.whoami(io),
             Self::Key(key) => key.command.run(io),
-            Self::Push => Err(Error::Pending { verb: "push" }),
-            Self::Status => Err(Error::Pending { verb: "status" }),
-            Self::Watch => Err(Error::Pending { verb: "watch" }),
-            Self::Export => Err(Error::Pending { verb: "export" }),
+            Self::Push(mut push) => {
+                push.dir = site;
+                push.run(io)
+            }
+            Self::Status(mut status) => {
+                status.dir = site;
+                status.run(io)
+            }
+            Self::Watch(mut watch) => {
+                watch.dir = site;
+                watch.run(io)
+            }
+            Self::Export(mut export) => {
+                export.dir = site;
+                export.run(io)
+            }
         }
     }
 }

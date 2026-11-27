@@ -118,14 +118,18 @@ fn the_manual_is_roff_with_the_sections_clap_has_no_place_for() {
 }
 
 #[test]
-fn a_verb_that_is_not_built_yet_says_so_and_exits_with_a_usage_error() {
-    for verb in ["init", "push", "status", "watch", "export"] {
-        let (exit, out, err) = ink(&[verb]);
-        assert_eq!((exit, out.as_str()), (Exit::Usage, ""), "{verb}");
-        assert!(err.contains(&format!("`ink {verb}` is not built yet")), "{verb}: {err}");
+fn a_folder_verb_with_no_link_is_a_usage_error_that_says_how_to_link() {
+    let empty = tempfile::tempdir().unwrap();
+    let dir = empty.path().to_str().unwrap();
+    for verb in ["push", "status", "watch", "export"] {
+        let (exit, out, err) = ink(&["-C", dir, verb, "--api", "http://127.0.0.1:1"]);
+        assert_eq!((exit, out.as_str()), (Exit::Usage, ""), "{verb}: {err}");
+        assert!(err.contains("link.file.missing") && err.contains("ink init"), "{verb}: {err}");
     }
-    let (_, json, _) = ink(&["--json", "push"]);
-    assert!(json.contains("cli.verb.pending"), "{json}");
+    let (_, json, _) = ink(&["-C", dir, "--json", "push", "--api", "http://127.0.0.1:1"]);
+    assert!(json.contains("link.file.missing"), "{json}");
+    let (exit, _, err) = ink(&["-C", dir, "init", "--api", "http://127.0.0.1:1"]);
+    assert_eq!(exit, Exit::Auth, "no key comes before no handle: {err}");
 }
 
 #[test]

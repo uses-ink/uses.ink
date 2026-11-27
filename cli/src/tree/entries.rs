@@ -1,6 +1,6 @@
 //! What the tree says: the wording of `ink`'s help, once.
 
-use super::{Ending, Entry, Example, Group, Status, Tree, Variable};
+use super::{Ending, Entry, Example, Group, Tree, Variable};
 use crate::exit::Exit;
 
 /// Rows of the closed set of exit codes, as `ink help exit` prints them.
@@ -12,7 +12,7 @@ const CLOSED: &[Ending] = &[
     },
     Ending {
         exit: Exit::Usage,
-        about: "Usage error: a folder that is missing or cannot be listed, a path given wrong, an output folder `ink build` will not write into, or a verb that is not built yet.",
+        about: "Usage error: a folder that is missing or cannot be listed, a path given wrong, an output folder `ink build` will not write into.",
     },
     Ending { exit: Exit::Auth, about: "Not signed in, or access to a source was lost." },
     Ending { exit: Exit::Network, about: "Network or service unavailable. Safe to retry." },
@@ -59,7 +59,14 @@ const REMOTE: &[Ending] = &[
     Ending { exit: Exit::Conflict, about: "The API refused the change as it stands: the deploy is already live, say" },
 ];
 
-const PENDING: &[Ending] = &[Ending { exit: Exit::Usage, about: "Not built yet; nothing was done" }];
+const PUSH: &[Ending] = &[
+    Ending { exit: Exit::Done, about: "Done: the deploy is live" },
+    Ending { exit: Exit::Content, about: "The build was refused: the site does not build" },
+    Ending { exit: Exit::Usage, about: "Wrong usage: the folder is linked to no site, or the folder cannot be read" },
+    Ending { exit: Exit::Auth, about: "Not signed in, or the signature was refused" },
+    Ending { exit: Exit::Network, about: "The API could not be reached, the build failed or the wait ran out; safe to run again" },
+    Ending { exit: Exit::Conflict, about: "The deploy is recorded and not live, because publishing is paused after a rollback" },
+];
 
 const SOURCE_ENV: &[Variable] = &[];
 
@@ -79,23 +86,6 @@ const SITE_ENV: &[Variable] = &[
 ];
 
 impl Entry {
-    /// A command that has not been built: it is in help, marked, and refuses with a typed error.
-    pub(super) const fn pending(name: &'static str, group: Group, about: &'static str) -> Entry {
-        Entry {
-            name,
-            aliases: &[],
-            group,
-            hidden: false,
-            about,
-            detail: "",
-            status: Status::Pending { milestone: "M3" },
-            examples: &[],
-            endings: PENDING,
-            env: SOURCE_ENV,
-            children: &[],
-        }
-    }
-
     /// A command that works, with nothing yet said about it but its name and what it does.
     pub(super) const fn built(name: &'static str, group: Group, about: &'static str) -> Entry {
         Entry {
@@ -105,7 +95,6 @@ impl Entry {
             hidden: false,
             about,
             detail: "",
-            status: Status::Built,
             examples: &[],
             endings: READ,
             env: SOURCE_ENV,
@@ -180,7 +169,16 @@ const DEPLOY_CHILDREN: &[Entry] = &[
 ];
 
 const ENTRIES: &[Entry] = &[
-    Entry { ..Entry::pending("init", Group::Write, "Link this folder to a site, without publishing it") },
+    Entry {
+        detail: "Writes .uses/site, which holds the site's id and the API's address and no credential. A folder with no link refuses push, status, watch and export; the [account] table of the config file never stands in for it.",
+        examples: &[
+            Example { line: "ink init --handle garden", about: "Make a site that takes uploads, and link this folder to it" },
+            Example { line: "ink init --site 0123abcd", about: "Link this folder to a site that exists" },
+        ],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("init", Group::Write, "Link this folder to a site, without publishing it")
+    },
     Entry {
         aliases: &["c"],
         detail: "The folder is read and interpreted exactly as a build would; nothing is written.",
@@ -281,9 +279,29 @@ const ENTRIES: &[Entry] = &[
         env: SITE_ENV,
         ..Entry::built("key", Group::Publish, "List, make and end keys")
     },
-    Entry::pending("push", Group::Publish, "Send the folder to its site and start a deploy"),
-    Entry::pending("status", Group::Publish, "Show what is live and what is building"),
-    Entry::pending("watch", Group::Publish, "Wait for the next deploy of this commit and report it"),
+    Entry {
+        detail: "Sends only the files the site does not hold, so an interrupted push is resumed by running it again. Waits for the build and prints the deploy id; --no-wait prints the build id. A deploy that is recorded and not live exits 5.",
+        examples: &[
+            Example { line: "ink push", about: "Send the folder and wait for the deploy" },
+            Example { line: "ink push --no-wait", about: "Queue the build and print its id" },
+        ],
+        endings: PUSH,
+        env: SITE_ENV,
+        ..Entry::built("push", Group::Publish, "Send the folder to its site and start a deploy")
+    },
+    Entry {
+        examples: &[Example { line: "ink status --json", about: "The overview as one JSON document" }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("status", Group::Publish, "Show what is live and what is building")
+    },
+    Entry {
+        detail: "Follows a build to its end: the one named, the one running, or the next the site starts. Prints the deploy id.",
+        examples: &[Example { line: "ink watch", about: "Follow the build that is running, or wait for the next" }],
+        endings: PUSH,
+        env: SITE_ENV,
+        ..Entry::built("watch", Group::Publish, "Follow a build of this site to its end")
+    },
     Entry {
         children: DEPLOY_CHILDREN,
         examples: &[
@@ -300,7 +318,16 @@ const ENTRIES: &[Entry] = &[
         env: SITE_ENV,
         ..Entry::built("deploys", Group::Publish, "History of deploys, newest first")
     },
-    Entry::pending("export", Group::Publish, "Write the whole site, source and history, to a folder"),
+    Entry {
+        detail: "Writes into a new or empty folder, through a staging folder beside it, so a failure leaves no partial folder. The live site's files are named by route, with `index` for the root.",
+        examples: &[
+            Example { line: "ink export out", about: "The live site's files, into out" },
+            Example { line: "ink export --source src", about: "The files the last push sent" },
+        ],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("export", Group::Publish, "Download the site, or the files the last push sent, to a folder")
+    },
     Entry {
         examples: &[
             Example { line: "ink completions bash", about: "Print the bash script; see `ink help completions`" },

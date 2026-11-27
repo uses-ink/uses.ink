@@ -42,6 +42,7 @@ mod pin;
 mod pins;
 mod preview;
 mod product;
+mod publish;
 mod remote;
 mod replace;
 mod report;

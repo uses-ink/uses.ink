@@ -1,11 +1,15 @@
 //! Why a remote command did not do its work.
 
 use std::fmt;
+use std::path::PathBuf;
 use std::time::Duration;
 
+use model::DeployId;
 use serde::Deserialize;
 
+use super::wire::Step;
 use crate::exit::Exit;
+use crate::publish::LinkError;
 
 /// A setting a remote command cannot do without.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -63,6 +67,18 @@ impl fmt::Display for Said {
 }
 
 impl std::error::Error for Said {}
+
+/// One line of a build's log that names a problem, as the server stored it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Logged(pub String);
+
+impl fmt::Display for Logged {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for Logged {}
 
 /// A remote command that stopped.
 #[derive(Debug)]
@@ -189,10 +205,97 @@ pub enum Failure {
     },
     /// The private key would be printed to a terminal.
     PrintRefused,
+    /// The folder is linked to no site, and nothing else says which.
+    Unlinked {
+        /// The folder.
+        dir: PathBuf,
+    },
+    /// The link file cannot be used.
+    Link {
+        /// The file.
+        path: PathBuf,
+        /// Why.
+        source: LinkError,
+    },
+    /// The folder is linked to another site already.
+    Linked {
+        /// The file.
+        path: PathBuf,
+        /// The site it names.
+        site: String,
+    },
+    /// `ink init` was told no site and no handle.
+    Nameless,
+    /// The tree of the folder is not a tree.
+    Tree {
+        /// Why.
+        source: build::TreeError,
+    },
+    /// The server still lacked files after they were sent, round after round.
+    Incomplete {
+        /// How many files it lacked at the end.
+        missing: usize,
+        /// How many rounds were made.
+        rounds: u32,
+    },
+    /// The upload stopped after `sent` files were stored; they stay, and the next push sends only
+    /// what is left.
+    Uploading {
+        /// How many files the server took.
+        sent: u64,
+        /// What stopped it.
+        source: Box<Failure>,
+    },
+    /// The build ended without a deploy.
+    Ended {
+        /// The build.
+        build: String,
+        /// How it ended.
+        state: Step,
+        /// How many problems its log names.
+        count: usize,
+        /// The first of them.
+        first: Option<Logged>,
+    },
+    /// The deploy is recorded and is not live: publishing is paused.
+    Held {
+        /// The deploy.
+        deploy: DeployId,
+    },
+    /// The build did not end in the time given.
+    Waited {
+        /// The build.
+        build: String,
+        /// How long it was waited for.
+        after: Duration,
+    },
+    /// The site does not list the build.
+    Absent {
+        /// The build, as written.
+        build: String,
+    },
+    /// The export is not an archive of files this reads.
+    Archive {
+        /// Why.
+        source: edge_api::tar::Error,
+    },
+    /// The folder to export into holds something.
+    Occupied {
+        /// The folder.
+        path: PathBuf,
+    },
+    /// A folder or a file of the export could not be written.
+    Placing {
+        /// Where.
+        path: PathBuf,
+        /// What the system said.
+        source: std::io::Error,
+    },
 }
 
 impl Failure {
     /// The exit code: sign-in is 3, the network 4, a conflict 5, and what the person typed is 2.
+    #[expect(clippy::too_many_lines, reason = "one arm for each way a call fails")]
     pub const fn exit(&self) -> Exit {
         match self {
             Self::Setting { needed: Needed::Key } | Self::KeyText { .. } | Self::Unapproved { .. } => Exit::Auth,
@@ -209,8 +312,23 @@ impl Failure {
             | Self::Method { .. }
             | Self::Draw { .. }
             | Self::Operators { .. }
+            | Self::Unlinked { .. }
+            | Self::Link { .. }
+            | Self::Linked { .. }
+            | Self::Nameless
+            | Self::Tree { .. }
+            | Self::Absent { .. }
+            | Self::Occupied { .. }
+            | Self::Placing { .. }
             | Self::PrintRefused => Exit::Usage,
-            Self::Runtime { .. }
+            Self::Uploading { source, .. } => source.exit(),
+            Self::Held { .. } => Exit::Conflict,
+            Self::Ended { state: Step::Refused, .. } => Exit::Content,
+            Self::Ended { .. }
+            | Self::Incomplete { .. }
+            | Self::Archive { .. }
+            | Self::Waited { .. }
+            | Self::Runtime { .. }
             | Self::Connect { .. }
             | Self::Exchange { .. }
             | Self::Timeout { .. }
@@ -246,7 +364,57 @@ impl Failure {
             Self::Operators { .. } => "auth.operator.unreadable",
             Self::Unapproved { .. } => "auth.enrolment.expired",
             Self::PrintRefused => "auth.key.print-refused",
+            Self::Unlinked { .. } => "link.file.missing",
+            Self::Link { .. } => "link.file.unusable",
+            Self::Linked { .. } => "link.file.exists",
+            Self::Nameless => "init.target.missing",
+            Self::Tree { .. } => "push.tree.invalid",
+            Self::Incomplete { .. } => "push.upload.incomplete",
+            Self::Uploading { source, .. } => source.kind(),
+            Self::Ended { state: Step::Refused, .. } => "push.build.refused",
+            Self::Ended { .. } => "push.build.failed",
+            Self::Held { .. } => "push.deploy.held",
+            Self::Waited { .. } => "push.wait.expired",
+            Self::Absent { .. } => "push.build.unknown",
+            Self::Archive { .. } => "export.archive.invalid",
+            Self::Occupied { .. } => "export.folder.occupied",
+            Self::Placing { .. } => "export.folder.unwritable",
         }
+    }
+
+    /// Whether the same call may be sent again: the network failed, or the server was not there.
+    pub(crate) fn transient(&self) -> bool {
+        match self {
+            Self::Connect { .. } | Self::Exchange { .. } | Self::Timeout { .. } => true,
+            Self::Refused { status, .. } => matches!(*status, 502..=504),
+            _ => false,
+        }
+    }
+
+    /// How many files an upload stored before it stopped, when it stopped part way.
+    pub(crate) fn stored(&self) -> Option<u64> {
+        match self {
+            Self::Uploading { sent, .. } => Some(*sent),
+            _ => None,
+        }
+    }
+
+    /// What to do about it, when there is one thing to say.
+    pub(crate) fn remedy(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::Unlinked { .. } => "run `ink init --handle NAME` to link this folder, or give `--site ID`",
+            Self::Link { .. } => "fix or remove the file, then run `ink init` again",
+            Self::Linked { .. } => "run `ink init --force` to link it to another site",
+            Self::Nameless => "give `--handle NAME` to make a site, or `--site ID` to link one that exists",
+            Self::Incomplete { .. } | Self::Waited { .. } => "run the command again",
+            Self::Uploading { source, .. } => return source.remedy().or(Some("run `ink push` again to send what is left")),
+            Self::Ended { state: Step::Refused, .. } => "fix what the build said, then push again",
+            Self::Ended { .. } => "run `ink push` again; if it keeps failing, report it",
+            Self::Held { .. } => "run `ink deploy resume` to deploy this and new pushes",
+            Self::Occupied { .. } => "give an empty or new folder",
+            Self::Refused { said: Some(said), .. } => return said.fix(),
+            _ => return None,
+        })
     }
 }
 
@@ -293,6 +461,29 @@ impl fmt::Display for Failure {
                     "the private key would be printed to a terminal: send it to a file with `--out`, or redirect stdout"
                 )
             }
+            Self::Unlinked { dir } => write!(out, "{} is linked to no site: it has no .uses/site", dir.display()),
+            Self::Link { path, .. } => write!(out, "the link file {} cannot be used", path.display()),
+            Self::Linked { path, site } => write!(out, "{} links this folder to the site {site} already", path.display()),
+            Self::Nameless => write!(out, "no site is named: `ink init` links a folder to a site or makes one"),
+            Self::Tree { .. } => write!(out, "the folder's files do not make a tree"),
+            Self::Incomplete { missing, rounds } => {
+                write!(out, "the server still lacked {missing} files after {rounds} rounds of sending them")
+            }
+            Self::Uploading { sent, .. } => write!(out, "the upload stopped after the server took {sent} files"),
+            Self::Ended { build, state, count, .. } => match state {
+                Step::Refused => write!(out, "the build {build} was refused: {count} problems stop the site"),
+                _ => write!(out, "the build {build} {state} without making a deploy"),
+            },
+            Self::Held { deploy } => {
+                write!(out, "the deploy {deploy} is recorded and is not live: publishing is paused after a rollback")
+            }
+            Self::Waited { build, after } => {
+                write!(out, "the build {build} did not end in {} seconds; it is still going", after.as_secs())
+            }
+            Self::Absent { build } => write!(out, "the site lists no build `{build}`"),
+            Self::Archive { .. } => write!(out, "the export is not an archive of files"),
+            Self::Occupied { path } => write!(out, "{} is not empty", path.display()),
+            Self::Placing { path, .. } => write!(out, "{} could not be written", path.display()),
         }
     }
 }
@@ -313,7 +504,7 @@ impl std::error::Error for Failure {
         match self {
             Self::Address { source, .. } => Some(source),
             Self::Site { source, .. } => Some(source),
-            Self::Runtime { source } | Self::Connect { source, .. } => Some(source),
+            Self::Runtime { source } | Self::Connect { source, .. } | Self::Placing { source, .. } => Some(source),
             Self::Exchange { source } => Some(source),
             Self::Request { source } => Some(source),
             Self::Unreadable { source } => Some(source),
@@ -324,6 +515,11 @@ impl std::error::Error for Failure {
             Self::Method { source } => Some(source),
             Self::Draw { source } => Some(source.as_ref()),
             Self::Operators { source } => Some(source),
+            Self::Link { source, .. } => Some(source),
+            Self::Tree { source } => Some(source),
+            Self::Uploading { source, .. } => Some(source.as_ref()),
+            Self::Archive { source } => Some(source),
+            Self::Ended { first: Some(first), .. } => Some(first),
             Self::Refused { said, .. } => said.as_ref().map(|said| said as &(dyn std::error::Error + 'static)),
             Self::Setting { .. }
             | Self::Scheme { .. }
@@ -331,6 +527,15 @@ impl std::error::Error for Failure {
             | Self::Ambiguous { .. }
             | Self::Timeout { .. }
             | Self::Unapproved { .. }
+            | Self::Unlinked { .. }
+            | Self::Linked { .. }
+            | Self::Nameless
+            | Self::Incomplete { .. }
+            | Self::Ended { first: None, .. }
+            | Self::Held { .. }
+            | Self::Waited { .. }
+            | Self::Absent { .. }
+            | Self::Occupied { .. }
             | Self::PrintRefused => None,
         }
     }

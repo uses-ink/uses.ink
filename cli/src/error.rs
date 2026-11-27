@@ -208,11 +208,6 @@ pub enum Error {
         /// Why.
         source: crate::settings::Unreadable,
     },
-    /// The verb is in the command tree and not built yet.
-    Pending {
-        /// Its name.
-        verb: &'static str,
-    },
     /// `ink help` has nothing to say about the words.
     Help {
         /// Why.
@@ -280,7 +275,6 @@ impl Error {
             Self::Json { .. } => "cli.json.unwritable",
             Self::Deploy { source } => source.kind(),
             Self::Preferences { .. } => "config.file.unreadable",
-            Self::Pending { .. } => "cli.verb.pending",
             Self::Help { .. } => "help.topic.unknown",
             Self::Manual { .. } => "cli.manual.unwritable",
         }
@@ -343,7 +337,6 @@ impl fmt::Display for Error {
             Self::Json { .. } => write!(out, "the result could not be written as JSON"),
             Self::Deploy { source } => write!(out, "{source}"),
             Self::Preferences { source } => write!(out, "{source}"),
-            Self::Pending { verb } => write!(out, "`ink {verb}` is not built yet: it lands with M3"),
             Self::Help { source } => write!(out, "{source}"),
             Self::Manual { .. } => write!(out, "the manual page could not be written"),
         }
@@ -388,8 +381,7 @@ impl std::error::Error for Error {
             | Self::Unversioned { .. }
             | Self::Scope { .. }
             | Self::Words { .. }
-            | Self::Undecided { .. }
-            | Self::Pending { .. } => None,
+            | Self::Undecided { .. } => None,
         }
     }
 }
