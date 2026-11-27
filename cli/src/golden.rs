@@ -12,7 +12,6 @@ use model::{Announcement, ContentPath, Diagnostic, Notice, Problem, Span, Subjec
 use crate::args::{Cli, Origin};
 use crate::deploy::Failure as Refused;
 use crate::deploy::Logged;
-use crate::deploy::wire::{Overview, Step};
 use crate::error::Error;
 use crate::failure::Failure;
 use crate::output::Tally;
@@ -24,6 +23,8 @@ use crate::term::{
     Answer, Cut, Doc, Elapsed, Glyph, Glyphs, Line, Look, Phase, Rail, Record, Render, Role, Table, Theme, Tick, Tree,
     Trees, Width, Writer,
 };
+use control::JobState;
+use edge_api::view::Status as Overview;
 
 /// One way the output can look.
 struct Shot {
@@ -116,7 +117,7 @@ impl Stopped {
                 .into(),
             Refused::Ended {
                 build: "4mq8c1d0wz5e".to_owned(),
-                state: Step::Refused,
+                state: JobState::Refused,
                 count: 2,
                 first: Some(Logged("refused: {\"code\":\"page.slug.clash\"}".to_owned())),
             }
@@ -219,7 +220,7 @@ impl Cases {
             let standing = Self::standing();
             let linked = Linked {
                 schema: Linked::SCHEMA,
-                site: "q3x9m2tj7r5kw8va".to_owned(),
+                site: "5c0e1f7a9b2d4863a1f0e7c9d2b4a688".to_owned(),
                 handle: "garden".to_owned(),
                 url: Some("https://garden.uses.ink".to_owned()),
                 api: "https://api.uses.ink".to_owned(),
@@ -250,7 +251,7 @@ impl Cases {
     fn standing() -> Overview {
         serde_json::from_value(serde_json::json!({
             "site": {
-                "id": "q3x9m2tj7r5kw8va", "handle": "garden", "url": "https://garden.uses.ink",
+                "id": "5c0e1f7a9b2d4863a1f0e7c9d2b4a688", "handle": "garden", "url": "https://garden.uses.ink",
                 "state": "active", "created": "2026-11-02T09:00:00Z", "source": { "kind": "upload" }
             },
             "live": {
@@ -258,11 +259,11 @@ impl Cases {
                 "since": "2026-11-20T10:30:00Z"
             },
             "build": {
-                "id": "7a1f", "trigger": "upload", "state": "running", "requested": "2026-11-27T08:00:00Z",
+                "id": "7a1f3c9e5b2d48a6c0e1f7b9d3a5c2e4", "trigger": "upload", "state": "running", "requested": "2026-11-27T08:00:00Z",
                 "finished": null, "deploy": null
             },
             "pending": [{
-                "id": "7a1f", "trigger": "upload", "state": "running", "requested": "2026-11-27T08:00:00Z",
+                "id": "7a1f3c9e5b2d48a6c0e1f7b9d3a5c2e4", "trigger": "upload", "state": "running", "requested": "2026-11-27T08:00:00Z",
                 "finished": null, "deploy": null
             }]
         }))

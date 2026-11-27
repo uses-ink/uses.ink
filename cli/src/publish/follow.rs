@@ -7,12 +7,15 @@
 use std::time::{Duration, Instant};
 
 use super::view::Pushed;
-use crate::deploy::wire::{Built, Row, Step};
 use crate::deploy::{Calls, Failure, Logged, Short};
 use crate::error::Error;
 use crate::output::Io;
 use crate::stage::{StageLine, Verb};
 use crate::term::Phase;
+use build::{BuildId, Trigger};
+use control::JobState;
+use edge_api::view::{BuildView as Built, DeployView as Row};
+use jiff::Timestamp;
 
 /// How a build is followed: how often it is looked at, and for how long.
 #[derive(Debug)]
@@ -26,10 +29,10 @@ pub(crate) struct Follow<'a> {
 
 impl Follow<'_> {
     /// How far along a step is, out of [`Follow::STEPS`].
-    const fn done(step: Step) -> u64 {
+    const fn done(step: JobState) -> u64 {
         match step {
-            Step::Queued => 0,
-            Step::Running => 1,
+            JobState::Queued => 0,
+            JobState::Running => 1,
             _ => 2,
         }
     }
@@ -39,7 +42,7 @@ impl Follow<'_> {
 
     /// The build the site lists whose id starts with `written`, when it is one build.
     pub(crate) fn find(builds: &[Built], written: &str) -> Result<Built, Failure> {
-        let mut found = builds.iter().filter(|build| build.id.starts_with(written));
+        let mut found = builds.iter().filter(|build| build.id.to_string().starts_with(written));
         match (found.next(), found.next()) {
             (Some(build), None) => Ok(build.clone()),
             (Some(_), Some(_)) => Err(Failure::Ambiguous { written: written.to_owned(), count: 2 }),
@@ -49,28 +52,28 @@ impl Follow<'_> {
 
     /// Waits for `build` to end, saying each step it goes through. A build that is not listed any
     /// more is [`Failure::Absent`], one that outlasts the wait is [`Failure::Waited`].
-    pub(crate) fn until(&self, build: &str, io: &mut Io<'_>) -> Result<Built, Error> {
+    pub(crate) fn until(&self, build: BuildId, io: &mut Io<'_>) -> Result<Built, Error> {
         let started = Instant::now();
-        let mut seen: Option<Step> = None;
+        let mut seen: Option<JobState> = None;
         io.begin(Phase::Building, Self::STEPS, "steps");
         loop {
             let builds = self.calls.block(self.calls.api.builds())?;
             let found = builds.iter().find(|listed| listed.id == build);
-            let here = found.ok_or_else(|| Failure::Absent { build: build.to_owned() })?;
+            let here = found.ok_or_else(|| Failure::Absent { build: build.to_string() })?;
             if seen != Some(here.state) {
                 io.end()?;
                 io.stage(&StageLine::new(Verb::Followed, format!("build {build} is {}", here.state)))?;
                 io.begin(Phase::Building, Self::STEPS, "steps");
                 seen = Some(here.state);
             }
-            io.tick(Self::done(here.state), Some(here.state.word()))?;
+            io.tick(Self::done(here.state), Some(here.state.name()))?;
             if here.state.ended() {
                 io.end()?;
                 return Ok(here.clone());
             }
             if started.elapsed() >= self.wait {
                 io.end()?;
-                return Err(Failure::Waited { build: build.to_owned(), after: self.wait }.into());
+                return Err(Failure::Waited { build: build.to_string(), after: self.wait }.into());
             }
             std::thread::sleep(self.poll);
         }
@@ -81,16 +84,16 @@ impl Follow<'_> {
     /// is recorded and not live because publishing is paused is [`Failure::Held`].
     pub(crate) fn settle(&self, built: &Built) -> Result<Row, Error> {
         match built.state {
-            Step::Succeeded => {}
+            JobState::Succeeded => {}
             state => {
-                let log = self.calls.block(self.calls.api.log(&built.id))?.unwrap_or_default();
+                let log = self.calls.block(self.calls.api.log(built.id))?.unwrap_or_default();
                 let problems: Vec<String> = log.iter().filter_map(|line| Self::problem(line)).collect();
                 let first = problems.first().cloned().map(Logged);
-                return Err(Failure::Ended { build: built.id.clone(), state, count: problems.len(), first }.into());
+                return Err(Failure::Ended { build: built.id.to_string(), state, count: problems.len(), first }.into());
             }
         }
         let deploys = self.calls.block(self.calls.api.deploys())?;
-        let made = built.deploy.ok_or_else(|| Failure::Absent { build: built.id.clone() })?;
+        let made = built.deploy.ok_or_else(|| Failure::Absent { build: built.id.to_string() })?;
         let row = deploys
             .into_iter()
             .find(|row| row.id == made)
@@ -117,13 +120,25 @@ impl Follow<'_> {
         Some(format!("{kind}: {cut}"))
     }
 
+    /// A build that was just queued: it has an id and a state, and nothing else yet.
+    pub(crate) fn queued(id: BuildId) -> Built {
+        Built {
+            id,
+            trigger: Trigger::Upload,
+            state: JobState::Queued,
+            requested: Timestamp::UNIX_EPOCH,
+            finished: None,
+            deploy: None,
+        }
+    }
+
     /// The document of a build that ended: `ink push` and `ink watch` print it.
     pub(crate) fn document(schema: &'static str, site: String, built: &Built, row: Option<&Row>) -> Pushed {
         Pushed {
             schema,
             site,
             tree: None,
-            build: built.id.clone(),
+            build: built.id,
             state: built.state,
             deploy: row.map(|row| row.id),
             live: row.map(|row| row.live),

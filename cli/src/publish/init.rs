@@ -7,13 +7,13 @@ use hyper::Method;
 
 use super::link::Link;
 use super::view::Linked;
-use crate::deploy::wire::{Overview, Site};
 use crate::deploy::{Failure, Reach, Remote};
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::output::Io;
 use crate::settings::{Preferences, Process};
 use crate::stage::{StageLine, Verb};
+use edge_api::view::{SiteView as Site, Status as Overview};
 
 /// `ink init [--handle NAME | --site ID]`.
 #[derive(Debug, Args)]
@@ -73,15 +73,15 @@ impl Init {
             }
         }
         let (site, created) = self.site(&reach, wanted.as_deref())?;
-        let link = Link::new(reach.address.clone(), site.id.clone(), Some(site.handle.clone()));
+        let link = Link::new(reach.address.clone(), site.id.to_string(), Some(site.handle.clone()));
         let unchanged = held.as_ref() == Some(&link);
         let file = if unchanged { Link::path(&self.dir) } else { link.save(&self.dir)? };
         io.stage(&StageLine::new(Verb::Linked, format!("{} to site {}", self.dir.display(), site.handle)))?;
         let linked = Linked {
             schema: Linked::SCHEMA,
-            site: site.id,
+            site: site.id.to_string(),
             handle: site.handle,
-            url: site.url,
+            url: site.url.map(|url| url.to_string()),
             api: reach.address.clone(),
             file,
             created,

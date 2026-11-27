@@ -6,9 +6,11 @@ use std::path::PathBuf;
 use model::DeployId;
 use serde::Serialize;
 
-use crate::deploy::wire::{Built, Live, Overview, Step};
 use crate::deploy::{Moment, Short, Size};
 use crate::term::{Doc, Line, Record, Render, Role};
+use build::BuildId;
+use control::JobState;
+use edge_api::view::{BuildView as Built, LiveView as Live, SourceView, Status as Overview};
 
 /// How a site is doing, in one word.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -41,7 +43,8 @@ impl Health {
     /// The health of a site from what its overview says.
     pub(crate) fn of(overview: &Overview) -> Self {
         let paused = overview.live.as_ref().is_some_and(|live| live.paused);
-        let failed = overview.build.as_ref().is_some_and(|build| matches!(build.state, Step::Refused | Step::Failed));
+        let failed =
+            overview.build.as_ref().is_some_and(|build| matches!(build.state, JobState::Refused | JobState::Failed));
         if paused {
             Self::Paused
         } else if !overview.pending.is_empty() {
@@ -84,12 +87,12 @@ impl<'a> Standing<'a> {
     /// One build as a line: its id, where it is, what set it off and when.
     fn build(build: &Built) -> Line {
         let (role, word) = match build.state {
-            Step::Succeeded => (Role::Good, "succeeded"),
-            Step::Queued | Step::Running => (Role::Warn, build.state.word()),
-            Step::Refused | Step::Failed => (Role::Bad, build.state.word()),
+            JobState::Succeeded => (Role::Good, "succeeded"),
+            JobState::Queued | JobState::Running => (Role::Warn, build.state.name()),
+            JobState::Refused | JobState::Failed => (Role::Bad, build.state.name()),
         };
         Line::new()
-            .with(Role::Id, build.id.clone())
+            .with(Role::Id, build.id.to_string())
             .with(role, format!("  {word}"))
             .with(Role::Quiet, format!("  {}, requested {}", build.trigger, Moment(build.requested)))
     }
@@ -108,20 +111,20 @@ impl<'a> Standing<'a> {
 impl Render for Standing<'_> {
     fn render(&self, into: &mut Doc) {
         let site = &self.overview.site;
-        let address = site.url.clone().unwrap_or_else(|| "no address".to_owned());
+        let address = site.url.as_ref().map_or_else(|| "no address".to_owned(), ToString::to_string);
         into.push(Line::new().strong(Role::Heading, site.handle.clone()).with(Role::Quiet, format!("  {address}")));
         into.blank();
         let (word, role) = self.health.shown();
         let source = match &site.source {
-            crate::deploy::wire::Origin::Upload => "upload: ink push sends the folder".to_owned(),
-            crate::deploy::wire::Origin::Folder => "a folder on the server".to_owned(),
-            crate::deploy::wire::Origin::Git { url, revision } => {
+            SourceView::Upload => "upload: ink push sends the folder".to_owned(),
+            SourceView::Folder => "a folder on the server".to_owned(),
+            SourceView::Git { url, revision } => {
                 format!("git {url}{}", revision.as_ref().map_or_else(String::new, |rev| format!(", {rev}")))
             }
         };
         let mut fields = Record::new(2)
-            .field("site", Line::new().with(Role::Id, site.id.clone()))
-            .field("state", Line::plain(site.state.clone()))
+            .field("site", Line::new().with(Role::Id, site.id.to_string()))
+            .field("state", Line::plain(site.state.to_string()))
             .field("created", Line::plain(Moment(site.created).to_string()))
             .field("source", Line::plain(source))
             .field("health", Line::new().with(role, word));
@@ -196,9 +199,9 @@ pub(crate) struct Pushed {
     pub(crate) site: String,
     /// The tree that was sent; none for `watch`.
     pub(crate) tree: Option<String>,
-    pub(crate) build: String,
+    pub(crate) build: BuildId,
     /// Where the build is: it ended when this is not queued or running.
-    pub(crate) state: Step,
+    pub(crate) state: JobState,
     /// The deploy the build made, once it has.
     pub(crate) deploy: Option<DeployId>,
     /// Whether the deploy is the one served.

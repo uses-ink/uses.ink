@@ -7,9 +7,10 @@ use std::fmt;
 
 use jiff::Timestamp;
 use model::DeployId;
+use serde::Serialize;
 
-use super::wire::{Built, Live, Moved, Row};
 use crate::term::{Doc, Line, Record as Fields, Render, Role, Table};
+use edge_api::view::{BuildView as Built, DeployView as Row, LiveView as Live, Moved};
 
 /// How many characters of a deploy id are shown.
 pub(crate) const SHORT: usize = 12;
@@ -74,7 +75,7 @@ impl Render for Listing<'_> {
                 Line::new().with(Role::Id, Short(row.id).to_string()),
                 Line::plain(Moment(row.created).to_string()),
                 Line::plain(row.files.to_string()),
-                Line::plain(Size(row.bytes).to_string()),
+                Line::plain(Size(row.bytes.count()).to_string()),
                 Line::new().with(role, state),
             ]);
         }
@@ -102,7 +103,7 @@ impl Render for Record<'_> {
             .field("deploy", Line::new().with(Role::Id, row.id.to_string()))
             .field("when", Line::plain(Moment(row.created).to_string()))
             .field("state", Line::new().with(role, state))
-            .field("files", Line::plain(format!("{}, {}", row.files, Size(row.bytes))));
+            .field("files", Line::plain(format!("{}, {}", row.files, Size(row.bytes.count()))));
         if let Some(build) = self.build {
             fields = fields.field("build", Line::plain(format!("{} ({}, {})", build.id, build.state, build.trigger)));
         }
@@ -131,4 +132,31 @@ impl Render for Pointer<'_> {
         };
         Fields::new(0).field("live", live).render(into);
     }
+}
+
+/// What `ink deploy list --json` prints.
+#[derive(Debug, Serialize)]
+pub(crate) struct TableOut<'a> {
+    pub(crate) schema: &'static str,
+    pub(crate) site: String,
+    pub(crate) total: usize,
+    pub(crate) deploys: &'a [Row],
+}
+
+/// What `ink deploy show --json` prints.
+#[derive(Debug, Serialize)]
+pub(crate) struct ShowOut<'a> {
+    pub(crate) schema: &'static str,
+    pub(crate) deploy: &'a Row,
+    pub(crate) build: Option<&'a Built>,
+    /// The lines of the build's log, each one NDJSON as the API sent it.
+    pub(crate) log: &'a [String],
+}
+
+/// What `ink deploy rollback` and `ink deploy resume --json` print.
+#[derive(Debug, Serialize)]
+pub(crate) struct MoveOut<'a> {
+    pub(crate) schema: &'static str,
+    pub(crate) site: String,
+    pub(crate) moved: &'a Moved,
 }

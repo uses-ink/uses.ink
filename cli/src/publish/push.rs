@@ -9,8 +9,10 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use build::BuildId;
 use build::{Leaf, Tree};
 use clap::Args;
+use edge_api::Probed;
 use edge_api::tar::Writer;
 use engine::Blobs;
 use host_native::{Folder, Memory};
@@ -18,7 +20,6 @@ use model::{ContentPath, Hash};
 
 use super::follow::Follow;
 use super::view::Pushed;
-use crate::deploy::wire::Probed;
 use crate::deploy::{Calls, Failure, Remote, Short, Size};
 use crate::error::Error;
 use crate::exit::Exit;
@@ -155,15 +156,15 @@ impl Push {
             pushed
         };
         if self.no_wait {
-            let queued = crate::deploy::wire::Built::named(&build, crate::deploy::wire::Step::Queued);
+            let queued = Follow::queued(build);
             let pushed = counts(Follow::document(Pushed::PUSH, site, &queued, None));
-            io.result(&Answer::of(&build))?;
+            io.result(&Answer::of(build))?;
             io.json(&pushed)?;
             return Ok(Exit::Done);
         }
         let follow =
             Follow { calls: &calls, poll: Duration::from_millis(self.poll), wait: Duration::from_secs(self.wait) };
-        let ended = follow.until(&build, io)?;
+        let ended = follow.until(build, io)?;
         let row = follow.settle(&ended)?;
         io.stage(&StageLine::new(
             Verb::Built,
@@ -171,7 +172,7 @@ impl Push {
                 "deploy {} is live: {}, {}",
                 Short(row.id),
                 Plural(Self::count(row.files), "file"),
-                Size(row.bytes)
+                Size(row.bytes.count())
             ),
         ))?;
         io.result(&Answer::of(row.id))?;
@@ -181,7 +182,7 @@ impl Push {
 
     /// Sends the tree, and the files the site lacks, until it queues a build. The build, and how
     /// many files this run sent.
-    fn send(&self, calls: &Calls, scanned: &Scanned, io: &mut Io<'_>) -> Result<(String, u64), Error> {
+    fn send(&self, calls: &Calls, scanned: &Scanned, io: &mut Io<'_>) -> Result<(BuildId, u64), Error> {
         let mut sent = 0_u64;
         for _ in 0..self.rounds.max(1) {
             let probed = calls.block(calls.api.probe(scanned.tree.bytes()))?;
@@ -190,12 +191,11 @@ impl Push {
                 Probed::Duplicate => {
                     let overview = calls.block(calls.api.overview())?;
                     let queued = overview.pending.first().or(overview.build.as_ref());
-                    let build = queued
-                        .map(|build| build.id.clone())
-                        .ok_or(Failure::Incomplete { missing: 0, rounds: self.rounds })?;
+                    let build =
+                        queued.map(|build| build.id).ok_or(Failure::Incomplete { missing: 0, rounds: self.rounds })?;
                     return Ok((build, sent));
                 }
-                Probed::Missing { missing, part } => {
+                Probed::Missing { missing, part, .. } => {
                     let round = Round {
                         calls,
                         scanned,

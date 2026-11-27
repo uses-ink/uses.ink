@@ -7,13 +7,13 @@
 mod client;
 mod failure;
 mod view;
-pub(crate) mod wire;
 
 use std::future::Future;
 use std::time::Duration;
 
 use clap::Args;
 use control::Id;
+use edge_api::view::DeployView as Row;
 
 pub(crate) use client::{Api, Endpoint, Retry, Wire};
 pub(crate) use failure::{Failure, Logged, Needed};
@@ -27,8 +27,7 @@ use crate::publish::Link;
 use crate::settings::{Environment, Preferences, Process};
 use crate::term::Verbatim;
 use crate::tree::Heading;
-use view::{Listing, Pointer, Record};
-use wire::{Listed, Pointer as Moved, Row, Shown};
+use view::{Listing, MoveOut, Pointer, Record, ShowOut, TableOut};
 
 /// Which API and which site a remote command talks to.
 #[derive(Debug, Args)]
@@ -223,7 +222,7 @@ impl List {
         let all = calls.block(calls.api.deploys()).map_err(|source| Error::Deploy { source })?;
         let rows = all.get(..self.limit.min(all.len())).unwrap_or_default();
         io.result(&Listing { rows, total: all.len() })?;
-        io.json(&Listed {
+        io.json(&TableOut {
             schema: "uses.deploys/v1",
             site: calls.api.site.to_string(),
             total: all.len(),
@@ -244,7 +243,7 @@ impl Show {
                 let builds = calls.api.builds().await?;
                 let build = builds.into_iter().find(|build| build.deploy == Some(deploy.id));
                 let log = match &build {
-                    Some(build) => calls.api.log(&build.id).await?.unwrap_or_default(),
+                    Some(build) => calls.api.log(build.id).await?.unwrap_or_default(),
                     None => Vec::new(),
                 };
                 Ok::<_, Failure>((deploy, build, log))
@@ -252,7 +251,7 @@ impl Show {
             .map_err(|source| Error::Deploy { source })?;
         let (deploy, build, log) = &found;
         io.result(&Record { deploy, build: build.as_ref(), log })?;
-        io.json(&Shown { schema: "uses.deploy/v1", deploy, build: build.as_ref(), log })?;
+        io.json(&ShowOut { schema: "uses.deploy/v1", deploy, build: build.as_ref(), log })?;
         Ok(Exit::Done)
     }
 }
@@ -276,7 +275,7 @@ impl Rollback {
                 "deploys are paused: `ink deploy resume` deploys new pushes again (rolled back to {live})"
             )),
         )?;
-        io.json(&Moved { schema: "uses.deploy-pointer/v1", site: calls.api.site.to_string(), moved: &moved })?;
+        io.json(&MoveOut { schema: "uses.deploy-pointer/v1", site: calls.api.site.to_string(), moved: &moved })?;
         Ok(Exit::Done)
     }
 }
@@ -287,7 +286,7 @@ impl Remote {
         let calls = self.calls()?;
         let moved = calls.block(calls.api.resume()).map_err(|source| Error::Deploy { source })?;
         io.result(&Pointer(&moved))?;
-        io.json(&Moved { schema: "uses.deploy-pointer/v1", site: calls.api.site.to_string(), moved: &moved })?;
+        io.json(&MoveOut { schema: "uses.deploy-pointer/v1", site: calls.api.site.to_string(), moved: &moved })?;
         Ok(Exit::Done)
     }
 }
@@ -299,6 +298,7 @@ mod test {
     use std::net::TcpListener;
 
     use super::*;
+    use edge_api::view::Listed;
 
     /// A variable set for one test.
     struct Fixed(BTreeMap<&'static str, &'static str>);
@@ -426,7 +426,7 @@ mod test {
 
     #[test]
     fn an_id_is_found_by_its_start_and_only_when_that_is_one_deploy() {
-        let rows: Vec<Row> = serde_json::from_str::<wire::Items<Row>>(&history()).unwrap().items;
+        let rows: Vec<Row> = serde_json::from_str::<Listed<Row>>(&history()).unwrap().items;
         let history = History(&rows);
         assert_eq!(history.find("1").unwrap().files, 61);
         assert!(matches!(history.find("3"), Err(Failure::Unknown { .. })));

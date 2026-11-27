@@ -4,10 +4,10 @@ use std::fmt;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use control::JobState;
 use model::DeployId;
 use serde::Deserialize;
 
-use super::wire::Step;
 use crate::exit::Exit;
 use crate::publish::LinkError;
 
@@ -251,7 +251,7 @@ pub enum Failure {
         /// The build.
         build: String,
         /// How it ended.
-        state: Step,
+        state: JobState,
         /// How many problems its log names.
         count: usize,
         /// The first of them.
@@ -323,7 +323,7 @@ impl Failure {
             | Self::PrintRefused => Exit::Usage,
             Self::Uploading { source, .. } => source.exit(),
             Self::Held { .. } => Exit::Conflict,
-            Self::Ended { state: Step::Refused, .. } => Exit::Content,
+            Self::Ended { state: JobState::Refused, .. } => Exit::Content,
             Self::Ended { .. }
             | Self::Incomplete { .. }
             | Self::Archive { .. }
@@ -371,7 +371,7 @@ impl Failure {
             Self::Tree { .. } => "push.tree.invalid",
             Self::Incomplete { .. } => "push.upload.incomplete",
             Self::Uploading { source, .. } => source.kind(),
-            Self::Ended { state: Step::Refused, .. } => "push.build.refused",
+            Self::Ended { state: JobState::Refused, .. } => "push.build.refused",
             Self::Ended { .. } => "push.build.failed",
             Self::Held { .. } => "push.deploy.held",
             Self::Waited { .. } => "push.wait.expired",
@@ -410,7 +410,7 @@ impl Failure {
             Self::Uploading { source, .. } => {
                 return source.remedy().or(Some("run `ink push` again to send what is left"));
             }
-            Self::Ended { state: Step::Refused, .. } => "fix what the build said, then push again",
+            Self::Ended { state: JobState::Refused, .. } => "fix what the build said, then push again",
             Self::Ended { .. } => "run `ink push` again; if it keeps failing, report it",
             Self::Held { .. } => "run `ink deploy resume` to deploy this and new pushes",
             Self::Occupied { .. } => "give an empty or new folder",
@@ -475,7 +475,7 @@ impl fmt::Display for Failure {
             }
             Self::Uploading { sent, .. } => write!(out, "the upload stopped after the server took {sent} files"),
             Self::Ended { build, state, count, .. } => match state {
-                Step::Refused => write!(out, "the build {build} was refused: {count} problems stop the site"),
+                JobState::Refused => write!(out, "the build {build} was refused: {count} problems stop the site"),
                 _ => write!(out, "the build {build} {state} without making a deploy"),
             },
             Self::Held { deploy } => {

@@ -6,19 +6,29 @@
 
 use std::time::Duration;
 
+use build::BuildId;
 use control::{Id, SiteKind};
+use edge_api::Probed;
+use edge_api::view::{BuildView, DeployView, Listed, Moved, Status as Overview};
 use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
 use hyper::header::{ACCEPT, AUTHORIZATION, CONNECTION, CONTENT_TYPE, HOST};
 use hyper::{Method, Request, Uri};
 use hyper_util::rt::TokioIo;
 use model::DeployId;
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 
 use super::failure::{Failure, Said};
-use super::wire::{Built, Items, Moved, Overview, Probed, Row, Target};
 use crate::auth::Identity;
+
+/// The body of a rollback request.
+#[derive(Debug, Serialize)]
+struct Target {
+    /// The deploy to make live.
+    deploy: DeployId,
+}
 
 /// Where the API is: a host and port, and what to put in `Host`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -119,14 +129,14 @@ impl Api {
     }
 
     /// `GET /v1/sites/{site}/deploys`: the history, newest first.
-    pub(crate) async fn deploys(&self) -> Result<Vec<Row>, Failure> {
-        let items: Items<Row> = self.look("deploys").await?;
+    pub(crate) async fn deploys(&self) -> Result<Vec<DeployView>, Failure> {
+        let items: Listed<DeployView> = self.look("deploys").await?;
         Ok(items.items)
     }
 
     /// `GET /v1/sites/{site}/builds`: recent builds, newest first.
-    pub(crate) async fn builds(&self) -> Result<Vec<Built>, Failure> {
-        let items: Items<Built> = self.look("builds").await?;
+    pub(crate) async fn builds(&self) -> Result<Vec<BuildView>, Failure> {
+        let items: Listed<BuildView> = self.look("builds").await?;
         Ok(items.items)
     }
 
@@ -142,7 +152,7 @@ impl Api {
     }
 
     /// `GET /v1/sites/{site}/builds/{build}/log`: the lines of the log, `None` when it has none.
-    pub(crate) async fn log(&self, build: &str) -> Result<Option<Vec<String>>, Failure> {
+    pub(crate) async fn log(&self, build: BuildId) -> Result<Option<Vec<String>>, Failure> {
         match self.wire.repeat(Method::GET, &self.path(&format!("builds/{build}/log")), Vec::new()).await {
             Ok(body) => Ok(Some(String::from_utf8_lossy(&body).lines().map(str::to_owned).collect())),
             Err(Failure::Refused { status: 404, .. }) => Ok(None),

@@ -44,12 +44,12 @@ impl Watch {
         let build = match &self.build {
             Some(written) => Follow::find(&known, written)?.id,
             None => match known.iter().rev().find(|build| !build.state.ended()) {
-                Some(running) => running.id.clone(),
+                Some(running) => running.id,
                 None => self.next(&calls, &known, io)?,
             },
         };
         io.stage(&StageLine::new(Verb::Followed, format!("build {build}")))?;
-        let ended = follow.until(&build, io)?;
+        let ended = follow.until(build, io)?;
         let row = follow.settle(&ended)?;
         io.stage(&StageLine::new(Verb::Built, format!("deploy {} is live", Short(row.id))))?;
         io.result(&Answer::of(row.id))?;
@@ -61,15 +61,15 @@ impl Watch {
     fn next(
         &self,
         calls: &crate::deploy::Calls,
-        known: &[crate::deploy::wire::Built],
+        known: &[edge_api::view::BuildView],
         io: &mut Io<'_>,
-    ) -> Result<String, Error> {
+    ) -> Result<build::BuildId, Error> {
         let started = Instant::now();
         io.stage(&StageLine::new(Verb::Followed, "the site, until it starts a build"))?;
         loop {
             let now = calls.block(calls.api.builds())?;
             if let Some(fresh) = now.iter().find(|build| known.iter().all(|old| old.id != build.id)) {
-                return Ok(fresh.id.clone());
+                return Ok(fresh.id);
             }
             if started.elapsed() >= Duration::from_secs(self.wait) {
                 return Err(Failure::Waited { build: "next".to_owned(), after: Duration::from_secs(self.wait) }.into());
