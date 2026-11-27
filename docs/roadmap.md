@@ -216,8 +216,11 @@ list), `ink push`, streaming intake and export.
   build log (streamed while it runs) and every failure from typed view models with `unspliced`,
   goldens and structure checks; the edge mounts it through `Screens`. Open: the edge's mounting,
   previews and the decisions diff, domains and identities, the pen's wasm loader.
-- Sign-in for self-host: email magic link over SMTP, plus a first-run admin link printed once.
-  **Built (0066), gate result in the progress note below;** the dashboard screens are `web`'s.
+- Sign-in for self-host: passkeys, a first-run admin link printed once, and an email link that
+  starts a delayed recovery (never a login), per the scheme in `auth.md` (0068, accepted). **Built
+  (0066):** the magic-link bootstrap, sessions and the mail port. Its three spikes come first for
+  passkeys: `webauthn-rs-core` on `wasm32-unknown-unknown`, the browser matrix, and the licence
+  list. `ink login`, `key` and the signed-request profile replace the owner token.
 - `ink push` and `ink:source-upload`; `ink status`, `watch`, `deploys`, `rollback`, `resume`,
   `export`.
 - CLI redesign (0061, Accepted; `docs/cli.md`): the typed output grammar and one renderer, then the
@@ -237,6 +240,7 @@ The same product on Cloudflare.
   Object; deploy pipeline from CI with `wrangler`.
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`; handles with reservations and tombstones **(owner: O3, Q5)**.
+- Orgs, roles, per-account recovery policy and a Durable Object nonce store for signed requests (`auth.md` sections 8, 9, 12); OIDC trusted publishing for CI after launch (open choice 6).
 - Custom domains through Cloudflare for SaaS.
 - Budgets enforced and the limits page **(owner: O7, Q13)**.
 - Deletion with receipt; abuse report endpoint and takedown.

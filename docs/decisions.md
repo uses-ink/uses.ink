@@ -1485,3 +1485,39 @@ closes them.
 next one reads, and nothing between them waits on a sleep. **Reversal:** if a thread per loop is
 too much for a small box, run both on one runtime with `spawn_local`; the supervisor's events and
 the settings do not change.
+
+## 0068 Authentication has no passwords: passkeys for people, signed requests for machines
+
+Accepted (2026-11-27). The owner chose the direction ("no passwords anywhere"), reviewed the
+design in `docs/auth.md` and `docs/auth-preview.html`, and took the recommendation on every open
+choice of its section 23. Passkeys are not built yet; the sign-in of 0066 is the bootstrap. In short:
+
+- **People** sign in with **passkeys** (WebAuthn, discoverable, user verification required, ES256,
+  attestation none), on `webauthn-rs-core` behind our own `Passkeys` port, after a spike shows it
+  builds for `wasm32-unknown-unknown`. After sign-in a **session**: a 256-bit id of which only a
+  context-separated BLAKE3 digest is stored, in a `__Host-` `HttpOnly` `Secure` `SameSite=Lax`
+  cookie, with absolute and idle limits, a list and revocation. CSRF is Lax plus an Origin and
+  Fetch Metadata check and no state change on GET. The API host reads no cookie and the dashboard
+  host accepts no signature.
+- **The CLI and CI** sign every request with an **Ed25519** key, in a fixed one-header profile
+  (`Ink-Sig-1`) modelled on RFC 9421 but not wire compatible with it: method, canonical target,
+  BLAKE3 body digest, audience, time, nonce and key id under a context line, no algorithm field, a
+  strict parser, errors that leak nothing. Devices enrol with a device flow (RFC 8628) whose secret
+  is the key pair, the CLI showing a key fingerprint and the dashboard approving with a passkey.
+  Deploy keys are scoped to one site, expire (90 days by default) and rotate with overlap. A
+  device key can revoke but never mint a credential.
+- **Recovery** is a passkey, a recovery code (128 random bits, digests only), or an email link that
+  starts a 48-hour recovery with notices and cancel. There is no magic-link login. Self-host's first
+  run prints a one-time link; `--admin-link` re-issues it for the folder's operator.
+- **The owner token** (0052) is deleted. The operator credential is `<data>/operator-keys`, a file
+  of public keys, enrolled with `ink login --data`.
+- **Rights** are a typed `Right` enum on a `Scope` (`Account`, `Site`), least privilege by default,
+  composed by union with keys as attenuations; orgs and roles arrive with M4.
+- **Dependencies** need licence exceptions in `deny.toml`: the `webauthn-rs` tree (MPL-2.0) and
+  `ed25519-dalek` with `curve25519-dalek` (BSD-3-Clause); `ed25519-compact` (MIT) is the alternative.
+
+**Why:** a database leak, a log, a proxy or a phished form yields nothing that signs in, and no
+person ever holds a secret they chose. **Reversal:** the wasm spike fails and our own verifier is
+too large, or the licence exceptions are refused: then the passkey library or the Ed25519 crate
+changes behind its port, and the scheme stands. The open choices are the last section of
+`docs/auth.md`.

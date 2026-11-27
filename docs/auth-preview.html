@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ink auth preview</title>
+<style>
+:root{--bg:#ffffff;--fg:#000000;--bad:#c4160b;--good:#1a7f37;--warn:#8a5a00;--lit:#0b6b7e;--work:#0b6b7e;--id:#a4308a;--place:#1f5fbf;--code:#1f5fbf;--quiet:#5c5c5c;--paper:#f6f6f4;--line:#dcdcd6;--accent:#2b59c3;--accent-ink:#ffffff}
+@media (prefers-color-scheme: dark){:root{--bg:#171717;--fg:#e8e8e8;--bad:#ff7a6e;--good:#62d68f;--warn:#e6c34a;--lit:#5fd0e0;--work:#5fd0e0;--id:#e08ae0;--place:#7aa7ff;--code:#7aa7ff;--quiet:#9a9a9a;--paper:#202020;--line:#333;--accent:#7aa7ff;--accent-ink:#101010}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{max-width:60rem;margin:0 auto;padding:2rem 1rem 4rem}
+h1{font-size:1.4rem;margin:0 0 .25rem} h2{font-size:1.05rem;margin:2.5rem 0 .75rem;border-bottom:1px solid var(--line);padding-bottom:.25rem}
+p.lead{color:var(--quiet);margin:0 0 1rem;max-width:44rem}
+figure{margin:1rem 0} figcaption{font-size:.85rem;margin-bottom:.3rem} figcaption .d{color:var(--quiet)}
+pre{margin:0;padding:.9rem 1rem;background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow-x:auto;font:13.5px/1.45 ui-monospace,"Monaspace Radon",Menlo,Consolas,monospace;color:var(--fg);white-space:pre}
+table{border-collapse:collapse;font-size:.85rem} td{padding:.2rem 1rem .2rem 0;vertical-align:top}
+.r-head,.r-subject,.r-bold{font-weight:700}
+.r-lit{color:var(--lit);font-weight:700} .r-good{color:var(--good)} .r-goodb{color:var(--good);font-weight:700}
+.r-warn{color:var(--warn)} .r-warnb{color:var(--warn);font-weight:700} .r-bad{color:var(--bad)} .r-badb{color:var(--bad);font-weight:700}
+.r-work{color:var(--work)} .r-id{color:var(--id)} .r-place{color:var(--place)} .r-code{color:var(--code)} .r-quiet{color:var(--quiet)}
+svg.seq{width:100%;height:auto;display:block;background:var(--paper);border:1px solid var(--line);border-radius:6px;color:var(--fg)}
+svg.seq .box{fill:var(--bg);stroke:var(--fg);stroke-width:1.2}
+svg.seq .pt{fill:var(--fg);font:600 13px system-ui,sans-serif}
+svg.seq .life{stroke:var(--quiet);stroke-width:1;stroke-dasharray:3 4}
+svg.seq .msg{stroke:var(--fg);stroke-width:1.4;fill:none}
+svg.seq .msg.dash{stroke-dasharray:6 4}
+svg.seq .ah{fill:var(--fg)}
+svg.seq .lab{fill:var(--fg);font:12.5px system-ui,sans-serif}
+svg.seq .note{fill:var(--bg);stroke:var(--quiet);stroke-width:1}
+svg.seq .nt{fill:var(--quiet);font:italic 12px system-ui,sans-serif}
+.win{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg);max-width:34rem}
+.bar{background:var(--paper);border-bottom:1px solid var(--line);padding:.4rem .7rem;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--quiet)}
+.page{padding:1.2rem 1.3rem}
+.page h3{margin:0 0 .4rem;font-size:1.1rem} .page p{margin:.4rem 0;color:var(--fg)} .page .q{color:var(--quiet);font-size:.9rem}
+.page .code{font:600 1.4rem ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:.4rem .7rem;display:inline-block}
+.page .fp{font:600 1rem ui-monospace,Menlo,Consolas,monospace;color:var(--id)}
+.btn{display:inline-block;margin:.5rem .5rem 0 0;padding:.45rem .9rem;border-radius:6px;border:1px solid var(--fg);font-weight:600;font-size:.9rem;background:transparent;color:var(--fg)}
+.btn.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.warnbox{border-left:3px solid var(--warn);padding:.3rem .7rem;margin:.7rem 0;background:var(--paper);font-size:.9rem}
+.page dl{display:grid;grid-template-columns:7rem 1fr;gap:.2rem .8rem;margin:.6rem 0;font-size:.9rem} .page dt{color:var(--quiet)} .page dd{margin:0}
+.page table{width:100%;font-size:.85rem} .page th{text-align:left;color:var(--quiet);font-weight:500;padding:.2rem .6rem .2rem 0}
+.row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:1rem;align-items:start}
+@media (max-width:40rem){main{padding:1.2rem 16px 3rem}}
+</style></head><body><main>
+<h1>ink auth preview</h1>
+<p class="lead">The flows of docs/auth.md as sequence diagrams, and the screens of enrolment, login and recovery: the CLI in the colour roles of cli-preview.html, the dashboard as plain pages. Everything here is a mock-up: names, codes and ids are made up. Follows your system light or dark setting. Proposed, decision 0068.</p>
+
+<h2>1. Sign in with a passkey</h2>
+<figure><figcaption><strong>Passkey login, no username</strong> <span class="d">The ceremony state is on the server and single use; the dashboard sets a session after the assertion verifies.</span></figcaption><svg class="seq" viewBox="0 0 900 622" role="img" aria-label="Passkey login" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="box" x="10.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="80.0" y="30" text-anchor="middle">Browser</text>
+<line class="life" x1="80.0" y1="42" x2="80.0" y2="610"/>
+<rect class="box" x="380.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="450.0" y="30" text-anchor="middle">Dashboard (app)</text>
+<line class="life" x1="450.0" y1="42" x2="450.0" y2="610"/>
+<rect class="box" x="750.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="820.0" y="30" text-anchor="middle">Authenticator</text>
+<line class="life" x1="820.0" y1="42" x2="820.0" y2="610"/>
+<line class="msg" x1="80.0" y1="90" x2="450.0" y2="90" marker-end="url(#ah)"/><text class="lab" x="265.0" y="83" text-anchor="middle">GET /signin</text>
+<line class="msg dash" x1="450.0" y1="136" x2="80.0" y2="136" marker-end="url(#ah)"/><text class="lab" x="265.0" y="129" text-anchor="middle">page + one script, no inline</text>
+<line class="msg" x1="80.0" y1="182" x2="450.0" y2="182" marker-end="url(#ah)"/><text class="lab" x="265.0" y="175" text-anchor="middle">POST /auth/login/begin  (Origin checked)</text>
+<rect class="note" x="324.5" y="212" width="251.0" height="28" rx="4"/><text class="nt" x="450.0" y="230" text-anchor="middle">challenge stored, single use, 5 min</text>
+<line class="msg dash" x1="450.0" y1="274" x2="80.0" y2="274" marker-end="url(#ah)"/><text class="lab" x="265.0" y="267" text-anchor="middle">challenge, no allowList, uv required</text>
+<line class="msg" x1="80.0" y1="320" x2="820.0" y2="320" marker-end="url(#ah)"/><text class="lab" x="450.0" y="313" text-anchor="middle">navigator.credentials.get()</text>
+<rect class="note" x="606.0" y="350" width="284.0" height="28" rx="4"/><text class="nt" x="748.0" y="368" text-anchor="middle">person unlocks: PIN, fingerprint or face</text>
+<line class="msg dash" x1="820.0" y1="412" x2="80.0" y2="412" marker-end="url(#ah)"/><text class="lab" x="450.0" y="405" text-anchor="middle">assertion (credential id, user handle, signature)</text>
+<line class="msg" x1="80.0" y1="458" x2="450.0" y2="458" marker-end="url(#ah)"/><text class="lab" x="265.0" y="451" text-anchor="middle">POST /auth/login/finish</text>
+<rect class="note" x="271.70000000000005" y="488" width="356.59999999999997" height="28" rx="4"/><text class="nt" x="450.0" y="506" text-anchor="middle">UV set, rp id, origin, BE unchanged, counter policy</text>
+<line class="msg dash" x1="450.0" y1="550" x2="80.0" y2="550" marker-end="url(#ah)"/><text class="lab" x="265.0" y="543" text-anchor="middle">Set-Cookie: __Host-ink_session, new id</text>
+</svg></figure>
+<h2>2. Enrol the CLI (ink login)</h2>
+<figure><figcaption><strong>Device flow with a key pair as the secret</strong> <span class="d">RFC 8628, adapted: no device code, no token. The poll is signed by the pending key. The person approves with a passkey.</span></figcaption><svg class="seq" viewBox="0 0 980 622" role="img" aria-label="Device enrolment" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="box" x="10.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="80.0" y="30" text-anchor="middle">ink CLI</text>
+<line class="life" x1="80.0" y1="42" x2="80.0" y2="610"/>
+<rect class="box" x="283.3333333333333" y="8" width="140" height="34" rx="6"/><text class="pt" x="353.3333333333333" y="30" text-anchor="middle">API</text>
+<line class="life" x1="353.3333333333333" y1="42" x2="353.3333333333333" y2="610"/>
+<rect class="box" x="556.6666666666666" y="8" width="140" height="34" rx="6"/><text class="pt" x="626.6666666666666" y="30" text-anchor="middle">Dashboard</text>
+<line class="life" x1="626.6666666666666" y1="42" x2="626.6666666666666" y2="610"/>
+<rect class="box" x="830.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="900.0" y="30" text-anchor="middle">Person</text>
+<line class="life" x1="900.0" y1="42" x2="900.0" y2="610"/>
+<rect class="note" x="10" y="74" width="317.0" height="28" rx="4"/><text class="nt" x="168.5" y="92" text-anchor="middle">makes an Ed25519 key, keeps it in the keyring</text>
+<line class="msg" x1="80.0" y1="136" x2="353.3333333333333" y2="136" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="129" text-anchor="middle">POST /v1/enrol  (public key, label)</text>
+<line class="msg dash" x1="353.3333333333333" y1="182" x2="80.0" y2="182" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="175" text-anchor="middle">enrolment id, user code HRKM-2WPD, 10 min</text>
+<line class="msg" x1="80.0" y1="228" x2="900.0" y2="228" marker-end="url(#ah)"/><text class="lab" x="490.0" y="221" text-anchor="middle">shows URL, code and key fingerprint 7QKM-2H4P-X9</text>
+<line class="msg" x1="900.0" y1="274" x2="626.6666666666666" y2="274" marker-end="url(#ah)"/><text class="lab" x="763.3333333333333" y="267" text-anchor="middle">opens the URL, types the code</text>
+<line class="msg dash" x1="626.6666666666666" y1="320" x2="900.0" y2="320" marker-end="url(#ah)"/><text class="lab" x="763.3333333333333" y="313" text-anchor="middle">fingerprint, rights, approve or deny</text>
+<rect class="note" x="580.4000000000001" y="350" width="389.59999999999997" height="28" rx="4"/><text class="nt" x="775.2" y="368" text-anchor="middle">compares fingerprints, approves with a passkey (step-up)</text>
+<line class="msg" x1="626.6666666666666" y1="412" x2="353.3333333333333" y2="412" marker-end="url(#ah)"/><text class="lab" x="490.0" y="405" text-anchor="middle">enrolment approved, key made live</text>
+<line class="msg" x1="80.0" y1="458" x2="353.3333333333333" y2="458" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="451" text-anchor="middle">poll, signed by the pending key</text>
+<line class="msg dash" x1="353.3333333333333" y1="504" x2="80.0" y2="504" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="497" text-anchor="middle">approved</text>
+<line class="msg dash" x1="80.0" y1="550" x2="900.0" y2="550" marker-end="url(#ah)"/><text class="lab" x="490.0" y="543" text-anchor="middle">Signed in: ada, device key 7QKM-2H4P-X9</text>
+</svg></figure>
+<h2>3. A signed request</h2>
+<figure><figcaption><strong>Authentication before routing, the body checked after</strong> <span class="d">The signature covers the body digest, so the head decides who you are and the body is bound before anything is stored.</span></figcaption><svg class="seq" viewBox="0 0 900 530" role="img" aria-label="Signed request" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="box" x="10.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="80.0" y="30" text-anchor="middle">ink CLI or CI</text>
+<line class="life" x1="80.0" y1="42" x2="80.0" y2="518"/>
+<rect class="box" x="380.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="450.0" y="30" text-anchor="middle">API (Ink-Sig-1)</text>
+<line class="life" x1="450.0" y1="42" x2="450.0" y2="518"/>
+<rect class="box" x="750.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="820.0" y="30" text-anchor="middle">Control plane</text>
+<line class="life" x1="820.0" y1="42" x2="820.0" y2="518"/>
+<rect class="note" x="10" y="74" width="495.2" height="28" rx="4"/><text class="nt" x="257.6" y="92" text-anchor="middle">signing input: context, aud, method, target, digest, created, nonce, key</text>
+<line class="msg" x1="80.0" y1="136" x2="450.0" y2="136" marker-end="url(#ah)"/><text class="lab" x="265.0" y="129" text-anchor="middle">PUT .../deploy  Ink-Sig-1 k c n d s</text>
+<rect class="note" x="265.1" y="166" width="369.79999999999995" height="28" rx="4"/><text class="nt" x="450.0" y="184" text-anchor="middle">parse strictly; target canonical; created within skew</text>
+<rect class="note" x="222.20000000000002" y="212" width="455.59999999999997" height="28" rx="4"/><text class="nt" x="450.0" y="230" text-anchor="middle">key by id; Ed25519 strict; key live; nonce claimed; right = deploy</text>
+<line class="msg dash" x1="450.0" y1="274" x2="80.0" y2="274" marker-end="url(#ah)"/><text class="lab" x="265.0" y="267" text-anchor="middle">(any failure here: one reply, no route learned)</text>
+<rect class="note" x="265.1" y="304" width="369.79999999999995" height="28" rx="4"/><text class="nt" x="450.0" y="322" text-anchor="middle">read body; BLAKE3 equals d, else auth.digest.mismatch</text>
+<line class="msg" x1="450.0" y1="366" x2="820.0" y2="366" marker-end="url(#ah)"/><text class="lab" x="635.0" y="359" text-anchor="middle">intake and deploy, as the principal</text>
+<line class="msg dash" x1="820.0" y1="412" x2="450.0" y2="412" marker-end="url(#ah)"/><text class="lab" x="635.0" y="405" text-anchor="middle">deploy id</text>
+<line class="msg dash" x1="450.0" y1="458" x2="80.0" y2="458" marker-end="url(#ah)"/><text class="lab" x="265.0" y="451" text-anchor="middle">200 + notice if the key expires within 14 days</text>
+</svg></figure>
+<h2>4. A deploy key for CI</h2>
+<figure><figcaption><strong>ink key add</strong> <span class="d">The private key is made on the laptop and never reaches the server. It is printed once, to a file or a pipe.</span></figcaption><svg class="seq" viewBox="0 0 980 438" role="img" aria-label="Deploy key" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="box" x="10.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="80.0" y="30" text-anchor="middle">Laptop (ink)</text>
+<line class="life" x1="80.0" y1="42" x2="80.0" y2="426"/>
+<rect class="box" x="283.3333333333333" y="8" width="140" height="34" rx="6"/><text class="pt" x="353.3333333333333" y="30" text-anchor="middle">API</text>
+<line class="life" x1="353.3333333333333" y1="42" x2="353.3333333333333" y2="426"/>
+<rect class="box" x="556.6666666666666" y="8" width="140" height="34" rx="6"/><text class="pt" x="626.6666666666666" y="30" text-anchor="middle">Dashboard</text>
+<line class="life" x1="626.6666666666666" y1="42" x2="626.6666666666666" y2="426"/>
+<rect class="box" x="830.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="900.0" y="30" text-anchor="middle">CI secret store</text>
+<line class="life" x1="900.0" y1="42" x2="900.0" y2="426"/>
+<line class="msg" x1="80.0" y1="90" x2="353.3333333333333" y2="90" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="83" text-anchor="middle">POST /v1/enrol  (deploy key, garden)</text>
+<line class="msg dash" x1="353.3333333333333" y1="136" x2="80.0" y2="136" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="129" text-anchor="middle">code, fingerprint</text>
+<line class="msg" x1="80.0" y1="182" x2="626.6666666666666" y2="182" marker-end="url(#ah)"/><text class="lab" x="353.3333333333333" y="175" text-anchor="middle">person opens the URL and types the code</text>
+<rect class="note" x="454.96666666666664" y="212" width="343.4" height="28" rx="4"/><text class="nt" x="626.6666666666666" y="230" text-anchor="middle">page shows site, rights, expiry; passkey approves</text>
+<line class="msg" x1="80.0" y1="274" x2="353.3333333333333" y2="274" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="267" text-anchor="middle">poll signed by the new key; approved</text>
+<line class="msg" x1="80.0" y1="320" x2="900.0" y2="320" marker-end="url(#ah)"/><text class="lab" x="490.0" y="313" text-anchor="middle">private key written once with --out or a pipe</text>
+<rect class="note" x="580.4000000000001" y="350" width="389.59999999999997" height="28" rx="4"/><text class="nt" x="775.2" y="368" text-anchor="middle">CI signs each push; the server holds only the public key</text>
+</svg></figure>
+<h2>5. Lost every passkey: email recovery</h2>
+<figure><figcaption><strong>A recovery that waits</strong> <span class="d">The first link starts a recovery; it never completes one. Notices go to every device and the address, each with a cancel link.</span></figcaption><svg class="seq" viewBox="0 0 980 576" role="img" aria-label="Email recovery" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="box" x="10.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="80.0" y="30" text-anchor="middle">Person</text>
+<line class="life" x1="80.0" y1="42" x2="80.0" y2="564"/>
+<rect class="box" x="283.3333333333333" y="8" width="140" height="34" rx="6"/><text class="pt" x="353.3333333333333" y="30" text-anchor="middle">Dashboard</text>
+<line class="life" x1="353.3333333333333" y1="42" x2="353.3333333333333" y2="564"/>
+<rect class="box" x="556.6666666666666" y="8" width="140" height="34" rx="6"/><text class="pt" x="626.6666666666666" y="30" text-anchor="middle">Mailbox</text>
+<line class="life" x1="626.6666666666666" y1="42" x2="626.6666666666666" y2="564"/>
+<rect class="box" x="830.0" y="8" width="140" height="34" rx="6"/><text class="pt" x="900.0" y="30" text-anchor="middle">Existing devices</text>
+<line class="life" x1="900.0" y1="42" x2="900.0" y2="564"/>
+<line class="msg" x1="80.0" y1="90" x2="353.3333333333333" y2="90" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="83" text-anchor="middle">asks for recovery with an address</text>
+<line class="msg dash" x1="353.3333333333333" y1="136" x2="80.0" y2="136" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="129" text-anchor="middle">the same reply for any address</text>
+<line class="msg" x1="353.3333333333333" y1="182" x2="626.6666666666666" y2="182" marker-end="url(#ah)"/><text class="lab" x="490.0" y="175" text-anchor="middle">link, 15 min, single use</text>
+<line class="msg" x1="80.0" y1="228" x2="353.3333333333333" y2="228" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="221" text-anchor="middle">link opens a page; POST starts it</text>
+<rect class="note" x="260.8333333333333" y="258" width="185.0" height="28" rx="4"/><text class="nt" x="353.3333333333333" y="276" text-anchor="middle">completes_at = now + 48 h</text>
+<line class="msg" x1="353.3333333333333" y1="320" x2="626.6666666666666" y2="320" marker-end="url(#ah)"/><text class="lab" x="490.0" y="313" text-anchor="middle">notice with a cancel link</text>
+<line class="msg" x1="353.3333333333333" y1="366" x2="900.0" y2="366" marker-end="url(#ah)"/><text class="lab" x="626.6666666666666" y="359" text-anchor="middle">banner, ink whoami notice, audit event</text>
+<rect class="note" x="620.0" y="396" width="350.0" height="28" rx="4"/><text class="nt" x="795.0" y="414" text-anchor="middle">any of them can cancel; a cancel link only cancels</text>
+<line class="msg dash" x1="353.3333333333333" y1="458" x2="80.0" y2="458" marker-end="url(#ah)"/><text class="lab" x="216.66666666666666" y="451" text-anchor="middle">after 48 h: second link, new passkey</text>
+<rect class="note" x="175.03333333333333" y="488" width="356.59999999999997" height="28" rx="4"/><text class="nt" x="353.3333333333333" y="506" text-anchor="middle">sessions end, device keys revoked, deploy keys kept</text>
+</svg></figure>
+<h2>CLI</h2>
+<figure><figcaption><strong>ink login</strong> <span class="d">Stage lines, a record and a result. The URL has no code in it; the key fingerprint is shown on both screens.</span></figcaption><pre>  <span class="r-good">Generated</span>  a device key, kept in the system keyring
+<span class="r-quiet">            (no keyring answered on a server: it would be a 0600 file, and say so)</span>
+
+To sign in, open  <span class="r-lit">https://app.uses.ink/device</span>
+and type this code  <span class="r-head">HRKM-2WPD</span>
+
+This machine's key is  <span class="r-id">7QKM-2H4P-X9</span>  <span class="r-quiet">(the page shows the same; stop if it does not)</span>
+<span class="r-quiet">Waiting for you to approve, up to 10 minutes. Ctrl-C cancels.</span>
+
+   <span class="r-good">Approved</span>  by ada, with a passkey
+  <span class="r-good">Signed in</span>  ada on api.uses.ink, as device key <span class="r-id">7QKM-2H4P-X9</span> "laptop"
+<span class="r-quiet">            expires 2027-05-26; ink key list shows it</span></pre></figure>
+<figure><figcaption><strong>ink login --data ./data</strong> <span class="d">The self-host operator, on the host, with no browser: the key is appended to the operator-keys file.</span></figcaption><pre>  <span class="r-good">Generated</span>  a device key, kept in the system keyring
+   <span class="r-good">Appended</span>  its public half to <span class="r-lit">./data/operator-keys</span>
+  <span class="r-good">Signed in</span>  as operator on api.localhost:8080, key <span class="r-id">4PVC-9TN2-HD</span> "operator"
+<span class="r-quiet">            anyone who can write ./data is the operator; nothing secret is in that file</span></pre></figure>
+<figure><figcaption><strong>ink whoami</strong> <span class="d">A record. The notice is the typed auth.recovery.pending.</span></figcaption><pre><span class="r-head">ada</span>  on api.uses.ink
+
+  <span class="r-quiet">key</span>        <span class="r-id">7QKM-2H4P-X9</span>  "laptop"  device, ed25519-v1
+  <span class="r-quiet">rights</span>     read, deploy, edit, keys on every site of ada
+  <span class="r-quiet">expires</span>    2027-05-26
+  <span class="r-quiet">notice</span>     <span class="r-warn">note</span>[<span class="r-code">auth.recovery.pending</span>]: a recovery of this account completes 2026-11-29 14:03Z
+<span class="r-quiet">                 cancel it in the dashboard if it was not you</span></pre></figure>
+<figure><figcaption><strong>ink key list</strong> <span class="d">A table: state glyph, ids in magenta, last used as a date, never a time.</span></figcaption><pre>  <span class="r-quiet">key</span>            <span class="r-quiet">kind</span>    <span class="r-quiet">where</span>            <span class="r-quiet">rights</span>        <span class="r-quiet">expires</span>     <span class="r-quiet">last used</span>
+<span class="r-good">●</span> <span class="r-id">7QKM-2H4P-X9</span>  device  laptop           read deploy   2027-05-26  2026-11-27
+<span class="r-good">●</span> <span class="r-id">3DSF-7K2M-QA</span>  deploy  garden (CI)      deploy        2027-02-25  2026-11-26
+<span class="r-quiet">·</span> <span class="r-id">operator-1</span>    device  operator (file)  all           never       2026-11-27
+<span class="r-bad">✗</span> <span class="r-id">9WHB-4C1N-ZE</span>  deploy  garden (old CI)  deploy        <span class="r-bad">revoked</span>     2026-10-02
+
+<span class="r-quiet">4 keys</span></pre></figure>
+<figure><figcaption><strong>ink key add --site garden --right deploy --out garden.key</strong> <span class="d">Approval is on the dashboard, which shows the site, the rights and the expiry. The private key goes to the file, once.</span></figcaption><pre>To approve this key, open  <span class="r-lit">https://app.uses.ink/device</span>
+and type this code  <span class="r-head">MQ4T-X8RD</span>
+The page will say: a deploy key for site garden, right deploy, expires 2027-02-25. Key <span class="r-id">3DSF-7K2M-QA</span>.
+
+   <span class="r-good">Approved</span>  by ada, with a passkey
+    <span class="r-good">Wrote</span>  the private key to <span class="r-lit">garden.key</span> (mode 0600)
+<span class="r-quiet">            put it in your CI secret store as INK_KEY_FILE or INK_KEY; it is not shown again</span></pre></figure>
+<figure><figcaption><strong>ink key add, to a terminal</strong> <span class="d">Refused rather than printing a secret into the scrollback.</span></figcaption><pre><span class="r-bad">error</span>[<span class="r-code">auth.key.print-refused</span>]: the private key would be printed to this terminal
+  <span class="r-quiet">fix:</span> send it to a file with <span class="r-lit">--out garden.key</span>, or redirect stdout
+  <span class="r-quiet">state:</span> the key is not enrolled; nothing was changed</pre></figure>
+<figure><figcaption><strong>A clock that is wrong</strong> <span class="d">Its own code, with the numbers. ink does not adjust its own clock.</span></figcaption><pre><span class="r-bad">error</span>[<span class="r-code">auth.signature.skewed</span>]: this machine's clock is 7 minutes ahead of the server's
+  <span class="r-quiet">caused by</span> the request said 14:10Z and the server's time is 14:03Z; the allowed window is 60 seconds
+  <span class="r-quiet">fix:</span> set the clock, for example <span class="r-lit">timedatectl set-ntp true</span>
+  <span class="r-quiet">state:</span> nothing was changed</pre></figure>
+<figure><figcaption><strong>A key that is no longer accepted</strong> <span class="d">The same text for an unknown key and a wrong signature: the server does not say which.</span></figcaption><pre><span class="r-bad">error</span>[<span class="r-code">auth.signature.refused</span>]: the server did not accept this machine's key
+  <span class="r-quiet">fix:</span> run <span class="r-lit">ink login</span> to sign in again on this machine
+  <span class="r-quiet">state:</span> nothing was changed</pre></figure>
+<figure><figcaption><strong>A key about to expire</strong> <span class="d">A typed notice on a signed reply, shown in the CI log.</span></figcaption><pre><span class="r-warn">note</span>[<span class="r-code">auth.key.expiring</span>]: this key has 12 days left
+  <span class="r-quiet">fix:</span> <span class="r-lit">ink key add --site garden --right deploy --replaces 3DSF-7K2M-QA</span></pre></figure>
+<figure><figcaption><strong>ink serve, first run</strong> <span class="d">Printed once; a button on the page spends it, opening it does not.</span></figcaption><pre><span class="r-head">No account exists yet.</span> Open this link on this machine to make the first one:
+  <span class="r-lit">http://localhost:8080/welcome/</span><span class="r-quiet">&lt;43 characters, shown once&gt;</span>
+It works once, for one hour, and only while there is no account.
+<span class="r-quiet">Lost every passkey later? ink serve --data ./data --admin-link prints a new one.</span>
+<span class="r-warn">note</span>: listening on 192.168.1.20 over http. Passkeys do not work there (not a secure context).
+  <span class="r-quiet">fix:</span> open the link at http://localhost:8080 on this machine, or forward the port: <span class="r-lit">ssh -L 8080:localhost:8080 host</span></pre></figure>
+<h2>Dashboard</h2><div class="row2">
+<figure><figcaption><strong>Sign in</strong> <span class="d">One button, no username; the browser offers the passkeys it has.</span></figcaption><div class="win"><div class="bar"><span class="dots"></span><span class="url">https://app.uses.ink/signin</span></div><div class="page"><h3>Sign in to uses.ink</h3><p>Use a passkey from this device, your phone or a security key.</p><span class="btn main">Sign in with a passkey</span><p class="q">Lost your passkeys? <u>Recover your account</u></p></div></div></figure>
+<figure><figcaption><strong>Approve a device</strong> <span class="d">The label is what the requester typed, not a fact. The fingerprint is for comparing with the terminal.</span></figcaption><div class="win"><div class="bar"><span class="dots"></span><span class="url">https://app.uses.ink/device</span></div><div class="page"><h3>Approve a device</h3><p>Type the code from your terminal.</p><span class="code">HRKM-2WPD</span>
+<dl><dt>Name</dt><dd>laptop <span class="q">(as the requester typed it)</span></dd><dt>Key</dt><dd><span class="fp">7QKM-2H4P-X9</span> ed25519</dd><dt>Can</dt><dd>read, deploy, edit and revoke keys on your sites</dd><dt>Asked</dt><dd>14:03Z, from Germany (a home network)</dd></dl>
+<div class="warnbox">Approve only if you ran <b>ink login</b> just now and the key above matches your terminal. If someone sent you this code, deny it.</div>
+<span class="btn main">Approve with a passkey</span><span class="btn">Deny</span></div></div></figure>
+<figure><figcaption><strong>Approve a deploy key</strong> <span class="d">The page says exactly what is being approved.</span></figcaption><div class="win"><div class="bar"><span class="dots"></span><span class="url">https://app.uses.ink/device</span></div><div class="page"><h3>Approve a deploy key</h3>
+<dl><dt>Key</dt><dd><span class="fp">3DSF-7K2M-QA</span> ed25519</dd><dt>Site</dt><dd>garden.uses.ink</dd><dt>Can</dt><dd>deploy to garden, nothing else</dd><dt>Expires</dt><dd>2027-02-25 (90 days)</dd></dl>
+<p class="q">The private key is made on your computer. We never see it.</p><span class="btn main">Approve with a passkey</span><span class="btn">Deny</span></div></div></figure>
+<figure><figcaption><strong>Account: passkeys, keys, sessions</strong> <span class="d">Last used is a date. Sessions have a short label, no address.</span></figcaption><div class="win"><div class="bar"><span class="dots"></span><span class="url">https://app.uses.ink/account</span></div><div class="page"><h3>Your sign-in</h3>
+<p><b>Passkeys</b></p><table><tr><th>Name</th><th>Kind</th><th>Last used</th></tr><tr><td>Ada's phone</td><td>synced</td><td>2026-11-27</td></tr><tr><td>Security key</td><td>hardware</td><td>2026-11-20</td></tr></table><span class="btn">Add a passkey</span>
+<p style="margin-top:1rem"><b>Keys</b></p><table><tr><th>Key</th><th>Kind</th><th>Expires</th><th></th></tr><tr><td>7QKM-2H4P-X9 laptop</td><td>device</td><td>2027-05-26</td><td><u>Revoke</u></td></tr><tr><td>3DSF-7K2M-QA garden CI</td><td>deploy</td><td>2027-02-25</td><td><u>Revoke</u></td></tr></table>
+<p style="margin-top:1rem"><b>Sessions</b></p><table><tr><th>Where</th><th>Last used</th><th></th></tr><tr><td>Firefox on Linux (this one)</td><td>2026-11-27</td><td></td></tr><tr><td>Safari on iPhone</td><td>2026-11-25</td><td><u>End</u></td></tr></table>
+<p class="q" style="margin-top:1rem">Recovery codes: 10 unused. Email recovery: allowed, 48-hour wait. <u>Turn off email recovery</u></p></div></div></figure>
+<figure><figcaption><strong>Recovery: asked</strong> <span class="d">The reply is the same whether or not an account exists.</span></figcaption><div class="win"><div class="bar"><span class="dots"></span><span class="url">https://app.uses.ink/recover</span></div><div class="page"><h3>Recover your account</h3><p>If that address has an account, we sent a link. It works once, for 15 minutes.</p><p class="q">Opening the link shows a page with a button. Nothing happens until you press it.</p></div></div></figure>
+<figure><figcaption><strong>Recovery: waiting</strong> <span class="d">Shown on every signed-in page of the account, and by ink whoami. Cancel works from here.</span></figcaption><div class="win"><div class="bar"><span class="dots"></span><span class="url">https://app.uses.ink/account</span></div><div class="page"><div class="warnbox"><b>A recovery of this account is waiting.</b> It completes on 2026-11-29 at 14:03Z. When it does, every session ends and every device key is revoked; deploy keys stay.<br><span class="btn">Cancel the recovery</span></div><p class="q">If you did not ask for this, cancel it, then add a second passkey and turn off email recovery.</p></div></div></figure>
+<figure><figcaption><strong>First run</strong> <span class="d">The page a first-run link opens: a button, then a passkey, then recovery codes.</span></figcaption><div class="win"><div class="bar"><span class="dots"></span><span class="url">http://localhost:8080/welcome/</span></div><div class="page"><h3>Welcome to your uses.ink</h3><p>No account exists on this server yet. Make the first one with a passkey.</p><span class="btn main">Make a passkey</span><p class="q">Next: we show ten recovery codes, once. Print them or put them in a password manager.</p></div></div></figure>
+</div>
+</main></body></html>
