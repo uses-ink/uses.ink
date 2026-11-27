@@ -236,6 +236,38 @@ pub(crate) enum JobState {
     Lost,
 }
 
+/// Who holds a busy slot: the body of the job that took it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Holder {
+    pub(crate) slot: u32,
+    pub(crate) pid: u32,
+    /// Seconds since the epoch: when it took the slot.
+    pub(crate) since: u64,
+    /// Whether that process still runs; if not, something else keeps the lock.
+    pub(crate) alive: bool,
+}
+
+impl Holder {
+    /// How long a slot may be busy on a quiet host before it looks stuck.
+    const PATIENCE: u64 = 300;
+    /// A load under this, in hundredths, is a host doing nothing.
+    const QUIET: Load = Load(100);
+
+    /// Reads `<slot> <pid> <since> <alive|gone>`.
+    fn read(rest: &str) -> Option<Self> {
+        let mut words = rest.split(' ');
+        let slot = words.next()?.parse().ok()?;
+        let pid = words.next()?.parse().ok()?;
+        let since = words.next()?.parse().ok()?;
+        let alive = match words.next()? {
+            "alive" => true,
+            "gone" => false,
+            _ => return None,
+        };
+        Some(Self { slot, pid, since, alive })
+    }
+}
+
 /// What a probe found.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Snapshot {
@@ -249,9 +281,16 @@ pub(crate) struct Snapshot {
     pub(crate) queued: u32,
     pub(crate) now: u64,
     pub(crate) jobs: Vec<JobRow>,
+    pub(crate) holders: Vec<Holder>,
 }
 
 impl Snapshot {
+    /// Whether a busy slot looks stuck: held more than five minutes on a host whose load is under
+    /// 1.0, or by a process that is gone, so a child that outlived its job holds the lock.
+    pub(crate) fn wedged(&self, holder: &Holder) -> bool {
+        self.now.saturating_sub(holder.since) > Holder::PATIENCE && (self.load < Holder::QUIET || !holder.alive)
+    }
+
     /// Whether a slot is free and nothing waits for it.
     pub(crate) fn is_free(&self) -> bool {
         self.busy < self.slots && self.queued == 0
@@ -315,6 +354,7 @@ struct Found {
     busy: u32,
     free: u32,
     jobs: Vec<JobRow>,
+    holders: Vec<Holder>,
 }
 
 impl Found {
@@ -338,6 +378,9 @@ impl Found {
             "queued" => self.queued = count(rest)?,
             "slot" if rest.ends_with(" busy") => self.busy += 1,
             "slot" if rest.ends_with(" free") => self.free += 1,
+            "holder" => {
+                self.holders.push(Holder::read(rest).ok_or_else(|| ReadFault::Unknown { line: line.to_owned() })?);
+            }
             "job" => {
                 self.jobs.push(JobRow::read(rest).map_err(|fault| ReadFault::Job { line: line.to_owned(), fault })?);
             }
@@ -362,6 +405,7 @@ impl Found {
             queued: self.queued,
             now: self.now.ok_or_else(|| missing("now"))?,
             jobs: self.jobs,
+            holders: self.holders,
         })
     }
 }
@@ -408,6 +452,16 @@ impl fmt::Display for Snapshot {
                 JobState::Done { .. } => "done",
             };
             write!(out, "\n  {} {state} for {age} s: {}", job.id, job.shown)?;
+        }
+        for holder in &self.holders {
+            let age = self.now.saturating_sub(holder.since);
+            write!(out, "\n  slot {} held by pid {} for {age} s", holder.slot, holder.pid)?;
+            if !holder.alive {
+                write!(out, " (that process is gone: a child of the job keeps the lock)")?;
+            }
+            if self.wedged(holder) {
+                write!(out, " wedged?")?;
+            }
         }
         Ok(())
     }
@@ -587,5 +641,41 @@ job petal.19e queued 1699990000 cargo xtask check lint
             assert!(bad.parse::<HostDir>().is_err(), "{bad:?}");
         }
         assert_eq!("~/farm".parse::<HostDir>().unwrap().to_string(), "~/farm");
+    }
+}
+
+#[cfg(test)]
+mod holder_tests {
+    use super::*;
+
+    const PROBE: [&str; 9] = [
+        "now 10000",
+        "arch x86_64",
+        "cores 12",
+        "load 0.20",
+        "slots 2",
+        "slot 0 busy",
+        "holder 0 4242 9000 alive",
+        "slot 1 free",
+        "queued 0",
+    ];
+
+    #[test]
+    fn a_busy_slot_shows_its_holder_and_is_wedged_when_old_on_a_quiet_host() {
+        let snap = Snapshot::read(&Host::local(), &PROBE.join("\n")).unwrap();
+        assert_eq!(snap.holders, [Holder { slot: 0, pid: 4242, since: 9000, alive: true }]);
+        let shown = snap.to_string();
+        assert!(shown.contains("slot 0 held by pid 4242 for 1000 s") && shown.contains("wedged?"), "{shown}");
+        let young = PROBE.join("\n").replace("9000", "9900");
+        assert!(!Snapshot::read(&Host::local(), &young).unwrap().to_string().contains("wedged?"));
+        let busy = PROBE.join("\n").replace("load 0.20", "load 5.00");
+        assert!(
+            !Snapshot::read(&Host::local(), &busy).unwrap().to_string().contains("wedged?"),
+            "a busy host is working"
+        );
+        let gone = busy.replace("alive", "gone");
+        let shown = Snapshot::read(&Host::local(), &gone).unwrap().to_string();
+        assert!(shown.contains("gone") && shown.contains("wedged?"), "{shown}");
+        assert!(Snapshot::read(&Host::local(), &PROBE.join("\n").replace("alive", "maybe")).is_err());
     }
 }

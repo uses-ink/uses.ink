@@ -8,8 +8,11 @@
 //! State lives under the host's directory `D` (the argument `dir`; a relative one is under
 //! `$HOME`):
 //!
-//! - `D/slots/<n>.lock`: one lock per slot; a job holds it with `flock` for as long as its
-//!   command runs, so a slot is free exactly when nothing runs in it.
+//! - `D/slots/<n>.lock`: one lock per slot; a job's body holds it with `flock` for as long as its
+//!   command runs, so a slot is free exactly when nothing runs in it. Only the body holds it: the
+//!   command starts with the lock's descriptor closed, so a child that outlives the job cannot
+//!   keep the slot, and the body kills the job's process groups (its own and `timeout`'s) when
+//!   the command ends. `D/slots/<n>.holder` says `<body pid> <since>`.
 //! - `D/queue/<stamp>-<job>`: a ticket per waiting job holding its pid; the oldest live ticket
 //!   may take a slot, the others wait, and a ticket whose pid is gone is removed by whoever
 //!   finds it. That is the whole queue: no daemon.
@@ -148,7 +151,15 @@ echo "load $(cut -d' ' -f1 /proc/loadavg)"
 echo "slots $slots"
 n=0
 while [ "$n" -lt "$slots" ]; do
-  if ( exec 9>"$dir/slots/$n.lock"; flock -n 9 ); then echo "slot $n free"; else echo "slot $n busy"; fi
+  if ( exec 9>>"$dir/slots/$n.lock"; flock -n 9 ); then echo "slot $n free"
+  else
+    echo "slot $n busy"
+    holder=$(cat "$dir/slots/$n.holder" 2>/dev/null)
+    if [ -n "$holder" ]; then
+      set -- $holder
+      if kill -0 "$1" 2>/dev/null; then echo "holder $n $holder alive"; else echo "holder $n $holder gone"; fi
+    fi
+  fi
   n=$((n + 1))
 done
 live=0
@@ -210,8 +221,20 @@ printf '%s\n' "$shown" > "$job/cmd"
 ticket=
 now() { date +%s; }
 gone() { [ -n "$lease" ] && [ ! -f "$job/detached" ] && ! kill -0 "$lease" 2>/dev/null; }
+own=
+[ "$(ps -o pgid= -p "$$" 2>/dev/null | tr -d ' ')" = "$$" ] && own=$$
+reap() {
+  trap '' TERM HUP INT
+  groups="$own $(cat "$job/pid" 2>/dev/null)"
+  for pg in $groups; do kill -TERM -- "-$pg" 2>/dev/null; done
+  sleep 0.2
+  for pg in $groups; do
+    for p in $(pgrep -g "$pg" 2>/dev/null); do [ "$p" = "$$" ] || kill -KILL "$p" 2>/dev/null; done
+  done
+}
 quit() {
   [ -f "$job/pid" ] && kill -TERM "$(cat "$job/pid")" 2>/dev/null
+  reap
   [ -n "$ticket" ] && rm -f "$ticket"
   printf '143 0\n' > "$job/done"
   say aborted
@@ -234,7 +257,7 @@ while [ -z "$slot" ]; do
   if [ "$behind" -eq 0 ]; then
     n=0
     while [ "$n" -lt "$slots" ]; do
-      exec 9>"$dir/slots/$n.lock"
+      exec 9>>"$dir/slots/$n.lock"
       if flock -n 9; then slot=$n; break; fi
       n=$((n + 1))
     done
@@ -247,6 +270,7 @@ done
 rm -f "$ticket"
 ticket=
 began=$(now)
+printf '%s %s\n' "$$" "$began" > "$dir/slots/$slot.holder"
 say "slot $slot $((began - start))"
 echo "$began" > "$job/started"
 cd "$tree" 2>/dev/null || { say nodir; printf '66 0\n' > "$job/done"; exit 66; }
@@ -256,7 +280,7 @@ if [ "$mold" = mold ] && [ -z "${RUSTFLAGS-}" ]; then
   triple=$(rustc -vV | sed -n 's/^host: //p' | tr 'a-z-' 'A-Z_')
   [ -n "$triple" ] && export "CARGO_TARGET_${triple}_RUSTFLAGS=-C link-arg=-fuse-ld=mold"
 fi
-( timeout -k 15 "$limit" "$@" </dev/null >"$job/log" 2>&1 &
+( timeout -k 15 "$limit" "$@" </dev/null >"$job/log" 2>&1 9>&- &
   echo $! > "$job/pid"
   wait $!
   echo $? > "$job/rc" ) &
@@ -267,6 +291,7 @@ while [ ! -f "$job/rc" ]; do
   t=$((t * 2)); [ "$t" -le 250 ] || t=250
 done
 rc=$(cat "$job/rc")
+reap
 ran=$(($(now) - began))
 printf '%s %s\n' "$rc" "$ran" > "$job/done"
 say "done $rc $ran"

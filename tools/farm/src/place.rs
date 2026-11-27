@@ -103,6 +103,7 @@ mod tests {
             queued,
             now: 0,
             jobs: Vec::new(),
+            holders: Vec::new(),
         }
     }
 

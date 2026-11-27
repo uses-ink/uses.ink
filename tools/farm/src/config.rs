@@ -23,6 +23,8 @@ pub(crate) struct Environment {
     pub(crate) xdg: Option<OsString>,
     /// `HOME`.
     pub(crate) home: Option<OsString>,
+    /// `XDG_CACHE_HOME`.
+    pub(crate) cache: Option<OsString>,
 }
 
 impl Environment {
@@ -32,6 +34,18 @@ impl Environment {
             file: std::env::var_os("INK_FARM_CONFIG"),
             xdg: std::env::var_os("XDG_CONFIG_HOME"),
             home: std::env::var_os("HOME"),
+            cache: std::env::var_os("XDG_CACHE_HOME"),
+        }
+    }
+
+    /// Where the farm keeps its passes for `repo` on this machine: `$XDG_CACHE_HOME/uses-ink/farm/<repo>`,
+    /// else `~/.cache/uses-ink/farm/<repo>`; none when neither variable is set.
+    pub(crate) fn cache_dir(&self, repo: &str) -> Option<PathBuf> {
+        let tail = Path::new("uses-ink").join("farm").join(repo);
+        match (&self.cache, &self.home) {
+            (Some(cache), _) if !cache.is_empty() => Some(Path::new(cache).join(tail)),
+            (_, Some(home)) if !home.is_empty() => Some(Path::new(home).join(".cache").join(tail)),
+            _ => None,
         }
     }
 
@@ -263,6 +277,7 @@ golden = true
             file: file.map(Into::into),
             xdg: xdg.map(Into::into),
             home: home.map(Into::into),
+            ..Environment::default()
         };
         let table = [
             (env(Some("/x/f.toml"), Some("/c"), Some("/h")), Some(("/x/f.toml", true))),
@@ -279,7 +294,7 @@ golden = true
 
     #[test]
     fn no_file_is_this_machine_alone() {
-        let env = Environment { file: None, xdg: Some("/nonexistent-farm-config".into()), home: None };
+        let env = Environment { file: None, xdg: Some("/nonexistent-farm-config".into()), ..Environment::default() };
         assert_eq!(Config::load(&env).unwrap(), Config::local());
         let named = Environment { file: Some("/nonexistent-farm-config/f.toml".into()), ..Environment::default() };
         assert!(Config::load(&named).is_err());

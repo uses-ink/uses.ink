@@ -39,6 +39,11 @@ pub(crate) struct Task;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct Bare;
 
+/// A name the repo's `.config/farm.toml` keeps out of the sync: no slash, so it matches at any
+/// depth, and no glob character.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct Left;
+
 /// An ssh destination: a `user@host` or an alias of the user's ssh config.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct Dest;
@@ -81,6 +86,18 @@ impl Kind for Part {
     }
 }
 
+impl Kind for Left {
+    const WHAT: &'static str = "excluded name";
+
+    fn allows(found: char) -> bool {
+        found.is_ascii_alphanumeric() || matches!(found, '-' | '_' | '.')
+    }
+
+    fn begins(found: char) -> bool {
+        Self::allows(found)
+    }
+}
+
 impl Kind for Dest {
     const WHAT: &'static str = "ssh destination";
     const MOST: usize = 128;
@@ -100,6 +117,8 @@ pub(crate) type HostName = Word<Host>;
 pub(crate) type JobName = Word<Task>;
 /// A name of a file or directory that may be lost with a workspace.
 pub(crate) type Disposable = Word<Bare>;
+/// A name the sync leaves out.
+pub(crate) type Excluded = Word<Left>;
 /// A repo or workspace name in a path.
 pub(crate) type Segment = Word<Part>;
 /// Where `ssh` connects.

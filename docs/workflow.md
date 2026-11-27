@@ -38,6 +38,8 @@ golden = false                   # required; true for a job whose output depends
 run = "cargo xtask check test"
 golden = true
 limit = 900                      # optional: this job's hard limit in seconds
+inputs = ["**", "!docs/**"]      # optional: the files the job reads (see The result cache)
+cache = false                    # optional: never reuse a pass of this job
 ```
 
 An optional `[workspace]` table lists names that `farm workspace --forget` may delete although jj
@@ -47,6 +49,22 @@ does not track them (see New workspaces):
 [workspace]
 disposable = [".ink"]            # file or directory names, matched at any depth
 ```
+
+Four more optional tables (all keys are typed; an unknown key or a zero is an error):
+
+```toml
+[sync]
+exclude = [".jj", ".git", ".impeccable"]  # names the sync leaves out, at any depth; default [".jj", ".git"]
+
+[cache]
+max_age_hours = 168              # passes older than this are forgotten; default 168
+max_entries = 256                # the oldest beyond this many are forgotten; default 256
+
+[budget]
+full_checks_per_day = 3          # `farm check` warns after this many a day; default off
+```
+
+`target`, `.env`, `.env.*`, `*.pem` and `*.key` are never synced and are built into the farm.
 
 A disposable name is letters, digits, `-`, `_` and `.`, at most 64 characters, with no slash, and
 not only dots; any other key under `[workspace]` is an error. This repo declares `.ink`, the
@@ -125,6 +143,8 @@ word that is not a farm flag belongs to cargo (`--` ends the farm's flags at onc
 | `--json` | Print the machine report, schema `uses.farm/v1`. |
 | `--verbose` | Print every command the farm runs, exactly. |
 | `--version` | Print the version and the source hash the binary was built from. |
+| `--fresh` | Run the job although an identical one passed before (the result cache is skipped; the new pass is still recorded). |
+| `--budget N` | `check`: warn after N full checks in 24 hours in this workspace; else the `[budget]` setting. |
 | `--tail N` | `log`: only the last N lines. |
 | `--at REV`, `--forget` | `workspace`: start from a revision; remove instead of make. |
 
@@ -166,6 +186,84 @@ nextest it is the counts and every `FAIL` or `TIMEOUT` test with its output, at 
 each. For cargo it is the number of errors and warnings and the first ten in short form. For a
 job that prints `check:` lines it is those lines. The full log is streamed to `target/farm/<host>.<token>.log`.
 
+## The result cache
+
+A job whose command and inputs are the same as a job that already passed is not run again. The
+farm prints the earlier result and exits 0:
+
+```text
+== test: petal, queued 0 s, ran 412 s
+   $ cargo xtask check test
+passed earlier on this tree (petal.18c3f9a21, 3 min ago)
+log /home/me/code/uses.ink-ws/w/target/farm/petal.18c3f9a21.log
+```
+
+The key is the job name, its command line and variables, the digest of its inputs, the host
+architecture (for `golden` jobs only), the channel of `rust-toolchain.toml` and the text of the
+job file. Rules (decision 0075 says why):
+
+- **Only passes are cached.** A failure is always run again.
+- **A flaky pass is not cached.** A passing log with a `FLAKY`, `RETRY`, `TRY n` or `TIMEOUT` line
+  is not kept, nor a job marked `cache = false`, nor a pass of a foreground job whose tree changed
+  while it ran.
+- **What is cached.** The jobs of `farm check`, and `farm cargo` with `check`, `clippy`, `test`,
+  `doc`, `deny` or `nextest run`. `bless`, `fmt`, `build`, `run` and `install` never are.
+- **The digest is of file contents,** over the files jj tracks (a new file counts at once), minus
+  what the sync leaves out. A rebase that leaves the bytes alone hits the cache; an edit of one
+  byte of an input misses; `farm fmt` and `farm bless` change the digest by changing files. The
+  hashes of unchanged files are kept in `target/farm/hashes.tsv` (by path, size, mtime and
+  inode), so a repeat digest is a stat per file.
+- **`inputs` narrows what a job depends on.** The digest covers the files that match the globs,
+  plus `Cargo.lock`, `rust-toolchain.toml` and `.config/**`; without `inputs` it covers the whole
+  tree. A glob list is read in order and the last match wins. `*` and `?` stay in one path segment,
+  `**` is a whole segment of any depth, a leading `!` takes files out, a leading `/` or any other
+  `/` anchors the glob at the tree root, and a glob with no `/` matches a name at any depth. So
+  `["**", "!docs/**", "docs/workflow.md"]` is everything but docs, except one file. A glob that is
+  not one (`[`, `{`, `\`, `..`, an empty segment) is an error that names the job file and line.
+  In this repo a docs-only change leaves `test`, `docs`, `sites` and `wasm` cached (`test` still
+  reads `docs/workflow.md`), and `wasm` reruns only for `freehand`, `freehand-web`, `fixture`,
+  `token`, `xtask` or the manifests. The other Rust jobs are not narrower than "everything but
+  prose": `docs` is the doc tests of every crate and `sites` builds nearly all of them.
+- **It is local and shared.** Passes live in `$XDG_CACHE_HOME/uses-ink/farm/<repo>` (else
+  `~/.cache/uses-ink/farm/<repo>`), so a workspace rebased onto a main-equal tree finds the passes
+  of the others. They expire by age and count (`[cache]`).
+- **`--fresh`** on any verb skips the lookup.
+
+### Identical jobs run once
+
+Starting a job while one with the same workspace, command and input digest runs does not start a
+second copy: the call prints `an identical job is already running, <id>; attaching to it` and
+waits for it as `farm wait` does (and exits 75 past `--timeout`, with the same id). A detached job
+that ends under `farm wait` or an attach records its pass. Two copies of one command never run in
+one slot at once.
+
+### Seeing the use
+
+`farm check` ends with one line on stderr:
+
+```text
+farm: check: 2 stages run, 3 served from cache, 0 deduped, 412 host seconds
+```
+
+`farm status` adds, per workspace of the repo, the last 24 hours:
+
+```text
+last 24 h, farmcache: 3 full checks, 9 stage runs, 4 cache hits, 1 deduped, 1210 host seconds (this one)
+```
+
+`--budget N` (or `[budget] full_checks_per_day`) makes `farm check` print a one-line warning when
+the workspace has run more than N full checks in a day that ran a stage. It never refuses. The
+count lives in `<cache>/journal.jsonl`.
+
+### Slots are the wrapper's alone
+
+A job's command starts with the slot's lock descriptor closed, so a child that outlives the job
+(a test server) cannot keep the slot, and when the command ends the wrapper kills the job's
+process groups (its own and `timeout`'s) after a short grace. `farm status` lists each busy slot's
+holder pid and age, says when that process is gone (something else keeps the lock), and marks a
+slot `wedged?` when it has been busy for over five minutes on a host whose load is under 1.0 or
+whose holder is gone.
+
 ## The finish
 
 When a state is worth a commit, run the gate once:
@@ -178,7 +276,21 @@ The jobs run at the same time on different slots, so the wall time is the slowes
 sum. The report names each job, its host and its time, and gives detail only for the failures.
 Fix what failed, then run `farm check` again with just the jobs that failed (`farm check lint
 test`) and, if you want the whole gate green once more, once without arguments.
-One whole `farm check` per commit-worthy state.
+One whole `farm check` per commit-worthy state, and the cache serves any stage that already
+passed on the same inputs, so a second one on an unchanged tree runs nothing.
+
+### Heavy-command budget for agents
+
+The owner measured a day of agents: 16 full gates, `test` 50 times, `sites` 38. The rules:
+
+- **One full `farm check` per task, at the end.** Meanwhile run `farm cargo nextest run -p
+  <crate>` (or `check`, `clippy`) for the crate you changed.
+- **A failed stage is rerun alone:** `farm check lint`, not the whole gate.
+- **Nothing heavy after a clean rebase** except `farm check lint`. If the bytes did not change the
+  cache answers anyway; if they did, run the stage that covers it.
+- **Never start the same job twice.** If a call moved to the background, wait for its notice or
+  `farm wait <id>`; a second copy attaches to the first, but it still costs a call.
+- Do not use `--fresh` to get past a failure; it is for a pass you doubt.
 
 If a golden file changed on purpose, bless it and read every diff:
 
@@ -304,8 +416,8 @@ changed is newer than every artifact, and a file whose bytes did not keeps its t
 rebuilds that did not change. Files brought back (`bless`, `fmt`) are written the same way. A tree
 synced before this change may still hold such a stale artifact; `touch` the file once, or remove
 `target/` on that host.
-Excluded: what `.gitignore` ignores, `.jj`, `.git`, `.impeccable`, `target`, and `.env`,
-`.env.*`, `*.pem` and `*.key`. The rsync target is always under the host's `dir`. A workspace is
+Excluded: what `.gitignore` ignores, the names of `[sync] exclude`, `target`, and `.env`,
+`.env.*`, `*.pem` and `*.key` (the repo's own names are `[sync] exclude`; here `.jj`, `.git` and `.impeccable`). The rsync target is always under the host's `dir`. A workspace is
 one agent's: do not edit files while a job of that workspace is running unless you want the job
 to see them.
 
@@ -341,7 +453,11 @@ Paste this into an agent's prompt:
 > `ssh` or `rsync`. While working, run package-scoped commands: `farm cargo check -p
 > <crate>`, `farm cargo clippy -p <crate>`, `farm cargo nextest run -p
 > <crate> -E 'test(<name>)'`. Do not run the whole gate per edit. When a state is ready to
-> commit, run `farm check` once and fix what it reports; if a golden file changed on
+> commit, run `farm check` once and fix what it reports (one full `farm check` per task, at the
+> end; a failed stage is rerun alone, `farm check lint`; after a clean rebase run nothing heavy
+> except `farm check lint`; never start the same job twice: `farm` serves a stage that already
+> passed on the same inputs and attaches an identical running one, and `--fresh` is not a way
+> past a failure); if a golden file changed on
 > purpose, run `farm bless` and read every diff it lists. Format with `farm fmt`, never with
 > plain `cargo fmt`. Never poll and never write
 > `pgrep`, `until`, `while` or `sleep` loops. Pass `timeout: 600000` to the Bash tool on every

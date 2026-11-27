@@ -12,7 +12,7 @@ use crate::error::Error;
 use crate::event::{Event, Line, Seeded};
 use crate::host::{Host, Snapshot};
 use crate::job::{Attach, Job};
-use crate::name::{HostName, JobId};
+use crate::name::{Excluded, HostName, JobId};
 use crate::process::Failure;
 use crate::program::{Call, Program};
 use crate::transport::{Done, Pull, Push, Transport};
@@ -85,7 +85,7 @@ impl<T: Transport> Member<T> {
     /// Makes the workspace's tree on the host equal to the workspace here; the first time on a
     /// host it starts from the newest sibling tree by reflink. Returns how the tree came to be,
     /// when this call made it.
-    pub(crate) fn sync(&self, tree: &Tree) -> Result<Option<Seeded>, Error> {
+    pub(crate) fn sync(&self, tree: &Tree, exclude: &[Excluded]) -> Result<Option<Seeded>, Error> {
         if self.transport.is_local() {
             return Ok(None);
         }
@@ -102,7 +102,9 @@ impl<T: Transport> Member<T> {
         let seeded =
             seeded.ok_or_else(|| Error::Silent { host: self.host.name.clone(), what: "how the tree was seeded" })?;
         let (path, lock) = (tree.on(&self.host), tree.lock(&self.host));
-        self.transport.push(&Push { root: &tree.root, tree: &path, lock: &lock }).map_err(self.failed("rsync"))?;
+        self.transport
+            .push(&Push { root: &tree.root, tree: &path, lock: &lock, exclude })
+            .map_err(self.failed("rsync"))?;
         *synced = true;
         Ok(Some(seeded))
     }
@@ -331,8 +333,8 @@ mod tests {
     #[test]
     fn the_first_sync_seeds_then_pushes_and_the_second_does_nothing() {
         let member = Member::new(remote("petal"), Fake::saying(vec![Reply::ok(&["@@farm:seed reflink main"])]));
-        assert_eq!(member.sync(&tree()).unwrap(), Some(Seeded::Reflink("main".to_owned())));
-        assert_eq!(member.sync(&tree()).unwrap(), None);
+        assert_eq!(member.sync(&tree(), &[]).unwrap(), Some(Seeded::Reflink("main".to_owned())));
+        assert_eq!(member.sync(&tree(), &[]).unwrap(), None);
         assert_eq!(*member.transport.pushed.lock().unwrap(), ["farm/uses.ink/farm"]);
         assert_eq!(member.transport.calls.lock().unwrap().len(), 1);
     }
@@ -340,7 +342,7 @@ mod tests {
     #[test]
     fn a_local_member_is_never_synced() {
         let member = Member::new(Host::local(), Fake { local: true, ..Fake::default() });
-        assert_eq!(member.sync(&tree()).unwrap(), None);
+        assert_eq!(member.sync(&tree(), &[]).unwrap(), None);
         assert!(member.transport.calls.lock().unwrap().is_empty());
     }
 
@@ -360,6 +362,7 @@ mod tests {
             words: ["cargo", "test", "-E", "test(a b;c)"].map(str::to_owned).to_vec(),
             need: Need::Any,
             env: vec![],
+            reuse: crate::job::Reuse::Never,
             limit: None,
         };
         let id = JobId::new(member.host.name.clone(), 255, 1);
@@ -382,8 +385,14 @@ mod tests {
     fn a_held_launch_holds_stdin_for_the_timeout() {
         let member = Member::new(remote("petal"), Fake::default());
         let snap = Snapshot::read(&member.host, &PROBE.join("\n")).unwrap();
-        let job =
-            Job { label: "x".to_owned(), words: vec!["cargo".to_owned()], need: Need::Any, env: vec![], limit: None };
+        let job = Job {
+            label: "x".to_owned(),
+            words: vec!["cargo".to_owned()],
+            need: Need::Any,
+            env: vec![],
+            limit: None,
+            reuse: crate::job::Reuse::Never,
+        };
         let id = JobId::new(member.host.name.clone(), 1, 1);
         let start = Start { tree: &tree(), snap: &snap, job: &job, id: &id };
         let call = member.launch(&start, Attach::Hold(std::time::Duration::from_secs(540)), Seconds(1500));

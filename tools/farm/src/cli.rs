@@ -107,6 +107,10 @@ pub(crate) struct Flags {
     pub(crate) at: Option<String>,
     /// `--forget`: remove a workspace.
     pub(crate) forget: bool,
+    /// `--fresh`: run the job although an identical one passed before.
+    pub(crate) fresh: bool,
+    /// `--budget`: warn after this many full checks in a day; else the job file's.
+    pub(crate) budget: Option<u32>,
 }
 
 impl Default for Flags {
@@ -121,6 +125,8 @@ impl Default for Flags {
             tail: None,
             at: None,
             forget: false,
+            fresh: false,
+            budget: None,
         }
     }
 }
@@ -135,6 +141,8 @@ impl Flags {
             "--verbose" => self.verbose = true,
             "--detach" => self.detach = true,
             "--forget" => self.forget = true,
+            "--fresh" => self.fresh = true,
+            "--budget" => self.budget = Some(value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?),
             "--timeout" => self.timeout = value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?,
             "--limit" => self.limit = Some(value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?),
             "--tail" => self.tail = Some(value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?),
@@ -332,6 +340,17 @@ mod tests {
         assert_eq!(command.verb, Verb::Cargo(["--json", "nextest"].map(str::to_owned).to_vec()));
         assert!(matches!(parse("cargo"), Err(Usage::Missing { .. })));
         assert!(matches!(parse("cargo --json"), Err(Usage::Missing { .. })));
+    }
+
+    #[test]
+    fn fresh_and_budget_are_farm_flags_before_or_after_the_verb_but_not_after_cargo_words() {
+        let flags = parse("--fresh check --budget 3 lint").unwrap().flags;
+        assert!(flags.fresh);
+        assert_eq!(flags.budget, Some(3));
+        assert!(parse("cargo --fresh nextest run").unwrap().flags.fresh);
+        assert!(!parse("cargo nextest run --fresh").unwrap().flags.fresh, "after cargo's words it is cargo's");
+        assert!(parse("check --budget x").is_err());
+        assert!(!parse("check").unwrap().flags.fresh);
     }
 
     #[test]

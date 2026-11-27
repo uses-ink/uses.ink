@@ -8,14 +8,63 @@ use std::time::Duration;
 
 use serde::Serialize;
 
+use crate::cache::Ago;
 use crate::cli::Seconds;
 use crate::event::{Event, Line};
 use crate::exit::Exit;
+use crate::glob::Selection;
 use crate::host::Snapshot;
 use crate::jobs::Recipe;
 use crate::name::{HostName, JobId};
 use crate::place::Need;
 use crate::summary::Summary;
+
+/// Whether a pass of a job may be reused, and which files it depends on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Reuse {
+    /// Never: the job changes files the caller wants, or the repo said `cache = false`.
+    Never,
+    /// Yes, keyed by the whole tree.
+    Whole,
+    /// Yes, keyed by the files these globs select.
+    Files(Selection),
+}
+
+impl Reuse {
+    /// The globs, when the job names its inputs.
+    pub(crate) const fn files(&self) -> Option<&Selection> {
+        match self {
+            Self::Files(files) => Some(files),
+            Self::Never | Self::Whole => None,
+        }
+    }
+
+    pub(crate) const fn allowed(&self) -> bool {
+        !matches!(self, Self::Never)
+    }
+}
+
+/// How a result came to be.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Served {
+    /// The job ran on a host for this call.
+    Ran,
+    /// A run with the same command and inputs passed earlier; nothing ran.
+    Cached { ago: Ago },
+    /// An identical job was already running; this call waited for it.
+    Attached,
+}
+
+impl Served {
+    /// The word `--json` uses.
+    pub(crate) const fn word(self) -> &'static str {
+        match self {
+            Self::Ran => "ran",
+            Self::Cached { .. } => "cached",
+            Self::Attached => "attached",
+        }
+    }
+}
 
 /// A command to run on a host.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +78,7 @@ pub(crate) struct Job {
     pub(crate) env: Vec<String>,
     /// Its own hard limit, when the repo declares one.
     pub(crate) limit: Option<Seconds>,
+    pub(crate) reuse: Reuse,
 }
 
 impl From<Recipe> for Job {
@@ -39,6 +89,11 @@ impl From<Recipe> for Job {
             need: recipe.need,
             env: Vec::new(),
             limit: recipe.limit,
+            reuse: match (recipe.cache, recipe.inputs) {
+                (false, _) => Reuse::Never,
+                (true, None) => Reuse::Whole,
+                (true, Some(files)) => Reuse::Files(files),
+            },
         }
     }
 }
@@ -225,11 +280,20 @@ pub(crate) struct Finished {
     pub(crate) verdict: Verdict,
     pub(crate) log: PathBuf,
     pub(crate) summary: Summary,
+    pub(crate) served: Served,
 }
 
 impl Finished {
     pub(crate) fn exit(&self) -> Exit {
         self.verdict.exit()
+    }
+
+    /// Seconds the command ran, when it ended.
+    pub(crate) const fn ran(&self) -> u64 {
+        match self.verdict {
+            Verdict::Done { ran, .. } => ran.as_secs(),
+            Verdict::Running | Verdict::Aborted | Verdict::Lost => 0,
+        }
     }
 
     /// The machine form.
@@ -252,6 +316,7 @@ impl Finished {
             ran_secs: ran,
             log: self.log.display().to_string(),
             summary: self.summary.clone(),
+            served: self.served.word(),
         }
     }
 }
@@ -265,6 +330,14 @@ impl fmt::Display for Finished {
             Verdict::Running | Verdict::Aborted | Verdict::Lost => {}
         }
         writeln!(out, "\n   $ {}", self.command)?;
+        match self.served {
+            Served::Cached { ago } => {
+                writeln!(out, "passed earlier on this tree ({}, {ago} ago)\nlog {}", self.id, self.log.display())?;
+                return write!(out, "{}", self.summary);
+            }
+            Served::Attached => writeln!(out, "attached to the identical job already running, {}", self.id)?,
+            Served::Ran => {}
+        }
         match self.verdict {
             Verdict::Done { code, .. } => {
                 writeln!(out, "{} (exit {code}), log {}", self.exit().to_string().to_uppercase(), self.log.display())?;
@@ -274,6 +347,43 @@ impl fmt::Display for Finished {
             Verdict::Lost => writeln!(out, "LOST: the connection ended and no result came")?,
         }
         write!(out, "{}", self.summary)
+    }
+}
+
+/// What a `farm check` did, in the one line it ends with.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Totals {
+    pub(crate) ran: u32,
+    pub(crate) cached: u32,
+    pub(crate) attached: u32,
+    /// Seconds the stages that ran spent on their hosts.
+    pub(crate) secs: u64,
+}
+
+impl Totals {
+    pub(crate) fn of(done: &[Finished]) -> Self {
+        let mut totals = Self::default();
+        for job in done {
+            match job.served {
+                Served::Ran => {
+                    totals.ran += 1;
+                    totals.secs += job.ran();
+                }
+                Served::Cached { .. } => totals.cached += 1,
+                Served::Attached => totals.attached += 1,
+            }
+        }
+        totals
+    }
+}
+
+impl fmt::Display for Totals {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            out,
+            "check: {} stages run, {} served from cache, {} deduped, {} host seconds",
+            self.ran, self.cached, self.attached, self.secs
+        )
     }
 }
 
@@ -292,6 +402,8 @@ pub(crate) struct Wire {
     pub(crate) ran_secs: Option<u64>,
     pub(crate) log: String,
     pub(crate) summary: Summary,
+    /// `ran`, `cached` or `attached`.
+    pub(crate) served: &'static str,
 }
 
 /// The whole report of one command: `uses.farm/v1`.
@@ -344,6 +456,32 @@ mod tests {
     }
 
     #[test]
+    fn the_check_summary_counts_run_cached_and_deduped_stages_and_host_seconds() {
+        let done = |served, secs| Finished {
+            id: "petal.1a".parse().unwrap(),
+            label: "x".to_owned(),
+            command: "c".to_owned(),
+            host: "petal".parse().unwrap(),
+            slot: None,
+            queued: Duration::ZERO,
+            verdict: Verdict::Done { code: 0, ran: Duration::from_secs(secs) },
+            log: PathBuf::new(),
+            summary: Summary::default(),
+            served,
+        };
+        let all = [
+            done(Served::Ran, 40),
+            done(Served::Ran, 2),
+            done(Served::Cached { ago: Ago(Duration::from_secs(5)) }, 900),
+            done(Served::Attached, 700),
+        ];
+        assert_eq!(
+            Totals::of(&all).to_string(),
+            "check: 2 stages run, 1 served from cache, 1 deduped, 42 host seconds"
+        );
+    }
+
+    #[test]
     fn a_bad_event_line_is_kept_not_swallowed() {
         let flow = feed(&["@@farm:wat"]);
         assert!(flow.fault.is_some());
@@ -357,6 +495,7 @@ mod tests {
             need: Need::Any,
             env: vec!["INSTA_UPDATE=always".to_owned()],
             limit: None,
+            reuse: Reuse::Never,
         };
         let snap = crate::host::Snapshot::read(
             &crate::host::Host::local(),

@@ -15,6 +15,7 @@
 //! - [`version`]: the hash of the source the binary was built from.
 //! - [`workspace`]: `farm workspace`, which needs no host.
 
+mod cache;
 mod changes;
 mod cli;
 mod config;
@@ -24,7 +25,10 @@ mod error;
 mod event;
 mod exit;
 mod fleet;
+mod glob;
+mod hash;
 mod host;
+mod inputs;
 mod job;
 mod jobs;
 mod name;
@@ -42,6 +46,7 @@ mod workspace;
 use std::process::ExitCode;
 use std::sync::Arc;
 
+use cache::Cache;
 use cli::{Command, Verb};
 use config::{Config, Environment};
 use console::Console;
@@ -49,6 +54,7 @@ use error::{Chain, Error};
 use exit::Exit;
 use fleet::{Fleet, Member};
 use host::{Host, Via};
+use inputs::{Inputs, Jj};
 use jobs::Jobs;
 use place::LeastLoaded;
 use run::{Farm, Setup};
@@ -98,11 +104,32 @@ impl Entry {
             }
             _ => {}
         }
-        let config = Config::load(&Environment::current())?;
+        let env = Environment::current();
+        let config = Config::load(&env)?;
+        let settings = Jobs::load_optional(&tree.root)?.map_or_default(|jobs| jobs.settings().clone());
+        let cache = Self::cache(&env, &tree, &settings)?;
         let exec = Exec::new(Arc::clone(&console));
         let members = config.hosts.iter().map(|host| Self::member(host, &exec)).collect();
-        let farm = Farm::new(Setup { fleet: Fleet::new(members), placement: LeastLoaded, console, flags, tree });
+        let farm = Farm::new(Setup {
+            fleet: Fleet::new(members),
+            placement: LeastLoaded,
+            console,
+            flags,
+            tree,
+            settings,
+            cache,
+        });
         farm.go(&verb)
+    }
+
+    /// What the farm remembers on this machine, unless there is nowhere to keep it.
+    fn cache(env: &Environment, tree: &Tree, settings: &jobs::Settings) -> Result<Option<Cache>, Error> {
+        let Some(dir) = env.cache_dir(tree.repo.as_str()) else {
+            return Ok(None);
+        };
+        let inputs =
+            Inputs::new(Arc::new(Jj), &settings.exclude).map_err(|fault| Error::Cache(Box::new(fault.into())))?;
+        Ok(Some(Cache::at(&dir, settings.limits, inputs)))
     }
 
     fn member(host: &Host, exec: &Exec) -> Member<Link> {
@@ -142,6 +169,20 @@ mod tests {
         }
 
         fn farm(&self, slots: u32, flags: Flags) -> Farm<Link, LeastLoaded> {
+            self.build(slots, flags, false)
+        }
+
+        /// A farm that keeps passes under the rig, reading the tree with a plain walk.
+        fn cached(&self, slots: u32, flags: Flags) -> Farm<Link, LeastLoaded> {
+            self.build(slots, flags, true)
+        }
+
+        fn build(&self, slots: u32, flags: Flags, cached: bool) -> Farm<Link, LeastLoaded> {
+            let settings = jobs::Settings::default();
+            let cache = cached.then(|| {
+                let inputs = inputs::Inputs::new(Arc::new(inputs::Walk), &settings.exclude).unwrap();
+                Cache::at(&self.root.join("cache"), settings.limits, inputs)
+            });
             let host = Host { slots: Some(slots), dir: self.dir(), ..Host::local() };
             let console = Arc::new(Console::default());
             let local = Link::Local(Local::new(Exec::new(Arc::clone(&console))));
@@ -152,6 +193,8 @@ mod tests {
                 console,
                 flags,
                 tree,
+                settings,
+                cache,
             })
         }
 
@@ -185,7 +228,123 @@ mod tests {
             need: place::Need::Any,
             env: vec![],
             limit: None,
+            reuse: job::Reuse::Never,
         }
+    }
+
+    /// A job that counts its runs in the rig's `count` file, then runs `more`.
+    fn counting(rig: &Rig, more: &str) -> job::Job {
+        let mut counted = job("count", &format!("echo x >> {}; {more}", rig.root.join("count").display()));
+        counted.reuse = job::Reuse::Whole;
+        counted
+    }
+
+    fn runs(rig: &Rig) -> usize {
+        std::fs::read_to_string(rig.root.join("count")).map_or(0, |text| text.lines().count())
+    }
+
+    /// One job through a new farm of the rig, as a new process would run it.
+    fn again(rig: &Rig, job: &job::Job, flags: Flags) -> job::Finished {
+        let farm = rig.cached(1, flags);
+        let probed = farm.fleet_probe();
+        farm.run_for_test(job, probed.first().unwrap(), job::Attach::Hold(Duration::from_secs(60))).unwrap()
+    }
+
+    #[test]
+    fn a_pass_is_served_again_until_the_tree_changes_and_fresh_runs_it_anyway() {
+        let rig = Rig::new("hit");
+        std::fs::write(rig.root.join("w").join("a.rs"), "one").unwrap();
+        let job = counting(&rig, "true");
+        let first = again(&rig, &job, Flags::default());
+        assert_eq!((first.served, runs(&rig)), (job::Served::Ran, 1), "a miss runs");
+        let second = again(&rig, &job, Flags::default());
+        assert!(matches!(second.served, job::Served::Cached { .. }), "{:?}", second.served);
+        assert_eq!((runs(&rig), &second.id, &second.log), (1, &first.id, &first.log), "a hit runs nothing");
+        assert!(second.to_string().contains(&format!("passed earlier on this tree ({}, ", first.id)), "{second}");
+        assert_eq!(second.exit(), Exit::Passed);
+        std::fs::write(rig.root.join("w").join("a.rs"), "two").unwrap();
+        assert_eq!(again(&rig, &job, Flags::default()).served, job::Served::Ran, "a changed input is a miss");
+        assert_eq!(runs(&rig), 2);
+        let fresh = again(&rig, &job, Flags { fresh: true, ..Flags::default() });
+        assert_eq!((fresh.served, runs(&rig)), (job::Served::Ran, 3), "--fresh bypasses the cache");
+        assert!(matches!(again(&rig, &job, Flags::default()).served, job::Served::Cached { .. }), "and still records");
+        assert_eq!(runs(&rig), 3);
+    }
+
+    #[test]
+    fn a_job_that_names_its_inputs_ignores_a_change_outside_them() {
+        let rig = Rig::new("inputs");
+        let tree = rig.root.join("w");
+        std::fs::create_dir_all(tree.join("docs")).unwrap();
+        std::fs::write(tree.join("docs").join("a.md"), "one").unwrap();
+        std::fs::write(tree.join("a.rs"), "one").unwrap();
+        let mut job = counting(&rig, "true");
+        job.reuse = job::Reuse::Files(glob::Selection::parse(&["**".to_owned(), "!docs/**".to_owned()]).unwrap());
+        again(&rig, &job, Flags::default());
+        std::fs::write(tree.join("docs").join("a.md"), "two").unwrap();
+        assert!(matches!(again(&rig, &job, Flags::default()).served, job::Served::Cached { .. }));
+        std::fs::write(tree.join("a.rs"), "two").unwrap();
+        assert_eq!(again(&rig, &job, Flags::default()).served, job::Served::Ran);
+        assert_eq!(runs(&rig), 2);
+    }
+
+    #[test]
+    fn failures_flaky_passes_and_jobs_that_opt_out_are_never_cached() {
+        let rig = Rig::new("never");
+        let failing = counting(&rig, "exit 1");
+        assert_eq!(again(&rig, &failing, Flags::default()).exit(), Exit::Failed);
+        assert_eq!(again(&rig, &failing, Flags::default()).served, job::Served::Ran);
+        assert_eq!(runs(&rig), 2, "a failure runs again");
+        let flaky = job::Job { label: "flaky".to_owned(), ..counting(&rig, "echo '        FLAKY 2/3 [ 0.5s] a b'") };
+        assert_eq!(again(&rig, &flaky, Flags::default()).exit(), Exit::Passed);
+        assert_eq!(again(&rig, &flaky, Flags::default()).served, job::Served::Ran);
+        assert_eq!(runs(&rig), 4, "a pass that shows a retry runs again");
+        let optout = job::Job { label: "optout".to_owned(), reuse: job::Reuse::Never, ..counting(&rig, "true") };
+        again(&rig, &optout, Flags::default());
+        assert_eq!(again(&rig, &optout, Flags::default()).served, job::Served::Ran);
+        assert_eq!(runs(&rig), 6);
+    }
+
+    #[test]
+    fn an_identical_job_attaches_to_the_running_one_and_its_pass_is_kept() {
+        let rig = Rig::new("dedupe");
+        let latch = rig.root.join("latch");
+        let job = counting(&rig, &format!("while [ ! -f {} ]; do sleep 0.01; done", latch.display()));
+        let farm = rig.cached(2, Flags::default());
+        let snap = farm.fleet_probe().remove(0);
+        let first = farm.run_for_test(&job, &snap, job::Attach::Detach).unwrap();
+        assert_eq!(first.verdict, Verdict::Running);
+        let second = std::thread::scope(|scope| {
+            let attached = scope.spawn(|| farm.run_for_test(&job, &snap, job::Attach::Hold(Duration::from_secs(60))));
+            std::thread::sleep(Duration::from_millis(300));
+            std::fs::write(&latch, "").unwrap();
+            attached.join().unwrap().unwrap()
+        });
+        assert_eq!(second.served, job::Served::Attached);
+        assert_eq!(second.id, first.id, "the same job, not a second copy");
+        assert!(matches!(second.verdict, Verdict::Done { code: 0, .. }), "{:?}", second.verdict);
+        assert_eq!(runs(&rig), 1, "the command ran once");
+        assert!(
+            matches!(again(&rig, &job, Flags::default()).served, job::Served::Cached { .. }),
+            "the pass it waited for is kept"
+        );
+        assert_eq!(runs(&rig), 1);
+    }
+
+    #[test]
+    fn a_child_that_outlives_its_job_neither_holds_the_slot_nor_stays_alive() {
+        let rig = Rig::new("orphan");
+        let pidfile = rig.root.join("child");
+        let script = format!("sleep 300 & echo $! > {}; exit 0", pidfile.display());
+        let finished = run_one(&rig, &job("orphan", &script), job::Attach::Hold(Duration::from_secs(30)), 1);
+        assert_eq!(finished.verdict.exit(), Exit::Passed);
+        let probe = rig.member().probe().unwrap();
+        assert_eq!(probe.busy, 0, "the lease is free as soon as the job ends");
+        let pid = std::fs::read_to_string(&pidfile).unwrap().trim().to_owned();
+        let state = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap_or_default();
+        let gone =
+            state.is_empty() || state.rsplit_once(')').is_some_and(|(_, rest)| rest.trim_start().starts_with('Z'));
+        assert!(gone, "the orphan was killed with its job: {state}");
     }
 
     fn run_one(rig: &Rig, job: &job::Job, attach: job::Attach, slots: u32) -> job::Finished {
@@ -429,6 +588,30 @@ mod tests {
             "--forget",
             "INK_FARM_CONFIG",
             "uses.farm/v1",
+        ] {
+            assert!(doc.contains(word), "{word}");
+        }
+    }
+
+    #[test]
+    fn the_workflow_doc_names_the_cache_flags_keys_and_the_agent_budget() {
+        let doc =
+            std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/workflow.md"))
+                .unwrap();
+        for word in [
+            "--fresh",
+            "--budget",
+            "inputs = [",
+            "cache = false",
+            "[sync]",
+            "[cache]",
+            "[budget]",
+            "full_checks_per_day",
+            "max_age_hours",
+            "max_entries",
+            "passed earlier on this tree",
+            "wedged?",
+            "Heavy-command budget",
         ] {
             assert!(doc.contains(word), "{word}");
         }

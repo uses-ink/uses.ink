@@ -103,6 +103,8 @@ pub(crate) enum Error {
         paths: Vec<String>,
     },
     Workspace(workspace::Fault),
+    /// The cache could not be set up.
+    Cache(Box<crate::cache::Trouble>),
 }
 
 impl Error {
@@ -129,6 +131,7 @@ impl Error {
             | Self::NoJob { .. }
             | Self::Crashed { .. }
             | Self::Changes { .. }
+            | Self::Cache(_)
             | Self::Workspace(_) => Exit::Farm,
         }
     }
@@ -186,6 +189,7 @@ impl fmt::Display for Error {
                 Listed(paths)
             ),
             Self::Workspace(fault) => write!(out, "{fault}"),
+            Self::Cache(trouble) => write!(out, "{trouble}"),
         }
     }
 }
@@ -202,6 +206,7 @@ impl std::error::Error for Error {
             Self::Probe { source, .. } => Some(source),
             Self::Said { source, .. } => Some(source),
             Self::Workspace(fault) => fault.source(),
+            Self::Cache(trouble) => std::error::Error::source(trouble.as_ref()),
             Self::Changes { source, .. } => Some(source),
             Self::NoRepo { .. }
             | Self::Utf8 { .. }

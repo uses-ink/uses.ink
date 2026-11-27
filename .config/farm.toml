@@ -1,25 +1,61 @@
 # The jobs `farm check` runs, one per stage of the gate (`cargo xtask check <stage>`), all placed
 # at once. `golden` jobs need a host whose output matches the reference architecture (x86_64).
+#
+# `inputs` lists the files a job reads, as globs read in order (the last match wins, `!` takes
+# files out). A pass of the job is reused only while those files, `Cargo.lock`,
+# `rust-toolchain.toml` and `.config/**` are byte for byte the same. Without `inputs` the whole
+# tree counts. Every job here is `cargo xtask check <stage>`, so a change to `xtask/**` (and to
+# the crates xtask builds: `freehand`, `token`) or to the root `Cargo.toml` or `.cargo/**` is an
+# input of every job; the globs below keep the Rust jobs on everything but prose.
 [job.lint]
 run = "cargo xtask check lint"
 golden = false
+# clippy, fmt, deny and the layout rules read every crate, and layout also reads docs and brand.
+# Whole tree on purpose.
 
 [job.test]
 run = "cargo xtask check test"
 golden = true
+# nextest of the whole workspace. Tests read source, fixtures and `brand/`, never prose, except
+# the farm's own test that `docs/workflow.md` names every verb and flag: that file stays an input.
+inputs = ["**", "!docs/**", "!PRODUCT.md", "docs/workflow.md"]
 
 [job.docs]
 run = "cargo xtask check docs"
 golden = false
+# `cargo test --workspace --doc`: the doc tests of every crate, plugins included, so a plugin
+# change must rerun it (the job is not about the markdown in docs/, which no doc test reads).
+inputs = ["**", "!docs/**", "!PRODUCT.md"]
 
 [job.wasm]
 run = "cargo xtask check wasm"
 golden = false
+# `freehand` on wasi and `freehand-web` for the browser. They depend on `fixture` (dev) and, through
+# `cargo xtask`, on `xtask` and `token`; the workspace manifest and `.cargo/**` (the wasi runner)
+# configure the build. No other crate is compiled by this stage.
+inputs = ["freehand/**", "freehand-web/**", "fixture/**", "token/**", "xtask/**", "/Cargo.toml", ".cargo/**"]
 
 [job.sites]
 run = "cargo xtask check sites"
 golden = true
+# builds `ink` and every site fixture natively and through the components: nearly every crate.
+inputs = ["**", "!docs/**", "!PRODUCT.md"]
 
 # Ignored files `farm workspace --forget` may delete with the workspace: build caches by name, at any depth.
 [workspace]
 disposable = [".ink"]
+
+# Names the sync leaves out and the cache digest does not read, at any depth. `target` and the
+# secret patterns (`.env`, `*.pem`, `*.key`) are built into farm.
+[sync]
+exclude = [".jj", ".git", ".impeccable"]
+
+# How long and how many passes the machine keeps (defaults: 168 hours, 256 entries).
+[cache]
+max_age_hours = 168
+max_entries = 256
+
+# `farm check` warns after this many full checks that ran a stage in 24 hours in one workspace
+# (default off). It never refuses.
+[budget]
+full_checks_per_day = 3

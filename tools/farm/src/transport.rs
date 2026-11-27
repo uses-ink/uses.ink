@@ -44,6 +44,8 @@ pub(crate) struct Push<'a> {
     pub(crate) tree: &'a str,
     /// The lock that keeps two syncs of it from overlapping.
     pub(crate) lock: &'a str,
+    /// Names the repo keeps out of the sync, beside the built-in ones.
+    pub(crate) exclude: &'a [crate::name::Excluded],
 }
 
 /// Files to bring back from a host's tree into the workspace.
@@ -292,10 +294,6 @@ impl Transport for Local {
     }
 }
 
-/// Paths and patterns that never leave this machine: the repo's own state, build output, and
-/// anything that looks like a secret. The `.gitignore` files are applied on top, by rsync.
-const EXCLUDES: [&str; 8] = [".jj", ".git", ".impeccable", "target", ".env", ".env.*", "*.pem", "*.key"];
-
 /// Another machine, through the user's `ssh` and `rsync`, with their config and agent.
 #[derive(Debug, Clone)]
 pub(crate) struct Ssh {
@@ -363,7 +361,8 @@ impl Ssh {
         let mut argv = self.rsync();
         argv.extend(Self::PLACE.map(str::to_owned));
         argv.extend(["--delete".to_owned(), "--filter=:- .gitignore".to_owned(), format!("--rsync-path={wrapped}")]);
-        argv.extend(EXCLUDES.map(|pattern| format!("--exclude={pattern}")));
+        argv.extend(crate::inputs::BUILT_IN.map(|pattern| format!("--exclude={pattern}")));
+        argv.extend(push.exclude.iter().map(|name| format!("--exclude={name}")));
         argv.push(format!("{}/", push.root.display()));
         argv.push(format!("{}:{}/", self.destination, push.tree));
         argv
@@ -466,7 +465,14 @@ mod tests {
 
     #[test]
     fn the_sync_is_a_delete_with_the_excludes_and_the_lock_around_the_remote_rsync() {
-        let push = Push { root: Path::new("/w/farm"), tree: "farm/uses.ink/farm", lock: "farm/locks/farm.lock" };
+        let exclude: Vec<crate::name::Excluded> =
+            [".jj", ".git", ".impeccable"].iter().map(|name| name.parse().unwrap()).collect();
+        let push = Push {
+            root: Path::new("/w/farm"),
+            tree: "farm/uses.ink/farm",
+            lock: "farm/locks/farm.lock",
+            exclude: &exclude,
+        };
         let argv = ssh().sync(&push);
         assert_eq!(argv.first().map(String::as_str), Some("rsync"));
         for want in [
@@ -492,7 +498,8 @@ mod tests {
 
     /// The real sync argv, pointed at two local directories: no `ssh`, no remote lock.
     fn local_sync(from: &Path, to: &Path) -> Vec<String> {
-        let push = Push { root: from, tree: "t", lock: "l" };
+        let exclude: Vec<crate::name::Excluded> = [".jj", ".git"].iter().map(|name| name.parse().unwrap()).collect();
+        let push = Push { root: from, tree: "t", lock: "l", exclude: &exclude };
         let mut argv = ssh().sync(&push);
         argv.truncate(argv.len() - 2);
         let at = argv.iter().position(|word| word == "-e").unwrap();
