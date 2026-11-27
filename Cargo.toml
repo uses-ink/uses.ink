@@ -128,3 +128,8 @@ must_use_candidate = "allow"
 missing_errors_doc = "allow"
 
 
+
+# The release build of `ink`: what dist (dist-workspace.toml) and the Dockerfile build.
+[profile.dist]
+inherits = "release"
+lto = "thin"

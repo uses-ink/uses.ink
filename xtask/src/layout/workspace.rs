@@ -16,6 +16,8 @@ use crate::process::Process;
 /// The workspace, read.
 #[derive(Debug)]
 pub(crate) struct Workspace {
+    /// The directory holding the root manifest.
+    pub(crate) root: PathBuf,
     /// The crates, in `cargo metadata`'s order.
     pub(crate) crates: Vec<Crate>,
     /// The crates `[workspace.dependencies]` names: by key, or by `package` when renamed.
@@ -105,7 +107,7 @@ impl Workspace {
             metadata.packages.iter().filter(|p| metadata.workspace_members.contains(&p.id)).collect();
         let dirs: Vec<PathBuf> = packages.iter().map(|p| p.dir(root)).collect();
         let crates = packages.iter().map(|package| package.read(root, &dirs, &entries)).collect::<Result<_, _>>()?;
-        Ok(Self { crates, aliased, entries })
+        Ok(Self { root: root.to_path_buf(), crates, aliased, entries })
     }
 
     /// The crates `[workspace.dependencies]` names.

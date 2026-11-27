@@ -41,5 +41,9 @@ insta.workspace = true
 name = "site"
 harness = false
 
+# `publish = false` hides the binary from dist; this puts it back (dist-workspace.toml)
+[package.metadata.dist]
+dist = true
+
 [lints]
 workspace = true

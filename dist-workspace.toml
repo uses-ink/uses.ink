@@ -1,0 +1,22 @@
+[workspace]
+members = ["cargo:."]
+
+# Config for `dist` (formerly cargo-dist; the config key and the crate keep the old name)
+[dist]
+cargo-dist-version = "0.34.0"
+ci = "github"
+installers = ["shell", "powershell"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "aarch64-unknown-linux-musl",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "x86_64-pc-windows-msvc",
+]
+checksum = "sha256"
+pr-run-mode = "skip"
+# release.yml is generated, then checkout is raised to v7 by hand (dist 0.34 emits v6)
+allow-dirty = ["ci"]
+install-path = "CARGO_HOME"

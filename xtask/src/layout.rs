@@ -2,10 +2,11 @@
 //! compared with what its generator writes now. The rules are the checkable parts of
 //! docs/conventions.md: the path predicts the name, dependencies flow one way, licences match the
 //! crate's kind, no banned names, unsafe code only where a decision says, function names of one
-//! or two words, and no free functions.
+//! or two words, no free functions, and release files that name the binary that exists.
 
 mod file;
 mod manifest;
+mod release;
 mod syntax;
 mod workspace;
 
@@ -22,6 +23,7 @@ use crate::token::Token;
 
 pub(crate) use file::{Banned, Unsafe};
 pub(crate) use manifest::{Alias, Licence, Names, Order};
+pub(crate) use release::{Drift, Release};
 pub(crate) use syntax::{Free, Words};
 pub(crate) use workspace::Workspace;
 
@@ -97,8 +99,8 @@ pub(crate) struct Layout;
 
 impl Layout {
     /// Every rule, in the order their problems are listed.
-    const RULES: (Names, Order, Licence, Alias, Banned, Unsafe, Gradual<Words>, Gradual<Free>) =
-        (Names, Order, Licence, Alias, Banned, Unsafe, Gradual(Words), Gradual(Free));
+    const RULES: (Names, Order, Licence, Alias, Banned, Unsafe, Gradual<Words>, Gradual<Free>, Release) =
+        (Names, Order, Licence, Alias, Banned, Unsafe, Gradual(Words), Gradual(Free), Release);
 }
 
 impl Step for Layout {
@@ -199,6 +201,8 @@ pub(crate) enum Problem {
     Words(Function),
     /// A free function outside a crate's entry points.
     Free(Function),
+    /// Release files that disagree with the workspace or with each other.
+    Release(Drift),
 }
 
 /// A function a syntax rule names: where it is, and what it is called.
@@ -221,7 +225,7 @@ impl Problem {
             | Self::Licence { krate, .. }
             | Self::Copyleft { krate, .. }
             | Self::Alias { krate } => Some(krate),
-            Self::Banned { .. } | Self::Unsafe { .. } | Self::Lexed { .. } => None,
+            Self::Banned { .. } | Self::Unsafe { .. } | Self::Lexed { .. } | Self::Release(_) => None,
         }
     }
 }
@@ -261,6 +265,7 @@ impl fmt::Display for Problem {
             Self::Free(Function { path, name, .. }) => {
                 write!(out, "`{}`: `{name}` is a free function; put it on the type it acts on", path.display())
             }
+            Self::Release(drift) => write!(out, "release: {drift}"),
         }
     }
 }

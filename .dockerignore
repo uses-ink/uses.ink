@@ -1,0 +1,12 @@
+# Only what the build reads goes into the context.
+target/
+.git/
+.jj/
+.github/
+.impeccable/
+spikes/
+**/node_modules/
+**/*.snap.new
+**/*.pending-snap
+Dockerfile
+.dockerignore
