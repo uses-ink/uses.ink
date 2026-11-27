@@ -761,6 +761,12 @@ pub enum Announcement {
         /// The file.
         path: ContentPath,
     },
+    /// `source.cache.skipped`: {path} is the cache ink keeps between builds, so it is not read
+    #[serde(rename = "source.cache.skipped")]
+    SourceCacheSkipped {
+        /// The file.
+        path: ContentPath,
+    },
     /// `source.link.skipped`: {path} links to a folder of the site, which is read at its own path, so the link is not followed
     #[serde(rename = "source.link.skipped")]
     SourceLinkSkipped {
@@ -833,6 +839,38 @@ pub enum Announcement {
         /// The file.
         path: ContentPath,
     },
+    /// `render.cache.cold`: {folder} held no cache, so everything this build makes is made from scratch
+    #[serde(rename = "render.cache.cold")]
+    RenderCacheCold {
+        /// The folder on disk, as the system names it.
+        folder: String,
+    },
+    /// `cache.folder.unusable`: {folder} cannot hold the cache, so nothing is kept between builds
+    #[serde(rename = "cache.folder.unusable")]
+    CacheFolderUnusable {
+        /// The folder on disk, as the system names it.
+        folder: String,
+    },
+    /// `cache.entry.corrupt`: the cache entry {entry} does not match its hash, so it is made again
+    #[serde(rename = "cache.entry.corrupt")]
+    CacheEntryCorrupt {
+        /// The cache entry, as its kind and digest: `image/<hash>`.
+        entry: String,
+    },
+    /// `cache.entry.unwritten`: the cache entry {entry} could not be written, so the next build makes it again
+    #[serde(rename = "cache.entry.unwritten")]
+    CacheEntryUnwritten {
+        /// The cache entry, as its kind and digest: `image/<hash>`.
+        entry: String,
+    },
+    /// `cache.entry.evicted`: {count} cache entries used longest ago were removed, keeping the cache under {limit}
+    #[serde(rename = "cache.entry.evicted")]
+    CacheEntryEvicted {
+        /// How many there are.
+        count: u64,
+        /// The most that is allowed.
+        limit: Bytes,
+    },
 }
 impl Announcement {
     /// Every code, in catalog order.
@@ -848,6 +886,7 @@ impl Announcement {
         "feed.post.none",
         "source.output.skipped",
         "file.ignore.inferred",
+        "source.cache.skipped",
         "source.link.skipped",
         "source.git.chosen",
         "source.history.absent",
@@ -859,6 +898,11 @@ impl Announcement {
         "code.language.unknown",
         "image.animation.kept",
         "image.format.kept",
+        "render.cache.cold",
+        "cache.folder.unusable",
+        "cache.entry.corrupt",
+        "cache.entry.unwritten",
+        "cache.entry.evicted",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -874,6 +918,7 @@ impl Announcement {
             Self::FeedPostNone => "feed.post.none",
             Self::SourceOutputSkipped { .. } => "source.output.skipped",
             Self::FileIgnoreInferred { .. } => "file.ignore.inferred",
+            Self::SourceCacheSkipped { .. } => "source.cache.skipped",
             Self::SourceLinkSkipped { .. } => "source.link.skipped",
             Self::SourceGitChosen { .. } => "source.git.chosen",
             Self::SourceHistoryAbsent { .. } => "source.history.absent",
@@ -885,6 +930,11 @@ impl Announcement {
             Self::CodeLanguageUnknown { .. } => "code.language.unknown",
             Self::ImageAnimationKept { .. } => "image.animation.kept",
             Self::ImageFormatKept { .. } => "image.format.kept",
+            Self::RenderCacheCold { .. } => "render.cache.cold",
+            Self::CacheFolderUnusable { .. } => "cache.folder.unusable",
+            Self::CacheEntryCorrupt { .. } => "cache.entry.corrupt",
+            Self::CacheEntryUnwritten { .. } => "cache.entry.unwritten",
+            Self::CacheEntryEvicted { .. } => "cache.entry.evicted",
         }
     }
 }
@@ -1184,6 +1234,9 @@ impl From<&Announcement> for Coded {
             Announcement::FileIgnoreInferred { path, .. } => {
                 Coded::new("file.ignore.inferred", vec![Field::from(path.clone())])
             }
+            Announcement::SourceCacheSkipped { path, .. } => {
+                Coded::new("source.cache.skipped", vec![Field::from(path.clone())])
+            }
             Announcement::SourceLinkSkipped { path, .. } => {
                 Coded::new("source.link.skipped", vec![Field::from(path.clone())])
             }
@@ -1218,6 +1271,21 @@ impl From<&Announcement> for Coded {
             Announcement::ImageFormatKept { path, .. } => {
                 Coded::new("image.format.kept", vec![Field::from(path.clone())])
             }
+            Announcement::RenderCacheCold { folder, .. } => {
+                Coded::new("render.cache.cold", vec![Field::from(folder.clone())])
+            }
+            Announcement::CacheFolderUnusable { folder, .. } => {
+                Coded::new("cache.folder.unusable", vec![Field::from(folder.clone())])
+            }
+            Announcement::CacheEntryCorrupt { entry, .. } => {
+                Coded::new("cache.entry.corrupt", vec![Field::from(entry.clone())])
+            }
+            Announcement::CacheEntryUnwritten { entry, .. } => {
+                Coded::new("cache.entry.unwritten", vec![Field::from(entry.clone())])
+            }
+            Announcement::CacheEntryEvicted { count, limit, .. } => {
+                Coded::new("cache.entry.evicted", vec![Field::from(*count), Field::from(*limit)])
+            }
         }
     }
 }
@@ -1237,6 +1305,7 @@ impl TryFrom<Coded> for Announcement {
             "feed.post.none" => Self::FeedPostNone,
             "source.output.skipped" => Self::SourceOutputSkipped { path: fields.next()? },
             "file.ignore.inferred" => Self::FileIgnoreInferred { path: fields.next()? },
+            "source.cache.skipped" => Self::SourceCacheSkipped { path: fields.next()? },
             "source.link.skipped" => Self::SourceLinkSkipped { path: fields.next()? },
             "source.git.chosen" => Self::SourceGitChosen { commit: fields.next()? },
             "source.history.absent" => Self::SourceHistoryAbsent { decision: fields.next()? },
@@ -1250,6 +1319,11 @@ impl TryFrom<Coded> for Announcement {
             "code.language.unknown" => Self::CodeLanguageUnknown { language: fields.next()? },
             "image.animation.kept" => Self::ImageAnimationKept { path: fields.next()? },
             "image.format.kept" => Self::ImageFormatKept { path: fields.next()? },
+            "render.cache.cold" => Self::RenderCacheCold { folder: fields.next()? },
+            "cache.folder.unusable" => Self::CacheFolderUnusable { folder: fields.next()? },
+            "cache.entry.corrupt" => Self::CacheEntryCorrupt { entry: fields.next()? },
+            "cache.entry.unwritten" => Self::CacheEntryUnwritten { entry: fields.next()? },
+            "cache.entry.evicted" => Self::CacheEntryEvicted { count: fields.next()?, limit: fields.next()? },
             _ => return fields.unknown(),
         };
         fields.end(made)

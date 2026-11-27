@@ -11,6 +11,7 @@ use model::{
 
 use crate::blob::Store;
 use crate::budget::Budget;
+use crate::cache::Disk;
 use crate::error::Refused;
 use crate::handle::{Handle, Identity};
 use crate::read::{Read, Skip, Skipped};
@@ -100,9 +101,19 @@ impl<S: Store> Walk<'_, S> {
             Some(path) => Refused::Unreadable { path: path.clone(), source },
             None => Refused::Root { path: self.folder.root.clone(), source },
         };
-        if let Some(path) = prefix.filter(|_| Marked(real).is_output()) {
-            self.skipped.push(Skipped { path: path.clone(), reason: Skip::Output });
-            return Ok(());
+        if let Some(path) = prefix {
+            let marked = Marked(real);
+            let reason = if marked.is_output() {
+                Some(Skip::Output)
+            } else if marked.is_cache() {
+                Some(Skip::Cache)
+            } else {
+                None
+            };
+            if let Some(reason) = reason {
+                self.skipped.push(Skipped { path: path.clone(), reason });
+                return Ok(());
+            }
         }
         let mut children: Vec<(String, PathBuf)> = Vec::new();
         for child in std::fs::read_dir(real).map_err(unreadable)? {
@@ -191,16 +202,26 @@ impl<S: Store> Walk<'_, S> {
     }
 }
 
-/// A folder, asked whether it holds a manifest `ink build` wrote.
+/// A folder, asked whether it holds a manifest `ink build` wrote or the mark of ink's cache.
 #[derive(Clone, Copy, Debug)]
 struct Marked<'a>(&'a Path);
 
 impl Marked<'_> {
     /// Whether [`Folder::MANIFEST`] is a file here, not a link, starting with [`Folder::MARK`].
     fn is_output(self) -> bool {
-        let path = self.0.join(Folder::MANIFEST);
+        self.holds(Folder::MANIFEST, Folder::MARK)
+    }
+
+    /// Whether [`Disk::LABEL`] is a file here, not a link, starting with [`Disk::MARK`].
+    fn is_cache(self) -> bool {
+        self.holds(Disk::LABEL, Disk::MARK)
+    }
+
+    /// Whether `name` is a file here, not a link, starting with `mark`.
+    fn holds(self, name: &str, mark: &str) -> bool {
+        let path = self.0.join(name);
         let is_file = std::fs::symlink_metadata(&path).is_ok_and(|metadata| metadata.is_file());
-        let mark = Folder::MARK.as_bytes();
+        let mark = mark.as_bytes();
         is_file
             && Handle::open(&path)
                 .ok()

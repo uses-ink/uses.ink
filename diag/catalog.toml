@@ -24,8 +24,10 @@ count = "How many there are."
 date = "The date, as written."
 decision = "The decision code it is about."
 element = "The element's name."
+entry = "The cache entry, as its kind and digest: `image/<hash>`."
 expected = "What the key takes, worded for a person."
 file = "The file that also routes there."
+folder = "The folder on disk, as the system names it."
 files = "Every file involved, in path order."
 given = "The name as the author wrote it."
 header = "The header's name."
@@ -459,6 +461,10 @@ fields = { path = "path" }
 message = "{path} is hidden, another tool's or about the repository, so it is not part of the site"
 fix = "add it to `include` in ink.toml to keep it"
 
+[notice."source.cache.skipped"]
+fields = { path = "path" }
+message = "{path} is the cache ink keeps between builds, so it is not read"
+
 [notice."source.link.skipped"]
 fields = { path = "path" }
 message = "{path} links to a folder of the site, which is read at its own path, so the link is not followed"
@@ -556,3 +562,24 @@ fault = "ours"
 fields = { native = "text", component = "text" }
 message = "the plugins built as components give deploy {component}, natively {native}"
 fix = "a plugin's component and its native core disagree; `ink build` natively is the reference"
+
+[notice."render.cache.cold"]
+fields = { folder = "text" }
+message = "{folder} held no cache, so everything this build makes is made from scratch"
+
+[notice."cache.folder.unusable"]
+fields = { folder = "text" }
+message = "{folder} cannot hold the cache, so nothing is kept between builds"
+fix = "make the folder writable, or pass `--cache <dir>` with one that is"
+
+[notice."cache.entry.corrupt"]
+fields = { entry = "text" }
+message = "the cache entry {entry} does not match its hash, so it is made again"
+
+[notice."cache.entry.unwritten"]
+fields = { entry = "text" }
+message = "the cache entry {entry} could not be written, so the next build makes it again"
+
+[notice."cache.entry.evicted"]
+fields = { count = "count", limit = "bytes" }
+message = "{count} cache entries used longest ago were removed, keeping the cache under {limit}"

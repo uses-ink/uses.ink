@@ -13,6 +13,7 @@ use model::{Bytes, ContentPath, Entry, Hash};
 use super::Repository;
 use super::link::{Landing, Links, Node, Unresolved};
 use crate::blob::Store;
+use crate::cache::Disk;
 use crate::error::Refused;
 use crate::folder::Folder;
 use crate::read::{Pointer, Skip, Skipped};
@@ -100,12 +101,19 @@ impl<'a, S: Store> Walk<'a, S> {
             let path = prefix.map_or_else(|| name.clone(), |prefix| prefix.join(&name));
             children.push((path, entry.mode.kind(), entry.oid.to_owned()));
         }
-        if let Some(path) = prefix
-            && self.is_output(&children)?
-        {
-            self.walked.skipped.push(Skipped { path: path.clone(), reason: Skip::Output });
-            self.nodes.insert(path.as_str().to_owned(), Node::Other);
-            return Ok(());
+        if let Some(path) = prefix {
+            let reason = if self.holds(&children, Folder::MANIFEST, Folder::MARK)? {
+                Some(Skip::Output)
+            } else if self.holds(&children, Disk::LABEL, Disk::MARK)? {
+                Some(Skip::Cache)
+            } else {
+                None
+            };
+            if let Some(reason) = reason {
+                self.walked.skipped.push(Skipped { path: path.clone(), reason });
+                self.nodes.insert(path.as_str().to_owned(), Node::Other);
+                return Ok(());
+            }
         }
         for (path, kind, id) in children {
             self.child(path, kind, id)?;
@@ -179,15 +187,15 @@ impl<'a, S: Store> Walk<'a, S> {
         Ok((blob, size))
     }
 
-    /// Whether a tree's `children` hold a manifest `ink build` wrote, as [`Folder::MANIFEST`]
-    /// starting with [`Folder::MARK`].
-    fn is_output(&self, children: &[(ContentPath, EntryKind, ObjectId)]) -> Result<bool, Refused> {
-        let manifest = children.iter().find(|(path, kind, _)| {
-            path.file_name() == Folder::MANIFEST && matches!(kind, EntryKind::Blob | EntryKind::BlobExecutable)
+    /// Whether a tree's `children` hold a file `name` starting with `mark`: a manifest `ink
+    /// build` wrote ([`Folder::MANIFEST`]), or the mark of ink's cache ([`Disk::LABEL`]).
+    fn holds(&self, children: &[(ContentPath, EntryKind, ObjectId)], name: &str, mark: &str) -> Result<bool, Refused> {
+        let found = children.iter().find(|(path, kind, _)| {
+            path.file_name() == name && matches!(kind, EntryKind::Blob | EntryKind::BlobExecutable)
         });
-        let Some((_, _, id)) = manifest else { return Ok(false) };
+        let Some((_, _, id)) = found else { return Ok(false) };
         let bytes = self.repo.find_blob(*id).map_err(|source| Refused::Git { source })?;
-        Ok(bytes.data.starts_with(Folder::MARK.as_bytes()))
+        Ok(bytes.data.starts_with(mark.as_bytes()))
     }
 }
 

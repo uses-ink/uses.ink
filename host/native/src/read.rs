@@ -43,6 +43,9 @@ pub enum Skip {
     /// It holds the build's own output: the caller named it, or it holds the manifest
     /// [`Folder::MANIFEST`](crate::Folder::MANIFEST) that `ink build` wrote.
     Output,
+    /// It is the cache ink keeps between builds: it holds the mark
+    /// [`Disk::LABEL`](crate::Disk::LABEL).
+    Cache,
     /// It is a link to a folder of the site, read at its own path. Following it would read the
     /// same files again under a second path, and a ladder of such links doubles the paths at
     /// every step.
@@ -56,6 +59,7 @@ impl From<&Skipped> for Notice {
         let path = skipped.path.clone();
         let announcement = match skipped.reason {
             Skip::Output => Announcement::SourceOutputSkipped { path: path.clone() },
+            Skip::Cache => Announcement::SourceCacheSkipped { path: path.clone() },
             Skip::Link => Announcement::SourceLinkSkipped { path: path.clone() },
             Skip::Submodule => Announcement::SourceSubmoduleSkipped { path: path.clone() },
         };

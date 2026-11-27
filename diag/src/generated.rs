@@ -225,6 +225,9 @@ impl Message<'_> {
             Announcement::FileIgnoreInferred { path, .. } => {
                 write!(out, "{path} is hidden, another tool's or about the repository, so it is not part of the site")
             }
+            Announcement::SourceCacheSkipped { path, .. } => {
+                write!(out, "{path} is the cache ink keeps between builds, so it is not read")
+            }
             Announcement::SourceLinkSkipped { path, .. } => {
                 write!(
                     out,
@@ -275,6 +278,21 @@ impl Message<'_> {
                     out,
                     "{path} is served as it is, metadata included: uses.ink makes no smaller copies of AVIF images"
                 )
+            }
+            Announcement::RenderCacheCold { folder, .. } => {
+                write!(out, "{folder} held no cache, so everything this build makes is made from scratch")
+            }
+            Announcement::CacheFolderUnusable { folder, .. } => {
+                write!(out, "{folder} cannot hold the cache, so nothing is kept between builds")
+            }
+            Announcement::CacheEntryCorrupt { entry, .. } => {
+                write!(out, "the cache entry {entry} does not match its hash, so it is made again")
+            }
+            Announcement::CacheEntryUnwritten { entry, .. } => {
+                write!(out, "the cache entry {entry} could not be written, so the next build makes it again")
+            }
+            Announcement::CacheEntryEvicted { count, limit, .. } => {
+                write!(out, "{count} cache entries used longest ago were removed, keeping the cache under {limit}")
             }
         }
     }
@@ -357,6 +375,7 @@ impl Fix<'_> {
             Announcement::FeedPostNone => false,
             Announcement::SourceOutputSkipped { .. } => false,
             Announcement::FileIgnoreInferred { .. } => true,
+            Announcement::SourceCacheSkipped { .. } => false,
             Announcement::SourceLinkSkipped { .. } => false,
             Announcement::SourceGitChosen { .. } => true,
             Announcement::SourceHistoryAbsent { .. } => true,
@@ -368,6 +387,11 @@ impl Fix<'_> {
             Announcement::CodeLanguageUnknown { .. } => true,
             Announcement::ImageAnimationKept { .. } => false,
             Announcement::ImageFormatKept { .. } => true,
+            Announcement::RenderCacheCold { .. } => false,
+            Announcement::CacheFolderUnusable { .. } => true,
+            Announcement::CacheEntryCorrupt { .. } => false,
+            Announcement::CacheEntryUnwritten { .. } => false,
+            Announcement::CacheEntryEvicted { .. } => false,
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.
@@ -554,6 +578,7 @@ impl Fix<'_> {
             Announcement::FileIgnoreInferred { .. } => {
                 write!(out, "add it to `include` in ink.toml to keep it")
             }
+            Announcement::SourceCacheSkipped { .. } => Ok(()),
             Announcement::SourceLinkSkipped { .. } => Ok(()),
             Announcement::SourceGitChosen { .. } => {
                 write!(out, "pass `--source folder` to read the files as they are, uncommitted changes included")
@@ -581,6 +606,13 @@ impl Fix<'_> {
             Announcement::ImageFormatKept { .. } => {
                 write!(out, "publish a JPEG or PNG of it to get smaller copies with the metadata removed")
             }
+            Announcement::RenderCacheCold { .. } => Ok(()),
+            Announcement::CacheFolderUnusable { .. } => {
+                write!(out, "make the folder writable, or pass `--cache <dir>` with one that is")
+            }
+            Announcement::CacheEntryCorrupt { .. } => Ok(()),
+            Announcement::CacheEntryUnwritten { .. } => Ok(()),
+            Announcement::CacheEntryEvicted { .. } => Ok(()),
         }
     }
 }
