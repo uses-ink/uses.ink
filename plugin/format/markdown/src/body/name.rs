@@ -61,25 +61,31 @@ pub(crate) struct Claims<N> {
     /// For a kind whose repeated text is the same thing: the name each text got, by the text
     /// as `CommonMark` matches labels, in lower case.
     given: BTreeMap<String, (N, Origin)>,
+    /// For each slug claimed again, the last count its claim reached and the name it gave:
+    /// every `slug-n` up to it is taken, and stays taken, so the next claim goes on from there
+    /// instead of starting again at `slug-1`.
+    counted: BTreeMap<Slug, (u64, Slug)>,
 }
 
 impl<N> Default for Claims<N> {
     fn default() -> Self {
-        Self { taken: BTreeSet::new(), given: BTreeMap::new() }
+        Self { taken: BTreeSet::new(), given: BTreeMap::new(), counted: BTreeMap::new() }
     }
 }
 
 impl<N> Claims<N> {
     /// `slug`, or the first of `slug-1`, `slug-2` not yet taken, now taken.
     fn claim(&mut self, slug: &Slug) -> Slug {
-        let mut candidate = slug.clone();
-        let mut count = 0_u64;
+        let (mut count, mut candidate) = self.counted.get(slug).cloned().unwrap_or_else(|| (0, slug.clone()));
         while self.taken.contains(&candidate) {
             count += 1;
             match Slug::parse(format!("{slug}-{count}")) {
                 Ok(next) => candidate = next,
                 Err(_) => break,
             }
+        }
+        if count > 0 {
+            self.counted.insert(slug.clone(), (count, candidate.clone()));
         }
         self.taken.insert(candidate.clone());
         candidate
