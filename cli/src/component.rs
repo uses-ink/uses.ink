@@ -55,7 +55,7 @@ impl Compare<'_> {
         let chosen = loaded.native;
         let (held_format, held_theme) = (self.components.hold(chosen.id())?, self.components.hold(Self::THEME)?);
         let format = runtime.format(chosen.id(), held_format.bytes()).map_err(Self::plugin)?;
-        let theme = runtime.theme(held_theme.bytes(), address.base.clone()).map_err(Self::plugin)?;
+        let theme = runtime.theme(Self::THEME, held_theme.bytes(), address.base.clone()).map_err(Self::plugin)?;
         let through = Source::new(&self.build.dir, &self.build.origin).interpret(|_| (&format,))?;
         let built = through.through(&address, &theme, Host::new(&images));
 

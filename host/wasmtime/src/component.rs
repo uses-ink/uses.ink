@@ -81,15 +81,17 @@ impl Runtime {
         })
     }
 
-    /// The theme in `bytes`, for a site served at `base`; its name is the one it gives.
-    pub fn theme(&self, bytes: &[u8], base: BaseUrl) -> Result<Component<Theme>, Error> {
-        let (compiled, origin) = self.machine.compile("theme", bytes)?;
+    /// The theme plugin `plugin` from the component in `bytes`, for a site served at `base`. The
+    /// plugin's id names it in the cache, in traces and in errors; the component's own name is
+    /// the one it gives.
+    pub fn theme(&self, plugin: &str, bytes: &[u8], base: BaseUrl) -> Result<Component<Theme>, Error> {
+        let (compiled, origin) = self.machine.compile(plugin, bytes)?;
         let mut linker = Linker::new(&self.machine.engine);
-        let link = |source| Error::Link { plugin: "theme".to_owned(), source };
+        let link = |source| Error::Link { plugin: plugin.to_owned(), source };
         Themes::add_to_linker::<State, wasmtime::component::HasSelf<State>>(&mut linker, |state| state)
             .map_err(link)?;
         let pre = linker.instantiate_pre(&compiled).and_then(ThemePre::new).map_err(link)?;
-        let mut store = self.machine.store("theme");
+        let mut store = self.machine.store(plugin);
         let name = self
             .machine
             .call(&mut store, |store| pre.instantiate(&mut *store)?.call_name(store))

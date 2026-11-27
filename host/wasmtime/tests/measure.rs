@@ -65,7 +65,7 @@ fn measure() {
         let load = |cache: Option<Cache>| {
             let runtime = Runtime::new(Budget::default(), cache).unwrap();
             if name == "theme-quiet" {
-                runtime.theme(&bytes, "https://a.b".parse().unwrap()).unwrap().origin()
+                runtime.theme("ink:theme-quiet", &bytes, "https://a.b".parse().unwrap()).unwrap().origin()
             } else {
                 runtime.format(name, &bytes).unwrap().origin()
             }
@@ -88,7 +88,7 @@ fn measure() {
     });
     let runtime = Runtime::new(Budget::default(), Some(Cache::new(root().join("target/plugin/cache")))).unwrap();
     let format = runtime.format("ink:format-markdown", &plugin("format-markdown")).unwrap();
-    let theme = runtime.theme(&plugin("theme-quiet"), base).unwrap();
+    let theme = runtime.theme("ink:theme-quiet", &plugin("theme-quiet"), base).unwrap();
     let through = median(21, || {
         let site = Engine::new(&store, NoPins, (&format,), ()).interpret(&snapshot).site.unwrap();
         Engine::new(&store, NoPins, (), &theme).render(&site, &settings, &Pixels::default());

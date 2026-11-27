@@ -105,7 +105,7 @@ fn the_quiet_component_renders_a_site_as_its_native_core() {
     let native = Quiet::new(base.clone(), Grammars::default());
     let natively = Engine::new(&store, NoPins, (), &native).render(&site, &settings, &Pixels::default());
     let runtime = runtime(Budget::default());
-    let theme = runtime.theme(&plugin("theme-quiet"), base).unwrap();
+    let theme = runtime.theme("ink:theme-quiet", &plugin("theme-quiet"), base).unwrap();
     let through = Engine::new(&store, NoPins, (), &theme).render(&site, &settings, &Pixels::default());
 
     assert_eq!(engine::Theme::name(&theme), "ink:theme-quiet");
