@@ -10,7 +10,7 @@ use host_native::Memory;
 use model::{ContentPath, Diagnostic, Notice, Severity, Snapshot, Span, Subject};
 use serde::Serialize;
 
-use crate::term::{Doc, Line, Look, Piece, Render, Role, Safe, Strength, Tree, Width};
+use crate::output::term::{Doc, Line, Look, Piece, Render, Role, Safe, Strength, Tree, Width};
 
 /// The files of the folder, to show the lines a span points at.
 #[derive(Clone, Copy, Debug)]

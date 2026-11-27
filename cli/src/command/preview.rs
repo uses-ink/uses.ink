@@ -12,15 +12,15 @@ use host_native::Memory;
 use model::{Manifest, Route};
 use serde::Serialize;
 
-use crate::args;
-use crate::cache::Caching;
-use crate::error::Error;
-use crate::exit::Exit;
-use crate::images::Watched;
+use crate::command::images::Watched;
+use crate::command::source::{Address, Loaded, Rendering, Source};
+use crate::folder::cache::Caching;
+use crate::grammar::args;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::report::Texts;
+use crate::output::term::Answer;
 use crate::output::{Io, Strict};
-use crate::report::Texts;
-use crate::site::{Address, Loaded, Rendering, Source};
-use crate::term::Answer;
 
 /// What `ink preview --json` prints before it serves: the address, or none when the site has
 /// errors and nothing is served.

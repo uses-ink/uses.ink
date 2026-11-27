@@ -20,15 +20,15 @@ use model::decision::File;
 use model::{AnyDecision, ContentPath, Decision, DefaultReason, Evidence};
 use serde::Serialize;
 
-use crate::args::{Kind as Reading, Origin, Select};
-use crate::error::Error;
-use crate::exit::Exit;
+use crate::command::source::{Loaded, Source};
+use crate::folder::replace::Replacing;
+use crate::grammar::args::{Kind as Reading, Origin, Select};
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::report::Texts;
+use crate::output::stage::{Plural, StageLine, Verb as Stage};
+use crate::output::term::{Cut, Doc, Glyph, Line, Render, Role, Table};
 use crate::output::{Io, Strict};
-use crate::replace::Replacing;
-use crate::report::Texts;
-use crate::site::{Loaded, Source};
-use crate::stage::{Plural, StageLine, Verb as Stage};
-use crate::term::{Cut, Doc, Glyph, Line, Render, Role, Table};
 
 /// Why a file cannot be selected.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]

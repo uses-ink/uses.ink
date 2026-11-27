@@ -4,7 +4,7 @@
 //! theme and its per-stream colour decision, so help is coloured exactly when the stream it is
 //! written to is.
 
-use crate::term::{Look, Role, Strength};
+use crate::output::term::{Look, Role, Strength};
 
 /// What a piece of help text is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

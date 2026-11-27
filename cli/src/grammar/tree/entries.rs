@@ -1,7 +1,7 @@
 //! What the tree says: the wording of `ink`'s help, once.
 
 use super::{Ending, Entry, Example, Group, Tree, Variable};
-use crate::exit::Exit;
+use crate::output::exit::Exit;
 
 /// Rows of the closed set of exit codes, as `ink help exit` prints them.
 const CLOSED: &[Ending] = &[

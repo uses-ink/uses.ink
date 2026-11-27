@@ -7,7 +7,7 @@ use engine::Format;
 use model::record::PluginId;
 use model::{ContentPath, Read};
 
-use crate::error::Error;
+use crate::output::error::Error;
 
 /// The format a site's markdown is read with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

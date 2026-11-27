@@ -8,15 +8,15 @@ use host_wasmtime::{Budget, Cache, Component, Runtime};
 use model::{DeployId, Diagnostic, Manifest, Problem};
 use serde::Serialize;
 
-use crate::args::Build;
-use crate::bundle::{Components, Used};
-use crate::cache::Caching;
-use crate::error::Error;
-use crate::exit::Exit;
+use crate::command::bundle::{Components, Used};
+use crate::command::source::{Address, Source};
+use crate::folder::cache::Caching;
+use crate::grammar::args::Build;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::report::Texts;
+use crate::output::term::Answer;
 use crate::output::{Io, Strict};
-use crate::report::Texts;
-use crate::site::{Address, Source};
-use crate::term::Answer;
 
 /// A build compared with its components' build.
 #[derive(Debug)]

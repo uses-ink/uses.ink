@@ -7,7 +7,7 @@
 use clap_mangen::Man;
 use clap_mangen::roff::{Roff, bold, roman};
 
-use crate::tree::{Entry, Tree};
+use crate::grammar::tree::{Entry, Tree};
 
 /// The manual of a tree.
 #[derive(Clone, Copy, Debug)]

@@ -13,15 +13,15 @@ use edge_control::{Fallback, Fronts};
 use edge_folder::{Deploys, Files, Mode};
 use serde::Serialize;
 
-use crate::args::{self, HostMode};
-use crate::error::Error;
-use crate::exit::Exit;
+use crate::command::remote::{Fetching, Settings};
+use crate::grammar::args::{self, HostMode};
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::term::{Answer, Line, Record, Role};
 use crate::output::{Io, Say};
-use crate::product::{Mailing, Product};
-use crate::remote::{Fetching, Settings};
-use crate::signin::{Sender, Told, Transport};
-use crate::tasks::{Event as Tasked, Events, Stoppable, Task, Tasks};
-use crate::term::{Answer, Line, Record, Role};
+use crate::selfhost::product::{Mailing, Product};
+use crate::selfhost::signin::{Sender, Told, Transport};
+use crate::selfhost::tasks::{Event as Tasked, Events, Stoppable, Task, Tasks};
 
 impl From<HostMode> for Mode {
     fn from(mode: HostMode) -> Self {
@@ -65,7 +65,7 @@ impl Observe for Log {
 
 /// What runs beside the server when there is an API: the half that answers it, and the mail
 /// sender with where it reports.
-type Beside = (Local<crate::product::Wired>, edge_api::Courier<Sender, clock::System>, Told);
+type Beside = (Local<crate::selfhost::product::Wired>, edge_api::Courier<Sender, clock::System>, Told);
 
 /// The sites a request's host picks from: the control plane's, then the folder's.
 type Sites = Fallback<Fronts, Deploys>;
@@ -75,7 +75,7 @@ type Attached = (Server<Sites, Files, Log>, Option<Beside>);
 
 /// What runs beside the server and the API: the edge's lookups and the loops' events.
 struct Alongside {
-    back: Option<crate::product::Lookup>,
+    back: Option<crate::selfhost::product::Lookup>,
     told: tokio::sync::mpsc::UnboundedReceiver<Tasked>,
 }
 
@@ -145,7 +145,7 @@ impl args::Serve {
     }
 
     /// Says how requests are verified and keys are enrolled.
-    fn describe_keys(keys: &crate::auth::Resolved) -> String {
+    fn describe_keys(keys: &crate::command::auth::Resolved) -> String {
         format!(
             "audience {}, skew {}s, {} nonces a key; keys live {} (device), {} (deploy), at most {}; a person has {} to approve; {} wrong codes or {} waiting close enrolling for {}",
             keys.audience,

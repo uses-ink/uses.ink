@@ -1,6 +1,15 @@
 //! Where a command writes: its result to stdout, everything else to stderr, as text through the
 //! renderer or, with `--json`, as the one document on stdout and NDJSON events on stderr.
 
+pub(crate) mod error;
+pub(crate) mod exit;
+pub(crate) mod failure;
+#[cfg(test)]
+mod golden;
+pub(crate) mod report;
+pub(crate) mod stage;
+pub(crate) mod term;
+
 use std::fmt;
 use std::io::Write;
 use std::path::Path;
@@ -9,12 +18,12 @@ use clock::System;
 use model::{Diagnostic, Notice, Severity};
 use serde::Serialize;
 
-use crate::error::Error;
-use crate::exit::Exit;
-use crate::failure::Failure;
-use crate::report::{Event, Noted, Shown, Texts};
-use crate::stage::StageLine;
-use crate::term::{
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::failure::Failure;
+use crate::output::report::{Event, Noted, Shown, Texts};
+use crate::output::stage::StageLine;
+use crate::output::term::{
     Answer, Draw, Elapsed, Line, Look, Meter, Pacing, Phase, Render, Show, Styled, Terminal, Verbatim, Writer,
 };
 

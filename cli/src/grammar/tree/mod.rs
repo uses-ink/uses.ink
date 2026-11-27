@@ -3,9 +3,9 @@
 //! One declaration says what a command is called, which group it is listed in, what it does,
 //! what to try, which exit codes it can end with and which variables it reads. Four readers sit
 //! on it: [`Tree::command`] decorates the clap command the argument types derive (so parsing,
-//! the completions and the manual see the same names, aliases and wording), [`crate::help::Help`]
-//! writes `ink --help` and per-command help, [`crate::completions::Shell`] prints the scripts and
-//! [`crate::man::Manual`] the manual page. A command added to one is in all four or the
+//! the completions and the manual see the same names, aliases and wording), [`crate::grammar::help::Help`]
+//! writes `ink --help` and per-command help, [`crate::grammar::completions::Shell`] prints the scripts and
+//! [`crate::grammar::man::Manual`] the manual page. A command added to one is in all four or the
 //! consistency test fails.
 
 mod command;
@@ -14,7 +14,7 @@ mod words;
 
 pub(crate) use words::Located;
 
-use crate::exit::Exit;
+use crate::output::exit::Exit;
 
 /// The help headings options are listed under, spelled once for the argument types and for help.
 #[derive(Clone, Copy, Debug)]

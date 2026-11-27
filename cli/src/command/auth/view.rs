@@ -5,7 +5,7 @@ use std::fmt;
 use jiff::Timestamp;
 
 use super::wire::{Enrolled, Row, Whoami};
-use crate::term::{Doc, Line, Record, Render, Role, Table};
+use crate::output::term::{Doc, Line, Record, Render, Role, Table};
 
 /// A moment, UTC and ISO, as tables show it.
 #[derive(Clone, Copy, Debug)]

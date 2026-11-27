@@ -3,7 +3,7 @@
 
 use model::{AnyCode, ContentPath, Snapshot, Subject};
 
-use crate::error::Error;
+use crate::output::error::Error;
 
 /// A decision code and the subject it is asked about.
 #[derive(Clone, Debug, PartialEq, Eq)]

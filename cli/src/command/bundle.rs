@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use model::{Announcement, Hash, Notice};
 use serde::Serialize;
 
-use crate::error::Error;
+use crate::output::error::Error;
 
 /// One embedded component.
 #[derive(Debug)]

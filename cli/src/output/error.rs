@@ -4,7 +4,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use crate::exit::Exit;
+use crate::output::exit::Exit;
 
 /// A command that could not run to its end.
 #[derive(Debug)]
@@ -78,7 +78,7 @@ pub enum Error {
         /// The file.
         path: model::ContentPath,
         /// Why not.
-        why: crate::select::Unselectable,
+        why: crate::command::select::Unselectable,
     },
     /// `--folder` is no glob pattern.
     Folder {
@@ -98,13 +98,13 @@ pub enum Error {
         id: model::record::PluginId,
     },
     /// The output folder is one `ink build` will not clear or write into.
-    Output(crate::out::Refusal),
+    Output(crate::folder::written::Refusal),
     /// An entry of the deploy has no place in the output folder.
     Placed {
         /// Where it would go, as built from its route.
         file: String,
         /// Why that is no place.
-        source: crate::out::RelativeError,
+        source: crate::folder::written::RelativeError,
     },
     /// An entry's bytes are in no store.
     Blob {
@@ -191,7 +191,7 @@ pub enum Error {
     /// The control plane `ink serve --data` runs could not be set up.
     Product {
         /// Why.
-        source: crate::product::Unready,
+        source: crate::selfhost::product::Unready,
     },
     /// A result could not be written as JSON.
     Json {
@@ -211,7 +211,7 @@ pub enum Error {
     /// `ink help` has nothing to say about the words.
     Help {
         /// Why.
-        source: crate::help::Refusal,
+        source: crate::grammar::help::Refusal,
     },
     /// The manual page could not be written.
     Manual {

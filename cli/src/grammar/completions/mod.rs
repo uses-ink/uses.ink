@@ -58,7 +58,7 @@ impl Shell {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::tree::Tree;
+    use crate::grammar::tree::Tree;
 
     #[test]
     fn every_shell_completes_the_commands_and_the_aliases() {

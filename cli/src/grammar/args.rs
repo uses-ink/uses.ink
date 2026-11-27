@@ -1,5 +1,5 @@
 //! The command line, as clap parses it. What `ink --help`, the completions and the manual say
-//! about it lives in the command tree (`crate::tree`), which decorates the command these types
+//! about it lives in the command tree (`crate::grammar::tree`), which decorates the command these types
 //! derive: its groups, wording, aliases, examples, exit codes and environment.
 
 use std::path::PathBuf;
@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::deploy::{List, Rollback, Show};
-use crate::tree::Heading;
+use crate::grammar::tree::Heading;
 
 /// A folder becomes a site.
 #[derive(Debug, Parser)]
@@ -64,7 +64,7 @@ pub enum When {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Link this folder to a site, without publishing it.
-    Init(crate::publish::Init),
+    Init(crate::command::publish::Init),
     /// Read the folder and report what is wrong; writes nothing.
     Check(Check),
     /// Build the folder into an output folder and print its deploy id.
@@ -80,26 +80,26 @@ pub enum Command {
     /// List what is published and why, or choose what to publish.
     Select(Select),
     /// Sign in to uses.ink.
-    Login(crate::auth::Login),
+    Login(crate::command::auth::Login),
     /// Sign out.
-    Logout(crate::auth::Server),
+    Logout(crate::command::auth::Server),
     /// Show who you are signed in as.
-    Whoami(crate::auth::Server),
+    Whoami(crate::command::auth::Server),
     /// List, make and end keys.
-    Key(crate::auth::Key),
+    Key(crate::command::auth::Key),
     /// Send the folder to its site and start a deploy.
-    Push(crate::publish::Push),
+    Push(crate::command::publish::Push),
     /// Show what is live and what is building.
-    Status(crate::publish::Status),
+    Status(crate::command::publish::Status),
     /// Wait for the next deploy of this commit and report it.
-    Watch(crate::publish::Watch),
+    Watch(crate::command::publish::Watch),
     /// List, read, roll back and resume deploys.
     Deploy(Deploy),
     /// `ink deploy list`, as `research/flow.md` spells it.
     #[command(hide = true)]
     Deploys(List),
     /// Write the whole site, source and history, to a folder.
-    Export(crate::publish::Export),
+    Export(crate::command::publish::Export),
     /// Print a completion script for your shell.
     Completions(Completions),
     /// Print the manual page.
@@ -134,7 +134,7 @@ pub enum Deployment {
 pub struct Completions {
     /// The shell to print the script for.
     #[arg(value_enum)]
-    pub shell: crate::completions::Shell,
+    pub shell: crate::grammar::completions::Shell,
 }
 
 /// `ink help [COMMAND | exit | environment | CODE]`.
@@ -220,7 +220,7 @@ pub struct Check {
 /// `ink explain [path]` and `ink explain [path] --why <code>`.
 ///
 /// A decision is addressed `[PATH] CODE`: the path is the positional plain `explain` shares, the
-/// code rides on `--why`. [`Explain::address`] folds the two into the one list [`crate::asked`]
+/// code rides on `--why`. [`Explain::address`] folds the two into the one list [`crate::command::explain::asked`]
 /// reads.
 #[derive(Debug, Args)]
 pub struct Explain {
@@ -369,11 +369,11 @@ pub struct Serve {
     pub poll_max: Option<u64>,
     /// Sign-in: mail, lifetimes, who may sign up and the limits on asking for a link.
     #[command(flatten)]
-    pub signin: Box<crate::signin::Flags>,
+    pub signin: Box<crate::selfhost::signin::Flags>,
     /// Keys: the audience, the skew window, how long keys live and how enrolling is limited.
     #[command(flatten)]
-    pub auth: Box<crate::auth::Flags>,
+    pub auth: Box<crate::command::auth::Flags>,
     /// How the lookups and loops behind the API run.
     #[command(flatten)]
-    pub hosting: Box<crate::hosting::Hosting>,
+    pub hosting: Box<crate::selfhost::hosting::Hosting>,
 }

@@ -2,7 +2,7 @@
 //!
 //! `ink build`, `ink check`, `ink explain`, `ink pin`, `ink preview`, `ink select`, `ink serve`,
 //! `ink deploy`, `ink completions`, `ink man` and `ink help` (architecture.md section 14); the
-//! commands of the tree are declared once in [`tree`](crate::tree). Results
+//! commands of the tree are declared once in [`tree`](crate::grammar::tree). Results
 //! go to stdout, everything else to stderr; `--json` makes the result one JSON document on stdout
 //! with a `schema` field, an error's document (`uses.error/v1`) included, and every diagnostic,
 //! and every stage that finishes, an NDJSON event on stderr; notices are printed only with `-v`,
@@ -13,60 +13,27 @@
 //! and pins the engine's decisions, the markdown format reads pages, the engine interprets and
 //! renders, and `ink:theme-quiet` writes the HTML.
 
-mod args;
-mod asked;
-mod auth;
-mod build;
-mod bundle;
-mod cache;
-mod change;
-mod completions;
-mod component;
+mod command;
 mod deploy;
-mod dispatch;
-mod error;
-mod exit;
-mod explain;
-mod failure;
-mod format;
-#[cfg(test)]
-mod golden;
-mod help;
-mod hosting;
-mod images;
+mod folder;
+mod grammar;
 mod logging;
-mod man;
-mod out;
 mod output;
-mod pin;
-mod pins;
-mod preview;
-mod product;
-mod publish;
-mod remote;
-mod replace;
-mod report;
-mod select;
-mod serve;
+mod selfhost;
 mod settings;
-mod signin;
-mod site;
-mod stage;
-mod tasks;
-mod term;
-mod tree;
 
-pub use args::{Cli, Command, When};
-pub use completions::Shell;
-pub use error::Error;
-pub use exit::Exit;
-pub use preview::Preview;
+pub use command::preview::Preview;
+pub use grammar::args::{Cli, Command, When};
+pub use grammar::completions::Shell;
+pub use output::error::Error;
+pub use output::exit::Exit;
+pub use output::term::Surroundings;
 pub use settings::{Progress, Settings};
-pub use term::Surroundings;
 
-use failure::Failure;
+use grammar::{help, tree};
+use output::failure::Failure;
+use output::term::{self, Asked, Terminal};
 use output::{Io, Mode, Say};
-use term::{Asked, Terminal};
 
 impl Cli {
     /// Parses `args` (the program's name first) and runs the command in a captured process: no

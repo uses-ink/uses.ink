@@ -12,11 +12,11 @@ use super::view::Exported;
 use model::DeployId;
 
 use crate::deploy::{Calls, Failure, Remote};
-use crate::error::Error;
-use crate::exit::Exit;
 use crate::output::Io;
-use crate::stage::{StageLine, Verb};
-use crate::term::Answer;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::stage::{StageLine, Verb};
+use crate::output::term::Answer;
 
 /// `ink export [DIR]`.
 #[derive(Debug, Args)]

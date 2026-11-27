@@ -3,7 +3,7 @@
 use clap::{Command, CommandFactory};
 
 use super::{Entry, Tree};
-use crate::args::Cli;
+use crate::grammar::args::Cli;
 
 impl Entry {
     /// `command` with this entry's names and wording, and its children's, applied.
@@ -21,7 +21,7 @@ impl Entry {
 
 impl Tree {
     /// The command clap parses with: the derived one, decorated. Parsing, the completions and the
-    /// manual read this; help is written by [`crate::help::Help`] from this and the tree.
+    /// manual read this; help is written by [`crate::grammar::help::Help`] from this and the tree.
     pub(crate) fn command(&self) -> Command {
         let mut command = Cli::command().about(self.about).bin_name("ink");
         for entry in self.entries {

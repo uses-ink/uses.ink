@@ -35,12 +35,12 @@ pub(crate) use identity::Identity;
 pub(crate) use store::{Keystore, StoreError};
 
 use crate::deploy::{Endpoint, Failure, Needed, Retry, Wire};
-use crate::error::Error;
-use crate::exit::Exit;
+use crate::grammar::tree::Heading;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::term::Verbatim;
 use crate::output::{Io, Say};
 use crate::settings::{Environment, Preferences, Process};
-use crate::term::Verbatim;
-use crate::tree::Heading;
 use wire::{Enrolled, Items, Listed, Polled, Row, Whoami};
 
 /// Which server a key command talks to.

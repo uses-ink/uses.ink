@@ -9,7 +9,7 @@ use jiff::Timestamp;
 use model::DeployId;
 use serde::Serialize;
 
-use crate::term::{Doc, Line, Record as Fields, Render, Role, Table};
+use crate::output::term::{Doc, Line, Record as Fields, Render, Role, Table};
 use edge_api::view::{BuildView as Built, DeployView as Row, LiveView as Live, Moved};
 
 /// How many characters of a deploy id are shown.

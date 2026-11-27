@@ -145,7 +145,7 @@ impl Wrap {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::term::Look;
+    use crate::output::term::Look;
 
     #[test]
     fn the_second_column_starts_two_past_the_longest_first() {

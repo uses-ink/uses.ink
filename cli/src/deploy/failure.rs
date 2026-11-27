@@ -8,8 +8,8 @@ use control::JobState;
 use model::DeployId;
 use serde::Deserialize;
 
-use crate::exit::Exit;
-use crate::publish::LinkError;
+use crate::command::publish::LinkError;
+use crate::output::exit::Exit;
 
 /// A setting a remote command cannot do without.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -162,7 +162,7 @@ pub enum Failure {
     /// The private key could not be kept or read.
     Store {
         /// Why.
-        source: crate::auth::StoreError,
+        source: crate::command::auth::StoreError,
     },
     /// The key in `INK_KEY` or a key file is not a key.
     KeyText {

@@ -11,13 +11,13 @@ use model::record::{Build, Inputs};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject, Version};
 use theme_quiet::Quiet;
 
-use crate::args::{Kind, Origin};
-use crate::asked::Asked;
-use crate::error::Error;
-use crate::format::Native;
+use crate::command::explain::asked::Asked;
+use crate::command::format::Native;
+use crate::command::pin::pins::Configured;
+use crate::grammar::args::{Kind, Origin};
 use crate::output::Io;
-use crate::pins::Configured;
-use crate::stage::{Plural, Sourced, StageLine, Verb};
+use crate::output::error::Error;
+use crate::output::stage::{Plural, Sourced, StageLine, Verb};
 
 /// The output folder when `ink build` is given no `-o`, inside the site's folder.
 pub(crate) const DEFAULT_OUT: &str = ".ink/out";

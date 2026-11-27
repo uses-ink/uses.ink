@@ -8,10 +8,10 @@ use std::time::{Duration, Instant};
 
 use super::view::Pushed;
 use crate::deploy::{Calls, Failure, Logged, Short};
-use crate::error::Error;
 use crate::output::Io;
-use crate::stage::{StageLine, Verb};
-use crate::term::Phase;
+use crate::output::error::Error;
+use crate::output::stage::{StageLine, Verb};
+use crate::output::term::Phase;
 use build::{BuildId, Trigger};
 use control::JobState;
 use edge_api::view::{BuildView as Built, DeployView as Row};

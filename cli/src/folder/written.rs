@@ -12,8 +12,8 @@ use model::record::{Against, Build};
 use model::{ContentPath, DeployId, Hash, Manifest, MediaType, PathError, Route, Written};
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
-use crate::failure::Remedy;
+use crate::output::error::Error;
+use crate::output::failure::Remedy;
 
 /// The manifest's file in the output folder. A dotted name is never a route, so no entry can
 /// take it. The folder walk knows it by this name, so no command reads the folder as content.

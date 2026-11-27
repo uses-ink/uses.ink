@@ -27,8 +27,8 @@ use mail::{Base, Link};
 use queue_local::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 
-use crate::args;
-use crate::signin::{Flags, Sender, Told};
+use crate::grammar::args;
+use crate::selfhost::signin::{Flags, Sender, Told};
 
 /// The adapters of the control plane `ink serve` runs.
 pub(crate) type Parts = (Arc<Sqlite>, Directory, Queue<Arc<Sqlite>>, Sealer);
@@ -123,7 +123,7 @@ pub(crate) struct Product {
     /// The operator's keys file.
     pub(crate) operators: PathBuf,
     /// What the keys and signatures run with.
-    pub(crate) keys: crate::auth::Resolved,
+    pub(crate) keys: crate::command::auth::Resolved,
     /// The ports the loops run over, shared with the API and the lookups.
     pub(crate) ports: Ports,
     /// Where the control plane says its sites are served.
@@ -273,7 +273,7 @@ impl Product {
     fn credentials(
         settings: &args::Serve,
         data: &Path,
-    ) -> Result<(PathBuf, Option<PathBuf>, crate::auth::Resolved), Unready> {
+    ) -> Result<(PathBuf, Option<PathBuf>, crate::command::auth::Resolved), Unready> {
         let operators = Self::operators(&data.join("operator-keys"))?;
         let old = data.join("owner-token");
         let keys = settings.auth.resolve(&settings.api_host, settings.address)?;
@@ -283,7 +283,7 @@ impl Product {
     /// The API over signatures, and the enrolment its door shares.
     fn api(
         control: Control<Ports>,
-        keys: &crate::auth::Resolved,
+        keys: &crate::command::auth::Resolved,
         operator: (Id<AccountKind>, &Path),
         parts: (Store, Limits),
     ) -> (Api<Ports, Callers, System, System>, Enrol<Store>) {

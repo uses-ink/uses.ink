@@ -9,17 +9,17 @@ use std::time::Duration;
 use clap::Parser as _;
 use model::{Announcement, ContentPath, Diagnostic, Notice, Problem, Span, Subject};
 
-use crate::args::{Cli, Origin};
+use crate::command::publish::view::{Exported, Linked, Standing};
+use crate::command::source::Source;
 use crate::deploy::Failure as Refused;
 use crate::deploy::Logged;
-use crate::error::Error;
-use crate::failure::Failure;
+use crate::grammar::args::{Cli, Origin};
 use crate::output::Tally;
-use crate::publish::view::{Exported, Linked, Standing};
-use crate::report::{Event, Noted, Shown, Texts};
-use crate::site::Source;
-use crate::stage::{StageLine, Verb};
-use crate::term::{
+use crate::output::error::Error;
+use crate::output::failure::Failure;
+use crate::output::report::{Event, Noted, Shown, Texts};
+use crate::output::stage::{StageLine, Verb};
+use crate::output::term::{
     Answer, Cut, Doc, Elapsed, Glyph, Glyphs, Line, Look, Phase, Rail, Record, Render, Role, Table, Theme, Tick, Tree,
     Trees, Width, Writer,
 };
@@ -129,7 +129,7 @@ impl Stopped {
     fn failures() -> Vec<Failure> {
         let usage = Cli::try_parse_from(["ink", "explain", "--wy"]).unwrap_err();
         let mut failures: Vec<Failure> =
-            Self::errors().iter().map(|error| Failure::of(error, crate::exit::Exit::Usage)).collect();
+            Self::errors().iter().map(|error| Failure::of(error, crate::output::exit::Exit::Usage)).collect();
         failures.push(Failure::usage(&usage));
         failures
     }

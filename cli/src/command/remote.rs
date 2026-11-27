@@ -15,8 +15,8 @@ use model::git::{Grant, Network, Want};
 use model::{Diagnostic, Problem};
 use watch::Access;
 
-use crate::bundle::Components;
-use crate::error::Error;
+use crate::command::bundle::Components;
+use crate::output::error::Error;
 
 /// What the fetch of a git source is set up with.
 #[derive(Clone, Debug)]

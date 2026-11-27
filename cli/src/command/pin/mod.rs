@@ -2,20 +2,22 @@
 //! keeping everything else in the file (decision 0042). The pin is printed; `--dry-run` writes
 //! nothing.
 
+pub(crate) mod pins;
+
 use std::path::PathBuf;
 
 use serde::Serialize;
 
-use crate::args::Pin;
-use crate::asked::Asked;
-use crate::error::Error;
-use crate::exit::Exit;
+use crate::command::explain::asked::Asked;
+use crate::command::source::Source;
+use crate::folder::replace::Replacing;
+use crate::grammar::args::Pin;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::report::Texts;
+use crate::output::stage::{StageLine, Verb as Stage};
+use crate::output::term::{Doc, Line, Render, Role};
 use crate::output::{Io, Strict};
-use crate::replace::Replacing;
-use crate::report::Texts;
-use crate::site::Source;
-use crate::stage::{StageLine, Verb as Stage};
-use crate::term::{Doc, Line, Render, Role};
 
 /// What `ink pin --json` prints.
 #[derive(Debug, Serialize)]

@@ -7,9 +7,9 @@ use std::cell::RefCell;
 use engine::Images;
 use engine::image::{Prepared, Source};
 
-use crate::error::Error;
 use crate::output::Io;
-use crate::term::Phase;
+use crate::output::error::Error;
+use crate::output::term::Phase;
 
 /// Image work that says how far it has got.
 pub(crate) struct Watched<'a, 'b, I> {

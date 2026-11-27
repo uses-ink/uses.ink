@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use clap::ValueEnum;
 
-use crate::args::When;
+use crate::grammar::args::When;
 
 use super::glyph::Glyphs;
 use super::role::Theme;

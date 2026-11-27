@@ -20,13 +20,13 @@ use model::{ContentPath, Hash};
 
 use super::follow::Follow;
 use super::view::Pushed;
+use crate::command::source::DEFAULT_OUT;
 use crate::deploy::{Calls, Failure, Remote, Short, Size};
-use crate::error::Error;
-use crate::exit::Exit;
 use crate::output::Io;
-use crate::site::DEFAULT_OUT;
-use crate::stage::{Plural, StageLine, Verb};
-use crate::term::{Answer, Phase};
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::stage::{Plural, StageLine, Verb};
+use crate::output::term::{Answer, Phase};
 
 /// What a tar header and its padding cost on top of a file's bytes.
 const OVERHEAD: u64 = 1536;

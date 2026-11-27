@@ -8,7 +8,7 @@
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
-use crate::error::Error;
+use crate::output::error::Error;
 
 /// Texts to put in place of files, all or none.
 #[derive(Debug, Default)]

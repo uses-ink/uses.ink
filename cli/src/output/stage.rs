@@ -6,7 +6,7 @@ use std::fmt;
 use model::Version;
 
 use crate::output::Tally;
-use crate::term::{Beat, Doc, Elapsed, Gutter, Line, Phase, Render, Role, Strength};
+use crate::output::term::{Beat, Doc, Elapsed, Gutter, Line, Phase, Render, Role, Strength};
 use diag::Short;
 
 /// What a stage line starts with.

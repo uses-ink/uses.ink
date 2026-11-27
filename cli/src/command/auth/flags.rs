@@ -9,8 +9,8 @@ use control::signin::Ttl;
 use edge_api::{Closing, Signing, Window};
 use sig::Audience;
 
-use crate::product::Unready;
-use crate::tree::Heading;
+use crate::grammar::tree::Heading;
+use crate::selfhost::product::Unready;
 
 /// The flags of keys, signatures and enrolment.
 #[derive(Debug, Args)]

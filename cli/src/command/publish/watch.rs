@@ -8,11 +8,11 @@ use clap::Args;
 use super::follow::Follow;
 use super::view::Pushed;
 use crate::deploy::{Failure, Remote, Short};
-use crate::error::Error;
-use crate::exit::Exit;
 use crate::output::Io;
-use crate::stage::{StageLine, Verb};
-use crate::term::Answer;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::stage::{StageLine, Verb};
+use crate::output::term::Answer;
 
 /// `ink watch [BUILD]`.
 #[derive(Debug, Args)]

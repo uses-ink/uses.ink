@@ -8,11 +8,11 @@ use std::path::{Path, PathBuf};
 use model::{Chain, Diagnostic};
 use serde::Serialize;
 
-use crate::error::Error;
-use crate::exit::Exit;
-use crate::report::{Advice, Event, Label, Texts};
-use crate::select::Unselectable;
-use crate::term::{Doc, Line, Render, Role, Tree};
+use crate::command::select::Unselectable;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::report::{Advice, Event, Label, Texts};
+use crate::output::term::{Doc, Line, Render, Role, Tree};
 
 /// What a command left behind when it stopped.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

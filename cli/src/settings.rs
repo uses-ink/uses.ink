@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::args::{Cli, When};
+use crate::grammar::args::{Cli, When};
 
 /// Where variables come from, so a test needs no process environment.
 pub(crate) trait Environment {

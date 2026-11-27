@@ -7,7 +7,7 @@ use model::DeployId;
 use serde::Serialize;
 
 use crate::deploy::{Moment, Short, Size};
-use crate::term::{Doc, Line, Record, Render, Role};
+use crate::output::term::{Doc, Line, Record, Render, Role};
 use build::BuildId;
 use control::JobState;
 use edge_api::view::{BuildView as Built, LiveView as Live, SourceView, Status as Overview};

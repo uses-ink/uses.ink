@@ -308,7 +308,7 @@ impl Render for Verbatim {
     }
 }
 
-/// Text that was painted by the terminal layer's own [`Paint`](crate::help::Paint), such as a
+/// Text that was painted by the terminal layer's own [`Paint`](crate::grammar::help::Paint), such as a
 /// page of help: its escape codes are kept when colour shows and stripped when it does not.
 #[derive(Clone, Debug)]
 pub(crate) struct Styled(pub(crate) String);

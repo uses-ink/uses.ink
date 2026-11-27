@@ -5,18 +5,18 @@ use model::record::{Build as Record, Changes};
 use model::{Announcement, DeployId, Manifest, Notice};
 use serde::Serialize;
 
-use crate::args::{Build, Check};
-use crate::cache::Caching;
-use crate::change::{Listed, Scope};
-use crate::error::Error;
-use crate::exit::Exit;
-use crate::images::Watched;
-use crate::out::{Baseline, Deployed, OutFolder};
+use crate::command::change::{Listed, Scope};
+use crate::command::images::Watched;
+use crate::command::source::{Address, DEFAULT_OUT, Loaded, Rendering, Source};
+use crate::folder::cache::Caching;
+use crate::folder::written::{Baseline, Deployed, OutFolder};
+use crate::grammar::args::{Build, Check};
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::report::Texts;
+use crate::output::stage::{Counted, Plural, StageLine, Verb};
+use crate::output::term::Answer;
 use crate::output::{Io, Lossy, Say, Strict};
-use crate::report::Texts;
-use crate::site::{Address, DEFAULT_OUT, Loaded, Rendering, Source};
-use crate::stage::{Counted, Plural, StageLine, Verb};
-use crate::term::Answer;
 
 /// What `ink build --json` prints, whether or not the build was written.
 #[derive(Debug, Serialize)]
@@ -113,8 +113,8 @@ impl Build {
 impl Build {
     /// `--check`: the build compared with the build of the components it carries.
     fn compare(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let components = crate::bundle::Components::new(self.components.as_deref());
-        crate::component::Compare { build: &self, components }.run(io)
+        let components = crate::command::bundle::Components::new(self.components.as_deref());
+        crate::command::component::Compare { build: &self, components }.run(io)
     }
 
     /// The output folder `out`, once it is known to be one the build may clear, and what it holds.
@@ -126,7 +126,7 @@ impl Build {
     }
 
     /// The site read, with the output folder left out of it.
-    fn loaded(&self, folder: &OutFolder) -> Result<crate::site::Loaded, Error> {
+    fn loaded(&self, folder: &OutFolder) -> Result<crate::command::source::Loaded, Error> {
         let mut source = Source::new(&self.dir, &self.origin);
         source.output.extend(folder.inside(&self.dir).filter(|inside| !source.output.contains(inside)));
         source.load()

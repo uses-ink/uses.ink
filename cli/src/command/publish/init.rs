@@ -8,11 +8,11 @@ use hyper::Method;
 use super::link::Link;
 use super::view::Linked;
 use crate::deploy::{Failure, Reach, Remote};
-use crate::error::Error;
-use crate::exit::Exit;
 use crate::output::Io;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::stage::{StageLine, Verb};
 use crate::settings::{Preferences, Process};
-use crate::stage::{StageLine, Verb};
 use edge_api::view::{SiteView as Site, Status as Overview};
 
 /// `ink init [--handle NAME | --site ID]`.

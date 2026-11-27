@@ -14,8 +14,8 @@ use mail::{Address, Base, Mailer, Message};
 use mail_smtp::{Login, Security, Settings as Smtp, Smtp as Mail};
 use secret::Plain;
 
-use crate::product::Unready;
-use crate::tree::Heading;
+use crate::grammar::tree::Heading;
+use crate::selfhost::product::Unready;
 
 /// Where mail goes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]

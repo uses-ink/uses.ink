@@ -21,7 +21,7 @@ use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 
 use super::failure::{Failure, Said};
-use crate::auth::Identity;
+use crate::command::auth::Identity;
 
 /// The body of a rollback request.
 #[derive(Debug, Serialize)]

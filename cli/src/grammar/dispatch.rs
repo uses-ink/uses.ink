@@ -6,15 +6,15 @@ use std::path::PathBuf;
 
 use serde::Serialize;
 
-use crate::args::{Command, Completions, Deployment, Explain, Serve, Topic};
-use crate::error::Error;
-use crate::exit::Exit;
-use crate::help::Help;
-use crate::man::Manual;
+use crate::command::source::DEFAULT_OUT;
+use crate::grammar::args::{Command, Completions, Deployment, Explain, Serve, Topic};
+use crate::grammar::help::Help;
+use crate::grammar::man::Manual;
+use crate::grammar::tree::Tree;
 use crate::output::Io;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
 use crate::settings::{Process, Settings};
-use crate::site::DEFAULT_OUT;
-use crate::tree::Tree;
 
 /// What `ink help --json` prints.
 #[derive(Debug, Serialize)]
@@ -67,7 +67,7 @@ impl Completions {
 impl Topic {
     /// Prints the help of a topic.
     fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let help = Help::new(Tree::ink(), io.prose(), crate::help::Columns::of(&Process));
+        let help = Help::new(Tree::ink(), io.prose(), crate::grammar::help::Columns::of(&Process));
         let text = help.topic(&self.words).map_err(|source| Error::Help { source })?;
         io.painted(text.trim_end())?;
         io.json(&Said { schema: "uses.help/v1", text: &text })?;
@@ -145,7 +145,7 @@ impl Command {
     }
 }
 
-impl crate::args::Cli {
+impl crate::grammar::args::Cli {
     /// The terminal settings of this run: the flags, the environment, the user's config file,
     /// the defaults, in that order. The terminal layer reads these.
     pub fn settings(&self) -> Result<Settings, Error> {

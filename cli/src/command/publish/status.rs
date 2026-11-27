@@ -6,9 +6,9 @@ use clap::Args;
 
 use super::view::Standing;
 use crate::deploy::Remote;
-use crate::error::Error;
-use crate::exit::Exit;
 use crate::output::Io;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
 
 /// `ink status`.
 #[derive(Debug, Args)]

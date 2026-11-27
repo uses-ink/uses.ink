@@ -9,8 +9,8 @@ use clap::{Args, ValueEnum};
 use https::{Follow, Https, Misconfigured};
 use model::git::{Network, Scheme};
 
-use crate::tasks::Restart;
-use crate::tree::Heading;
+use crate::grammar::tree::Heading;
+use crate::selfhost::tasks::Restart;
 
 /// A kind of git address the operator allows (`--git-scheme`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]

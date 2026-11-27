@@ -19,14 +19,14 @@ pub(crate) use client::{Api, Endpoint, Retry, Wire};
 pub(crate) use failure::{Failure, Logged, Needed};
 pub(crate) use view::{Moment, Short, Size};
 
-use crate::auth::Identity;
-use crate::error::Error;
-use crate::exit::Exit;
+use crate::command::auth::Identity;
+use crate::command::publish::Link;
+use crate::grammar::tree::Heading;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::term::Verbatim;
 use crate::output::{Io, Say};
-use crate::publish::Link;
 use crate::settings::{Environment, Preferences, Process};
-use crate::term::Verbatim;
-use crate::tree::Heading;
 use view::{Listing, MoveOut, Pointer, Record, ShowOut, TableOut};
 
 /// Which API and which site a remote command talks to.

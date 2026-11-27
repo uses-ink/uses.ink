@@ -3,6 +3,8 @@
 //! usage error. `ink explain --why [path] <code>`: one decision's ladder replayed, rung by rung
 //! (decision 0042).
 
+pub(crate) mod asked;
+
 use std::fmt;
 
 use engine::{Rung, Standing, Trace};
@@ -11,14 +13,14 @@ use serde::Serialize;
 
 use diag::{Because, Pin, Short, Value};
 
-use crate::args::Explain;
-use crate::asked::Asked;
-use crate::error::Error;
-use crate::exit::Exit;
+use crate::command::explain::asked::Asked;
+use crate::command::source::Source;
+use crate::grammar::args::Explain;
+use crate::output::error::Error;
+use crate::output::exit::Exit;
+use crate::output::report::Texts;
+use crate::output::term::{Cut, Doc, Flex, Glyph, Line, Rail, Render, Role, Tree, Trees};
 use crate::output::{Io, Strict};
-use crate::report::Texts;
-use crate::site::Source;
-use crate::term::{Cut, Doc, Flex, Glyph, Line, Rail, Render, Role, Tree, Trees};
 
 /// What `ink explain --json` prints: the version read and what the source had and lacked, then
 /// each decision as storage holds it, tagged by its code.

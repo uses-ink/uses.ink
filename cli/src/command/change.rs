@@ -9,8 +9,8 @@ use std::path::Path;
 use model::Subject;
 use model::record::{Against, Cause, Change, Changes};
 
-use crate::stage::{Plural, StageLine, Verb};
-use crate::term::{Cut, Doc, Glyph, Line, Render, Role, Table, Tree};
+use crate::output::stage::{Plural, StageLine, Verb};
+use crate::output::term::{Cut, Doc, Glyph, Line, Render, Role, Table, Tree};
 use diag::Value;
 
 /// How much of a change set is written: all of it, or only what a build made public, which is the

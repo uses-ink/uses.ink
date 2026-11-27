@@ -16,7 +16,7 @@ pub(crate) use catalog::Refusal;
 use page::{Page, Row};
 pub(crate) use paint::{Face, Paint};
 
-use crate::tree::{Group, Heading, Located, Tree, Variable};
+use crate::grammar::tree::{Group, Heading, Located, Tree, Variable};
 
 /// How much help is asked for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -58,7 +58,7 @@ impl Columns {
 #[derive(Clone, Copy, Debug)]
 struct View<'a> {
     at: &'a Located<'a>,
-    entry: &'a crate::tree::Entry,
+    entry: &'a crate::grammar::tree::Entry,
     command: &'a Command,
     depth: Depth,
 }
@@ -270,7 +270,7 @@ impl<'a, P: Paint> Help<'a, P> {
     }
 
     /// An `Examples:` table.
-    fn examples(page: &mut Page<'_, P>, examples: &[crate::tree::Example]) {
+    fn examples(page: &mut Page<'_, P>, examples: &[crate::grammar::tree::Example]) {
         if !examples.is_empty() {
             let rows: Vec<Row> = examples.iter().map(|example| Row::typed(example.line, example.about)).collect();
             page.table("Examples:", &rows);
@@ -286,7 +286,7 @@ impl<'a, P: Paint> Help<'a, P> {
     }
 
     /// A command as a row of a listing: its names and what it does.
-    fn entry_row(entry: &crate::tree::Entry) -> Row {
+    fn entry_row(entry: &crate::grammar::tree::Entry) -> Row {
         Row::typed(entry.names(), entry.about.to_owned())
     }
 
