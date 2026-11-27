@@ -4,11 +4,8 @@ use std::fmt;
 
 use heck::ToUpperCamelCase;
 
-mod field;
-
-pub(crate) use field::{Field, Kind};
-
-use field::Docs;
+use super::field::Docs;
+use super::{Field, Kind};
 
 /// A checked catalog: diagnostics and notices, in file order.
 #[derive(Debug)]
@@ -583,6 +580,3 @@ impl<'a> Reader<'a> {
         Some(Template(pieces))
     }
 }
-
-#[cfg(test)]
-mod test;

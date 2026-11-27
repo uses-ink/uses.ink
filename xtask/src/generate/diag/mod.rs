@@ -6,7 +6,7 @@ mod rust;
 
 use crate::Task;
 use crate::error::Error;
-use crate::output::{Files, Generator};
+use crate::generate::output::{Files, Generator};
 
 pub(crate) use catalog::Flaw;
 

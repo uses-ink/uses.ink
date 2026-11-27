@@ -10,7 +10,7 @@ use std::process::Command;
 use serde::Deserialize;
 
 use crate::error::Error;
-use crate::output::Origin;
+use crate::generate::output::Origin;
 use crate::process::Process;
 
 /// The workspace, read.

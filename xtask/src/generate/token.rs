@@ -10,7 +10,7 @@ use token::Rgb;
 
 use crate::Task;
 use crate::error::{Error, Flaw};
-use crate::output::{Files, Generator, Origin};
+use crate::generate::output::{Files, Generator, Origin};
 
 /// `cargo xtask token`.
 #[derive(Debug, Clone, Copy)]

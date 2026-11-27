@@ -25,8 +25,8 @@ use std::fmt;
 
 use proc_macro2::{LexError, TokenStream, TokenTree};
 
-use super::workspace::Workspace;
-use super::{Problem, Problems, Rule};
+use crate::layout::read::Workspace;
+use crate::layout::{Problem, Problems, Rule};
 
 /// What a file holds that the rule refuses.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,7 +75,7 @@ impl Sql {
     const OWNERS: &'static [&'static str] = &["ColumnType", "ColumnDef"];
 
     /// This file, whose list of keywords is the one place they are written.
-    const OWN: &'static str = "xtask/src/layout/sql.rs";
+    const OWN: &'static str = "xtask/src/layout/rules/sql.rs";
 
     /// The folders whose `.sql` files are not ours.
     const FOREIGN: &'static [&'static str] = &["spikes", "target"];
@@ -184,7 +184,7 @@ impl Rule for Sql {
 
 #[cfg(test)]
 mod tests {
-    use super::{Found, Sql};
+    use crate::layout::{Found, Sql};
 
     fn find(code: &str) -> Vec<Found> {
         Sql::find(code).unwrap()

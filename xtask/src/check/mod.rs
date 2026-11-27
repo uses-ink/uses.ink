@@ -6,10 +6,10 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::component::{Components, Sites};
+use crate::build::component::{Components, Sites};
 use crate::error::Error;
 use crate::layout::Layout;
-use crate::output::{Line, Report};
+use crate::report::{Line, Report};
 use crate::process::Process;
 
 /// One step of the gate.

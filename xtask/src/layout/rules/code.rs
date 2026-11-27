@@ -4,8 +4,8 @@
 
 use syn::visit::{self, Visit};
 
-use super::workspace::{Attributes, Crate, Module, Role, Workspace};
-use super::{Function, Problem, Problems, Rule};
+use crate::layout::read::{Attributes, Crate, Module, Role, Workspace};
+use crate::layout::{Function, Problem, Problems, Rule};
 
 /// No function or method name of three words or more: such a name is a missing type or module.
 /// A trait impl's methods are named by the trait, so only the trait's own names count.

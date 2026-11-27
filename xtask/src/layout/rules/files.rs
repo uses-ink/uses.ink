@@ -3,8 +3,8 @@
 
 use proc_macro2::{LexError, TokenStream, TokenTree};
 
-use super::workspace::Workspace;
-use super::{Problem, Problems, Rule};
+use crate::layout::read::Workspace;
+use crate::layout::{Problem, Problems, Rule};
 
 /// No file or directory named for a heap of unrelated code.
 #[derive(Debug, Clone, Copy)]

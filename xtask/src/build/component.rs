@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use crate::check::{Cargo, Command, Flag, Step, Target};
 use crate::error::Error;
-use crate::output::{Line, Report};
+use crate::report::{Line, Report};
 use crate::process::Process;
 
 /// The guests, built and wrapped.

@@ -11,7 +11,7 @@ use unspliced::{Render, html};
 
 use crate::Task;
 use crate::error::{Error, Flaw};
-use crate::output::{Files, Generator};
+use crate::generate::output::{Files, Generator};
 
 /// `cargo xtask brand`.
 #[derive(Debug, Clone, Copy)]

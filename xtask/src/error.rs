@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use crate::Task;
 use crate::check::{Invocation, Stage, Tool};
 use crate::layout::Problem;
-use crate::output::Stale;
+use crate::generate::output::Stale;
 use crate::process::Failure;
 
 /// One failure of a task.
@@ -111,11 +111,11 @@ pub(crate) enum Flaw {
     /// Not TOML, or not the shape expected.
     Toml(toml::de::Error),
     /// An entry of `token/token.toml` that is not a token.
-    Token(crate::token::Refusal),
+    Token(crate::generate::token::Refusal),
     /// Everything wrong with `diag/catalog.toml`.
-    Catalog(Vec<crate::diag::Flaw>),
+    Catalog(Vec<crate::generate::diag::Flaw>),
     /// A drawing of `brand/figure.toml` that cannot be drawn.
-    Brand(crate::brand::Problem),
+    Brand(crate::generate::brand::Problem),
 }
 
 impl fmt::Display for Error {

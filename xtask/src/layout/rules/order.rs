@@ -1,8 +1,8 @@
 //! The rules over what the crates' manifests say: names, dependency order, licences, aliases
 //! (docs/conventions.md, Crates and directories, and Licence).
 
-use super::workspace::{Crate, Kind, Workspace};
-use super::{Problem, Problems, Rule};
+use crate::layout::read::{Crate, Kind, Workspace};
+use crate::layout::{Problem, Problems, Rule};
 
 /// Crates with a name of their own: product-independent, published as is, MIT OR Apache-2.0,
 /// depending on no crate of ours.
@@ -393,7 +393,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
-    use crate::layout::workspace::{Dependency, Workspace};
+    use crate::layout::read::{Dependency, Workspace};
 
     /// A crate of ours at `dir` with `licence` and path dependencies on `dependencies`, each
     /// `(name, kind)`.

@@ -13,7 +13,7 @@
 //!   `ink build --check` on every CLI site fixture. Runs every step and fails with every failed
 //!   step listed.
 //!
-//! Each task is a type: the generators implement [`output::Generator`], the gate's steps
+//! Each task is a type: the generators implement [`generate::output::Generator`], the gate's steps
 //! [`check::Step`], the layout rules [`layout::Rule`].
 
 use std::error::Error as _;
@@ -51,18 +51,17 @@ macro_rules! tuples {
     };
 }
 
-mod brand;
+mod build;
 mod check;
-mod component;
-mod diag;
 mod error;
+mod generate;
 mod layout;
-mod output;
 mod process;
-mod token;
+mod report;
 
 use error::Error;
-use output::{Mode, Output, Report};
+use generate::output::{Mode, Output};
+use report::Report;
 
 /// What `cargo xtask` was asked to do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,15 +99,15 @@ impl Task {
         let mut report = Report::default();
         let mut output = Output::new(root, Mode::Write);
         let generated = match self {
-            Self::Token => output.generate(&token::Token),
-            Self::Diag => output.generate(&diag::Diag),
-            Self::Brand => output.generate(&brand::Brand),
+            Self::Token => output.generate(&generate::token::Token),
+            Self::Diag => output.generate(&generate::diag::Diag),
+            Self::Brand => output.generate(&generate::brand::Brand),
             Self::Layout => {
                 check::Step::run(&layout::Layout, root, &mut report);
                 return report;
             }
             Self::Component => {
-                check::Step::run(&component::Components, root, &mut report);
+                check::Step::run(&build::component::Components, root, &mut report);
                 return report;
             }
             Self::Check => return check::Gate::new(root).run(stage),

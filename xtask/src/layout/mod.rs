@@ -5,30 +5,25 @@
 //! the statement builders, function names of one or two words, no free functions, and release
 //! files that name the binary that exists.
 
-mod file;
-mod manifest;
+mod read;
 mod release;
-mod sql;
-mod syntax;
-mod workspace;
+mod rules;
 
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use crate::brand::Brand;
+use crate::generate::brand::Brand;
+use crate::generate::diag::Diag;
+use crate::generate::output::{Generators, Mode, Output};
+use crate::generate::token::Token;
 use crate::check::Step;
-use crate::diag::Diag;
 use crate::error::Error;
-use crate::output::{Generators, Line, Mode, Output, Report};
-use crate::token::Token;
+use crate::report::{Line, Report};
 
-pub(crate) use file::{Banned, Unsafe};
-pub(crate) use manifest::{Alias, Licence, Names, Order};
+pub(crate) use read::Workspace;
 pub(crate) use release::{Drift, Release};
-pub(crate) use sql::{Found, Sql};
-pub(crate) use syntax::{Free, Words};
-pub(crate) use workspace::Workspace;
+pub(crate) use rules::{Alias, Banned, Found, Free, Licence, Names, Order, Sql, Unsafe, Words};
 
 /// One check over the whole workspace. A new check is a new rule.
 pub(crate) trait Rule {
