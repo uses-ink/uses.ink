@@ -47,7 +47,7 @@ changes behind its port, and the scheme stands. The open choices are the last se
 are not. What differs from the text above, or was left out:
 
 - The profile, the verifier, the key table, device-code enrolment and the `auth_event` audit
-  table are built (`sig`, `control/src/keys`, `edge/api`, `ink login|logout|whoami|key`). The verifier
+  table are built (`sig`, `control/keys`, `edge/api`, `ink login|logout|whoami|key`). The verifier
   runs in the documented order; the nonce store is in memory, bounded per key, with a boot barrier
   of one skew window so a restart cannot replay.
 - `ink serve --data` makes no key: the server holds no private key. It makes an empty
