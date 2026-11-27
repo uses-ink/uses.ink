@@ -358,7 +358,10 @@ impl Watch<'_> {
             self.remove()?;
             return Err(Refused::Failed(Failed::Late));
         }
-        let size = Footprint(self.folder).bytes().unwrap_or(Bytes(0));
+        // an unmeasured clone is not taken as empty: the budget cannot pass what it cannot count
+        let size = Footprint(self.folder)
+            .bytes()
+            .map_err(|source| Refused::Failed(Failed::Cache { path: self.folder.to_owned(), source }))?;
         if interrupt.load(Ordering::Relaxed) || (result.is_ok() && size > self.limit) {
             self.remove()?;
             return Err(Refused::Budget(Budget::Bytes { size, limit: self.limit }));
@@ -394,8 +397,14 @@ impl Footprint<'_> {
                 let kind = entry.file_type()?;
                 if kind.is_dir() {
                     pending.push(entry.path());
-                } else if let Ok(metadata) = entry.metadata() {
-                    total = total.saturating_add(metadata.len());
+                    continue;
+                }
+                match entry.metadata() {
+                    Ok(metadata) => total = total.saturating_add(metadata.len()),
+                    // gone since it was listed, so it takes no disk; any other failure is the
+                    // budget's to know, since an unmeasured file could be any size
+                    Err(source) if source.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(source) => return Err(source),
                 }
             }
         }
