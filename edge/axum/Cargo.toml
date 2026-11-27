@@ -1,0 +1,28 @@
+[package]
+name = "uses-ink-edge-axum"
+description = "The edge over axum and hyper: sockets, time budgets, graceful shutdown, typed request events"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+axum.workspace = true
+bytes.workspace = true
+edge.workspace = true
+futures-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+model.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+bytes.workspace = true
+model.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
