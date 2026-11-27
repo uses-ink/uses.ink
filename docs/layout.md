@@ -1,0 +1,781 @@
+# Repository layout and monolith proposal
+
+Status: **accepted** (decision 0074, owner, 2026-11-27). Every open choice of section 15 was taken
+as recommended. Nothing in this document has been done yet; section 13 splits the work into
+packages that agents take.
+
+The brief: make the directory structure and project organisation easier to navigate, and fix the
+monoliths. This document gives the principles, the target tree, the move map, the split of each
+monolith, the migration in phases that each leave the workspace green, the risks, and the choices
+the owner makes.
+
+Snapshot: `main` after the operator-keys change (`sig`, `control/keys`, the `https` crate, the
+terminal layer and the farm result cache have all landed). One workspace, `passkeys`, was started
+and held no changes when counted (section 9). Numbers below were counted on that snapshot;
+recount before acting.
+
+## 1. What is wrong today
+
+| Finding | Evidence |
+|---|---|
+| The root has 52 entries (49 without `.git`, `.jj`, `target`). `docs/conventions.md` says a directory holds about eight. | `ls -A` |
+| Other directories past the rule | `cli/src` 42, `model/src` 31, `control/src` 20, `edge/src` 18, `engine/src/interpret` 17, `edge/api/src` 14, `tools/farm/src` 28, `host/native/src` 12, `xtask/src` 12 |
+| `cli` holds command surface, use cases, output-folder adapters, self-host wiring, the key commands and an API client in one crate, about 12.7k src lines | section 5.1 |
+| `control` holds rows, use cases and the sign-in subsystem; `keys/` (1954 lines, landed) is a second subsystem beside it | section 5.2 |
+| The same fact is written down twice in several places | section 6 |
+| The docs describe crates that do not exist and omit ones that do | section 8.2 |
+
+What is fine and stays: the port pattern (port crate at the family root, one directory per adapter,
+a `conformance/` suite), the dependency order checked by `cargo xtask layout` (all members pass
+`MAY_USE`), crate names, one workspace, `plugin/<slot>/<variant>/` with a `guest/` beside it.
+
+## 2. Principles
+
+1. **The path predicts the name, and the name does not change.** Crate names stay (`uses-ink-model`,
+   `uses-ink-blob-dir`). `Cargo.lock`, `ENFORCED`, `MAY_USE`, `deny.toml`, `.config/nextest.toml`
+   filters and every `use` line are keyed by name, so a pure path move touches none of them. The
+   `Names` rule changes from "`uses-ink-` plus the path" to "`uses-ink-` plus the path below
+   `crates/<layer>/`, with `plugin/` dropped as today".
+2. **Group by role in the dependency order, keep families whole.** A port stays with its adapters
+   and conformance suite (`crates/port/blob/dir`). Grouping by layer happens one level above the
+   families, not inside them.
+3. **A directory holds about eight entries.** The root counts directories; files that a tool reads
+   only from the root are listed as the waiver (section 3.3). Every other directory is checked by
+   xtask against a limit and a written waiver list (section 8.4).
+4. **Singular directory names** (`conventions.md`): `core`, `port`, `server`, `runtime`, `surface`,
+   `standalone`.
+5. **A crate is cut at its second user**, as `conventions.md` says. A monolith is split first into
+   modules in directories, and into crates only where a second user already exists or a dependency
+   cycle forces it.
+6. **Every phase is one jj commit that passes `farm check`.** Moves are renames; edits to moved
+   files are limited to path lines.
+7. **One fact, one place.** Rule lists that name paths become data in one file read by xtask.
+
+## 3. Target tree
+
+### 3.1 Before and after, two levels
+
+Before (52 entries at the root):
+
+```
+uses.ink/
+  .cargo  .config  .github  .impeccable  .gitignore  .dockerignore
+  Cargo.toml  Cargo.lock  rust-toolchain.toml  rustfmt.toml  clippy.toml  deny.toml
+  dist-workspace.toml  Dockerfile  LICENSE-AGPL  LICENSE-APACHE  LICENSE-MIT  PRODUCT.md
+  blob/ (dir conformance)        build/ (conformance local)     db/ (conformance sqlite)
+  queue/ (conformance local)     secret/ (conformance local)    mail/ (smtp)
+  watch/ (git)                   edge/ (api axum control folder)
+  host/ (image native wasmtime)  plugin/ (format sdk source theme)
+  model  config  diag  engine  token  trace  sig  https  clock  control  cli  web
+  freehand  freehand-web  fixture  brand  wit/ (format host mirror model source theme)
+  docs/  spikes/ (gix workers)  tools/ (farm)  xtask/
+```
+
+After (6 directories, 13 pinned files, 7 dot entries):
+
+```
+uses.ink/
+  crates/    every workspace crate, by layer
+    core/        model config diag engine token trace sig https
+    port/        blob build clock db mail queue secret   (each with its adapters and conformance)
+    server/      control watch edge                      (edge: api axum control folder)
+    runtime/     host plugin                             (host: image native wasmtime)
+    surface/     cli web
+    standalone/  freehand freehand-web fixture
+  wit/       the WIT packages and mirror/
+  docs/      architecture, conventions, code, decisions/, research/, ...
+  tools/     farm xtask
+  brand/     logo stroke data and the SVGs xtask draws
+  spikes/    workers (gix moves to docs/research/)
+  Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml clippy.toml deny.toml
+  dist-workspace.toml Dockerfile .dockerignore LICENSE-* PRODUCT.md README.md
+  .cargo .config .github .gitignore            (.impeccable: section 3.3)
+```
+
+A newcomer sees six directories to open. `crates/` shows six layer names, each a handful of
+families.
+
+### 3.2 Why these layers
+
+The layers follow `MAY_USE`, not taste. Each depends only on layers above it in this list, with
+`standalone` depending on nothing of ours:
+
+| Layer | Holds | Depends on |
+|---|---|---|
+| `core` | the vocabulary, the pure engine and the leaves every layer may take: `model`, `config`, `diag`, `engine`, `token`, `trace`, `sig`, `https` | itself |
+| `port` | traits and their adapters: `blob`, `build`, `clock`, `db`, `mail`, `queue`, `secret` | `core` |
+| `server` | the hosted side: `control` (use cases over ports), `watch`, `edge` | `core`, `port` |
+| `runtime` | what runs plugins and builds: `host`, `plugin` | `core`, `port` |
+| `surface` | binaries and UIs: `cli`, `web` | everything |
+| `standalone` | product-independent or test-only: `freehand`, `freehand-web`, `fixture` | nothing of ours |
+
+The brief's example put `watch` with the ports and `build` with core. Both differ here, on
+evidence. `watch` depends on `control` (`MAY_USE` row for `uses-ink-watch`), so it is a use case,
+not a port; its `Heads` port is a trait inside it, and `watch/git` is that port's adapter, which
+stays beside it. `build` is the builder port (`build/local` is its adapter), and its
+`MAY_USE` row is `blob`, `model`, `trace`, so it sits with the ports.
+
+`layout` can check the table: a crate in layer X may not depend on a crate in a later layer. That
+turns the layer list into a rule, a stronger check than the per-crate `MAY_USE` rows give, and it
+is part of S6.
+
+Whether ports stay with their adapters or the adapters move to their own layer: **keep them
+together.** `blob/dir` next to `blob` is why the port pattern is easy to read; an `adapter/` layer
+would put `queue/local` far from `queue`, and an adapter's conformance suite is a test of the port.
+
+### 3.3 What stays at the root, and why
+
+| Entry | Verdict | Reason |
+|---|---|---|
+| `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.cargo/` | stay | cargo and rustup |
+| `rustfmt.toml`, `clippy.toml` | stay | the tools search the directory and its ancestors only (`docs` review read the rust source: `rustfmt` and `clippy_config`) |
+| `deny.toml` | stay | cargo-deny's lookup of `.config/` is unverified (no clone to read); moving buys one entry |
+| `dist-workspace.toml`, `Dockerfile`, `.dockerignore`, `.github/`, `LICENSE-*` | stay | the tools read them at the root |
+| `PRODUCT.md` | stay | a tool schema comment suggests a reader of that path; unverified |
+| `.impeccable/` | stay | one tracked file; ignored state; walkers already skip it |
+| `brand/` | stay | `cargo xtask brand` reads `brand/figure.toml`; one path line changes in no phase |
+| `wit/` | stay at the root | it is the public contract between hosts and plugin authors, not a crate; `Dockerfile` and docs name it |
+| `README.md` | new | section 8.3 |
+
+The root then has 6 directories, 13 files and 4 dot entries (`.cargo`, `.config`, `.github`,
+`.impeccable`), plus the ignored `.gitignore`. The files are pinned by the tools that read them.
+`conventions.md` says: the root rule counts directories; pinned files are listed.
+
+### 3.4 What changes inside `tools/`
+
+`xtask` moves to `tools/xtask`. It is a repo tool and so is `farm`; the root keeps no tool. The
+`Names` rule already names both by their last path segment. `farm` stays at `tools/farm` so
+`cargo install --path tools/farm --locked` in `docs/workflow.md`, the farm test that reads
+`../../docs/workflow.md`, and `farm status`'s source digest do not change.
+
+## 4. Move map
+
+Every current path to its new path. Crate names do not change. Each row is a directory move
+with everything under it. The two columns are the same crate; a change of name is marked.
+
+### 4.1 Crates
+
+| Current | New |
+|---|---|
+| `model` | `crates/core/model` |
+| `config` | `crates/core/config` |
+| `diag` | `crates/core/diag` |
+| `engine` | `crates/core/engine` |
+| `token` | `crates/core/token` |
+| `trace` | `crates/core/logging` (renamed to `uses-ink-logging`, choice 4, in its own package) |
+| `sig` | `crates/core/sig` |
+| `https` | `crates/core/https` |
+| `blob`, `blob/dir`, `blob/conformance` | `crates/port/blob`, `.../blob/dir`, `.../blob/conformance` |
+| `build`, `build/local`, `build/conformance` | `crates/port/build/...` |
+| `clock` | `crates/port/clock` |
+| `db`, `db/sqlite`, `db/conformance` | `crates/port/db/...` |
+| `mail`, `mail/smtp` | `crates/port/mail/...` |
+| `queue`, `queue/local`, `queue/conformance` | `crates/port/queue/...` |
+| `secret`, `secret/local`, `secret/conformance` | `crates/port/secret/...` |
+| `control` | `crates/server/control` |
+| `watch`, `watch/git` | `crates/server/watch`, `crates/server/watch/git` |
+| `edge`, `edge/api`, `edge/axum`, `edge/control`, `edge/folder` | `crates/server/edge/...` |
+| `host/image`, `host/native`, `host/wasmtime`, `host/wasmtime/hostile` | `crates/runtime/host/...` |
+| `plugin/sdk` | `crates/runtime/plugin/sdk` |
+| `plugin/format/markdown` (+ `guest`), `plugin/format/obsidian` (+ `guest`) | `crates/runtime/plugin/format/...` |
+| `plugin/theme/quiet` (+ `guest`) | `crates/runtime/plugin/theme/quiet` (+ `guest`) |
+| `plugin/source/git` (+ `guest`) | `crates/runtime/plugin/source/git` (+ `guest`) |
+| `cli` | `crates/surface/cli` |
+| `web` | `crates/surface/web` |
+| `freehand`, `freehand-web` | `crates/standalone/freehand`, `crates/standalone/freehand-web` |
+| `fixture` | `crates/standalone/fixture` |
+| `xtask` | `tools/xtask` |
+| `tools/farm` | `tools/farm` (unchanged) |
+
+The `Names` rule drops `plugin/` today, so `crates/runtime/plugin/theme/quiet` is still
+`uses-ink-theme-quiet`. `host/wasmtime/hostile` stays under `host/wasmtime`: the review proposed
+moving it under `tests/`, but the `Names` rule would then predict `uses-ink-host-wasmtime-tests-hostile`
+and fail. Leaving it costs nothing; renaming it is a separate, optional change.
+
+`sig` and `https` landed after the first draft. Both depend on nothing of ours (`MAY_USE` rows are
+empty). `sig` is taken by the signing CLI and the verifying server; `https` by `host/native` (runtime)
+and `watch/git` (server). A crate that a lower layer takes cannot sit in `runtime` without breaking
+the layer order, so both go to `core`, which then holds eight entries.
+
+### 4.2 Everything else
+
+| Current | New | Note |
+|---|---|---|
+| `spikes/gix/README.md` | `docs/research/gix-spike.md` | the verdict is cited by decision 0036 and by `host/native/src/git/history.rs:172` |
+| `spikes/gix/` (rest) | deleted | the code lives in `host/native/src/git/`. Accepted (choice 7) |
+| `spikes/workers/` | stays | the only code for the Container path, README says unverified |
+| `docs/decisions.md` | `docs/decisions/NNNN-slug.md` + `docs/decisions/README.md` | section 8.1 |
+| `docs/psl.md` | `docs/release.md` section | 40 lines; or `docs/ops/psl.md` |
+| `docs/cli-preview.html`, `docs/auth-preview.html` | `docs/preview/` | optional; two citations |
+| `docs/research/*.md` | stay, with a banner | section 8.2 |
+| `wit/mirror/*.rs` | stay, plus `wit/mirror/mod.rs` | section 6.4 |
+| `.dockerignore` | stays; `!crates` and `!tools` replace 25 lines | section 7 |
+
+### 4.3 Directories inside crates (packages P1 to P6, S1 to S4)
+
+Moves inside one crate change no path outside it. The detailed plans are in section 5.
+
+## 5. Monolith splits
+
+Rule for all: split into modules and directories first. A crate is cut only where the second user
+exists or a cycle forces it. No new crate changes `MAY_USE` for existing crates other than adding
+its own row.
+
+### 5.1 `cli` (about 12.7k src lines, 42 entries in `src/`)
+
+What is in it (counted): command surface (`args`, `tree/`, `help/`, `man/`, `completions/`,
+`dispatch`), use cases (`build`, `site`, `select`, `explain`, `pin`, `pins`, `change`, `preview`,
+`serve`, `bundle`, `component`), output-folder adapters (`out`, `replace`, `cache`, `format`),
+self-host wiring (`product`, `signin`, `tasks`, `hosting`), the machine-key commands (`auth/`), the
+hosted API client (`deploy/`), the output layer that landed with the terminal work (`term/`, `stage`,
+`failure`, `golden`, `asked`), and plumbing (`error`, `output`, `report`, `exit`, `settings`,
+`logging`, `images`, `remote`).
+
+Target, as directories of the one crate:
+
+```
+cli/src/
+  main.rs  lib.rs
+  grammar/     args.rs  tree/  help/  man/  completions/  dispatch.rs
+  command/     build  source (was site.rs)  select  explain (+ asked)  pin (pin.rs + pins.rs)  change
+               preview  serve  bundle  component  auth/  remote  images
+  output/      output.rs  report.rs  exit.rs  error.rs  failure.rs  stage.rs  format.rs  term/  golden.rs
+               (the typed output layer)
+  folder/      written.rs (the writer, was out.rs)  replace.rs  cache.rs
+  selfhost/    product.rs  signin.rs  tasks.rs  hosting.rs
+  deploy/      the API client: client.rs failure.rs view.rs mod.rs  (wire.rs goes, 6.2)
+  settings.rs  logging.rs
+```
+
+Nine entries. Placement of the files that landed after the draft (`asked`, `golden`, `hosting`,
+`images`, `logging`, `remote`, `stage`, `failure`) is from their module headers; the agent confirms
+each against its callers. Decisions and reasons:
+
+- **Not new crates now.** Self-host wiring has one user (the `ink` binary). It becomes
+  `crates/server/selfhost` when a second binary needs it. Its dependencies (`control`, `watch`,
+  `edge-api`, the local adapters, `mail-smtp`, `clock`) are already allowed for `cli`, so the
+  cut will add one `MAY_USE` row and remove nothing from `cli`'s.
+- **The output layer** (`term/`: blocks, layout, glyphs, meter; `failure.rs`, `stage.rs`) has landed and goes
+  under `output/`. It stays a module: its one user is `ink`, and `docs/conventions.md` cuts at the second.
+- **The output folder layout moves to `model`** (section 6.3): one `Written` type with its schema
+  and file name. The writer stays in `cli/src/folder/`; `out.rs` becomes `written.rs`, which stops
+  `out.rs` and `output.rs` sitting side by side.
+- **`select.rs` planning** cannot move into `format-markdown` (it may only use `model`). Leave it.
+- **`error.rs`** (416 lines) splits by origin when the module moves; each variant keeps its fields.
+- `cli/tests/site.rs` (599 lines): split by command with the command modules; not a rule.
+
+### 5.2 `control` (5313 src lines, 20 entries) and the sign-in subsystem
+
+Verified: the sign-in code is about 1480 lines (`signin/`: `store` 458, `proof` 211, `settings` 190,
+`ttl` 146, `error` 121, `challenge` 83, `factor` 81, `migration` 91, `session` 63, `mod` 35). Its
+`crate::` uses are `id`, `table`, `fields`, `migration::Typed`, `Unreadable`. The only edge back
+into it from the rest of `control` is `fields.rs:65-67` (`crate::signin::Digest`), plus the
+re-export at `lib.rs:58`. The `Digest` type is declared at `signin/proof.rs:104`.
+
+`control/src/keys/` has landed (eight files, 1954 lines with its tests' fixtures excluded), built the same
+way, and `authkeys` edited `fields.rs`, `id.rs`, `table.rs` and `signin/factor.rs`. So the split gives
+two subsystems a shared floor, not one. The `sig` crate it added is a leaf and does not change the plan.
+
+Target crates, in order:
+
+1. `control/rows` (`uses-ink-control-rows`): `id`, `fields`, `table`, `migration::Typed`,
+   `Unreadable` and `Digest`, which moves out of `signin/proof.rs`. Dependencies: `db`, `model`.
+   This removes the back edge, so no cycle appears.
+2. `control/signin` (`uses-ink-control-signin`): `signin/`. Dependencies: `control/rows`,
+   `secret`, `db`, `mail` as needed. Its error type has `From<sea_query::Error>` once, over the
+   rows error, which removes the two copies at `error.rs:356` and `signin/error.rs:101`.
+3. `control/keys` (`uses-ink-control-keys`): the same shape, depending on `rows` and `sig`.
+4. `control` keeps domain rows (`account`, `site`, `deploy`, `job`, `credential`, `event`,
+   `handle`, `origin`, `receipt`) and the use cases (`case/`, one file each). `error.rs` (473
+   lines) splits into `error/refusal.rs`, `error/unreadable.rs` (moves to rows), `error/ports.rs`.
+5. `cli/selfhost` and `edge/api` import `signin` and `keys` directly instead of through
+   `control::SignIn`.
+
+`MAY_USE` gets three rows (`rows`: `db`, `model`; `signin`: `rows`, `secret`, `db`, `mail`, `clock`;
+`keys`: `rows`, `sig`, `db`). `control`'s own row gains `rows`. This is the one split that adds
+crates on purpose, because two subsystems already share the rows.
+
+The fan-out inside `control/src` falls from 20 to about 12 without the three crates, then to
+about 9 with them. Group the domain rows under `domain/` if it still reads long.
+
+### 5.3 `model` (31 entries in `src/`, 8829 lines)
+
+`model` is the permissive vocabulary crate every plugin links, so nothing leaves it except
+pure code. Group by domain inside it, no new crates:
+
+```
+model/src/
+  content/    hash path snapshot span size time url language
+  decision/   code coded decision subject value      (code.rs and record.rs stay whole)
+  site/       site route picture document (block, inline, anchor) highlight
+  output/     manifest (+ media.rs for MediaType) record diagnostic written (new, 6.3) format git
+  generated.rs  lib.rs  value/
+```
+
+- `manifest.rs` splits into `manifest.rs` and `media.rs` (the extension-to-MIME table, about 150
+  lines).
+- `value/front.rs` (491) splits into `front/raw.rs` and `front/read.rs`.
+- `document.rs` (442) splits into `document/{block,inline,anchor}.rs`.
+- `site.rs` (497) splits into `site/{page,author,tag}.rs`.
+- `generated.rs` (1694) is generated: no action.
+- `Git` and `Highlight` stay. `architecture.md` says a `host/` crate holds capability traits; no
+  such crate exists, and a new one would have to be permissive and be added to `Licence::LINKED`.
+  The cheaper fix is the document (section 8.2).
+
+Public paths do not change: `lib.rs` re-exports every item at its current path, so no downstream
+`use` edits. The `Names`, `Words` and fan-out rules see the new directories.
+
+### 5.4 `tools/farm` (28 flat files, about 9.9k lines)
+
+Directories in one crate, no new crates (farm depends on std, serde, serde_json and toml only and
+must stay a leaf):
+
+```
+tools/farm/src/
+  main.rs            entry only (its 318 test lines move to the modules they cover)
+  cli/               cli.rs exit.rs console.rs
+  recipe/            jobs.rs (renamed) config.rs
+  repo/              tree.rs version.rs digest.rs
+  cache/             cache.rs inputs.rs glob.rs hash.rs   (the result cache, decision 0075)
+  host/              host.rs probe.rs place.rs fleet.rs
+  transport/         mod.rs exec.rs local.rs ssh.rs
+  job/               job.rs event.rs quote.rs word.rs program/
+  verb/              mod.rs check.rs cargo.rs status.rs pull.rs report.rs workspace.rs
+  summary/           mod.rs tests.rs diagnostics.rs
+```
+
+Verified: the `run.rs` verbs are one `impl Farm` that Rust lets span files; `go_for_test` and
+`run_for_test` (`run.rs`; used by the tests in `main.rs`) are test-only hooks to delete: the tests
+call `go` and `run`. Two corrections to the review of farm: `ENFORCED` already lists `farm` and
+`xtask` (the review said farm was not listed), and the sync excludes have since moved into
+`.config/farm.toml` (`[sync] exclude`, decision 0075), so the only project names left in farm are
+the built-in `target` and the secret patterns. `tools/farm/build.rs:6` pulls in `src/digest.rs` by
+`#[path]`: the move to `repo/digest.rs` edits that line. `hash.rs` (the cache hash) and `digest.rs`
+(the source digest) are two hashes for two jobs; each header says so, and they stay apart.
+
+### 5.5 `xtask` (5.6k lines)
+
+```
+tools/xtask/src/
+  main.rs         dispatch only
+  generate/       output.rs token.rs brand.rs diag/ (schema, read, flaw, template, rust)
+  build/          component.rs
+  check/          mod.rs (Gate, Stage) steps.rs cargo.rs
+  layout/         mod.rs (Rule, Gradual) model.rs read.rs rules/ (names order licence alias
+                  code files sql) release/ (mod, workflow, dockerfile)
+  process.rs  error.rs
+```
+
+`check` uses `layout`; `layout` uses `generate::output` to compare files; `generate` never uses
+`check`. The rule lists become data in `.config/layout.toml`, read by `layout/mod.rs`:
+`ENFORCED`, `Unsafe::ALLOWED`, the layer table, the fan-out limit and its waivers, `FOREIGN`, and the
+release paths. `MAY_USE` stays in code: it is keyed by name and does not change with a path. It already lists `sig` and `https` and will list the new `control` crates and the renamed ones.
+`xtask` may use only `freehand` and `token` (`MAY_USE`), so it cannot take the shared `Chain` and
+keeps its own copy, as farm does.
+
+### 5.6 `edge`, `edge/api`, `edge/control`
+
+- `edge/src` (18): `http/` (head, fields, encoding, range, condition, etag, request, response,
+  answer, refusal, entry, limits) and `serve/` (edge folded in, port, target, hostname, error).
+  Renames: `tag.rs` to `etag.rs`, `host.rs` to `hostname.rs` (`host` means capability hosts).
+- `edge/api/src` (14): `auth/` (credential, cookie, `signin/`), `sites/` (intake, export),
+  `archive/` (the `tar/` module), and the six core files. `door/` is renamed `auth/signin/`;
+  `Turn` becomes `Step`. Two modules are named `route` today (`api/src/route.rs`, `door/route.rs`);
+  the move separates them.
+- `edge/control/src` renames position names to roles: `back.rs` to `lookup/owner.rs`, `fronts.rs`
+  to `lookup/caller.rs`, `recent.rs` and `settings.rs` to `lookup/cache.rs`, `chain.rs` and
+  `failure.rs` to `lookup/error.rs`. The crate is new, so this is cheap now and dearer later.
+- The wire views move to one contract module in `edge/api` with `Deserialize` (section 6.2).
+
+### 5.7 Others that are not monoliths but have a directory rule
+
+`host/native/src` (12): `fetch/` (limits, grants, client), `blob.rs` (`Store`, `Memory` only; section
+6.1); `host/wasmtime/src/capability.rs` (365) splits to `capability/{mod,pen,text,highlight,git,
+diagnostic}.rs`, one file per WIT interface; `web/src/failure.rs` (396) splits into `failure/error.rs`
+and `failure/page.rs`; `engine/src/interpret` (17) groups its stage files under `pipeline/`;
+`engine/src/render/unit.rs` (407) splits into `unit/{key,plan}.rs` and drops the name `Shared`.
+`plugin/format/markdown` (3127 lines) is not a monolith: its subsystems are already directories.
+
+## 6. Duplication fixes
+
+### 6.1 Error-chain printer
+
+The same loop (`while let Some(cause) = error.source()`) is written in `cli/src/output.rs:189`,
+`cli/src/tasks.rs:142`, `edge/src/answer.rs:68`, `host/wasmtime/src/error.rs:190`,
+`model/src/git.rs:474`, `xtask/src/main.rs:145` and `tools/farm/src/error.rs:222`, and a
+collector of the same shape at `edge/api/src/fault.rs:262`. Plan: one `Chain` in `model`, used by
+`cli` (both sites), `edge`, `edge/api`, `host/wasmtime` and the git module. `xtask` and `farm` keep
+their copies with a one-line comment saying why (their `MAY_USE` forbids `model`; farm must stay
+std-only). The separator is a parameter of the type, not a second type.
+
+### 6.2 Wire and catalog shapes
+
+- `cli/src/deploy/wire.rs` redeclares `edge_api::view` because the views only `Serialize`. Make
+  the views one contract module with `Serialize + Deserialize` in `edge/api`, which `cli` already
+  depends on. Delete `wire.rs`.
+- `cli/src/help/catalog.rs:14` `include_str!`s `diag/catalog.toml` across a crate boundary and
+  parses it with its own types. `diag` exposes the parsed `Catalog` instead. This also removes one
+  path that a move would break.
+
+### 6.3 The output-folder layout
+
+`cli/src/out.rs` writes `.ink-manifest.json` (`SCHEMA = "uses.manifest/v3"` at line 36); the file
+name comes from `host_native::Folder::MANIFEST` (`folder.rs:57`, with `MARK` at `:60`).
+`edge/folder/src/written.rs` declares its own `MANIFEST` (`:15`), its own `SCHEMA` (`:18`) and its
+own `Written`. That is three copies of the name and two of the schema. Plan: one `Written` in
+`model` (`Serialize + Deserialize`, with `MANIFEST`, `SCHEMA` and `MARK`); `cli`, `host/native` and
+`edge/folder` import it. All three already depend on `model`.
+
+### 6.4 Blob port and the `host/native` store
+
+The blob vocabulary is declared in `engine/src/host.rs:16`, `edge/src/port.rs:132-161`,
+`blob/src/port.rs` and `host/native/src/blob.rs`. Not compared: the method sets. The review's
+proposal to delete the `host/native` store is half right. `Directory` (`blob.rs:125` on) duplicates
+`blob/dir` and only `host/native/tests/folder.rs:11` uses it, so it goes and that test takes
+`blob_dir` as a dev-dependency (`MAY_USE` row for `host-native` gains it, dev only). But `Store`
+and `Memory` are used by 20 files (`cli`, `build/local`, `host/wasmtime`); they stay. The narrow
+per-consumer traits stay as designed (the edge speaks the model alone); the name collision is left as it is.
+
+### 6.5 `wit/mirror`
+
+`plugin/sdk/src/mirror.rs` and `host/wasmtime/src/mirror.rs` hold identical seven-line include
+lists (checked by `diff`). One `wit/mirror/mod.rs` holds them; each crate has one `include!`. The
+nested paths resolve relative to the file that holds the macro, so they do not change.
+
+### 6.6 Smaller ones
+
+Private-file and atomic-write code appears four times (`cli/src/product.rs:250`,
+`secret/local/src/key.rs:66`, `cli/src/replace.rs:48`, `blob/dir/src/directory.rs:99`): keep, one
+adapter line each, until a third user. `gix` is used outside its wrapper by `watch/git` (an adapter,
+accepted); `toml` by `cli` in three files; `sea_query` in 17 `control` files: write the rule down
+(statement builders may use `sea-query` directly, since `db` re-exports it) rather than build
+wrappers. `fixture/src/corpus.rs` (bench data) gets a header saying so. `host/native` and
+`plugin/source/git` both take `support/origin.rs` by `#[path]`; move it to `fixture` (P5).
+
+## 7. Naming
+
+| Item | Finding (verified) | Proposal |
+|---|---|---|
+| `Base` (`mail/src/link.rs:11`) | banned name | `LinkBase` |
+| `Shared` | three types: `engine/render/unit.rs:253`, `host/wasmtime/runtime.rs:27`, a test in `edge/axum/tests/serve.rs:33` (the review found one) | name each for what it holds |
+| `door` (`edge/api`) | metaphor, banned | `auth/signin` |
+| `Said` | nine types in eight crates (review: six). Only `model::Said` is public. | keep the model one; rename the private ones for their role |
+| `Pin` | four types: `cli::args`, `diag::evidence`, `engine::host`, `engine` witness | `Pin` for the value; the CLI one `PinArgs` |
+| `Record` | three: the `model` sink trait, `host/image` unit struct, `cli/deploy/view.rs` | rename the trait to `Sink`; `model::record` stays the build record |
+| `trace` crate | the vocabulary table defines **trace** as a decision's ladder; the crate is logging | choice 4: renamed `logging` (S5) |
+| position names in `edge/control` | `back`, `fronts` | `lookup/` (5.6) |
+| `edge/src/host.rs`, `tag.rs`, `edge.rs` | wrong or repeated | `hostname`, `etag`, folded |
+| `local` adapters | `queue/local` is a queue over the row port; `build/local` runs in process; `secret/local` is a cipher | choice 5 (accepted: `queue/rows`, `build/process`); each rename touches crate name, alias, `MAY_USE` and `ENFORCED` |
+| `web` | one word for dashboard and for `freehand-web` | keep `web`; a dir rename would break the `Names` rule unless the package renames too |
+| `dir` in `blob/dir` | not in the closed abbreviation list | add `dir` to the list |
+| mail sign-in copy | in the port (`mail/src/message.rs`) | review opinion, not a rule; not in this plan |
+
+The `Banned` rule checks files and directories, not type names, so these types pass the gate. A
+type-name pass is not proposed; it needs a decision on cost.
+
+## 8. Docs
+
+### 8.1 Decisions: one file each
+
+`docs/decisions.md` (1523 lines, 60 decisions, numbers 0001 to 0068) becomes
+`docs/decisions/NNNN-slug.md` with front matter and a generated `README.md` index. Verified:
+
+- **Nothing in `xtask` or `farm` reads `decisions.md`.** The only tool that reads a document is
+  the farm test of `docs/workflow.md` (`tools/farm/src/main.rs:409`).
+- Citations by number (`decision 0047`, `(0047)`) survive a split. No anchors into the file exist.
+- Citations by filename break. 44 files outside `docs/` name one of `decisions.md`,
+  `architecture.md`, `conventions.md`, `code.md`, `workflow.md`, `roadmap.md` (the docs review
+  counted 33 on `decisions.md` and four others). Leave a stub `docs/decisions.md` that points to
+  the directory, so every old name resolves, and fix the citations lazily.
+- **Do not fix decision 0065.** Its heading is missing on `main`, and code cites it. Numbers 0069 to 0075 are on `main`; this decision is 0074.
+
+Front matter (the number is a quoted string): `number`, `title`, `status` (`proposed`, `accepted`,
+`built`, `superseded`), `date`, `area`, `supersedes`. Existing free-text status lines map onto
+these by hand in the split commit. Decisions 0058 and 0060 are bug-fix logs, not decisions: move
+them to `docs/history/review-fixes.md` and reserve the numbers in the index.
+
+The index is generated by `cargo xtask docs` and checked in; a stale index fails the `docs` stage.
+
+### 8.2 Wrong statements to fix (all verified by reading)
+
+| Where | Wrong statement | Fact |
+|---|---|---|
+| `architecture.md` section 4 | `host/` is crate `uses-ink-host` holding capability traits | `host/` has three crates; the traits are in `engine/src/host.rs`, `model/src/git.rs`, `model/src/highlight.rs` |
+| same | `measure/`, `db/d1`, `blob/r2`, `queue/cf`, `build/container`, `edge/worker` and several plugin folders are present | none exists; the roadmap lists most as M4. Mark them planned |
+| same | `web/` is "landing and dashboard" | only the dashboard exists |
+| same | `brand/` holds fonts and licences | it holds `figure.toml` and five SVGs |
+| same | `wit/` has `model host format theme` | `wit/source/` exists too |
+| same | `plugin/*` may not use `host/*` or edge, and does not list `format/obsidian` | `obsidian` uses `format/markdown`; add it to the rule |
+| same | crate list | omits `trace`, `edge/control`, `watch/git`, `dist-workspace.toml`, `Dockerfile`, `.dockerignore`, `.config/farm.toml`, `.github/` |
+| `conventions.md` Commits and checks | the gate ends with "layout and generated files", and `Gate::steps` holds the list | `Layout` is the last step of the `lint` stage (`check.rs:67`); there is no generated-files step; the functions are `Gate::lint()`, `test()`, `docs()`, `wasm()`, `sites()` (the `cargo xtask layout` task does exist, so that half is right) |
+| `conventions.md` Crates | "`db/d1/` and `db/sqlite/` are its adapters" | `db/d1` is planned |
+| `conventions.md` Crates | a directory holds about eight entries | broken at the root (50), `cli/src`, `model/src` and others; section 1 |
+| `code.md` section 7 | the gate is a tuple of steps (`Gate::steps`) | the gate has per-stage functions; and farm "knows no project": its excludes name `.impeccable` |
+| `code.md` | sections jump from 9 to 11 | renumber or restore 10 |
+| `research/deps-frontend.md` | recommends maud and Datastar | rejected by 0032 and 0053 |
+| `research/deps-*.md`, `research/architecture.md` | old names `uses-engine`, `uses-control`, `uses-host-wasmtime` | current names are `uses-ink-*` |
+
+Add a banner to every `docs/research/*.md`: historical, which decisions replaced it. Do not rewrite
+them.
+
+### 8.3 Per-crate docs and the README
+
+- **Per-crate docs**: a generated `docs/crates.md` (name, path, layer, one-line purpose from the
+  `//!` header, dependencies on our crates), replacing the hand-kept crate lists in
+  `architecture.md` section 4 and `conventions.md`. `<crate>/README.md` only for the six crates
+  whose rule is not visible from code: `engine`, `control`, `edge`, `host/wasmtime`, `plugin/sdk`,
+  `tools/farm`. Not in `docs/crates/`: docs next to the code stay current more often.
+- **Root `README.md`** (about 40 lines; commands are to be run once before it is published):
+
+```
+# uses.ink
+
+Turns a folder of markdown, in a git repository or an Obsidian vault, into a blog with no
+configuration. `ink` builds it and serves it. Pre-release: see docs/roadmap.md for what is built.
+
+## Try it
+Pinned Rust (rust-toolchain.toml). Build the plugin components, then the binary:
+    cargo --locked xtask component
+    cargo build --locked --profile dist --package uses-ink-cli --bin ink
+    ./target/dist/ink build        # in a folder of markdown
+Self-host: docker build -t uses-ink .   (the run line is the Dockerfile's header)
+
+## Where things are
+crates/       every crate, by layer: core, port, server, runtime, surface, standalone
+wit/          the plugin contract
+docs/         start with docs/architecture.md; docs/decisions/ holds the reasons
+tools/        farm (the build farm client) and xtask (repo tasks)
+spikes/       experiments, not built
+
+## Read next
+What it is: PRODUCT.md   How it works: docs/architecture.md   Rules: docs/conventions.md
+Why: docs/decisions/     Plans: docs/roadmap.md   Layout: docs/layout.md
+
+## Contribute
+jj, not git. `cargo xtask check` runs the whole gate and names any tool it needs. Agents use
+`farm` (docs/workflow.md).
+
+## Licence
+AGPL-3.0-or-later; MIT OR Apache-2.0 for the plugin SDK, the WIT packages and the product-
+independent crates. See docs/conventions.md.
+```
+
+### 8.4 New `docs`-stage checks
+
+All in xtask, reading text, no new dependency:
+
+1. Every relative Markdown link in `docs/`, `README.md`, `PRODUCT.md` resolves.
+2. Every decision citation (`decision NNNN`, `(NNNN)`) in `*.rs`, `*.toml`, `*.yml`, `*.md`
+   resolves to a file; gaps in the index are listed with a reason. (This would have caught 0065.)
+3. Every backticked crate path in `docs/` exists, unless the sentence is under a "planned" marker.
+4. Decision front matter is valid and the index is current.
+5. **Directory fan-out**: a directory has at most eight entries (tests, `fixture`, `support` aside);
+   `.config/layout.toml` lists waivers by path with a reason. First waivers: `crates/`
+   layers with more than eight families if any, `docs/`, `docs/decisions/`, generated files.
+   Enforced from S7 after the moves, not before, so the rule does not fail the migration.
+
+## 9. What is in flight
+
+Checked with `jj log` and the workspaces under `~/code/personal/uses.ink-ws/`. `cliterm`, `authkeys`
+and `https` have landed on `main`, and `sweepa`, `sweepb` and `sweepc` are gone. One workspace is
+left:
+
+| Workspace | Work | Files that may collide with this plan |
+|---|---|---|
+| `passkeys` | passkeys for people (decision 0068); no changes yet when counted | unknown; it will likely touch `control` (`keys/`, `signin/`), `edge/api`, `cli/src/auth`, `sig`, `diag/catalog.toml` and its generated files, `deny.toml`, root `Cargo.toml`, `docs/decisions.md` |
+
+Work packages that own those paths wait for it (section 13). jj does not follow renames when it
+rebases: a branch that edits a moved file conflicts as modify against delete. So the physical move
+waits for `passkeys` to land, or for the owner to hold it, and new work after the freeze starts
+from the new tree.
+
+## 10. Migration: the phases
+
+The phases are the order; section 13 turns them into work packages. Each phase is one or more jj
+commits on `main`; each commit passes `farm check`.
+
+| Phase | What | Packages |
+|---|---|---|
+| 1 | Doc corrections (8.2), banners on research, README, spike README moved | D1 |
+| 2 | Internal splits that move no path outside their crate: `farm`, `xtask` and the rule data file, `model`, `edge` (core, `control`, `folder`), `host/*` with `wit/mirror`, `engine`, `web`, `plugin/format/markdown` | P1 to P6 |
+| 3 | Splits that touch crates `passkeys` may touch: `edge/api`, then `control` into `rows`, `signin`, `keys` | S1, S2 |
+| 4 | Shared facts: `Chain`, the output-folder `Written`, the API views, the diag catalog | S3 |
+| 5 | `cli` split | S4 |
+| 6 | One file per decision; the `docs`-stage checks | D2, D3 |
+| 7 | Renames: `trace` to `logging`, the `local` adapters, the names in section 7 | S5 |
+| 8 | **Freeze: the physical move** | S6 |
+| 9 | After the move: fan-out enforced with waivers, `docs/crates.md`, docs paths | S7 |
+
+### The move, as one atomic commit (S6)
+
+A commit that only renames cannot be green: `Cargo.toml` lists paths. So the commit is the
+renames plus a closed list of edits, and a check that nothing else changed: for each moved file the
+diff is empty or contains only lines on the list. The renames are generated from the move map in
+section 4 (one `mv` per row, run once and not kept as a script, per `conventions.md`: no loose
+scripts). The edit list:
+
+1. root `Cargo.toml`: `members` and every `path =` in `[workspace.dependencies]` (about 55);
+2. `.dockerignore`: the 26 `!<crate folder>` lines become `!crates`; `!xtask` is dropped (`!tools`
+   stays); `layout/release.rs` reads this file and its rule gives the new shape;
+3. `xtask` (now `tools/xtask`): `Names` strips `crates/<layer>/`; the layer-order rule; `Unsafe::ALLOWED`,
+   `Sql::OWN` and `FOREIGN`, the generators' `SOURCE` and output constants (`token/`, `diag/`,
+   `model/src/generated.rs`, `cli/fixture/site` in `component.rs`), all in `.config/layout.toml` or
+   constants from P2;
+4. **`.config/farm.toml`**: the `inputs` globs of `job.wasm` name `freehand/**`, `freehand-web/**`,
+   `fixture/**`, `token/**`, `xtask/**` and `/Cargo.toml`; they become the new paths. A glob that
+   matches nothing makes a stale pass look fresh, so this edit is not optional. `tools/farm/build.rs`
+   and the farm's `[sync]` need nothing;
+5. relative strings that earlier packages did not remove: the `wit_bindgen::generate!` `path` lists
+   in `plugin/sdk`, four guests, `host/wasmtime` (three) and `hostile`, whose depth grows by two;
+   the `../..` roots in `host/wasmtime/tests`, `../target/plugin` in `cli/tests/{measure,bundle}.rs`,
+   the `Cargo.lock` includes in `host/wasmtime/src/component.rs` and `plugin/theme/quiet/src/lib.rs`;
+6. docs: `architecture.md` section 4, `conventions.md` Crates, `workflow.md`, this file's "after";
+7. `Dockerfile` needs no edit (`COPY . .`; comments name `target/plugin`, which stays);
+   `.github/workflows` and `dist-workspace.toml` hold no crate path (they call `cargo xtask` and
+   `dist`); `deny.toml` names crates only in comments; `.config/nextest.toml` keys on package and
+   binary names, which do not change (`logging` renames land in S5, before the move);
+   `.config/farm.toml` runs `cargo xtask <stage>`, which does not change.
+
+Moving the tree does not change `target/`: it stays at the root, so `target/plugin`,
+`target/ink-cache`, the farm's seeding of `target/` and its sync excludes keep working.
+
+## 11. What breaks, per phase, and how it is checked
+
+| Phase | Breaks | Fix | Verify |
+|---|---|---|---|
+| 1 | a doc link or citation; the farm test on `workflow.md` | do not rename `workflow.md` | `farm check docs` |
+| 2 | re-exports not preserved; `include!`, `include_bytes!` and `env!` roots; `cli/build.rs` (assumes the root is the manifest's parent); `farm`'s `build.rs` `#[path]` to `digest.rs` | every item re-exported at its old path in `lib.rs`; `[env]` with `relative = true` in `.cargo/config.toml` for the root (the `wit_bindgen` expansion of it is unverified, so those paths stay literal); the `build.rs` reads the root from cargo | all stages |
+| 3 | a cycle through `rows`; `Cargo.lock` gains packages; the `control::SignIn` re-export | `Digest` moves first; `MAY_USE` rows in the same commit | all stages |
+| 4 | a duplicate type left behind | grep for the old declaration | all stages |
+| 5 | a missed `use` after the directory move | none expected: `lib.rs` keeps public paths | all stages |
+| 6 | the new checks fail on existing text | fix the text in the same package | `docs` stage |
+| 7 | a stale name in code, docs, `catalog.toml`, `nextest.toml` | grep for the old name; every row in the same commit as its uses | all stages |
+| 8 | everything in the edit list above | one commit; build the components (`xtask component`) and run `sites` before landing | **all stages, once**; then `docker build` once by hand because CI does not run it, and `dist plan` for the release rule |
+| 9 | the fan-out check fails existing directories | waivers by path with a reason | `lint` |
+
+Checklist at every package: `farm check` (all stages) passes once at the end; the move package's
+`jj diff --stat` shows only renames and listed edits; the docs name only paths that exist; the
+plugin components still build to `target/plugin` and `ink build --check` reproduces every site
+fixture twice. Note the farm result cache: a pass is reused only while the job's `inputs` globs
+are unchanged, so `job.docs` (which today excludes `docs/**`) must list `docs/**`, `README.md`
+and `PRODUCT.md` as inputs the moment D3 adds checks that read them.
+
+## 12. Risks
+
+| Risk | Likelihood | Effect | Handling |
+|---|---|---|---|
+| rebase conflicts from moved files (jj has no rename tracking in a rebase) | certain if agents are active | lost work | the freeze; announce; in-flight work lands first |
+| depth-dependent strings missed | medium | a build or a test fails in S6 | P-packages remove most; the build is the check |
+| `Names` rule change hides a wrong layer | low | a crate in the wrong layer | the layer-order rule in S6 checks the layer table against dependencies |
+| a layer directory grows past eight | low | fan-out waiver | `core` has 8, `port` 7, `server` 3, `runtime` 2, `surface` 2, `standalone` 3 |
+| `docs` citations by filename | certain | broken pointers | stub files; the link check |
+| splitting `control` or `edge/api` while `passkeys` edits them | high | a second, larger conflict | S1 and S2 wait for it |
+| an agent edits a file another package owns | medium | conflict | each package lists the paths it owns; the shared touch points are named in section 13 |
+| a stale farm pass hides a break after paths change | medium | green gate on stale input | `.config/farm.toml` `inputs` edits are part of S6 and D3 |
+| `deny.toml` or dist assume root paths | low | CI fails | checked: neither names a crate path |
+
+## 13. Work packages
+
+Each package is one agent's job in its own `farm workspace`, branched from `main`, landing as one jj
+commit (or a short stack gated at its tip) with a conventional one-line message. Each ends with
+`jj rebase -b @ -d main` and one `farm check` that passes (all five stages); no other heavy command.
+A package changes only the paths it owns. The only shared touch points are the root `Cargo.toml`
+and `Cargo.lock` (regenerate `Cargo.lock`, never merge it by hand), and the doc lines that name a
+package's own paths (a package edits those; `docs/code.md` section 7 has a farm paragraph owned by
+P1 and an xtask paragraph owned by P2). Nobody but D2 edits `docs/decisions.md` while D2 runs.
+
+### 13.1 Can run in parallel now (disjoint paths)
+
+Seven packages. They own disjoint paths, none adds a crate, and none touches a crate `passkeys` is
+likely to touch (`control`, `edge/api`, `cli`, `sig`, `diag`).
+
+| Id | Owns | Does | Gate |
+|---|---|---|---|
+| D1 | `docs/*.md` except `decisions.md` and `layout.md`, `docs/research/`, `README.md`, `PRODUCT.md`, `spikes/gix/` | the wrong statements of 8.2; banners on research; `README.md` (8.3); `spikes/gix/README.md` moves to `docs/research/gix-spike.md` and the spike code is deleted; no edits to code.md section 7 | `docs` stage plus the rest |
+| P1 | `tools/farm/**`, `[sync]` of `.config/farm.toml` | the split of 5.4 into directories (`cache/`, `host/`, `transport/`, `job/`, `verb/`, `summary/`, `repo/`, `recipe/`, `cli/`); delete `go_for_test` and `run_for_test`; the `build.rs` path to `digest.rs`; the farm paragraph of code.md section 7 | all stages |
+| P2 | `xtask/**`, new `.config/layout.toml` | the split of 5.5; rule lists as data (`ENFORCED`, `Unsafe::ALLOWED`, `FOREIGN`, release paths, the layer table, the fan-out limit and its waiver list); `Names` accepts `crates/<layer>/` paths (inactive until S6); the fan-out check is written and runs in report-only mode; the xtask paragraph of code.md section 7 | all stages |
+| P3 | `model/**` | the splits of 5.3 (`content/`, `decision/`, `site/`, `output/`, `media.rs`, `front/`, `document/`, `site/{page,author,tag}`), every public path kept by `lib.rs` re-exports; `generated.rs` stays in place | all stages |
+| P4 | `edge/src`, `edge/control/**`, `edge/folder/**`, `edge/axum/**` (not `edge/api`) | `http/` and `serve/`; `tag.rs` to `etag.rs`, `host.rs` to `hostname.rs`, `edge.rs` folded; `edge/control` role names (`lookup/`); typed errors in place of `Box<dyn Error>` in `edge/axum`; the `Shared` test type renamed | all stages |
+| P5 | `host/**`, `wit/mirror/**`, `plugin/sdk/**`, `fixture/**`, `plugin/source/git/tests/source.rs` | `fetch/` and the `capability/` split; delete `host/native` `Directory` and its tests (`blob/dir` covers it; no new dependency); one `wit/mirror/mod.rs` and one `include!` in each crate; the shared `support/origin.rs` moves into `fixture`; the `Shared` in `host/wasmtime/runtime.rs` renamed; the comment at `host/native/src/git/history.rs` that cites the spike README points to `docs/research/gix-spike.md`; `fixture/src/corpus.rs` header | all stages |
+| P6 | `engine/**`, `web/**`, `plugin/format/**`, `plugin/theme/**` | `engine/src/interpret/pipeline/`; `render/unit/{key,plan}.rs` and the `Shared` rename; `web/src/failure/{error,page}.rs`; markdown `html.rs` to `html/tokens.rs` and `front/publishing.rs` to `front/edit.rs`; the private `Said` types of `engine` and `web` renamed for their role; `tests/pages.rs` split per screen; `engine/tests/engine/support.rs` into a folder | all stages |
+
+Pairs that look related and are not in conflict: P1 and P2 (different trees), P3 and P4 (`edge` does
+not import anything P3 moves; public paths are kept). If an agent finds it must edit a path it does
+not own, it stops and reports instead.
+
+### 13.2 Serial: each waits for what it needs
+
+| Id | Waits for | Owns | Does |
+|---|---|---|---|
+| S1 | `passkeys` landed (or confirmed not to touch `edge/api`) | `edge/api/**` | the split of 5.6: `auth/`, `auth/signin/` (was `door/`), `sites/`, `archive/`; `Turn` to `Step`; typed errors in place of `Box<dyn Error>` in `fault.rs` and `door/`; the view types stay (S3 moves them) |
+| S2 | S1, P2, `passkeys` landed | `control/**`; import edits in `edge/api`, `edge/control`, `watch`, `cli/src/{signin,product,tasks}.rs` and `cli/src/auth` | the three crates of 5.2: `control/rows` (with `Digest` moved first), `control/signin`, `control/keys`, their `MAY_USE` rows and aliases; `error.rs` split by family |
+| S3 | P3, P4, P5, S1 | `model` (additions), `diag/**`, `edge/folder`, `host/native/src/folder.rs`, `edge/api/src/view.rs`, `cli/src/{out,deploy,help}` | one `Chain` in `model` used by every site of 6.1 (not `xtask`, not `farm`); one `Written` in `model` with `MANIFEST`, `SCHEMA` and `MARK`, used by `cli`, `host/native` and `edge/folder`; `diag` exposes the parsed `Catalog`, `cli` drops its own; the API views get `Deserialize` and `cli/src/deploy/wire.rs` is deleted |
+| S4 | S2, S3, `passkeys` landed | `cli/**` | the directory split of 5.1 (`grammar/`, `command/`, `output/`, `folder/`, `selfhost/`, `deploy/`); `out.rs` to `folder/written.rs`; `error.rs` split by origin; `tests/site.rs` split by command; `Said` and `Pin` types in `cli` renamed |
+| D2 | `passkeys` landed (its decision text), D1 | `docs/decisions*` | `docs/decisions/NNNN-slug.md` with front matter, the generated index, the stub at `docs/decisions.md`; 0058 and 0060 to `docs/history/review-fixes.md` with their numbers reserved; the index command in xtask is stubbed by hand until D3 |
+| D3 | D1, D2, P2 | `xtask` docs stage, `.config/farm.toml` `[job.docs]` | the checks of 8.4 (links, decision citations, crate paths, front matter, index current); `job.docs` `inputs` list `docs/**`, `README.md`, `PRODUCT.md`; the fan-out check stays report-only |
+| S5 | S1 to S4 landed, quiet repo | every crate that names a renamed item | `trace` to `logging` (package `uses-ink-logging`, alias, `MAY_USE` rows, `ENFORCED`, citations); `queue/local` to `queue/rows`; `build/local` to `build/process`; `mail::Base` to `LinkBase`; `Record` trait to `Sink`; `Pin` and `Said` in `diag`; `dir` added to the abbreviation list; `secret/local` unchanged, with the two meanings of `local` in the vocabulary table |
+| S6 | everything above, `passkeys` landed, **freeze** | the whole tree | the move of section 10, as one commit; the layer-order rule turns on; `Names` strips `crates/<layer>/`; `xtask` to `tools/xtask`; the `.config/farm.toml` `inputs` globs |
+| S7 | S6 | `xtask`, `docs/`, `.config/layout.toml` | fan-out enforced with the waiver list; generated `docs/crates.md`; the per-crate `README.md` for the six crates of 8.3; `architecture.md` section 4 points to the generated index; `docs/layout.md` marked done |
+
+### 13.3 Order at a glance
+
+```
+now, in parallel:   D1  P1  P2  P3  P4  P5  P6
+after passkeys:     S1 -> S2          D2 -> D3 (also needs D1, P2)
+                    S3 (needs P3 P4 P5 S1) -> S4 (needs S2 S3)
+quiet repo:         S5 -> S6 (freeze) -> S7
+```
+
+Once `passkeys` lands, S1 and D2 start beside any P still running. S2 can start when S1 and P2 have
+landed. S5 and S6 are never parallel with anything.
+
+## 14. Where the reviews were wrong
+
+The three reviews were read, and each claim used here was checked in the code. Corrections:
+
+- **"`ENFORCED` does not list `tools/farm`"** (runtime review): it lists `farm` and `xtask`
+  (`layout.rs`, last two entries).
+- **"Move `hostile` under `tests/`, name can stay"** (runtime): the `Names` rule derives the name
+  from the path, so the move fails the gate unless the crate is renamed too.
+- **"Rename `web/` to `dashboard/`"** (runtime): same: it needs a package rename, and `trace` to
+  `logging` likewise renames the package, the alias and the 19 `MAY_USE` rows that name it.
+- **"Six copies of the chain printer"**: seven loops plus one collector (`edge/api/src/fault.rs:262`
+  was missed; `cli` has two).
+- **"`Said` in six places"** (core): nine types in eight crates (`farm` and `web` missed).
+- **"`Shared`" once** (core): three.
+- **"Delete the `host/native` blob store"** (runtime): only `Directory`; `Store` and `Memory`
+  have 20 users.
+- **"`xtask`/`farm` could take the shared `Chain`"** (implied): `xtask` may only use `freehand`
+  and `token` (`MAY_USE`).
+- **"`cargo xtask layout` runs the last step alone" is wrong** (docs review said so): the task
+  exists and runs the layout rules; what is wrong is that the gate has no such last step.
+- **"A grouped layout puts `watch` with ports; `build` in core"** (the brief): by `MAY_USE`, `watch`
+  depends on `control` and `build` depends on the blob port (section 3.2).
+- **The root count**: 50, 49 or 29 depending on the report; 50 with `.git`, `.jj` and `target`, 47
+  without them.
+- **`docs` review "33 files cite documents by name"**: 44 on a wider list of six names.
+- **The review of `cli`: "`select.rs` planning could move to `format-markdown`"**: not allowed by
+  its `MAY_USE` row (model only), as the review itself noted.
+- Claims not checked and kept unverified here: whether the four blob trait sets have the same
+  methods, the `cargo-deny` lookup of `.config/`, whether `wit_bindgen::generate!` expands
+  environment variables in `path`, and whether `PRODUCT.md` must stay at the root.
+
+## 15. Choices, accepted
+
+The owner took every recommendation (decision 0074).
+
+1. **Layers**: `core`, `port`, `server`, `runtime`, `surface`, `standalone`. `sig` and `https` are in
+   `core`.
+2. **`crates/` is done**, in the freeze (S6), after the packages before it.
+3. **Crate names are kept**; only paths move. The rename of choices 4 and 5 are the exceptions.
+4. **`trace` is renamed `logging`** (S5), before the move.
+5. **`local` adapters**: `queue/local` becomes `queue/rows`, `build/local` becomes `build/process`;
+   `secret/local` stays, and the vocabulary table gets the two meanings of `local`.
+6. **Crates cut**: `control/rows`, `control/signin`, `control/keys`; no `selfhost` crate until a
+   second binary needs it.
+7. **`spikes/gix` code is deleted** after its README moves to `docs/research/`; `spikes/workers`
+   stays.
+8. **Decisions are one file each** with a stub at the old name; 0058 and 0060 move out.
+9. **The fan-out limit is enforced by xtask** with a waiver file, from S7.
+10. **`xtask` moves into `tools/`.**
+11. **`web` keeps its name.**

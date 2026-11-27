@@ -103,6 +103,10 @@ each phase green before the next:
 **Exit:** no free function outside entry points and tests, every function name one or two
 words, `cargo xtask check` enforcing both, and the M1 exit criteria still green.
 
+Layout and monolith rework (0074, Accepted; `docs/layout.md`): `crates/` by layer, the `cli`, `control`,
+`model`, `farm` and `xtask` splits, one file per decision, in phases that each pass `farm check`.
+**(owner: accepted; work packages in `docs/layout.md` section 13)**
+
 ## M2: Vaults, git, images
 
 The two real audiences, locally.

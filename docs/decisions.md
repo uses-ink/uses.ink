@@ -1611,6 +1611,30 @@ stack is a second thing to audit and patch. **Reversal:** if `gix-transport` gai
 limit or a body limit, set them in `https::Https`; if the platform verifier is ever wanted, the
 roots become a setting and `webpki-root-certs` is already allowed.
 
+## 0074 The repository is reorganised under `crates/` by layer; monoliths are split into directories first
+
+Accepted, owner (2026-11-27), with every open choice of `docs/layout.md` section 15 taken as
+recommended. `docs/layout.md` holds the proposal, the move map, the work packages and the risks.
+In short:
+
+- Every workspace crate moves under `crates/<layer>/` (`core`, `port`, `server`, `runtime`,
+  `surface`, `standalone`), families whole (`crates/port/blob/dir`). `xtask` moves to `tools/`.
+  Crate names do not change; the `Names` rule reads the path below the layer. `trace` is renamed
+  `logging` and `queue/local` and `build/local` get mechanism names.
+- `cli`, `control`, `model`, `farm`, `xtask` and `edge` are split into directories first. Only
+  `control` gains crates (`rows`, `signin`, `keys`), because its subsystems share its rows.
+- Duplicated facts get one home: the output-folder layout in `model`, the API views in `edge/api`,
+  the diagnostic catalog in `diag`, the WIT mirror list in `wit/mirror`.
+- `decisions.md` becomes one file per decision with a generated index, and the `docs` stage gains
+  link, citation and directory fan-out checks.
+- Every work package is a jj commit that passes `farm check`; the physical move is one commit in
+  a freeze, after the other work in flight has landed.
+
+**Why:** the root has 50 entries against a rule of about eight, `cli` and `control` hold several
+jobs each, and several facts are written down twice.
+**Reversal:** none of the packages before the move depends on it; the move itself is reverted by
+the inverse commit.
+
 ## 0075 The farm reuses a pass: results are cached by what the job read, and only passes
 
 Accepted, owner. A day on the build host showed 16 full `farm check` runs, stage `test` 50 times,
