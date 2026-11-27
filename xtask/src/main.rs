@@ -12,6 +12,10 @@
 //!   `layout`; the components and nextest; doc tests; the pen on wasm32-wasip2 and in the browser;
 //!   `ink build --check` on every CLI site fixture. Runs every step and fails with every failed
 //!   step listed.
+//! - `farm <verb>`: the build farm client: the gate and the inner loop on the hosts of the
+//!   user's config (`~/.config/uses-ink/farm.toml`), each job in a slot of its own. The verbs are
+//!   `check`, `cargo`, `bless`, `status`, `workspace`, `wait` and `log`; docs/workflow.md has
+//!   them, the config and the exit codes. `cargo xtask check` stays as it is, for CI and humans.
 //!
 //! Each task is a type: the generators implement [`output::Generator`], the gate's steps
 //! [`check::Step`], the layout rules [`layout::Rule`].
@@ -56,6 +60,7 @@ mod check;
 mod component;
 mod diag;
 mod error;
+mod farm;
 mod layout;
 mod output;
 mod process;
@@ -73,12 +78,13 @@ pub(crate) enum Task {
     Layout,
     Component,
     Check,
+    Farm,
 }
 
 impl Task {
     /// Every task, in the order they are listed.
-    pub(crate) const ALL: [Self; 6] =
-        [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Component, Self::Check];
+    pub(crate) const ALL: [Self; 7] =
+        [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Component, Self::Check, Self::Farm];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -89,6 +95,7 @@ impl Task {
             Self::Layout => "layout",
             Self::Component => "component",
             Self::Check => "check",
+            Self::Farm => "farm",
         }
     }
 
@@ -112,6 +119,8 @@ impl Task {
                 return report;
             }
             Self::Check => return check::Gate::new(root).run(stage),
+            // `main` hands `farm` its whole command line before a task is parsed
+            Self::Farm => return Report::from(Error::Missing),
         };
         report.take(generated);
         output.settle(&mut report);
@@ -153,6 +162,10 @@ impl fmt::Display for Chain<'_> {
 
 fn main() -> ExitCode {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut args = std::env::args().skip(1);
+    if args.next().as_deref() == Some(Task::Farm.name()) {
+        return farm::Entry::main(&root, args.collect());
+    }
     let mut args = std::env::args().skip(1);
     let report = match (args.next().map(|arg| arg.parse::<Task>()), args.next().map(|arg| arg.parse::<check::Stage>()))
     {
