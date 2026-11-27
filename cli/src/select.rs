@@ -261,9 +261,9 @@ struct Selecting(Selection);
 impl fmt::Display for Selecting {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Selection::Explicit => out.write_str(
-                "selection: explicit, a vault or private source: a page is private until it is selected",
-            ),
+            Selection::Explicit => {
+                out.write_str("selection: explicit, a vault or private source: a page is private until it is selected")
+            }
             _ => out.write_str("selection: implicit, a public source: a page is published unless it says otherwise"),
         }
     }
@@ -297,7 +297,13 @@ impl Select {
             io.line(ended)?;
         }
         let written = if let Ended::Wrote(count) = ended { count } else { 0 };
-        io.json(&Selected { schema: "uses.select/v1", selection: understood.selection, pages, steps: &steps, written })?;
+        io.json(&Selected {
+            schema: "uses.select/v1",
+            selection: understood.selection,
+            pages,
+            steps: &steps,
+            written,
+        })?;
         Ok(tally.exit(Strict::Off))
     }
 
@@ -327,7 +333,8 @@ impl Select {
             written.parse().map_err(|source| Error::Folder { written: written.to_owned(), source })?;
         let listing = if verb == Verb::Select { Listing::Add } else { Listing::Remove };
         let existing = Self::existing(&self.dir.join(Self::CONFIG))?;
-        let included = config::include_into(&existing, &pattern, listing).map_err(|source| Error::Include { source })?;
+        let included =
+            config::include_into(&existing, &pattern, listing).map_err(|source| Error::Include { source })?;
         let matches = loaded.snapshot.tree().iter().filter(|entry| pattern.matches(&entry.path)).count();
         let changed = matches!(included.listed, Listed::Added | Listed::Removed);
         Ok(Step {

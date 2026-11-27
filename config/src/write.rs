@@ -12,8 +12,8 @@ use model::decision::{Decision, Scope};
 use model::{AnyCode, AnyDecision, Code, Span, Subject, Typed, When};
 use toml_edit::{DocumentMut, InlineTable, Item, TableLike, TomlError, Value};
 
-pub use include::{IncludeError, Included, Listed, Listing};
 pub(crate) use include::Includes;
+pub use include::{IncludeError, Included, Listed, Listing};
 pub(crate) use written::Written;
 
 use crate::Offsets;

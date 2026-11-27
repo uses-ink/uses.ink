@@ -20,7 +20,8 @@ fn files_are_selected_and_cleared_as_the_snapshots_say() {
         let mut out = String::new();
         match Publishing::of(bytes) {
             Ok(publishing) => {
-                let _infallible = write!(out, "select: {}clear: {}", shown(&publishing.select()), shown(&publishing.clear()));
+                let _infallible =
+                    write!(out, "select: {}clear: {}", shown(&publishing.select()), shown(&publishing.clear()));
             }
             Err(refusal) => {
                 let _infallible = writeln!(out, "refused: {refusal} ({refusal:?})");

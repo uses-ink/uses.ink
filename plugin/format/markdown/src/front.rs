@@ -55,7 +55,7 @@ impl<'a> Yaml<'a> {
             Ok(Some(entries)) => entries,
             // an empty block: no keys
             Ok(None) => return,
-            Err((error, span)) => return report.refuse(error, span),
+            Err(refused) => return report.refuse(refused.0, refused.1),
         };
         let mut refused = Refused::default();
         F::fill(&Reading { yaml: self, entries: &entries }, front, &mut refused);
@@ -67,13 +67,13 @@ impl<'a> Yaml<'a> {
 
     /// The keys of the block, `None` for an empty one; the error and its place when the YAML does
     /// not parse or is not a mapping of keys.
-    fn entries(self) -> Result<Option<Entries>, (Error, Span)> {
+    fn entries(self) -> Result<Option<Entries>, Box<(Error, Span)>> {
         // the fences cut at line ends, which are character boundaries
         let Some(yaml) = self.file.get(self.region.range()) else { return Ok(None) };
         serde_saphyr::from_str::<Option<Entries>>(yaml).map_err(|source| {
             let span = source.location().and_then(|at| self.place(at)).unwrap_or(self.region);
             let before = self.file.get(..self.region.start()).map_or(0, |before| before.matches('\n').count());
-            (Error::Yaml { source, before: before as u64 }, span)
+            Box::new((Error::Yaml { source, before: before as u64 }, span))
         })
     }
 

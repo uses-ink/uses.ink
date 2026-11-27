@@ -154,7 +154,8 @@ fn include_is_added_and_removed_in_place() {
                 Ok(included) => {
                     let reparsed = Config::parse(&included.text);
                     let listed = reparsed.config.include().iter().any(|listed| listed.value == pattern);
-                    writeln!(out, "{listing:?}: {:?}, listed now: {listed}\n{}", included.listed, included.text).unwrap();
+                    writeln!(out, "{listing:?}: {:?}, listed now: {listed}\n{}", included.listed, included.text)
+                        .unwrap();
                 }
                 Err(error) => writeln!(out, "{listing:?}: error: {error:?}").unwrap(),
             }

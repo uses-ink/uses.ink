@@ -110,7 +110,7 @@ impl<'a> Publishing<'a> {
             Some(Fence::Closed { yaml, .. }) => yaml,
         };
         let block = Yaml::between(file.text, yaml);
-        let entries = block.entries().map_err(|(error, _)| Refusal::Malformed(Malformed(error)))?;
+        let entries = block.entries().map_err(|refused| Refusal::Malformed(Malformed(refused.0)))?;
         // the subject only labels a report this does not read
         let mut report = Report::new(Subject::Site);
         let publish = Yaml::read::<Keys>(&file, &mut report).publish;
@@ -151,7 +151,11 @@ impl<'a> Publishing<'a> {
             return Ok(Edit { was, text: None });
         };
         let line = Line::around(self.text, publish.span).ok_or(Refusal::Inline { span: publish.span })?;
-        let text = format!("{}{}", self.text.get(..line.start).unwrap_or_default(), self.text.get(line.end..).unwrap_or_default());
+        let text = format!(
+            "{}{}",
+            self.text.get(..line.start).unwrap_or_default(),
+            self.text.get(line.end..).unwrap_or_default()
+        );
         Self::verified(was, text, None)
     }
 
@@ -169,7 +173,11 @@ impl<'a> Publishing<'a> {
             "\n"
         };
         let at = self.yaml.end();
-        format!("{}publish: true{ending}{}", self.text.get(..at).unwrap_or_default(), self.text.get(at..).unwrap_or_default())
+        format!(
+            "{}publish: true{ending}{}",
+            self.text.get(..at).unwrap_or_default(),
+            self.text.get(at..).unwrap_or_default()
+        )
     }
 
     /// `text`, when it reads back with `publish` as `expected`.

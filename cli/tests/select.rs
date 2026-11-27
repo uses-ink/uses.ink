@@ -130,7 +130,10 @@ fn a_folder_is_an_include_entry_and_comments_stay() {
     assert_eq!(text, "include = [\"Notes/**\"]\n# my vault\n[site]\nformat = \"ink:format-markdown\" # plain\n");
 
     let (_, listing, _) = select(&dir, &[]);
-    assert!(row(&listing, "Notes/a.md").contains("selected by the `include` pattern `Notes/**` in ink.toml"), "{listing}");
+    assert!(
+        row(&listing, "Notes/a.md").contains("selected by the `include` pattern `Notes/**` in ink.toml"),
+        "{listing}"
+    );
 
     let (_, again, _) = select(&dir, &["--folder", "Notes/**"]);
     assert!(again.contains("`include` in ink.toml already lists it"), "{again}");
@@ -242,12 +245,18 @@ fn json_is_one_document_with_the_pages_and_the_steps() {
     let written: serde_json::Value = serde_json::from_str(&written).unwrap();
     assert_eq!(written["written"], 1);
     let step = &written["steps"][0];
-    assert_eq!((step["place"].as_str(), step["path"].as_str(), step["outcome"].as_str()), (Some("file"), Some("Private.md"), Some("added")));
+    assert_eq!(
+        (step["place"].as_str(), step["path"].as_str(), step["outcome"].as_str()),
+        (Some("file"), Some("Private.md"), Some("added"))
+    );
 
     let (_, folder, _) = select(&dir, &["--folder", "Notes/**", "--json", "--dry-run"]);
     let folder: serde_json::Value = serde_json::from_str(&folder).unwrap();
     assert_eq!(folder["written"], 0);
     let step = &folder["steps"][0];
-    assert_eq!((step["place"].as_str(), step["pattern"].as_str(), step["outcome"].as_str()), (Some("folder"), Some("Notes/**"), Some("listed")));
+    assert_eq!(
+        (step["place"].as_str(), step["pattern"].as_str(), step["outcome"].as_str()),
+        (Some("folder"), Some("Notes/**"), Some("listed"))
+    );
     assert_eq!(step["matches"], 2);
 }
