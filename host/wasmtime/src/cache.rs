@@ -66,8 +66,8 @@ impl Cache {
         Ok((component, origin))
     }
 
-    #[expect(unsafe_code, reason = "loading a .cwasm is unsafe; decision 0035 allows this one place")]
     /// The cached component at `path`; otherwise how the one compiled instead will have come.
+    #[expect(unsafe_code, reason = "loading a .cwasm is unsafe; decision 0035 allows this one place")]
     fn read(engine: &wasmtime::Engine, seal: &Seal, path: &Path) -> Result<Result<Component, Origin>, Error> {
         let file = match std::fs::read(path) {
             Ok(file) => file,
