@@ -65,6 +65,7 @@ impl Bridge {
         let method = head.method.as_str().parse::<Method>();
         let Ok(method) = method else { return Self::plain(Status::MethodNotAllowed) };
         let path = head.uri.path().to_owned();
+        let query = head.uri.query().map(str::to_owned);
         let limit = self.limits.budget(method, &path);
         let authorization = head.headers.get("authorization").map(|value| value.as_bytes().to_vec());
         let cookie = head.headers.get("cookie").map(|value| value.as_bytes().to_vec());
@@ -76,7 +77,7 @@ impl Bridge {
             Ok(Err(_)) => Payload::Over { limit },
         };
         let (reply, answered) = oneshot::channel();
-        let request = Request { method, path, authorization, cookie, source, body };
+        let request = Request { method, path, query, authorization, cookie, source, body };
         if self.calls.try_send(Call { request, reply }).is_err() {
             return Self::plain(Status::Internal);
         }
@@ -113,7 +114,7 @@ impl Bridge {
             put("content-type", kind);
         }
         if reply.challenge {
-            put("www-authenticate", "Bearer");
+            put("www-authenticate", "Ink-Sig-1");
         }
         if let Some(retry) = reply.retry {
             put("retry-after", &retry.as_secs().to_string());

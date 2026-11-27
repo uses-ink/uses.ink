@@ -1,6 +1,6 @@
 [package]
 name = "uses-ink-edge-api"
-description = "The edge's API and intake: typed routes over the control plane, bearer authentication through a port, and bounded intake of a built folder as a tar archive"
+description = "The edge's API and intake: typed routes over the control plane, signature authentication through a port, and bounded intake of a built folder as a tar archive"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -22,6 +22,7 @@ mail.workspace = true
 model.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sig.workspace = true
 
 [dev-dependencies]
 trace = { workspace = true, features = ["capture"] }

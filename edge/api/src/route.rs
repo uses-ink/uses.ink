@@ -3,7 +3,9 @@
 use std::fmt;
 
 use build::BuildId;
-use control::{Id, IdError, SiteKind};
+use control::keys::Right;
+use control::{EnrolmentKind, Id, IdError, SiteKind};
+use sig::Fingerprint;
 use model::DeployId;
 use serde::Deserialize;
 use serde::de::IntoDeserializer;
@@ -12,7 +14,7 @@ use crate::reply::Method;
 
 /// What a request asks for. Every id is parsed; nothing here is text the control plane would
 /// have to trust.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Call {
     /// `GET /v1/sites`: the caller's sites.
@@ -50,6 +52,16 @@ pub enum Call {
     },
     /// `PUT /v1/sites/{site}/deploy`: a built folder as a tar archive, made a deploy.
     Intake(Id<SiteKind>),
+    /// `POST /v1/enrol`: a key asks to be enrolled. The one call that is not signed.
+    Enrol,
+    /// `GET /v1/enrol/{id}`: the outcome of an ask, signed by the key that asked.
+    Polled(Id<EnrolmentKind>),
+    /// `GET /v1/whoami`: who the signature speaks for and what it may do.
+    Whoami,
+    /// `GET /v1/keys`: the account's keys.
+    Keys,
+    /// `DELETE /v1/keys/{fingerprint}`: revoke a key.
+    Revoke(Fingerprint),
 }
 
 /// A path that is not a route.
@@ -75,6 +87,11 @@ pub enum RouteError {
         /// Why not.
         source: IdError,
     },
+    /// A part of the path should be a key fingerprint and is not.
+    Fingerprint {
+        /// The text.
+        written: String,
+    },
     /// A part of the path should be a build and is not.
     Build {
         /// The text.
@@ -96,6 +113,7 @@ impl fmt::Display for RouteError {
                 write!(out, "{asked} is not taken here, only {}", allowed.join(", "))
             }
             Self::Id { noun, .. } => write!(out, "the {noun} in the path is not an id"),
+            Self::Fingerprint { written } => write!(out, "{written:?} in the path is not a key fingerprint"),
             Self::Build { written } => write!(out, "{written:?} in the path is not a build id"),
             Self::Deploy { written } => write!(out, "{written:?} in the path is not a deploy id"),
         }
@@ -119,13 +137,18 @@ impl Call {
     pub fn parse(method: Method, path: &str) -> Result<Self, RouteError> {
         let parts: Vec<&str> = path.trim_end_matches('/').split('/').skip(1).collect();
         let no_route = || RouteError::NoRoute { path: path.chars().take(200).collect() };
-        let (Some(&"v1"), Some(&"sites")) = (parts.first(), parts.get(1)) else { return Err(no_route()) };
-        let rest = parts.get(2..).unwrap_or_default();
         let by = |allowed: &[(Method, Self)]| {
-            allowed.iter().find(|(known, _)| *known == method).map(|(_, call)| *call).ok_or_else(|| {
+            allowed.iter().find(|(known, _)| *known == method).map(|(_, call)| call.clone()).ok_or_else(|| {
                 RouteError::Method { asked: method, allowed: allowed.iter().map(|(known, _)| *known).collect() }
             })
         };
+        let rest = parts.get(2..).unwrap_or_default();
+        match (parts.first(), parts.get(1)) {
+            (Some(&"v1"), Some(&"sites")) => {}
+            (Some(&"v1"), Some(&"whoami")) if rest.is_empty() => return by(&[(Method::Get, Self::Whoami)]),
+            (Some(&"v1"), Some(&noun @ ("enrol" | "keys"))) => return Self::credentials(noun, rest, &by).ok_or_else(no_route)?,
+            _ => return Err(no_route()),
+        }
         match rest {
             [] => by(&[(Method::Get, Self::Sites), (Method::Post, Self::Add)]),
             [site] => {
@@ -134,6 +157,23 @@ impl Call {
             }
             [site, tail @ ..] => Self::nested(Self::site(site)?, tail, &by).ok_or_else(no_route)?,
         }
+    }
+
+    /// The routes of enrolling and of keys.
+    fn credentials(noun: &str, rest: &[&str], by: &Pick<'_>) -> Option<Result<Self, RouteError>> {
+        Some(match (noun, rest) {
+            ("enrol", []) => by(&[(Method::Post, Self::Enrol)]),
+            ("enrol", [id]) => match id.parse() {
+                Ok(id) => by(&[(Method::Get, Self::Polled(id))]),
+                Err(source) => Err(RouteError::Id { noun: "enrolment", source }),
+            },
+            ("keys", []) => by(&[(Method::Get, Self::Keys)]),
+            ("keys", [print]) => match print.parse() {
+                Ok(print) => by(&[(Method::Delete, Self::Revoke(print))]),
+                Err(_) => Err(RouteError::Fingerprint { written: (*print).to_owned() }),
+            },
+            _ => return None,
+        })
     }
 
     /// The routes under one site: its noun, and what follows.
@@ -154,6 +194,22 @@ impl Call {
             ["export"] => by(&[(Method::Get, Self::Export { site, deploy: None })]),
             ["deploy"] => by(&[(Method::Put, Self::Intake(site))]),
             _ => return None,
+        })
+    }
+
+    /// The right a call needs and the site it is about, when it is about one. `None` for the
+    /// calls that need none: asking to enrol, polling one's own ask, and knowing who one is.
+    pub const fn needs(&self) -> Option<(Right, Option<Id<SiteKind>>)> {
+        Some(match self {
+            Self::Sites => (Right::Read, None),
+            Self::Add => (Right::Edit, None),
+            Self::Status(site) | Self::Deploys(site) | Self::Builds(site) | Self::Log { site, .. } | Self::Export { site, .. } => {
+                (Right::Read, Some(*site))
+            }
+            Self::Remove(site) => (Right::Destroy, Some(*site)),
+            Self::Rollback(site) | Self::Resume(site) | Self::Build(site) | Self::Intake(site) => (Right::Deploy, Some(*site)),
+            Self::Keys | Self::Revoke(_) => (Right::Keys, None),
+            Self::Enrol | Self::Polled(_) | Self::Whoami => return None,
         })
     }
 
@@ -183,6 +239,11 @@ impl trace::Kind for &Call {
             Call::Log { .. } => "log",
             Call::Export { .. } => "export",
             Call::Intake(_) => "intake",
+            Call::Enrol => "enrol",
+            Call::Polled(_) => "polled",
+            Call::Whoami => "whoami",
+            Call::Keys => "keys",
+            Call::Revoke(_) => "revoke",
         }
     }
 }

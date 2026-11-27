@@ -43,6 +43,33 @@ impl fmt::Display for Kind {
     }
 }
 
+/// Text that is no kind of key.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UnknownKind {
+    /// What was written.
+    pub written: String,
+}
+
+impl fmt::Display for UnknownKind {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "`{}` is no kind of key: the kinds are device and deploy", self.written)
+    }
+}
+
+impl std::error::Error for UnknownKind {}
+
+impl std::str::FromStr for Kind {
+    type Err = UnknownKind;
+
+    fn from_str(text: &str) -> Result<Self, UnknownKind> {
+        Self::NAMES
+            .iter()
+            .find(|(name, _)| *name == text)
+            .map(|(_, kind)| *kind)
+            .ok_or_else(|| UnknownKind { written: text.to_owned() })
+    }
+}
+
 /// Why a key stopped working.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -122,6 +149,14 @@ impl Label {
     /// The label.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl std::str::FromStr for Label {
+    type Err = LabelError;
+
+    fn from_str(text: &str) -> Result<Self, LabelError> {
+        Self::parse(text)
     }
 }
 

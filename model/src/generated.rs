@@ -480,7 +480,7 @@ pub enum Problem {
         /// The request target as it was sent: the path and the query.
         request_target: String,
     },
-    /// `auth.signature.skewed`: the request's time is {skew} seconds from the server's ({server_time}), over the allowed {window}
+    /// `auth.signature.skewed`: the request's time is {skew} seconds from the server's (`{server_time}`), over the allowed {window}
     #[serde(rename = "auth.signature.skewed")]
     AuthSignatureSkewed {
         /// How many seconds the request's time is from the server's.
@@ -563,6 +563,12 @@ pub enum Problem {
     /// `auth.enrolment.taken`: that key is already enrolled or waiting for approval
     #[serde(rename = "auth.enrolment.taken")]
     AuthEnrolmentTaken,
+    /// `auth.key.unknown`: no key of this account has that fingerprint
+    #[serde(rename = "auth.key.unknown")]
+    AuthKeyUnknown,
+    /// `auth.enrolment.refused`: the server refused the enrolment
+    #[serde(rename = "auth.enrolment.refused")]
+    AuthEnrolmentRefused,
     /// `auth.key.operator`: that key is a line of the operator-keys file, which the API does not change
     #[serde(rename = "auth.key.operator")]
     AuthKeyOperator,
@@ -720,6 +726,8 @@ impl Problem {
         "auth.enrolment.rights",
         "auth.enrolment.mismatch",
         "auth.enrolment.taken",
+        "auth.key.unknown",
+        "auth.enrolment.refused",
         "auth.key.operator",
         "auth.key.print-refused",
         "plugin.value.unmirrored",
@@ -819,6 +827,8 @@ impl Problem {
             Self::AuthEnrolmentRights => "auth.enrolment.rights",
             Self::AuthEnrolmentMismatch => "auth.enrolment.mismatch",
             Self::AuthEnrolmentTaken => "auth.enrolment.taken",
+            Self::AuthKeyUnknown => "auth.key.unknown",
+            Self::AuthEnrolmentRefused => "auth.enrolment.refused",
             Self::AuthKeyOperator => "auth.key.operator",
             Self::AuthKeyPrintRefused => "auth.key.print-refused",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
@@ -919,6 +929,8 @@ impl Problem {
             Self::AuthEnrolmentRights => Severity::Error,
             Self::AuthEnrolmentMismatch => Severity::Error,
             Self::AuthEnrolmentTaken => Severity::Error,
+            Self::AuthKeyUnknown => Severity::Error,
+            Self::AuthEnrolmentRefused => Severity::Error,
             Self::AuthKeyOperator => Severity::Error,
             Self::AuthKeyPrintRefused => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
@@ -1019,6 +1031,8 @@ impl Problem {
             Self::AuthEnrolmentRights => Fault::Author,
             Self::AuthEnrolmentMismatch => Fault::Source,
             Self::AuthEnrolmentTaken => Fault::Author,
+            Self::AuthKeyUnknown => Fault::Author,
+            Self::AuthEnrolmentRefused => Fault::Author,
             Self::AuthKeyOperator => Fault::Operator,
             Self::AuthKeyPrintRefused => Fault::Author,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
@@ -1289,7 +1303,7 @@ pub enum Announcement {
         /// The most that is allowed.
         limit: Bytes,
     },
-    /// `auth.token.retired`: the owner token in {token_file} no longer works
+    /// `auth.token.retired`: the owner token in `{token_file}` no longer works
     #[serde(rename = "auth.token.retired")]
     AuthTokenRetired {
         /// The file that holds the retired owner token.
@@ -1616,6 +1630,8 @@ impl From<&Problem> for Coded {
             Problem::AuthEnrolmentRights => Coded::new("auth.enrolment.rights", vec![]),
             Problem::AuthEnrolmentMismatch => Coded::new("auth.enrolment.mismatch", vec![]),
             Problem::AuthEnrolmentTaken => Coded::new("auth.enrolment.taken", vec![]),
+            Problem::AuthKeyUnknown => Coded::new("auth.key.unknown", vec![]),
+            Problem::AuthEnrolmentRefused => Coded::new("auth.enrolment.refused", vec![]),
             Problem::AuthKeyOperator => Coded::new("auth.key.operator", vec![]),
             Problem::AuthKeyPrintRefused => Coded::new("auth.key.print-refused", vec![]),
             Problem::PluginValueUnmirrored { reason, .. } => {
@@ -1754,6 +1770,8 @@ impl TryFrom<Coded> for Problem {
             "auth.enrolment.rights" => Self::AuthEnrolmentRights,
             "auth.enrolment.mismatch" => Self::AuthEnrolmentMismatch,
             "auth.enrolment.taken" => Self::AuthEnrolmentTaken,
+            "auth.key.unknown" => Self::AuthKeyUnknown,
+            "auth.enrolment.refused" => Self::AuthEnrolmentRefused,
             "auth.key.operator" => Self::AuthKeyOperator,
             "auth.key.print-refused" => Self::AuthKeyPrintRefused,
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },

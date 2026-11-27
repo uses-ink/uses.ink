@@ -1,5 +1,7 @@
 //! What the API answers with, as typed values that serialize.
 
+use std::collections::BTreeMap;
+
 use build::{BuildId, Source, Trigger};
 use control::{AccountKind, Deploy, Id, Job, JobState, Live, Receipt, Recorded, Site, SiteKind, SiteState};
 use jiff::Timestamp;
@@ -268,4 +270,113 @@ pub struct Problem {
     pub message: String,
     /// Each cause below it, outermost first. Empty for a failure of the server's own.
     pub causes: Vec<String>,
+    /// The data of the refusal, under the names of the diagnostic catalog; empty for most.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub fields: BTreeMap<&'static str, String>,
+}
+
+/// An enrolment taken: what the requester shows the person, and where to poll.
+#[derive(Debug, Serialize)]
+pub struct Enrolled {
+    /// The id to poll.
+    pub id: control::Id<control::EnrolmentKind>,
+    /// The code the person types, as `BCDF-GHJK`.
+    pub user_code: String,
+    /// The fingerprint both sides show.
+    pub fingerprint: String,
+    /// When the ask ends if nobody approves it.
+    pub expires: Timestamp,
+}
+
+/// Where an enrolment stands.
+#[derive(Debug, Serialize)]
+pub struct Polled {
+    /// `pending` or `approved`; a denied or expired ask is an error answer.
+    pub state: &'static str,
+    /// When the key ends, once approved.
+    pub expires: Option<Timestamp>,
+}
+
+/// Where a grant applies.
+#[derive(Debug, Serialize)]
+pub struct GrantView {
+    /// `account` or `site`.
+    pub scope: &'static str,
+    /// The account or site.
+    pub id: String,
+    /// The rights, by name.
+    pub rights: Vec<&'static str>,
+}
+
+impl From<&control::keys::Grant> for GrantView {
+    fn from(grant: &control::keys::Grant) -> Self {
+        let (scope, id) = match grant.scope {
+            control::keys::Scope::Account(account) => ("account", account.to_string()),
+            control::keys::Scope::Site(site) => ("site", site.to_string()),
+            _ => ("unknown", String::new()),
+        };
+        Self { scope, id, rights: grant.rights.iter().map(control::keys::Right::name).collect() }
+    }
+}
+
+/// Who a signature speaks for.
+#[derive(Debug, Serialize)]
+pub struct Whoami {
+    /// The account.
+    pub account: Id<AccountKind>,
+    /// `operator`, `device` or `deploy`.
+    pub kind: &'static str,
+    /// The key's fingerprint, for a key of the database.
+    pub fingerprint: Option<String>,
+    /// The key's label.
+    pub label: String,
+    /// What it holds.
+    pub grants: Vec<GrantView>,
+    /// When it ends, when it does.
+    pub expires: Option<Timestamp>,
+}
+
+/// A key, as a listing shows it. It has no secret and no public key.
+#[derive(Debug, Serialize)]
+pub struct KeyView {
+    /// The fingerprint.
+    pub fingerprint: String,
+    /// `device` or `deploy`.
+    pub kind: &'static str,
+    /// The label.
+    pub label: String,
+    /// What it holds.
+    pub grant: GrantView,
+    /// When it was approved.
+    pub created: Timestamp,
+    /// When it ends.
+    pub expires: Timestamp,
+    /// The last day it was used: a date and nothing finer.
+    pub last_used: Option<String>,
+    /// When and why it was revoked, if it was.
+    pub revoked: Option<Revoked>,
+}
+
+/// A key's end by revocation.
+#[derive(Debug, Serialize)]
+pub struct Revoked {
+    /// When.
+    pub at: Timestamp,
+    /// `revoked` or `logged-out`.
+    pub why: &'static str,
+}
+
+impl From<&control::keys::Key> for KeyView {
+    fn from(key: &control::keys::Key) -> Self {
+        Self {
+            fingerprint: key.id.fingerprint().to_string(),
+            kind: key.kind.name(),
+            label: key.label.to_string(),
+            grant: GrantView::from(&key.grant),
+            created: key.created,
+            expires: key.expires,
+            last_used: key.last_used.map(|day| day.to_string()),
+            revoked: key.revoked.map(|(at, why)| Revoked { at, why: why.name() }),
+        }
+    }
 }

@@ -88,6 +88,7 @@ impl<D: Db> Keys<D> {
 
     /// Makes a pending enrolment, after sweeping ones that ended. Asking again with the same key
     /// replaces its earlier ask. A key that is already enrolled is refused.
+    #[expect(clippy::too_many_lines, reason = "one transaction, its statements read top to bottom")]
     pub async fn enrol(&self, new: NewEnrolment) -> Result<Enrolment, Error<D::Error>> {
         let lifetime = new.lifetime.unwrap_or(match new.purpose {
             Kind::Device => self.settings.device,
@@ -113,7 +114,7 @@ impl<D: Db> Keys<D> {
         if self.key(key).await?.is_some() {
             return Err(Refused::KeyTaken.into());
         }
-        if self.by_code(&new.code).await?.is_some() {
+        if self.by_code(&new.code).await?.is_some_and(|held| held.expires > new.at) {
             return Err(Refused::CodeTaken.into());
         }
         let expires = self.settings.enrol.after(new.at)?;
@@ -141,6 +142,11 @@ impl<D: Db> Keys<D> {
             .from_table(table::Enrolment::Table)
             .and_where(Expr::col(table::Enrolment::KeyId).eq(key.to_string()))
             .and_where(Expr::col(table::Enrolment::State).ne(State::Approved.name()))
+            .to_owned();
+        let expired = Query::delete()
+            .from_table(table::Enrolment::Table)
+            .and_where(Expr::col(table::Enrolment::UserCode).eq(row.code.as_str().to_owned()))
+            .and_where(Expr::col(table::Enrolment::ExpiresAt).lte(new.at.as_millisecond()))
             .to_owned();
         let insert = Query::insert()
             .into_table(table::Enrolment::Table)
@@ -175,7 +181,7 @@ impl<D: Db> Keys<D> {
                 Expr::val(row.expires.as_millisecond()),
             ])?
             .to_owned();
-        match self.db.batch(vec![sweep.into(), replace.into(), insert.into()]).await {
+        match self.db.batch(vec![sweep.into(), replace.into(), expired.into(), insert.into()]).await {
             Ok(_) => Ok(row),
             Err(error) if error.constraint() == Some(Constraint::Unique) => Err(Refused::KeyTaken.into()),
             Err(error) => Err(error.into()),
@@ -242,6 +248,7 @@ impl<D: Db> Keys<D> {
 
     /// Approves the enrolment under the code: the key goes live and an event is written, or
     /// nothing changes.
+    #[expect(clippy::too_many_lines, reason = "one transaction, its statements read top to bottom")]
     pub async fn approve(&self, approval: Approval, now: Timestamp) -> Result<Key, Error<D::Error>> {
         let found = self.by_code(&approval.code).await?;
         let found = found.filter(|found| found.state == State::Pending && found.expires > now).ok_or(Refused::NoEnrolment)?;
@@ -424,11 +431,11 @@ impl<D: Db> Keys<D> {
     /// nothing. Who may ask is the caller's to decide.
     pub async fn revoke(
         &self,
-        account: Id<AccountKind>,
-        fingerprint: &Fingerprint,
+        whose: (Id<AccountKind>, &Fingerprint),
         why: Why,
         now: Timestamp,
     ) -> Result<Key, Error<D::Error>> {
+        let (account, fingerprint) = whose;
         let keys = self.list(account).await?;
         let found = keys.into_iter().find(|key| key.id.fingerprint() == *fingerprint && key.revoked.is_none());
         let key = found.ok_or(Refused::NoKey)?;

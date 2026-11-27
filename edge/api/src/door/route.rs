@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use control::keys::UserCode;
 use control::signin::Proof;
 
 use crate::reply::Method;
@@ -22,6 +23,13 @@ pub enum Enter {
     Show,
     /// `DELETE /v1/session`: end it.
     End,
+    /// `GET /v1/approve/{code}`: what a person is asked to approve: the fingerprint, the label
+    /// and the rights. The code is the 8 letters the requester shows.
+    Seeing(Option<UserCode>),
+    /// `POST /v1/approve/{code}`: approve it, naming the fingerprint compared.
+    Approving(Option<UserCode>),
+    /// `DELETE /v1/approve/{code}`: turn it down.
+    Declining(Option<UserCode>),
 }
 
 /// A method a sign-in route does not take.
@@ -47,6 +55,8 @@ impl Enter {
     const LOGIN: &'static str = "/v1/login";
     /// The session's path.
     const SESSION: &'static str = "/v1/session";
+    /// The path under which an enrolment's code is the last segment.
+    const APPROVE: &'static str = "/v1/approve";
 
     /// The parts of a path of these routes: `None` when the path is not one of them.
     fn parts(path: &str) -> Option<(&str, Option<&str>)> {
@@ -54,8 +64,10 @@ impl Enter {
         if path == Self::LOGIN || path == Self::SESSION {
             return Some((path, None));
         }
-        let token = path.strip_prefix(Self::LOGIN)?.strip_prefix('/')?;
-        (!token.contains('/') && !token.is_empty()).then_some((Self::LOGIN, Some(token)))
+        let (base, token) = [Self::LOGIN, Self::APPROVE]
+            .into_iter()
+            .find_map(|base| Some((base, path.strip_prefix(base)?.strip_prefix('/')?)))?;
+        (!token.contains('/') && !token.is_empty()).then_some((base, Some(token)))
     }
 
     /// Whether `path` is one of the sign-in routes, whatever the method.
@@ -67,7 +79,13 @@ impl Enter {
     pub fn parse(method: Method, path: &str) -> Option<Result<Self, EnterError>> {
         let (base, token) = Self::parts(path)?;
         let proof = || token.and_then(|text| text.parse::<Proof>().ok());
+        let code = || token.and_then(|text| text.parse::<UserCode>().ok());
         let table: Vec<(Method, Self)> = match (base, token) {
+            (Self::APPROVE, _) => vec![
+                (Method::Get, Self::Seeing(code())),
+                (Method::Post, Self::Approving(code())),
+                (Method::Delete, Self::Declining(code())),
+            ],
             (Self::LOGIN, None) => vec![(Method::Post, Self::Ask)],
             (Self::LOGIN, Some(_)) => vec![(Method::Get, Self::Look(proof())), (Method::Post, Self::Redeem(proof()))],
             _ => vec![(Method::Get, Self::Show), (Method::Delete, Self::End)],
@@ -84,8 +102,11 @@ impl Enter {
 
     /// `path` as it may be logged: the token of a link is cut out.
     pub fn redact(path: &str) -> String {
-        match path.strip_prefix(Self::LOGIN).and_then(|rest| rest.strip_prefix('/')).filter(|rest| !rest.is_empty()) {
-            Some(_) => format!("{}/<redacted>", Self::LOGIN),
+        let secret = [Self::LOGIN, Self::APPROVE].into_iter().find(|base| {
+            path.strip_prefix(*base).and_then(|rest| rest.strip_prefix('/')).is_some_and(|rest| !rest.is_empty())
+        });
+        match secret {
+            Some(base) => format!("{base}/<redacted>"),
             None => path.to_owned(),
         }
     }

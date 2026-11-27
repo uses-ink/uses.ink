@@ -148,11 +148,11 @@ fn a_key_is_revoked_once_with_its_event_and_last_use_is_a_date() {
     assert_eq!(listed[0].last_used, Some(today));
 
     let print = key.id.fingerprint();
-    let revoked = world.run(keys.revoke(account, &print, Why::Revoked, at(40))).unwrap();
+    let revoked = world.run(keys.revoke((account, &print), Why::Revoked, at(40))).unwrap();
     assert_eq!(revoked.state(at(41)), State::Revoked { at: at(40), why: Why::Revoked });
-    assert_eq!(world.run(keys.revoke(account, &print, Why::Revoked, at(41))).unwrap_err().refusal(), Some(&Refused::NoKey));
+    assert_eq!(world.run(keys.revoke((account, &print), Why::Revoked, at(41))).unwrap_err().refusal(), Some(&Refused::NoKey));
     let other = world.site("wild").account;
-    assert_eq!(world.run(keys.revoke(other, &print, Why::Revoked, at(41))).unwrap_err().refusal(), Some(&Refused::NoKey));
+    assert_eq!(world.run(keys.revoke((other, &print), Why::Revoked, at(41))).unwrap_err().refusal(), Some(&Refused::NoKey));
     let names: Vec<String> = world.run(keys.events(account, 10)).unwrap().into_iter().map(|e| e.name).collect();
     assert_eq!(names, ["key.revoked", "key.approved"]);
     assert_eq!(world.run(keys.key(key.id)).unwrap().unwrap().state(at(41)), State::Revoked { at: at(40), why: Why::Revoked });

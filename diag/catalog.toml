@@ -540,7 +540,7 @@ fix = "escape with upper-case hex, sort the query, drop empty pairs; `ink` does 
 severity = "error"
 fault = "source"
 fields = { skew = "count", window = "count", server_time = "text" }
-message = "the request's time is {skew} seconds from the server's ({server_time}), over the allowed {window}"
+message = "the request's time is {skew} seconds from the server's (`{server_time}`), over the allowed {window}"
 fix = "set this machine's clock, for example `timedatectl set-ntp true`"
 
 [diagnostic."auth.signature.refused"]
@@ -645,6 +645,18 @@ severity = "error"
 fault = "author"
 message = "that key is already enrolled or waiting for approval"
 fix = "use the key you have, or run `ink logout` and `ink login` for a new one"
+
+[diagnostic."auth.key.unknown"]
+severity = "error"
+fault = "author"
+message = "no key of this account has that fingerprint"
+fix = "list the keys with `ink key list`"
+
+[diagnostic."auth.enrolment.refused"]
+severity = "error"
+fault = "author"
+message = "the server refused the enrolment"
+fix = "run `ink login` again"
 
 [diagnostic."auth.key.operator"]
 severity = "error"
@@ -887,5 +899,5 @@ message = "{count} cache entries used longest ago were removed, keeping the cach
 
 [notice."auth.token.retired"]
 fields = { token_file = "text" }
-message = "the owner token in {token_file} no longer works"
+message = "the owner token in `{token_file}` no longer works"
 fix = "sign in with `ink login --data <folder>`, and delete the file"

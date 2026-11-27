@@ -68,6 +68,8 @@ pub struct Request {
     pub method: Method,
     /// The path, without its query, as received.
     pub path: String,
+    /// The query, without its `?`, as received.
+    pub query: Option<String>,
     /// The `Authorization` header's value, if there was one. Never printed.
     pub authorization: Option<Vec<u8>>,
     /// The `Cookie` header's value, if there was one. Never printed.
@@ -85,11 +87,23 @@ impl fmt::Debug for Request {
         out.debug_struct("Request")
             .field("method", &self.method)
             .field("path", &Enter::redact(&self.path))
+            .field("query", &self.query)
             .field("authorization", &held(&self.authorization))
             .field("cookie", &held(&self.cookie))
             .field("source", &self.source)
             .field("body", &self.body)
             .finish()
+    }
+}
+
+impl Request {
+    /// The request target as it is signed: the path and, when there is one, `?` and the query.
+    /// It is refused unless it is canonical.
+    pub fn target(&self) -> Result<sig::Target, sig::NotCanonical> {
+        match &self.query {
+            Some(query) => sig::Target::parse(&format!("{}?{query}", self.path)),
+            None => sig::Target::parse(&self.path),
+        }
     }
 }
 
@@ -118,8 +132,10 @@ pub enum Status {
     Accepted,
     /// `400`: the request is malformed.
     BadRequest,
-    /// `401`: no valid token.
+    /// `401`: no valid credential.
     Unauthorized,
+    /// `403`: the credential is good and may not do this.
+    Forbidden,
     /// `404`: nothing is there, or it is not the caller's.
     NotFound,
     /// `405`.
@@ -136,6 +152,8 @@ pub enum Status {
     Unprocessable,
     /// `500`.
     Internal,
+    /// `503`: not now; `Retry-After` says when.
+    Unavailable,
 }
 
 impl Status {
@@ -147,6 +165,7 @@ impl Status {
             Self::Accepted => 202,
             Self::BadRequest => 400,
             Self::Unauthorized => 401,
+            Self::Forbidden => 403,
             Self::NotFound => 404,
             Self::MethodNotAllowed => 405,
             Self::Timeout => 408,
@@ -155,6 +174,7 @@ impl Status {
             Self::Unprocessable => 422,
             Self::TooMany => 429,
             Self::Internal => 500,
+            Self::Unavailable => 503,
         }
     }
 }
@@ -197,11 +217,11 @@ pub struct Reply {
     pub body: Vec<u8>,
     /// The methods the route takes, for a `405`.
     pub allow: Vec<Method>,
-    /// Whether the answer asks for a bearer token (`WWW-Authenticate`), for a `401`.
+    /// Whether the answer names the scheme it takes (`WWW-Authenticate: Ink-Sig-1`).
     pub challenge: bool,
     /// The cookie to set, for a sign-in or a sign-out.
     pub cookie: Option<Cookie>,
-    /// How long to wait before asking again (`Retry-After`), for a `429`.
+    /// How long to wait before asking again (`Retry-After`), for a `429` or a `503`.
     pub retry: Option<Duration>,
 }
 

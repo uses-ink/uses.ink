@@ -26,7 +26,7 @@ mod store;
 pub use audit::{Audit, Entry as Event};
 pub use enrol::{Enrolment, NewEnrolment, Poll, Seen, State as EnrolmentState, UserCode, UserCodeError};
 pub use error::{Error, Refused};
-pub use key::{Key, Kind, Label, LabelError, State, Why};
+pub use key::{Key, Kind, Label, LabelError, State, UnknownKind, Why};
 pub use migration::Entry;
 pub use right::{Effective, Grant, Grants, Right, Rights, Scope, Target, UnknownRight};
 pub use store::{Approval, Keys, Settings};

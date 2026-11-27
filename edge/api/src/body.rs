@@ -147,3 +147,34 @@ mod test {
         assert_eq!(Source::from(Unreadable::read::<AddSite>(upload).unwrap().source), Source::Upload);
     }
 }
+
+/// `POST /v1/enrol`: a key asking to be enrolled. The key is the public half of a pair the
+/// requester made; the private half never leaves its machine. The key type is the server's:
+/// one today, `ed25519-v1`.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Enrolling {
+    /// The public key, 43 characters of unpadded base64url.
+    pub key: Parsed<sig::PublicKey>,
+    /// What the person will see beside the fingerprint, such as `laptop`.
+    pub label: Parsed<control::keys::Label>,
+    /// `device` or `deploy`.
+    pub purpose: Parsed<control::keys::Kind>,
+    /// The site of a deploy key.
+    #[serde(default)]
+    pub site: Option<Parsed<control::Id<control::SiteKind>>>,
+    /// The rights asked for, as `read,deploy`; the kind's defaults when absent.
+    #[serde(default)]
+    pub rights: Option<Parsed<control::keys::Rights>>,
+    /// How long the key lives, as `90d`; the kind's default when absent.
+    #[serde(default)]
+    pub lifetime: Option<Parsed<control::signin::Ttl>>,
+}
+
+/// `POST /v1/approve/{code}`: the person says what they compared.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Approve {
+    /// The fingerprint they read on both screens.
+    pub fingerprint: Parsed<sig::Fingerprint>,
+}

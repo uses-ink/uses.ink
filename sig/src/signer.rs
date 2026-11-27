@@ -108,9 +108,9 @@ mod test {
         let signer = Signer::from_seed(&seed);
         assert_eq!(signer.public().bytes(), &hex::<32>("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"));
         let signature = signer.key.sign(b"");
-        let expected = hex::<64>(concat!(
-            "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b"
-        ));
+        let expected = hex::<64>(
+            "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b",
+        );
         assert_eq!(signature.to_bytes(), expected);
     }
 

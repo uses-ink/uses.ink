@@ -25,6 +25,6 @@ mod target;
 pub use base::{Base64, Crockford, Undecodable};
 pub use covered::{Audience, AudienceError, Covered, Method, MethodError};
 pub use key::{Fingerprint, FingerprintError, KeyError, KeyId, KeyText, KeyType, PublicKey, Seed, UnknownKeyType};
-pub use signed::{Created, CreatedError, Digest, Field, Malformed, Nonce, Signature, Signed, Skew, Tampered};
-pub use signer::{Parts, Signer, Verifying};
+pub use signed::{Claim, Created, CreatedError, Digest, Field, Malformed, Nonce, Signature, Signed, Skew, Tampered};
+pub use signer::{Forged, Parts, Signer, Verifying};
 pub use target::{NotCanonical, Target};

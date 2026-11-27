@@ -329,7 +329,7 @@ struct Cursor<'a> {
     at: usize,
 }
 
-impl<'a> Cursor<'a> {
+impl Cursor<'_> {
     fn literal(&mut self, expected: &str) -> bool {
         let found = self.text.get(self.at..).is_some_and(|rest| rest.starts_with(expected));
         if found {

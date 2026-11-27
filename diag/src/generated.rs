@@ -231,7 +231,7 @@ impl Message<'_> {
             Problem::AuthSignatureSkewed { skew, server_time, window, .. } => {
                 write!(
                     out,
-                    "the request's time is {skew} seconds from the server's ({server_time}), over the allowed {window}"
+                    "the request's time is {skew} seconds from the server's (`{server_time}`), over the allowed {window}"
                 )
             }
             Problem::AuthSignatureRefused => {
@@ -279,6 +279,12 @@ impl Message<'_> {
             }
             Problem::AuthEnrolmentTaken => {
                 write!(out, "that key is already enrolled or waiting for approval")
+            }
+            Problem::AuthKeyUnknown => {
+                write!(out, "no key of this account has that fingerprint")
+            }
+            Problem::AuthEnrolmentRefused => {
+                write!(out, "the server refused the enrolment")
             }
             Problem::AuthKeyOperator => {
                 write!(out, "that key is a line of the operator-keys file, which the API does not change")
@@ -472,7 +478,7 @@ impl Message<'_> {
                 write!(out, "{count} cache entries used longest ago were removed, keeping the cache under {limit}")
             }
             Announcement::AuthTokenRetired { token_file, .. } => {
-                write!(out, "the owner token in {token_file} no longer works")
+                write!(out, "the owner token in `{token_file}` no longer works")
             }
         }
     }
@@ -565,6 +571,8 @@ impl Fix<'_> {
             Problem::AuthEnrolmentRights => true,
             Problem::AuthEnrolmentMismatch => true,
             Problem::AuthEnrolmentTaken => true,
+            Problem::AuthKeyUnknown => true,
+            Problem::AuthEnrolmentRefused => true,
             Problem::AuthKeyOperator => true,
             Problem::AuthKeyPrintRefused => true,
             Problem::PluginValueUnmirrored { .. } => true,
@@ -867,6 +875,8 @@ impl Fix<'_> {
             Problem::AuthEnrolmentTaken => {
                 write!(out, "use the key you have, or run `ink logout` and `ink login` for a new one")
             }
+            Problem::AuthKeyUnknown => write!(out, "list the keys with `ink key list`"),
+            Problem::AuthEnrolmentRefused => write!(out, "run `ink login` again"),
             Problem::AuthKeyOperator => {
                 write!(out, "delete its line from `<data>/operator-keys`")
             }

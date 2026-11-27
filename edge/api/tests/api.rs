@@ -11,75 +11,29 @@
 
 extern crate uses_ink_edge_api as edge_api;
 
-use std::sync::Arc;
+mod support;
 
-use blob_dir::Directory;
-use clock::{Counter, Manual};
-use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Remembered};
-use db::Steps;
-use db_sqlite::Sqlite;
+use control::{AccountKind, Control, Id, NewAccount};
 use edge_api::tar::Writer;
-use edge_api::{Api, Limits, Method, Owner, Payload, Reply, Request, Status, Token};
-use jiff::Timestamp;
+use edge_api::{Limits, Method, Payload, Status};
 use model::{Hash, Manifest, MediaType, Route, Served};
-use queue_local::{Local as Queue, Queued};
-use secret_local::Local as Sealer;
 use serde_json::{Value, json};
+use support::{Ports, Rig, start};
 
-type Ports = (Arc<Sqlite>, Directory, Queue<Arc<Sqlite>>, Sealer);
-type Wired = Api<Ports, Owner, Manual, Counter>;
+/// The rig, as the operator calls it.
+struct Fixture(Rig);
 
-/// An API with an owner, and the folder its blobs are in.
-struct Fixture {
-    api: Wired,
-    token: String,
-    account: Id<AccountKind>,
-    _folder: tempfile::TempDir,
-}
+impl std::ops::Deref for Fixture {
+    type Target = Rig;
 
-fn start() -> Timestamp {
-    Timestamp::from_second(1_800_000_000).unwrap()
+    fn deref(&self) -> &Rig {
+        &self.0
+    }
 }
 
 impl Fixture {
     fn new(limits: Limits) -> Self {
-        let folder = tempfile::tempdir().unwrap();
-        let db = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Remembered>().unwrap().with::<Queued>().unwrap();
-        pollster::block_on(steps.apply(&db)).unwrap();
-        let ports = (
-            db.clone(),
-            Directory::open(folder.path().join("blobs")).unwrap(),
-            Queue::new(db),
-            Sealer::ephemeral().unwrap(),
-        );
-        let origin = Origin::try_from(&model::ExternalUrl::parse("https://uses.ink").unwrap()).unwrap();
-        let control = Control::new(ports, origin);
-        let account = Id::from_bytes([9; 16]);
-        pollster::block_on(control.add_account(NewAccount { id: account, at: start() })).unwrap();
-        let token = Token::from("a-token-only-the-owner-holds");
-        let owner = Owner::new(account, &token);
-        let api = Api::new(control, owner, (Manual::new(start(), 0), Counter::new()), limits);
-        Self { api, token: token.reveal().to_owned(), account, _folder: folder }
-    }
-
-    fn send(&self, (method, path): (Method, &str), authorization: Option<&str>, body: Payload) -> Reply {
-        let request = Request {
-            method,
-            path: path.to_owned(),
-            authorization: authorization.map(|token| format!("Bearer {token}").into_bytes()),
-            cookie: None,
-            source: None,
-            body,
-        };
-        pollster::block_on(self.api.respond(&request))
-    }
-
-    /// A call as the owner, with its JSON answer.
-    fn call(&self, method: Method, path: &str, body: &[u8]) -> (Reply, Value) {
-        let reply = self.send((method, path), Some(&self.token), Payload::Whole(body.to_vec()));
-        let value = serde_json::from_slice(&reply.body).unwrap_or(Value::Null);
-        (reply, value)
+        Self(Rig::new(limits))
     }
 
     /// Adds a site as the owner and returns its id.
@@ -130,24 +84,15 @@ fn built(pages: &[(&str, &str)]) -> Vec<u8> {
 }
 
 #[test]
-fn every_call_needs_the_owner_token() {
+fn every_call_needs_a_signature() {
     let fixture = Fixture::new(Limits::default());
-    let none = fixture.send((Method::Get, "/v1/sites"), None, Payload::Whole(vec![]));
-    assert_eq!((none.status, none.challenge), (Status::Unauthorized, true));
-    let wrong = fixture.send((Method::Get, "/v1/sites"), Some("not the token"), Payload::Whole(vec![]));
-    assert_eq!(wrong.status, Status::Unauthorized);
-    let basic = Request {
-        method: Method::Get,
-        path: "/v1/sites".into(),
-        authorization: Some(b"Basic abc".to_vec()),
-        cookie: None,
-        source: None,
-        body: Payload::Whole(vec![]),
-    };
-    assert_eq!(pollster::block_on(fixture.api.respond(&basic)).status, Status::Unauthorized);
-    // a path that is no route is not told to a caller with no token
-    let hidden = fixture.send((Method::Get, "/nothing/here"), None, Payload::Whole(vec![]));
-    assert_eq!(hidden.status, Status::Unauthorized);
+    let none = fixture.answer(&Rig::unsigned((Method::Get, "/v1/sites"), None, b""));
+    assert_eq!((none.status, none.challenge), (Status::BadRequest, true));
+    let basic = fixture.answer(&Rig::unsigned((Method::Get, "/v1/sites"), Some(b"Bearer abc".to_vec()), b""));
+    assert_eq!(basic.status, Status::BadRequest);
+    // a path that is no route is not told to a caller with no signature
+    let hidden = fixture.answer(&Rig::unsigned((Method::Get, "/nothing/here"), None, b""));
+    assert_eq!(hidden.status, Status::BadRequest);
     let (listed, value) = fixture.call(Method::Get, "/v1/sites", b"");
     assert_eq!((listed.status, value["items"].as_array().unwrap().len()), (Status::Ok, 0));
 }
@@ -301,7 +246,9 @@ fn routes_say_what_they_take() {
     let (bad, problem) = fixture.call(Method::Get, "/v1/sites/not-an-id", b"");
     assert_eq!((bad.status, problem["problem"].as_str()), (Status::BadRequest, Some("route")));
     let (over, problem) = {
-        let reply = fixture.send((Method::Post, "/v1/sites"), Some(&fixture.token), Payload::Over { limit: 65536 });
+        let mut request = fixture.request(&fixture.operator, (Method::Post, "/v1/sites"), b"");
+        request.body = Payload::Over { limit: 65536 };
+        let reply = fixture.answer(&request);
         let value = serde_json::from_slice::<Value>(&reply.body).unwrap();
         (reply, value)
     };

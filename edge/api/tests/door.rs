@@ -1,5 +1,5 @@
-//! Signing in over the API: one reply for every address, single-use links, the session as bearer
-//! and as cookie, revocation, rate limits, and no secret in anything that prints.
+//! Signing in over the API: one reply for every address, single-use links, the session as a cookie
+//! and revocation, rate limits, and no secret in anything that prints.
 
 #![allow(
     clippy::unwrap_used,
@@ -22,7 +22,8 @@ use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::door::{Config, Courier, Note, Notes, Outbox, Rates};
 use edge_api::{
-    Answers, Api, Door, Either, Jar, Limits, Method, Owner, Payload, Reply, Request, Routed, Sessions, Status, Token,
+    Answers, Api, Closing, Door, Enrol, Jar, Limits, Method, NoOperators, Payload, Reply, Request, Routed, Signatures,
+    Signing, Status,
 };
 use jiff::Timestamp;
 use mail::{Base, Capture};
@@ -33,7 +34,7 @@ use serde_json::{Value, json};
 type Store = Arc<Sqlite>;
 type Ports = (Store, Directory, Queue<Store>, Sealer);
 type Front = Routed<
-    Api<Ports, Either<Owner, Sessions<Store, &'static Manual>>, &'static Manual, Counter>,
+    Api<Ports, Signatures<Store, &'static Manual, NoOperators>, &'static Manual, Counter>,
     Door<Store, &'static Manual, Counter>,
 >;
 
@@ -87,7 +88,7 @@ impl Fixture {
     fn new(wanted: Wanted) -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db: Store = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap().with::<Entry>().unwrap();
+        let steps = Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap().with::<Entry>().unwrap().with::<control::keys::Entry>().unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
             db.clone(),
@@ -100,9 +101,11 @@ impl Fixture {
         let mail: &'static Capture = Box::leak(Box::new(Capture::new()));
         let outbox = Outbox::new(wanted.capacity);
         let entry = SignIn::new(db.clone(), wanted.settings);
-        let owner = Owner::new(control::Id::from_bytes([9; 16]), &Token::from("owner-token"));
-        let credentials = Either(owner, Sessions::new(entry.clone(), clock));
-        let api = Api::new(Control::new(ports, origin), credentials, (clock, Counter::new()), Limits::default());
+        let enrol = Enrol::new(db.clone(), control::keys::Settings::default(), Closing::default());
+        let audience = sig::Audience::parse("api.example").unwrap();
+        let config = Signing::new(audience, control::Id::from_bytes([9; 16]));
+        let signatures = Signatures::new(enrol.keys().clone(), (clock, NoOperators), config);
+        let api = Api::new(Control::new(ports, origin), (signatures, enrol.clone()), (clock, Counter::new()), Limits::default());
         let config = Config {
             jar: Jar::new(None, "/", wanted.secure).unwrap(),
             base: BASE.parse::<Base>().unwrap(),
@@ -110,7 +113,7 @@ impl Fixture {
             outbox: outbox.clone(),
             reveals: wanted.reveals,
         };
-        let door = Door::new(entry.clone(), (clock, Counter::new()), config);
+        let door = Door::new(entry.clone(), (clock, Counter::new()), enrol, config);
         let courier = Courier::new(outbox.clone(), mail, clock, Duration::from_secs(1));
         Self { front: Routed::new(api, door), clock, mail, courier, entry, outbox, _folder: folder }
     }
@@ -119,7 +122,8 @@ impl Fixture {
         let request = Request {
             method,
             path: path.to_owned(),
-            authorization: held.bearer.map(|token| format!("Bearer {token}").into_bytes()),
+            query: None,
+            authorization: held.signed.map(|header| header.as_bytes().to_vec()),
             cookie: held.cookie.map(|cookie| cookie.as_bytes().to_vec()),
             source: Some(held.source.parse().unwrap()),
             body: Payload::Whole(body.to_vec()),
@@ -156,14 +160,14 @@ impl Fixture {
 
 #[derive(Clone, Copy)]
 struct Held<'a> {
-    bearer: Option<&'a str>,
+    signed: Option<&'a str>,
     cookie: Option<&'a str>,
     source: &'a str,
 }
 
 impl Default for Held<'_> {
     fn default() -> Self {
-        Self { bearer: None, cookie: None, source: "10.0.0.1" }
+        Self { signed: None, cookie: None, source: "10.0.0.1" }
     }
 }
 
@@ -172,7 +176,7 @@ fn json(reply: &Reply) -> Value {
 }
 
 #[test]
-fn a_link_signs_in_once_and_the_session_is_a_bearer_and_a_cookie() {
+fn a_link_signs_in_once_and_the_session_is_a_cookie() {
     let fixture = Fixture::new(Wanted::default());
     assert_eq!(fixture.ask("me@example.org", "10.0.0.1").status, Status::Accepted);
     let token = fixture.token();
@@ -197,34 +201,61 @@ fn a_link_signs_in_once_and_the_session_is_a_bearer_and_a_cookie() {
     let again = fixture.redeem(&token);
     assert_eq!(again.status, Status::NotFound);
     assert_eq!(fixture.send((Method::Get, &path), Held::default(), b"").status, Status::NotFound);
-    // the session, by bearer and by cookie
-    let by_bearer = fixture.send((Method::Get, "/v1/session"), Held { bearer: Some(&secret), ..Held::default() }, b"");
-    assert_eq!(by_bearer.status, Status::Ok);
+    // the session is a cookie: the API host reads signatures and no cookie, and this reads cookies
     let jar = format!("a=b; ink-session={secret}");
-    let by_cookie = fixture.send((Method::Get, "/v1/session"), Held { cookie: Some(&jar), ..Held::default() }, b"");
-    assert_eq!(json(&by_cookie)["id"], json(&by_bearer)["id"]);
-    // it speaks for the account on the API routes
-    let sites = fixture.send((Method::Get, "/v1/sites"), Held { bearer: Some(&secret), ..Held::default() }, b"");
-    assert_eq!((sites.status, json(&sites)["items"].clone()), (Status::Ok, json!([])));
-    // ending it ends it everywhere, and clears the cookie
-    let end = fixture.send((Method::Delete, "/v1/session"), Held { bearer: Some(&secret), ..Held::default() }, b"");
+    let held = Held { cookie: Some(&jar), ..Held::default() };
+    let shown = fixture.send((Method::Get, "/v1/session"), held, b"");
+    assert_eq!(shown.status, Status::Ok);
+    let bearer = format!("Bearer {secret}");
+    let as_header = fixture.send((Method::Get, "/v1/session"), Held { signed: Some(&bearer), ..Held::default() }, b"");
+    assert_eq!(as_header.status, Status::Unauthorized, "a session is not a bearer token");
+    let sites = fixture.send((Method::Get, "/v1/sites"), held, b"");
+    assert_eq!(sites.status, Status::BadRequest, "the API is signed, never cookied");
+    // ending it ends it, and clears the cookie
+    let end = fixture.send((Method::Delete, "/v1/session"), held, b"");
     assert_eq!(end.status, Status::Ok);
     assert!(end.cookie.as_ref().unwrap().to_string().contains("Max-Age=0"));
-    for held in [Held { bearer: Some(&secret), ..Held::default() }, Held { cookie: Some(&jar), ..Held::default() }] {
-        let after = fixture.send((Method::Get, "/v1/session"), held, b"");
-        assert_eq!((after.status, after.challenge), (Status::Unauthorized, true));
-    }
-    let api = fixture.send((Method::Get, "/v1/sites"), Held { bearer: Some(&secret), ..Held::default() }, b"");
-    assert_eq!(api.status, Status::Unauthorized);
+    let after = fixture.send((Method::Get, "/v1/session"), held, b"");
+    assert_eq!((after.status, after.challenge), (Status::Unauthorized, true));
 }
 
 #[test]
-fn the_owner_token_still_works_beside_sessions() {
+fn a_person_with_a_session_approves_a_key_and_a_stranger_cannot_guess_the_code() {
     let fixture = Fixture::new(Wanted::default());
-    let owner = fixture.send((Method::Get, "/v1/sites"), Held { bearer: Some("owner-token"), ..Held::default() }, b"");
-    assert_eq!(owner.status, Status::Ok);
-    let wrong = fixture.send((Method::Get, "/v1/sites"), Held { bearer: Some("not-it"), ..Held::default() }, b"");
-    assert_eq!(wrong.status, Status::Unauthorized);
+    let secret = fixture.sign_in("me@example.org");
+    let jar = format!("ink-session={secret}");
+    let held = Held { cookie: Some(&jar), ..Held::default() };
+    let device = sig::Signer::from_seed(&sig::Seed::new([3; 32]));
+    let ask = json!({ "key": device.public().to_string(), "label": "laptop", "purpose": "device" }).to_string();
+    let asked = fixture.send((Method::Post, "/v1/enrol"), Held::default(), ask.as_bytes());
+    assert_eq!(asked.status, Status::Created, "{}", String::from_utf8_lossy(&asked.body));
+    let code = json(&asked)["user_code"].as_str().unwrap().to_owned();
+    let path = format!("/v1/approve/{code}");
+    // no session, no look: a signature does not stand in for the cookie
+    assert_eq!(fixture.send((Method::Get, &path), Held::default(), b"").status, Status::Unauthorized);
+    let signed = Held { signed: Some("Ink-Sig-1 k=x"), ..Held::default() };
+    assert_eq!(fixture.send((Method::Get, &path), signed, b"").status, Status::Unauthorized);
+    let seen = fixture.send((Method::Get, &path), held, b"");
+    assert_eq!(seen.status, Status::Ok);
+    let seen = json(&seen);
+    assert_eq!((seen["label"].clone(), seen["fingerprint"].clone()), (json!("laptop"), json!(device.id().fingerprint().to_string())));
+    // the fingerprint compared must be the one asked
+    let wrong = json!({ "fingerprint": "AAAA-AAAA-AA" }).to_string();
+    assert_eq!(fixture.send((Method::Post, &path), held, wrong.as_bytes()).status, Status::Conflict);
+    let right = json!({ "fingerprint": device.id().fingerprint().to_string() }).to_string();
+    assert_eq!(fixture.send((Method::Post, &path), held, right.as_bytes()).status, Status::Ok);
+    // spent: the answer of a code that never was
+    let spent = fixture.send((Method::Post, &path), held, right.as_bytes());
+    assert_eq!(spent.status, Status::NotFound);
+    // the spent code was one miss; four more codes that name nothing close the endpoint for a minute
+    for letter in ["B", "C", "D", "F"] {
+        let guess = format!("/v1/approve/{0}-{0}", letter.repeat(4));
+        assert_eq!(fixture.send((Method::Get, &guess), held, b"").status, Status::NotFound);
+    }
+    let closed = fixture.send((Method::Get, "/v1/approve/HHHH-HHHH"), held, b"");
+    assert_eq!((closed.status, closed.retry), (Status::TooMany, Some(Duration::from_secs(60))));
+    fixture.clock.advance(Duration::from_secs(61));
+    assert_eq!(fixture.send((Method::Get, "/v1/approve/HHHH-HHHH"), held, b"").status, Status::NotFound);
 }
 
 #[test]
@@ -373,6 +404,7 @@ fn nothing_that_prints_holds_a_secret() {
     let request = Request {
         method: Method::Post,
         path: path.clone(),
+        query: None,
         authorization: Some(b"Bearer sekrit".to_vec()),
         cookie: Some(b"ink-session=sekrit".to_vec()),
         source: None,

@@ -49,7 +49,9 @@ impl UserCode {
     /// A code from one draw of 16 bytes: two bytes make a letter.
     pub fn drawn(bytes: [u8; 16]) -> Self {
         let letters = bytes
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| {
                 let value = pair.iter().fold(0_usize, |all, byte| (all << 8) | usize::from(*byte));
                 Self::ALPHABET.get(value % Self::ALPHABET.len()).map_or('B', |letter| char::from(*letter))
@@ -188,10 +190,9 @@ impl Enrolment {
     pub fn poll(&self, approved: Option<Timestamp>, now: Timestamp) -> Poll {
         match (self.state, approved) {
             (State::Approved, Some(expires)) => Poll::Approved { expires },
-            (State::Approved, None) => Poll::Pending,
             (State::Denied, _) => Poll::Denied,
             (State::Pending, _) if self.expires <= now => Poll::Expired,
-            (State::Pending, _) => Poll::Pending,
+            (State::Approved, None) | (State::Pending, _) => Poll::Pending,
         }
     }
 

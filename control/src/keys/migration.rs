@@ -1,7 +1,7 @@
 //! The tables of keys, enrolments and the credential audit, as a migration after the sign-in's.
 
 use db::{Migration, Statement};
-use sea_query::{ColumnDef, ForeignKey, IdenStatic, Index, Table};
+use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, IdenStatic, Index, Table};
 
 use super::enrol::State;
 use super::key::{Kind, Why};
@@ -50,7 +50,12 @@ impl Entry {
                 .col(ColumnDef::new(Key::RevokedAt).big_integer())
                 .col(ColumnDef::new(Key::RevokedWhy).text().check(Allowed::of(Key::RevokedWhy, &Why::NAMES)))
                 .foreign_key(ForeignKey::create().from(Key::Table, Key::AccountId).to(Account::Table, Account::Id))
-                .foreign_key(ForeignKey::create().from(Key::Table, Key::SiteId).to(Site::Table, Site::Id))
+                .foreign_key(
+                    ForeignKey::create()
+                        .from(Key::Table, Key::SiteId)
+                        .to(Site::Table, Site::Id)
+                        .on_delete(ForeignKeyAction::Cascade),
+                )
                 .into(),
             Index::create().name(Named::KeyAccount.as_str()).table(Key::Table).col(Key::AccountId).into(),
         ]

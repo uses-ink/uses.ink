@@ -23,6 +23,7 @@
 //! **Tokens in logs.** A link's token is in a path. [`Enter::redact`] cuts it from every line the
 //! server logs, [`Request`]'s `Debug` does the same, and no error of this module holds it.
 
+mod approver;
 mod limiter;
 mod outbox;
 mod route;
@@ -37,12 +38,15 @@ use mail::{Message, Template};
 use serde::Serialize;
 
 use crate::Answers;
-use crate::body::{Ask, Redeem, Unreadable};
+use crate::body::{Approve, Ask, Redeem, Unreadable};
 use crate::cookie::Jar;
-use crate::credential::Bearer;
+use crate::enrol::{Closed, Enrol};
+use crate::refusal::Turned;
+use control::keys::{Approval, Refused as KeyRefused, Rights};
 use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::view::Problem;
 
+pub use approver::{Approver, Approving, Strength};
 pub use limiter::{Limited, Limiter, Rate, RateError, Rates, Scope, Who};
 pub use outbox::{Courier, Full, Note, Notes, Outbox};
 pub use route::{Enter, EnterError};
@@ -67,6 +71,7 @@ pub struct Config {
 #[derive(Debug)]
 pub struct Door<D, K, R> {
     entry: SignIn<D>,
+    enrol: Enrol<D>,
     clock: K,
     draw: R,
     config: Config,
@@ -90,6 +95,12 @@ pub enum Turn<E> {
     },
     /// A rate limit was reached.
     Limited(Limited),
+    /// Enrolling is closed for a while.
+    Closed(Closed),
+    /// The key store refused.
+    Keys(KeyRefused),
+    /// The key store failed.
+    Store(Box<dyn std::error::Error>),
     /// The request holds no usable session.
     Anonymous,
     /// The random source gave nothing.
@@ -108,7 +119,10 @@ impl<E> std::fmt::Display for Turn<E> {
             Self::Body(error) => error.fmt(out),
             Self::Large { limit } => write!(out, "the body is over the limit of {limit} bytes"),
             Self::Limited(error) => error.fmt(out),
-            Self::Anonymous => out.write_str("send the session as `Authorization: Bearer <session>` or as its cookie"),
+            Self::Closed(error) => error.fmt(out),
+            Self::Keys(error) => error.fmt(out),
+            Self::Store(_) => out.write_str("the keys could not be read"),
+            Self::Anonymous => out.write_str("sign in on the dashboard: this route reads the session cookie"),
             Self::Draw(_) => out.write_str("no random bytes were available"),
             Self::Sign(error) => error.fmt(out),
             Self::Json(_) => out.write_str("the answer could not be written"),
@@ -122,7 +136,9 @@ impl<E: std::error::Error + 'static> std::error::Error for Turn<E> {
             Self::Method(source) => Some(source),
             Self::Body(source) => Some(source),
             Self::Limited(source) => Some(source),
-            Self::Draw(source) => Some(source.as_ref()),
+            Self::Closed(source) => Some(source),
+            Self::Keys(source) => Some(source),
+            Self::Store(source) | Self::Draw(source) => Some(source.as_ref()),
             Self::Sign(source) => Some(source),
             Self::Json(source) => Some(source),
             Self::Route | Self::Large { .. } | Self::Anonymous => None,
@@ -138,6 +154,9 @@ impl<E: std::error::Error + 'static> Turn<E> {
             Self::Body(_) => "body",
             Self::Large { .. } => "too-large",
             Self::Limited(_) => "rate-limited",
+            Self::Closed(_) => "auth.enrolment.limited",
+            Self::Keys(refused) => Turned(refused).code(),
+            Self::Store(_) => "keys",
             Self::Anonymous => "unauthorized",
             Self::Draw(_) => "random",
             Self::Json(_) => "json",
@@ -157,10 +176,11 @@ impl<E: std::error::Error + 'static> Turn<E> {
             Self::Method(_) => Status::MethodNotAllowed,
             Self::Body(_) => Status::BadRequest,
             Self::Large { .. } => Status::TooLarge,
-            Self::Limited(_) => Status::TooMany,
+            Self::Limited(_) | Self::Closed(_) => Status::TooMany,
+            Self::Keys(refused) => Turned(refused).status(),
             Self::Anonymous => Status::Unauthorized,
             Self::Sign(Error::Refused(_)) => Status::Conflict,
-            Self::Draw(_) | Self::Json(_) | Self::Sign(_) => Status::Internal,
+            Self::Draw(_) | Self::Json(_) | Self::Sign(_) | Self::Store(_) => Status::Internal,
         }
     }
 
@@ -174,12 +194,13 @@ impl<E: std::error::Error + 'static> Turn<E> {
             causes.push(cause.to_string());
             below = cause.source();
         }
-        let problem = Problem { problem: self.name(), message: self.to_string(), causes };
+        let problem = Problem { problem: self.name(), message: self.to_string(), causes, fields: std::collections::BTreeMap::default() };
         let mut reply = Reply::new(status, Media::Json, serde_json::to_vec(&problem).unwrap_or_default());
         reply.challenge = matches!(self, Self::Anonymous);
         match self {
             Self::Method(error) => reply.allow.clone_from(&error.allowed),
             Self::Limited(limited) => reply.retry = Some(limited.retry),
+            Self::Closed(closed) => reply.retry = Some(Duration::from_secs(closed.seconds)),
             _ => {}
         }
         reply
@@ -262,9 +283,9 @@ impl<E> Turn<E> {
 
 impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     /// The sign-in routes over `entry`, with the time from `clocks.0` and randomness from
-    /// `clocks.1`.
-    pub fn new(entry: SignIn<D>, clocks: (K, R), config: Config) -> Self {
-        Self { entry, clock: clocks.0, draw: clocks.1, config, limiter: Limiter::new() }
+    /// `clocks.1`, and the approval of enrolments over `enrol`.
+    pub fn new(entry: SignIn<D>, clocks: (K, R), enrol: Enrol<D>, config: Config) -> Self {
+        Self { entry, enrol, clock: clocks.0, draw: clocks.1, config, limiter: Limiter::new() }
     }
 
     /// How it is set up.
@@ -298,6 +319,9 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
             Enter::Look(proof) | Enter::Redeem(proof) => self.redeem(proof, body).await,
             Enter::Show => self.show(request).await,
             Enter::End => self.end(request).await,
+            Enter::Seeing(code) => self.seeing(request, code).await,
+            Enter::Approving(code) => self.approving(request, code, body).await,
+            Enter::Declining(code) => self.declining(request, code).await,
         }
     }
 
@@ -310,12 +334,10 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         Draws(&self.draw).drawn().map_err(|error| Turn::Draw(Box::new(error)))
     }
 
-    /// The session secret a request holds: a bearer token, else the cookie.
+    /// The session secret a request holds: its cookie. The API reads signatures and ignores
+    /// cookies; this reads cookies and ignores signatures, so neither can be confused for the other.
     fn held(&self, request: &Request) -> Option<Proof> {
-        let bearer = request.authorization.as_deref().and_then(|header| Bearer::try_from(header).ok());
-        bearer
-            .and_then(|bearer| bearer.as_str().parse().ok())
-            .or_else(|| request.cookie.as_deref().and_then(|header| self.config.jar.read(header)))
+        request.cookie.as_deref().and_then(|header| self.config.jar.read(header))
     }
 
     async fn ask(&self, request: &Request, body: &[u8]) -> Result<Reply, Turn<D::Error>> {
@@ -382,6 +404,112 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
 impl<D: Db, K: Clock, R: Draw> Answers for Door<D, K, R> {
     fn answer(&self, request: &Request) -> impl std::future::Future<Output = Reply> {
         self.respond(request)
+    }
+}
+
+/// What an approver is shown: the ask, as the requester made it.
+#[derive(Debug, Serialize)]
+struct Asking {
+    fingerprint: String,
+    label: String,
+    kind: &'static str,
+    site: Option<String>,
+    rights: Vec<&'static str>,
+    lifetime: String,
+    asked: Timestamp,
+}
+
+/// A key approved, without anything secret.
+#[derive(Debug, Serialize)]
+struct Approved {
+    fingerprint: String,
+    expires: Timestamp,
+}
+
+/// An ask turned down.
+#[derive(Debug, Serialize)]
+struct Declined {
+    declined: bool,
+}
+
+impl<D: Db, K: Clock, R: Draw> Approver for Door<D, K, R> {
+    type Error = Error<D::Error>;
+
+    /// The bootstrap adapter: the session of the dashboard cookie. A self-host has one person,
+    /// the owner, who has every right.
+    async fn approver(&self, request: &Request, now: Timestamp) -> Result<Option<Approving>, Self::Error> {
+        let Some(proof) = self.held(request) else { return Ok(None) };
+        let session = self.entry.resolve(&proof, now).await?;
+        Ok(session.map(|session| Approving { account: session.account, rights: Rights::EVERY, strength: Strength::Session }))
+    }
+}
+
+impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
+    /// The person a request is from, with the gate open: a wrong code is counted against it.
+    async fn gated(&self, request: &Request) -> Result<(Approving, Timestamp), Turn<D::Error>> {
+        let now = self.clock.now();
+        let who = self.approver(request, now).await.map_err(Turn::Sign)?.ok_or(Turn::Anonymous)?;
+        self.enrol.gate().open(now).map_err(Turn::Closed)?;
+        Ok((who, now))
+    }
+
+    fn store(error: control::keys::Error<D::Error>) -> Turn<D::Error> {
+        match error.refusal() {
+            Some(refused) => Turn::Keys(refused.clone()),
+            None => Turn::Store(Box::new(error)),
+        }
+    }
+
+    /// A code that names nothing is counted, and answered as every unusable code is.
+    fn missed(&self, now: Timestamp) -> Turn<D::Error> {
+        self.enrol.gate().miss(now);
+        Turn::Keys(KeyRefused::NoEnrolment)
+    }
+
+    async fn seeing(&self, request: &Request, code: Option<control::keys::UserCode>) -> Result<Reply, Turn<D::Error>> {
+        let (_, now) = self.gated(request).await?;
+        let Some(code) = code else { return Err(self.missed(now)) };
+        let seen = self.enrol.keys().look(&code, now).await.map_err(Self::store)?;
+        let seen = seen.ok_or_else(|| self.missed(now))?;
+        let asking = Asking {
+            fingerprint: seen.fingerprint.to_string(),
+            label: seen.label.to_string(),
+            kind: seen.purpose.name(),
+            site: seen.site.map(|site| site.to_string()),
+            rights: seen.rights.iter().map(control::keys::Right::name).collect(),
+            lifetime: seen.lifetime.to_string(),
+            asked: seen.asked,
+        };
+        Self::json(Status::Ok, &asking)
+    }
+
+    async fn approving(
+        &self,
+        request: &Request,
+        code: Option<control::keys::UserCode>,
+        body: &[u8],
+    ) -> Result<Reply, Turn<D::Error>> {
+        let (who, now) = self.gated(request).await?;
+        let asked: Approve = Unreadable::read(body).map_err(Turn::Body)?;
+        let Some(code) = code else { return Err(self.missed(now)) };
+        let fingerprint = asked.fingerprint.0;
+        let approval = Approval { code, fingerprint: fingerprint.clone(), by: who.account, within: who.rights };
+        match self.enrol.keys().approve(approval, now).await {
+            Ok(key) => Self::json(Status::Ok, &Approved { fingerprint: fingerprint.to_string(), expires: key.expires }),
+            Err(error) => {
+                if matches!(error.refusal(), Some(KeyRefused::NoEnrolment)) {
+                    self.enrol.gate().miss(now);
+                }
+                Err(Self::store(error))
+            }
+        }
+    }
+
+    async fn declining(&self, request: &Request, code: Option<control::keys::UserCode>) -> Result<Reply, Turn<D::Error>> {
+        let (_, now) = self.gated(request).await?;
+        let Some(code) = code else { return Err(self.missed(now)) };
+        self.enrol.keys().deny(&code, now).await.map_err(Self::store)?;
+        Self::json(Status::Ok, &Declined { declined: true })
     }
 }
 

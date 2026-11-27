@@ -162,6 +162,14 @@ impl Rights {
     }
 }
 
+impl std::str::FromStr for Rights {
+    type Err = UnknownRight;
+
+    fn from_str(text: &str) -> Result<Self, UnknownRight> {
+        Self::read(text)
+    }
+}
+
 impl fmt::Display for Rights {
     /// `read, deploy`, or `none`.
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
