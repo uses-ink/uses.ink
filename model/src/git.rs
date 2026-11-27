@@ -101,7 +101,7 @@ impl FromStr for Locator {
             other => return Err(LocatorError::Scheme { written: other.to_owned() }),
         };
         if let Some(at) = rest.bytes().position(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control()) {
-            return Err(LocatorError::Character { at: written.len() + 3 + at });
+            return Err(LocatorError::Character { at: written.len() + "://".len() + at });
         }
         let named = match scheme {
             Scheme::File => rest.starts_with('/') && rest.len() > 1,

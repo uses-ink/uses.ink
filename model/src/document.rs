@@ -370,16 +370,21 @@ pub struct LevelError {
 
 impl fmt::Display for LevelError {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "a heading level is 1 to 6, not {}", self.found)
+        write!(out, "a heading level is {} to {}, not {}", Level::MIN, Level::MAX, self.found)
     }
 }
 
 impl std::error::Error for LevelError {}
 
 impl Level {
+    /// The lowest heading level, `<h1>`.
+    const MIN: u8 = 1;
+    /// The highest heading level, `<h6>`.
+    const MAX: u8 = 6;
+
     /// `level`, when it is 1 to 6.
     pub const fn new(level: u8) -> Result<Self, LevelError> {
-        if 1 <= level && level <= 6 { Ok(Self(level)) } else { Err(LevelError { found: level }) }
+        if Self::MIN <= level && level <= Self::MAX { Ok(Self(level)) } else { Err(LevelError { found: level }) }
     }
 
     /// The level, 1 to 6.

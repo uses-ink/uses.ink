@@ -1,9 +1,15 @@
 //! A language tag, as `<html lang>` and feeds write it.
 
 use std::fmt;
+use std::ops::RangeInclusive;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+
+/// Letters in a primary language: ISO 639 codes are two or three letters long.
+const PRIMARY_LENGTHS: RangeInclusive<usize> = 2..=3;
+/// Letters or digits in a subtag: BCP 47 allows one to eight.
+const SUBTAG_LENGTHS: RangeInclusive<usize> = 1..=8;
 
 /// A BCP 47 language tag in the shape sites use: a primary language of two or three letters,
 /// then subtags of letters or digits (`en`, `fr-CH`, `zh-Hant-TW`). Case is kept as written.
@@ -41,11 +47,11 @@ impl FromStr for Language {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         let mut parts = text.split('-');
         let primary = parts.next().unwrap_or_default();
-        if !(2..=3).contains(&primary.len()) || !primary.bytes().all(|b| b.is_ascii_alphabetic()) {
+        if !PRIMARY_LENGTHS.contains(&primary.len()) || !primary.bytes().all(|b| b.is_ascii_alphabetic()) {
             return Err(LanguageError::Primary);
         }
         for (index, part) in parts.enumerate() {
-            if !(1..=8).contains(&part.len()) || !part.bytes().all(|b| b.is_ascii_alphanumeric()) {
+            if !SUBTAG_LENGTHS.contains(&part.len()) || !part.bytes().all(|b| b.is_ascii_alphanumeric()) {
                 return Err(LanguageError::Subtag { index: index + 1 });
             }
         }

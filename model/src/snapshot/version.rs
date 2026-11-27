@@ -6,6 +6,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::Hash;
 
+/// Bytes in a SHA-1 object id.
+const SHA1_BYTES: usize = 20;
+/// Bytes in a SHA-256 object id.
+const SHA256_BYTES: usize = 32;
+/// Hex digits in a SHA-1 object id.
+const SHA1_HEX: usize = SHA1_BYTES * 2;
+/// Hex digits in a SHA-256 object id.
+const SHA256_HEX: usize = SHA256_BYTES * 2;
+/// Longest upload id, in characters. Upload ids name a file in the upload store, so they stay short.
+const UPLOAD_ID_MAX: usize = 64;
+
 /// The version a snapshot was taken at.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -56,8 +67,10 @@ pub enum VersionError {
 impl fmt::Display for VersionError {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::OidLength { found } => write!(out, "a git object id is 40 or 64 hex digits, not {found}"),
-            Self::UploadLength { found } => write!(out, "an upload id is 1 to 64 characters, not {found}"),
+            Self::OidLength { found } => {
+                write!(out, "a git object id is {SHA1_HEX} or {SHA256_HEX} hex digits, not {found}")
+            }
+            Self::UploadLength { found } => write!(out, "an upload id is 1 to {UPLOAD_ID_MAX} characters, not {found}"),
             Self::Character { at } => write!(out, "byte {at} of the id is not allowed"),
         }
     }
@@ -69,7 +82,7 @@ impl Oid {
     /// `text`, when it is 40 or 64 lower-case hex digits.
     pub fn parse(text: impl Into<String>) -> Result<Self, VersionError> {
         let text = text.into();
-        if !matches!(text.len(), 40 | 64) {
+        if !matches!(text.len(), SHA1_HEX | SHA256_HEX) {
             return Err(VersionError::OidLength { found: text.len() });
         }
         match text.bytes().position(|b| !matches!(b, b'0'..=b'9' | b'a'..=b'f')) {
@@ -89,14 +102,11 @@ impl TryFrom<&[u8]> for Oid {
 
     /// The id of an object's 20 (SHA-1) or 32 (SHA-256) bytes, written in hex.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        if !matches!(bytes.len(), 20 | 32) {
+        if !matches!(bytes.len(), SHA1_BYTES | SHA256_BYTES) {
             return Err(VersionError::OidLength { found: bytes.len() * 2 });
         }
-        let mut text = String::with_capacity(bytes.len() * 2);
-        for byte in bytes {
-            let _infallible = fmt::Write::write_fmt(&mut text, format_args!("{byte:02x}"));
-        }
-        Ok(Self(text))
+        let digits: Vec<String> = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+        Ok(Self(digits.concat()))
     }
 }
 
@@ -104,7 +114,7 @@ impl UploadId {
     /// `text`, when it is 1 to 64 ASCII letters, digits or `-`.
     pub fn parse(text: impl Into<String>) -> Result<Self, VersionError> {
         let text = text.into();
-        if !(1..=64).contains(&text.len()) {
+        if !(1..=UPLOAD_ID_MAX).contains(&text.len()) {
             return Err(VersionError::UploadLength { found: text.len() });
         }
         match text.bytes().position(|b| !(b.is_ascii_alphanumeric() || b == b'-')) {
