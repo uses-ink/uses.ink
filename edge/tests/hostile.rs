@@ -333,7 +333,7 @@ fn a_refusal_says_why_in_text() {
 #[test]
 fn a_method_refusal_lists_what_is_allowed() {
     let edge = Site::new().edge();
-    let (got, _) = answer(&edge, &get("DELETE", "/tea", &[HOST]));
+    let (got, _) = answer(&edge, &get("PATCH", "/tea", &[HOST]));
     assert_eq!((got.status, got.field("allow")), (405, Some("GET, HEAD")));
 }
 
