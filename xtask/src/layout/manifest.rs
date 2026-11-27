@@ -62,6 +62,11 @@ impl Order {
         ("uses-ink-config", &["uses-ink-model"]),
         ("uses-ink-diag", &["uses-ink-model"]),
         ("uses-ink-engine", &["uses-ink-model", "uses-ink-diag", "uses-ink-config"]),
+        // Serving a deploy (decision 0046): the edge speaks the model alone; its adapters add the
+        // runtime (axum) or a folder of deploys, never each other.
+        ("uses-ink-edge", &["uses-ink-model"]),
+        ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge"]),
+        ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge"]),
         ("uses-ink-token", &[]),
         // A format's native core speaks the model; its guest crate speaks the WIT (0041).
         ("uses-ink-format-markdown", &["uses-ink-model"]),
@@ -78,6 +83,9 @@ impl Order {
                 "uses-ink-config",
                 "uses-ink-diag",
                 "uses-ink-engine",
+                "uses-ink-edge",
+                "uses-ink-edge-axum",
+                "uses-ink-edge-folder",
                 "uses-ink-host-image",
                 "uses-ink-host-native",
                 "uses-ink-format-markdown",
