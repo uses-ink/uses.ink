@@ -10,16 +10,19 @@
 //! is assembled only from the decisions. [`Engine::render`] turns a site into a
 //! [`Manifest`](model::Manifest) and the bytes behind it, through a list of artifacts: the
 //! site's raster images as the host's [`Images`] prepared them, the theme's pages and files,
-//! the feeds, the sitemap, `robots.txt` and the not-found page.
+//! the feeds, the sitemap, `robots.txt` and the not-found page. A host keeps expensive work
+//! between builds through a [`Cache`], by keys that name everything the work was made from.
 //!
 //! Pure: nothing here reads a clock, the environment, the filesystem or randomness.
 
+pub mod cache;
 mod error;
 mod host;
 pub mod image;
 mod interpret;
 mod render;
 
+pub use cache::Cache;
 pub use error::Error;
 pub use host::{BlobMissing, Blobs, File, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Record, Said, Theme};
 pub use image::Images;
