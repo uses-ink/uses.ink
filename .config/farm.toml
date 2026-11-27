@@ -22,6 +22,9 @@ inputs = ["**", "!docs/**", "!PRODUCT.md", "docs/workflow.md"]
 # `farm check test --affected` (or `farm test`) runs nextest for the crates a change touches and
 # their dependents instead of this stage; the full `farm check` stays the gate.
 affected = true
+# 100 ms budgets and the push test's 1 s signature window fail on a loaded host (docs/decisions/0080):
+# the job waits for a host whose load average is at most this.
+max_load = 6
 
 [job.docs]
 run = "cargo xtask check docs"
