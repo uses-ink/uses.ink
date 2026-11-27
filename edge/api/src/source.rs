@@ -21,11 +21,11 @@ use model::{Bytes, ContentPath, Hash};
 use serde::Serialize;
 
 use crate::Api;
-use crate::credential::{Credentials, Principal};
+use crate::archive::{self, Writer};
+use crate::auth::credential::{Credentials, Principal};
 use crate::fault::Fault;
 use crate::limits::Limits;
 use crate::reply::{Media, Reply, Status};
-use crate::tar::{self, Writer};
 
 /// Why a tree or a batch of blobs is not taken.
 #[derive(Debug)]
@@ -239,8 +239,8 @@ impl Limits {
     }
 
     /// What one batch of blobs may hold.
-    pub(crate) const fn parts(&self) -> tar::Limits {
-        tar::Limits { files: self.files, file: self.file, total: self.part, name: self.name }
+    pub(crate) const fn parts(&self) -> archive::Limits {
+        archive::Limits { files: self.files, file: self.file, total: self.part, name: self.name }
     }
 }
 
@@ -316,7 +316,7 @@ impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
         body: &[u8],
     ) -> Result<Reply, Fault<P>> {
         let (_, tenant) = self.uploads(principal, id).await?;
-        let batch = tar::Tree::read(body, &self.limits.parts()).map_err(Fault::Archive)?;
+        let batch = archive::Tree::read(body, &self.limits.parts()).map_err(Fault::Archive)?;
         let mut named = Vec::new();
         for (path, bytes) in batch.files() {
             let name: Hash = path

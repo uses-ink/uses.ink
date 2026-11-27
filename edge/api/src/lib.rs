@@ -21,41 +21,42 @@
 //! approves at the [`Door`] through the [`Approver`] port.
 
 mod api;
+pub mod archive;
+mod auth;
 pub mod body;
 mod ceremony;
-mod cookie;
-mod credential;
-pub mod door;
 mod enrol;
-mod export;
 mod fault;
-mod intake;
 mod limits;
 mod operator;
 mod refusal;
 mod reply;
 mod route;
 mod signature;
+mod sites;
 mod source;
-pub mod tar;
 pub mod view;
 mod webauthn;
 
 pub use api::{Answers, Api};
-pub use ceremony::{Ceremonies, Passing, Step, Stop};
-pub use cookie::{Cookie, Jar, JarError, Name, NameError};
-pub use credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
-pub use door::{
+/// The old path of [`archive`], kept for the crates that import it.
+pub use archive as tar;
+pub use auth::cookie::{Cookie, Jar, JarError, Name, NameError};
+pub use auth::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
+/// The old path of [`auth::signin`], kept for the crates that import it.
+pub use auth::signin as door;
+pub use auth::signin::{
     Approver, Approving, Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Owner, Rate, Rates, Routed,
     Strength,
 };
+pub use ceremony::{Ceremonies, Passing, Step, Stop};
 pub use enrol::{Closed, Closing, Enrol, Gate};
-pub use export::{Exports, Route};
 pub use fault::{Denied, Fault, Intake};
 pub use limits::{Asked, Limit, Limits, Raised};
 pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Unreadable as OperatorError};
 pub use reply::{Media, Method, Payload, Reply, Request, Status, UnknownMethod};
 pub use route::{Call, RouteError};
 pub use signature::{Claimed, Config as Signing, Failed, Nonces, Signatures, Window, WindowError};
+pub use sites::{Exports, Route};
 pub use source::{Probed, Sourced, Stored};
 pub use webauthn::{Failed as Unavailable, Webauthn};

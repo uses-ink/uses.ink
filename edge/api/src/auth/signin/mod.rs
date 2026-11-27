@@ -38,8 +38,8 @@ use mail::{Message, Template};
 use serde::Serialize;
 
 use crate::Answers;
+use crate::auth::cookie::Jar;
 use crate::body::{Approve, Ask, Redeem, Unreadable};
-use crate::cookie::Jar;
 use crate::enrol::{Closed, Enrol};
 use crate::refusal::Turned;
 use crate::reply::{Media, Payload, Reply, Request, Status};

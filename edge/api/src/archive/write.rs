@@ -91,7 +91,7 @@ mod test {
     use model::ContentPath;
 
     use super::*;
-    use crate::tar::{Limits, Tree};
+    use crate::archive::{Limits, Tree};
 
     const LIMITS: Limits = Limits { files: 8, file: 1024, total: 4096, name: 512 };
 

@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::tar;
+use crate::archive;
 
 /// The budgets of one call. Every field is the operator's to set (a flag of `ink serve`), and a
 /// site's own configuration may only lower it: see [`Limits::lower`].
@@ -171,8 +171,8 @@ impl Limits {
     }
 
     /// What an archive may hold under these limits.
-    pub const fn archives(&self) -> tar::Limits {
-        tar::Limits { files: self.files, file: self.file, total: self.archive, name: self.name }
+    pub const fn archives(&self) -> archive::Limits {
+        archive::Limits { files: self.files, file: self.file, total: self.archive, name: self.name }
     }
 }
 

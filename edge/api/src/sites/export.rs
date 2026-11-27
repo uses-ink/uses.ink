@@ -7,10 +7,10 @@ use control::{Exported, Id, Ports, Sink, SiteKind};
 use model::DeployId;
 
 use crate::Api;
-use crate::credential::{Credentials, Principal};
+use crate::archive::{self, Writer};
+use crate::auth::credential::{Credentials, Principal};
 use crate::fault::Fault;
 use crate::reply::{Media, Reply, Status};
-use crate::tar::{self, Writer};
 
 /// Which deploy of which site to export: the live one when none is named.
 #[derive(Clone, Copy, Debug)]
@@ -41,9 +41,9 @@ impl Exports {
 }
 
 impl Sink for Exports {
-    type Error = tar::Error;
+    type Error = archive::Error;
 
-    fn file(&mut self, file: Exported) -> impl Future<Output = Result<(), tar::Error>> {
+    fn file(&mut self, file: Exported) -> impl Future<Output = Result<(), archive::Error>> {
         let name = file.route.as_str().trim_matches('/');
         std::future::ready(self.writer.file(if name.is_empty() { "index" } else { name }, &file.bytes))
     }

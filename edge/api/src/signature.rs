@@ -24,7 +24,7 @@ use db::Db;
 use jiff::Timestamp;
 use sig::{Audience, Claim, Covered, KeyId, KeyType, Nonce, Verifying};
 
-use crate::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
+use crate::auth::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
 use crate::fault::Denied;
 use crate::operator::{OperatorKey, Operators};
 

@@ -16,9 +16,9 @@ use edge_folder::{MANIFEST, Written};
 use model::{ContentPath, Hash};
 
 use crate::Api;
-use crate::credential::Credentials;
+use crate::archive::{self, Tree};
+use crate::auth::credential::Credentials;
 use crate::fault::{Fault, Intake};
-use crate::tar::{self, Tree};
 use crate::view::Deployed;
 
 /// An archive taken apart: the files it holds and the deploy its manifest describes.
@@ -46,7 +46,7 @@ impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
     }
 
     /// The archive read, its manifest checked, and every listed file found and hashed.
-    fn open(body: &[u8], limits: &tar::Limits) -> Result<Parts, Fault<P>> {
+    fn open(body: &[u8], limits: &archive::Limits) -> Result<Parts, Fault<P>> {
         let tree = Tree::read(body, limits).map_err(Fault::Archive)?;
         let manifest = ContentPath::parse(MANIFEST).map_err(|_| Fault::Intake(Intake::NoManifest))?;
         let bytes = tree.get(&manifest).ok_or(Fault::Intake(Intake::NoManifest))?;

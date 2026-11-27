@@ -12,8 +12,8 @@ use db::Db;
 use sig::{KeyId, KeyType, Signed};
 
 use crate::Route;
+use crate::auth::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
 use crate::body::{self, AddSite, Enrolling, Rollback, Unreadable};
-use crate::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
 use crate::enrol::Enrol;
 use crate::fault::{Denied, Fault};
 use crate::limits::Limits;

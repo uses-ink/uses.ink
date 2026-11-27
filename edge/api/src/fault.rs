@@ -11,6 +11,7 @@ use jiff::Timestamp;
 use model::Hash;
 use model::git::Scheme;
 
+use crate::archive;
 use crate::body::Unreadable;
 use crate::enrol::Closed;
 use crate::limits::Raised;
@@ -18,7 +19,6 @@ use crate::refusal::Turned;
 use crate::reply::{Media, Reply, Status};
 use crate::route::RouteError;
 use crate::source::Sourced;
-use crate::tar;
 use crate::view::Problem;
 
 /// A request that does not name a caller who may make it. Each is one code of the catalog
@@ -242,9 +242,9 @@ pub enum Fault<P: Ports> {
     /// The control plane refused or failed.
     Control(control::Error<P>),
     /// An export failed.
-    Export(Failed<P, tar::Error>),
+    Export(Failed<P, archive::Error>),
     /// The archive cannot be read.
-    Archive(tar::Error),
+    Archive(archive::Error),
     /// The archive's manifest is not a deploy.
     Folder(edge_folder::Error),
     /// The archive is no built folder.
@@ -372,9 +372,9 @@ impl<P: Ports> Fault<P> {
             Self::Keys(refused) => Turned(refused).status(),
             Self::Declined => Status::Forbidden,
             Self::Large { .. }
-            | Self::Archive(tar::Error::Files { .. } | tar::Error::File { .. } | tar::Error::Total { .. }) => {
-                Status::TooLarge
-            }
+            | Self::Archive(
+                archive::Error::Files { .. } | archive::Error::File { .. } | archive::Error::Total { .. },
+            ) => Status::TooLarge,
             Self::Route(_) | Self::Body(_) | Self::Archive(_) => Status::BadRequest,
             Self::Scheme { .. } | Self::Unbuilt | Self::Folder(_) | Self::Intake(_) | Self::Raised(_) => {
                 Status::Unprocessable

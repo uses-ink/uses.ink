@@ -4,8 +4,8 @@ use std::fmt;
 use std::net::IpAddr;
 use std::time::Duration;
 
-use crate::cookie::Cookie;
-use crate::door::Enter;
+use crate::auth::cookie::Cookie;
+use crate::auth::signin::Enter;
 
 /// An HTTP method the API has a route for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
