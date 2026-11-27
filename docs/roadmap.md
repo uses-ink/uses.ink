@@ -114,6 +114,15 @@ The two real audiences, locally.
 - `ink:theme-notebook` as a component, the pen drawing measured marks **(owner: its design)**.
 - `ink build --check` in CI on every fixture.
 
+Progress (2026-11-27): `ink:format-obsidian` is built natively and as a component (0043): a
+dialect of the markdown format reading wikilinks, embeds of images and of notes (filled by the
+engine, with cycles refused), Obsidian's callouts with folding, block ids, `%%` comments, inline
+and frontmatter tags and `aliases`; links resolve by name in any case, by alias and by partial
+path, and the attachment folder of `.obsidian/app.json` settles a shared name. `ink` reads a
+folder holding `.obsidian/` as a vault through it; `cli/fixture/site/vault` builds the same both
+ways. Left: inline tags as their own evidence (waits on 0042), `.obsidian/templates.json`, a
+note's file name as its title, and `![[Note]]` inside a line.
+
 Progress (2026-11-27): the git source's native core is `host_native::Repository` (0036, as
 built): a local repository at a commit, dates from one history walk, shallow bounds and moves
 as lacks, `ink build`, `check`, `explain` and `preview` reading it when the folder holds `.git`

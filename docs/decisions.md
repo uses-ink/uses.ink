@@ -553,3 +553,68 @@ interpret under two rules costs more than 10% of build time on the largest fixtu
 replays and keep a published rules changelog with the change set alone. Refines 0011 (bounds
 stay facts), 0018 and the M1 exit criteria ("pin reproduces the deploy" is dropped: it tested
 that pins freeze content).
+
+## 0043 Obsidian is a dialect of the markdown format; the engine resolves and embeds
+
+Accepted. `ink:format-obsidian` (`plugin/format/obsidian`, its component in `guest/`) reads one
+note through the markdown format's comrak setup and raw HTML allowlist (0027), as a dialect:
+`format_markdown::dialect::Dialect` turns on the syntax comrak parses for it and says what its
+own nodes mean, and `format_markdown::read_as` reads through the one builder, generic over the
+dialect. Nothing in the dialect sees comrak. What it reads, as built:
+
+- **Wikilinks** `[[Note]]`, `[[Note|text]]`, `[[Note#Heading]]`, `[[Note#^block]]`,
+  `[[#Heading]]` become `LinkTarget::Unresolved` with the target as written (the last `#` part
+  is the anchor), shown as Obsidian shows them (`Note > Heading`) when no `|` names the text.
+- **Embeds**: `![[image.png]]` is an image whose alt text is the text after the `|` or the file
+  name, a size there said (`embed.size.ignored`); `![[Note]]`, `![[Note#Heading]]` and
+  `![[Note#^block]]` alone in a paragraph are the new `Block::Embed`, among other text a link
+  (`embed.inline.linked`); other files (PDF, audio, video, canvas) are links
+  (`embed.file.linked`).
+- **Callouts**: comrak's Obsidian callouts, any kind (Obsidian's aliases mapped: `hint` is a tip,
+  `tldr` an `abstract`), a title of inlines, and `Block::Callout::folding` (`Fixed`, `Open` for
+  `+`, `Closed` for `-`), which the quiet theme writes as `<details>`. Metadata after `|` is said
+  and dropped (`callout.metadata.ignored`).
+- **Block ids**: `^id` ending a block, or alone on the line after one, is the new
+  `Inline::Anchor`. Ids share a page's anchors with its headings; one whose slug is taken is
+  `block.id.taken` and gets the next free one, so no link meant for the earlier anchor moves.
+- **Comments** `%%x%%` and `%%` blocks are removed, as HTML comments are.
+- **Tags** `#tag` and `#a/b` in the text (not in code or link text) join the frontmatter's
+  `tags` in `Front::tags`, each once by slug.
+- **Aliases**: frontmatter `aliases` or `alias` fill the new `Front::aliases`.
+
+Obsidian lacks `^x^` superscript and definition lists, so they stay text. It shows `~x~` as
+written; comrak strikes it, as GitHub does, and has no switch for it, so that differs.
+
+The engine resolves, since a format reads one file. The link machinery is the existing one,
+extended for every format: after the page-relative path, its extension and a folder's index, a
+name is looked for anywhere under the root, letter for letter and then in any case, by file
+name, stem or alias; a path with a `/` names the file whose path ends with it. This is
+Obsidian's shortest-path resolution: a unique name or partial path resolves, several are
+`link.target.ambiguous`, one unpublished is `link.target.unpublished`. The `Settings` stage reads
+`attachmentFolderPath` from `.obsidian/app.json` under the root (`/`, `./`, `./name`, `name`;
+`vault.settings.invalid` when it does not read); a name several files share settles on the one
+in the attachment folder for the linking note, said as `link.target.attached`. Obsidian itself
+never consults the setting to resolve; this is ours, and the notice keeps it from being a silent
+guess. The `Embeds` stage fills each embed of a published page with the page's blocks, the
+section under the heading (to the next heading of its level or above), or the innermost block
+holding the block id (the block before, for an id alone on its line). What is shown keeps
+pointing at its own page: anchor links become links to it, its block ids are removed and its
+footnote references dropped (`embed.footnote.dropped`). An embed reaching a page and part it is
+already inside is `embed.target.cycle`, one naming no part is `embed.anchor.missing`, past 64 per
+page (embeds inside embeds counted) is `embed.budget.count`; each is shown as a link.
+
+**Selection** follows the source's: `ink` reads a folder holding `.obsidian/` at its top as a
+vault through `ink:format-obsidian`, said as `format.obsidian.chosen`, as a folder holding
+`.git` is read as a repository (`source.git.chosen`). The vault layout (`Folder<Obsidian>`)
+already publishes nothing until it is selected. No pin chooses the format: a format pin is a new
+decision code, which waits on 0042's rework of the codes. `ink build --check` builds a vault
+through `format-obsidian.wasm`, and `cli/fixture/site/vault` proves both builds match.
+
+Left as known limits: inline tags cite `Evidence::Frontmatter` with a span in the body, until
+0042 gives `page.tags` a body witness; embedded headings keep their anchors, so a page embedding
+a section can hold the same `id` twice; a note's title is still its first heading before its file
+name, where Obsidian shows the file name; `.obsidian/templates.json` is not read yet (the
+`templates/` convention stands). **Why:** one parser, one allowlist and one set of node rules
+for both formats; resolution in the engine, where every page is known, so both formats and both
+builds share it. **Reversal:** a second dialect whose syntax comrak cannot parse, which would
+need a parser of its own.
