@@ -1,0 +1,62 @@
+//! The operator's budgets for one request and one response (decision 0044, bucket 2).
+
+use std::time::Duration;
+
+use model::Bytes;
+
+/// What a request and its response may cost. Every field is the operator's to set; a request over
+/// a size budget is refused with the number and the limit, and the times are enforced by the
+/// adapter that owns the sockets.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Limits {
+    /// The request target, path and query as received.
+    pub target: Bytes,
+    /// Segments in a path.
+    pub segments: usize,
+    /// Headers in a request.
+    pub headers: usize,
+    /// One header's value.
+    pub header: Bytes,
+    /// Every header's name and value together.
+    pub head: Bytes,
+    /// Entries in an `If-None-Match` list.
+    pub tags: usize,
+    /// The largest file served.
+    pub file: Bytes,
+    /// How much of a file is read at a time.
+    pub chunk: Bytes,
+    /// Time for a client to send its request head.
+    pub read: Duration,
+    /// Time to resolve a host and open a blob.
+    pub open: Duration,
+    /// Time a response may wait for its reader to take the next chunk.
+    pub idle: Duration,
+    /// Time for one whole response, from the request head to its last byte.
+    pub send: Duration,
+    /// Time open connections get to finish when the server is told to stop.
+    pub drain: Duration,
+    /// Requests in flight at once.
+    pub connections: usize,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        const KIB: u64 = 1024;
+        Self {
+            target: Bytes(4 * KIB),
+            segments: 32,
+            headers: 64,
+            header: Bytes(8 * KIB),
+            head: Bytes(32 * KIB),
+            tags: 16,
+            file: Bytes(1024 * 1024 * KIB),
+            chunk: Bytes(64 * KIB),
+            read: Duration::from_secs(10),
+            open: Duration::from_secs(5),
+            idle: Duration::from_secs(30),
+            send: Duration::from_secs(600),
+            drain: Duration::from_secs(30),
+            connections: 1024,
+        }
+    }
+}
