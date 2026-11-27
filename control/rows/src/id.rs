@@ -5,7 +5,8 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::str::FromStr;
 
-use serde::{Serialize, Serializer};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// What an [`Id`] identifies. A marker, never constructed.
 pub trait Kind {
@@ -116,6 +117,13 @@ impl<K: Kind> fmt::Debug for Id<K> {
 impl<K> Serialize for Id<K> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.collect_str(self)
+    }
+}
+
+impl<'de, K> Deserialize<'de> for Id<K> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        text.parse().map_err(D::Error::custom)
     }
 }
 
