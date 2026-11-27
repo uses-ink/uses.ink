@@ -251,6 +251,13 @@ pub(crate) struct Ssh {
 }
 
 impl Ssh {
+    /// How files are placed: compared by content, and written with the time of the write, not the
+    /// sender's. Cargo calls a build fresh when its artifacts are newer than the sources. A tree
+    /// seeded from a sibling holds artifacts newer than a rebased source whose own time is older,
+    /// and `-a` alone would stamp the changed file with that old time. With these two flags a file
+    /// whose bytes changed is newer than every artifact, and one that did not keeps its time.
+    const PLACE: [&'static str; 2] = ["--checksum", "--no-times"];
+
     pub(crate) fn new(exec: Exec, destination: Destination) -> Self {
         // One connection per host is shared by every call, so a poll is a message, not a handshake.
         let control = Some(std::env::temp_dir().join("uses-ink-farm-%C")).filter(|path| {
@@ -295,6 +302,7 @@ impl Ssh {
     pub(crate) fn sync(&self, push: &Push<'_>) -> Vec<String> {
         let wrapped = format!("flock {} rsync", crate::quote::Quoted::new(push.lock));
         let mut argv = self.rsync();
+        argv.extend(Self::PLACE.map(str::to_owned));
         argv.extend(["--delete".to_owned(), "--filter=:- .gitignore".to_owned(), format!("--rsync-path={wrapped}")]);
         argv.extend(EXCLUDES.map(|pattern| format!("--exclude={pattern}")));
         argv.push(format!("{}/", push.root.display()));
@@ -305,6 +313,8 @@ impl Ssh {
     /// The `rsync` that brings listed files back.
     pub(crate) fn fetch(&self, pull: &Pull<'_>) -> Vec<String> {
         let mut argv = self.rsync();
+        // a file brought back is as new as the moment it arrives, like one edited here
+        argv.push("--no-times".to_owned());
         argv.push("--files-from=-".to_owned());
         argv.push(format!("{}:{}/", self.destination, pull.tree));
         argv.push(format!("{}/", pull.root.display()));
@@ -402,6 +412,8 @@ mod tests {
         assert_eq!(argv.first().map(String::as_str), Some("rsync"));
         for want in [
             "-a",
+            "--checksum",
+            "--no-times",
             "--delete",
             "--filter=:- .gitignore",
             "--exclude=target",
@@ -417,6 +429,56 @@ mod tests {
         assert!(argv.contains(&"--rsync-path=flock 'farm/locks/farm.lock' rsync".to_owned()));
         assert_eq!(argv.get(argv.len() - 2).map(String::as_str), Some("/w/farm/"));
         assert_eq!(argv.last().map(String::as_str), Some("me@box.lan:farm/uses.ink/farm/"));
+    }
+
+    /// The real sync argv, pointed at two local directories: no `ssh`, no remote lock.
+    fn local_sync(from: &Path, to: &Path) -> Vec<String> {
+        let push = Push { root: from, tree: "t", lock: "l" };
+        let mut argv = ssh().sync(&push);
+        argv.truncate(argv.len() - 2);
+        let at = argv.iter().position(|word| word == "-e").unwrap();
+        argv.drain(at..=at + 1);
+        argv.retain(|word| !word.starts_with("--rsync-path"));
+        argv.extend([format!("{}/", from.display()), format!("{}/", to.display())]);
+        argv
+    }
+
+    fn stamp(path: &Path, secs: u64) {
+        let at = std::time::UNIX_EPOCH + Duration::from_secs(secs);
+        std::fs::File::options().write(true).open(path).unwrap().set_modified(at).unwrap();
+    }
+
+    fn mtime(path: &Path) -> std::time::SystemTime {
+        path.metadata().unwrap().modified().unwrap()
+    }
+
+    #[test]
+    fn a_synced_file_whose_bytes_changed_is_newer_than_the_target_and_one_that_did_not_keeps_its_time() {
+        let base = std::env::temp_dir().join(format!("farm-sync-{}", std::process::id()));
+        std::fs::remove_dir_all(&base).ok();
+        let (from, to) = (base.join("from"), base.join("to"));
+        std::fs::create_dir_all(to.join("target")).unwrap();
+        std::fs::create_dir_all(&from).unwrap();
+        // the host: a tree seeded from a sibling, its artifact built after its sources
+        std::fs::write(to.join("lib.rs"), "old").unwrap();
+        std::fs::write(to.join("same.rs"), "same").unwrap();
+        std::fs::write(to.join("target").join("dep-info"), "built").unwrap();
+        stamp(&to.join("lib.rs"), 500);
+        stamp(&to.join("same.rs"), 600);
+        stamp(&to.join("target").join("dep-info"), 2000);
+        // the workspace after a rebase: other bytes in `lib.rs`, whose time is older than the artifact
+        std::fs::write(from.join("lib.rs"), "new").unwrap();
+        std::fs::write(from.join("same.rs"), "same").unwrap();
+        stamp(&from.join("lib.rs"), 1000);
+        stamp(&from.join("same.rs"), 1500);
+        let argv = local_sync(&from, &to);
+        let done = Command::new(argv.first().unwrap()).args(argv.iter().skip(1)).status().unwrap();
+        assert!(done.success());
+        assert_eq!(std::fs::read_to_string(to.join("lib.rs")).unwrap(), "new");
+        assert!(mtime(&to.join("lib.rs")) > mtime(&to.join("target").join("dep-info")), "cargo would call it fresh");
+        let kept = std::time::UNIX_EPOCH + Duration::from_secs(600);
+        assert_eq!(mtime(&to.join("same.rs")), kept, "same bytes, same time: nothing rebuilds");
+        std::fs::remove_dir_all(&base).unwrap();
     }
 
     #[test]

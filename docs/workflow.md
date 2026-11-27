@@ -244,8 +244,18 @@ workspace.
 ## Syncing
 
 The first job of a workspace on a host seeds its directory (`<dir>/<repo>/<workspace>`) from the
-newest sibling there by a reflink copy, so third-party crates are warm. Then `rsync -a --delete`
-makes it equal to the workspace, mtimes kept, so cargo rebuilds only the crates that changed.
+newest sibling there by a reflink copy, so third-party crates are warm. Then `rsync -a --checksum
+--no-times --delete` makes it equal to the workspace, so cargo rebuilds only the crates that changed.
+Files are compared by content, and a file that was written gets the time of the write, not the
+time it has here. This matters: cargo calls a crate fresh when its artifacts are newer than its
+sources. A seeded tree holds artifacts built after the sibling's sources, and a source that a
+rebase rewrote here can carry an older time than those artifacts. With `-a` alone rsync stamped the
+changed file with that older time, and the host compiled the old code ("unresolved import", a
+missing trait method) until every `.rs` file was touched. With the two flags a file whose bytes
+changed is newer than every artifact, and a file whose bytes did not keeps its time, so nothing
+rebuilds that did not change. Files brought back (`bless`, `fmt`) are written the same way. A tree
+synced before this change may still hold such a stale artifact; `touch` the file once, or remove
+`target/` on that host.
 Excluded: what `.gitignore` ignores, `.jj`, `.git`, `.impeccable`, `target`, and `.env`,
 `.env.*`, `*.pem` and `*.key`. The rsync target is always under the host's `dir`. A workspace is
 one agent's: do not edit files while a job of that workspace is running unless you want the job
