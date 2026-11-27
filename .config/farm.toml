@@ -19,6 +19,9 @@ golden = true
 # nextest of the whole workspace. Tests read source, fixtures and `brand/`, never prose, except
 # the farm's own test that `docs/workflow.md` names every verb and flag: that file stays an input.
 inputs = ["**", "!docs/**", "!PRODUCT.md", "docs/workflow.md"]
+# `farm check test --affected` (or `farm test`) runs nextest for the crates a change touches and
+# their dependents instead of this stage; the full `farm check` stays the gate.
+affected = true
 
 [job.docs]
 run = "cargo xtask check docs"
@@ -40,6 +43,14 @@ run = "cargo xtask check sites"
 golden = true
 # builds `ink` and every site fixture natively and through the components: nearly every crate.
 inputs = ["**", "!docs/**", "!PRODUCT.md"]
+
+# `farm test` measures the change from `base` (default: where the workspace left `main`). A changed
+# path inside a crate affects that crate and its dependents; `Cargo.toml`, `Cargo.lock`,
+# `rust-toolchain.toml`, `deny.toml`, `.config/**` and `.cargo/**` affect all; so does a path in no
+# crate unless `ignore` selects it. These are the paths in no crate that no test reads. Not
+# `docs/workflow.md`: the farm's own test reads it, so a change to it affects all.
+[affected]
+ignore = ["docs/**", "!docs/workflow.md", "*.md", "LICENSE-*", "Dockerfile", "dist-workspace.toml", "rustfmt.toml", "clippy.toml"]
 
 # Ignored files `farm workspace --forget` may delete with the workspace: build caches by name, at any depth.
 [workspace]
