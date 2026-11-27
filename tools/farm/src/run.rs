@@ -22,7 +22,7 @@ use crate::transport::Transport;
 use crate::tree::Tree;
 use crate::version::{Freshness, Version};
 
-/// Where a job's log is kept here, below the workspace: `target/farm/<job>.log`.
+/// Where a job's log is kept here, below the workspace: `target/farm/<host>.<token>.log`.
 const LOGS: [&str; 2] = ["target", "farm"];
 
 /// What a verb produced: the jobs that ran, the farm's own failures, and the files a bless or a
@@ -418,7 +418,10 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
 
 impl Need {
     /// The cargo flags that take their value as the next word.
-    const VALUED: [&'static str; 18] = [
+    const VALUED: [&'static str; 21] = [
+        "-C",
+        "--config",
+        "-Z",
         "-p",
         "--package",
         "--exclude",

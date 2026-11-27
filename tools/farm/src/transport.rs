@@ -150,10 +150,10 @@ impl<'a> Follow<'a> {
                 Err(RecvTimeoutError::Timeout) => {}
             }
             // checked after every line too: a job that never goes quiet still has its time
-            if self.due() {
-                if let Err(failure) = self.expire(&mut writer) {
-                    self.fail(failure);
-                }
+            if self.due()
+                && let Err(failure) = self.expire(&mut writer)
+            {
+                self.fail(failure);
             }
         }
         let read = reading.join().map_err(|_| Failure::Panicked { thread: "output" });
@@ -539,7 +539,7 @@ mod tests {
 
     #[test]
     fn a_detach_that_cannot_be_written_to_a_live_child_is_a_typed_failure() {
-        let done = exec().spawn(&sh("exec 0<&-; sleep 5"), Feed::Open(Duration::from_millis(30)), &mut |_| {});
+        let done = exec().spawn(&sh("exec 0<&-; exec sleep 5"), Feed::Open(Duration::from_millis(30)), &mut |_| {});
         assert!(matches!(done, Err(Failure::Stdin(_))), "{done:?}");
     }
 

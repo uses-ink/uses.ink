@@ -292,7 +292,7 @@ impl fmt::Display for Fault {
                 write!(out, "workspace `{name}` has changes that are not committed; commit or abandon them first")
             }
             Self::Untracked { name, paths } => {
-                let shown = &paths[..paths.len().min(Self::SHOWN)];
+                let shown = paths.get(..Self::SHOWN).unwrap_or(paths);
                 write!(
                     out,
                     "workspace `{name}` has {} file(s) that jj does not track, outside target/: {}{}; removing it would delete them; move or commit them first",
