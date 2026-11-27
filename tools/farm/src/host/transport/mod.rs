@@ -407,7 +407,7 @@ impl Transport for Ssh {
     }
 }
 
-/// Either way of reaching a host: what a [`Fleet`](crate::host::fleet::Fleet) is made of.
+/// Either way of reaching a host: what a [`Fleet`](crate::host::Fleet) is made of.
 #[derive(Debug, Clone)]
 pub(crate) enum Link {
     Local(Local),

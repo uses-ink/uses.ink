@@ -24,9 +24,9 @@ use crate::cli::version::{Freshness, Version};
 use crate::cli::{Action, Flags, Seconds, Usage, Verb};
 use crate::config::jobs::{Jobs, Settings};
 use crate::config::tree::Tree;
-use crate::host::fleet::{Fleet, Probed, Start};
 use crate::host::transport::Transport;
 use crate::host::{Arch, Snapshot};
+use crate::host::{Fleet, Probed, Start};
 use crate::job::event::{Event, Seeded};
 use crate::job::summary::Summary;
 use crate::job::{Attach, Document, Finished, Flow, Job, LogFile, Reuse, Served, Totals, Verdict};
@@ -170,7 +170,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         thread::scope(|scope| {
             let running: Vec<_> = names
                 .iter()
-                .map(|name| scope.spawn(move || self.fleet.member(name).map(crate::host::fleet::Member::wake)))
+                .map(|name| scope.spawn(move || self.fleet.member(name).map(crate::host::Member::wake)))
                 .collect();
             names
                 .iter()
@@ -574,11 +574,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     }
 
     /// Copies a finished job's log from its host into this workspace; the path and the text.
-    fn fetch_log(
-        &self,
-        member: &crate::host::fleet::Member<T>,
-        id: &JobId,
-    ) -> Result<(std::path::PathBuf, String), Error> {
+    fn fetch_log(&self, member: &crate::host::Member<T>, id: &JobId) -> Result<(std::path::PathBuf, String), Error> {
         let path = self.log_path(id);
         let text = member.log(id, None)?.output.join("\n");
         std::fs::create_dir_all(path.parent().unwrap_or(&self.tree.root))
@@ -1006,8 +1002,8 @@ impl Reuse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::fleet::Member;
-    use crate::host::fleet::fake::{Fake, Reply};
+    use crate::host::Member;
+    use crate::host::fake::{Fake, Reply};
     use crate::host::{Host, Via};
     use crate::place::LeastLoaded;
     use crate::place::wake::Wake;

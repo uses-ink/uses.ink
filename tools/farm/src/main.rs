@@ -8,7 +8,7 @@
 //!   behind the [`transport::Transport`] trait.
 //! - [`program`]: the shell programs that run on a host (slots, queue, jobs), as fixed text with
 //!   positional parameters.
-//! - [`fleet`]: [`fleet::Member`] and [`fleet::Fleet`], generic over the transport.
+//! - [`host`]: [`host::Member`] and [`host::Fleet`], generic over the transport.
 //! - [`place`]: [`place::Placement`], which host gets a job; [`history`], how long jobs took there.
 //! - [`run`]: [`run::Farm`], the verbs. [`summary`], [`job`] and [`event`] read what comes back.
 //! - [`jobs`]: the repo's job file.
@@ -36,8 +36,8 @@ use config::hosts::{Config, Environment};
 use config::jobs::Jobs;
 use config::tree::Tree;
 use config::workspace::Workspaces;
-use host::fleet::{Fleet, Member};
 use host::transport::{Exec, Link, Local, Ssh};
+use host::{Fleet, Member};
 use host::{Host, Via};
 use place::Fastest;
 use run::{Farm, Setup};
@@ -483,7 +483,7 @@ mod tests {
         let snap = farm.fleet_probe().remove(0);
         let id = cli::name::JobId::new(HostName::local(), 1, 1);
         let job = job("held", "sleep 60");
-        let start = host::fleet::Start { tree: &farm_tree(&rig), snap: &snap, job: &job, id: &id };
+        let start = host::Start { tree: &farm_tree(&rig), snap: &snap, job: &job, id: &id };
         let call = member.launch(&start, job::Attach::Hold(Duration::from_secs(60)), cli::Seconds(120));
         let argv = call.argv();
         let mut child = std::process::Command::new("sh")
