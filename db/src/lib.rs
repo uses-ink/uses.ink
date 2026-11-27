@@ -1,12 +1,13 @@
 //! The row port of the control plane, shaped like Cloudflare D1 (decision 0030).
 //!
-//! - [`Statement`]: raw SQL that is `&'static str`, so a statement can never be built from
-//!   input, and the values bound to it ([`Value`]).
+//! - [`Statement`]: a query built from `sea_query`'s typed builders over identifier types, with
+//!   its values bound ([`Value`]); no SQL text is written by hand, and [`Renderer`] is the one
+//!   place a statement becomes text.
 //! - [`Db`]: run one statement, or an atomic batch of them. No interactive transaction exists,
 //!   because D1 has none; a change that must be atomic is one batch.
 //! - [`Row`]: what a statement returns, read back as typed columns ([`Column`]).
-//! - [`Script`] and [`Steps`]: a migration folder of plain `.sql` files in wrangler's format,
-//!   and the runner that applies the missing ones through any [`Db`], writing wrangler's own
+//! - [`Migration`] and [`Steps`]: migrations as typed values with a number and a name, and the
+//!   runner that applies the missing ones through any [`Db`], writing wrangler's own
 //!   `d1_migrations` ledger.
 //!
 //! The adapters are `db/sqlite` and, hosted, `db/d1`; the conformance suite every adapter runs
@@ -15,7 +16,7 @@
 mod error;
 mod port;
 mod row;
-mod script;
+mod render;
 mod statement;
 mod step;
 mod value;
@@ -23,7 +24,10 @@ mod value;
 pub use error::{Constraint, Error};
 pub use port::{Db, Outcome};
 pub use row::{Column, ColumnError, ColumnFault, Row};
-pub use script::{Keyword, Script, ScriptError};
-pub use statement::{Statement, TooMany};
-pub use step::{Applied, Step, StepError, Steps, Unapplied};
+pub use render::{Rendered, Renderer, TooMany, Unrenderable, Unsupported};
+pub use statement::{Shape, Statement};
+pub use step::{Applied, Ledger, Migration, StepError, Steps, Unapplied};
+
+/// The builders statements are made with, so every crate shares one version of them.
+pub use sea_query;
 pub use value::{Kind, Mismatch, Value};

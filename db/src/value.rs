@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use crate::Unsupported;
+
 /// One value of a column or a bound parameter.
 #[derive(Clone, PartialEq)]
 #[non_exhaustive]
@@ -123,6 +125,35 @@ impl From<&[u8]> for Value {
 impl<T: Into<Self>> From<Option<T>> for Value {
     fn from(value: Option<T>) -> Self {
         value.map_or(Self::Null, Into::into)
+    }
+}
+
+impl TryFrom<sea_query::Value> for Value {
+    type Error = Unsupported;
+
+    /// What a builder bound, as what the port carries: integers widen to 64 bits, booleans are
+    /// 0 and 1, text and bytes are as they are, and a missing value is null.
+    fn try_from(value: sea_query::Value) -> Result<Self, Unsupported> {
+        use sea_query::Value as Built;
+        let wide = |n: Option<i64>| n.map_or(Self::Null, Self::Integer);
+        Ok(match value {
+            Built::Bool(flag) => wide(flag.map(i64::from)),
+            Built::TinyInt(n) => wide(n.map(i64::from)),
+            Built::SmallInt(n) => wide(n.map(i64::from)),
+            Built::Int(n) => wide(n.map(i64::from)),
+            Built::BigInt(n) => wide(n),
+            Built::TinyUnsigned(n) => wide(n.map(i64::from)),
+            Built::SmallUnsigned(n) => wide(n.map(i64::from)),
+            Built::Unsigned(n) => wide(n.map(i64::from)),
+            Built::BigUnsigned(Some(n)) => Self::Integer(i64::try_from(n).map_err(|_| Unsupported { kind: "u64 above i64::MAX" })?),
+            Built::BigUnsigned(None) => Self::Null,
+            Built::Float(n) => n.map_or(Self::Null, |n| Self::Real(n.into())),
+            Built::Double(n) => n.map_or(Self::Null, Self::Real),
+            Built::String(text) => text.map_or(Self::Null, Self::Text),
+            Built::Char(letter) => letter.map_or(Self::Null, |letter| Self::Text(letter.to_string())),
+            Built::Bytes(bytes) => bytes.map_or(Self::Null, Self::Blob),
+            Built::Enum(_) => return Err(Unsupported { kind: "enum" }),
+        })
     }
 }
 

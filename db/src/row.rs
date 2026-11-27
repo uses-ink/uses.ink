@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use sea_query::Iden;
+
 use crate::{Kind, Mismatch, Value};
 
 /// A type a column can be read as. It is a trait of its own, not `TryFrom<Value>`, because
@@ -105,14 +107,15 @@ impl Row {
     }
 
     /// The named column as a `T`.
-    pub fn get<T: Column>(&self, column: &str) -> Result<T, ColumnError> {
+    pub fn get<T: Column>(&self, column: impl Iden) -> Result<T, ColumnError> {
+        let name = column.unquoted();
         let value = self
             .columns
             .iter()
-            .find(|(name, _)| name == column)
+            .find(|(found, _)| found == name)
             .map(|(_, value)| value.clone())
-            .ok_or_else(|| ColumnError { column: column.to_owned(), fault: ColumnFault::Missing })?;
-        T::column(value).map_err(|mismatch| ColumnError { column: column.to_owned(), fault: ColumnFault::Type(mismatch) })
+            .ok_or_else(|| ColumnError { column: name.to_owned(), fault: ColumnFault::Missing })?;
+        T::column(value).map_err(|mismatch| ColumnError { column: name.to_owned(), fault: ColumnFault::Type(mismatch) })
     }
 
     /// The columns' names and values, in order.
@@ -162,6 +165,14 @@ impl std::error::Error for ColumnError {
 mod test {
     use super::*;
 
+    #[derive(sea_query::Iden, Clone, Copy)]
+    enum Probe {
+        N,
+        T,
+        Z,
+        Gone,
+    }
+
     fn row() -> Row {
         Row::new(vec![("n".into(), Value::Integer(7)), ("t".into(), Value::Text("x".into())), ("z".into(), Value::Null)])
     }
@@ -169,18 +180,18 @@ mod test {
     #[test]
     fn reads_typed_columns() {
         let row = row();
-        assert_eq!(row.get::<i64>("n").unwrap(), 7);
-        assert_eq!(row.get::<String>("t").unwrap(), "x");
-        assert_eq!(row.get::<Option<String>>("z").unwrap(), None);
+        assert_eq!(row.get::<i64>(Probe::N).unwrap(), 7);
+        assert_eq!(row.get::<String>(Probe::T).unwrap(), "x");
+        assert_eq!(row.get::<Option<String>>(Probe::Z).unwrap(), None);
     }
 
     #[test]
     fn names_the_column_it_could_not_read() {
         let row = row();
-        let wrong = row.get::<String>("n").unwrap_err();
+        let wrong = row.get::<String>(Probe::N).unwrap_err();
         assert_eq!(wrong.column, "n");
         assert!(matches!(wrong.fault, ColumnFault::Type(Mismatch::Kind { wanted: Kind::Text, found: Kind::Integer })));
-        assert_eq!(row.get::<i64>("gone").unwrap_err().fault, ColumnFault::Missing);
+        assert_eq!(row.get::<i64>(Probe::Gone).unwrap_err().fault, ColumnFault::Missing);
     }
 
     #[test]

@@ -7,5 +7,5 @@
 mod error;
 mod sqlite;
 
-pub use error::Error;
+pub use error::{Error, Stage};
 pub use sqlite::Sqlite;

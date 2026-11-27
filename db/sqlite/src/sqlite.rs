@@ -4,11 +4,11 @@ use std::fmt;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
-use db::{Constraint, Db, Outcome, Row, Statement, Value};
+use db::{Constraint, Db, Outcome, Renderer, Row, Statement, Value};
 use rusqlite::types::{Value as Stored, ValueRef};
 use rusqlite::{Connection, ffi};
 
-use crate::Error;
+use crate::{Error, Stage};
 
 /// A SQLite database: a file, or memory.
 pub struct Sqlite {
@@ -87,13 +87,13 @@ impl Execution<'_> {
         })
     }
 
-    fn run(&self, statement: &Statement) -> Result<Outcome, Error> {
-        let sql = statement.sql();
-        let failed = |source| Error::Run { sql, source };
-        let mut prepared = self.connection.prepare_cached(sql).map_err(failed)?;
+    fn run(&self, statement: &Statement, index: usize) -> Result<Outcome, Error> {
+        let rendered = Renderer.render(statement).map_err(|source| Error::Render { index, source })?;
+        let failed = |source| Error::Run { stage: Stage::Statement(statement.shape()), source };
+        let mut prepared = self.connection.prepare_cached(rendered.text()).map_err(failed)?;
         let readonly = prepared.readonly();
         let names: Vec<String> = prepared.column_names().into_iter().map(str::to_owned).collect();
-        let bound = rusqlite::params_from_iter(statement.parameters().iter().map(Self::stored));
+        let bound = rusqlite::params_from_iter(rendered.values().iter().map(Self::stored));
         let mut rows = prepared.query(bound).map_err(failed)?;
         let mut found = Vec::new();
         while let Some(row) = rows.next().map_err(failed)? {
@@ -127,6 +127,9 @@ impl Error {
 
 impl From<Error> for db::Error<Error> {
     fn from(source: Error) -> Self {
+        if let Error::Render { index, source } = source {
+            return Self::Unrenderable { index, source };
+        }
         match source.constraint() {
             Some(constraint) => Self::Constraint { constraint, source },
             None => Self::Backend { source },
@@ -138,21 +141,17 @@ impl Db for Sqlite {
     type Error = Error;
 
     async fn run(&self, statement: Statement) -> Result<Outcome, db::Error<Error>> {
-        statement.check().map_err(|found| db::Error::Parameters { index: 0, found })?;
         let guard = self.lock()?;
-        Ok(Execution { connection: &guard }.run(&statement)?)
+        Ok(Execution { connection: &guard }.run(&statement, 0)?)
     }
 
     async fn batch(&self, statements: Vec<Statement>) -> Result<Vec<Outcome>, db::Error<Error>> {
-        for (index, statement) in statements.iter().enumerate() {
-            statement.check().map_err(|found| db::Error::Parameters { index, found })?;
-        }
         let mut guard = self.lock()?;
-        let open = |source| Error::Run { sql: "BEGIN", source };
-        let transaction = guard.transaction().map_err(open)?;
+        let transaction = guard.transaction().map_err(|source| Error::Run { stage: Stage::Begin, source })?;
         let execution = Execution { connection: &transaction };
-        let outcomes = statements.iter().map(|statement| execution.run(statement)).collect::<Result<Vec<_>, _>>()?;
-        transaction.commit().map_err(|source| Error::Run { sql: "COMMIT", source })?;
+        let outcomes =
+            statements.iter().enumerate().map(|(index, statement)| execution.run(statement, index)).collect::<Result<Vec<_>, _>>()?;
+        transaction.commit().map_err(|source| Error::Run { stage: Stage::Commit, source })?;
         Ok(outcomes)
     }
 }

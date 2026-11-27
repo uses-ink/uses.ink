@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::TooMany;
+use crate::Unrenderable;
 
 /// The constraint a write broke.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -33,12 +33,12 @@ impl fmt::Display for Constraint {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error<E> {
-    /// A statement bound more parameters than D1 accepts.
-    Parameters {
+    /// A statement that no database could run: too many parameters, or a value D1 cannot carry.
+    Unrenderable {
         /// Which statement of the batch, counting from zero; zero for a single one.
         index: usize,
-        /// How many it bound and how many are allowed.
-        found: TooMany,
+        /// What was wrong with it.
+        source: Unrenderable,
     },
     /// A write broke a constraint. In a batch nothing was written.
     Constraint {
@@ -59,7 +59,7 @@ impl<E> Error<E> {
     pub const fn constraint(&self) -> Option<Constraint> {
         match self {
             Self::Constraint { constraint, .. } => Some(*constraint),
-            Self::Parameters { .. } | Self::Backend { .. } => None,
+            Self::Unrenderable { .. } | Self::Backend { .. } => None,
         }
     }
 }
@@ -67,7 +67,7 @@ impl<E> Error<E> {
 impl<E> fmt::Display for Error<E> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Parameters { index, found } => write!(out, "statement {index}: {found}"),
+            Self::Unrenderable { index, .. } => write!(out, "statement {index} cannot be run"),
             Self::Constraint { constraint, .. } => write!(out, "the write was refused: {constraint}"),
             Self::Backend { .. } => out.write_str("the database failed"),
         }
@@ -77,7 +77,7 @@ impl<E> fmt::Display for Error<E> {
 impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Parameters { found, .. } => Some(found),
+            Self::Unrenderable { source, .. } => Some(source),
             Self::Constraint { source, .. } | Self::Backend { source } => Some(source),
         }
     }

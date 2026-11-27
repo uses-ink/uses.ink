@@ -8,18 +8,121 @@
 //! The cases pin what D1 does, since D1 is the stricter target (decision 0030): statements and
 //! batches only, foreign keys enforced, a bound-parameter limit, and the migration ledger.
 
-use db::{Constraint, Db, Error, Statement, Step, Steps, Unapplied, Value};
+use sea_query::{ColumnDef, Expr, ExprTrait, ForeignKey, IdenStatic, Order, Query, Table};
+use db::{Constraint, Db, Error, Ledger, Migration, Statement, Steps, Unapplied, Unrenderable, Value};
 
 #[doc(hidden)]
 pub use pollster;
 
-/// A table the cases write to.
-const PARENT: &str = "CREATE TABLE parent (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, size INTEGER CHECK (size >= 0))";
-const CHILD: &str = "CREATE TABLE child (id INTEGER PRIMARY KEY, parent INTEGER NOT NULL REFERENCES parent(id))";
+#[derive(Clone, Copy, IdenStatic)]
+enum Parent {
+    Table,
+    Id,
+    Name,
+    Size,
+}
 
-/// Makes the cases' tables.
-async fn tables<D: Db>(db: &D) {
-    db.batch(vec![Statement::prepare(PARENT), Statement::prepare(CHILD)]).await.unwrap();
+#[derive(Clone, Copy, IdenStatic)]
+enum Child {
+    Table,
+    Id,
+    Parent,
+}
+
+#[derive(Clone, Copy, IdenStatic)]
+enum Every {
+    Table,
+    A,
+    B,
+    C,
+    D,
+    E,
+}
+
+#[derive(Clone, Copy, IdenStatic)]
+enum Big {
+    Table,
+    Body,
+}
+
+#[derive(Clone, Copy, IdenStatic)]
+enum Answer {
+    One,
+    Two,
+    Three,
+    Four,
+    N,
+}
+
+/// A table no case makes.
+#[derive(Clone, Copy, IdenStatic)]
+enum Nowhere {
+    Table,
+    Id,
+}
+
+#[derive(Clone, Copy, IdenStatic)]
+#[iden = "sqlite_master"]
+enum Master {
+    Table,
+    Name,
+}
+
+/// The tables and statements the cases share.
+struct Tables;
+
+impl Tables {
+    /// The two tables: a parent with a unique name and a checked size, and a child that points at it.
+    fn create() -> Vec<Statement> {
+        vec![
+            Table::create()
+                .table(Parent::Table)
+                .col(ColumnDef::new(Parent::Id).integer().primary_key())
+                .col(ColumnDef::new(Parent::Name).text().not_null().unique_key())
+                .col(ColumnDef::new(Parent::Size).integer().check(Expr::col(Parent::Size).gte(0)))
+                .into(),
+            Table::create()
+                .table(Child::Table)
+                .col(ColumnDef::new(Child::Id).integer().primary_key())
+                .col(ColumnDef::new(Child::Parent).integer().not_null())
+                .foreign_key(ForeignKey::create().from(Child::Table, Child::Parent).to(Parent::Table, Parent::Id))
+                .into(),
+        ]
+    }
+
+    /// Makes the tables.
+    async fn make<D: Db>(db: &D) {
+        db.batch(Self::create()).await.unwrap();
+    }
+
+    /// Adds a parent.
+    fn parent(id: i64, name: Option<&str>, size: i64) -> Statement {
+        Query::insert()
+            .into_table(Parent::Table)
+            .columns([Parent::Id, Parent::Name, Parent::Size])
+            .values_panic([Expr::val(id), Expr::val(name), Expr::val(size)])
+            .into()
+    }
+
+    /// Adds a child of `parent`.
+    fn child(id: i64, parent: i64) -> Statement {
+        Query::insert().into_table(Child::Table).columns([Child::Id, Child::Parent]).values_panic([Expr::val(id), Expr::val(parent)]).into()
+    }
+
+    /// Every parent's id.
+    fn ids() -> Statement {
+        Query::select().column(Parent::Id).from(Parent::Table).order_by(Parent::Id, Order::Asc).into()
+    }
+
+    /// A select of `count` bound values, the first named `n`.
+    fn bound(count: usize) -> Statement {
+        let mut select = Query::select();
+        select.expr_as(Expr::val(0_i64), Answer::N);
+        for n in 1..count {
+            select.expr(Expr::val(i64::try_from(n).unwrap()));
+        }
+        select.into()
+    }
 }
 
 /// Rows written come back as the same typed values.
@@ -27,35 +130,48 @@ async fn tables<D: Db>(db: &D) {
 pub struct Values;
 
 impl Values {
+    /// An insert of one row of the five columns.
+    fn row(values: [Expr; 5]) -> Statement {
+        Query::insert().into_table(Every::Table).columns([Every::A, Every::B, Every::C, Every::D, Every::E]).values_panic(values).into()
+    }
+
     /// Every kind of value, and the extremes of each, survive a round trip.
     pub async fn check<D: Db>(db: &D) {
-        db.run(Statement::prepare("CREATE TABLE v (a, b, c, d, e)")).await.unwrap();
-        let blob = vec![0_u8, 255, 1, 0];
         db.run(
-            Statement::prepare("INSERT INTO v VALUES (?, ?, ?, ?, ?)")
-                .bind(i64::MIN)
-                .bind(1.5_f64)
-                .bind("h\u{e9}llo \u{1f980} \0 end")
-                .bind(blob.clone())
-                .bind(None::<i64>),
+            Table::create()
+                .table(Every::Table)
+                .col(ColumnDef::new(Every::A))
+                .col(ColumnDef::new(Every::B))
+                .col(ColumnDef::new(Every::C))
+                .col(ColumnDef::new(Every::D))
+                .col(ColumnDef::new(Every::E))
+                .into(),
         )
         .await
         .unwrap();
-        db.run(Statement::prepare("INSERT INTO v VALUES (?, ?, ?, ?, ?)").bind(i64::MAX).bind(-0.0_f64).bind("").bind(Vec::<u8>::new()).bind(true))
-            .await
-            .unwrap();
-        let rows = db.rows(Statement::prepare("SELECT a, b, c, d, e FROM v ORDER BY a")).await.unwrap();
+        let blob = vec![0_u8, 255, 1, 0];
+        let text = "h\u{e9}llo \u{1f980} \0 end";
+        let low = [Expr::val(i64::MIN), Expr::val(1.5_f64), Expr::val(text), Expr::val(blob.clone()), Expr::val(None::<i64>)];
+        let high = [Expr::val(i64::MAX), Expr::val(-0.0_f64), Expr::val(""), Expr::val(Vec::<u8>::new()), Expr::val(true)];
+        db.run(Self::row(low)).await.unwrap();
+        db.run(Self::row(high)).await.unwrap();
+        let read = Query::select()
+            .columns([Every::A, Every::B, Every::C, Every::D, Every::E])
+            .from(Every::Table)
+            .order_by(Every::A, Order::Asc)
+            .into();
+        let rows = db.rows(read).await.unwrap();
         let [low, high] = rows.as_slice() else { panic!("two rows, found {}", rows.len()) };
-        assert_eq!(low.get::<i64>("a").unwrap(), i64::MIN);
-        assert_eq!(low.get::<f64>("b").unwrap(), 1.5);
-        assert_eq!(low.get::<String>("c").unwrap(), "h\u{e9}llo \u{1f980} \0 end");
-        assert_eq!(low.get::<Vec<u8>>("d").unwrap(), blob);
-        assert_eq!(low.get::<Option<i64>>("e").unwrap(), None);
-        assert_eq!(high.get::<i64>("a").unwrap(), i64::MAX);
-        assert_eq!(high.get::<String>("c").unwrap(), "");
-        assert_eq!(high.get::<Vec<u8>>("d").unwrap(), Vec::<u8>::new());
-        assert!(high.get::<bool>("e").unwrap());
-        assert_eq!(high.get::<Value>("e").unwrap(), Value::Integer(1));
+        assert_eq!(low.get::<i64>(Every::A).unwrap(), i64::MIN);
+        assert_eq!(low.get::<f64>(Every::B).unwrap(), 1.5);
+        assert_eq!(low.get::<String>(Every::C).unwrap(), text);
+        assert_eq!(low.get::<Vec<u8>>(Every::D).unwrap(), blob);
+        assert_eq!(low.get::<Option<i64>>(Every::E).unwrap(), None);
+        assert_eq!(high.get::<i64>(Every::A).unwrap(), i64::MAX);
+        assert_eq!(high.get::<String>(Every::C).unwrap(), "");
+        assert_eq!(high.get::<Vec<u8>>(Every::D).unwrap(), Vec::<u8>::new());
+        assert!(high.get::<bool>(Every::E).unwrap());
+        assert_eq!(high.get::<Value>(Every::E).unwrap(), Value::Integer(1));
     }
 }
 
@@ -66,11 +182,11 @@ pub struct Large;
 impl Large {
     /// A large blob.
     pub async fn check<D: Db>(db: &D) {
-        db.run(Statement::prepare("CREATE TABLE big (body BLOB)")).await.unwrap();
+        db.run(Table::create().table(Big::Table).col(ColumnDef::new(Big::Body).blob()).into()).await.unwrap();
         let body: Vec<u8> = (0..1_048_576_u32).map(|n| u8::try_from(n % 251).unwrap()).collect();
-        db.run(Statement::prepare("INSERT INTO big VALUES (?)").bind(body.clone())).await.unwrap();
-        let row = db.first(Statement::prepare("SELECT body FROM big")).await.unwrap().unwrap();
-        assert_eq!(row.get::<Vec<u8>>("body").unwrap(), body);
+        db.run(Query::insert().into_table(Big::Table).columns([Big::Body]).values_panic([Expr::val(body.clone())]).into()).await.unwrap();
+        let row = db.first(Query::select().column(Big::Body).from(Big::Table).into()).await.unwrap().unwrap();
+        assert_eq!(row.get::<Vec<u8>>(Big::Body).unwrap(), body);
     }
 }
 
@@ -81,11 +197,12 @@ pub struct Injection;
 impl Injection {
     /// A hostile value is stored and returned as it is, and the table survives.
     pub async fn check<D: Db>(db: &D) {
-        tables(db).await;
+        Tables::make(db).await;
         let hostile = "x'); DROP TABLE parent; --";
-        db.run(Statement::prepare("INSERT INTO parent (id, name, size) VALUES (1, ?, 0)").bind(hostile)).await.unwrap();
-        let row = db.first(Statement::prepare("SELECT name FROM parent WHERE name = ?").bind(hostile)).await.unwrap().unwrap();
-        assert_eq!(row.get::<String>("name").unwrap(), hostile);
+        db.run(Tables::parent(1, Some(hostile), 0)).await.unwrap();
+        let find = Query::select().column(Parent::Name).from(Parent::Table).and_where(Expr::col(Parent::Name).eq(hostile)).into();
+        let row = db.first(find).await.unwrap().unwrap();
+        assert_eq!(row.get::<String>(Parent::Name).unwrap(), hostile);
     }
 }
 
@@ -96,21 +213,26 @@ pub struct Outcomes;
 impl Outcomes {
     /// Writes count their changes, reads return rows and change none, `RETURNING` does both.
     pub async fn check<D: Db>(db: &D) {
-        tables(db).await;
-        let insert = |id: i64, name: &str| Statement::prepare("INSERT INTO parent (id, name, size) VALUES (?, ?, 1)").bind(id).bind(name);
-        assert_eq!(db.run(insert(1, "a")).await.unwrap().changes, 1);
-        assert_eq!(db.run(insert(2, "b")).await.unwrap().changes, 1);
-        let update = db.run(Statement::prepare("UPDATE parent SET size = size + 1")).await.unwrap();
+        Tables::make(db).await;
+        assert_eq!(db.run(Tables::parent(1, Some("a"), 1)).await.unwrap().changes, 1);
+        assert_eq!(db.run(Tables::parent(2, Some("b"), 1)).await.unwrap().changes, 1);
+        let grow = Query::update().table(Parent::Table).value(Parent::Size, Expr::col(Parent::Size).add(1)).into();
+        let update = db.run(grow).await.unwrap();
         assert_eq!(update.changes, 2);
         assert!(update.rows.is_empty());
-        let read = db.run(Statement::prepare("SELECT id FROM parent ORDER BY id")).await.unwrap();
+        let read = db.run(Tables::ids()).await.unwrap();
         assert_eq!((read.rows.len(), read.changes), (2, 0));
-        let returned = db.run(Statement::prepare("DELETE FROM parent WHERE id = ? RETURNING name, size").bind(2_i64)).await.unwrap();
+        let take = Query::delete()
+            .from_table(Parent::Table)
+            .and_where(Expr::col(Parent::Id).eq(2_i64))
+            .returning(Query::returning().columns([Parent::Name, Parent::Size]))
+            .into();
+        let returned = db.run(take).await.unwrap();
         assert_eq!(returned.changes, 1);
         let [row] = returned.rows.as_slice() else { panic!("one returned row") };
-        assert_eq!((row.get::<String>("name").unwrap(), row.get::<i64>("size").unwrap()), ("b".to_owned(), 2));
-        let none = db.run(Statement::prepare("UPDATE parent SET size = 9 WHERE id = ?").bind(99_i64)).await.unwrap();
-        assert_eq!(none.changes, 0);
+        assert_eq!((row.get::<String>(Parent::Name).unwrap(), row.get::<i64>(Parent::Size).unwrap()), ("b".to_owned(), 2));
+        let none = Query::update().table(Parent::Table).value(Parent::Size, 9_i64).and_where(Expr::col(Parent::Id).eq(99_i64)).into();
+        assert_eq!(db.run(none).await.unwrap().changes, 0);
     }
 }
 
@@ -121,13 +243,19 @@ pub struct Columns;
 impl Columns {
     /// Aliases name columns, a missing column and a wrong type are typed errors.
     pub async fn check<D: Db>(db: &D) {
-        let row = db.first(Statement::prepare("SELECT 1 AS one, 'two' AS two, NULL AS three")).await.unwrap().unwrap();
+        let aliased = Query::select()
+            .expr_as(Expr::val(1_i64), Answer::One)
+            .expr_as(Expr::val("two"), Answer::Two)
+            .expr_as(Expr::val(None::<i64>), Answer::Three)
+            .into();
+        let row = db.first(aliased).await.unwrap().unwrap();
         let names: Vec<&str> = row.columns().map(|(name, _)| name).collect();
         assert_eq!(names, ["one", "two", "three"]);
-        assert_eq!(row.get::<Option<String>>("three").unwrap(), None);
-        assert_eq!(row.get::<i64>("four").unwrap_err().column, "four");
-        assert!(row.get::<String>("one").is_err());
-        assert!(db.first(Statement::prepare("SELECT 1 WHERE 0")).await.unwrap().is_none());
+        assert_eq!(row.get::<Option<String>>(Answer::Three).unwrap(), None);
+        assert_eq!(row.get::<i64>(Answer::Four).unwrap_err().column, "four");
+        assert!(row.get::<String>(Answer::One).is_err());
+        let none = Query::select().expr_as(Expr::val(1_i64), Answer::One).and_where(Expr::val(1_i64).eq(0_i64)).into();
+        assert!(db.first(none).await.unwrap().is_none());
     }
 }
 
@@ -138,12 +266,12 @@ pub struct Batches;
 impl Batches {
     /// Later statements see earlier ones, and outcomes keep their order.
     pub async fn check<D: Db>(db: &D) {
-        tables(db).await;
+        Tables::make(db).await;
         let outcomes = db
             .batch(vec![
-                Statement::prepare("INSERT INTO parent (id, name, size) VALUES (1, 'a', 0)"),
-                Statement::prepare("SELECT name FROM parent"),
-                Statement::prepare("UPDATE parent SET size = 5"),
+                Tables::parent(1, Some("a"), 0),
+                Query::select().column(Parent::Name).from(Parent::Table).into(),
+                Query::update().table(Parent::Table).value(Parent::Size, 5_i64).into(),
             ])
             .await
             .unwrap();
@@ -160,17 +288,11 @@ pub struct Atomic;
 impl Atomic {
     /// A failing statement leaves none of the batch applied, and says which constraint.
     pub async fn check<D: Db>(db: &D) {
-        tables(db).await;
-        db.run(Statement::prepare("INSERT INTO parent (id, name, size) VALUES (1, 'taken', 0)")).await.unwrap();
-        let refused = db
-            .batch(vec![
-                Statement::prepare("INSERT INTO parent (id, name, size) VALUES (2, 'fresh', 0)"),
-                Statement::prepare("INSERT INTO parent (id, name, size) VALUES (3, 'taken', 0)"),
-            ])
-            .await
-            .unwrap_err();
+        Tables::make(db).await;
+        db.run(Tables::parent(1, Some("taken"), 0)).await.unwrap();
+        let refused = db.batch(vec![Tables::parent(2, Some("fresh"), 0), Tables::parent(3, Some("taken"), 0)]).await.unwrap_err();
         assert_eq!(refused.constraint(), Some(Constraint::Unique));
-        let left = db.rows(Statement::prepare("SELECT id FROM parent")).await.unwrap();
+        let left = db.rows(Tables::ids()).await.unwrap();
         assert_eq!(left.len(), 1, "the first statement of a failed batch was applied");
     }
 }
@@ -182,16 +304,17 @@ pub struct Constraints;
 impl Constraints {
     /// Unique, foreign key, not null and check each fail as themselves.
     pub async fn check<D: Db>(db: &D) {
-        tables(db).await;
-        db.run(Statement::prepare("INSERT INTO parent (id, name, size) VALUES (1, 'a', 0)")).await.unwrap();
+        Tables::make(db).await;
+        db.run(Tables::parent(1, Some("a"), 0)).await.unwrap();
         let broke = |statement: Statement| async move { db.run(statement).await.unwrap_err().constraint() };
-        assert_eq!(broke(Statement::prepare("INSERT INTO parent (id, name, size) VALUES (2, 'a', 0)")).await, Some(Constraint::Unique));
-        assert_eq!(broke(Statement::prepare("INSERT INTO parent (id, name, size) VALUES (1, 'z', 0)")).await, Some(Constraint::Unique));
-        assert_eq!(broke(Statement::prepare("INSERT INTO child (id, parent) VALUES (1, 99)")).await, Some(Constraint::Reference));
-        assert_eq!(broke(Statement::prepare("INSERT INTO parent (id, name, size) VALUES (3, NULL, 0)")).await, Some(Constraint::Null));
-        assert_eq!(broke(Statement::prepare("INSERT INTO parent (id, name, size) VALUES (4, 'n', -1)")).await, Some(Constraint::Check));
-        db.run(Statement::prepare("INSERT INTO child (id, parent) VALUES (1, 1)")).await.unwrap();
-        assert_eq!(broke(Statement::prepare("DELETE FROM parent WHERE id = 1")).await, Some(Constraint::Reference));
+        assert_eq!(broke(Tables::parent(2, Some("a"), 0)).await, Some(Constraint::Unique));
+        assert_eq!(broke(Tables::parent(1, Some("z"), 0)).await, Some(Constraint::Unique));
+        assert_eq!(broke(Tables::child(1, 99)).await, Some(Constraint::Reference));
+        assert_eq!(broke(Tables::parent(3, None, 0)).await, Some(Constraint::Null));
+        assert_eq!(broke(Tables::parent(4, Some("n"), -1)).await, Some(Constraint::Check));
+        db.run(Tables::child(1, 1)).await.unwrap();
+        let orphan = Query::delete().from_table(Parent::Table).and_where(Expr::col(Parent::Id).eq(1_i64)).into();
+        assert_eq!(broke(orphan).await, Some(Constraint::Reference));
     }
 }
 
@@ -200,13 +323,11 @@ impl Constraints {
 pub struct Failures;
 
 impl Failures {
-    /// Bad SQL is a backend failure.
+    /// A table that does not exist is a backend failure.
     pub async fn check<D: Db>(db: &D) {
-        let error = db.run(Statement::prepare("SELEKT 1")).await.unwrap_err();
-        assert!(matches!(error, Error::Backend { .. }), "{error}");
-        assert_eq!(error.constraint(), None);
-        let missing = db.run(Statement::prepare("SELECT * FROM nowhere")).await.unwrap_err();
-        assert!(matches!(missing, Error::Backend { .. }));
+        let missing = db.run(Query::select().column(Nowhere::Id).from(Nowhere::Table).into()).await.unwrap_err();
+        assert!(matches!(missing, Error::Backend { .. }), "{missing}");
+        assert_eq!(missing.constraint(), None);
     }
 }
 
@@ -217,14 +338,81 @@ pub struct Limit;
 impl Limit {
     /// 100 parameters run and 101 are refused before they reach the database, in a batch too.
     pub async fn check<D: Db>(db: &D) {
-        let ok = (0..Statement::MAX_PARAMETERS).fold(Statement::prepare("SELECT ? AS n, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?"), |statement, n| statement.bind(i64::try_from(n).unwrap()));
-        assert_eq!(db.first(ok).await.unwrap().unwrap().get::<i64>("n").unwrap(), 0);
-        let over = (0..=Statement::MAX_PARAMETERS).fold(Statement::prepare("SELECT ? AS n, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?"), |statement, n| statement.bind(i64::try_from(n).unwrap()));
+        let ok = Tables::bound(Statement::MAX_PARAMETERS);
+        assert_eq!(db.first(ok).await.unwrap().unwrap().get::<i64>(Answer::N).unwrap(), 0);
+        let over = Tables::bound(Statement::MAX_PARAMETERS + 1);
         let refused = db.run(over.clone()).await.unwrap_err();
-        assert!(matches!(refused, Error::Parameters { index: 0, found } if found.count == 101 && found.limit == 100));
-        let refused = db.batch(vec![Statement::prepare("SELECT 1"), over]).await.unwrap_err();
-        assert!(matches!(refused, Error::Parameters { index: 1, .. }));
+        assert!(matches!(refused, Error::Unrenderable { index: 0, source: Unrenderable::TooMany(found) } if found.count == 101 && found.limit == 100));
+        let refused = db.batch(vec![Tables::bound(1), over]).await.unwrap_err();
+        assert!(matches!(refused, Error::Unrenderable { index: 1, .. }));
     }
+
+    /// An integer that does not fit D1's 64 signed bits is refused, not wrapped.
+    pub async fn unsupported<D: Db>(db: &D) {
+        let wide = Query::select().expr_as(Expr::val(u64::MAX), Answer::N).into();
+        let refused = db.run(wide).await.unwrap_err();
+        assert!(matches!(refused, Error::Unrenderable { source: Unrenderable::Value(_), .. }), "{refused}");
+    }
+}
+
+#[derive(Clone, Copy, IdenStatic)]
+enum Alpha {
+    Table,
+    X,
+}
+
+#[derive(Clone, Copy, IdenStatic)]
+enum Beta {
+    Table,
+    Y,
+}
+
+/// Makes `alpha` and one row in it.
+struct First;
+
+impl Migration for First {
+    const NUMBER: u32 = 1;
+    const NAME: &'static str = "first";
+
+    fn statements() -> Vec<Statement> {
+        vec![
+            Table::create().table(Alpha::Table).col(ColumnDef::new(Alpha::X).text()).into(),
+            Query::insert().into_table(Alpha::Table).columns([Alpha::X]).values_panic([Expr::val("one")]).into(),
+        ]
+    }
+}
+
+/// Makes `beta`.
+struct Second;
+
+impl Migration for Second {
+    const NUMBER: u32 = 2;
+    const NAME: &'static str = "second";
+
+    fn statements() -> Vec<Statement> {
+        vec![Table::create().table(Beta::Table).col(ColumnDef::new(Beta::Y).text()).into()]
+    }
+}
+
+/// Makes `gamma`, then fails on a table that is not there.
+struct Broken;
+
+impl Migration for Broken {
+    const NUMBER: u32 = 3;
+    const NAME: &'static str = "broken";
+
+    fn statements() -> Vec<Statement> {
+        vec![
+            Table::create().table(Gamma::Table).col(ColumnDef::new(Gamma::Z).text()).into(),
+            Query::insert().into_table(Nowhere::Table).columns([Nowhere::Id]).values_panic([Expr::val(1_i64)]).into(),
+        ]
+    }
+}
+
+#[derive(Clone, Copy, IdenStatic)]
+enum Gamma {
+    Table,
+    Z,
 }
 
 /// The migration runner through the port.
@@ -232,37 +420,35 @@ impl Limit {
 pub struct Migrations;
 
 impl Migrations {
-    const FIRST: Step = Step::new("0001_first.sql", "CREATE TABLE a (x TEXT); -- one\nINSERT INTO a VALUES ('one');");
-    const SECOND: Step = Step::new("0002_second.sql", "CREATE TABLE b (y TEXT);");
-    const BROKEN: Step = Step::new("0003_broken.sql", "CREATE TABLE c (z TEXT); INSERT INTO nowhere VALUES (1);");
-
     /// Applies what is missing once, writes wrangler's ledger, and refuses a newer database.
     pub async fn check<D: Db>(db: &D) {
-        let first = Steps::new([Self::FIRST]).unwrap();
-        let both = Steps::new([Self::FIRST, Self::SECOND]).unwrap();
-        assert_eq!(first.apply(db).await.unwrap().names, ["0001_first.sql"]);
-        assert_eq!(both.apply(db).await.unwrap().names, ["0002_second.sql"]);
+        let first = Steps::new().with::<First>().unwrap();
+        let both = Steps::new().with::<First>().unwrap().with::<Second>().unwrap();
+        assert_eq!(first.apply(db).await.unwrap().names, ["0001_first"]);
+        assert_eq!(both.apply(db).await.unwrap().names, ["0002_second"]);
         assert!(both.apply(db).await.unwrap().names.is_empty());
-        let ledger = db.rows(Statement::prepare("SELECT id, name, applied_at FROM d1_migrations ORDER BY id")).await.unwrap();
-        let names: Vec<String> = ledger.iter().map(|row| row.get("name").unwrap()).collect();
-        assert_eq!(names, ["0001_first.sql", "0002_second.sql"]);
-        assert!(ledger.iter().all(|row| row.get::<String>("applied_at").is_ok()));
-        let one = db.first(Statement::prepare("SELECT x FROM a")).await.unwrap().unwrap();
-        assert_eq!(one.get::<String>("x").unwrap(), "one");
+        let listing = Query::select().columns([Ledger::Id, Ledger::Name, Ledger::AppliedAt]).from(Ledger::Table).order_by(Ledger::Id, Order::Asc).into();
+        let ledger = db.rows(listing).await.unwrap();
+        let names: Vec<String> = ledger.iter().map(|row| row.get(Ledger::Name).unwrap()).collect();
+        assert_eq!(names, ["0001_first", "0002_second"]);
+        assert!(ledger.iter().all(|row| row.get::<String>(Ledger::AppliedAt).is_ok()));
+        let one = db.first(Query::select().column(Alpha::X).from(Alpha::Table).into()).await.unwrap().unwrap();
+        assert_eq!(one.get::<String>(Alpha::X).unwrap(), "one");
         // a database ahead of the code is refused, not migrated backwards
         let behind = first.apply(db).await.unwrap_err();
-        assert!(matches!(behind, Unapplied::Unknown { ref name } if name == "0002_second.sql"));
+        assert!(matches!(behind, Unapplied::Unknown { ref name } if name == "0002_second"));
     }
 
     /// A step that fails leaves neither its tables nor its ledger row.
     pub async fn broken<D: Db>(db: &D) {
-        let steps = Steps::new([Self::FIRST, Self::SECOND, Self::BROKEN]).unwrap();
+        let steps = Steps::new().with::<First>().unwrap().with::<Second>().unwrap().with::<Broken>().unwrap();
         let failed = steps.apply(db).await.unwrap_err();
         assert!(matches!(failed, Unapplied::Db(_)));
-        let ledger = db.rows(Statement::prepare("SELECT name FROM d1_migrations ORDER BY id")).await.unwrap();
+        let listing = Query::select().column(Ledger::Name).from(Ledger::Table).order_by(Ledger::Id, Order::Asc).into();
+        let ledger = db.rows(listing).await.unwrap();
         assert_eq!(ledger.len(), 2);
-        let table = db.first(Statement::prepare("SELECT name FROM sqlite_master WHERE name = 'c'")).await.unwrap();
-        assert!(table.is_none(), "a failed step left its table");
+        let table = Query::select().column(Master::Name).from(Master::Table).and_where(Expr::col(Master::Name).eq("gamma")).into();
+        assert!(db.first(table).await.unwrap().is_none(), "a failed step left its table");
     }
 }
 
@@ -282,6 +468,7 @@ macro_rules! suite {
         $crate::suite!(@case $make, tells_constraints_apart, Constraints, check);
         $crate::suite!(@case $make, does_not_call_a_failure_a_constraint, Failures, check);
         $crate::suite!(@case $make, refuses_more_parameters_than_d1, Limit, check);
+        $crate::suite!(@case $make, refuses_a_value_d1_cannot_carry, Limit, unsupported);
         $crate::suite!(@case $make, applies_migrations_once, Migrations, check);
         $crate::suite!(@case $make, leaves_nothing_of_a_failed_migration, Migrations, broken);
     };

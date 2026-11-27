@@ -73,6 +73,7 @@ libm = "0.2.16"
 math-core = "0.9.0"
 pollster = "0.4.0"
 proptest = "1.12.0"
+sea-query = { version = "1.0.2", default-features = false, features = ["derive", "backend-sqlite"] }
 rusqlite = { version = "0.41.0", features = ["bundled"] }
 tempfile = "3.27.0"
 quick-xml = "0.42.0"

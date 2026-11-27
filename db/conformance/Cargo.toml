@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 db.workspace = true
+sea-query.workspace = true
 pollster.workspace = true
 
 [lints]

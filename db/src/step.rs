@@ -1,93 +1,91 @@
-//! Migrations: wrangler's folder of numbered `.sql` files, applied through any [`Db`].
+//! Migrations: typed values with a number and a name, applied in order through any [`Db`], with
+//! wrangler's ledger table so a D1 database keeps one history.
 
 use std::fmt;
 
-use crate::script::ScriptError;
-use crate::{ColumnError, Db, Error, Script, Statement};
+use sea_query::{ColumnDef, Expr, IdenStatic, Order, Query, Table};
 
-/// One migration file: its name in wrangler's form, `0001_name.sql`, and its text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Step {
+use crate::{ColumnError, Db, Error, Statement};
+
+/// One migration: what it does to the schema, built from typed definitions.
+pub trait Migration {
+    /// Its place in the order. Numbers only rise.
+    const NUMBER: u32;
+    /// Its name: lower case letters, digits and `_`.
+    const NAME: &'static str;
+
+    /// The statements that apply it. They run with the ledger row as one atomic batch.
+    fn statements() -> Vec<Statement>;
+}
+
+/// wrangler's ledger table, `d1_migrations`: one row per applied migration, by its ledger name.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "d1_migrations"]
+pub enum Ledger {
+    /// The table.
+    Table,
+    /// The row number.
+    Id,
+    /// The ledger name.
+    Name,
+    /// When it was applied.
+    AppliedAt,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Step {
+    number: u32,
     name: &'static str,
-    script: &'static str,
+    statements: fn() -> Vec<Statement>,
 }
 
 impl Step {
-    /// A step; `script` is usually `include_str!` of the file `name` names. It is checked by
-    /// [`Steps::new`].
-    pub const fn new(name: &'static str, script: &'static str) -> Self {
-        Self { name, script }
-    }
-
-    /// The file's name, which is what the ledger records.
-    pub const fn name(&self) -> &'static str {
-        self.name
-    }
-
-    /// The number a name starts with, if the name is `NNNN_words.sql` in lower case.
-    fn number(&self) -> Option<u32> {
-        let (digits, rest) = self.name.split_once('_')?;
-        let words = rest.strip_suffix(".sql")?;
-        let named = !words.is_empty() && words.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_');
-        (digits.len() == 4 && digits.bytes().all(|b| b.is_ascii_digit()) && named).then(|| digits.parse().ok())?
+    /// The name the ledger records: `0001_words`.
+    fn ledger(&self) -> String {
+        format!("{:04}_{}", self.number, self.name)
     }
 }
 
-/// Why a list of steps is not a migration set.
+/// Why a migration cannot join a set.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum StepError {
-    /// A name that is not `NNNN_words.sql`.
+    /// A name that is not lower case words.
     Name {
         /// The name.
         name: &'static str,
     },
-    /// A step that does not come after the one before it.
+    /// A migration whose number does not come after the one before it.
     Order {
-        /// The earlier step's name.
-        before: &'static str,
-        /// The step that is not later.
-        after: &'static str,
-    },
-    /// A file that is not a script D1 would run.
-    Script {
-        /// The step.
-        name: &'static str,
-        /// What the script splitter refused.
-        source: ScriptError,
+        /// The earlier migration's number.
+        before: u32,
+        /// The number that is not later.
+        after: u32,
     },
 }
 
 impl fmt::Display for StepError {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Name { name } => write!(out, "`{name}` is not a migration name: it is `NNNN_words.sql` in lower case"),
-            Self::Order { before, after } => write!(out, "`{after}` does not come after `{before}`: numbers only rise"),
-            Self::Script { name, .. } => write!(out, "`{name}` is not a script"),
+            Self::Name { name } => write!(out, "`{name}` is not a migration name: lower case letters, digits and `_`"),
+            Self::Order { before, after } => write!(out, "migration {after} does not come after {before}: numbers only rise"),
         }
     }
 }
 
-impl std::error::Error for StepError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Script { source, .. } => Some(source),
-            Self::Name { .. } | Self::Order { .. } => None,
-        }
-    }
-}
+impl std::error::Error for StepError {}
 
 /// An ordered, checked set of migrations.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Steps {
-    steps: Vec<(Step, Script)>,
+    steps: Vec<Step>,
 }
 
 /// The migrations a run applied, by name, in order.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Applied {
     /// The names.
-    pub names: Vec<&'static str>,
+    pub names: Vec<String>,
 }
 
 /// A migration run that stopped.
@@ -133,55 +131,61 @@ impl<E> From<Error<E>> for Unapplied<E> {
 }
 
 impl Steps {
-    /// wrangler's ledger, as `wrangler d1 migrations apply` creates it.
-    const CREATE: &'static str = "CREATE TABLE IF NOT EXISTS d1_migrations(\
-        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)";
-    const LIST: &'static str = "SELECT name FROM d1_migrations ORDER BY id";
-    const RECORD: &'static str = "INSERT INTO d1_migrations (name) VALUES (?)";
+    /// An empty set.
+    pub const fn new() -> Self {
+        Self { steps: Vec::new() }
+    }
 
-    /// Checks `steps`: named as wrangler names them, numbers rising, each a script D1 runs.
-    pub fn new(steps: impl IntoIterator<Item = Step>) -> Result<Self, StepError> {
-        let mut checked: Vec<(Step, Script)> = Vec::new();
-        let mut last = None;
-        for step in steps {
-            let number = step.number().ok_or(StepError::Name { name: step.name })?;
-            if let Some((before, last_number)) = last
-                && number <= last_number
-            {
-                return Err(StepError::Order { before, after: step.name });
-            }
-            last = Some((step.name, number));
-            let script = Script::parse(step.script).map_err(|source| StepError::Script { name: step.name, source })?;
-            checked.push((step, script));
+    /// The set with `M` after the ones it has. Its number must be higher than theirs.
+    pub fn with<M: Migration>(mut self) -> Result<Self, StepError> {
+        let named = !M::NAME.is_empty() && M::NAME.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_');
+        if !named {
+            return Err(StepError::Name { name: M::NAME });
         }
-        Ok(Self { steps: checked })
+        if let Some(last) = self.steps.last()
+            && M::NUMBER <= last.number
+        {
+            return Err(StepError::Order { before: last.number, after: M::NUMBER });
+        }
+        self.steps.push(Step { number: M::NUMBER, name: M::NAME, statements: M::statements });
+        Ok(self)
     }
 
-    /// The steps, in order.
-    pub fn names(&self) -> impl Iterator<Item = &'static str> + '_ {
-        self.steps.iter().map(|(step, _)| step.name)
+    /// The ledger names of the migrations, in order.
+    pub fn names(&self) -> impl Iterator<Item = String> + '_ {
+        self.steps.iter().map(Step::ledger)
     }
 
-    /// Applies every step the ledger does not hold, in order, each with its ledger row as one
-    /// atomic batch. A database that already has them all is left alone.
+    /// Applies every migration the ledger does not hold, in order, each with its ledger row as
+    /// one atomic batch. A database that already has them all is left alone.
     pub async fn apply<D: Db>(&self, db: &D) -> Result<Applied, Unapplied<D::Error>> {
-        db.run(Statement::prepare(Self::CREATE)).await?;
+        db.run(Statement::from(
+            Table::create()
+                .table(Ledger::Table)
+                .if_not_exists()
+                .col(ColumnDef::new(Ledger::Id).integer().not_null().auto_increment().primary_key())
+                .col(ColumnDef::new(Ledger::Name).text().unique_key())
+                .col(ColumnDef::new(Ledger::AppliedAt).timestamp().not_null().default(Expr::current_timestamp())),
+        ))
+        .await?;
+        let listing = Statement::from(Query::select().column(Ledger::Name).from(Ledger::Table).order_by(Ledger::Id, Order::Asc));
         let mut held = Vec::new();
-        for row in db.rows(Statement::prepare(Self::LIST)).await? {
-            held.push(row.get::<String>("name").map_err(Unapplied::Ledger)?);
+        for row in db.rows(listing).await? {
+            held.push(row.get::<String>(Ledger::Name).map_err(Unapplied::Ledger)?);
         }
-        if let Some(name) = held.iter().find(|name| !self.steps.iter().any(|(step, _)| step.name == name.as_str())) {
+        let known: Vec<String> = self.names().collect();
+        if let Some(name) = held.iter().find(|name| !known.contains(name)) {
             return Err(Unapplied::Unknown { name: name.clone() });
         }
         let mut applied = Applied::default();
-        for (step, script) in &self.steps {
-            if held.iter().any(|name| name == step.name) {
+        for (step, name) in self.steps.iter().zip(known) {
+            if held.contains(&name) {
                 continue;
             }
-            let mut batch = script.statements().to_vec();
-            batch.push(Statement::prepare(Self::RECORD).bind(step.name));
+            let mut batch = (step.statements)();
+            batch.push(Statement::from(Query::insert().into_table(Ledger::Table).columns([Ledger::Name]).values_panic([Expr::val(name.as_str())])));
             db.batch(batch).await?;
-            applied.names.push(step.name);
+            applied.names.push(name);
         }
         Ok(applied)
     }
@@ -191,22 +195,38 @@ impl Steps {
 mod test {
     use super::*;
 
-    #[test]
-    fn checks_names_and_order() {
-        let ok = |name| Step::new(name, "SELECT 1");
-        assert!(Steps::new([ok("0001_a.sql"), ok("0002_b.sql")]).is_ok());
-        assert_eq!(Steps::new([ok("1_a.sql")]).unwrap_err(), StepError::Name { name: "1_a.sql" });
-        assert_eq!(Steps::new([ok("0001_A.sql")]).unwrap_err(), StepError::Name { name: "0001_A.sql" });
-        assert_eq!(Steps::new([ok("0001_a")]).unwrap_err(), StepError::Name { name: "0001_a" });
-        assert_eq!(
-            Steps::new([ok("0002_b.sql"), ok("0002_c.sql")]).unwrap_err(),
-            StepError::Order { before: "0002_b.sql", after: "0002_c.sql" }
-        );
+    struct One;
+    struct Two;
+    struct Loud;
+
+    impl Migration for One {
+        const NUMBER: u32 = 1;
+        const NAME: &'static str = "a";
+        fn statements() -> Vec<Statement> {
+            Vec::new()
+        }
+    }
+
+    impl Migration for Two {
+        const NUMBER: u32 = 1;
+        const NAME: &'static str = "b";
+        fn statements() -> Vec<Statement> {
+            Vec::new()
+        }
+    }
+
+    impl Migration for Loud {
+        const NUMBER: u32 = 2;
+        const NAME: &'static str = "A";
+        fn statements() -> Vec<Statement> {
+            Vec::new()
+        }
     }
 
     #[test]
-    fn refuses_a_script_d1_would_refuse() {
-        let error = Steps::new([Step::new("0001_a.sql", "BEGIN;")]).unwrap_err();
-        assert!(matches!(error, StepError::Script { name: "0001_a.sql", .. }));
+    fn checks_names_and_order() {
+        assert_eq!(Steps::new().with::<One>().unwrap().names().collect::<Vec<_>>(), ["0001_a"]);
+        assert_eq!(Steps::new().with::<One>().unwrap().with::<Two>().unwrap_err(), StepError::Order { before: 1, after: 1 });
+        assert_eq!(Steps::new().with::<Loud>().unwrap_err(), StepError::Name { name: "A" });
     }
 }
