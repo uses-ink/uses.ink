@@ -212,8 +212,8 @@ impl Edit {
         text.strip_prefix("---\n").and_then(|rest| rest.find("\n---\n").map(|end| 4 + end + 5)).unwrap_or(0)
     }
 
-    fn apply(&self, tree: &Tree, aim: Aim<'_>) -> Tree {
-        let Aim { file, other, n } = aim;
+    fn apply(&self, tree: &Tree, aim: &Aim<'_>) -> Tree {
+        let Aim { file, other, n } = *aim;
         let mut edited = tree.clone();
         let text = String::from_utf8(edited.0[file].clone()).unwrap();
         match self {
@@ -282,7 +282,7 @@ proptest! {
         let (file, other) = (files[at % files.len()].clone(), files[with % files.len()].clone());
         let cache = Memorized::default();
         tree.build(Some(&cache)).unwrap();
-        let edited = kind.apply(tree, Aim { file: &file, other: &other, n });
+        let edited = kind.apply(tree, &Aim { file: &file, other: &other, n });
         let cold = edited.build(None);
         let warm = edited.build(Some(&cache));
         prop_assert_eq!(cold.is_some(), warm.is_some(), "{} {:?} {}", name, kind, file);
@@ -309,7 +309,7 @@ fn an_edit_of_one_post_renders_that_post_and_no_other() {
     let tree = Tree::generated(40);
     let cache = Memorized::default();
     tree.build(Some(&cache)).unwrap();
-    let edited = Edit::Append.apply(&tree, Aim { file: "posts/post-7.md", other: "", n: 1 });
+    let edited = Edit::Append.apply(&tree, &Aim { file: "posts/post-7.md", other: "", n: 1 });
     let warm = edited.build(Some(&cache)).unwrap();
     assert_eq!(warm.rendered(), ["posts/post-7.md"]);
     warm.assert_same(&edited.build(None).unwrap());
@@ -320,7 +320,7 @@ fn a_new_title_renders_the_page_the_pages_that_link_to_it_and_the_index() {
     let tree = Tree::generated(40);
     let cache = Memorized::default();
     tree.build(Some(&cache)).unwrap();
-    let edited = Edit::Retitle.apply(&tree, Aim { file: "posts/post-7.md", other: "", n: 1 });
+    let edited = Edit::Retitle.apply(&tree, &Aim { file: "posts/post-7.md", other: "", n: 1 });
     let warm = edited.build(Some(&cache)).unwrap();
     let rendered = warm.rendered();
     assert!(rendered.contains(&"posts/post-7.md".to_owned()));
@@ -377,7 +377,7 @@ fn a_cache_folder_says_it_is_cold_once_and_a_damaged_page_is_rendered_again() {
     let (first, said) = on_disk(&tree, &folder);
     assert!(said.iter().any(|n| matches!(n.announcement, Announcement::RenderCacheCold { .. })), "{said:?}");
     let (second, said) = on_disk(&tree, &folder);
-    assert!(second.rendered().is_empty());
+    assert_eq!(second.rendered(), Vec::<String>::new());
     assert_eq!(said, Vec::<Notice>::new());
     first.assert_same(&second);
 
