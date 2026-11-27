@@ -2,6 +2,8 @@
 //! fields so `("ab", "c")` and `("a", "bc")` differ. It guards against a stale pass, not against
 //! an adversary, and it keeps the farm free of a hashing dependency (decision 0047).
 
+pub(crate) mod key;
+
 use std::fmt;
 use std::str::FromStr;
 
