@@ -22,6 +22,9 @@ db.workspace = true
 db-sqlite.workspace = true
 edge-api.workspace = true
 clap.workspace = true
+clap_complete.workspace = true
+clap_complete_nushell.workspace = true
+clap_mangen.workspace = true
 config.workspace = true
 diag.workspace = true
 edge.workspace = true
@@ -33,6 +36,9 @@ format-obsidian.workspace = true
 host-image.workspace = true
 host-native.workspace = true
 host-wasmtime.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
 jiff.workspace = true
 queue-local.workspace = true
 secret-local.workspace = true
@@ -42,6 +48,7 @@ serde.workspace = true
 serde_json.workspace = true
 theme-quiet.workspace = true
 tokio.workspace = true
+toml.workspace = true
 watch.workspace = true
 
 [build-dependencies]

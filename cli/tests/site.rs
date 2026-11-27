@@ -58,7 +58,7 @@ fn ink(args: &[&str]) -> (Exit, String, String) {
 /// Builds `dir` into `out` and returns the deploy id.
 fn build(dir: &Path, out: &Path) -> String {
     let (exit, stdout, stderr) =
-        ink(&["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--cache", &cache()]);
+        ink(&["build", "-C", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--cache", &cache()]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     stdout.trim().to_owned()
 }
@@ -107,6 +107,7 @@ fn report(name: &str) -> String {
     let dir = fixtures().join(name);
     let (exit, stdout, stderr) = ink(&[
         "build",
+        "-C",
         dir.to_str().unwrap(),
         "-o",
         out.to_str().unwrap(),
@@ -196,7 +197,7 @@ fn a_pin_of_the_current_value_changes_no_deploy() {
     assert!(toml.starts_with(mine), "{toml}");
     assert!(toml.contains("[page.\"usage.md\"]\ntitle = \"Usage\""), "{toml}");
     assert!(toml.contains("[site]\ntitle = \"My tool\""), "{toml}");
-    let (_, why, _) = ink(&["explain", "--why", "usage.md", "page.title", "-C", dir_text]);
+    let (_, why, _) = ink(&["explain", "usage.md", "--why", "page.title", "-C", dir_text]);
     assert!(why.starts_with("page.title on usage.md: “Usage” pinned in ink.toml"), "{why}");
     assert_eq!(build(&dir, &scratch("pin/after")), before);
 }
@@ -223,7 +224,7 @@ fn pin_refuses_a_code_of_the_other_scope_or_an_unknown_file() {
 #[test]
 fn explain_why_replays_one_ladder_rung_by_rung() {
     let dir = fixtures().join("blog");
-    let (exit, why, stderr) = ink(&["explain", "--why", "posts/later.md", "page.title", "-C", dir.to_str().unwrap()]);
+    let (exit, why, stderr) = ink(&["explain", "posts/later.md", "--why", "page.title", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert_eq!(
         why,
@@ -235,7 +236,7 @@ fn explain_why_replays_one_ladder_rung_by_rung() {
 to pin it: ink pin posts/later.md page.title
 "
     );
-    let (_, why, _) = ink(&["explain", "--why", "index.md", "page.summary", "-C", dir.to_str().unwrap()]);
+    let (_, why, _) = ink(&["explain", "index.md", "--why", "page.summary", "-C", dir.to_str().unwrap()]);
     assert!(why.contains("   3 first paragraph    “Welcome."), "the outranked rung is shown: {why}");
     assert!(why.lines().nth(3).unwrap().ends_with(", outranked"), "{why}");
     let (_, json, _) = ink(&["explain", "--why", "site.layout", "-C", dir.to_str().unwrap(), "--json"]);
@@ -252,8 +253,18 @@ to pin it: ink pin posts/later.md page.title
 fn rebuilt_unchanged(name: &str) {
     let dir = fixtures().join(name);
     let out = scratch(&format!("rebuilt/{name}"));
-    let args =
-        ["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--json", "--cache", &cache()];
+    let args = [
+        "build",
+        "-C",
+        dir.to_str().unwrap(),
+        "-o",
+        out.to_str().unwrap(),
+        "--base",
+        BASE,
+        "--json",
+        "--cache",
+        &cache(),
+    ];
     let (exit, first, stderr) = ink(&args);
     assert_eq!(exit, Exit::Done, "{stderr}");
     let first: serde_json::Value = serde_json::from_str(&first).unwrap();
@@ -308,7 +319,7 @@ fn a_build_lists_what_changed_since_the_last_newly_public_first() {
     build(&dir, &out);
     std::fs::write(dir.join("usage.md"), "# How to use it\n\nRun it.\n").unwrap();
     std::fs::write(dir.join("new.md"), "# New\n\nHello.\n").unwrap();
-    let args = ["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--cache", &cache()];
+    let args = ["build", "-C", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--cache", &cache()];
     let (exit, stdout, stderr) = ink(&args);
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert_eq!(stdout.trim().len(), 64, "stdout is the deploy id alone: {stdout}");
@@ -404,14 +415,14 @@ fn a_format_this_ink_does_not_hold_stops_the_command() {
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("ink.toml"), "[site]\nformat = \"acme:format-wiki\"\n").unwrap();
     std::fs::write(dir.join("index.md"), "# Home\n").unwrap();
-    let (exit, _, stderr) = ink(&["check", dir.to_str().unwrap()]);
+    let (exit, _, stderr) = ink(&["check", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Usage, "{stderr}");
     assert!(
         stderr.starts_with("error: `site.format` names `acme:format-wiki`, which this ink does not hold"),
         "{stderr}"
     );
     std::fs::write(dir.join("ink.toml"), "[site]\nformat = \"quiet\"\n").unwrap();
-    let (exit, _, stderr) = ink(&["check", dir.to_str().unwrap()]);
+    let (exit, _, stderr) = ink(&["check", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Content, "{stderr}");
     assert!(stderr.contains("config.value.invalid"), "{stderr}");
 }
@@ -420,7 +431,8 @@ fn a_format_this_ink_does_not_hold_stops_the_command() {
 fn check_exits_by_what_it_found() {
     let check = |name: &str, strict: &[&str]| {
         let dir = fixtures().join(name);
-        let args: Vec<&str> = ["check", dir.to_str().unwrap()].into_iter().chain(strict.iter().copied()).collect();
+        let args: Vec<&str> =
+            ["check", "-C", dir.to_str().unwrap()].into_iter().chain(strict.iter().copied()).collect();
         ink(&args)
     };
     let (exit, stdout, _) = check("readme", &[]);
@@ -475,11 +487,11 @@ fn a_build_refuses_a_folder_it_did_not_write() {
     std::fs::create_dir_all(&out).unwrap();
     std::fs::write(out.join("keep.txt"), "mine").unwrap();
     let dir = fixtures().join("readme");
-    let (exit, _, stderr) = ink(&["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap()]);
+    let (exit, _, stderr) = ink(&["build", "-C", dir.to_str().unwrap(), "-o", out.to_str().unwrap()]);
     assert_eq!(exit, Exit::Usage);
     assert!(stderr.starts_with("error: "), "{stderr}");
     assert_eq!(std::fs::read_to_string(out.join("keep.txt")).unwrap(), "mine");
-    let (exit, _, stderr) = ink(&["build", dir.to_str().unwrap(), "--base", "ftp://x"]);
+    let (exit, _, stderr) = ink(&["build", "-C", dir.to_str().unwrap(), "--base", "ftp://x"]);
     assert_eq!(exit, Exit::Usage, "{stderr}");
 }
 
@@ -498,14 +510,14 @@ fn no_command_reads_a_custom_output_folder_as_content() {
     let dir = scratch("custom-out/site");
     copy(&fixtures().join("readme"), &dir);
     let dir_text = dir.to_str().unwrap();
-    let (_, before, _) = ink(&["check", dir_text]);
+    let (_, before, _) = ink(&["check", "-C", dir_text]);
     let (_, explained, _) = ink(&["explain", "-C", dir_text]);
     build(&dir, &dir.join("public"));
-    let (exit, after, _) = ink(&["check", dir_text]);
+    let (exit, after, _) = ink(&["check", "-C", dir_text]);
     assert_eq!(exit, Exit::Done);
     assert_eq!(after, before);
     assert_eq!(ink(&["explain", "-C", dir_text]).1, explained);
-    let (_, _, said) = ink(&["check", dir_text, "-v"]);
+    let (_, _, said) = ink(&["check", "-C", dir_text, "-v"]);
     assert!(said.contains("note[source.output.skipped]: public holds the build's own output"), "{said}");
     let preview = cli::Preview::of(&dir, BASE).unwrap();
     assert!(preview.is_some(), "the preview builds without reading public/");
@@ -517,7 +529,7 @@ fn a_missing_or_unlistable_folder_is_a_usage_error() {
     let file = fixtures().join("readme/README.md");
     for dir in [missing.to_str().unwrap(), file.to_str().unwrap()] {
         for command in ["check", "build"] {
-            let (exit, _, stderr) = ink(&[command, dir]);
+            let (exit, _, stderr) = ink(&[command, "-C", dir]);
             assert_eq!(exit, Exit::Usage, "{command} {dir}: {stderr}");
             assert!(stderr.starts_with("error[source.root.unreadable]"), "{stderr}");
         }
@@ -534,7 +546,7 @@ fn explain_refuses_a_path_that_is_no_file() {
     assert_eq!(exit, Exit::Usage);
     assert_eq!(stdout, "");
     assert_eq!(stderr, "error: nosuch.md is not a file of the folder\n");
-    let (exit, _, _) = ink(&["explain", "--why", "nosuch.md", "page.title", "-C", dir.to_str().unwrap()]);
+    let (exit, _, _) = ink(&["explain", "nosuch.md", "--why", "page.title", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Usage);
 }
 
@@ -556,8 +568,18 @@ fn highlight_a_cache_changes_no_byte_of_the_deploy() {
     let cache_text = cache.to_str().unwrap();
     let dir = fixtures().join("blog");
     let out = scratch("own-cache-out");
-    let args =
-        ["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--cache", cache_text, "-v"];
+    let args = [
+        "build",
+        "-C",
+        dir.to_str().unwrap(),
+        "-o",
+        out.to_str().unwrap(),
+        "--base",
+        BASE,
+        "--cache",
+        cache_text,
+        "-v",
+    ];
     let (exit, cold, said) = ink(&args);
     assert_eq!(exit, Exit::Done, "{said}");
     assert!(said.contains("note[render.cache.cold]"), "{said}");

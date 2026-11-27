@@ -47,7 +47,8 @@ fn os(text: &str) -> &OsStr {
 #[test]
 fn a_build_prints_its_document_written_or_not() {
     let out = scratch("built");
-    let (exit, built, _) = ink(&[os("build"), fixture("readme").as_os_str(), os("-o"), out.as_os_str(), os("--json")]);
+    let (exit, built, _) =
+        ink(&[os("build"), os("-C"), fixture("readme").as_os_str(), os("-o"), out.as_os_str(), os("--json")]);
     assert_eq!(exit, Exit::Done);
     assert_eq!(built["schema"], "uses.build/v2");
     assert_eq!(built["written"], true);
@@ -55,7 +56,7 @@ fn a_build_prints_its_document_written_or_not() {
 
     let failed = scratch("failed");
     let (exit, built, events) =
-        ink(&[os("build"), fixture("ambiguous").as_os_str(), os("-o"), failed.as_os_str(), os("--json")]);
+        ink(&[os("build"), os("-C"), fixture("ambiguous").as_os_str(), os("-o"), failed.as_os_str(), os("--json")]);
     assert_eq!(exit, Exit::Content);
     assert_eq!(built["schema"], "uses.build/v2");
     assert_eq!(built["written"], false);
@@ -68,7 +69,7 @@ fn an_error_is_one_document_on_stdout_and_nothing_on_stderr() {
     let out = scratch("foreign");
     std::fs::write(out.join("keep.txt"), "mine").unwrap();
     let (exit, failed, events) =
-        ink(&[os("build"), fixture("readme").as_os_str(), os("-o"), out.as_os_str(), os("--json")]);
+        ink(&[os("build"), os("-C"), fixture("readme").as_os_str(), os("-o"), out.as_os_str(), os("--json")]);
     assert_eq!(exit, Exit::Usage);
     assert_eq!(failed["schema"], "uses.error/v1");
     assert_eq!(failed["exit"], 2);
@@ -77,7 +78,7 @@ fn an_error_is_one_document_on_stdout_and_nothing_on_stderr() {
     assert!(events.is_empty(), "{events:?}");
 
     let missing = scratch("missing").join("never");
-    let (exit, failed, events) = ink(&[os("check"), missing.as_os_str(), os("--json")]);
+    let (exit, failed, events) = ink(&[os("check"), os("-C"), missing.as_os_str(), os("--json")]);
     assert_eq!(exit, Exit::Usage);
     assert_eq!(failed["error"], "source.root.unreadable");
     assert_eq!(failed["diagnostic"]["code"], "source.root.unreadable");
@@ -89,7 +90,7 @@ fn an_error_is_one_document_on_stdout_and_nothing_on_stderr() {
     assert_eq!(exit, Exit::Usage);
     assert_eq!(failed["error"], "explain.path.unknown");
 
-    let (exit, failed, _) = ink(&[os("--json"), os("build")]);
+    let (exit, failed, _) = ink(&[os("--json"), os("pin")]);
     assert_eq!(exit, Exit::Usage);
     assert_eq!(failed["error"], "cli.usage");
 }
@@ -98,7 +99,7 @@ fn an_error_is_one_document_on_stdout_and_nothing_on_stderr() {
 fn a_path_that_is_not_utf8_is_written_lossily() {
     let root = scratch("lossy");
     let out: OsString = [root.as_os_str(), OsStr::from_bytes(b"/out-\xff")].into_iter().collect();
-    let (exit, built, _) = ink(&[os("build"), fixture("readme").as_os_str(), os("-o"), &out, os("--json")]);
+    let (exit, built, _) = ink(&[os("build"), os("-C"), fixture("readme").as_os_str(), os("-o"), &out, os("--json")]);
     assert_eq!(exit, Exit::Done, "{built}");
     assert!(built["out"].as_str().unwrap().ends_with("/out-\u{fffd}"), "{built}");
 }
@@ -106,9 +107,9 @@ fn a_path_that_is_not_utf8_is_written_lossily() {
 #[test]
 fn notices_come_only_with_verbose() {
     let is_notice = |event: &serde_json::Value| event["severity"] == "notice";
-    let (_, checked, events) = ink(&[os("check"), fixture("notes").as_os_str(), os("--json")]);
+    let (_, checked, events) = ink(&[os("check"), os("-C"), fixture("notes").as_os_str(), os("--json")]);
     assert_eq!(checked["schema"], "uses.check/v1");
     assert!(!events.iter().any(is_notice), "{events:?}");
-    let (_, _, events) = ink(&[os("check"), fixture("notes").as_os_str(), os("--json"), os("-v")]);
+    let (_, _, events) = ink(&[os("check"), os("-C"), fixture("notes").as_os_str(), os("--json"), os("-v")]);
     assert!(events.iter().any(is_notice), "{events:?}");
 }

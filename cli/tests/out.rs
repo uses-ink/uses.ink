@@ -39,7 +39,7 @@ fn ink(args: &[&Path]) -> (Exit, String, String) {
 /// `ink build <site> -o <out> [extra]`.
 fn build(root: &Path, out: &Path, extra: &[&str]) -> (Exit, String, String) {
     let site = root.join("site");
-    let mut args: Vec<&Path> = vec![Path::new("build"), &site, Path::new("-o"), out];
+    let mut args: Vec<&Path> = vec![Path::new("build"), Path::new("-C"), &site, Path::new("-o"), out];
     args.extend(extra.iter().map(Path::new));
     ink(&args)
 }

@@ -31,6 +31,7 @@ fn check(cache: &Path, extra: &[&OsStr]) -> (Exit, serde_json::Value) {
         "--json".as_ref(),
         "build".as_ref(),
         "--check".as_ref(),
+        "-C".as_ref(),
         blog.as_os_str(),
         "--cache".as_ref(),
         cache.as_os_str(),

@@ -51,7 +51,7 @@ fn build(root: &Path) -> PathBuf {
     std::fs::write(site.join("index.md"), "# Home\n").unwrap();
     std::fs::write(site.join("tea.md"), "# Tea\n\nA pot of tea.\n").unwrap();
     let out = root.join("out");
-    let (exit, _, err) = ink(&["build", site.to_str().unwrap(), "-o", out.to_str().unwrap()]);
+    let (exit, _, err) = ink(&["build", "-C", site.to_str().unwrap(), "-o", out.to_str().unwrap()]);
     assert_eq!(exit, cli::Exit::Done, "{err}");
     out
 }

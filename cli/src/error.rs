@@ -198,6 +198,31 @@ pub enum Error {
         /// Why it could not.
         source: serde_json::Error,
     },
+    /// A remote command (`ink deploy`) did not do its work.
+    Deploy {
+        /// Why.
+        source: crate::deploy::Failure,
+    },
+    /// The user's config file could not be read.
+    Preferences {
+        /// Why.
+        source: crate::settings::Unreadable,
+    },
+    /// The verb is in the command tree and not built yet.
+    Pending {
+        /// Its name.
+        verb: &'static str,
+    },
+    /// `ink help` has nothing to say about the words.
+    Help {
+        /// Why.
+        source: crate::help::Refusal,
+    },
+    /// The manual page could not be written.
+    Manual {
+        /// What the system said.
+        source: std::io::Error,
+    },
 }
 
 impl Error {
@@ -211,6 +236,7 @@ impl Error {
                 | host_native::Refused::Revision { .. },
             ) => Exit::Usage,
             Self::Refused(_) => Exit::Content,
+            Self::Deploy { source } => source.exit(),
             _ => Exit::Usage,
         }
     }
@@ -252,6 +278,11 @@ impl Error {
             Self::Unbundled { .. } => "component.bundled.missing",
             Self::Plugin { .. } => "component.load.failed",
             Self::Json { .. } => "cli.json.unwritable",
+            Self::Deploy { source } => source.kind(),
+            Self::Preferences { .. } => "config.file.unreadable",
+            Self::Pending { .. } => "cli.verb.pending",
+            Self::Help { .. } => "help.topic.unknown",
+            Self::Manual { .. } => "cli.manual.unwritable",
         }
     }
 }
@@ -312,6 +343,11 @@ impl fmt::Display for Error {
             ),
             Self::Plugin { .. } => write!(out, "a component could not be loaded"),
             Self::Json { .. } => write!(out, "the result could not be written as JSON"),
+            Self::Deploy { source } => write!(out, "{source}"),
+            Self::Preferences { source } => write!(out, "{source}"),
+            Self::Pending { verb } => write!(out, "`ink {verb}` is not built yet: it lands with M3"),
+            Self::Help { source } => write!(out, "{source}"),
+            Self::Manual { .. } => write!(out, "the manual page could not be written"),
         }
     }
 }
@@ -342,6 +378,10 @@ impl std::error::Error for Error {
             Self::Placed { source, .. } => Some(source),
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),
+            Self::Deploy { source } => source.source(),
+            Self::Preferences { source } => source.source(),
+            Self::Help { source } => source.source(),
+            Self::Manual { source } => Some(source),
             Self::Output(_)
             | Self::Unbundled { .. }
             | Self::Format { .. }
@@ -350,7 +390,8 @@ impl std::error::Error for Error {
             | Self::Unversioned { .. }
             | Self::Scope { .. }
             | Self::Words { .. }
-            | Self::Undecided { .. } => None,
+            | Self::Undecided { .. }
+            | Self::Pending { .. } => None,
         }
     }
 }

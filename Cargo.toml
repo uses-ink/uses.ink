@@ -67,7 +67,12 @@ bytes = "1.12.2"
 chacha20poly1305 = "0.10.1"
 # the 0.6 line chacha20poly1305 uses; `std` makes its `Error` a `std::error::Error`
 rand_core = { version = "0.6.4", features = ["getrandom", "std"] }
-clap = { version = "4.6.9", features = ["derive"] }
+clap = { version = "4.6.9", features = ["derive", "env"] }
+# completion scripts and the manual, generated from the one command tree (decision 0061)
+clap_complete = "4.6.11"
+clap_complete_nushell = "4.6.1"
+clap_mangen = "0.2.33"
+http-body-util = "0.1.5"
 # benchmarks only: a dev-dependency of any crate, a normal dependency of none
 divan = "0.1.21"
 comrak = { version = "1.2.0", default-features = false }
@@ -76,7 +81,7 @@ futures-util = { version = "0.3.34", default-features = false, features = ["std"
 # are the file transport, which runs the machine's `git upload-pack`: no HTTP transport yet
 gix = { version = "0.91.0", default-features = false, features = ["blocking-network-client", "pack-cache-lru-dynamic", "parallel", "revision", "sha1"] }
 # the connection loop `ink serve` runs under axum: header and read budgets are hyper's (0051)
-hyper = { version = "1.13.0", default-features = false, features = ["http1", "server"] }
+hyper = { version = "1.13.0", default-features = false, features = ["client", "http1", "server"] }
 hyper-util = { version = "0.1.21", default-features = false, features = ["http1", "server", "server-graceful", "service", "tokio"] }
 insta = { version = "1.49.0", features = ["glob"] }
 jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"] }

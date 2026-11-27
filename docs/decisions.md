@@ -1309,3 +1309,14 @@ without a fix, and the M3 verbs would each add a fourth output style. **Reversal
 costs more than it clarifies, or a grammar the M3 verbs do not fit: keep the typed blocks and the
 colour roles, and go back to clap's help and the per-command folder. The open choices are the
 last section of `docs/cli.md`.
+
+Build note (slice 2, the command tree): `cli/src/tree` declares every command once as typed values
+(group, aliases, wording, examples, exit codes, environment). It decorates the clap command the
+argument types derive, and `help`, `completions` (bash, zsh, fish, elvish, nushell, powershell) and
+`man` read it, so a command is in all four places or a test fails. Global `-C`, `-q`, `--color`
+and `--no-progress` with `INK_*` variables and one precedence (flag, environment, `~/.config/ink/config.toml`,
+default) are in. `ink deploy list|show|rollback|resume` talk to the edge API over plain
+HTTP (there is no TLS in the tree, so `https://` is refused with a typed error), with exit codes 3,
+4 and 5 for sign-in, network and conflict. `init`, `login`, `logout`, `whoami`, `push`, `status`,
+`watch` and `export` are listed in help as not built yet and end with exit 2. Dynamic completion of
+codes and paths (`CompleteEnv`) is not built.

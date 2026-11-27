@@ -73,7 +73,7 @@ impl Write for Sent {
 fn preview_on_port_zero_prints_the_port_it_bound() {
     use clap::Parser;
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixture/site/notes");
-    let cli = cli::Cli::try_parse_from(["ink", "preview", dir.to_str().unwrap(), "--port", "0"]).unwrap();
+    let cli = cli::Cli::try_parse_from(["ink", "preview", "-C", dir.to_str().unwrap(), "--port", "0"]).unwrap();
     let (sender, received) = std::sync::mpsc::channel();
     std::thread::spawn(move || cli.run(&mut Sent(sender), &mut std::io::sink()));
     let mut printed = String::new();

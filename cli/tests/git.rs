@@ -118,7 +118,7 @@ fn a_repository_builds_the_same_deploy_twice_and_says_it_read_a_commit() {
         out.to_str().unwrap().to_owned()
     };
     let (first, second) = (out("a"), out("b"));
-    let (exit, deploy, stderr) = ink(&["build", repo.dir(), "-o", &first, "--base", "https://ink.example", "-v"]);
+    let (exit, deploy, stderr) = ink(&["build", "-C", repo.dir(), "-o", &first, "--base", "https://ink.example", "-v"]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert!(
         stderr.contains(&format!(
@@ -128,11 +128,11 @@ fn a_repository_builds_the_same_deploy_twice_and_says_it_read_a_commit() {
     );
     assert!(stderr.contains("note[source.history.moved]"), "{stderr}");
     assert!(!Path::new(&first).join("notes/uncommitted/index.html").exists(), "the working copy is not read");
-    let (exit, again, stderr) = ink(&["build", repo.dir(), "-o", &second, "--base", "https://ink.example"]);
+    let (exit, again, stderr) = ink(&["build", "-C", repo.dir(), "-o", &second, "--base", "https://ink.example"]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert_eq!(deploy, again);
     let (exit, folder, _) =
-        ink(&["build", repo.dir(), "-o", &second, "--base", "https://ink.example", "--source", "folder"]);
+        ink(&["build", "-C", repo.dir(), "-o", &second, "--base", "https://ink.example", "--source", "folder"]);
     assert_eq!(exit, Exit::Done);
     assert_ne!(folder, deploy, "the files on disk hold one more page");
 }
@@ -144,10 +144,10 @@ fn rev_reads_an_older_commit_and_needs_a_repository() {
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert!(lines.contains(&format!("git commit {one}")), "{lines}");
     assert!(lines.contains("kettle.md\n"), "kettle.md was at the top then: {lines}");
-    let (exit, _, stderr) = ink(&["check", repo.dir(), "--rev", "no-such-branch"]);
+    let (exit, _, stderr) = ink(&["check", "-C", repo.dir(), "--rev", "no-such-branch"]);
     assert_eq!(exit, Exit::Usage);
     assert!(stderr.contains("no-such-branch"), "{stderr}");
-    let (exit, _, stderr) = ink(&["check", repo.dir(), "--rev", "HEAD", "--source", "folder"]);
+    let (exit, _, stderr) = ink(&["check", "-C", repo.dir(), "--rev", "HEAD", "--source", "folder"]);
     assert_eq!(exit, Exit::Usage);
     assert!(stderr.contains("`--rev` names a commit"), "{stderr}");
 }

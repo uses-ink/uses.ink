@@ -47,5 +47,5 @@ fn measure() {
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixture/site/blog");
     let fixture = fixture.to_str().unwrap();
     println!("ink --version, median of 400: {:?}", median(400, || run(&["--version"])));
-    println!("ink check <blog>, median of 200: {:?}", median(200, || run(&["check", fixture])));
+    println!("ink check <blog>, median of 200: {:?}", median(200, || run(&["check", "-C", fixture])));
 }
