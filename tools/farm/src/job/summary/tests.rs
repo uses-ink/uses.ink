@@ -2,7 +2,6 @@
 
 use std::fmt::Write as _;
 
-use super::suite::Status;
 use super::*;
 
 /// Real output, `CARGO_TERM_COLOR=never`.

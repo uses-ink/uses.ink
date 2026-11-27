@@ -139,7 +139,7 @@ mod tests {
     use crate::cli::name::HostName;
     use crate::cli::{Action, Flags, Verb};
     use crate::job::Verdict;
-    use crate::place::LeastLoaded;
+    use crate::place::least::LeastLoaded;
 
     /// A farm of this machine alone, in a temp dir: the real `sh`, `flock`, `timeout` and `tail`.
     struct Rig {

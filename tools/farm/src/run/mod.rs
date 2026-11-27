@@ -1005,7 +1005,7 @@ mod tests {
     use crate::host::Member;
     use crate::host::fake::{Fake, Reply};
     use crate::host::{Host, Via};
-    use crate::place::LeastLoaded;
+    use crate::place::least::LeastLoaded;
     use crate::place::wake::Wake;
 
     fn host(name: &str) -> Host {
