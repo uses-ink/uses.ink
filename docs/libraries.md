@@ -30,6 +30,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | Dates | `jiff` 1.0 | chrono is unmaintained (0028) |
 | Serialization | `serde` 1, `serde_json` 1 | typed JSON for `--json`, events and `cargo metadata` |
 | Tests | `insta`, `proptest`, `similar`, `scraper`, `cargo-deny` | snapshots, properties, licence and advisory gates |
+| Benchmarks | `divan` 0.1 | `#[divan::bench]` beside the code with no harness to write, args and per-sample setup built in, a third of criterion's dependencies; benches live in `benches/`, are built by the gate's clippy and never run by it (docs/research/performance.md) |
 
 | Repo tasks | `quote`, `proc-macro2`, `syn` 3, `prettyplease` 0.3, `heck`, `serde_json` | generated Rust is built as tokens and printed, never spliced; `cargo metadata` read as typed JSON; `syn`'s `visit` walks the module tree for the layout rules |
 

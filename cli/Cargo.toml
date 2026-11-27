@@ -30,10 +30,15 @@ theme-quiet.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+divan.workspace = true
 fixture.workspace = true
 # test repositories are written object by object
 gix.workspace = true
 insta.workspace = true
+
+[[bench]]
+name = "site"
+harness = false
 
 [lints]
 workspace = true

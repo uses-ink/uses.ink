@@ -12,6 +12,8 @@
 //! - in update mode (`INSTA_UPDATE=always` or `=new`), a golden was written: the run lists
 //!   which, so an update never passes unnoticed. Read them, then run again without it.
 //!
+//! [`corpus`] generates the inputs benchmarks read.
+//!
 //! A directory is relative to the crate under test, which is where cargo and nextest run its
 //! tests (and what the wasm32-wasip2 runner maps to `/`).
 //!
@@ -21,6 +23,8 @@
 //!     uses_ink_fixture::files("fixture", "md", |_path, bytes| String::from_utf8_lossy(bytes).to_uppercase());
 //! }
 //! ```
+
+pub mod corpus;
 
 use std::fmt;
 use std::panic::{AssertUnwindSafe, catch_unwind};

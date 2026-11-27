@@ -38,6 +38,8 @@ arborium-theme = { version = "2.18.2", default-features = false }
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 blake3 = "1.8.7"
 clap = { version = "4.6.9", features = ["derive"] }
+# benchmarks only: a dev-dependency of any crate, a normal dependency of none
+divan = "0.1.21"
 comrak = { version = "1.2.0", default-features = false }
 # git sources: rev parse, rev walk, tree diff, threads; no network until `git.fetch` (0036)
 gix = { version = "0.91.0", default-features = false, features = ["pack-cache-lru-dynamic", "parallel", "revision", "sha1"] }
