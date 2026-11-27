@@ -4,7 +4,7 @@ use db::{Migration, Statement};
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, IdenStatic, Index, Table};
 
 use super::Flow;
-use crate::migration::Typed;
+use crate::typed::Typed;
 use crate::table::{Account, Allowed, AuthConfig, Ceremony, Named, Passkey, PasskeySession, Session};
 
 /// The migration that makes `passkey`, `passkey_session`, `ceremony` and `auth_config`. A passkey

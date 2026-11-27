@@ -72,7 +72,7 @@ impl Audit {
     }
 
     /// The statement that writes this event for `account`.
-    pub(crate) fn statement(
+    pub fn statement(
         &self,
         account: Id<AccountKind>,
         now: Timestamp,

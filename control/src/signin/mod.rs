@@ -14,6 +14,7 @@
 //!
 //! The tables are made by [`Entry`], a migration to apply after the domain's.
 
+mod audit;
 mod challenge;
 mod error;
 mod factor;
@@ -24,6 +25,7 @@ mod settings;
 mod store;
 mod ttl;
 
+pub use audit::Audit;
 pub use challenge::{Entered, Issued, Pending, Presented, Purpose, Requested};
 pub use error::{Error, Refused};
 pub use factor::{Credential, Factor, Sort};

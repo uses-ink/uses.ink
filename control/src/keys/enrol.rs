@@ -11,7 +11,7 @@ use sig::{Fingerprint, KeyId, KeyType, PublicKey};
 
 use super::key::{Kind, Label};
 use super::right::Rights;
-use crate::Unreadable;
+use crate::unreadable::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Enrolment as EnrolmentKind, Id, Site as SiteKind};
 use crate::signin::Ttl;

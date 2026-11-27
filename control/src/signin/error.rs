@@ -4,7 +4,7 @@ use std::fmt;
 
 use mail::Address;
 
-use crate::Unreadable;
+use crate::unreadable::Unreadable;
 
 /// A request refused for a reason about the request. Nothing was changed.
 #[derive(Clone, Debug, PartialEq, Eq)]

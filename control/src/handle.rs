@@ -3,7 +3,12 @@
 use std::fmt;
 use std::str::FromStr;
 
+use db::Row;
+use sea_query::IdenStatic;
 use serde::Serialize;
+
+use crate::Unreadable;
+use crate::fields::Fields;
 
 /// A handle: a lower-case DNS label of 3 to 32 characters, `[a-z0-9-]`, with no leading or
 /// trailing hyphen and no `--` (architecture section 12). Reserved names are valid handles; the
@@ -13,6 +18,11 @@ use serde::Serialize;
 pub struct Handle(String);
 
 impl Handle {
+    /// The handle in `column` of `row`.
+    pub(crate) fn stored(row: &Row, column: impl IdenStatic) -> Result<Self, Unreadable> {
+        Fields(row).text(column)?.parse().map_err(|source| Unreadable::Handle { source })
+    }
+
     /// The fewest characters a handle has.
     pub const MIN: usize = 3;
     /// The most characters a handle has.

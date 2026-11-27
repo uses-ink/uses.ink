@@ -2,23 +2,16 @@
 
 use std::fmt;
 
-use crate::id::IdError;
 use crate::HandleError;
+use crate::unreadable::Unreadable as Cell;
 
 /// A stored row that does not read back as the domain value it should be: the database was
 /// changed by something other than this code, or by another version of it.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Unreadable {
-    /// The column is missing or of the wrong kind.
-    Column(db::ColumnError),
-    /// The column holds a bad id.
-    Id {
-        /// The column.
-        column: &'static str,
-        /// Why.
-        source: IdError,
-    },
+    /// A column that is not what any row holds ([`Cell`]).
+    Cell(Cell),
     /// The column holds a bad handle.
     Handle {
         /// Why.
@@ -28,34 +21,6 @@ pub enum Unreadable {
     Build {
         /// Why.
         source: build::BuildIdError,
-    },
-    /// The column holds a bad deploy id.
-    Deploy {
-        /// The column.
-        column: &'static str,
-        /// Why.
-        source: serde::de::value::Error,
-    },
-    /// The column holds a bad hash.
-    Hash {
-        /// The column.
-        column: &'static str,
-        /// Why.
-        source: model::HashError,
-    },
-    /// The column holds a time that does not exist.
-    Time {
-        /// The column.
-        column: &'static str,
-        /// Why.
-        source: jiff::Error,
-    },
-    /// The column holds a name this version does not know, such as a state.
-    Name {
-        /// The column.
-        column: &'static str,
-        /// What it holds.
-        found: String,
     },
     /// The column holds a kind of source this version does not know.
     Locator {
@@ -76,50 +41,19 @@ pub enum Unreadable {
         /// Why.
         source: build::RevisionError,
     },
-    /// The column holds an email address that is no longer valid.
-    Address {
-        /// The column.
-        column: &'static str,
-        /// Why.
-        source: mail::AddressError,
-    },
-    /// The column holds a digest that is not 32 bytes.
-    Digest {
-        /// The column.
-        column: &'static str,
-    },
     /// The `seen` table holds a commit id that is no commit id.
     Commit {
         /// Why.
         source: model::VersionError,
-    },
-    /// The column holds bytes that are not the one spelling or size of a key's value.
-    Encoding {
-        /// The column.
-        column: &'static str,
-        /// Why.
-        source: sig::Undecodable,
-    },
-    /// The column holds text that is no longer a valid label, code or date.
-    Text {
-        /// The column.
-        column: &'static str,
     },
 }
 
 impl fmt::Display for Unreadable {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Column(_) => out.write_str("a stored row has a column that cannot be read"),
-            Self::Id { column, .. } => write!(out, "column `{column}` holds a bad id"),
+            Self::Cell(cell) => cell.fmt(out),
             Self::Handle { .. } => out.write_str("column `handle` holds a bad handle"),
             Self::Build { .. } => out.write_str("a stored build id is bad"),
-            Self::Deploy { column, .. } => write!(out, "column `{column}` holds a bad deploy id"),
-            Self::Hash { column, .. } => write!(out, "column `{column}` holds a bad hash"),
-            Self::Time { column, .. } => write!(out, "column `{column}` holds a bad time"),
-            Self::Name { column, found } => {
-                write!(out, "column `{column}` holds `{found}`, which this version does not know")
-            }
             Self::Locator { column } => {
                 write!(out, "column `{column}` holds a kind of source this version does not know")
             }
@@ -127,11 +61,7 @@ impl fmt::Display for Unreadable {
                 write!(out, "column `{column}` holds a repository address that is no longer valid")
             }
             Self::Revision { column, .. } => write!(out, "column `{column}` holds a revision that is no longer valid"),
-            Self::Address { column, .. } => write!(out, "column `{column}` holds an address that is no longer valid"),
-            Self::Digest { column } => write!(out, "column `{column}` holds a digest that is not 32 bytes"),
             Self::Commit { .. } => out.write_str("a stored commit id is bad"),
-            Self::Encoding { column, .. } => write!(out, "column `{column}` holds a key value that is not valid"),
-            Self::Text { column } => write!(out, "column `{column}` holds text that is no longer valid"),
         }
     }
 }
@@ -139,25 +69,25 @@ impl fmt::Display for Unreadable {
 impl std::error::Error for Unreadable {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Column(source) => Some(source),
-            Self::Id { source, .. } => Some(source),
+            Self::Cell(source) => source.source(),
             Self::Handle { source } => Some(source),
             Self::Build { source } => Some(source),
-            Self::Deploy { source, .. } => Some(source),
-            Self::Hash { source, .. } => Some(source),
-            Self::Time { source, .. } => Some(source),
             Self::Url { source, .. } => Some(source),
             Self::Revision { source, .. } => Some(source),
-            Self::Address { source, .. } => Some(source),
             Self::Commit { source } => Some(source),
-            Self::Encoding { source, .. } => Some(source),
-            Self::Name { .. } | Self::Locator { .. } | Self::Digest { .. } | Self::Text { .. } => None,
+            Self::Locator { .. } => None,
         }
+    }
+}
+
+impl From<Cell> for Unreadable {
+    fn from(source: Cell) -> Self {
+        Self::Cell(source)
     }
 }
 
 impl From<db::ColumnError> for Unreadable {
     fn from(source: db::ColumnError) -> Self {
-        Self::Column(source)
+        Self::Cell(source.into())
     }
 }

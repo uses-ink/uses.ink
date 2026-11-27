@@ -152,7 +152,7 @@ impl Site {
         Ok(Self {
             id: fields.id(table::Site::Id)?,
             account: fields.id(table::Site::AccountId)?,
-            handle: fields.handle(table::Site::Handle)?,
+            handle: Handle::stored(row, table::Site::Handle)?,
             state: fields.name(table::Site::State, &State::NAMES)?,
             created: fields.time(table::Site::CreatedAt)?,
             source: Source::try_from(Stored::try_from(row)?)?,

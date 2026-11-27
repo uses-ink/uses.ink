@@ -13,7 +13,7 @@ use sig::KeyId;
 
 use super::key::{Kind, Why};
 use super::right::{Rights, Scope};
-use crate::Unreadable;
+use crate::unreadable::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Account as AccountKind, Id};
 use crate::table;

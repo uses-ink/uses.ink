@@ -4,7 +4,7 @@ use db::{Migration, Statement};
 use sea_query::{ColumnDef, ForeignKey, IdenStatic, Index, Table};
 
 use super::{Purpose, Sort};
-use crate::migration::Typed;
+use crate::typed::Typed;
 use crate::table::{Account, Allowed, Challenge, Factor, Named, Session};
 
 /// The migration that makes the tables of signing in: `factor`, `challenge` and `session`. Only

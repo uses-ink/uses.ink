@@ -5,7 +5,7 @@ use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, IdenStatic, Index, Tabl
 
 use super::enrol::State;
 use super::key::{Kind, Why};
-use crate::migration::Typed;
+use crate::typed::Typed;
 use crate::table::{Account, Allowed, AuthEvent, Enrolment, Key, Named, Site};
 use sig::KeyType;
 

@@ -8,7 +8,7 @@ use jiff::civil::Date;
 use sig::{KeyId, KeyType, PublicKey};
 
 use super::right::{Grant, Grants, Rights, Scope};
-use crate::Unreadable;
+use crate::unreadable::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Account as AccountKind, Id, Site as SiteKind};
 use crate::signin::Credential;

@@ -6,27 +6,13 @@ use db::{Migration, Statement};
 use sea_query::{ColumnDef, Expr, ExprTrait, ForeignKey, IdenStatic, Index, IntoIden, Table};
 
 use crate::credential::Use;
+use crate::typed::Typed;
 use crate::deploy::Cause;
 use crate::job::{State as JobState, Stored as Trigger};
 use crate::site::{State as SiteState, Stored as SourceKind};
 use crate::table::{
     Account, Allowed, Bundle, Credential, Deploy, Event, Job, Live, Named, Publication, Seen, Site, Source, Tombstone,
 };
-
-/// The two kinds of column most of the schema is made of.
-pub(crate) struct Typed;
-
-impl Typed {
-    /// A text column that cannot be null.
-    pub(crate) fn text<C: IntoIden>(column: C) -> ColumnDef {
-        ColumnDef::new(column).text().not_null().to_owned()
-    }
-
-    /// A column of unix milliseconds that cannot be null.
-    pub(crate) fn time<C: IntoIden>(column: C) -> ColumnDef {
-        ColumnDef::new(column).big_integer().not_null().to_owned()
-    }
-}
 
 /// The migration that makes the control plane's tables.
 #[derive(Clone, Copy, Debug)]

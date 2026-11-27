@@ -329,11 +329,11 @@ pub enum Named {
 /// The values a text column may hold, as a `CHECK`: the schema is built from the names the code
 /// reads back, so the two cannot drift.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Allowed;
+pub struct Allowed;
 
 impl Allowed {
     /// `column IN (names)`.
-    pub(crate) fn of<C: IntoColumnRef, T>(column: C, names: &[(&'static str, T)]) -> Expr {
+    pub fn of<C: IntoColumnRef, T>(column: C, names: &[(&'static str, T)]) -> Expr {
         Expr::col(column).is_in(names.iter().map(|(name, _)| *name))
     }
 }

@@ -38,6 +38,8 @@ pub mod signin;
 mod site;
 #[allow(missing_docs, reason = "each variant is the table or column of its name")]
 pub mod table;
+mod typed;
+mod unreadable;
 
 pub use account::{Account, New as NewAccount};
 pub use case::export::{Exported, Sink, Summary};

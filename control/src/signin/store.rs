@@ -6,7 +6,7 @@ use mail::Address;
 use sea_query::{Expr, ExprTrait, IntoTableRef, Order, Query};
 
 use super::{
-    Context, Digest, Drawn, Entered, Error, Factor, Issued, Passed, Pending, Presented, Proof, Purpose, Refused,
+    Audit, Context, Digest, Drawn, Entered, Error, Factor, Issued, Passed, Pending, Presented, Proof, Purpose, Refused,
     Requested, Session, Settings, Sort,
 };
 use crate::fields::Fields;
@@ -267,7 +267,7 @@ impl<D: Db> SignIn<D> {
             .columns([table::PasskeySession::SessionId, table::PasskeySession::PasskeyId])
             .values([Expr::val(session.id.to_string()), Expr::val(passkey.to_string())])?
             .to_owned();
-        let audit = crate::passkeys::Audit::SignedIn { passkey }.statement(account, now)?;
+        let audit = Audit::SignedIn { passkey }.statement(account, now)?;
         self.db.batch(vec![Self::row(&session, &digest)?, link.into(), audit]).await?;
         Ok(Entered { session, secret: drawn.proof, account, created: false })
     }

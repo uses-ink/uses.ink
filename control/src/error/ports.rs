@@ -113,6 +113,12 @@ impl<P: Ports> From<Unreadable> for Error<P> {
     }
 }
 
+impl<P: Ports> From<crate::unreadable::Unreadable> for Error<P> {
+    fn from(error: crate::unreadable::Unreadable) -> Self {
+        Self::Unreadable(error.into())
+    }
+}
+
 impl<P: Ports> From<db::ColumnError> for Error<P> {
     fn from(error: db::ColumnError) -> Self {
         Self::Unreadable(error.into())

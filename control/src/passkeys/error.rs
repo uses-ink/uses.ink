@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::Unreadable;
+use crate::unreadable::Unreadable;
 
 /// A request the store refuses for a reason about the request. Nothing was changed.
 #[derive(Clone, Debug, PartialEq, Eq)]

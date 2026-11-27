@@ -17,7 +17,6 @@
 //!
 //! The tables are made by [`Entry`], a migration to apply after the keys'.
 
-mod audit;
 mod bytes;
 mod ceremony;
 mod error;
@@ -27,7 +26,7 @@ mod reason;
 mod relying;
 mod store;
 
-pub use audit::Audit;
+pub use crate::signin::Audit;
 pub use bytes::{Bytes, CredentialId};
 pub use ceremony::{
     Algorithm, Asking, Asserted, Attestation, Authenticating, Claim, Class, Counter, Created, Creation, Enrolled,

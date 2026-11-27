@@ -4,7 +4,7 @@ use db::Row;
 use jiff::Timestamp;
 use mail::Address;
 
-use crate::Unreadable;
+use crate::unreadable::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Account as AccountKind, Factor as Kind, Id, Site as SiteKind};
 use crate::table;
