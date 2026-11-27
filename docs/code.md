@@ -404,7 +404,9 @@ the host (`LeastLoaded`: a free slot with the fewest in use, then the lowest loa
 shortest queue per slot), and `Need` (any or golden) says which hosts fit. What runs on a host is
 a `Program` (probe, run, body, wait, log, seed, changed, sweep): fixed `sh` text whose every
 variable is a positional parameter, wrapped in a `Call`; the slots are `flock` files and the
-queue is ticket files, so no daemon runs. Names that reach a path or a command line are `Word`s
+queue is ticket files, so no daemon runs. The source is grouped by what it holds: `cache/`,
+`cli/`, `config/`, `host/` (with the `transport/`), `job/` (with the `summary/`), `place/` and
+`run/`, where `Farm` is one `impl` spread over a file per verb. Names that reach a path or a command line are `Word`s
 of a `Kind` (host name, job name, path segment, ssh destination), shell words are `Quoted`, a
 job's id is a `JobId`, its events are `Event`s read from lines marked `@@farm:`, and its log
 becomes a `Summary` (nextest counts and failures, compiler diagnostics, `check:` lines). The exit

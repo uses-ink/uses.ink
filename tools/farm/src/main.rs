@@ -4,16 +4,15 @@
 //! `.config/farm.toml`. See docs/workflow.md for the verbs and docs/decisions.md (0047) for why
 //! it is built this way.
 //!
-//! - [`transport`]: how a call reaches a host: [`transport::Local`] and [`transport::Ssh`]
-//!   behind the [`transport::Transport`] trait.
-//! - [`program`]: the shell programs that run on a host (slots, queue, jobs), as fixed text with
-//!   positional parameters.
-//! - [`host`]: [`host::Member`] and [`host::Fleet`], generic over the transport.
-//! - [`place`]: [`place::Placement`], which host gets a job; [`history`], how long jobs took there.
-//! - [`run`]: [`run::Farm`], the verbs. [`summary`], [`job`] and [`event`] read what comes back.
-//! - [`jobs`]: the repo's job file.
-//! - [`version`]: the hash of the source the binary was built from.
-//! - [`workspace`]: `farm workspace`, which needs no host.
+//! - [`cache`]: what the farm remembers on this machine: passes, running jobs, the journal, the
+//!   result key and the digest of a job's inputs.
+//! - [`cli`]: the command line, the exit codes, the console, errors and names, and the version.
+//! - [`config`]: the hosts file, the repo's job file, the tree it sits in and its workspaces.
+//! - [`host`]: [`host::Host`] and what a probe finds of it; [`host::Member`] and [`host::Fleet`],
+//!   generic over the [`host::transport::Transport`] (local, ssh and the shell programs).
+//! - [`job`]: a job, its events, its result and its log summary.
+//! - [`place`]: [`place::Placement`], which host gets a job; how long jobs took there; waking hosts.
+//! - [`run`]: [`run::Farm`], the verbs, one file each.
 
 mod cache;
 mod cli;
