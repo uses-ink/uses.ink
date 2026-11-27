@@ -17,6 +17,7 @@ use crate::body::{self, AddSite, Enrolling, Rollback, Unreadable};
 use crate::enrol::Enrol;
 use crate::fault::{Denied, Fault};
 use crate::limits::Limits;
+use crate::port::{Port, Unnamed};
 use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::route::Call;
 use crate::view::{
@@ -160,7 +161,7 @@ where
             .credentials
             .verify(&Offered::Signed(signed), &presented)
             .await
-            .map_err(|error| Fault::Credentials(Box::new(error)));
+            .map_err(|error| Fault::Port(Unnamed::new(Port::Credentials, error)));
         // what was decided, and never the header
         let caller = match verdict? {
             Verdict::Granted(principal) => {
@@ -193,7 +194,7 @@ where
 
     /// A fresh id.
     pub(crate) fn drawn(&self) -> Result<[u8; 16], Fault<P>> {
-        self.draw.bytes().map_err(|error| Fault::Draw(Box::new(error)))
+        self.draw.bytes().map_err(|error| Fault::Port(Unnamed::new(Port::Draw, error)))
     }
 
     fn view(&self, site: &Site) -> SiteView {
@@ -375,7 +376,7 @@ where
     fn keys_failed(error: control::keys::Error<<P::Db as Db>::Error>) -> Fault<P> {
         match error.refusal() {
             Some(refused) => Fault::Keys(refused.clone()),
-            None => Fault::Credentials(Box::new(error)),
+            None => Fault::Store(error),
         }
     }
 

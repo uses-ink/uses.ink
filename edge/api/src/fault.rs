@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use control::keys::{Refused, Right};
 use control::{Failed, Ports, Refusal};
+use db::Db;
 use jiff::Timestamp;
 use model::Hash;
 use model::git::Scheme;
@@ -15,6 +16,7 @@ use crate::archive;
 use crate::body::Unreadable;
 use crate::enrol::Closed;
 use crate::limits::Raised;
+use crate::port::{Port, Unnamed};
 use crate::refusal::Turned;
 use crate::reply::{Media, Reply, Status};
 use crate::route::RouteError;
@@ -213,14 +215,14 @@ pub enum Fault<P: Ports> {
     Route(RouteError),
     /// The caller is not known.
     Denied(Denied),
-    /// The credential port could not check the credential.
-    Credentials(Box<dyn Error>),
+    /// A port failed: the credential check or the random source.
+    Port(Unnamed),
+    /// The key store failed.
+    Store(control::keys::Error<<P::Db as Db>::Error>),
     /// The key store refused, for a reason about the request.
     Keys(Refused),
     /// The person turned the ask down.
     Declined,
-    /// The draw port gave no bytes.
-    Draw(Box<dyn Error>),
     /// The body is not the JSON the route reads.
     Body(Unreadable),
     /// The body is over its limit.
@@ -266,10 +268,10 @@ impl<P: Ports> fmt::Display for Fault<P> {
         match self {
             Self::Route(error) => error.fmt(out),
             Self::Denied(error) => error.fmt(out),
-            Self::Credentials(_) => out.write_str("the credential could not be checked"),
+            Self::Port(error) => error.fmt(out),
+            Self::Store(_) => out.write_str("the credential could not be checked"),
             Self::Keys(error) => error.fmt(out),
             Self::Declined => out.write_str("the request was not approved"),
-            Self::Draw(_) => out.write_str("no random bytes were available"),
             Self::Body(error) => error.fmt(out),
             Self::Large { limit } => write!(out, "the body is over the limit of {limit} bytes"),
             Self::Scheme { scheme, allowed } => {
@@ -295,7 +297,8 @@ impl<P: Ports + 'static> Error for Fault<P> {
             Self::Route(inner) => inner.source(),
             Self::Denied(inner) => inner.source(),
             Self::Keys(inner) => Some(inner),
-            Self::Credentials(source) | Self::Draw(source) => Some(source.as_ref()),
+            Self::Port(source) => Some(source),
+            Self::Store(source) => Some(source),
             Self::Body(source) => Some(source),
             Self::Control(inner) => inner.source(),
             Self::Export(inner) => inner.source(),
@@ -344,10 +347,13 @@ impl<P: Ports> Fault<P> {
         match self {
             Self::Route(_) => "route",
             Self::Denied(denied) => denied.code(),
-            Self::Credentials(_) => "credentials",
+            Self::Port(port) => match port.port() {
+                Port::Draw => "random",
+                _ => "credentials",
+            },
+            Self::Store(_) => "credentials",
             Self::Keys(refused) => Turned(refused).code(),
             Self::Declined => "auth.enrolment.denied",
-            Self::Draw(_) => "random",
             Self::Body(_) => "body",
             Self::Large { .. } => "too-large",
             Self::Scheme { .. } => "scheme",
@@ -381,7 +387,7 @@ impl<P: Ports> Fault<P> {
             }
             Self::Source(error) => error.status(),
             Self::Control(error) => error.refusal().map_or(Status::Internal, Self::refused),
-            Self::Credentials(_) | Self::Draw(_) | Self::Export(_) => Status::Internal,
+            Self::Port(_) | Self::Store(_) | Self::Export(_) => Status::Internal,
         }
     }
 

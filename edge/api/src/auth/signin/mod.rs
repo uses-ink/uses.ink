@@ -41,10 +41,11 @@ use crate::Answers;
 use crate::auth::cookie::Jar;
 use crate::body::{Approve, Ask, Redeem, Unreadable};
 use crate::enrol::{Closed, Enrol};
+use crate::port::{Port, Unnamed};
 use crate::refusal::Turned;
 use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::view::Problem;
-use control::keys::{Approval, Refused as KeyRefused, Rights};
+use control::keys::{Approval, Error as KeyError, Refused as KeyRefused, Rights};
 
 pub use approver::{Approver, Approving, Strength};
 pub use limiter::{Limited, Limiter, Rate, RateError, Rates, Scope, Who};
@@ -100,11 +101,11 @@ pub enum Step<E> {
     /// The key store refused.
     Keys(KeyRefused),
     /// The key store failed.
-    Store(Box<dyn std::error::Error>),
+    Store(KeyError<E>),
     /// The request holds no usable session.
     Anonymous,
     /// The random source gave nothing.
-    Draw(Box<dyn std::error::Error>),
+    Draw(Unnamed),
     /// Signing in refused or failed.
     Sign(Error<E>),
     /// The answer could not be written as JSON.
@@ -138,7 +139,8 @@ impl<E: std::error::Error + 'static> std::error::Error for Step<E> {
             Self::Limited(source) => Some(source),
             Self::Closed(source) => Some(source),
             Self::Keys(source) => Some(source),
-            Self::Store(source) | Self::Draw(source) => Some(source.as_ref()),
+            Self::Store(source) => Some(source),
+            Self::Draw(source) => Some(source),
             Self::Sign(source) => Some(source),
             Self::Json(source) => Some(source),
             Self::Route | Self::Large { .. } | Self::Anonymous => None,
@@ -336,7 +338,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     }
 
     fn drawn(&self) -> Result<Drawn, Step<D::Error>> {
-        Draws(&self.draw).drawn().map_err(|error| Step::Draw(Box::new(error)))
+        Draws(&self.draw).drawn().map_err(|error| Step::Draw(Unnamed::new(Port::Draw, error)))
     }
 
     /// The session secret a request holds: its cookie. The API reads signatures and ignores
@@ -465,7 +467,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     fn store(error: control::keys::Error<D::Error>) -> Step<D::Error> {
         match error.refusal() {
             Some(refused) => Step::Keys(refused.clone()),
-            None => Step::Store(Box::new(error)),
+            None => Step::Store(error),
         }
     }
 

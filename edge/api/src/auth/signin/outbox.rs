@@ -16,6 +16,8 @@ use std::time::Duration;
 use clock::{Clock, Slept};
 use mail::{Mailer, Message};
 
+use crate::port::{Port, Unnamed};
+
 /// The outbox is full: the message was dropped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Full {
@@ -88,7 +90,7 @@ pub enum Note {
     /// The mailer could not send a message. It is not tried again.
     Failed {
         /// The mailer's error.
-        source: Box<dyn std::error::Error>,
+        source: Unnamed,
     },
     /// Messages were dropped because the outbox was full.
     Dropped {
@@ -101,7 +103,7 @@ impl fmt::Debug for Note {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Sent => out.write_str("Sent"),
-            Self::Failed { source } => write!(out, "Failed({source})"),
+            Self::Failed { source } => write!(out, "Failed({})", source.cause()),
             Self::Dropped { total } => write!(out, "Dropped({total})"),
         }
     }
@@ -148,7 +150,7 @@ impl<M: Mailer, K: Clock> Courier<M, K> {
                     sent += 1;
                     notes.note(&Note::Sent);
                 }
-                Err(error) => notes.note(&Note::Failed { source: Box::new(error) }),
+                Err(error) => notes.note(&Note::Failed { source: Unnamed::new(Port::Mailer, error) }),
             }
         }
         let total = self.outbox.dropped();
