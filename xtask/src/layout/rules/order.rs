@@ -241,6 +241,12 @@ impl Order {
             "uses-ink-control-signin",
             &["uses-ink-control-rows", "uses-ink-db", "uses-ink-mail", "uses-ink-secret", "uses-ink-sig"],
         ),
+        // Keys for machines (decision 0068): the rows' floor, the sign-in's lifetimes and credentials, and
+        // the signed-request profile's key types.
+        (
+            "uses-ink-control-keys",
+            &["uses-ink-control-rows", "uses-ink-control-signin", "uses-ink-db", "uses-ink-sig"],
+        ),
         // The use cases know the ports; the adapters are what its tests run against.
         (
             "uses-ink-control",
@@ -248,6 +254,7 @@ impl Order {
                 "uses-ink-blob",
                 "uses-ink-blob-dir",
                 "uses-ink-build",
+                "uses-ink-control-keys",
                 "uses-ink-control-rows",
                 "uses-ink-control-signin",
                 "uses-ink-db",

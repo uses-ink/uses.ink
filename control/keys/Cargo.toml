@@ -1,0 +1,22 @@
+[package]
+name = "uses-ink-control-keys"
+description = "Keys for machines (decision 0068): the rights a credential has, the device and deploy keys an account holds, enrolling them and the events they leave"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+control-rows.workspace = true
+control-signin.workspace = true
+db.workspace = true
+jiff.workspace = true
+sea-query.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sig.workspace = true
+
+[lints]
+workspace = true

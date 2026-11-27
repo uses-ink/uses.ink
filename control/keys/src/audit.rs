@@ -13,10 +13,10 @@ use sig::KeyId;
 
 use super::key::{Kind, Why};
 use super::right::{Rights, Scope};
-use crate::unreadable::Unreadable;
-use crate::fields::Fields;
-use crate::id::{Account as AccountKind, Id};
-use crate::table;
+use control_rows::unreadable::Unreadable;
+use control_rows::fields::Fields;
+use control_rows::id::{Account as AccountKind, Id};
+use control_rows::table;
 
 /// One lifecycle event of a credential.
 #[derive(Clone, Debug, PartialEq, Eq)]

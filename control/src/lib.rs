@@ -24,8 +24,6 @@ mod error;
 mod event;
 mod handle;
 mod job;
-#[path = "../keys/src/lib.rs"]
-pub mod keys;
 mod listed;
 mod migration;
 mod origin;
@@ -34,9 +32,10 @@ mod ports;
 mod receipt;
 mod site;
 
+pub use control_keys as keys;
 pub use control_rows::table;
 pub use control_signin as signin;
-pub(crate) use control_rows::{digest, fields, id, typed, unreadable};
+pub(crate) use control_rows::{fields, id, typed, unreadable};
 
 pub use account::{Account, New as NewAccount};
 pub use case::export::{Exported, Sink, Summary};

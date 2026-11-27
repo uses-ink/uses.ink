@@ -6440,6 +6440,7 @@ dependencies = [
  "uses-ink-blob",
  "uses-ink-blob-dir",
  "uses-ink-build",
+ "uses-ink-control-keys",
  "uses-ink-control-rows",
  "uses-ink-control-signin",
  "uses-ink-db",
@@ -6452,6 +6453,20 @@ dependencies = [
  "uses-ink-secret-local",
  "uses-ink-sig",
  "uses-ink-trace",
+]
+
+[[package]]
+name = "uses-ink-control-keys"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "sea-query",
+ "serde",
+ "serde_json",
+ "uses-ink-control-rows",
+ "uses-ink-control-signin",
+ "uses-ink-db",
+ "uses-ink-sig",
 ]
 
 [[package]]

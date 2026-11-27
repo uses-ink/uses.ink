@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::id::{Account as AccountKind, Id, Site as SiteKind};
+use control_rows::id::{Account as AccountKind, Id, Site as SiteKind};
 
 /// What a credential may do. A closed list: adding one is a code change and a decision.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

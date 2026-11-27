@@ -5,8 +5,8 @@ use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, IdenStatic, Index, Tabl
 
 use super::enrol::State;
 use super::key::{Kind, Why};
-use crate::typed::Typed;
-use crate::table::{Account, Allowed, AuthEvent, Enrolment, Key, Named, Site};
+use control_rows::typed::Typed;
+use control_rows::table::{Account, Allowed, AuthEvent, Enrolment, Key, Named, Site};
 use sig::KeyType;
 
 /// The migration that makes `key`, `enrolment` and `auth_event`. A key row holds a public key

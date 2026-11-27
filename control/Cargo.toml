@@ -12,6 +12,7 @@ publish.workspace = true
 blake3.workspace = true
 blob.workspace = true
 build.workspace = true
+control-keys.workspace = true
 control-rows.workspace = true
 control-signin.workspace = true
 db.workspace = true

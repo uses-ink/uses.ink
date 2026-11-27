@@ -8,11 +8,11 @@ use jiff::civil::Date;
 use sig::{KeyId, KeyType, PublicKey};
 
 use super::right::{Grant, Grants, Rights, Scope};
-use crate::unreadable::Unreadable;
-use crate::fields::Fields;
-use crate::id::{Account as AccountKind, Id, Site as SiteKind};
-use crate::signin::Credential;
-use crate::table;
+use control_rows::unreadable::Unreadable;
+use control_rows::fields::Fields;
+use control_rows::id::{Account as AccountKind, Id, Site as SiteKind};
+use control_signin::Credential;
+use control_rows::table;
 
 /// What a key is for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

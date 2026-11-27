@@ -19,6 +19,7 @@ crates = [
     "uses-ink-clock",
     "uses-ink-config",
     "uses-ink-control",
+    "uses-ink-control-keys",
     "uses-ink-control-rows",
     "uses-ink-control-signin",
     "uses-ink-db",

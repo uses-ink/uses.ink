@@ -11,9 +11,9 @@ use super::enrol::{Enrolment, NewEnrolment, Poll, Seen, State, UserCode};
 use super::error::{Error, Refused};
 use super::key::{Key, Kind, Why};
 use super::right::{Rights, Scope};
-use crate::id::{Account as AccountKind, Enrolment as EnrolmentKind, Id};
-use crate::signin::Ttl;
-use crate::table;
+use control_rows::id::{Account as AccountKind, Enrolment as EnrolmentKind, Id};
+use control_signin::Ttl;
+use control_rows::table;
 
 /// What the operator decides about keys: how long each lives, the ceiling for a request, how
 /// long an ask waits for a person, and how long a finished ask is kept for its poll.
@@ -329,7 +329,7 @@ impl<D: Db> Keys<D> {
     }
 
     /// Whether `site` is one of `account`'s.
-    async fn owns(&self, account: Id<AccountKind>, site: Id<crate::id::Site>) -> Result<(), Error<D::Error>> {
+    async fn owns(&self, account: Id<AccountKind>, site: Id<control_rows::id::Site>) -> Result<(), Error<D::Error>> {
         let select = Query::select()
             .expr(Expr::val(1_i64))
             .from(table::Site::Table)
