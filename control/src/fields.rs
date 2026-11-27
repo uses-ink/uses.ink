@@ -29,6 +29,10 @@ impl Fields<'_> {
         Ok(self.0.get(column)?)
     }
 
+    pub(crate) fn bytes(self, column: impl IdenStatic) -> Result<Vec<u8>, Unreadable> {
+        Ok(self.0.get(column)?)
+    }
+
     pub(crate) fn time(self, column: impl IdenStatic) -> Result<Timestamp, Unreadable> {
         let millis: i64 = self.0.get(column)?;
         Timestamp::from_millisecond(millis).map_err(|source| Unreadable::Time { column: column.as_str(), source })

@@ -28,6 +28,15 @@ pub struct Session {
     pub limit: Timestamp,
 }
 
+/// A person who just proved a passkey: who they are, and which passkey proved it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Passed {
+    /// The account the passkey belongs to.
+    pub account: Id<AccountKind>,
+    /// The passkey's row id.
+    pub passkey: Id<crate::id::Factor>,
+}
+
 impl Session {
     /// The columns a read of a session selects, digest first.
     pub(crate) const COLUMNS: [table::Session; 7] = [

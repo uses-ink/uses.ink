@@ -79,10 +79,20 @@ impl Base64 {
         if text.len() != expected {
             return Err(Undecodable::Length { expected, found: text.len() });
         }
-        let mut bytes = Vec::with_capacity(N);
+        let bytes = Self::decode_vec(text)?;
+        <[u8; N]>::try_from(bytes).map_err(|_| Undecodable::Length { expected, found: text.len() })
+    }
+
+    /// The bytes `text` spells, of whatever length, when it is their one spelling: no padding, no
+    /// character outside the alphabet and no stray bits at the end.
+    pub fn decode_vec(text: &str) -> Result<Vec<u8>, Undecodable> {
+        if text.len() % 4 == 1 {
+            return Err(Undecodable::Length { expected: text.len() - 1, found: text.len() });
+        }
+        let mut bytes = Vec::with_capacity(text.len() * 3 / 4);
         let (mut acc, mut bits) = (0_u32, 0_u32);
         for (at, byte) in text.bytes().enumerate() {
-            acc = (acc << 6) | Self::value(byte).ok_or(Undecodable::Character { at })?;
+            acc = ((acc << 6) | Self::value(byte).ok_or(Undecodable::Character { at })?) & 0xffff;
             bits += 6;
             if bits >= 8 {
                 bits -= 8;
@@ -92,7 +102,7 @@ impl Base64 {
         if acc & ((1 << bits) - 1) != 0 {
             return Err(Undecodable::Tail);
         }
-        <[u8; N]>::try_from(bytes).map_err(|_| Undecodable::Length { expected, found: text.len() })
+        Ok(bytes)
     }
 }
 
@@ -155,6 +165,18 @@ mod test {
         assert_eq!(Base64::length(64), 86);
         let bytes: Vec<u8> = (0..16_u8).map(|n| n.wrapping_mul(37).wrapping_add(11)).collect();
         assert_eq!(Base64::decode::<16>(&Base64::encode(&bytes)), Ok(<[u8; 16]>::try_from(bytes).unwrap_or_default()));
+    }
+
+    #[test]
+    fn base64_of_any_length_has_one_spelling() {
+        let bytes: Vec<u8> = (0..70_u8).map(|n| n.wrapping_mul(91).wrapping_add(3)).collect();
+        for length in 0..bytes.len() {
+            let text = Base64::encode(&bytes[..length]);
+            assert_eq!(Base64::decode_vec(&text).as_deref(), Ok(&bytes[..length]));
+        }
+        assert_eq!(Base64::decode_vec("-_9"), Err(Undecodable::Tail));
+        assert_eq!(Base64::decode_vec("A"), Err(Undecodable::Length { expected: 0, found: 1 }));
+        assert_eq!(Base64::decode_vec("AA=="), Err(Undecodable::Character { at: 2 }));
     }
 
     #[test]

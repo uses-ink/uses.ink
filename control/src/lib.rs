@@ -30,6 +30,7 @@ pub mod keys;
 mod listed;
 mod migration;
 mod origin;
+pub mod passkeys;
 mod ports;
 mod receipt;
 pub mod signin;

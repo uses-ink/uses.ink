@@ -29,7 +29,7 @@ pub use error::{Error, Refused};
 pub use factor::{Credential, Factor, Sort};
 pub use migration::Entry;
 pub use proof::{Context, Digest, Drawn, NotDigest, Proof, ProofError};
-pub use session::Session;
+pub use session::{Passed, Session};
 pub use settings::{Ends, Expiry, Settings, Signup, UnknownSignup};
 pub use store::SignIn;
 pub use ttl::{Ttl, TtlError};

@@ -6,8 +6,8 @@ use mail::Address;
 use sea_query::{Expr, ExprTrait, IntoTableRef, Order, Query};
 
 use super::{
-    Context, Digest, Drawn, Entered, Error, Factor, Issued, Pending, Presented, Proof, Purpose, Refused, Requested,
-    Session, Settings, Sort,
+    Context, Digest, Drawn, Entered, Error, Factor, Issued, Passed, Pending, Presented, Proof, Purpose, Refused,
+    Requested, Session, Settings, Sort,
 };
 use crate::fields::Fields;
 use crate::id::{Account as AccountKind, Id, Session as SessionKind};
@@ -250,6 +250,26 @@ impl<D: Db> SignIn<D> {
         let making = Making { session, digest, account, fresh, attach, factor: drawn.factor, now };
         self.db.batch(Self::statements(&making)?).await?;
         Ok(Entered { session, secret: drawn.proof, account, created: fresh })
+    }
+
+    /// Signs in the account a passkey just proved, with a session of its own. The session is
+    /// linked to the passkey, so removing the passkey ends it, and the sign-in is an event.
+    /// Everything else about the session is the same as a link's: a 256-bit secret of which only
+    /// the digest is stored, an absolute limit and an idle limit.
+    pub async fn enter(&self, passed: Passed, drawn: Drawn, now: Timestamp) -> Result<Entered, Error<D::Error>> {
+        let Passed { account, passkey } = passed;
+        let ends = self.settings.session.begin(now)?;
+        let session =
+            Session { id: drawn.session, account, created: now, seen: now, expires: ends.expires, limit: ends.limit };
+        let digest = Digest::of(Context::Session, &drawn.proof);
+        let link = Query::insert()
+            .into_table(table::PasskeySession::Table)
+            .columns([table::PasskeySession::SessionId, table::PasskeySession::PasskeyId])
+            .values([Expr::val(session.id.to_string()), Expr::val(passkey.to_string())])?
+            .to_owned();
+        let audit = crate::passkeys::Audit::SignedIn { passkey }.statement(account, now)?;
+        self.db.batch(vec![Self::row(&session, &digest)?, link.into(), audit]).await?;
+        Ok(Entered { session, secret: drawn.proof, account, created: false })
     }
 
     /// Who a link signs in as: the address to give a new account, and whether the account is new.

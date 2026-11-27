@@ -86,6 +86,8 @@ pub enum Context {
     Challenge,
     /// A session's secret.
     Session,
+    /// The secret in the cookie of a passkey ceremony.
+    Ceremony,
 }
 
 impl Context {
@@ -93,6 +95,7 @@ impl Context {
         match self {
             Self::Challenge => "uses.ink 2026-11-27 sign-in challenge",
             Self::Session => "uses.ink 2026-11-27 sign-in session",
+            Self::Ceremony => "uses.ink 2026-11-27 passkey ceremony",
         }
     }
 }
@@ -205,6 +208,8 @@ mod test {
         let one = Digest::of(Context::Challenge, &proof);
         assert_eq!(one, Digest::of(Context::Challenge, &proof));
         assert_ne!(one, Digest::of(Context::Session, &proof));
+        assert_ne!(one, Digest::of(Context::Ceremony, &proof));
+        assert_ne!(Digest::of(Context::Session, &proof), Digest::of(Context::Ceremony, &proof));
         assert_eq!(Digest::try_from(&one.as_bytes()[..]).unwrap(), one);
         assert_eq!(Digest::try_from(&[1_u8; 5][..]), Err(NotDigest));
     }

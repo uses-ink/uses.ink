@@ -165,6 +165,54 @@ pub enum Session {
     RevokedAt,
 }
 
+/// `passkey`: a WebAuthn credential of an account.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "passkey"]
+pub enum Passkey {
+    Table,
+    Id,
+    AccountId,
+    CredentialId,
+    PublicKey,
+    SignCount,
+    BackupEligible,
+    BackupState,
+    Transports,
+    Label,
+    CreatedAt,
+    LastUsedOn,
+}
+
+/// `passkey_session`: which passkey signed a session in, so removing the passkey ends it.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "passkey_session"]
+pub enum PasskeySession {
+    Table,
+    SessionId,
+    PasskeyId,
+}
+
+/// `ceremony`: a registration or a sign-in that was started, by the digest of its cookie.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "ceremony"]
+pub enum Ceremony {
+    Table,
+    Digest,
+    Flow,
+    AccountId,
+    State,
+    ExpiresAt,
+}
+
+/// `auth_config`: the relying party id the first passkey was made under.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "auth_config"]
+pub enum AuthConfig {
+    Table,
+    Slot,
+    RpId,
+}
+
 /// `seen`: the commit of a site's source the watch queued a build for last.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 #[iden = "key"]
@@ -264,6 +312,8 @@ pub enum Named {
     KeyAccount,
     EnrolmentExpires,
     AuthEventAccount,
+    PasskeyAccount,
+    CeremonyExpires,
 }
 
 /// The values a text column may hold, as a `CHECK`: the schema is built from the names the code
