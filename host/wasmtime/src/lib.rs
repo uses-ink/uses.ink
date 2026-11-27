@@ -23,6 +23,7 @@ mod component;
 mod error;
 mod mirror;
 mod runtime;
+mod source;
 
 pub use budget::Budget;
 pub use cache::{Cache, Origin};
@@ -30,3 +31,4 @@ pub use component::{Component, Format, Theme};
 pub use error::{Error, Failure};
 pub use mirror::{Malformed, Unmirrored};
 pub use runtime::Runtime;
+pub use source::{Source, Terms, Told, Unsourced};

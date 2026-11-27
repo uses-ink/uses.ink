@@ -4152,12 +4152,14 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "freehand",
+ "gix",
  "uses-ink-engine",
  "uses-ink-format-markdown",
  "uses-ink-format-obsidian",
  "uses-ink-host-image",
  "uses-ink-host-native",
  "uses-ink-model",
+ "uses-ink-source-git",
  "uses-ink-theme-quiet",
  "wasmtime",
 ]
@@ -4187,6 +4189,25 @@ version = "0.0.0"
 dependencies = [
  "freehand",
  "uses-ink-model",
+ "wit-bindgen 0.63.0",
+]
+
+[[package]]
+name = "uses-ink-source-git"
+version = "0.0.0"
+dependencies = [
+ "gix",
+ "uses-ink-host-native",
+ "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-source-git-guest"
+version = "0.0.0"
+dependencies = [
+ "uses-ink-model",
+ "uses-ink-sdk",
+ "uses-ink-source-git",
  "wit-bindgen 0.63.0",
 ]
 

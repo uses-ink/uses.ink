@@ -1,0 +1,21 @@
+[package]
+name = "uses-ink-source-git-guest"
+description = "ink:source-git as a wasm component: the git source behind the ink:source world"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+model.workspace = true
+sdk.workspace = true
+source-git.workspace = true
+wit-bindgen.workspace = true
+
+[lints]
+workspace = true

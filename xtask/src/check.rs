@@ -56,6 +56,8 @@ impl Gate {
                     "uses-ink-format-markdown-guest",
                     "uses-ink-format-obsidian-guest",
                     "uses-ink-theme-quiet-guest",
+                    "uses-ink-source-git",
+                    "uses-ink-source-git-guest",
                     "uses-ink-host-wasmtime-hostile",
                 ],
                 flags: &[],

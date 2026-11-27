@@ -54,6 +54,7 @@ impl Unsafe {
         "plugin/format/markdown/guest/src/bind.rs",
         "plugin/format/obsidian/guest/src/bind.rs",
         "plugin/theme/quiet/guest/src/bind.rs",
+        "plugin/source/git/guest/src/bind.rs",
     ];
 
     /// Whether `text` holds the keyword or names its lint as code.

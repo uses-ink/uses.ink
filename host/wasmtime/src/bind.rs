@@ -46,3 +46,16 @@ pub(crate) mod theme {
         },
     });
 }
+
+pub(crate) mod source {
+    wasmtime::component::bindgen!({
+        world: "ink:source/source",
+        path: ["../../wit/model", "../../wit/host", "../../wit/source"],
+        with: {
+            "ink:model/diagnostic@0.1.0": crate::bind::plugin::ink::model::diagnostic,
+            "ink:model/snapshot@0.1.0": crate::bind::plugin::ink::model::snapshot,
+            "ink:host/git@0.1.0": crate::bind::plugin::ink::host::git,
+            "ink:host/diagnostic@0.1.0": crate::bind::plugin::ink::host::diagnostic,
+        },
+    });
+}

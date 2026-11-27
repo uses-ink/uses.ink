@@ -48,7 +48,7 @@ slow-timeout = { period = "1s", terminate-after = 1 }
 # that fetch (host-native's `fetch`, and the `source` ones that read through it) have this
 # budget instead.
 [[profile.default.overrides]]
-filter = "binary(fetch)"
+filter = "binary(fetch) | binary(source)"
 slow-timeout = { period = "2s", terminate-after = 1 }
 
 # A component's tests pay a Cranelift compile on a cold cache (tens of milliseconds for the

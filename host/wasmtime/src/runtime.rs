@@ -10,7 +10,7 @@ use wasmtime::{Store, Trap};
 
 use crate::budget::{Budget, Ticker};
 use crate::cache::{Cache, Compile, Origin};
-use crate::capability::{Refusal, State};
+use crate::capability::{Refusal, Sourcing, State};
 use crate::error::{Error, Failure};
 
 /// Loads plugins as components and runs their calls within a [`Budget`].
@@ -61,7 +61,14 @@ impl Shared {
 
     /// A fresh store for one instance of `plugin`, its memory limited.
     pub(crate) fn store(&self, plugin: &str) -> Store<State> {
-        let mut store = Store::new(&self.engine, State::new(plugin, self.grammars.clone(), &self.budget));
+        self.store_in(plugin, &self.budget, Sourcing::default())
+    }
+
+    /// A fresh store for one instance of `plugin`, limited by `budget` and fetching as
+    /// `sourcing` says.
+    pub(crate) fn store_in(&self, plugin: &str, budget: &Budget, sourcing: Sourcing) -> Store<State> {
+        let state = State::new(plugin, self.grammars.clone(), budget).sourcing(sourcing);
+        let mut store = Store::new(&self.engine, state);
         store.limiter(|state| &mut state.limit);
         store
     }
@@ -72,7 +79,16 @@ impl Shared {
         store: &mut Store<State>,
         call: impl FnOnce(&mut Store<State>) -> wasmtime::Result<T>,
     ) -> Result<T, Failure> {
-        let budget = &self.budget;
+        Self::call_in(&self.budget, store, call)
+    }
+
+    /// Like [`Shared::call`], with `budget` in place of the runtime's: a source's fetch takes
+    /// longer than a page's render.
+    pub(crate) fn call_in<T>(
+        budget: &Budget,
+        store: &mut Store<State>,
+        call: impl FnOnce(&mut Store<State>) -> wasmtime::Result<T>,
+    ) -> Result<T, Failure> {
         let fueled = store.set_fuel(budget.fuel);
         store.set_epoch_deadline(budget.ticks().unwrap_or(1));
         store.epoch_deadline_trap();

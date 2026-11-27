@@ -2,7 +2,7 @@
 
 use model::git::{Auth, Budget, Cloned, Depth, Grant, Locator, Network, Refused, Request, Revision, Scheme};
 use model::{
-    Ability, Bytes as Size, ContentPath, Entry, FileFacts, Gap, Hash, Known, Lack, Observed, Oid, Provenance, Snapshot,
+    Ability, Bytes as Size, ContentPath, Entry, FileFacts, Gap, Hash, Known, Lack, Observed, Provenance, Snapshot,
     Timestamp, UnknownReason, UploadId, Version,
 };
 

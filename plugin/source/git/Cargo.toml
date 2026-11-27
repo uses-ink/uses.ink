@@ -1,0 +1,20 @@
+[package]
+name = "uses-ink-source-git"
+description = "The git source: a repository fetched through the host's git capability and read into a snapshot"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+model.workspace = true
+
+[dev-dependencies]
+host-native.workspace = true
+# test repositories are written object by object
+gix.workspace = true
+
+[lints]
+workspace = true

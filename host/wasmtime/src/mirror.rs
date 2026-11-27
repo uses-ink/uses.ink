@@ -22,5 +22,9 @@ mod site {
 mod host {
     include!("../../../wit/mirror/host.rs");
 }
+mod snapshot {
+    include!("../../../wit/mirror/snapshot.rs");
+}
 
 pub use refusal::{Malformed, Unmirrored};
+pub(crate) use snapshot::Seen;

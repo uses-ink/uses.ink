@@ -17,6 +17,9 @@ model.workspace = true
 wasmtime.workspace = true
 
 [dev-dependencies]
+# the source's conformance test builds a repository object by object
+gix.workspace = true
+source-git.workspace = true
 host-image.workspace = true
 format-markdown.workspace = true
 format-obsidian.workspace = true

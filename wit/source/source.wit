@@ -1,0 +1,37 @@
+package ink:source@0.1.0;
+
+/// A source plugin: a repository named by its address, read into a snapshot through the host's
+/// `git` capability. It sees no file's bytes; the host stores them for the build.
+world source {
+    import ink:host/git@0.1.0;
+    import ink:host/diagnostic@0.1.0;
+
+    export source: interface {
+        use ink:host/git@0.1.0.{refusal};
+        use ink:model/snapshot@0.1.0.{snapshot, oid};
+
+        /// What to read.
+        record want {
+            /// `file:///path` or `https://host/path`.
+            locator: string,
+            revision: option<string>,
+            /// Whether the site's dates come from history: the whole history is fetched when
+            /// they do, and one commit when they do not.
+            history: bool,
+            grant: option<string>,
+        }
+
+        variant refused {
+            /// The host refused (the cause is the `git` refusal's).
+            fetch(refusal),
+            /// A field of the want is no locator, revision or credential name, or the snapshot
+            /// has no case in the boundary.
+            malformed,
+            /// The host's snapshot is of another commit than the one fetched.
+            commit(oid),
+        }
+
+        /// The repository at `want`, read into a snapshot.
+        read: func(want: want) -> result<snapshot, refused>;
+    }
+}

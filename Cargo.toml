@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest"]
+members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -26,6 +26,7 @@ host-native = { package = "uses-ink-host-native", path = "host/native" }
 host-wasmtime = { package = "uses-ink-host-wasmtime", path = "host/wasmtime" }
 model = { package = "uses-ink-model", path = "model" }
 sdk = { package = "uses-ink-sdk", path = "plugin/sdk" }
+source-git = { package = "uses-ink-source-git", path = "plugin/source/git" }
 theme-quiet = { package = "uses-ink-theme-quiet", path = "plugin/theme/quiet" }
 token = { package = "uses-ink-token", path = "token" }
 annotate-snippets = "0.12.18"

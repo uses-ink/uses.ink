@@ -5,12 +5,13 @@
 use engine::{Record, Said};
 use freehand::mark::{Drawn, Fill, Frame, Line, Patch, Ring, Underline};
 use freehand::{Chance, Hand, Highlighter, Mark, Mulberry, Paths, Pencil, Point, Seed};
-use host_native::Grammars;
+use host_native::{Failed, Fetch, Grammars, Memory, Read};
+use model::git::{Cloned, Refused, Request};
 use model::highlight::Highlight;
 use model::{Diagnostic, Notice, Problem};
 use wasmtime::ResourceLimiter;
 
-use crate::bind::plugin::ink::host::{diagnostic, highlight, pen, text};
+use crate::bind::plugin::ink::host::{diagnostic, git, highlight, pen, text};
 use crate::bind::plugin::ink::model as types;
 use crate::budget::Budget;
 
@@ -22,12 +23,41 @@ pub(crate) struct State {
     grammars: Grammars,
     pub(crate) said: Said,
     pub(crate) limit: Limit,
+    pub(crate) sourcing: Sourcing,
+}
+
+/// What a source's calls to the `git` capability do and leave behind: the host's fetching, the
+/// files of the last snapshot, and the read that made them. A plugin that is not a source holds
+/// the default, whose network is off, so every fetch it asks for is refused.
+#[derive(Debug)]
+pub(crate) struct Sourcing {
+    pub(crate) fetch: Fetch,
+    pub(crate) blobs: Memory,
+    pub(crate) read: Option<Read>,
+}
+
+impl Default for Sourcing {
+    fn default() -> Self {
+        Self::from(Fetch::new(std::path::PathBuf::new()))
+    }
+}
+
+impl From<Fetch> for Sourcing {
+    fn from(fetch: Fetch) -> Self {
+        Self { fetch, blobs: Memory::default(), read: None }
+    }
 }
 
 impl State {
     pub(crate) fn new(plugin: impl Into<String>, grammars: Grammars, budget: &Budget) -> Self {
         let limit = Limit { memory: budget.bytes(), table: budget.table, refused: None };
-        Self { plugin: plugin.into(), grammars, said: Said::default(), limit }
+        Self { plugin: plugin.into(), grammars, said: Said::default(), limit, sourcing: Sourcing::default() }
+    }
+
+    /// This state with `sourcing` as what its `git` calls use.
+    pub(crate) fn sourcing(mut self, sourcing: Sourcing) -> Self {
+        self.sourcing = sourcing;
+        self
     }
 
     /// `plugin.value.malformed`: the plugin sent something the model refuses.
@@ -132,6 +162,50 @@ impl highlight::Host for State {
     }
 }
 
+impl State {
+    /// A refusal of the host's fetching, as the plugin sees it. A failure with no case of its own
+    /// is said here, once, with its causes; the typed refusals carry their numbers across.
+    fn refuse(&mut self, refused: &Refused<Failed>) -> git::Refusal {
+        if matches!(refused, Refused::Failed(_)) {
+            self.said.diagnose(Diagnostic::from(refused));
+        }
+        git::Refusal::try_from(refused).unwrap_or_else(|unmirrored| {
+            self.said.diagnose(Diagnostic::new(Problem::PluginValueUnmirrored { reason: unmirrored.to_string() }));
+            git::Refusal::Failed
+        })
+    }
+}
+
+impl git::Host for State {
+    fn fetch(&mut self, request: git::Request) -> Result<git::Cloned, git::Refusal> {
+        let request = Request::try_from(request).map_err(|refused| {
+            self.malformed(&refused);
+            git::Refusal::Failed
+        })?;
+        match self.sourcing.fetch.run(&request) {
+            Ok(cloned) => Ok(git::Cloned::from(&cloned)),
+            Err(refused) => Err(self.refuse(&refused)),
+        }
+    }
+
+    fn read(&mut self, cloned: git::Cloned) -> Result<types::snapshot::Snapshot, git::Refusal> {
+        let cloned = Cloned::try_from(cloned).map_err(|refused| {
+            self.malformed(&refused);
+            git::Refusal::Failed
+        })?;
+        let read = match self.sourcing.fetch.read(&cloned, &mut self.sourcing.blobs) {
+            Ok(read) => read,
+            Err(refused) => return Err(self.refuse(&refused)),
+        };
+        let wire = types::snapshot::Snapshot::try_from(&read.snapshot).map_err(|unmirrored| {
+            self.said.diagnose(Diagnostic::new(Problem::PluginValueUnmirrored { reason: unmirrored.to_string() }));
+            git::Refusal::Failed
+        })?;
+        self.sourcing.read = Some(read);
+        Ok(wire)
+    }
+}
+
 impl diagnostic::Host for State {
     fn emit(&mut self, diagnostic: types::diagnostic::Diagnostic) {
         match Diagnostic::try_from(diagnostic) {
@@ -153,3 +227,4 @@ impl types::document::Host for State {}
 impl types::site::Host for State {}
 impl types::read::Host for State {}
 impl types::file::Host for State {}
+impl types::snapshot::Host for State {}

@@ -98,6 +98,16 @@ impl Extend<Vec<u8>> for Memory {
     }
 }
 
+impl IntoIterator for Memory {
+    type Item = Vec<u8>;
+    type IntoIter = std::collections::btree_map::IntoValues<Hash, Vec<u8>>;
+
+    /// Every blob's bytes, in the order of their hashes.
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_values()
+    }
+}
+
 impl FromIterator<Vec<u8>> for Memory {
     fn from_iter<I: IntoIterator<Item = Vec<u8>>>(blobs: I) -> Self {
         let mut memory = Self::default();

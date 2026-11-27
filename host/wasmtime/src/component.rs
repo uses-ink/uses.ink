@@ -22,11 +22,11 @@ use crate::runtime::{Runtime, Shared};
 /// A plugin loaded as a component of world `W`.
 #[derive(Debug)]
 pub struct Component<W> {
-    shared: std::sync::Arc<Shared>,
-    name: String,
-    origin: Origin,
-    world: W,
-    aside: RefCell<Said>,
+    pub(crate) shared: std::sync::Arc<Shared>,
+    pub(crate) name: String,
+    pub(crate) origin: Origin,
+    pub(crate) world: W,
+    pub(crate) aside: RefCell<Said>,
 }
 
 /// The `ink:format` world.
@@ -116,7 +116,7 @@ impl<W> Component<W> {
     }
 
     /// Keeps `failure` aside.
-    fn fail(&self, failure: &Failure) {
+    pub(crate) fn fail(&self, failure: &Failure) {
         self.aside.borrow_mut().diagnose(failure.diagnostic(&self.name));
     }
 }

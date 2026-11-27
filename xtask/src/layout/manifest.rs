@@ -99,8 +99,13 @@ impl Order {
                 "uses-ink-format-markdown",
                 "uses-ink-format-obsidian",
                 "uses-ink-theme-quiet",
+                "uses-ink-source-git",
             ],
         ),
+        // The git source's native core speaks the model's `Git` trait; its tests run it over the
+        // host's own fetching.
+        ("uses-ink-source-git", &["uses-ink-model", "uses-ink-host-native"]),
+        ("uses-ink-source-git-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-source-git"]),
         ("uses-ink-sdk", &["freehand", "uses-ink-model"]),
         ("uses-ink-format-markdown-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-format-markdown"]),
         ("uses-ink-format-obsidian-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-format-obsidian"]),
