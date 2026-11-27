@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+---
+selection: explicit, a vault or private source: a page is private until it is selected
+published (1)
+  index.md the frontmatter of index.md says so, bytes 13..17
+not published (0)

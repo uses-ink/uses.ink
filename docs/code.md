@@ -126,6 +126,13 @@ code implements:
 | `Otherwise<W>` | what `W` says, only when nothing before it said a value | |
 | `Fallback<C>` | the default, evidence `Default { reason }` | `Assumed<G>` |
 
+Writers sit beside the readers they mirror, so an edit touches exactly what the reader reads:
+`format_markdown::Publishing` finds the `publish` field of a frontmatter block and returns an
+`Edit` (the old value and the new text, or none when nothing changes), and
+`config::include_into` adds or removes an `include` pattern in `ink.toml` text with its comments
+kept, returning the text and a `Listed`. `ink select` plans every edit with them before it writes
+any.
+
 A code decided before the engine runs, `site.format`, is decided by the host through
 `engine::Chosen::new(snapshot, pins, asked)`, which runs the one ladder (`Pin`, `Folder<Obsidian>`,
 `Fallback`) on the snapshot and names the format plugin; the host builds `Engine` over that

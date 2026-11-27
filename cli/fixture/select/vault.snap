@@ -1,0 +1,11 @@
+---
+source: fixture/src/lib.rs
+---
+selection: explicit, a vault or private source: a page is private until it is selected
+published (4)
+  Loop.md the frontmatter of Loop.md says so, bytes 13..17
+  Notes/Ownership.md the frontmatter of Notes/Ownership.md says so, bytes 13..17
+  Notes/Rust.md the frontmatter of Notes/Rust.md says so, bytes 13..17
+  index.md the frontmatter of index.md says so, bytes 13..17
+not published (1)
+  Private.md not selected: a vault or private source keeps a page private until it is selected

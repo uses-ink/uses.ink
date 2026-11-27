@@ -53,7 +53,7 @@ impl fmt::Display for Unselectable {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
-pub enum Outcome {
+pub(crate) enum Outcome {
     /// `publish: true` was added to the frontmatter.
     Added,
     /// `publish: false` became `publish: true`.

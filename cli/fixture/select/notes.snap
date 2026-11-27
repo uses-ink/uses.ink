@@ -1,0 +1,8 @@
+---
+source: fixture/src/lib.rs
+---
+selection: implicit, a public source: a page is published unless it says otherwise
+published (2)
+  notes/kettle.md by default: a public source publishes its pages
+  notes/tea.md by default: a public source publishes its pages
+not published (0)

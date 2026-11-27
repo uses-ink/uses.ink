@@ -1,0 +1,9 @@
+---
+source: fixture/src/lib.rs
+---
+selection: implicit, a public source: a page is published unless it says otherwise
+published (3)
+  docs/guide/install.md by default: a public source publishes its pages
+  docs/guide/use.md by default: a public source publishes its pages
+  docs/index.md by default: a public source publishes its pages
+not published (0)
