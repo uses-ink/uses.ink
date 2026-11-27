@@ -92,9 +92,7 @@ impl<F: Frame> Stack<F> {
     /// closed are removed, each reported, their content kept.
     pub(crate) fn close(&mut self, name: &str, report: &mut Report) -> Closing {
         if let Some(at) = self.open.iter().rposition(|open| open.name() == name) {
-            while self.open.len() > at + 1 {
-                self.spill(report);
-            }
+            self.spill(at + 1, report);
             if let Some(open) = self.open.pop() {
                 self.push(open.close());
             }
@@ -130,19 +128,26 @@ impl<F: Frame> Stack<F> {
 
     /// The run, with every element still open removed and reported.
     pub(crate) fn finish(mut self, report: &mut Report) -> Vec<F::Node> {
-        while !self.open.is_empty() {
-            self.spill(report);
-        }
+        self.spill(0, report);
         self.done
     }
 
-    /// The innermost open element, never closed: reported, its content kept in its place.
-    fn spill(&mut self, report: &mut Report) {
-        let Some(open) = self.open.pop() else { return };
-        report.refuse(Error::Stripped { element: open.name().to_owned() }, open.span());
-        self.refused.push(open.name().to_owned());
-        for node in open.spill() {
-            self.push(node);
+    /// The open elements after the first `kept`, never closed: each reported, innermost first,
+    /// their content kept in their place. An element's content ends where the next one opened,
+    /// so the content of all of them is theirs in opening order, each moved once.
+    fn spill(&mut self, kept: usize, report: &mut Report) {
+        if kept >= self.open.len() {
+            return;
+        }
+        let spilled = self.open.split_off(kept);
+        for open in spilled.iter().rev() {
+            report.refuse(Error::Stripped { element: open.name().to_owned() }, open.span());
+            self.refused.push(open.name().to_owned());
+        }
+        for open in spilled {
+            for node in open.spill() {
+                self.push(node);
+            }
         }
     }
 }
