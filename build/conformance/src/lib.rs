@@ -6,6 +6,14 @@
 //! build_conformance::suite!(|| (MyHarness::new(), ()));
 //! ```
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::assert_is_empty,
+    clippy::missing_panics_doc,
+    reason = "a conformance case stops at the first surprise"
+)]
+
 use blob::{Blob, Chunks, Tenant};
 use build::{Build, BuildId, Event, Outcome, Request, Source, Status, Trigger};
 use model::{ExternalUrl, Hash};
@@ -96,7 +104,10 @@ impl Refusal {
         assert!(matches!(outcome, Outcome::Refused), "{outcome:?}");
         assert!(matches!(events.first(), Some(Event::Started { .. })));
         assert!(matches!(events.last(), Some(Event::Finished { status: Status::Refused, .. })), "{events:#?}");
-        assert!(events.iter().any(|event| matches!(event, Event::Diagnosed(_) | Event::Refused(_))), "refused without saying why: {events:#?}");
+        assert!(
+            events.iter().any(|event| matches!(event, Event::Diagnosed(_) | Event::Refused(_))),
+            "refused without saying why: {events:#?}"
+        );
         let tenant: Tenant = "site-a".parse().unwrap();
         assert!(harness.blobs.list(&tenant).await.unwrap().is_empty(), "a refused build stored blobs");
     }

@@ -55,7 +55,9 @@ impl fmt::Display for TenantError {
         match self {
             Self::Empty => out.write_str("a tenant is not empty"),
             Self::Long { found } => write!(out, "a tenant has at most {} characters, not {found}", Tenant::MAX),
-            Self::Character { at } => write!(out, "byte {at} of the tenant is not a lower-case letter, a digit or a hyphen after the first"),
+            Self::Character { at } => {
+                write!(out, "byte {at} of the tenant is not a lower-case letter, a digit or a hyphen after the first")
+            }
         }
     }
 }
@@ -72,7 +74,10 @@ impl FromStr for Tenant {
         if text.len() > Self::MAX {
             return Err(TenantError::Long { found: text.len() });
         }
-        let bad = text.bytes().enumerate().find(|&(at, b)| !(b.is_ascii_lowercase() || b.is_ascii_digit() || (b == b'-' && at > 0)));
+        let bad = text
+            .bytes()
+            .enumerate()
+            .find(|&(at, b)| !(b.is_ascii_lowercase() || b.is_ascii_digit() || (b == b'-' && at > 0)));
         match bad {
             Some((at, _)) => Err(TenantError::Character { at }),
             None => Ok(Self(text.to_owned())),

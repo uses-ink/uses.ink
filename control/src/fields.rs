@@ -5,6 +5,7 @@ use std::str::FromStr;
 use db::Row;
 use jiff::Timestamp;
 use model::{DeployId, Hash};
+use sea_query::IdenStatic;
 use serde::Deserialize;
 use serde::de::IntoDeserializer;
 
@@ -16,68 +17,68 @@ use crate::{Handle, Unreadable};
 pub(crate) struct Fields<'a>(pub(crate) &'a Row);
 
 impl Fields<'_> {
-    pub(crate) fn text(&self, column: &'static str) -> Result<String, Unreadable> {
+    pub(crate) fn text(self, column: impl IdenStatic) -> Result<String, Unreadable> {
         Ok(self.0.get(column)?)
     }
 
-    pub(crate) fn count(&self, column: &'static str) -> Result<u64, Unreadable> {
+    pub(crate) fn count(self, column: impl IdenStatic) -> Result<u64, Unreadable> {
         Ok(self.0.get(column)?)
     }
 
-    pub(crate) fn flag(&self, column: &'static str) -> Result<bool, Unreadable> {
+    pub(crate) fn flag(self, column: impl IdenStatic) -> Result<bool, Unreadable> {
         Ok(self.0.get(column)?)
     }
 
-    pub(crate) fn time(&self, column: &'static str) -> Result<Timestamp, Unreadable> {
+    pub(crate) fn time(self, column: impl IdenStatic) -> Result<Timestamp, Unreadable> {
         let millis: i64 = self.0.get(column)?;
-        Timestamp::from_millisecond(millis).map_err(|source| Unreadable::Time { column, source })
+        Timestamp::from_millisecond(millis).map_err(|source| Unreadable::Time { column: column.as_str(), source })
     }
 
-    pub(crate) fn when(&self, column: &'static str) -> Result<Option<Timestamp>, Unreadable> {
+    pub(crate) fn when(self, column: impl IdenStatic) -> Result<Option<Timestamp>, Unreadable> {
         let millis: Option<i64> = self.0.get(column)?;
-        millis.map(|n| Timestamp::from_millisecond(n).map_err(|source| Unreadable::Time { column, source })).transpose()
+        millis
+            .map(|n| {
+                Timestamp::from_millisecond(n).map_err(|source| Unreadable::Time { column: column.as_str(), source })
+            })
+            .transpose()
     }
 
-    pub(crate) fn id<K>(&self, column: &'static str) -> Result<Id<K>, Unreadable> {
-        self.text(column)?.parse().map_err(|source| Unreadable::Id { column, source })
+    pub(crate) fn id<K>(self, column: impl IdenStatic) -> Result<Id<K>, Unreadable> {
+        self.text(column)?.parse().map_err(|source| Unreadable::Id { column: column.as_str(), source })
     }
 
-    pub(crate) fn maybe_id<K>(&self, column: &'static str) -> Result<Option<Id<K>>, Unreadable> {
-        let text: Option<String> = self.0.get(column)?;
-        text.map(|text| text.parse().map_err(|source| Unreadable::Id { column, source })).transpose()
-    }
-
-    pub(crate) fn handle(&self, column: &'static str) -> Result<Handle, Unreadable> {
+    pub(crate) fn handle(self, column: impl IdenStatic) -> Result<Handle, Unreadable> {
         self.text(column)?.parse().map_err(|source| Unreadable::Handle { source })
     }
 
-    pub(crate) fn hash(&self, column: &'static str) -> Result<Hash, Unreadable> {
-        Hash::from_str(&self.text(column)?).map_err(|source| Unreadable::Hash { column, source })
-    }
-
-    pub(crate) fn maybe_hash(&self, column: &'static str) -> Result<Option<Hash>, Unreadable> {
+    pub(crate) fn maybe_hash(self, column: impl IdenStatic) -> Result<Option<Hash>, Unreadable> {
         let text: Option<String> = self.0.get(column)?;
-        text.map(|text| Hash::from_str(&text).map_err(|source| Unreadable::Hash { column, source })).transpose()
+        text.map(|text| Hash::from_str(&text).map_err(|source| Unreadable::Hash { column: column.as_str(), source }))
+            .transpose()
     }
 
-    pub(crate) fn deploy(&self, column: &'static str) -> Result<DeployId, Unreadable> {
+    pub(crate) fn deploy(self, column: impl IdenStatic) -> Result<DeployId, Unreadable> {
         let text = self.text(column)?;
         DeployId::deserialize(text.as_str().into_deserializer())
-            .map_err(|source: serde::de::value::Error| Unreadable::Deploy { column, source })
+            .map_err(|source: serde::de::value::Error| Unreadable::Deploy { column: column.as_str(), source })
     }
 
-    pub(crate) fn maybe_deploy(&self, column: &'static str) -> Result<Option<DeployId>, Unreadable> {
+    pub(crate) fn maybe_deploy(self, column: impl IdenStatic) -> Result<Option<DeployId>, Unreadable> {
         let text: Option<String> = self.0.get(column)?;
         text.map(|text| {
             DeployId::deserialize(text.as_str().into_deserializer())
-                .map_err(|source: serde::de::value::Error| Unreadable::Deploy { column, source })
+                .map_err(|source: serde::de::value::Error| Unreadable::Deploy { column: column.as_str(), source })
         })
         .transpose()
     }
 
     /// The column's text as one of the names `names` lists, in the order it lists them.
-    pub(crate) fn name<T: Copy>(&self, column: &'static str, names: &[(&str, T)]) -> Result<T, Unreadable> {
+    pub(crate) fn name<T: Copy>(self, column: impl IdenStatic, names: &[(&str, T)]) -> Result<T, Unreadable> {
         let text = self.text(column)?;
-        names.iter().find(|(name, _)| *name == text).map(|(_, value)| *value).ok_or(Unreadable::Name { column, found: text })
+        names
+            .iter()
+            .find(|(name, _)| *name == text)
+            .map(|(_, value)| *value)
+            .ok_or(Unreadable::Name { column: column.as_str(), found: text })
     }
 }

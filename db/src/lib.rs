@@ -15,16 +15,16 @@
 
 mod error;
 mod port;
-mod row;
 mod render;
+mod row;
 mod statement;
 mod step;
 mod value;
 
 pub use error::{Constraint, Error};
 pub use port::{Db, Outcome};
-pub use row::{Column, ColumnError, ColumnFault, Row};
 pub use render::{Rendered, Renderer, TooMany, Unrenderable, Unsupported};
+pub use row::{Column, ColumnError, ColumnFault, Row};
 pub use statement::{Shape, Statement};
 pub use step::{Applied, Ledger, Migration, StepError, Steps, Unapplied};
 

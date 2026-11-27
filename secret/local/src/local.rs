@@ -57,6 +57,7 @@ impl Local {
 impl Secret for Local {
     type Error = Error;
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn seal(&self, plain: &Plain, binding: &Binding) -> Result<Sealed, Failure> {
         let mut nonce = [0_u8; Self::NONCE];
         OsRng.try_fill_bytes(&mut nonce).map_err(|source| Failure::Backend { source: Error::Random { source } })?;
@@ -70,6 +71,7 @@ impl Secret for Local {
         Ok(Sealed::from(bytes))
     }
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn open(&self, sealed: &Sealed, binding: &Binding) -> Result<Plain, Failure> {
         let bytes = sealed.as_ref();
         let (&version, rest) = bytes.split_first().ok_or(Failure::Malformed)?;

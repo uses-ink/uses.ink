@@ -5,9 +5,10 @@ use db::Row;
 use jiff::Timestamp;
 use model::{Bytes, DeployId, Manifest};
 
+use crate::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Id, Site};
-use crate::Unreadable;
+use crate::table;
 
 /// A deploy to record: a manifest whose every blob is already in the store.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -45,15 +46,34 @@ impl TryFrom<&Row> for Deploy {
 
     fn try_from(row: &Row) -> Result<Self, Unreadable> {
         let fields = Fields(row);
-        let build: Option<String> = row.get("job_id")?;
+        let build: Option<String> = row.get(table::Deploy::JobId)?;
         Ok(Self {
-            id: fields.deploy("id")?,
-            created: fields.time("created_at")?,
+            id: fields.deploy(table::Deploy::Id)?,
+            created: fields.time(table::Deploy::CreatedAt)?,
             build: build.map(|text| text.parse().map_err(|source| Unreadable::Build { source })).transpose()?,
-            files: fields.count("files")?,
-            bytes: Bytes(fields.count("bytes")?),
-            is_live: fields.flag("live")?,
+            files: fields.count(table::Deploy::Files)?,
+            bytes: Bytes(fields.count(table::Deploy::Bytes)?),
+            is_live: fields.flag(table::Computed::Live)?,
         })
+    }
+}
+
+/// What moved the pointer, as the publication column stores it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Cause {
+    /// A build was published.
+    Publish,
+    /// A rollback.
+    Rollback,
+}
+
+impl Cause {
+    /// The names the column stores.
+    pub(crate) const NAMES: [(&'static str, Self); 2] = [("publish", Self::Publish), ("rollback", Self::Rollback)];
+
+    /// The text this cause is stored as.
+    pub(crate) fn name(self) -> &'static str {
+        Self::NAMES.iter().find(|(_, found)| *found == self).map_or("publish", |(name, _)| name)
     }
 }
 
@@ -102,10 +122,10 @@ impl TryFrom<&Row> for Live {
     fn try_from(row: &Row) -> Result<Self, Unreadable> {
         let fields = Fields(row);
         Ok(Self {
-            deploy: fields.deploy("deploy_id")?,
-            previous: fields.maybe_deploy("previous_id")?,
-            paused: fields.flag("paused")?,
-            since: fields.time("set_at")?,
+            deploy: fields.deploy(table::Live::DeployId)?,
+            previous: fields.maybe_deploy(table::Live::PreviousId)?,
+            paused: fields.flag(table::Live::Paused)?,
+            since: fields.time(table::Live::SetAt)?,
         })
     }
 }

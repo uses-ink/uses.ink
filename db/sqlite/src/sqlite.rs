@@ -63,12 +63,11 @@ struct Execution<'a> {
 impl Execution<'_> {
     fn stored(value: &Value) -> Stored {
         match value {
-            Value::Null => Stored::Null,
             Value::Integer(n) => Stored::Integer(*n),
             Value::Real(n) => Stored::Real(*n),
             Value::Text(text) => Stored::Text(text.clone()),
             Value::Blob(bytes) => Stored::Blob(bytes.clone()),
-            // `Value` is non-exhaustive; every kind D1 knows is above
+            // null, and any kind D1 does not know
             _ => Stored::Null,
         }
     }
@@ -92,7 +91,7 @@ impl Execution<'_> {
         let failed = |source| Error::Run { stage: Stage::Statement(statement.shape()), source };
         let mut prepared = self.connection.prepare_cached(rendered.text()).map_err(failed)?;
         let readonly = prepared.readonly();
-        let names: Vec<String> = prepared.column_names().into_iter().map(str::to_owned).collect();
+        let names: Vec<String> = prepared.column_names().map(str::to_owned).collect();
         let bound = rusqlite::params_from_iter(rendered.values().iter().map(Self::stored));
         let mut rows = prepared.query(bound).map_err(failed)?;
         let mut found = Vec::new();
@@ -140,17 +139,22 @@ impl From<Error> for db::Error<Error> {
 impl Db for Sqlite {
     type Error = Error;
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn run(&self, statement: Statement) -> Result<Outcome, db::Error<Error>> {
         let guard = self.lock()?;
         Ok(Execution { connection: &guard }.run(&statement, 0)?)
     }
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn batch(&self, statements: Vec<Statement>) -> Result<Vec<Outcome>, db::Error<Error>> {
         let mut guard = self.lock()?;
         let transaction = guard.transaction().map_err(|source| Error::Run { stage: Stage::Begin, source })?;
         let execution = Execution { connection: &transaction };
-        let outcomes =
-            statements.iter().enumerate().map(|(index, statement)| execution.run(statement, index)).collect::<Result<Vec<_>, _>>()?;
+        let outcomes = statements
+            .iter()
+            .enumerate()
+            .map(|(index, statement)| execution.run(statement, index))
+            .collect::<Result<Vec<_>, _>>()?;
         transaction.commit().map_err(|source| Error::Run { stage: Stage::Commit, source })?;
         Ok(outcomes)
     }

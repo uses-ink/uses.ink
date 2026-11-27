@@ -27,7 +27,10 @@ pub enum Settled {
 }
 
 /// A queue with at-least-once delivery. Futures are not required to be `Send`.
-#[expect(async_fn_in_trait, reason = "Cloudflare Queues futures are not Send on Workers, so no Send bound can be promised")]
+#[expect(
+    async_fn_in_trait,
+    reason = "Cloudflare Queues futures are not Send on Workers, so no Send bound can be promised"
+)]
 pub trait Queue {
     /// The adapter's own error.
     type Error: std::error::Error + 'static;
@@ -43,5 +46,10 @@ pub trait Queue {
 
     /// Makes the delivered message visible again at `now + delay`, keeping its attempt count:
     /// it was not handled, and may be tried later.
-    async fn release(&self, delivery: &Delivery, now: Timestamp, delay: Duration) -> Result<Settled, Error<Self::Error>>;
+    async fn release(
+        &self,
+        delivery: &Delivery,
+        now: Timestamp,
+        delay: Duration,
+    ) -> Result<Settled, Error<Self::Error>>;
 }

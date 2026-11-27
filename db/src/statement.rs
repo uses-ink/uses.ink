@@ -1,6 +1,8 @@
 //! A statement: a query built from typed values, never from text.
 
-use sea_query::{DeleteStatement, IndexCreateStatement, InsertStatement, SelectStatement, TableCreateStatement, UpdateStatement};
+use sea_query::{
+    DeleteStatement, IndexCreateStatement, InsertStatement, SelectStatement, TableCreateStatement, UpdateStatement,
+};
 
 /// What kind of statement it is, for saying which one failed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

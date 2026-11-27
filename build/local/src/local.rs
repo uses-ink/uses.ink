@@ -8,8 +8,8 @@ use build::{Build, Built, Event, Events, Outcome, Request, Source, Status};
 use engine::{BaseUrl, Blobs};
 use model::Bytes;
 
-use crate::pipeline::{Made, Pipeline};
 use crate::Error;
+use crate::pipeline::{Made, Pipeline};
 
 type Failure<E> = build::Error<Error<E>>;
 

@@ -4,10 +4,10 @@
 
 extern crate uses_ink_build_local as build_local;
 
+use blob_dir::Directory;
 use build::Source;
 use build_conformance::Harness;
 use build_local::Local;
-use blob_dir::Directory;
 
 /// A site of one page, a site whose `ink.toml` has a key nothing reads, and the store the
 /// builder writes to, with a second handle on it.

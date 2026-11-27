@@ -27,6 +27,7 @@ impl std::error::Error for Full {}
 impl Sink for Collect {
     type Error = Full;
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the sink collects in memory and waits for nothing")]
     async fn file(&mut self, file: Exported) -> Result<(), Full> {
         if self.refuse_after.is_some_and(|n| self.files.len() >= n) {
             return Err(Full);
@@ -41,12 +42,17 @@ fn writes_every_file_of_the_live_deploy_in_route_order() {
     let world = World::new();
     let site = world.site("cstef");
     let manifest = world.stage(&site, &[("/posts/b", "bee"), ("/", "home"), ("/posts/a", "ay")]);
-    world.run(world.control.deploy(NewDeploy { site: site.id, manifest: manifest.clone(), build: None, at: at(10) })).unwrap();
+    world
+        .run(world.control.deploy(NewDeploy { site: site.id, manifest: manifest.clone(), build: None, at: at(10) }))
+        .unwrap();
     let mut sink = Collect::default();
     let summary = world.run(world.control.export(site.id, None, &mut sink)).unwrap();
     let routes: Vec<String> = sink.files.iter().map(|f| f.route.to_string()).collect();
     assert_eq!(routes, ["/", "/posts/a", "/posts/b"]);
-    assert_eq!(sink.files.iter().map(|f| f.bytes.clone()).collect::<Vec<_>>(), [b"home".to_vec(), b"ay".to_vec(), b"bee".to_vec()]);
+    assert_eq!(
+        sink.files.iter().map(|f| f.bytes.clone()).collect::<Vec<_>>(),
+        [b"home".to_vec(), b"ay".to_vec(), b"bee".to_vec()]
+    );
     assert_eq!((summary.deploy, summary.files, summary.bytes), (manifest.id(), 3, model::Bytes(9)));
 }
 
@@ -56,7 +62,9 @@ fn exports_a_named_older_deploy() {
     let site = world.site("cstef");
     let (one, two) = (world.stage(&site, &[("/", "one")]), world.stage(&site, &[("/", "two")]));
     for (manifest, n) in [(&one, 10), (&two, 20)] {
-        world.run(world.control.deploy(NewDeploy { site: site.id, manifest: manifest.clone(), build: None, at: at(n) })).unwrap();
+        world
+            .run(world.control.deploy(NewDeploy { site: site.id, manifest: manifest.clone(), build: None, at: at(n) }))
+            .unwrap();
     }
     let mut sink = Collect::default();
     world.run(world.control.export(site.id, Some(one.id()), &mut sink)).unwrap();
@@ -95,7 +103,9 @@ fn a_blob_changed_on_disk_fails_the_export_instead_of_exporting_wrong_bytes() {
     let world = World::new();
     let site = world.site("cstef");
     let manifest = world.stage(&site, &[("/", "honest bytes")]);
-    world.run(world.control.deploy(NewDeploy { site: site.id, manifest: manifest.clone(), build: None, at: at(10) })).unwrap();
+    world
+        .run(world.control.deploy(NewDeploy { site: site.id, manifest: manifest.clone(), build: None, at: at(10) }))
+        .unwrap();
     let blob = manifest.entries().first().unwrap().blob();
     let file = world.root.join("t").join(site.id.to_string()).join("b").join(blob.to_string());
     std::fs::write(file, "forged bytes").unwrap();

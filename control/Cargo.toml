@@ -15,6 +15,7 @@ db.workspace = true
 jiff.workspace = true
 model.workspace = true
 queue.workspace = true
+sea-query.workspace = true
 secret.workspace = true
 serde.workspace = true
 serde_json.workspace = true

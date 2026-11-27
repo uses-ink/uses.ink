@@ -5,7 +5,15 @@
 //! secret_conformance::suite!(|| (MyAdapter::ephemeral(), ()));
 //! ```
 
-use secret::{Binding, Error, Plain, Secret, Sealed};
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::assert_is_empty,
+    clippy::missing_panics_doc,
+    reason = "a conformance case stops at the first surprise"
+)]
+
+use secret::{Binding, Error, Plain, Sealed, Secret};
 
 #[doc(hidden)]
 pub use pollster;
@@ -20,7 +28,10 @@ impl RoundTrip {
         let row = Binding::from("credential-1");
         for plain in [b"ghp_0123456789".to_vec(), Vec::new(), vec![0, 255, 0, 1], vec![7; 100_000]] {
             let sealed = secret.seal(&Plain::from(plain.clone()), &row).await.unwrap();
-            assert!(plain.len() < 4 || !sealed.as_ref().windows(plain.len()).any(|window| window == plain), "the plaintext shows in the seal");
+            assert!(
+                plain.len() < 4 || !sealed.as_ref().windows(plain.len()).any(|window| window == plain),
+                "the plaintext shows in the seal"
+            );
             assert_eq!(secret.open(&sealed, &row).await.unwrap().expose(), plain);
         }
     }

@@ -5,8 +5,8 @@ use std::fmt;
 use jiff::Timestamp;
 use model::Bytes;
 
-use crate::id::{Account, Id, Site};
 use crate::Handle;
+use crate::id::{Account, Id, Site};
 
 /// What a removal removed (decision 0022). The edge sends it to the account's address; what is
 /// in it is counts and names, never content.

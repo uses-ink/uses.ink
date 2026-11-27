@@ -32,7 +32,9 @@ pub enum Error<E> {
 impl<E> fmt::Display for Error<E> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Mismatch { expected, found } => write!(out, "the bytes hash to {found}, not to the {expected} that was named"),
+            Self::Mismatch { expected, found } => {
+                write!(out, "the bytes hash to {found}, not to the {expected} that was named")
+            }
             Self::Corrupt { expected, found } => write!(out, "the blob {expected} holds bytes that hash to {found}"),
             Self::Backend { .. } => out.write_str("the blob store failed"),
         }

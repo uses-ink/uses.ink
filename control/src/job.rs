@@ -6,9 +6,10 @@ use jiff::Timestamp;
 use model::{DeployId, Hash};
 use queue::Dedupe;
 
+use crate::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Id, Site};
-use crate::Unreadable;
+use crate::table;
 
 /// Where a job is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -111,14 +112,14 @@ impl TryFrom<&Row> for Job {
     fn try_from(row: &Row) -> Result<Self, Unreadable> {
         let fields = Fields(row);
         Ok(Self {
-            id: fields.text("id")?.parse().map_err(|source| Unreadable::Build { source })?,
-            site: fields.id("site_id")?,
-            trigger: fields.name("trigger", &Stored::NAMES)?,
-            state: fields.name("state", &State::NAMES)?,
-            requested: fields.time("requested_at")?,
-            finished: fields.when("finished_at")?,
-            deploy: fields.maybe_deploy("deploy_id")?,
-            log: fields.maybe_hash("log")?,
+            id: fields.text(table::Job::Id)?.parse().map_err(|source| Unreadable::Build { source })?,
+            site: fields.id(table::Job::SiteId)?,
+            trigger: fields.name(table::Job::Trigger, &Stored::NAMES)?,
+            state: fields.name(table::Job::State, &State::NAMES)?,
+            requested: fields.time(table::Job::RequestedAt)?,
+            finished: fields.when(table::Job::FinishedAt)?,
+            deploy: fields.maybe_deploy(table::Job::DeployId)?,
+            log: fields.maybe_hash(table::Job::Log)?,
         })
     }
 }

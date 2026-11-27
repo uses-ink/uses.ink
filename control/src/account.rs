@@ -3,9 +3,10 @@
 use db::Row;
 use jiff::Timestamp;
 
+use crate::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Account as Kind, Id};
-use crate::Unreadable;
+use crate::table;
 
 /// A person signed in to uses.ink.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,6 +32,6 @@ impl TryFrom<&Row> for Account {
 
     fn try_from(row: &Row) -> Result<Self, Unreadable> {
         let fields = Fields(row);
-        Ok(Self { id: fields.id("id")?, created: fields.time("created_at")? })
+        Ok(Self { id: fields.id(table::Account::Id)?, created: fields.time(table::Account::CreatedAt)? })
     }
 }

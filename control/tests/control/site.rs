@@ -1,6 +1,7 @@
 //! Accounts, sites and handles.
 
 use build::Source;
+use control::table::{self, Site};
 use control::{AccountKind, Handle, NewAccount, NewSite, Refusal, SiteKind, SiteState};
 
 use crate::world::{World, at};
@@ -15,7 +16,7 @@ fn adds_a_site_and_finds_it_by_id_and_handle() {
     assert_eq!(world.run(world.control.by_handle(&handle)).unwrap(), Some(site));
     let other: Handle = "nobody".parse().unwrap();
     assert_eq!(world.run(world.control.by_handle(&other)).unwrap(), None);
-    assert_eq!(world.count("SELECT COUNT(*) AS n FROM event WHERE name = 'site.added'"), 1);
+    assert_eq!(world.events("site.added"), 1);
 }
 
 #[test]
@@ -27,7 +28,13 @@ fn stores_a_git_source_as_the_user_wrote_it() {
         url: model::ExternalUrl::parse("https://codeberg.org/cstef/blog").unwrap(),
         revision: Some("main".parse().unwrap()),
     };
-    let new = NewSite { id: world.id::<SiteKind>(), account, handle: "blog".parse().unwrap(), source: source.clone(), at: at(1) };
+    let new = NewSite {
+        id: world.id::<SiteKind>(),
+        account,
+        handle: "diary".parse().unwrap(),
+        source: source.clone(),
+        at: at(1),
+    };
     let id = new.id;
     world.run(world.control.add_site(new)).unwrap();
     assert_eq!(world.run(world.control.site(id)).unwrap().source, source);
@@ -50,8 +57,8 @@ fn refuses_a_reserved_a_taken_and_an_unknown_account() {
     let stranger = world.id::<AccountKind>();
     assert!(matches!(refusal(new("fresh", stranger)).refusal(), Some(Refusal::NoAccount { .. })));
     // a refused site leaves nothing behind
-    assert_eq!(world.count("SELECT COUNT(*) AS n FROM site"), 1);
-    assert_eq!(world.count("SELECT COUNT(*) AS n FROM source"), 1);
+    assert_eq!(world.count(Site::Table), 1);
+    assert_eq!(world.count(table::Source::Table), 1);
 }
 
 #[test]

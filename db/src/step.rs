@@ -68,7 +68,9 @@ impl fmt::Display for StepError {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Name { name } => write!(out, "`{name}` is not a migration name: lower case letters, digits and `_`"),
-            Self::Order { before, after } => write!(out, "migration {after} does not come after {before}: numbers only rise"),
+            Self::Order { before, after } => {
+                write!(out, "migration {after} does not come after {before}: numbers only rise")
+            }
         }
     }
 }
@@ -108,7 +110,9 @@ impl<E> fmt::Display for Unapplied<E> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Db(_) => out.write_str("the migration ledger could not be updated"),
-            Self::Unknown { name } => write!(out, "the database has applied `{name}`, which this version does not know"),
+            Self::Unknown { name } => {
+                write!(out, "the database has applied `{name}`, which this version does not know")
+            }
             Self::Ledger(_) => out.write_str("the migration ledger has a row that cannot be read"),
         }
     }
@@ -138,7 +142,8 @@ impl Steps {
 
     /// The set with `M` after the ones it has. Its number must be higher than theirs.
     pub fn with<M: Migration>(mut self) -> Result<Self, StepError> {
-        let named = !M::NAME.is_empty() && M::NAME.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_');
+        let named =
+            !M::NAME.is_empty() && M::NAME.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_');
         if !named {
             return Err(StepError::Name { name: M::NAME });
         }
@@ -168,7 +173,8 @@ impl Steps {
                 .col(ColumnDef::new(Ledger::AppliedAt).timestamp().not_null().default(Expr::current_timestamp())),
         ))
         .await?;
-        let listing = Statement::from(Query::select().column(Ledger::Name).from(Ledger::Table).order_by(Ledger::Id, Order::Asc));
+        let listing =
+            Statement::from(Query::select().column(Ledger::Name).from(Ledger::Table).order_by(Ledger::Id, Order::Asc));
         let mut held = Vec::new();
         for row in db.rows(listing).await? {
             held.push(row.get::<String>(Ledger::Name).map_err(Unapplied::Ledger)?);
@@ -183,7 +189,12 @@ impl Steps {
                 continue;
             }
             let mut batch = (step.statements)();
-            batch.push(Statement::from(Query::insert().into_table(Ledger::Table).columns([Ledger::Name]).values_panic([Expr::val(name.as_str())])));
+            batch.push(Statement::from(
+                Query::insert()
+                    .into_table(Ledger::Table)
+                    .columns([Ledger::Name])
+                    .values_panic([Expr::val(name.as_str())]),
+            ));
             db.batch(batch).await?;
             applied.names.push(name);
         }
@@ -226,7 +237,10 @@ mod test {
     #[test]
     fn checks_names_and_order() {
         assert_eq!(Steps::new().with::<One>().unwrap().names().collect::<Vec<_>>(), ["0001_a"]);
-        assert_eq!(Steps::new().with::<One>().unwrap().with::<Two>().unwrap_err(), StepError::Order { before: 1, after: 1 });
+        assert_eq!(
+            Steps::new().with::<One>().unwrap().with::<Two>().unwrap_err(),
+            StepError::Order { before: 1, after: 1 }
+        );
         assert_eq!(Steps::new().with::<Loud>().unwrap_err(), StepError::Name { name: "A" });
     }
 }

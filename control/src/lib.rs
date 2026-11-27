@@ -8,7 +8,7 @@
 //!   adapter: add an account or a site, deploy a build's result, list deploys, roll back,
 //!   resume, export, request and work builds, store credentials, remove a site with a
 //!   [`Receipt`].
-//! - The rows are made by [`MIGRATIONS`], plain `.sql` in `migration/` in wrangler's format.
+//! - The rows are made by the [`Domain`] migration, built from typed definitions (no SQL text).
 //!
 //! The caller draws every id and says what time it is, so no use case reads a clock or random
 //! numbers, and the same calls make the same rows in any test. Only atomic batches and
@@ -32,6 +32,8 @@ mod origin;
 mod ports;
 mod receipt;
 mod site;
+#[allow(missing_docs, reason = "each variant is the table or column of its name")]
+pub mod table;
 
 pub use account::{Account, New as NewAccount};
 pub use case::export::{Exported, Sink, Summary};
@@ -39,12 +41,12 @@ pub use control::Control;
 pub use credential::{Credential, New as NewCredential, Use as Purpose};
 pub use deploy::{Deploy, Live, New as NewDeploy, Published, Recorded, Resumed};
 pub use error::{Error, Failed, Refusal, Unreadable};
-pub use event::Event;
+pub use event::{Event, Unwritten};
 pub use handle::{Handle, HandleError};
 pub use id::{Account as AccountKind, Credential as CredentialKind, Id, IdError, Kind, Site as SiteKind};
 pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked};
 pub use listed::{Canonical, Listed};
-pub use migration::MIGRATIONS;
+pub use migration::Domain;
 pub use origin::{Origin, OriginError};
 pub use ports::Ports;
 pub use receipt::Receipt;

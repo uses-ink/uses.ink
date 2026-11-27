@@ -1,19 +1,23 @@
 //! Accounts and sites.
 
 use db::{Constraint, Db, Statement};
+use sea_query::{Expr, ExprTrait, Query};
 
 use crate::account::{self, Account};
 use crate::fields::Fields;
 use crate::id::{Id, Site as SiteKind};
 use crate::site::{self, Site, Stored};
-use crate::{Control, Error, Event, Handle, Ports, Refusal};
+use crate::{Control, Error, Event, Handle, Ports, Refusal, table};
 
 impl<P: Ports> Control<P> {
     /// Adds an account.
     pub async fn add_account(&self, new: account::New) -> Result<Account, Error<P>> {
-        const INSERT: &str = "INSERT INTO account (id, created_at) VALUES (?, ?)";
-        let insert = Statement::prepare(INSERT).bind(new.id.to_string()).bind(new.at.as_millisecond());
-        match self.ports.db().run(insert).await {
+        let insert = Query::insert()
+            .into_table(table::Account::Table)
+            .columns([table::Account::Id, table::Account::CreatedAt])
+            .values_panic([Expr::val(new.id.to_string()), Expr::val(new.at.as_millisecond())])
+            .to_owned();
+        match self.ports.db().run(insert.into()).await {
             Ok(_) => Ok(Account { id: new.id, created: new.at }),
             Err(error) if error.constraint() == Some(Constraint::Unique) => {
                 Err(Refusal::Exists { id: new.id.to_string() }.into())
@@ -25,27 +29,21 @@ impl<P: Ports> Control<P> {
     /// Adds a site: claims its handle and records its source, in one batch with the event that
     /// says so. A handle that is reserved, taken, or left by a removed site is refused.
     pub async fn add_site(&self, new: site::New) -> Result<Site, Error<P>> {
-        const INSERT: &str = "INSERT INTO site (id, account_id, handle, state, created_at) VALUES (?, ?, ?, 'active', ?)";
-        const SOURCE: &str = "INSERT INTO source (site_id, kind, locator, revision) VALUES (?, ?, ?, ?)";
-        const TOMBSTONE: &str = "SELECT 1 AS held FROM tombstone WHERE handle = ?";
         if new.handle.is_reserved() {
             return Err(Refusal::Reserved { handle: new.handle }.into());
         }
         let stored = Stored::try_from(&new.source)?;
         let db = self.ports.db();
-        if db.first(Statement::prepare(TOMBSTONE).bind(new.handle.as_str())).await?.is_some() {
+        let tombstone = Query::select()
+            .column(table::Tombstone::Handle)
+            .from(table::Tombstone::Table)
+            .and_where(Expr::col(table::Tombstone::Handle).eq(new.handle.as_str()))
+            .to_owned();
+        if db.first(tombstone.into()).await?.is_some() {
             return Err(Refusal::Tombstoned { handle: new.handle }.into());
         }
         let added = Event::SiteAdded { handle: new.handle.clone() };
-        let batch = vec![
-            Statement::prepare(INSERT)
-                .bind(new.id.to_string())
-                .bind(new.account.to_string())
-                .bind(new.handle.as_str())
-                .bind(new.at.as_millisecond()),
-            Statement::prepare(SOURCE).bind(new.id.to_string()).bind(Stored::name(stored.kind)).bind(stored.locator).bind(stored.revision),
-            added.insert(new.id, new.at).map_err(Error::Log)?,
-        ];
+        let batch = vec![Self::site_row(&new), Self::source_row(new.id, stored), added.insert(new.id, new.at)?];
         match db.batch(batch).await {
             Ok(_) => Ok(Site {
                 id: new.id,
@@ -65,8 +63,12 @@ impl<P: Ports> Control<P> {
 
     /// Why a unique key failed on a new site: the handle, or an id that exists.
     async fn taken(&self, id: Id<SiteKind>, handle: Handle) -> Error<P> {
-        const HELD: &str = "SELECT 1 AS held FROM site WHERE handle = ?";
-        match self.ports.db().first(Statement::prepare(HELD).bind(handle.as_str())).await {
+        let held = Query::select()
+            .column(table::Site::Id)
+            .from(table::Site::Table)
+            .and_where(Expr::col(table::Site::Handle).eq(handle.as_str()))
+            .to_owned();
+        match self.ports.db().first(held.into()).await {
             Ok(Some(_)) => Refusal::Taken { handle }.into(),
             Ok(None) => Refusal::Exists { id: id.to_string() }.into(),
             Err(error) => error.into(),
@@ -75,9 +77,27 @@ impl<P: Ports> Control<P> {
 
     /// The site with this id, whatever its state.
     pub async fn site(&self, id: Id<SiteKind>) -> Result<Site, Error<P>> {
-        const SELECT: &str = "SELECT s.id, s.account_id, s.handle, s.state, s.created_at, o.kind, o.locator, o.revision \
-            FROM site s JOIN source o ON o.site_id = s.id WHERE s.id = ?";
-        match self.ports.db().first(Statement::prepare(SELECT).bind(id.to_string())).await? {
+        let select = Query::select()
+            .columns([
+                (table::Site::Table, table::Site::Id),
+                (table::Site::Table, table::Site::AccountId),
+                (table::Site::Table, table::Site::Handle),
+                (table::Site::Table, table::Site::State),
+                (table::Site::Table, table::Site::CreatedAt),
+            ])
+            .columns([
+                (table::Source::Table, table::Source::Kind),
+                (table::Source::Table, table::Source::Locator),
+                (table::Source::Table, table::Source::Revision),
+            ])
+            .from(table::Site::Table)
+            .inner_join(
+                table::Source::Table,
+                Expr::col((table::Source::Table, table::Source::SiteId)).equals((table::Site::Table, table::Site::Id)),
+            )
+            .and_where(Expr::col((table::Site::Table, table::Site::Id)).eq(id.to_string()))
+            .to_owned();
+        match self.ports.db().first(select.into()).await? {
             Some(row) => Ok(Site::read(&row)?),
             None => Err(Refusal::NoSite { site: id }.into()),
         }
@@ -85,9 +105,13 @@ impl<P: Ports> Control<P> {
 
     /// The site that owns this handle, if one does: what the edge asks first.
     pub async fn by_handle(&self, handle: &Handle) -> Result<Option<Site>, Error<P>> {
-        const SELECT: &str = "SELECT id FROM site WHERE handle = ?";
-        match self.ports.db().first(Statement::prepare(SELECT).bind(handle.as_str())).await? {
-            Some(row) => Ok(Some(self.site(Fields(&row).id("id")?).await?)),
+        let select = Query::select()
+            .column(table::Site::Id)
+            .from(table::Site::Table)
+            .and_where(Expr::col(table::Site::Handle).eq(handle.as_str()))
+            .to_owned();
+        match self.ports.db().first(select.into()).await? {
+            Some(row) => Ok(Some(self.site(Fields(&row).id(table::Site::Id)?).await?)),
             None => Ok(None),
         }
     }
@@ -101,9 +125,45 @@ impl<P: Ports> Control<P> {
         }
     }
 
+    /// The statement that adds the site's row.
+    fn site_row(new: &site::New) -> Statement {
+        Query::insert()
+            .into_table(table::Site::Table)
+            .columns([
+                table::Site::Id,
+                table::Site::AccountId,
+                table::Site::Handle,
+                table::Site::State,
+                table::Site::CreatedAt,
+            ])
+            .values_panic([
+                Expr::val(new.id.to_string()),
+                Expr::val(new.account.to_string()),
+                Expr::val(new.handle.as_str()),
+                Expr::val(site::State::Active.name()),
+                Expr::val(new.at.as_millisecond()),
+            ])
+            .to_owned()
+            .into()
+    }
+
+    /// The statement that adds the row of the site's source.
+    fn source_row(id: Id<SiteKind>, stored: Stored) -> Statement {
+        Query::insert()
+            .into_table(table::Source::Table)
+            .columns([table::Source::SiteId, table::Source::Kind, table::Source::Locator, table::Source::Revision])
+            .values_panic([
+                Expr::val(id.to_string()),
+                Expr::val(Stored::name(stored.kind)),
+                Expr::val(stored.locator),
+                Expr::val(stored.revision),
+            ])
+            .to_owned()
+            .into()
+    }
+
     /// The tenant a site's blobs are under.
     pub(crate) fn tenant(site: Id<SiteKind>) -> Result<blob::Tenant, Refusal> {
         blob::Tenant::try_from(site).map_err(Refusal::Tenant)
     }
 }
-

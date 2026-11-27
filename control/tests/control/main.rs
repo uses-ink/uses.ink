@@ -2,7 +2,13 @@
 //! folder, the queue in SQLite rows and a freshly keyed sealer. Nothing sleeps: every call is
 //! told what time it is.
 
-#![allow(clippy::unwrap_used, clippy::panic, reason = "tests stop at the first surprise")]
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::assert_is_empty,
+    clippy::too_many_lines,
+    reason = "tests stop at the first surprise and read top to bottom"
+)]
 
 extern crate uses_ink_control as control;
 

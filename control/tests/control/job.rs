@@ -8,7 +8,7 @@ use std::time::Duration;
 use blob::{Blob, Chunks, Tenant};
 use blob_dir::Directory;
 use build::{Build, BuildId, Built, Event, Events, Outcome, Request, Status, Trigger};
-use control::{Ports, Dropped, JobState, NewJob, Published, Requested, Worked};
+use control::{Dropped, JobState, NewJob, Ports, Published, Requested, Worked};
 use model::{Bytes, Hash, Manifest, MediaType, Route, Served};
 use queue::Dedupe;
 
@@ -41,7 +41,11 @@ struct Scripted {
 
 impl Scripted {
     fn new(world: &World, steps: impl IntoIterator<Item = Step>) -> Self {
-        Self { store: Directory::open(&world.root).unwrap(), steps: RefCell::new(steps.into_iter().collect()), seen: RefCell::default() }
+        Self {
+            store: Directory::open(&world.root).unwrap(),
+            steps: RefCell::new(steps.into_iter().collect()),
+            seen: RefCell::default(),
+        }
     }
 }
 
@@ -99,10 +103,16 @@ fn builds_a_requested_site_publishes_it_and_keeps_the_log_as_ndjson() {
     let tenant = Tenant::try_from(site.id).unwrap();
     let log = world.run(world.control.ports().blob().get(&tenant, job.log.unwrap())).unwrap().unwrap();
     let log = String::from_utf8(world.run(log.all()).unwrap()).unwrap();
-    let kinds: Vec<String> =
-        log.lines().map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap()["event"].as_str().unwrap().to_owned()).collect();
+    let kinds: Vec<String> = log
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap()["event"].as_str().unwrap().to_owned())
+        .collect();
     assert_eq!(kinds, ["started", "rendered", "finished", "published"]);
-    assert_eq!(world.run(world.control.work(&builder, at(12), LEASE)).unwrap(), Worked::Idle, "the request was settled");
+    assert_eq!(
+        world.run(world.control.work(&builder, at(12), LEASE)).unwrap(),
+        Worked::Idle,
+        "the request was settled"
+    );
     assert_eq!(world.run(world.control.jobs(site.id, 5)).unwrap().len(), 1);
 }
 
@@ -134,7 +144,11 @@ fn a_broken_builder_is_retried_then_given_up_on() {
         let state = world.run(world.control.job(id)).unwrap().unwrap().state;
         assert_eq!(state, if n < 3 { JobState::Running } else { JobState::Failed }, "after attempt {n}");
     }
-    assert_eq!(world.run(world.control.work(&builder, at(1000), LEASE)).unwrap(), Worked::Idle, "a given-up request leaves the queue");
+    assert_eq!(
+        world.run(world.control.work(&builder, at(1000), LEASE)).unwrap(),
+        Worked::Idle,
+        "a given-up request leaves the queue"
+    );
 }
 
 #[test]

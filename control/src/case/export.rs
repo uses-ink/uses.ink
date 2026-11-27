@@ -1,12 +1,13 @@
 //! Export: everything a deploy serves, handed to a sink.
 
 use blob::{Blob, Chunks};
-use db::{Db, Statement};
+use db::Db;
 use model::{Bytes, DeployId, Hash, Route};
+use sea_query::{Expr, ExprTrait, Query};
 
 use crate::id::{Id, Site as SiteKind};
 use crate::listed::Listed;
-use crate::{Control, Error, Failed, Ports, Refusal};
+use crate::{Control, Error, Failed, Ports, Refusal, table};
 
 /// One file of an export.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,12 +54,17 @@ impl<P: Ports> Control<P> {
         deploy: Option<DeployId>,
         sink: &mut K,
     ) -> Result<Summary, Failed<P, K::Error>> {
-        const FOUND: &str = "SELECT 1 AS found FROM deploy WHERE site_id = ? AND id = ?";
         let site = self.site(site).await?;
         let tenant = Self::tenant(site.id).map_err(Error::from)?;
         let deploy = match deploy {
             Some(deploy) => {
-                let held = self.ports.db().first(Statement::prepare(FOUND).bind(site.id.to_string()).bind(deploy.to_string())).await;
+                let found = Query::select()
+                    .column(table::Deploy::Id)
+                    .from(table::Deploy::Table)
+                    .and_where(Expr::col(table::Deploy::SiteId).eq(site.id.to_string()))
+                    .and_where(Expr::col(table::Deploy::Id).eq(deploy.to_string()))
+                    .to_owned();
+                let held = self.ports.db().first(found.into()).await;
                 held.map_err(Error::from)?.ok_or(Error::from(Refusal::NoDeploy { site: site.id, deploy }))?;
                 deploy
             }

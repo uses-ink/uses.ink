@@ -5,9 +5,10 @@ use db::Row;
 use jiff::Timestamp;
 use secret::Plain;
 
+use crate::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Credential as Kind, Id, Site};
-use crate::Unreadable;
+use crate::table;
 
 /// What a credential is for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -21,7 +22,8 @@ pub enum Use {
 
 impl Use {
     /// The names the column stores.
-    pub(crate) const NAMES: [(&'static str, Self); 2] = [("git-token", Self::GitToken), ("webhook-secret", Self::WebhookSecret)];
+    pub(crate) const NAMES: [(&'static str, Self); 2] =
+        [("git-token", Self::GitToken), ("webhook-secret", Self::WebhookSecret)];
 
     /// The text this use is stored as.
     pub(crate) fn name(self) -> &'static str {
@@ -64,10 +66,10 @@ impl TryFrom<&Row> for Credential {
     fn try_from(row: &Row) -> Result<Self, Unreadable> {
         let fields = Fields(row);
         Ok(Self {
-            id: fields.id("id")?,
-            site: fields.id("site_id")?,
-            purpose: fields.name("kind", &Use::NAMES)?,
-            created: fields.time("created_at")?,
+            id: fields.id(table::Credential::Id)?,
+            site: fields.id(table::Credential::SiteId)?,
+            purpose: fields.name(table::Credential::Kind, &Use::NAMES)?,
+            created: fields.time(table::Credential::CreatedAt)?,
         })
     }
 }

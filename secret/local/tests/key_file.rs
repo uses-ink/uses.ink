@@ -14,7 +14,10 @@ fn makes_the_key_file_private_and_reuses_it() {
     let first = Local::open(&path).unwrap();
     assert_eq!(std::fs::metadata(&path).unwrap().len(), 32);
     #[cfg(unix)]
-    assert_eq!(std::os::unix::fs::PermissionsExt::mode(&std::fs::metadata(&path).unwrap().permissions()) & 0o777, 0o600);
+    assert_eq!(
+        std::os::unix::fs::PermissionsExt::mode(&std::fs::metadata(&path).unwrap().permissions()) & 0o777,
+        0o600
+    );
     let row = Binding::from("c-1");
     let sealed = pollster::block_on(first.seal(&Plain::from("token"), &row)).unwrap();
     let second = Local::open(&path).unwrap();

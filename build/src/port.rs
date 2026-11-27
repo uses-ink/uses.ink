@@ -40,7 +40,10 @@ pub enum Outcome {
 }
 
 /// Runs builds. Futures are not required to be `Send`: a Durable Object's are not.
-#[expect(async_fn_in_trait, reason = "a Durable Object's futures are not Send on Workers, so no Send bound can be promised")]
+#[expect(
+    async_fn_in_trait,
+    reason = "a Durable Object's futures are not Send on Workers, so no Send bound can be promised"
+)]
 pub trait Build {
     /// The adapter's own error.
     type Error: std::error::Error + 'static;

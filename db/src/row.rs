@@ -107,6 +107,7 @@ impl Row {
     }
 
     /// The named column as a `T`.
+    #[allow(clippy::needless_pass_by_value, reason = "a column is a Copy identifier, named by value at the call")]
     pub fn get<T: Column>(&self, column: impl Iden) -> Result<T, ColumnError> {
         let name = column.unquoted();
         let value = self
@@ -174,7 +175,11 @@ mod test {
     }
 
     fn row() -> Row {
-        Row::new(vec![("n".into(), Value::Integer(7)), ("t".into(), Value::Text("x".into())), ("z".into(), Value::Null)])
+        Row::new(vec![
+            ("n".into(), Value::Integer(7)),
+            ("t".into(), Value::Text("x".into())),
+            ("z".into(), Value::Null),
+        ])
     }
 
     #[test]

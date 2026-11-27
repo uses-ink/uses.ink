@@ -3,7 +3,10 @@
 use crate::{Binding, Error, Plain, Sealed};
 
 /// Seals credentials and opens them again. The key lives in the adapter and nowhere else.
-#[expect(async_fn_in_trait, reason = "a Workers secret binding's futures are not Send, so no Send bound can be promised")]
+#[expect(
+    async_fn_in_trait,
+    reason = "a Workers secret binding's futures are not Send, so no Send bound can be promised"
+)]
 pub trait Secret {
     /// The adapter's own error.
     type Error: std::error::Error + 'static;

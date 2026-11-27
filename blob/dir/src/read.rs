@@ -31,6 +31,7 @@ impl Reading {
 impl Chunks for Reading {
     type Error = Error;
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn chunk(&mut self) -> Result<Option<Vec<u8>>, blob::Error<Error>> {
         if self.done {
             return Ok(None);
@@ -43,7 +44,11 @@ impl Chunks for Reading {
         if read == 0 {
             self.done = true;
             let found = Hash::from(self.hasher.finalize());
-            return if found == self.expected { Ok(None) } else { Err(blob::Error::Corrupt { expected: self.expected, found }) };
+            return if found == self.expected {
+                Ok(None)
+            } else {
+                Err(blob::Error::Corrupt { expected: self.expected, found })
+            };
         }
         buffer.truncate(read);
         self.hasher.update(&buffer);

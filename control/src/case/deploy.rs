@@ -1,12 +1,15 @@
 //! Deploys, the live pointer, rollback and resume.
 
 use blob::Blob;
+use build::BuildId;
 use db::{Db, Statement};
 use jiff::Timestamp;
 use model::{Bytes, DeployId};
+use sea_query::{Expr, ExprTrait, Func, JoinType, OnConflict, Order, Query};
 
-use crate::deploy::{self, Deploy, Live, Published, Recorded, Resumed};
+use crate::deploy::{self, Cause, Deploy, Live, Published, Recorded, Resumed};
 use crate::id::{Id, Site as SiteKind};
+use crate::table::{self, Computed, Excluded};
 use crate::{Control, Error, Event, Ports, Refusal};
 
 impl<P: Ports> Control<P> {
@@ -18,41 +21,21 @@ impl<P: Ports> Control<P> {
     /// that records the previous deploy, so two builds finishing at once cannot lose the
     /// rollback target.
     pub async fn deploy(&self, new: deploy::New) -> Result<Recorded, Error<P>> {
-        const DEPLOY: &str = "INSERT INTO deploy (site_id, id, created_at, job_id, files, bytes) VALUES (?, ?, ?, ?, ?, ?) \
-            ON CONFLICT (site_id, id) DO NOTHING";
-        const POINT: &str = "INSERT INTO site_live (site_id, deploy_id, previous_id, paused, set_at) VALUES (?, ?, NULL, 0, ?) \
-            ON CONFLICT (site_id) DO UPDATE SET previous_id = site_live.deploy_id, deploy_id = excluded.deploy_id, \
-            set_at = excluded.set_at WHERE site_live.paused = 0 AND site_live.deploy_id != excluded.deploy_id";
-        const HISTORY: &str = "INSERT INTO publication (site_id, deploy_id, previous_id, cause, at) \
-            SELECT site_id, deploy_id, previous_id, 'publish', set_at FROM site_live \
-            WHERE site_id = ? AND deploy_id = ? AND set_at = ? AND paused = 0";
         let site = self.active(new.site).await?;
         let tenant = Self::tenant(site.id)?;
+        let bytes = self.stat(&tenant, &new.manifest).await?;
         let blobs = self.ports.blob();
-        let mut bytes = Bytes(0);
-        for entry in new.manifest.entries() {
-            let size = blobs.stat(&tenant, entry.blob()).await?;
-            let size = size.ok_or_else(|| Refusal::MissingBlob { route: entry.route().clone(), blob: entry.blob() })?;
-            bytes = Bytes(bytes.count().saturating_add(size.count()));
-        }
         let id = new.manifest.id();
         blobs.put(&tenant, id.hash(), [new.manifest.canonical()]).await?;
-        let (site_id, deploy_id, at) = (site.id.to_string(), id.to_string(), new.at.as_millisecond());
         let before = self.live(site.id).await?;
+        let step = Move::new(site.id, id, new.at);
         let batch = vec![
-            Event::DeployAdded { deploy: id }.fresh(site.id, new.at, id).map_err(Error::Log)?,
-            Statement::prepare(DEPLOY)
-                .bind(site_id.clone())
-                .bind(deploy_id.clone())
-                .bind(at)
-                .bind(new.build.map(|build| build.to_string()))
-                .bind((new.manifest.entries().len() as u64).cast_signed())
-                .bind(bytes.count().cast_signed()),
-            Statement::prepare(POINT).bind(site_id.clone()).bind(deploy_id.clone()).bind(at),
-            Statement::prepare(HISTORY).bind(site_id).bind(deploy_id).bind(at),
+            Event::DeployAdded { deploy: id }.fresh(site.id, new.at, id)?,
+            step.record(new.build, new.manifest.entries().len() as u64, bytes),
+            step.publish(),
+            step.history(Cause::Publish)?,
             Event::DeployPublished { deploy: id, previous: before.map(|live| live.deploy) }
-                .moved(site.id, new.at, id)
-                .map_err(Error::Log)?,
+                .moved(site.id, new.at, id)?,
         ];
         let outcomes = self.ports.db().batch(batch).await?;
         let moved = outcomes.get(2).is_some_and(|outcome| outcome.changes == 1);
@@ -66,8 +49,12 @@ impl<P: Ports> Control<P> {
 
     /// The pointer `site` serves from, if a deploy is live.
     pub async fn live(&self, site: Id<SiteKind>) -> Result<Option<Live>, Error<P>> {
-        const SELECT: &str = "SELECT deploy_id, previous_id, paused, set_at FROM site_live WHERE site_id = ?";
-        match self.ports.db().first(Statement::prepare(SELECT).bind(site.to_string())).await? {
+        let select = Query::select()
+            .columns([table::Live::DeployId, table::Live::PreviousId, table::Live::Paused, table::Live::SetAt])
+            .from(table::Live::Table)
+            .and_where(Expr::col(table::Live::SiteId).eq(site.to_string()))
+            .to_owned();
+        match self.ports.db().first(select.into()).await? {
             Some(row) => Ok(Some(Live::try_from(&row)?)),
             None => Ok(None),
         }
@@ -75,11 +62,34 @@ impl<P: Ports> Control<P> {
 
     /// The most recent `limit` deploys of `site`, newest first, each saying whether it is live.
     pub async fn deploys(&self, site: Id<SiteKind>, limit: u32) -> Result<Vec<Deploy>, Error<P>> {
-        const SELECT: &str = "SELECT d.id, d.created_at, d.job_id, d.files, d.bytes, COALESCE(l.deploy_id = d.id, 0) AS live \
-            FROM deploy d LEFT JOIN site_live l ON l.site_id = d.site_id \
-            WHERE d.site_id = ? ORDER BY d.created_at DESC, d.rowid DESC LIMIT ?";
+        let select = Query::select()
+            .columns([
+                Self::deployed(table::Deploy::Id),
+                Self::deployed(table::Deploy::CreatedAt),
+                Self::deployed(table::Deploy::JobId),
+                Self::deployed(table::Deploy::Files),
+                Self::deployed(table::Deploy::Bytes),
+            ])
+            .expr_as(
+                Func::coalesce([
+                    Expr::col((table::Live::Table, table::Live::DeployId)).equals(Self::deployed(table::Deploy::Id)),
+                    Expr::val(0_i64),
+                ]),
+                Computed::Live,
+            )
+            .from(table::Deploy::Table)
+            .join(
+                JoinType::LeftJoin,
+                table::Live::Table,
+                Expr::col((table::Live::Table, table::Live::SiteId)).equals(Self::deployed(table::Deploy::SiteId)),
+            )
+            .and_where(Expr::col(Self::deployed(table::Deploy::SiteId)).eq(site.to_string()))
+            .order_by(Self::deployed(table::Deploy::CreatedAt), Order::Desc)
+            .order_by(Self::deployed(table::Row::Rowid), Order::Desc)
+            .limit(u64::from(limit))
+            .to_owned();
         self.site(site).await?;
-        let rows = self.ports.db().rows(Statement::prepare(SELECT).bind(site.to_string()).bind(limit)).await?;
+        let rows = self.ports.db().rows(select.into()).await?;
         Ok(rows.iter().map(Deploy::try_from).collect::<Result<_, _>>()?)
     }
 
@@ -87,18 +97,13 @@ impl<P: Ports> Control<P> {
     /// (architecture section 11): a build finishing later is recorded, and does not undo the
     /// rollback. The deploy replaced becomes the previous one, so rolling back twice returns.
     pub async fn rollback(&self, site: Id<SiteKind>, to: DeployId, at: Timestamp) -> Result<Live, Error<P>> {
-        const POINT: &str = "UPDATE site_live SET previous_id = deploy_id, deploy_id = ?, paused = 1, set_at = ? \
-            WHERE site_id = ? AND deploy_id != ? AND EXISTS (SELECT 1 FROM deploy WHERE site_id = ? AND id = ?)";
-        const HISTORY: &str = "INSERT INTO publication (site_id, deploy_id, previous_id, cause, at) \
-            SELECT site_id, deploy_id, previous_id, 'rollback', set_at FROM site_live \
-            WHERE site_id = ? AND deploy_id = ? AND set_at = ? AND paused = 1";
         self.active(site).await?;
         let before = self.live(site).await?.ok_or(Refusal::NotLive { site })?;
-        let (site_id, to_id, millis) = (site.to_string(), to.to_string(), at.as_millisecond());
+        let step = Move::new(site, to, at);
         let batch = vec![
-            Statement::prepare(POINT).bind(to_id.clone()).bind(millis).bind(site_id.clone()).bind(to_id.clone()).bind(site_id.clone()).bind(to_id.clone()),
-            Statement::prepare(HISTORY).bind(site_id).bind(to_id).bind(millis),
-            Event::DeployRolledBack { deploy: to, previous: before.deploy }.moved(site, at, to).map_err(Error::Log)?,
+            step.rollback(),
+            step.history(Cause::Rollback)?,
+            Event::DeployRolledBack { deploy: to, previous: before.deploy }.moved(site, at, to)?,
         ];
         let outcomes = self.ports.db().batch(batch).await?;
         if outcomes.first().is_some_and(|outcome| outcome.changes == 1) {
@@ -113,21 +118,169 @@ impl<P: Ports> Control<P> {
     /// Lets builds publish again after a rollback paused them. It does not publish anything
     /// itself: the next deploy goes live.
     pub async fn resume(&self, site: Id<SiteKind>, at: Timestamp) -> Result<Resumed, Error<P>> {
-        const RESUME: &str = "UPDATE site_live SET paused = 0 WHERE site_id = ? AND paused = 1";
-        const EVENT: &str = "INSERT INTO event (site_id, at, name, body) SELECT ?, ?, ?, ? \
-            WHERE EXISTS (SELECT 1 FROM site_live WHERE site_id = ? AND paused = 1)";
         self.active(site).await?;
         let resumed = Event::SiteResumed;
-        let batch = vec![
-            Statement::prepare(EVENT)
-                .bind(site.to_string())
-                .bind(at.as_millisecond())
-                .bind(resumed.name())
-                .bind(serde_json::to_string(&resumed).map_err(Error::Log)?)
-                .bind(site.to_string()),
-            Statement::prepare(RESUME).bind(site.to_string()),
-        ];
+        let resume = Query::update()
+            .table(table::Live::Table)
+            .value(table::Live::Paused, 0_i64)
+            .and_where(Expr::col(table::Live::SiteId).eq(site.to_string()))
+            .and_where(Expr::col(table::Live::Paused).eq(1_i64))
+            .to_owned();
+        let batch = vec![resumed.paused(site, at)?, resume.into()];
         let outcomes = self.ports.db().batch(batch).await?;
-        Ok(if outcomes.get(1).is_some_and(|outcome| outcome.changes == 1) { Resumed::Resumed } else { Resumed::NotPaused })
+        Ok(if outcomes.get(1).is_some_and(|outcome| outcome.changes == 1) {
+            Resumed::Resumed
+        } else {
+            Resumed::NotPaused
+        })
+    }
+
+    /// `column` of the deploy table, named with its table.
+    fn deployed<C>(column: C) -> (table::Deploy, C) {
+        (table::Deploy::Table, column)
+    }
+
+    /// The size of every blob the manifest names, or the refusal for the first one missing.
+    async fn stat(&self, tenant: &blob::Tenant, manifest: &model::Manifest) -> Result<Bytes, Error<P>> {
+        let mut bytes = Bytes(0);
+        for entry in manifest.entries() {
+            let size = self.ports.blob().stat(tenant, entry.blob()).await?;
+            let size = size.ok_or_else(|| Refusal::MissingBlob { route: entry.route().clone(), blob: entry.blob() })?;
+            bytes = Bytes(bytes.count().saturating_add(size.count()));
+        }
+        Ok(bytes)
+    }
+}
+
+/// One move of a site's pointer to a deploy at a time, and the statements that make it and
+/// record it.
+#[derive(Debug)]
+struct Move {
+    site: String,
+    deploy: String,
+    at: i64,
+}
+
+impl Move {
+    fn new(site: Id<SiteKind>, deploy: DeployId, at: Timestamp) -> Self {
+        Self { site: site.to_string(), deploy: deploy.to_string(), at: at.as_millisecond() }
+    }
+
+    /// `column` of the live table, named with its table.
+    fn live(column: table::Live) -> Expr {
+        Expr::col((table::Live::Table, column))
+    }
+
+    /// `column` of the row an upsert proposed.
+    fn proposed(column: table::Live) -> Expr {
+        Expr::col((Excluded::Table, column))
+    }
+
+    /// The statement that records the deploy, once.
+    fn record(&self, build: Option<BuildId>, files: u64, bytes: Bytes) -> Statement {
+        Query::insert()
+            .into_table(table::Deploy::Table)
+            .columns([
+                table::Deploy::SiteId,
+                table::Deploy::Id,
+                table::Deploy::CreatedAt,
+                table::Deploy::JobId,
+                table::Deploy::Files,
+                table::Deploy::Bytes,
+            ])
+            .values_panic([
+                Expr::val(self.site.as_str()),
+                Expr::val(self.deploy.as_str()),
+                Expr::val(self.at),
+                Expr::val(build.map(|build| build.to_string())),
+                Expr::val(files.cast_signed()),
+                Expr::val(bytes.count().cast_signed()),
+            ])
+            .on_conflict(OnConflict::columns([table::Deploy::SiteId, table::Deploy::Id]).do_nothing().to_owned())
+            .to_owned()
+            .into()
+    }
+
+    /// The statement that points the site at the deploy, unless it is paused or already there,
+    /// keeping what it replaced as the previous one.
+    fn publish(&self) -> Statement {
+        let replace = Self::live(table::Live::Paused)
+            .eq(0_i64)
+            .and(Self::live(table::Live::DeployId).ne(Self::proposed(table::Live::DeployId)));
+        Query::insert()
+            .into_table(table::Live::Table)
+            .columns([
+                table::Live::SiteId,
+                table::Live::DeployId,
+                table::Live::PreviousId,
+                table::Live::Paused,
+                table::Live::SetAt,
+            ])
+            .values_panic([
+                Expr::val(self.site.as_str()),
+                Expr::val(self.deploy.as_str()),
+                Expr::val(None::<String>),
+                Expr::val(0_i64),
+                Expr::val(self.at),
+            ])
+            .on_conflict(
+                OnConflict::column(table::Live::SiteId)
+                    .value(table::Live::PreviousId, Self::live(table::Live::DeployId))
+                    .value(table::Live::DeployId, Self::proposed(table::Live::DeployId))
+                    .value(table::Live::SetAt, Self::proposed(table::Live::SetAt))
+                    .action_and_where(replace)
+                    .to_owned(),
+            )
+            .to_owned()
+            .into()
+    }
+
+    /// The statement that points the site back at the deploy, when the site records it and it
+    /// is not already live, and pauses publishing.
+    fn rollback(&self) -> Statement {
+        let held = Query::select()
+            .column(table::Deploy::Id)
+            .from(table::Deploy::Table)
+            .and_where(Expr::col(table::Deploy::SiteId).eq(self.site.as_str()))
+            .and_where(Expr::col(table::Deploy::Id).eq(self.deploy.as_str()))
+            .to_owned();
+        Query::update()
+            .table(table::Live::Table)
+            .value(table::Live::PreviousId, Expr::col(table::Live::DeployId))
+            .value(table::Live::DeployId, self.deploy.as_str())
+            .value(table::Live::Paused, 1_i64)
+            .value(table::Live::SetAt, self.at)
+            .and_where(Expr::col(table::Live::SiteId).eq(self.site.as_str()))
+            .and_where(Expr::col(table::Live::DeployId).ne(self.deploy.as_str()))
+            .and_where(Expr::exists(held))
+            .to_owned()
+            .into()
+    }
+
+    /// The statement that records the move in the history, when the pointer is as the move set
+    /// it: paused only if the cause is a rollback.
+    fn history(&self, cause: Cause) -> Result<Statement, sea_query::error::Error> {
+        let select = Query::select()
+            .columns([table::Live::SiteId, table::Live::DeployId, table::Live::PreviousId])
+            .expr(Expr::val(cause.name()))
+            .column(table::Live::SetAt)
+            .from(table::Live::Table)
+            .and_where(Expr::col(table::Live::SiteId).eq(self.site.as_str()))
+            .and_where(Expr::col(table::Live::DeployId).eq(self.deploy.as_str()))
+            .and_where(Expr::col(table::Live::SetAt).eq(self.at))
+            .and_where(Expr::col(table::Live::Paused).eq(i64::from(cause == Cause::Rollback)))
+            .to_owned();
+        let mut insert = Query::insert();
+        insert
+            .into_table(table::Publication::Table)
+            .columns([
+                table::Publication::SiteId,
+                table::Publication::DeployId,
+                table::Publication::PreviousId,
+                table::Publication::Cause,
+                table::Publication::At,
+            ])
+            .select_from(select)?;
+        Ok(insert.into())
     }
 }

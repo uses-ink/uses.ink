@@ -73,7 +73,7 @@ impl Key {
     #[cfg(unix)]
     fn check(path: &Path, meta: &fs::Metadata) -> Result<(), Error> {
         let mode = std::os::unix::fs::PermissionsExt::mode(&meta.permissions()) & 0o777;
-        if mode & 0o077 == 0 { Ok(()) } else { Err(Error::Permissions { path: path.to_path_buf(), mode }) }
+        if mode.trailing_zeros() >= 6 { Ok(()) } else { Err(Error::Permissions { path: path.to_path_buf(), mode }) }
     }
 
     #[cfg(not(unix))]

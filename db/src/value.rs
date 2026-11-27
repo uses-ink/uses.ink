@@ -145,7 +145,9 @@ impl TryFrom<sea_query::Value> for Value {
             Built::TinyUnsigned(n) => wide(n.map(i64::from)),
             Built::SmallUnsigned(n) => wide(n.map(i64::from)),
             Built::Unsigned(n) => wide(n.map(i64::from)),
-            Built::BigUnsigned(Some(n)) => Self::Integer(i64::try_from(n).map_err(|_| Unsupported { kind: "u64 above i64::MAX" })?),
+            Built::BigUnsigned(Some(n)) => {
+                Self::Integer(i64::try_from(n).map_err(|_| Unsupported { kind: "u64 above i64::MAX" })?)
+            }
             Built::BigUnsigned(None) => Self::Null,
             Built::Float(n) => n.map_or(Self::Null, |n| Self::Real(n.into())),
             Built::Double(n) => n.map_or(Self::Null, Self::Real),

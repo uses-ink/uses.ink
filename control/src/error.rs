@@ -103,7 +103,9 @@ impl fmt::Display for Refusal {
             Self::NoAccount { account } => write!(out, "there is no account {account}"),
             Self::NoSite { site } => write!(out, "there is no site {site}"),
             Self::Removing { site } => write!(out, "the site {site} is being removed"),
-            Self::MissingBlob { route, blob } => write!(out, "{route} is served from {blob}, which the store does not hold"),
+            Self::MissingBlob { route, blob } => {
+                write!(out, "{route} is served from {blob}, which the store does not hold")
+            }
             Self::NoDeploy { site, deploy } => write!(out, "the site {site} has no deploy {deploy}"),
             Self::NotLive { site } => write!(out, "the site {site} has no live deploy"),
             Self::AlreadyLive { site, deploy } => write!(out, "the deploy {deploy} is live on {site} already"),
@@ -193,7 +195,9 @@ impl fmt::Display for Unreadable {
             Self::Deploy { column, .. } => write!(out, "column `{column}` holds a bad deploy id"),
             Self::Hash { column, .. } => write!(out, "column `{column}` holds a bad hash"),
             Self::Time { column, .. } => write!(out, "column `{column}` holds a bad time"),
-            Self::Name { column, found } => write!(out, "column `{column}` holds `{found}`, which this version does not know"),
+            Self::Name { column, found } => {
+                write!(out, "column `{column}` holds `{found}`, which this version does not know")
+            }
             Self::Locator { column } => write!(out, "column `{column}` holds a locator that is no longer valid"),
         }
     }
@@ -237,6 +241,8 @@ pub enum Error<P: Ports> {
     Unreadable(Unreadable),
     /// A build's log or a site event could not be written as JSON.
     Log(serde_json::Error),
+    /// A statement could not be built: its columns and values do not match.
+    Statement(sea_query::error::Error),
     /// A stored manifest is not in the canonical form.
     Manifest(crate::listed::Canonical),
     /// A site's address could not be made from the origin.
@@ -253,6 +259,7 @@ impl<P: Ports> fmt::Debug for Error<P> {
             Self::Secret(error) => out.debug_tuple("Secret").field(error).finish(),
             Self::Unreadable(error) => out.debug_tuple("Unreadable").field(error).finish(),
             Self::Log(error) => out.debug_tuple("Log").field(error).finish(),
+            Self::Statement(error) => out.debug_tuple("Statement").field(error).finish(),
             Self::Manifest(error) => out.debug_tuple("Manifest").field(error).finish(),
             Self::Origin(error) => out.debug_tuple("Origin").field(error).finish(),
         }
@@ -269,6 +276,7 @@ impl<P: Ports> fmt::Display for Error<P> {
             Self::Secret(_) => out.write_str("sealing failed"),
             Self::Unreadable(_) => out.write_str("a stored row is not what this version writes"),
             Self::Log(_) => out.write_str("a build's log could not be written"),
+            Self::Statement(_) => out.write_str("a statement could not be built"),
             Self::Manifest(_) => out.write_str("a stored manifest is not in the canonical form"),
             Self::Origin(_) => out.write_str("a site's address could not be made from the origin"),
         }
@@ -285,8 +293,24 @@ impl<P: Ports> std::error::Error for Error<P> {
             Self::Secret(source) => Some(source),
             Self::Unreadable(source) => Some(source),
             Self::Log(source) => Some(source),
+            Self::Statement(source) => Some(source),
             Self::Manifest(source) => Some(source),
             Self::Origin(source) => Some(source),
+        }
+    }
+}
+
+impl<P: Ports> From<sea_query::error::Error> for Error<P> {
+    fn from(source: sea_query::error::Error) -> Self {
+        Self::Statement(source)
+    }
+}
+
+impl<P: Ports> From<crate::event::Unwritten> for Error<P> {
+    fn from(error: crate::event::Unwritten) -> Self {
+        match error {
+            crate::event::Unwritten::Json(source) => Self::Log(source),
+            crate::event::Unwritten::Statement(source) => Self::Statement(source),
         }
     }
 }
@@ -342,7 +366,6 @@ impl<P: Ports> Error<P> {
         }
     }
 }
-
 
 /// A call that ran on the control plane's ports and on one more: the builder, or the sink an
 /// export writes to. `X` is that one's own error.

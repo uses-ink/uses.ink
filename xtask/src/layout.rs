@@ -7,6 +7,7 @@
 mod file;
 mod manifest;
 mod release;
+mod sql;
 mod syntax;
 mod workspace;
 
@@ -24,6 +25,7 @@ use crate::token::Token;
 pub(crate) use file::{Banned, Unsafe};
 pub(crate) use manifest::{Alias, Licence, Names, Order};
 pub(crate) use release::{Drift, Release};
+pub(crate) use sql::{Found, Sql};
 pub(crate) use syntax::{Free, Words};
 pub(crate) use workspace::Workspace;
 
@@ -66,6 +68,22 @@ pub(crate) const ENFORCED: &[&str] = &[
     "uses-ink-theme-quiet-guest",
     "uses-ink-theme-quiet",
     "uses-ink-token",
+    "uses-ink-blob",
+    "uses-ink-blob-conformance",
+    "uses-ink-blob-dir",
+    "uses-ink-build",
+    "uses-ink-build-conformance",
+    "uses-ink-build-local",
+    "uses-ink-control",
+    "uses-ink-db",
+    "uses-ink-db-conformance",
+    "uses-ink-db-sqlite",
+    "uses-ink-queue",
+    "uses-ink-queue-conformance",
+    "uses-ink-queue-local",
+    "uses-ink-secret",
+    "uses-ink-secret-conformance",
+    "uses-ink-secret-local",
     "xtask",
     "farm",
 ];
@@ -97,10 +115,12 @@ impl<R: Rule> Rule for Gradual<R> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Layout;
 
+/// Every rule of the layout task, as a tuple.
+type Every = (Names, Order, Licence, Alias, Banned, Unsafe, Sql, Gradual<Words>, Gradual<Free>, Release);
+
 impl Layout {
     /// Every rule, in the order their problems are listed.
-    const RULES: (Names, Order, Licence, Alias, Banned, Unsafe, Gradual<Words>, Gradual<Free>, Release) =
-        (Names, Order, Licence, Alias, Banned, Unsafe, Gradual(Words), Gradual(Free), Release);
+    const RULES: Every = (Names, Order, Licence, Alias, Banned, Unsafe, Sql, Gradual(Words), Gradual(Free), Release);
 }
 
 impl Step for Layout {
@@ -192,6 +212,11 @@ pub(crate) enum Problem {
     Unsafe {
         path: PathBuf,
     },
+    /// SQL text in code, a raw escape of the statement builders, or a `.sql` file.
+    Sql {
+        path: PathBuf,
+        found: Found,
+    },
     /// A Rust file that is not Rust tokens, so no rule can read it.
     Lexed {
         path: PathBuf,
@@ -225,7 +250,9 @@ impl Problem {
             | Self::Licence { krate, .. }
             | Self::Copyleft { krate, .. }
             | Self::Alias { krate } => Some(krate),
-            Self::Banned { .. } | Self::Unsafe { .. } | Self::Lexed { .. } | Self::Release(_) => None,
+            Self::Banned { .. } | Self::Unsafe { .. } | Self::Sql { .. } | Self::Lexed { .. } | Self::Release(_) => {
+                None
+            }
         }
     }
 }
@@ -258,6 +285,7 @@ impl fmt::Display for Problem {
                 Unsafe::KEYWORD,
                 Unsafe::ALLOWED.join(", ")
             ),
+            Self::Sql { path, found } => write!(out, "`{}` {found}", path.display()),
             Self::Lexed { path, source } => write!(out, "`{}` is not Rust tokens: {source}", path.display()),
             Self::Words(Function { path, name, .. }) => {
                 write!(out, "`{}`: `{name}` is three words or more; it is a missing type or module", path.display())

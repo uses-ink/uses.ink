@@ -7,8 +7,8 @@ use model::Timestamp;
 use queue::{Delivery, Message, MessageId, Queue, Sent, Settled};
 use sea_query::{Expr, ExprTrait, OnConflict, Order, Query};
 
-use crate::schema::Message as Table;
 use crate::Error;
+use crate::schema::Message as Table;
 
 type Failure<D> = queue::Error<Error<<D as Db>::Error>>;
 
@@ -30,7 +30,7 @@ impl<D: Db> Local<D> {
     }
 
     fn later(now: Timestamp, span: Duration) -> Result<i64, Error<D::Error>> {
-        now.checked_add(span).map(|at| at.as_millisecond()).map_err(|source| Error::Time { source })
+        now.checked_add(span).map(Timestamp::as_millisecond).map_err(|source| Error::Time { source })
     }
 
     fn backend(error: Error<D::Error>) -> Failure<D> {
@@ -59,7 +59,11 @@ impl<D: Db> Queue for Local<D> {
             let insert = Query::insert()
                 .into_table(Table::Table)
                 .columns([Table::Body, Table::Dedupe, Table::VisibleAt])
-                .values_panic([Expr::val(message.body.clone()), Expr::val(key.clone()), Expr::val(now.as_millisecond())])
+                .values_panic([
+                    Expr::val(message.body.clone()),
+                    Expr::val(key.clone()),
+                    Expr::val(now.as_millisecond()),
+                ])
                 .on_conflict(OnConflict::column(Table::Dedupe).do_nothing().to_owned())
                 .returning_col(Table::Id)
                 .to_owned();
@@ -67,7 +71,11 @@ impl<D: Db> Queue for Local<D> {
                 return Ok(Sent::Queued(Self::id(row)?));
             }
             // not inserted, so the key is held; unless the holder was acked in between, then try again
-            let held = Query::select().column(Table::Id).from(Table::Table).and_where(Expr::col(Table::Dedupe).eq(key.clone())).to_owned();
+            let held = Query::select()
+                .column(Table::Id)
+                .from(Table::Table)
+                .and_where(Expr::col(Table::Dedupe).eq(key.clone()))
+                .to_owned();
             if let Some(row) = self.run(held.into()).await?.rows.first() {
                 return Ok(Sent::Duplicate(Self::id(row)?));
             }
@@ -94,7 +102,11 @@ impl<D: Db> Queue for Local<D> {
         let claimed = self.run(claim.into()).await?;
         let Some(row) = claimed.rows.first() else { return Ok(None) };
         let read = |row: &Row| -> Result<Delivery, db::ColumnError> {
-            Ok(Delivery { id: MessageId(row.get(Table::Id)?), attempt: row.get(Table::Attempt)?, body: row.get(Table::Body)? })
+            Ok(Delivery {
+                id: MessageId(row.get(Table::Id)?),
+                attempt: row.get(Table::Attempt)?,
+                body: row.get(Table::Body)?,
+            })
         };
         read(row).map(Some).map_err(|error| Self::backend(error.into()))
     }

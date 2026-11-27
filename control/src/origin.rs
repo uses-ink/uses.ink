@@ -74,7 +74,10 @@ mod test {
         let handle: Handle = "cstef".parse().unwrap();
         let origin = |text: &str| Origin::try_from(&ExternalUrl::parse(text).unwrap());
         assert_eq!(origin("https://uses.ink").unwrap().site(&handle).unwrap().as_str(), "https://cstef.uses.ink");
-        assert_eq!(origin("http://localhost:4000/").unwrap().site(&handle).unwrap().as_str(), "http://cstef.localhost:4000");
+        assert_eq!(
+            origin("http://localhost:4000/").unwrap().site(&handle).unwrap().as_str(),
+            "http://cstef.localhost:4000"
+        );
         assert_eq!(origin("mailto:a@b.c").unwrap_err(), OriginError::Scheme);
         assert_eq!(origin("https://uses.ink/blog").unwrap_err(), OriginError::Path);
     }

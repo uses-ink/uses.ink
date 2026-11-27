@@ -109,6 +109,7 @@ impl Blob for Directory {
     type Error = Error;
     type Read = Reading;
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn put(
         &self,
         tenant: &Tenant,
@@ -130,6 +131,7 @@ impl Blob for Directory {
         Ok(Stored { size: Bytes(size), created: !held })
     }
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn get(&self, tenant: &Tenant, hash: Hash) -> Result<Option<Reading>, Failure> {
         let path = self.file(tenant, hash);
         if Self::find(&path)?.is_none() {
@@ -142,10 +144,12 @@ impl Blob for Directory {
         }
     }
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn stat(&self, tenant: &Tenant, hash: Hash) -> Result<Option<Bytes>, Failure> {
         Ok(Self::find(&self.file(tenant, hash))?.map(|meta| Bytes(meta.len())))
     }
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn list(&self, tenant: &Tenant) -> Result<Vec<Listed>, Failure> {
         let folder = self.folder(tenant);
         let entries = match fs::read_dir(&folder) {
@@ -157,14 +161,19 @@ impl Blob for Directory {
         for entry in entries {
             let entry = entry.map_err(|source| Error::Read { path: folder.clone(), source })?;
             let path = entry.path();
-            let hash: Hash = entry.file_name().to_str().and_then(|name| name.parse().ok()).ok_or_else(|| Error::Stray { path: path.clone() })?;
-            let meta = Self::find(&path)?.ok_or_else(|| Error::Stray { path })?;
+            let hash: Hash = entry
+                .file_name()
+                .to_str()
+                .and_then(|name| name.parse().ok())
+                .ok_or(Error::Stray { path: path.clone() })?;
+            let meta = Self::find(&path)?.ok_or(Error::Stray { path })?;
             listed.push(Listed { hash, size: Bytes(meta.len()) });
         }
         listed.sort();
         Ok(listed)
     }
 
+    #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn delete(&self, tenant: &Tenant, hash: Hash) -> Result<Deleted, Failure> {
         let path = self.file(tenant, hash);
         let Some(meta) = Self::find(&path)? else { return Ok(Deleted::Absent) };

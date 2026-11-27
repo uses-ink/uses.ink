@@ -27,6 +27,8 @@ exceptions = [
     { crate = "zlib-rs", allow = ["Zlib"] },
     # axum's router, for `ink preview`
     { crate = "matchit", allow = ["BSD-3-Clause"] },
+    # the constant-time comparisons under the sealer's XChaCha20-Poly1305 (secret/local)
+    { crate = "subtle", allow = ["BSD-3-Clause"] },
     # AVIF, through rav1e (host/image)
     { crate = "av1-grain", allow = ["BSD-2-Clause"] },
     { crate = "avif-serialize", allow = ["BSD-3-Clause"] },

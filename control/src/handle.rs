@@ -21,8 +21,30 @@ impl Handle {
     /// Names kept for uses.ink itself: infrastructure and route nouns (decision 0045 lists
     /// them; the brand list is the owner's, question O3, and is not here yet).
     pub const RESERVED: [&'static str; 24] = [
-        "www", "app", "api", "docs", "status", "mail", "admin", "static", "cdn", "assets", "domains", "edge", "blog",
-        "help", "support", "login", "logout", "account", "dashboard", "ink", "uses", "root", "abuse", "security",
+        "www",
+        "app",
+        "api",
+        "docs",
+        "status",
+        "mail",
+        "admin",
+        "static",
+        "cdn",
+        "assets",
+        "domains",
+        "edge",
+        "blog",
+        "help",
+        "support",
+        "login",
+        "logout",
+        "account",
+        "dashboard",
+        "ink",
+        "uses",
+        "root",
+        "abuse",
+        "security",
     ];
 
     /// The handle as text.
@@ -77,7 +99,9 @@ impl fmt::Display for HandleError {
             Self::Length { found } => {
                 write!(out, "a handle has {} to {} characters, not {found}", Handle::MIN, Handle::MAX)
             }
-            Self::Character { at } => write!(out, "byte {at} of the handle is not a lower-case letter, a digit or a hyphen"),
+            Self::Character { at } => {
+                write!(out, "byte {at} of the handle is not a lower-case letter, a digit or a hyphen")
+            }
             Self::Edge => out.write_str("a handle does not start or end with a hyphen"),
             Self::Double { at } => write!(out, "a handle has no two hyphens in a row (at byte {at})"),
         }

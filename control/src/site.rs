@@ -4,9 +4,11 @@ use build::{Kind, Revision, Source};
 use db::Row;
 use jiff::Timestamp;
 use model::ExternalUrl;
+use sea_query::IdenStatic;
 
 use crate::fields::Fields;
 use crate::id::{Account, Id, Site as SiteKind};
+use crate::table;
 use crate::{Handle, Refusal, Unreadable};
 
 /// Whether a site takes changes.
@@ -23,6 +25,11 @@ pub enum State {
 impl State {
     /// The names the column stores.
     pub(crate) const NAMES: [(&'static str, Self); 2] = [("active", Self::Active), ("removing", Self::Removing)];
+
+    /// The text this state is stored as.
+    pub(crate) fn name(self) -> &'static str {
+        Self::NAMES.iter().find(|(_, found)| *found == self).map_or("active", |(name, _)| name)
+    }
 }
 
 /// One published blog.
@@ -68,7 +75,7 @@ pub(crate) struct Stored {
 
 impl Stored {
     /// The kinds the column stores.
-    const KINDS: [(&'static str, Kind); 2] = [("folder", Kind::Folder), ("git", Kind::Git)];
+    pub(crate) const KINDS: [(&'static str, Kind); 2] = [("folder", Kind::Folder), ("git", Kind::Git)];
 
     /// The text a kind is stored as.
     pub(crate) fn name(kind: Kind) -> &'static str {
@@ -81,9 +88,11 @@ impl TryFrom<&Source> for Stored {
 
     fn try_from(source: &Source) -> Result<Self, Refusal> {
         match source {
-            Source::Folder(path) => {
-                Ok(Self { kind: Kind::Folder, locator: path.to_str().ok_or(Refusal::Unstorable)?.to_owned(), revision: None })
-            }
+            Source::Folder(path) => Ok(Self {
+                kind: Kind::Folder,
+                locator: path.to_str().ok_or(Refusal::Unstorable)?.to_owned(),
+                revision: None,
+            }),
             Source::Git { url, revision } => Ok(Self {
                 kind: Kind::Git,
                 locator: url.as_str().to_owned(),
@@ -100,9 +109,9 @@ impl TryFrom<&Row> for Stored {
     fn try_from(row: &Row) -> Result<Self, Unreadable> {
         let fields = Fields(row);
         Ok(Self {
-            kind: fields.name("kind", &Self::KINDS)?,
-            locator: fields.text("locator")?,
-            revision: row.get("revision")?,
+            kind: fields.name(table::Source::Kind, &Self::KINDS)?,
+            locator: fields.text(table::Source::Locator)?,
+            revision: row.get(table::Source::Revision)?,
         })
     }
 }
@@ -114,14 +123,18 @@ impl TryFrom<Stored> for Source {
         match stored.kind {
             Kind::Folder => Ok(Self::Folder(stored.locator.into())),
             Kind::Git => {
-                let url = ExternalUrl::parse(stored.locator).map_err(|_| Unreadable::Locator { column: "locator" })?;
+                let url = ExternalUrl::parse(stored.locator)
+                    .map_err(|_| Unreadable::Locator { column: table::Source::Locator.as_str() })?;
                 let revision = stored
                     .revision
-                    .map(|text| text.parse::<Revision>().map_err(|_| Unreadable::Locator { column: "revision" }))
+                    .map(|text| {
+                        text.parse::<Revision>()
+                            .map_err(|_| Unreadable::Locator { column: table::Source::Revision.as_str() })
+                    })
                     .transpose()?;
                 Ok(Self::Git { url, revision })
             }
-            _ => Err(Unreadable::Locator { column: "kind" }),
+            _ => Err(Unreadable::Locator { column: table::Source::Kind.as_str() }),
         }
     }
 }
@@ -131,11 +144,11 @@ impl Site {
     pub(crate) fn read(row: &Row) -> Result<Self, Unreadable> {
         let fields = Fields(row);
         Ok(Self {
-            id: fields.id("id")?,
-            account: fields.id("account_id")?,
-            handle: fields.handle("handle")?,
-            state: fields.name("state", &State::NAMES)?,
-            created: fields.time("created_at")?,
+            id: fields.id(table::Site::Id)?,
+            account: fields.id(table::Site::AccountId)?,
+            handle: fields.handle(table::Site::Handle)?,
+            state: fields.name(table::Site::State, &State::NAMES)?,
+            created: fields.time(table::Site::CreatedAt)?,
             source: Source::try_from(Stored::try_from(row)?)?,
         })
     }

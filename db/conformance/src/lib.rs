@@ -8,8 +8,16 @@
 //! The cases pin what D1 does, since D1 is the stricter target (decision 0030): statements and
 //! batches only, foreign keys enforced, a bound-parameter limit, and the migration ledger.
 
-use sea_query::{ColumnDef, Expr, ExprTrait, ForeignKey, IdenStatic, Order, Query, Table};
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::assert_is_empty,
+    clippy::missing_panics_doc,
+    reason = "a conformance case stops at the first surprise"
+)]
+
 use db::{Constraint, Db, Error, Ledger, Migration, Statement, Steps, Unapplied, Unrenderable, Value};
+use sea_query::{ColumnDef, Expr, ExprTrait, ForeignKey, IdenStatic, Order, Query, Table};
 
 #[doc(hidden)]
 pub use pollster;
@@ -106,7 +114,11 @@ impl Tables {
 
     /// Adds a child of `parent`.
     fn child(id: i64, parent: i64) -> Statement {
-        Query::insert().into_table(Child::Table).columns([Child::Id, Child::Parent]).values_panic([Expr::val(id), Expr::val(parent)]).into()
+        Query::insert()
+            .into_table(Child::Table)
+            .columns([Child::Id, Child::Parent])
+            .values_panic([Expr::val(id), Expr::val(parent)])
+            .into()
     }
 
     /// Every parent's id.
@@ -132,7 +144,11 @@ pub struct Values;
 impl Values {
     /// An insert of one row of the five columns.
     fn row(values: [Expr; 5]) -> Statement {
-        Query::insert().into_table(Every::Table).columns([Every::A, Every::B, Every::C, Every::D, Every::E]).values_panic(values).into()
+        Query::insert()
+            .into_table(Every::Table)
+            .columns([Every::A, Every::B, Every::C, Every::D, Every::E])
+            .values_panic(values)
+            .into()
     }
 
     /// Every kind of value, and the extremes of each, survive a round trip.
@@ -151,8 +167,10 @@ impl Values {
         .unwrap();
         let blob = vec![0_u8, 255, 1, 0];
         let text = "h\u{e9}llo \u{1f980} \0 end";
-        let low = [Expr::val(i64::MIN), Expr::val(1.5_f64), Expr::val(text), Expr::val(blob.clone()), Expr::val(None::<i64>)];
-        let high = [Expr::val(i64::MAX), Expr::val(-0.0_f64), Expr::val(""), Expr::val(Vec::<u8>::new()), Expr::val(true)];
+        let low =
+            [Expr::val(i64::MIN), Expr::val(1.5_f64), Expr::val(text), Expr::val(blob.clone()), Expr::val(None::<i64>)];
+        let high =
+            [Expr::val(i64::MAX), Expr::val(-0.0_f64), Expr::val(""), Expr::val(Vec::<u8>::new()), Expr::val(true)];
         db.run(Self::row(low)).await.unwrap();
         db.run(Self::row(high)).await.unwrap();
         let read = Query::select()
@@ -184,7 +202,11 @@ impl Large {
     pub async fn check<D: Db>(db: &D) {
         db.run(Table::create().table(Big::Table).col(ColumnDef::new(Big::Body).blob()).into()).await.unwrap();
         let body: Vec<u8> = (0..1_048_576_u32).map(|n| u8::try_from(n % 251).unwrap()).collect();
-        db.run(Query::insert().into_table(Big::Table).columns([Big::Body]).values_panic([Expr::val(body.clone())]).into()).await.unwrap();
+        db.run(
+            Query::insert().into_table(Big::Table).columns([Big::Body]).values_panic([Expr::val(body.clone())]).into(),
+        )
+        .await
+        .unwrap();
         let row = db.first(Query::select().column(Big::Body).from(Big::Table).into()).await.unwrap().unwrap();
         assert_eq!(row.get::<Vec<u8>>(Big::Body).unwrap(), body);
     }
@@ -200,7 +222,11 @@ impl Injection {
         Tables::make(db).await;
         let hostile = "x'); DROP TABLE parent; --";
         db.run(Tables::parent(1, Some(hostile), 0)).await.unwrap();
-        let find = Query::select().column(Parent::Name).from(Parent::Table).and_where(Expr::col(Parent::Name).eq(hostile)).into();
+        let find = Query::select()
+            .column(Parent::Name)
+            .from(Parent::Table)
+            .and_where(Expr::col(Parent::Name).eq(hostile))
+            .into();
         let row = db.first(find).await.unwrap().unwrap();
         assert_eq!(row.get::<String>(Parent::Name).unwrap(), hostile);
     }
@@ -230,8 +256,15 @@ impl Outcomes {
         let returned = db.run(take).await.unwrap();
         assert_eq!(returned.changes, 1);
         let [row] = returned.rows.as_slice() else { panic!("one returned row") };
-        assert_eq!((row.get::<String>(Parent::Name).unwrap(), row.get::<i64>(Parent::Size).unwrap()), ("b".to_owned(), 2));
-        let none = Query::update().table(Parent::Table).value(Parent::Size, 9_i64).and_where(Expr::col(Parent::Id).eq(99_i64)).into();
+        assert_eq!(
+            (row.get::<String>(Parent::Name).unwrap(), row.get::<i64>(Parent::Size).unwrap()),
+            ("b".to_owned(), 2)
+        );
+        let none = Query::update()
+            .table(Parent::Table)
+            .value(Parent::Size, 9_i64)
+            .and_where(Expr::col(Parent::Id).eq(99_i64))
+            .into();
         assert_eq!(db.run(none).await.unwrap().changes, 0);
     }
 }
@@ -290,7 +323,8 @@ impl Atomic {
     pub async fn check<D: Db>(db: &D) {
         Tables::make(db).await;
         db.run(Tables::parent(1, Some("taken"), 0)).await.unwrap();
-        let refused = db.batch(vec![Tables::parent(2, Some("fresh"), 0), Tables::parent(3, Some("taken"), 0)]).await.unwrap_err();
+        let refused =
+            db.batch(vec![Tables::parent(2, Some("fresh"), 0), Tables::parent(3, Some("taken"), 0)]).await.unwrap_err();
         assert_eq!(refused.constraint(), Some(Constraint::Unique));
         let left = db.rows(Tables::ids()).await.unwrap();
         assert_eq!(left.len(), 1, "the first statement of a failed batch was applied");
@@ -342,7 +376,9 @@ impl Limit {
         assert_eq!(db.first(ok).await.unwrap().unwrap().get::<i64>(Answer::N).unwrap(), 0);
         let over = Tables::bound(Statement::MAX_PARAMETERS + 1);
         let refused = db.run(over.clone()).await.unwrap_err();
-        assert!(matches!(refused, Error::Unrenderable { index: 0, source: Unrenderable::TooMany(found) } if found.count == 101 && found.limit == 100));
+        assert!(
+            matches!(refused, Error::Unrenderable { index: 0, source: Unrenderable::TooMany(found) } if found.count == 101 && found.limit == 100)
+        );
         let refused = db.batch(vec![Tables::bound(1), over]).await.unwrap_err();
         assert!(matches!(refused, Error::Unrenderable { index: 1, .. }));
     }
@@ -427,7 +463,11 @@ impl Migrations {
         assert_eq!(first.apply(db).await.unwrap().names, ["0001_first"]);
         assert_eq!(both.apply(db).await.unwrap().names, ["0002_second"]);
         assert!(both.apply(db).await.unwrap().names.is_empty());
-        let listing = Query::select().columns([Ledger::Id, Ledger::Name, Ledger::AppliedAt]).from(Ledger::Table).order_by(Ledger::Id, Order::Asc).into();
+        let listing = Query::select()
+            .columns([Ledger::Id, Ledger::Name, Ledger::AppliedAt])
+            .from(Ledger::Table)
+            .order_by(Ledger::Id, Order::Asc)
+            .into();
         let ledger = db.rows(listing).await.unwrap();
         let names: Vec<String> = ledger.iter().map(|row| row.get(Ledger::Name).unwrap()).collect();
         assert_eq!(names, ["0001_first", "0002_second"]);
@@ -447,7 +487,11 @@ impl Migrations {
         let listing = Query::select().column(Ledger::Name).from(Ledger::Table).order_by(Ledger::Id, Order::Asc).into();
         let ledger = db.rows(listing).await.unwrap();
         assert_eq!(ledger.len(), 2);
-        let table = Query::select().column(Master::Name).from(Master::Table).and_where(Expr::col(Master::Name).eq("gamma")).into();
+        let table = Query::select()
+            .column(Master::Name)
+            .from(Master::Table)
+            .and_where(Expr::col(Master::Name).eq("gamma"))
+            .into();
         assert!(db.first(table).await.unwrap().is_none(), "a failed step left its table");
     }
 }

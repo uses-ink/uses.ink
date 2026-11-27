@@ -138,7 +138,8 @@ mod test {
         Manifest::new(vec![
             Served::new(Route::parse("/feed.xml").unwrap(), Hash::of(b"feed"), MediaType::Atom, vec![]),
             Served::new(Route::root(), Hash::of(b"home"), MediaType::Html, vec![csp]),
-            Served::new(Route::parse("/404").unwrap(), Hash::of(b"gone"), MediaType::Html, vec![]).with_status(Status::NotFound),
+            Served::new(Route::parse("/404").unwrap(), Hash::of(b"gone"), MediaType::Html, vec![])
+                .with_status(Status::NotFound),
         ])
         .unwrap()
     }

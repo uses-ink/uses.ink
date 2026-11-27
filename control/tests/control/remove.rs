@@ -6,8 +6,10 @@ use std::path::Path;
 use blob::{Blob, Deleted, Listed, Stored, Tenant};
 use blob_dir::{Directory, Error as Fault, Reading};
 use build::Source;
-use control::{Ports, NewAccount, NewCredential, NewDeploy, NewSite, Purpose, Refusal, SiteState};
+use control::table::{self, Account, Credential, Deploy, Event, Live, Publication, Site, Tombstone};
+use control::{NewAccount, NewCredential, NewDeploy, NewSite, Ports, Purpose, Refusal, SiteState};
 use model::Hash;
+use sea_query::{Expr, ExprTrait};
 use secret::Plain;
 
 use crate::world::{World, at};
@@ -41,18 +43,14 @@ fn removes_every_row_and_byte_of_a_site_and_nothing_of_another() {
     let gone = world.run(world.control.site(site.id)).unwrap_err();
     assert!(matches!(gone.refusal(), Some(Refusal::NoSite { .. })));
     // only the other site's rows are left
-    for (sql, left) in [
-        ("SELECT COUNT(*) AS n FROM site", 1),
-        ("SELECT COUNT(*) AS n FROM source", 1),
-        ("SELECT COUNT(*) AS n FROM deploy", 1),
-        ("SELECT COUNT(*) AS n FROM site_live", 1),
-        ("SELECT COUNT(*) AS n FROM publication", 1),
-        ("SELECT COUNT(*) AS n FROM credential", 0),
-        ("SELECT COUNT(*) AS n FROM tombstone", 1),
-    ] {
-        assert_eq!(world.count(sql), left, "{sql}");
-    }
-    assert_eq!(world.count("SELECT COUNT(*) AS n FROM event WHERE site_id = lower(hex(zeroblob(16)))"), 0);
+    assert_eq!(world.count(Site::Table), 1);
+    assert_eq!(world.count(table::Source::Table), 1);
+    assert_eq!(world.count(Deploy::Table), 1);
+    assert_eq!(world.count(Live::Table), 1);
+    assert_eq!(world.count(Publication::Table), 1);
+    assert_eq!(world.count(Credential::Table), 0);
+    assert_eq!(world.count(Tombstone::Table), 1);
+    assert_eq!(world.counted(Event::Table, Expr::col(Event::SiteId).eq(site.id.to_string())), 0);
     let kept = Tenant::try_from(other.id).unwrap();
     assert_eq!(world.run(world.control.ports().blob().list(&kept)).unwrap().len(), 3);
     assert!(world.run(world.control.live(other.id)).unwrap().is_some());
@@ -72,7 +70,7 @@ fn the_handle_of_a_removed_site_is_not_free() {
     }));
     assert!(matches!(again.unwrap_err().refusal(), Some(Refusal::Tombstoned { .. })));
     // the account survives its site
-    assert_eq!(world.count("SELECT COUNT(*) AS n FROM account"), 1);
+    assert_eq!(world.count(Account::Table), 1);
 }
 
 /// A directory whose deletes fail after a few.
@@ -85,7 +83,12 @@ impl Blob for Flaky {
     type Error = Fault;
     type Read = Reading;
 
-    async fn put(&self, t: &Tenant, h: Hash, c: impl IntoIterator<Item = impl AsRef<[u8]>>) -> Result<Stored, blob::Error<Fault>> {
+    async fn put(
+        &self,
+        t: &Tenant,
+        h: Hash,
+        c: impl IntoIterator<Item = impl AsRef<[u8]>>,
+    ) -> Result<Stored, blob::Error<Fault>> {
         self.inner.put(t, h, c).await
     }
 
@@ -104,7 +107,10 @@ impl Blob for Flaky {
     async fn delete(&self, t: &Tenant, h: Hash) -> Result<Deleted, blob::Error<Fault>> {
         match self.deletes.get() {
             0 => Err(blob::Error::Backend {
-                source: Fault::Remove { path: Path::new("injected").to_path_buf(), source: std::io::Error::other("injected") },
+                source: Fault::Remove {
+                    path: Path::new("injected").to_path_buf(),
+                    source: std::io::Error::other("injected"),
+                },
             }),
             n => {
                 self.deletes.set(n - 1);

@@ -41,7 +41,12 @@ impl Migration for Queued {
                 .col(ColumnDef::new(Message::VisibleAt).big_integer().not_null())
                 .col(ColumnDef::new(Message::Attempt).integer().not_null().default(Expr::value(0_i64)))
                 .into(),
-            Index::create().name(Visible.as_str()).table(Message::Table).col(Message::VisibleAt).col(Message::Id).into(),
+            Index::create()
+                .name(Visible.as_str())
+                .table(Message::Table)
+                .col(Message::VisibleAt)
+                .col(Message::Id)
+                .into(),
         ]
     }
 }

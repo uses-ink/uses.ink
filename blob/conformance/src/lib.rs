@@ -5,15 +5,28 @@
 //! blob_conformance::suite!(|| MyAdapter::in_a_fresh_place());
 //! ```
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::assert_is_empty,
+    clippy::missing_panics_doc,
+    reason = "a conformance case stops at the first surprise"
+)]
+
 use blob::{Blob, Chunks, Deleted, Error, Listed, Tenant};
 use model::{Bytes, Hash};
 
 #[doc(hidden)]
 pub use pollster;
 
-/// A tenant of the suite's.
-fn tenant(name: &str) -> Tenant {
-    name.parse().unwrap()
+/// Values the cases share.
+struct Samples;
+
+impl Samples {
+    /// A tenant of the suite's.
+    fn tenant(name: &str) -> Tenant {
+        name.parse().unwrap()
+    }
 }
 
 /// What goes in comes out.
@@ -23,7 +36,7 @@ pub struct RoundTrip;
 impl RoundTrip {
     /// Chunks written are one blob read back, and writing it again changes nothing.
     pub async fn check<B: Blob>(blob: &B) {
-        let t = tenant("site-a");
+        let t = Samples::tenant("site-a");
         let bytes = b"hello, blob".to_vec();
         let hash = Hash::of(&bytes);
         assert!(blob.get(&t, hash).await.unwrap().is_none());
@@ -47,7 +60,7 @@ pub struct Sizes;
 impl Sizes {
     /// Zero bytes and three megabytes in odd chunks both round-trip.
     pub async fn check<B: Blob>(blob: &B) {
-        let t = tenant("site-a");
+        let t = Samples::tenant("site-a");
         let empty = Hash::of([]);
         blob.put(&t, empty, Vec::<Vec<u8>>::new()).await.unwrap();
         assert_eq!(blob.get(&t, empty).await.unwrap().unwrap().all().await.unwrap(), Vec::<u8>::new());
@@ -72,10 +85,13 @@ impl Verified {
     /// Other bytes than the named hash's are refused and leave nothing behind, even where the
     /// blob is already held.
     pub async fn check<B: Blob>(blob: &B) {
-        let t = tenant("site-a");
+        let t = Samples::tenant("site-a");
         let hash = Hash::of(b"right");
         let refused = blob.put(&t, hash, [b"wrong"]).await.unwrap_err();
-        assert!(matches!(refused, Error::Mismatch { expected, found } if expected == hash && found == Hash::of(b"wrong")), "{refused}");
+        assert!(
+            matches!(refused, Error::Mismatch { expected, found } if expected == hash && found == Hash::of(b"wrong")),
+            "{refused}"
+        );
         assert!(!blob.exists(&t, hash).await.unwrap());
         assert!(!blob.exists(&t, Hash::of(b"wrong")).await.unwrap());
         assert!(blob.list(&t).await.unwrap().is_empty());
@@ -93,7 +109,7 @@ pub struct Tenants;
 impl Tenants {
     /// The same bytes under two tenants are two blobs: each is listed, read and deleted alone.
     pub async fn check<B: Blob>(blob: &B) {
-        let (a, b) = (tenant("site-a"), tenant("site-b"));
+        let (a, b) = (Samples::tenant("site-a"), Samples::tenant("site-b"));
         let hash = Hash::of(b"shared bytes");
         blob.put(&a, hash, [b"shared bytes"]).await.unwrap();
         assert!(!blob.exists(&b, hash).await.unwrap());
@@ -113,7 +129,7 @@ pub struct Listing;
 impl Listing {
     /// A listing is every blob of the tenant, sorted by hash, and a delete is exact.
     pub async fn check<B: Blob>(blob: &B) {
-        let t = tenant("site-a");
+        let t = Samples::tenant("site-a");
         assert!(blob.list(&t).await.unwrap().is_empty());
         let mut expected: Vec<Listed> = Vec::new();
         for text in ["one", "two", "three", "four"] {

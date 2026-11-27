@@ -37,14 +37,14 @@ pub(crate) struct Pipeline<'a> {
 impl Pipeline<'_> {
     /// Reads the folder: as a repository when it holds `.git`, so dates come from history, else
     /// as plain files. A refusal is the diagnostic that says why.
-    fn read(&self, store: &mut Memory) -> Result<Read, Diagnostic> {
+    fn read(&self, store: &mut Memory) -> Result<Read, Box<Diagnostic>> {
         let versioned = std::fs::symlink_metadata(self.dir.join(".git")).is_ok();
         let read = if versioned {
             Repository { revision: Revision::Head, ..Repository::new(self.dir) }.read(store)
         } else {
             Folder::new(self.dir).read(store)
         };
-        read.map_err(|refused| Diagnostic::from(&refused))
+        read.map_err(|refused| Box::new(Diagnostic::from(&refused)))
     }
 
     /// `ink.toml` of the snapshot, parsed; its problems are about the file.
@@ -80,8 +80,12 @@ impl Pipeline<'_> {
 
     /// Says what the engine said, as events.
     fn say(events: &mut impl Events, diagnostics: &[Diagnostic], notices: &[Notice]) {
-        diagnostics.iter().for_each(|diagnostic| events.event(Event::Diagnosed(diagnostic.clone())));
-        notices.iter().for_each(|notice| events.event(Event::Noticed(notice.clone())));
+        for diagnostic in diagnostics {
+            events.event(Event::Diagnosed(diagnostic.clone()));
+        }
+        for notice in notices {
+            events.event(Event::Noticed(notice.clone()));
+        }
     }
 
     /// Runs the pipeline, saying everything to `events`. `Ok(None)` is a site that does not
@@ -91,7 +95,7 @@ impl Pipeline<'_> {
         let read = match self.read(&mut store) {
             Ok(read) => read,
             Err(diagnostic) => {
-                events.event(Event::Refused(diagnostic));
+                events.event(Event::Refused(*diagnostic));
                 return Ok(None);
             }
         };
@@ -114,7 +118,11 @@ impl Pipeline<'_> {
         Self::say(events, &understood.diagnostics, &understood.notices);
         let Some(site) = understood.site.filter(|_| !stopped) else { return Ok(None) };
         let theme = Quiet::new(self.base.clone(), Grammars::default());
-        let rendered = Engine::new(&store, NoPins, (), &theme).render(&site, &RenderSettings { base: self.base.clone() }, &Pixels::default());
+        let rendered = Engine::new(&store, NoPins, (), &theme).render(
+            &site,
+            &RenderSettings { base: self.base.clone() },
+            &Pixels::default(),
+        );
         Self::say(events, &rendered.diagnostics, &rendered.notices);
         if Self::stops(&rendered.diagnostics) {
             return Ok(None);

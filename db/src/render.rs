@@ -40,8 +40,12 @@ impl Renderer {
             Query::Insert(query) => query.build(SqliteQueryBuilder),
             Query::Update(query) => query.build(SqliteQueryBuilder),
             Query::Delete(query) => query.build(SqliteQueryBuilder),
-            Query::Table(query) => (SchemaStatementBuilder::build(query, SqliteQueryBuilder), sea_query::Values(Vec::new())),
-            Query::Index(query) => (SchemaStatementBuilder::build(query, SqliteQueryBuilder), sea_query::Values(Vec::new())),
+            Query::Table(query) => {
+                (SchemaStatementBuilder::build(query, SqliteQueryBuilder), sea_query::Values(Vec::new()))
+            }
+            Query::Index(query) => {
+                (SchemaStatementBuilder::build(query, SqliteQueryBuilder), sea_query::Values(Vec::new()))
+            }
         };
         if values.0.len() > Statement::MAX_PARAMETERS {
             return Err(Unrenderable::TooMany(TooMany { count: values.0.len(), limit: Statement::MAX_PARAMETERS }));

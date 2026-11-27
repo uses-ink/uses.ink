@@ -36,7 +36,7 @@ pub enum Error {
     /// The operating system gave no randomness.
     Random {
         /// What it said.
-        source: chacha20poly1305::aead::rand_core::Error,
+        source: rand_core::Error,
     },
 }
 

@@ -26,7 +26,10 @@ impl TryFrom<&PluginId> for Reader {
     type Error = PluginId;
 
     fn try_from(id: &PluginId) -> Result<Self, PluginId> {
-        [Self::Markdown, Self::Obsidian].into_iter().find(|reader| reader.id() == id.to_string()).ok_or_else(|| id.clone())
+        [Self::Markdown, Self::Obsidian]
+            .into_iter()
+            .find(|reader| reader.id() == id.to_string())
+            .ok_or_else(|| id.clone())
     }
 }
 
