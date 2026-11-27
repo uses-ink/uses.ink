@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "trace", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp"]
+members = ["cli", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "trace", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp", "https"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -37,6 +37,7 @@ engine = { package = "uses-ink-engine", path = "engine" }
 format-markdown = { package = "uses-ink-format-markdown", path = "plugin/format/markdown" }
 format-obsidian = { package = "uses-ink-format-obsidian", path = "plugin/format/obsidian" }
 freehand = { path = "freehand" }
+https = { package = "uses-ink-https", path = "https" }
 host-image = { package = "uses-ink-host-image", path = "host/image" }
 host-native = { package = "uses-ink-host-native", path = "host/native" }
 host-wasmtime = { package = "uses-ink-host-wasmtime", path = "host/wasmtime" }
@@ -84,8 +85,10 @@ divan = "0.1.21"
 comrak = { version = "1.2.0", default-features = false }
 futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
 # git sources: rev parse, rev walk, tree diff, threads; the clients that fetch (`git.fetch`, 0046)
-# are the file transport, which runs the machine's `git upload-pack`: no HTTP transport yet
-gix = { version = "0.91.0", default-features = false, features = ["blocking-network-client", "pack-cache-lru-dynamic", "parallel", "revision", "sha1"] }
+# are the file transport, which runs the machine's `git upload-pack`, and https through reqwest
+# with no TLS feature of its own: the one TLS stack is rustls over ring, configured in `https`
+# (decision 0072)
+gix = { version = "0.91.0", default-features = false, features = ["blocking-http-transport-reqwest", "blocking-network-client", "pack-cache-lru-dynamic", "parallel", "revision", "sha1"] }
 # the connection loop `ink serve` runs under axum: header and read budgets are hyper's (0051)
 hyper = { version = "1.13.0", default-features = false, features = ["client", "http1", "server"] }
 hyper-util = { version = "0.1.21", default-features = false, features = ["http1", "server", "server-graceful", "service", "tokio"] }
@@ -94,6 +97,13 @@ jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"
 # the self-host mail adapter (decision 0066): SMTP over rustls with the bundled web PKI roots
 lettre = { version = "0.11.24", default-features = false, features = ["builder", "hostname", "smtp-transport", "tokio1", "tokio1-rustls-tls"] }
 libm = "0.2.16"
+# git over https (decision 0072): the blocking client gix's transport uses, with rustls and no
+# provider of its own (the provider is ring, chosen in `https`), the bundled web PKI roots lettre uses
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "rustls-no-provider"] }
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+webpki-roots = "1.0.12"
+# test-only: the certificate authorities and servers of the https tests
+rcgen = { version = "0.14.5", default-features = false, features = ["pem", "ring"] }
 math-core = "0.9.0"
 pollster = "0.4.0"
 proptest = "1.12.0"

@@ -13,6 +13,7 @@ arborium.workspace = true
 arborium-theme.workspace = true
 engine.workspace = true
 gix.workspace = true
+https.workspace = true
 model.workspace = true
 
 [dev-dependencies]
@@ -20,6 +21,8 @@ divan.workspace = true
 fixture.workspace = true
 # test repositories are written object by object
 gix.workspace = true
+rcgen.workspace = true
+rustls.workspace = true
 
 [[bench]]
 name = "read"

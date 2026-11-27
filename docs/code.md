@@ -553,3 +553,11 @@ the `Back` that answers on the caller's task, so `back.run()` is joined with the
 events, body)` puts a loop on a thread and runtime of its own under a supervisor, and `Event` is
 everything it says. A git source is built by `build_local::Local::with_remote(Fetching)` and its
 head read by `watch_git::Remotes`, both with the site's `watch::Access`.
+
+Both reach an `https` remote through the `https` crate (decision 0072): `Https` is a plain struct
+(`connect`, `total`, `follow`, `roots`) whose `options()` gives the transport options that
+`Connection::set_transport_options` takes, and `Remotes::with_https` and `Fetch::https` hold it.
+The client is `rustls` over `ring` with the `webpki-roots` roots, HTTP/1.1 only, `https_only`, no
+proxy, and no setting turns certificate checks off; `Https::trusting` and `--git-ca` add
+authorities. A test starts `https/tests/support/server.rs` (an `rcgen` authority and a TLS server
+that answers `git upload-pack`), included by `#[path]` as `host/native`'s `origin.rs` is.

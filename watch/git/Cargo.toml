@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 build.workspace = true
 gix.workspace = true
+https.workspace = true
 model.workspace = true
 secret.workspace = true
 tokio.workspace = true
@@ -18,6 +19,8 @@ watch.workspace = true
 
 [dev-dependencies]
 gix.workspace = true
+rcgen.workspace = true
+rustls.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 

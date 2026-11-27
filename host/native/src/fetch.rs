@@ -11,8 +11,8 @@
 //!
 //! The byte budget is watched while the pack arrives, so a remote that sends without end is cut
 //! at the limit; the object budget is counted once the objects are indexed. A clone that passes a
-//! budget is removed. Only `file://` has a transport so far: an `https://` repository is the
-//! typed refusal [`Refused::Transport`] until an HTTP transport is chosen.
+//! budget is removed. `https://` goes through the one TLS stack of the `https` crate (decision 0072), within
+//! [`Fetch::https`]: timeouts, redirects and trusted roots, with certificates always verified.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -21,6 +21,7 @@ use std::time::{Duration, Instant};
 
 use gix::remote::Direction;
 use gix::remote::fetch::Shallow;
+use https::Https;
 use model::git::{Auth, Budget, Cloned, Depth, Git, Grant, Network, Refused, Request, Scheme};
 use model::{Bytes, Hash, Oid, Snapshot};
 
@@ -138,6 +139,8 @@ pub struct Fetch {
     pub limits: FetchLimits,
     /// The credentials the builder holds.
     pub grants: Grants,
+    /// How an https remote is reached: timeouts, redirects and extra trusted roots.
+    pub https: Https,
     /// How much of a commit's tree a snapshot may read.
     pub tree: Tree,
     /// What reading a clone's history spends.
@@ -152,14 +155,10 @@ impl Fetch {
             network: Network::Off,
             limits: FetchLimits::default(),
             grants: Grants::default(),
+            https: Https::default(),
             tree: Tree::default(),
             history: History::default(),
         }
-    }
-
-    /// Whether the repository at `scheme` has a transport in this build: only `file` so far.
-    const fn reaches(scheme: Scheme) -> bool {
-        matches!(scheme, Scheme::File)
     }
 
     /// The refusals that come before anything is fetched.
@@ -170,9 +169,6 @@ impl Fetch {
         }
         if let Some(grant) = request.grant.as_ref().filter(|grant| self.grants.secret(grant).is_none()) {
             return Err(Refused::Auth { grant: grant.clone(), outcome: Auth::Absent });
-        }
-        if !Self::reaches(scheme) {
-            return Err(Refused::Transport { scheme });
         }
         Ok(())
     }
@@ -260,12 +256,17 @@ impl Fetch {
         if let Some(asked) = &request.revision {
             prepared = prepared.with_ref_name(Some(asked.as_str()))?;
         }
-        if let Some(secret) = self.credentials(request) {
-            prepared = prepared.configure_connection(move |connection| {
+        let secret = self.credentials(request);
+        let https = (request.locator.scheme() == Scheme::Https).then(|| self.https.clone());
+        prepared = prepared.configure_connection(move |connection| {
+            if let Some(https) = &https {
+                connection.set_transport_options(https.options().map_err(gix::Error::from_error)?);
+            }
+            if let Some(secret) = &secret {
                 connection.set_credentials(secret.answer());
-                Ok(())
-            });
-        }
+            }
+            Ok(())
+        });
         let (repo, _outcome) = prepared.fetch_only(gix::progress::Discard, interrupt)?;
         Ok(repo)
     }
@@ -276,6 +277,9 @@ impl Fetch {
         let remote =
             repo.find_fetch_remote(None)?.with_refspecs(Some("+refs/heads/*:refs/heads/*"), Direction::Fetch)?;
         let mut connection = remote.connect(Direction::Fetch)?;
+        if request.locator.scheme() == Scheme::Https {
+            connection.set_transport_options(self.https.options().map_err(gix::Error::from_error)?);
+        }
         if let Some(secret) = self.credentials(request) {
             connection.set_credentials(secret.answer());
         }

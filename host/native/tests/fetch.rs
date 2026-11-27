@@ -28,13 +28,13 @@ fn the_network_is_off_until_the_operator_says_otherwise() {
 }
 
 #[test]
-fn a_local_setting_refuses_https_and_an_open_one_has_no_transport_for_it() {
+fn a_local_setting_refuses_https_and_an_open_one_tries_it() {
     let origin = Origin::new("https");
-    let https = Request::new("https://example.invalid/site.git".parse().unwrap());
+    let https = Request::new("https://127.0.0.1:1/site.git".parse().unwrap());
     let local = origin.fetch().run(&https).unwrap_err();
     assert!(matches!(local, Refused::Network { scheme: Scheme::Https, policy: Network::Local }), "{local:?}");
     let open = Fetch { network: Network::On, ..origin.fetch() }.run(&https).unwrap_err();
-    assert!(matches!(open, Refused::Transport { scheme: Scheme::Https }), "{open:?}");
+    assert!(matches!(open, Refused::Failed(Failed::Fetch { .. })), "{open:?}");
 }
 
 #[test]

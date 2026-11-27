@@ -27,6 +27,8 @@ pub(crate) struct Settings {
     pub(crate) components: PathBuf,
     /// What the builder may reach.
     pub(crate) network: Network,
+    /// How an https remote is reached.
+    pub(crate) https: https::Https,
     /// What one fetch and read may take, in wall time.
     pub(crate) budget: Budget,
 }
@@ -117,7 +119,11 @@ impl<P: Ports + 'static> Remote for Fetching<P> {
         let tenant = request.tenant.to_string();
         let site = tenant.parse::<Id<SiteKind>>().map_err(|_| Unfetched::Tenant(tenant))?;
         let access = Access::of(&self.control, site).await.map_err(Unfetched::Access)?;
-        let mut fetch = Fetch { network: self.settings.network, ..Fetch::new(&self.settings.cache) };
+        let mut fetch = Fetch {
+            network: self.settings.network,
+            https: self.settings.https.clone(),
+            ..Fetch::new(&self.settings.cache)
+        };
         let mut want = Want::new(url.clone());
         want.revision = revision.as_ref().and_then(|revision| revision.as_ref().parse().ok());
         if let Some(access) = &access {

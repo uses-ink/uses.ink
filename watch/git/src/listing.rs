@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use gix::remote::Direction;
+use https::Https;
 use secret::Plain;
 
 use crate::Unlisted;
@@ -23,6 +24,8 @@ pub(crate) struct Listing {
     pub(crate) url: String,
     pub(crate) revision: Option<String>,
     pub(crate) login: Option<Login>,
+    /// The https settings, for an https url.
+    pub(crate) https: Option<Https>,
 }
 
 impl Listing {
@@ -66,6 +69,9 @@ impl Listing {
         let remote = repo.remote_at(url).map_err(Unlisted::remote)?;
         let remote = remote.with_refspecs(Self::SPECS, Direction::Fetch).map_err(Unlisted::remote)?;
         let mut connection = remote.connect(Direction::Fetch).map_err(Unlisted::remote)?;
+        if let Some(https) = &self.https {
+            connection.set_transport_options(https.options().map_err(Unlisted::Https)?);
+        }
         if let Some(login) = self.login {
             connection.set_credentials(Self::answer(login));
         }

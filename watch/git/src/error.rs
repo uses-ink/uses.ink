@@ -18,11 +18,8 @@ pub enum Unlisted {
         /// The setting.
         policy: Network,
     },
-    /// This build has no transport for the scheme.
-    Transport {
-        /// The scheme.
-        scheme: Scheme,
-    },
+    /// The https settings could not be made into a connection configuration.
+    Https(https::Misconfigured),
     /// The repository kept for connections could not be made or opened.
     Scratch {
         /// Where.
@@ -54,7 +51,7 @@ impl fmt::Display for Unlisted {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Network { scheme, policy } => write!(out, "the network setting `{policy}` does not allow {scheme}"),
-            Self::Transport { scheme } => write!(out, "this build has no transport for {scheme}"),
+            Self::Https(_) => out.write_str("the https connection could not be configured"),
             Self::Scratch { path, .. } => write!(out, "the repository {} could not be opened", path.display()),
             Self::Remote { .. } => out.write_str("the remote's references could not be listed"),
             Self::Missing(_) => out.write_str("the remote has no such commit"),
@@ -69,10 +66,11 @@ impl std::error::Error for Unlisted {
         match self {
             Self::Scratch { source, .. } => Some(source),
             Self::Remote { source } => Some(source),
+            Self::Https(source) => Some(source),
             Self::Missing(source) => Some(source),
             Self::Commit(source) => Some(source),
             Self::Task(source) => Some(source),
-            Self::Network { .. } | Self::Transport { .. } => None,
+            Self::Network { .. } => None,
         }
     }
 }

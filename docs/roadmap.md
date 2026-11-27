@@ -203,8 +203,9 @@ deploys by host (`edge/control`), runs the watch and the worker as supervised th
 events, remembers the watch's last-seen commit, reads remote heads with `gix` (`watch/git`) and
 builds git sources through the `ink:source-git` component. `cli/tests/selfhost.rs` adds a
 `file://` repository, sees it served, pushes, sees the update, rolls back, exports and deletes,
-over the real binary with no network. Not done: git over HTTPS (no TLS stack on the licence
-list), `ink push`, streaming intake and export.
+over the real binary with no network. Not done: `ink push`, streaming intake and export.
+Git over HTTPS followed (0072): the watch's head read and the source fetch go through one rustls and
+`ring` client, with a licence exception for `webpki-root-certs` alone, tested against a local TLS server.
 - `edge` and `edge/axum`: serve, API, intake; polling watch; on-demand ACME. **Serving built
   (0051), gate green on the farm:** `edge` (ports, refusals, limits, conditional, range, 404, headers), `edge/axum`
   (hyper loop, streaming, budgets, events, `/healthz`, graceful stop), `edge/folder` and

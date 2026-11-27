@@ -155,10 +155,10 @@ impl args::Serve {
     fn start_watch(&self, tasks: &mut Tasks, product: &Product, events: &Events) {
         let (ports, origin, interval) = (Arc::clone(&product.ports), product.origin.clone(), product.interval);
         let git = self.hosting.git_cache.clone().unwrap_or_else(|| product.data.join("git"));
-        let (heads, network) = (git.join("heads"), self.hosting.network());
+        let (heads, network, https) = (git.join("heads"), self.hosting.network(), product.https.clone());
         tasks.start(Task::Watch, (self.hosting.restart(), events), move |clock: Stoppable, events: Events| {
             let (ports, origin) = (Arc::clone(&ports), origin.clone());
-            let heads = watch_git::Remotes::new(heads.clone(), network);
+            let heads = watch_git::Remotes::new(heads.clone(), network).with_https(https.clone());
             Box::pin(async move {
                 let control = control::Control::new(ports, origin);
                 let mut watch = watch::Watch::new(&control, heads, (clock, clock::System), interval);
@@ -174,6 +174,7 @@ impl args::Serve {
             cache: git.join("clones"),
             components: product.data.join("components"),
             network: self.hosting.network(),
+            https: product.https.clone(),
             budget: host_wasmtime::Budget { time: self.hosting.fetch_time(), ..host_wasmtime::Budget::default() },
         };
         let (blobs, times) = (product.data.join("blobs"), self.hosting.worker());

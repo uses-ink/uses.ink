@@ -1,0 +1,18 @@
+[package]
+name = "uses-ink-https"
+description = "How git reaches an https remote: the one rustls and ring client config, timeouts and a redirect policy as typed settings, certificate verification always on"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+gix.workspace = true
+reqwest.workspace = true
+rustls.workspace = true
+webpki-roots.workspace = true
+
+[lints]
+workspace = true

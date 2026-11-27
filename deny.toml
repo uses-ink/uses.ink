@@ -40,7 +40,7 @@ exceptions = [
     { crate = "v_frame", allow = ["BSD-2-Clause"] },
     # rav1e's `fuzzing` feature, which nothing enables; `all-features` above reaches it
     { crate = "libfuzzer-sys", allow = ["NCSA"] },
-    # TLS for the SMTP adapter (mail/smtp, decision 0066): rustls over `ring`, with the bundled web
+    # TLS for the SMTP adapter (mail/smtp, decision 0066) and for git over https (decision 0072): rustls over `ring`, with the bundled web
     # PKI roots. ISC is the licence of `ring`'s and webpki's own code; CDLA-Permissive-2.0 covers
     # the root certificates' data.
     { crate = "quoted_printable", allow = ["0BSD"] },
@@ -48,6 +48,12 @@ exceptions = [
     { crate = "rustls-webpki", allow = ["ISC"] },
     { crate = "untrusted", allow = ["ISC"] },
     { crate = "webpki-roots", allow = ["CDLA-Permissive-2.0"] },
+    # git over https (decision 0072) reuses that stack: gix's reqwest backend is built with the
+    # `rustls-no-provider` feature, which also compiles `rustls-platform-verifier`, and that takes
+    # the same roots as data in `webpki-root-certs`. Nothing calls it: the client is configured
+    # with `webpki-roots` and `ring` in the `https` crate, so this is the one more crate that
+    # carries the CDLA-Permissive-2.0 of the root certificates, and no second TLS stack
+    { crate = "webpki-root-certs", allow = ["CDLA-Permissive-2.0"] },
     # JPEG copies (host/image): the IJG notice covers its port of libjpeg's tables
     { crate = "jpeg-encoder", allow = ["IJG"] },
 ]

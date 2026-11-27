@@ -88,7 +88,7 @@ fn reads_the_default_branch_a_named_branch_and_a_moved_head() {
 }
 
 #[test]
-fn the_network_setting_and_the_transport_say_no_before_anything_is_asked() {
+fn the_network_setting_says_no_before_anything_is_asked() {
     let repo = Repo::new("refused");
     repo.commit(0, &[], "main");
     let scratch = tempfile::tempdir().unwrap();
@@ -98,8 +98,5 @@ fn the_network_setting_and_the_transport_say_no_before_anything_is_asked() {
     };
     let off = ask(Network::Off, &repo.locator()).unwrap_err();
     assert!(matches!(off, Unlisted::Network { scheme: Scheme::File, .. }), "{off:?}");
-    let https: Locator = "https://example.org/a.git".parse().unwrap();
-    let refused = ask(Network::On, &https).unwrap_err();
-    assert!(matches!(refused, Unlisted::Transport { scheme: Scheme::Https }), "{refused:?}");
     assert!(!scratch.path().join("refused").exists(), "nothing was made for a refused ask");
 }

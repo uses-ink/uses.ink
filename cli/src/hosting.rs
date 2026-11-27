@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::{Args, ValueEnum};
+use https::{Follow, Https, Misconfigured};
 use model::git::{Network, Scheme};
 
 use crate::tasks::Restart;
@@ -25,6 +26,27 @@ impl From<Allowed> for Scheme {
         match allowed {
             Allowed::Https => Self::Https,
             Allowed::File => Self::File,
+        }
+    }
+}
+
+/// Which redirects an https remote's answers are followed through (`--git-redirects`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum Redirects {
+    /// None.
+    Never,
+    /// Those of the first request of a connection, as `git` does.
+    First,
+    /// Those of every request.
+    Always,
+}
+
+impl From<Redirects> for Follow {
+    fn from(redirects: Redirects) -> Self {
+        match redirects {
+            Redirects::Never => Self::Never,
+            Redirects::First => Self::First,
+            Redirects::Always => Self::Always,
         }
     }
 }
@@ -69,6 +91,21 @@ pub struct Hosting {
     /// Seconds a fetch and read of a git source may take. [default: 120]
     #[arg(long, help_heading = Heading::HOSTING)]
     pub git_time: Option<u64>,
+    /// Seconds to wait for a connection to an https git remote. [default: 10]
+    #[arg(long, help_heading = Heading::HOSTING)]
+    pub git_connect: Option<u64>,
+    /// Seconds one https request to a git remote may take in all, its body included: also the
+    /// longest a pack may take to arrive. [default: 120]
+    #[arg(long, help_heading = Heading::HOSTING)]
+    pub git_request: Option<u64>,
+    /// Which redirects of an https git remote are followed; one that leaves https never is.
+    /// [default: first]
+    #[arg(long, value_enum, help_heading = Heading::HOSTING)]
+    pub git_redirects: Option<Redirects>,
+    /// A PEM file of certificate authorities to trust beside the bundled web roots, for a forge
+    /// with a private authority; repeat for more. Certificates are always verified.
+    #[arg(long = "git-ca", help_heading = Heading::HOSTING)]
+    pub git_cas: Vec<PathBuf>,
 }
 
 impl Hosting {
@@ -120,5 +157,24 @@ impl Hosting {
     /// How long a fetch may take.
     pub(crate) fn fetch_time(&self) -> Duration {
         self.git_time.map_or(Duration::from_mins(2), Duration::from_secs)
+    }
+
+    /// How an https git remote is reached: the flags over the defaults.
+    ///
+    /// # Errors
+    ///
+    /// [`Misconfigured`] when a `--git-ca` file cannot be read.
+    pub(crate) fn https(&self) -> Result<Https, Misconfigured> {
+        let defaults = Https::default();
+        let mut https = Https {
+            connect: self.git_connect.map_or(defaults.connect, Duration::from_secs),
+            total: self.git_request.map_or(Duration::from_mins(2), Duration::from_secs),
+            follow: self.git_redirects.map_or(defaults.follow, Follow::from),
+            ..defaults
+        };
+        for path in &self.git_cas {
+            https = https.trusting_file(path)?;
+        }
+        Ok(https)
     }
 }

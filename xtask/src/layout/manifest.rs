@@ -112,7 +112,12 @@ impl Order {
         ),
         // The watch's Heads port over git's protocol (decision 0067): the watch's trait, git
         // through gix, the build port's revision and the model's locator.
-        ("uses-ink-watch-git", &["uses-ink-build", "uses-ink-model", "uses-ink-secret", "uses-ink-watch"]),
+        (
+            "uses-ink-watch-git",
+            &["uses-ink-build", "uses-ink-https", "uses-ink-model", "uses-ink-secret", "uses-ink-watch"],
+        ),
+        // How git reaches an https remote (decision 0072): gix, rustls and reqwest; no crate of ours.
+        ("uses-ink-https", &[]),
         (
             "uses-ink-watch",
             &[
@@ -135,7 +140,7 @@ impl Order {
         // A dialect of markdown reads through the markdown format's comrak setup.
         ("uses-ink-format-obsidian", &["uses-ink-model", "uses-ink-format-markdown"]),
         ("uses-ink-host-image", &["uses-ink-model", "uses-ink-engine", "uses-ink-trace"]),
-        ("uses-ink-host-native", &["uses-ink-model", "uses-ink-engine", "uses-ink-trace"]),
+        ("uses-ink-host-native", &["uses-ink-https", "uses-ink-model", "uses-ink-engine", "uses-ink-trace"]),
         // A theme's native core implements the engine's Theme trait; its guest crate exports it.
         ("uses-ink-theme-quiet", &["uses-ink-model", "uses-ink-engine"]),
         (
@@ -167,6 +172,7 @@ impl Order {
                 "uses-ink-secret",
                 "uses-ink-host-image",
                 "uses-ink-host-native",
+                "uses-ink-https",
                 "uses-ink-format-markdown",
                 "uses-ink-format-obsidian",
                 "uses-ink-theme-quiet",

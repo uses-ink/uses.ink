@@ -39,6 +39,7 @@ format-markdown.workspace = true
 format-obsidian.workspace = true
 host-image.workspace = true
 host-native.workspace = true
+https.workspace = true
 host-wasmtime.workspace = true
 http-body-util.workspace = true
 hyper.workspace = true

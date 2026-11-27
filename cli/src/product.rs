@@ -119,6 +119,8 @@ pub(crate) struct Product {
     pub(crate) origin: Origin,
     /// The data folder.
     pub(crate) data: PathBuf,
+    /// How the loops reach an https git remote.
+    pub(crate) https: https::Https,
     /// The edge's way to the control plane's sites.
     pub(crate) fronts: Fronts,
     /// The half that answers the edge's lookups.
@@ -148,7 +150,6 @@ impl Product {
         let account = Self::owner(&control)?;
         let (token, fresh) = Self::token(&data.join("owner-token"))?;
         let limits = Self::limits(settings)?;
-        let interval = Self::interval(settings)?;
         let flags = &settings.signin;
         let secure = Flags::secure(&settings.origin)?;
         let base = flags.base(&settings.origin, &settings.api_host)?;
@@ -168,11 +169,12 @@ impl Product {
             api: Routed::new(api, door),
             mailing,
             limits,
-            interval,
+            interval: Self::interval(settings)?,
             token: data.join("owner-token"),
             ports,
             origin,
             data: data.to_path_buf(),
+            https: Self::https(settings)?,
             fronts,
             back: Some(back),
             fresh,
@@ -266,6 +268,11 @@ impl Product {
         limits.file = settings.upload_file.unwrap_or(ceiling.file);
         limits.export = settings.export_bytes.unwrap_or(ceiling.export);
         limits.lower(&asked).map_err(|e| Unready::Setting { flag: "the limits", source: Box::new(e) })
+    }
+
+    /// How the loops reach an https git remote: the flags, over the defaults.
+    fn https(settings: &args::Serve) -> Result<https::Https, Unready> {
+        settings.hosting.https().map_err(|e| Unready::Setting { flag: "--git-ca", source: Box::new(e) })
     }
 
     fn interval(settings: &args::Serve) -> Result<watch::Interval, Unready> {
