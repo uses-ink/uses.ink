@@ -179,9 +179,13 @@ Progress (2026-11-27): the control plane is built and its crate gates pass. The 
 `build/local`, `secret/local`) and conformance suites; `control` holds the use cases (accounts,
 sites and handles, deploys with rollback and resume, build jobs worked off the queue,
 credentials sealed at rest, export, removal with a tombstone) with tests on the real adapters.
-No SQL text exists: statements and migrations are typed values (0049). Not done: `edge`, `web`,
+No SQL text exists: statements and migrations are typed values (0049). Not done: the edge's API and intake, `web`,
 sign-in, `ink push` and the CLI verbs.
-- `edge` and `edge/axum`: serve, API, intake; polling watch; on-demand ACME.
+- `edge` and `edge/axum`: serve, API, intake; polling watch; on-demand ACME. **Serving built
+  (0051):** `edge` (ports, refusals, limits, conditional, range, 404, headers), `edge/axum`
+  (hyper loop, streaming, budgets, events, `/healthz`, graceful stop), `edge/folder` and
+  `ink serve`. Open: API, intake, polling watch, on-demand ACME and TLS, the worker adapter,
+  redirect and variant entries in the manifest.
 - `web`: dashboard (Site, What we understood, Deploys, Settings, Account) on the chosen stack,
   pen through wasm, live build log as a streamed page **(owner: dashboard stack, after the frontend
   research)**.

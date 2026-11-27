@@ -72,7 +72,7 @@ futures-util = { version = "0.3.34", default-features = false, features = ["std"
 # git sources: rev parse, rev walk, tree diff, threads; the clients that fetch (`git.fetch`, 0046)
 # are the file transport, which runs the machine's `git upload-pack`: no HTTP transport yet
 gix = { version = "0.91.0", default-features = false, features = ["blocking-network-client", "pack-cache-lru-dynamic", "parallel", "revision", "sha1"] }
-# the connection loop `ink serve` runs under axum: header and read budgets are hyper's (0046)
+# the connection loop `ink serve` runs under axum: header and read budgets are hyper's (0051)
 hyper = { version = "1.13.0", default-features = false, features = ["http1", "server"] }
 hyper-util = { version = "0.1.21", default-features = false, features = ["http1", "server", "server-graceful", "service", "tokio"] }
 insta = { version = "1.49.0", features = ["glob"] }

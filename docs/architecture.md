@@ -80,9 +80,11 @@ uses.ink/
   queue/  queue/cf/  queue/local/                build request port
   build/  build/container/  build/local/         builder port: start a build, stream its events
   secret/                uses-ink-secret        sealing credentials at rest
-  edge/                  uses-ink-edge          serve, api, intake, independent of the HTTP runtime
+  edge/                  uses-ink-edge          serve, api, intake, independent of the HTTP runtime; the serving half is
+                                                built (0051): Sites and Blobs ports, Request to Reply, Limits, refusals
   edge/worker/           uses-ink-edge-worker   workers-rs entry point, bindings
-  edge/axum/             uses-ink-edge-axum     axum entry point
+  edge/axum/             uses-ink-edge-axum     axum entry point: hyper's HTTP/1 loop, streaming, graceful stop, events
+  edge/folder/           uses-ink-edge-folder   the edge's ports over folders `ink build` wrote (`ink serve`)
   web/                   uses-ink-web           landing and dashboard (stack in section 14)
   cli/                   uses-ink-cli           the `ink` binary
   plugin/
@@ -110,6 +112,8 @@ Dependency direction, enforced by `cargo xtask layout` (a step of `cargo xtask c
 ```
 model <- config, diag <- engine <- host <- host/{wasmtime,native,image} <- cli
 model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret (traits only)
+edge <- model only today (the serving half does not need control); edge/{axum,folder} <- edge, model; the
+CLI takes edge, edge/axum and edge/folder for `ink serve`.
 plugin/* <- model, plugin/sdk, wit only, and engine for its plugin traits. Never control, host/* or edge.
 plugin/sdk <- model, freehand only: a permissive crate depends on no AGPL crate of ours.
 host/wasmtime <- host/native (grammars), engine (the traits its components implement).
@@ -379,7 +383,10 @@ reads. It reads the files on disk, since it writes into them; a git read builds 
 - **Publish** writes `site.live = <deploy>` and records the previous value; **rollback** writes an
   older one. Both are commands with events. Rollback pauses automatic publishing until `resume`.
 - **Serve**: `host -> site -> live deploy -> entry -> blob`, headers from the manifest. The edge
-  cache key includes the deploy id, so publishing purges nothing. The host-to-deploy lookup is
+  cache key includes the deploy id, so publishing purges nothing. The edge refuses hostile hosts,
+  paths and headers as typed refusals, answers `HEAD`, `If-None-Match` and single-span `Range`,
+  and sends the manifest's own headers with the strict file set filled in where an entry lacks it;
+  what it will and will not do is decision 0051. The host-to-deploy lookup is
   cached per colo for at most 10 s, and `deploy.published` says `visible-within: 10 s`.
 - **Retention**: blobs reachable from the live deploy, the last 20 deploys, and pending builds;
   a per-tenant sweep removes the rest.
@@ -465,7 +472,10 @@ crate.
 
 **CLI** (`ink`): `login`, `logout`, `whoami`, `init`, `build`, `check`, `explain`, `pin`, `preview`,
 `push`, `watch`, `status`, `deploys`, `rollback`, `resume`, `source`, `domain`, `handle`,
-`theme`, `select`, `export`, `account`, `diag`, `serve`. Output rules, samples and exit codes:
+`theme`, `select`, `export`, `account`, `diag`, `serve`. `ink serve [folder] [--addr] [--host-mode]` serves a
+built deploy through the edge crates the product runs (conditional and range requests, refusals,
+budgets, the manifest's production headers); `ink preview` builds in memory for writing and serves
+on 127.0.0.1 with a hand-written responder. Output rules, samples and exit codes:
 `research/flow.md` section 7, which moves here when the CLI is built. Every command takes
 `--json`; streaming commands emit NDJSON events with a `schema` field.
 

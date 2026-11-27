@@ -59,6 +59,8 @@ Each word means one thing everywhere: code, CLI, dashboard copy, docs, diagnosti
 | **stroke** | one pen line, before it becomes a mark | a mark |
 | **token** | a typed theme setting an author can set in `ink.toml` (`accent`) | a credential |
 | **credential** | a secret that grants access (installation token, refresh token) | a token |
+| **hostname** | the validated DNS name or address a request is for (`edge::Hostname`) | a host capability (`host/`) |
+| **refusal** | a request the edge will not serve, as typed data with its status (`edge::Refusal`) | a diagnostic |
 
 A new word gets a row here before it gets used.
 

@@ -62,7 +62,7 @@ impl Order {
         ("uses-ink-config", &["uses-ink-model"]),
         ("uses-ink-diag", &["uses-ink-model"]),
         ("uses-ink-engine", &["uses-ink-model", "uses-ink-diag", "uses-ink-config"]),
-        // Serving a deploy (decision 0046): the edge speaks the model alone; its adapters add the
+        // Serving a deploy (decision 0051): the edge speaks the model alone; its adapters add the
         // runtime (axum) or a folder of deploys, never each other.
         ("uses-ink-edge", &["uses-ink-model"]),
         ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge"]),

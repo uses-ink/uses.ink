@@ -430,3 +430,48 @@ a statement is a builder expression, `Query::select().column(Site::Id).from(Site
 applies what the ledger lacks. When a CHECK lists the values of a column, it is built from the
 `NAMES` table the code reads the column back with. The layout rule `sql` fails a literal that
 starts with a SQL keyword, a raw escape of the builders and any `.sql` file.
+## 10. The edge: a pure answer over two ports
+
+Serving is one function of a typed request, and everything that touches the world is a port the
+edge is generic over (decision 0051):
+
+```rust
+pub trait Sites: Send + Sync {
+    type Scope: Send + Sync;
+    type Error: Error + Send + Sync + 'static;
+    fn resolve(&self, hostname: &Hostname) -> impl Future<Output = Result<Option<Resolved<Self::Scope>>, Self::Error>> + Send;
+}
+pub trait Blobs: Send + Sync {
+    type Scope: Send + Sync;                // the same type Sites resolves to: a tenant, a folder
+    type Blob: Blob;
+    type Error: Error + Send + Sync + 'static;
+    fn open(&self, scope: &Self::Scope, hash: Hash) -> impl Future<Output = Result<Self::Blob, BlobError<Self::Error>>> + Send;
+}
+pub trait Blob: Send + Sync { type Body: Chunks; fn length(&self) -> u64; fn read(self, span: Span) -> Self::Body; }
+pub trait Chunks: Send { type Error: Error + Send + Sync + 'static; fn next(&mut self) -> impl Future<Output = Result<Option<Bytes>, Self::Error>> + Send; }
+```
+
+`Edge<S: Sites, B: Blobs<Scope = S::Scope>>::respond(&Request) -> Reply<S, B>` never fails and
+never panics. A `Request` is a method, a target and header lines as bytes, exactly as the adapter
+received them; nothing in it is trusted until `Request::ask` turns it into an `Asked`. Each check
+is a type that parses and refuses with its data: `Authority` (`TryFrom<&[u8]>`), `Target::parse`
+(decoded once, never repaired: `..`, `%2f`, `%252e`, `//` are refused), `Head` (counts, sizes,
+line breaks, a body on a read), and the `Conditions` headers (`Matching`, `Ranges`, `Validator`,
+`Accepted`, each `read` from bytes). `Refusal` is the one enum of everything refused; it carries
+the data of its causes through `source()` and knows its own `Status`.
+
+The reply is an `Answer`: a `Response` (status, `Field`s, a `Body` that is empty, a line of text
+or an opened blob with its span) and an `Outcome` (`Served`, `Unchanged`, `Moved`, `Missing`,
+`Probed`, `Refused(Refusal)`, `Failed(Fault)`) that says why. A log line, a test and the
+status all come from the same value. The adapter streams `Body::Blob` and keeps the times
+(`Limits::{read, open, idle, send, drain}`); the edge keeps the sizes. Headers are built once in
+`Fields`, which remembers the first value that is no header value, and `Hardening` adds what
+every response carries (`nosniff`, a CSP, the cross-origin policy, HSTS over TLS) wherever the
+manifest entry did not already say.
+
+Adapters are crates with one job each: `edge/axum` (hyper's HTTP/1 loop under an axum router,
+streaming, graceful stop, `Observe` of typed `Event`s) and `edge/folder` (`Deploys` for `Sites`,
+`Files` for `Blobs`, over what `ink build` writes). A new runtime or store is a new adapter, not
+an edit; the hostile-request table (`edge/tests/hostile.rs`) and the in-memory stand-ins
+(`edge/tests/support`) are what each one is held to.
+
