@@ -47,7 +47,7 @@ impl Workspace {
     }
 
     /// Every path under `dir`, relative to `root`; a symlinked directory is never followed.
-    fn walk(dir: &Path, root: &Path, entries: &mut Vec<PathBuf>) -> Result<(), Error> {
+    pub(crate) fn walk(dir: &Path, root: &Path, entries: &mut Vec<PathBuf>) -> Result<(), Error> {
         let read = |source| Error::Read { path: dir.to_path_buf(), source };
         let mut found = std::fs::read_dir(dir).map_err(read)?.collect::<Result<Vec<_>, _>>().map_err(read)?;
         found.sort_by_key(std::fs::DirEntry::file_name);

@@ -114,3 +114,71 @@ exempt = ["fixture", "support", "tests"]
 [[fanout.waive]]
 path = "docs"
 reason = "one file per concern, and the decision files"
+
+# The decisions, `docs/decisions/` (`cargo xtask docs`, xtask's `docs/`). A bare `(NNNN)` is a
+# citation only up to `ceiling`; above it the digits are a file mode, a year or a count. A number
+# up to the highest has a file, a reserved row or a gap row, so a number lost to a bad rename shows.
+# The areas of the front matter are free labels (a lowercase slug), not a list here: they follow the
+# work, and a typo shows in the index.
+[decisions]
+ceiling = 99
+home = "../history/review-fixes.md"
+
+[[decisions.reserved]]
+number = "0058"
+title = "Review fixes of the control plane and the edge: what a failure now does"
+
+[[decisions.reserved]]
+number = "0060"
+title = "Review fixes: keys, panics, escapes, atomic writes, held nones"
+
+[[decisions.gap]]
+first = "0050"
+last = "0050"
+reason = "never written: absent from decisions.md when it was split"
+
+[[decisions.gap]]
+first = "0056"
+last = "0057"
+reason = "never written: absent from decisions.md when it was split"
+
+[[decisions.gap]]
+first = "0059"
+last = "0059"
+reason = "never written: absent from decisions.md when it was split"
+
+[[decisions.gap]]
+first = "0062"
+last = "0064"
+reason = "never written: absent from decisions.md when it was split"
+
+[[decisions.gap]]
+first = "0069"
+last = "0071"
+reason = "never written: absent from decisions.md when it was split"
+
+[[decisions.gap]]
+first = "0073"
+last = "0073"
+reason = "never written: absent from decisions.md when it was split"
+
+# The docs checks. A block of prose with a word of `planned` (any case) names what is not built,
+# so the paths in it need not exist.
+[docs]
+planned = ["planned", "removed", "not built", "not yet"]
+
+[[docs.future]]
+path = "docs/layout.md"
+reason = "the plan: it names the paths of the layout to come"
+
+[[docs.future]]
+path = "docs/research"
+reason = "historical research, written before the code; its banners say so"
+
+[[docs.future]]
+path = "docs/history"
+reason = "logs of fixes, with the paths as they were then"
+
+[[docs.quoted]]
+path = "xtask/src/docs"
+reason = "the citation check's own tests quote the forms it reads"

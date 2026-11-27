@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use crate::Task;
 use crate::check::{Invocation, Stage, Tool};
+use crate::docs::Fault;
 use crate::generate::output::Stale;
 use crate::layout::Problem;
 use crate::process::Failure;
@@ -74,6 +75,8 @@ pub(crate) enum Error {
     },
     /// Everything the layout rules found wrong.
     Layout(Vec<Problem>),
+    /// Everything the docs checks found wrong.
+    Docs(Vec<Fault>),
     /// Generated files that differ from what their generator writes now.
     Stale(Vec<Stale>),
     /// A step of `cargo xtask check` that failed.
@@ -145,6 +148,7 @@ impl fmt::Display for Error {
             Self::Parse { path, .. } => write!(out, "{} does not parse as a Rust file", path.display()),
             Self::Module { path, name } => write!(out, "{}: no file for `mod {name};`", path.display()),
             Self::Layout(problems) => write!(out, "layout problems:{}", Lines(problems)),
+            Self::Docs(faults) => write!(out, "docs problems:{}", Lines(faults)),
             Self::Stale(stale) => write!(out, "stale generated files:{}", Lines(stale)),
             Self::Step { command, .. } => write!(out, "check: `{command}` failed"),
             Self::Tool { command, tool } => write!(
@@ -200,6 +204,7 @@ impl std::error::Error for Error {
             | Self::Source { .. }
             | Self::Module { .. }
             | Self::Layout(_)
+            | Self::Docs(_)
             | Self::Stale(_)
             | Self::Tool { .. }
             | Self::Mismatch { .. } => None,

@@ -1,8 +1,9 @@
 # Decisions
 
 Each decision is one file, `NNNN-slug.md`, with front matter. A number never changes. A superseded
-decision stays, with a pointer to its replacement. Numbers 0058 and 0060 are reserved: they were
-review-fix logs, now in [`../history/review-fixes.md`](../history/review-fixes.md).
+decision stays, with a pointer to its replacement.
+
+Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../history/review-fixes.md`](../history/review-fixes.md).
 
 | Number | Title | Status | Date | Area |
 |---|---|---|---|---|

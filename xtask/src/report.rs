@@ -60,6 +60,8 @@ pub(crate) enum Line {
     Crowded { count: usize, limit: usize, largest: Vec<(PathBuf, usize)> },
     /// The layout and every generated file are as they should be.
     Checked,
+    /// The links, citations, crate paths and decisions of the docs are as they should be.
+    Prose,
     /// A site fixture built the same deploy natively and through the components.
     Matched(PathBuf),
     /// Every step of the gate passed.
@@ -89,6 +91,7 @@ impl fmt::Display for Line {
                 })
             }
             Self::Checked => write!(out, "layout fine, generated files fresh"),
+            Self::Prose => write!(out, "docs fine: links, citations, crate paths and decisions checked"),
             Self::Matched(path) => write!(out, "{}: same deploy natively and as components", path.display()),
             Self::Passed => write!(out, "check: every step passed"),
         }

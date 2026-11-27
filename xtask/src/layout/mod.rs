@@ -5,7 +5,7 @@
 //! the statement builders, function names of one or two words, no free functions, and release
 //! files that name the binary that exists.
 
-mod config;
+pub(crate) mod config;
 mod model;
 mod read;
 mod release;

@@ -17,7 +17,7 @@ The owner has not read it yet; the choices below are the ones to push back on.
   A blob is opened first, so its length is known before a byte is read (ranges, `content-length`,
   the size budget), then read as a stream of chunks. The core owns no socket, file, clock or
   runtime; `Edge::respond` takes bytes and returns a typed `Answer`. workers-rs futures are not
-  `Send`, so `edge/worker` wraps these traits in its own twin; the logic is the same code.
+  `Send`, so the planned `edge/worker` wraps these traits in its own twin; the logic is the same code.
 - **The edge parses the request, not the framework.** The adapter passes the method, the target
   and the header lines exactly as received, and the edge refuses with a typed `Refusal` that
   carries its data (`Refusal` has the data and a status; its text is its `Display`, once). The

@@ -250,7 +250,7 @@ the update, roll back, export, delete: every step with no flags and every defaul
 
 The same product on Cloudflare.
 
-- `edge/worker`, `db/d1`, `blob/r2`, `queue/cf`, `build/container`; the per-handle Durable
+- Planned crates: `edge/worker`, `db/d1`, `blob/r2`, `queue/cf`, `build/container`; the per-handle Durable
   Object; deploy pipeline from CI with `wrangler`.
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`; handles with reservations and tombstones **(owner: O3, Q5)**.

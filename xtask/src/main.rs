@@ -5,11 +5,14 @@
 //! - `brand`: draw the logo, mark and favicon into `brand/` from `brand/figure.toml`.
 //! - `layout`: every layout rule over the workspace, and every generated file fresh. Fails with
 //!   every problem listed.
+//! - `docs`: write the decisions index, `docs/decisions/README.md`, from the front matter of the
+//!   decision files.
 //! - `component`: build the plugins' guest crates for `wasm32-unknown-unknown` and wrap each
 //!   into a component under `target/plugin/`.
 //! - `check [stage]`: the whole gate, or one of its stages (`lint`, `test`, `docs`, `wasm`,
 //!   `sites`), which CI runs as parallel jobs: fmt, clippy (native and wasm32), `cargo deny` and
-//!   `layout`; the components and nextest; doc tests; the pen on wasm32-wasip2 and in the browser;
+//!   `layout`; the components and nextest; the docs checks (links, citations, crate paths and decisions)
+//!   and doc tests; the pen on wasm32-wasip2 and in the browser;
 //!   `ink build --check` on every CLI site fixture. Runs every step and fails with every failed
 //!   step listed.
 //!
@@ -53,6 +56,7 @@ macro_rules! tuples {
 
 mod build;
 mod check;
+mod docs;
 mod error;
 mod generate;
 mod layout;
@@ -70,14 +74,15 @@ pub(crate) enum Task {
     Diag,
     Brand,
     Layout,
+    Docs,
     Component,
     Check,
 }
 
 impl Task {
     /// Every task, in the order they are listed.
-    pub(crate) const ALL: [Self; 6] =
-        [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Component, Self::Check];
+    pub(crate) const ALL: [Self; 7] =
+        [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Docs, Self::Component, Self::Check];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -86,6 +91,7 @@ impl Task {
             Self::Diag => "diag",
             Self::Brand => "brand",
             Self::Layout => "layout",
+            Self::Docs => "docs",
             Self::Component => "component",
             Self::Check => "check",
         }
@@ -104,6 +110,10 @@ impl Task {
             Self::Brand => output.generate(&generate::brand::Brand),
             Self::Layout => {
                 check::Step::run(&layout::Layout, root, &mut report);
+                return report;
+            }
+            Self::Docs => {
+                docs::Index::write(root, &mut report);
                 return report;
             }
             Self::Component => {

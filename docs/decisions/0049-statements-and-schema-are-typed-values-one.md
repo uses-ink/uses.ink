@@ -15,8 +15,8 @@ enum deriving `sea_query::IdenStatic`), a column is one of its variants, a state
 and the migrations are Rust values: `db::Migration` has a number, a name and the statements that
 apply it, and `Steps` refuses a number that does not rise. The `db` port crate holds the builders
 (pure, no driver) and `db::Renderer`, the one type that turns a statement into SQLite text with
-its bound values and checks D1's limit of 100 parameters; the adapters (`db/sqlite`, later
-`db/d1`) run the text and bind the values. The ledger is still `d1_migrations` with `NNNN_name.sql`
+its bound values and checks D1's limit of 100 parameters; the adapters (`db/sqlite`, and `db/d1`,
+planned) run the text and bind the values. The ledger is still `d1_migrations` with `NNNN_name.sql`
 names, as wrangler writes it, so a database keeps one history; but the wrangler CLI no longer applies migrations: the
 Rust runner does, through `rusqlite` self-hosted and through the D1 binding when hosted. A
 `CHECK (x IN (...))` is built from the names the code reads back, so schema and code cannot

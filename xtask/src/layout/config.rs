@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::docs::Number;
 use crate::error::Error;
 
 /// Every list the rules read, by the rule that reads it.
@@ -20,6 +21,8 @@ pub(crate) struct Config {
     pub(crate) release: ReleasePaths,
     pub(crate) layers: Layers,
     pub(crate) fanout: Fanout,
+    pub(crate) decisions: Numbering,
+    pub(crate) docs: Prose,
 }
 
 /// The crates a gradual rule fails.
@@ -119,6 +122,110 @@ pub(crate) struct Waiver {
     /// Why it is allowed; read by people, not by the rule.
     #[expect(dead_code, reason = "the reason is written for the reader of the list")]
     reason: String,
+}
+
+/// The numbers of the decisions: how far a bare `(NNNN)` is a citation, which numbers are
+/// reserved, and which are gaps.
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Numbering {
+    /// The highest number a bare `(NNNN)` is a citation of; above it the digits are a file
+    /// mode, a year or a count. Raise it before the numbers reach it.
+    pub(crate) ceiling: u16,
+    /// Where the reserved numbers went, relative to `docs/decisions/`.
+    pub(crate) home: String,
+    #[serde(default)]
+    pub(crate) reserved: Vec<Reserved>,
+    #[serde(default)]
+    pub(crate) gap: Vec<Gap>,
+}
+
+/// A number held back for something that is no decision: a row of the index, and a heading at
+/// its home.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Reserved {
+    pub(crate) number: Number,
+    /// The title the index shows.
+    pub(crate) title: String,
+}
+
+/// Numbers, first to last, that no decision holds, and why.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Gap {
+    pub(crate) first: Number,
+    pub(crate) last: Number,
+    /// Why nothing holds them; read by people, not by the check.
+    #[expect(dead_code, reason = "the reason is written for the reader of the list")]
+    reason: String,
+}
+
+/// What the docs checks read besides the docs.
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Prose {
+    /// Words (case does not matter) that mark a block of prose as about what is not built, so
+    /// the paths it names need not exist.
+    pub(crate) planned: Vec<String>,
+    /// Docs whose paths need not exist, each with the reason.
+    #[serde(default)]
+    pub(crate) future: Vec<Future>,
+    /// Files whose citations are not checked, each with the reason.
+    #[serde(default)]
+    pub(crate) quoted: Vec<Quoted>,
+}
+
+/// A doc or a folder of docs that names paths that are gone or not yet there.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Future {
+    pub(crate) path: String,
+    /// Why; read by people, not by the check.
+    #[expect(dead_code, reason = "the reason is written for the reader of the list")]
+    reason: String,
+}
+
+/// A file or folder that holds citations as examples, not as references.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Quoted {
+    pub(crate) path: String,
+    /// Why; read by people, not by the check.
+    #[expect(dead_code, reason = "the reason is written for the reader of the list")]
+    reason: String,
+}
+
+#[cfg(test)]
+impl Reserved {
+    /// The reserved number `number` titled `title`.
+    pub(crate) fn sample(number: u16, title: &str) -> Self {
+        Self { number: Number::sample(number), title: title.to_owned() }
+    }
+}
+
+#[cfg(test)]
+impl Gap {
+    /// The gap from `first` to `last`.
+    pub(crate) fn sample(first: u16, last: u16) -> Self {
+        Self { first: Number::sample(first), last: Number::sample(last), reason: String::new() }
+    }
+}
+
+#[cfg(test)]
+impl Future {
+    /// A doc at `path` that names paths not yet there.
+    pub(crate) fn sample(path: &str) -> Self {
+        Self { path: path.to_owned(), reason: String::new() }
+    }
+}
+
+#[cfg(test)]
+impl Quoted {
+    /// A file at `path` that quotes citations.
+    pub(crate) fn sample(path: &str) -> Self {
+        Self { path: path.to_owned(), reason: String::new() }
+    }
 }
 
 impl Config {
@@ -258,6 +365,26 @@ mod tests {
         assert_eq!(config.layers.order, ["core", "port", "server", "runtime", "surface", "standalone"]);
         assert_eq!(config.fanout.limit, 8);
         assert_eq!(config.fanout.mode, Strictness::Report);
+    }
+
+    #[test]
+    fn the_real_file_sets_the_decisions_and_the_docs_checks() {
+        let config = real();
+        assert_eq!(config.decisions.ceiling, 99);
+        assert_eq!(config.decisions.home, "../history/review-fixes.md");
+        let reserved: Vec<u16> = config.decisions.reserved.iter().map(|r| r.number.get()).collect();
+        assert_eq!(reserved, [58, 60]);
+        assert_eq!(config.decisions.gap.len(), 6);
+        assert!(config.docs.planned.iter().any(|word| word == "planned"));
+        assert_eq!(config.docs.future.len(), 3);
+        assert_eq!(config.docs.quoted.len(), 1);
+    }
+
+    #[test]
+    fn a_number_that_is_not_four_digits_is_refused_with_its_line() {
+        let text =
+            "[decisions]\nceiling = 99\nhome = \"x\"\n\n[[decisions.reserved]]\nnumber = \"58\"\ntitle = \"t\"\n";
+        assert!(matches!(Config::parse(text), Err(Error::Config { line: Some(_), .. })));
     }
 
     #[test]

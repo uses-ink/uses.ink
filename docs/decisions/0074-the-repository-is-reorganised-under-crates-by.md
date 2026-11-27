@@ -22,7 +22,11 @@ In short:
 - Duplicated facts get one home: the output-folder layout in `model`, the API views in `edge/api`,
   the diagnostic catalog in `diag`, the WIT mirror list in `wit/mirror`.
 - `decisions.md` becomes one file per decision with a generated index, and the `docs` stage gains
-  link, citation and directory fan-out checks.
+  link, citation, crate-path, front-matter and index checks, and a directory fan-out check that
+  only reports. The `area` of the front matter is a free label, a non-empty lowercase slug, not a
+  list in `.config/layout.toml`: areas follow the work, a closed list is one more row every new
+  decision would have to merge, and the generated index shows a mistyped label next to the right
+  one.
 - Every work package is a jj commit that passes `farm check`; the physical move is one commit in
   a freeze, after the other work in flight has landed.
 

@@ -11,6 +11,7 @@ use std::str::FromStr;
 
 use crate::build::component::Components;
 use crate::build::site::Sites;
+use crate::docs::Prose;
 use crate::error::Error;
 use crate::layout::Layout;
 use crate::report::{Line, Report};
@@ -65,9 +66,9 @@ impl Gate {
         (Components, Cargo { command: Command::Nextest, scope: Every, flags: &[], target: Target::Host })
     }
 
-    /// The doc tests, each compiled and linked on its own, which makes them the slowest step.
+    /// The docs checks, then the doc tests, each compiled and linked on its own, which makes them the slowest step.
     fn docs() -> impl Steps {
-        (Cargo { command: Command::Test, scope: Every, flags: &[Flag::Doc], target: Target::Host },)
+        (Prose, Cargo { command: Command::Test, scope: Every, flags: &[Flag::Doc], target: Target::Host })
     }
 
     /// The crates that also run on wasm.

@@ -26,9 +26,11 @@ affected = true
 [job.docs]
 run = "cargo xtask check docs"
 golden = false
-# `cargo test --workspace --doc`: the doc tests of every crate, plugins included, so a plugin
-# change must rerun it (the job is not about the markdown in docs/, which no doc test reads).
-inputs = ["**", "!docs/**", "!PRODUCT.md"]
+# The markdown checks (links, decision citations, crate paths, front matter, the generated index)
+# read `docs/**`, `README.md` and `PRODUCT.md`, and the citations and paths read every `.rs`,
+# `.toml`, `.yml` and `.md` file; then `cargo test --workspace --doc`, the doc tests of every
+# crate, plugins included. Whole tree on purpose, prose included.
+inputs = ["**", "docs/**", "README.md", "PRODUCT.md"]
 
 [job.wasm]
 run = "cargo xtask check wasm"

@@ -284,8 +284,7 @@ test is deterministic and sleeps for nothing. `capture.run(|| ...)` installs it 
 thread, which covers `pollster` and a current-thread runtime; a server on its own thread runs its
 loop inside `capture.run`.
 
-The instrumentation is asserted on the key paths: a build emits the stage spans in order and ends
-with its status (`build/local/tests/trace.rs`); an edge refusal is one `request.refused` event
+The instrumentation is asserted on the key paths: an edge refusal is one `request.refused` event
 with its status and cause chain, and the query of a request never reaches the log
 (`edge/axum/tests/serve.rs`); a failed job logs its attempt and the chain of its error
 (`control/tests/control/job.rs`); the supervisor's crash, restart and give-up sequence is asserted in `cli/src/tasks.rs`. The crate's own tests cover redaction, the filter language, the
