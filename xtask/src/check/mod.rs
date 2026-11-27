@@ -9,7 +9,8 @@ use std::io::Write as _;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::build::component::{Components, Sites};
+use crate::build::component::Components;
+use crate::build::site::Sites;
 use crate::error::Error;
 use crate::layout::Layout;
 use crate::report::{Line, Report};
