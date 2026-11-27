@@ -173,6 +173,14 @@ The whole product on one machine.
 
 - `control`, ports `db`, `blob`, `queue`, `build`, `secret` with SQLite, directory and local
   adapters, conformance suites.
+
+Progress (2026-11-27): the control plane is built and its crate gates pass. The ports `db`, `blob`,
+`queue`, `build` and `secret` have their adapters (`db/sqlite`, `blob/dir`, `queue/local`,
+`build/local`, `secret/local`) and conformance suites; `control` holds the use cases (accounts,
+sites and handles, deploys with rollback and resume, build jobs worked off the queue,
+credentials sealed at rest, export, removal with a tombstone) with tests on the real adapters.
+No SQL text exists: statements and migrations are typed values (0049). Not done: `edge`, `web`,
+sign-in, `ink push` and the CLI verbs.
 - `edge` and `edge/axum`: serve, API, intake; polling watch; on-demand ACME.
 - `web`: dashboard (Site, What we understood, Deploys, Settings, Account) on the chosen stack,
   pen through wasm, live build log as a streamed page **(owner: dashboard stack, after the frontend

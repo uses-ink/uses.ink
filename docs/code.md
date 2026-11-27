@@ -405,3 +405,28 @@ real nextest and cargo output.
 - Generic machinery is tested once with a stand-in, and each case is tested as data: a ladder
   fixture lists inputs and the expected decision with its evidence, and a trace test lists the
   rungs it expects.
+
+## 9. The control plane: ports, and statements as values
+
+`control` is generic over five ports (`db`, `blob`, `queue`, `build`, `secret`) through one
+`Ports` trait that a tuple of four adapters implements, so a use case is a method of
+`Control<P>` and knows no adapter. Each port is a crate with its own error that keeps the
+adapter's as its source, an adapter crate (`db/sqlite`, `blob/dir`, `queue/local`, `build/local`,
+`secret/local`), and a conformance crate whose cases are types with a `check` over any adapter;
+`suite!` turns them into tests, so a new adapter runs the same ones.
+
+SQL is never text (0049). A table is a type:
+
+```rust
+#[derive(IdenStatic)]
+#[iden = "site"]
+pub enum Site { Table, Id, AccountId, Handle }
+```
+
+a statement is a builder expression, `Query::select().column(Site::Id).from(Site::Table)
+.and_where(Expr::col(Site::Handle).eq(handle))`, and a row is read with `row.get(Site::Id)`.
+`db::Renderer` is the one place a statement becomes text and bound values. A schema is a
+`db::Migration` (a number, a name, statements), and `Steps::new().with::<A>()?.with::<B>()?`
+applies what the ledger lacks. When a CHECK lists the values of a column, it is built from the
+`NAMES` table the code reads the column back with. The layout rule `sql` fails a literal that
+starts with a SQL keyword, a raw escape of the builders and any `.sql` file.

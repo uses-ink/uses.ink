@@ -95,7 +95,7 @@ uses.ink/
     theme/      quiet/ (its component in quiet/guest/)  notebook/
   wit/                   model/ host/ format/ theme/: the WIT packages ink:model, ink:host,
                          ink:format, ink:theme; mirror/: their conversions to the model (0041)
-  migration/             plain .sql, applied by wrangler to D1 and by ink serve to SQLite
+  (migrations are Rust values, `control::Domain` and `queue_local::Queued`: 0049; no .sql files)
   token/                 design tokens (one TOML file) -> CSS custom properties and pen palette
   brand/                 logo stroke data, fonts and their licences
   fixture/               uses-ink-fixture       the fixture harness: goldens through insta; a dev-dependency only

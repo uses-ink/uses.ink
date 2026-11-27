@@ -43,7 +43,8 @@ ttf-parser, so this waits); `pagefind` 1.6 for opt-in search.
 |---|---|---|
 | Worker | `worker` 0.9 with `d1`, `http`, `axum`, `queue` | bindings for everything; container egress through `Reflect` (0037); 2.0 MB test build against a 64 MiB limit |
 | Rows | own D1-shaped `Db` port (query plus atomic batch, raw SQL); `rusqlite` bundled for self-host | D1 has no interactive transactions and no sqlx path that matches current sqlx |
-| Migrations | wrangler's `.sql` folder; own runner for self-host writing the same `d1_migrations` table | one migration set, one ledger format |
+| SQL | `sea-query` builders over typed identifiers, rendered by one `db::Renderer`; `rusqlite` runs the text (0049) | no SQL text in code; the same statements for SQLite and D1 |
+| Migrations | Rust values (`db::Migration`), own runner writing wrangler's `d1_migrations` ledger (0049) | one migration set, one ledger format |
 | Self-host HTTP | `axum` 0.8, `tower-http` 0.7, `tokio`, `rustls` with `ring`, `instant-acme` | on-demand certificates only for names in the domain table |
 | Outbound HTTP | own `Http` port: `worker::Fetch` hosted, `reqwest` native | one call site for forges, DoH, Cloudflare API |
 | OAuth, GitHub App | `oauth2` 5, `jsonwebtoken` 12 (`rust_crypto`) | compile to wasm32 |

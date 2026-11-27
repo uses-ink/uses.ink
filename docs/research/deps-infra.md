@@ -119,6 +119,19 @@ Pick: **raw SQL behind our own `Db` port, D1-shaped (no interactive transactions
 batch)**, and **our own migration runner over `migrations/NNNN_name.sql` writing the same
 `d1_migrations` table**. sea-query only if dynamic filters show up later.
 
+**Revised by 0049 (typed statements).** The owner rule is no SQL text, so the port holds typed
+builders. `sea-query` 1.0.2 (MIT OR Apache-2.0; read from its source) has `Table::create()`,
+`Index::create()`, `ForeignKey`, column `check`, `auto_increment`, `ON CONFLICT ... DO UPDATE`,
+`RETURNING`, `INSERT ... SELECT` and scalar subqueries, renders the SQLite dialect and binds
+values as `?`; with `default-features = false` and `derive` plus `backend-sqlite` it has no
+driver and no async runtime, so `db` stays free of both. Its `Value` enum maps onto D1's five
+kinds in one `TryFrom`. Diesel was not tried: its query types come from `table!` macros and run
+through its own `Connection`, which fits a port that takes values and a renderer less well.
+What the typed form costs: the builders take `&mut self`, so a statement ends in `.to_owned()`,
+and `INSERT ... SELECT` returns a `Result` for a column count mismatch, which `control` carries
+as `Error::Statement`. wrangler can still apply a D1 migration from a `.sql` file rendered from
+the same values, but nothing does yet.
+
 ## 3. Self-host stack
 
 | Crate | Version | Last release | License | wasm32 | Fit | Risk |
