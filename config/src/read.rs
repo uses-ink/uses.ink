@@ -135,7 +135,9 @@ impl Reader {
             self.invalid(path, &shape.into(), node.span());
             return Patterns::default();
         };
-        items.filter_map(|item| self.parsed(path, item, shape)).collect()
+        // every item is checked and said, and a list with a bad item is applied not at all
+        let parsed: Vec<_> = items.map(|item| self.parsed(path, item, shape)).collect();
+        parsed.into_iter().collect::<Option<Patterns>>().unwrap_or_default()
     }
 
     fn theme(&mut self, path: &KeyPath<'_>, node: Node<'_>) {

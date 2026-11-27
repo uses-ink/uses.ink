@@ -11,8 +11,10 @@ use model::{Announcement, ContentPath, Diagnostic, Notice, Problem};
 
 #[allow(clippy::too_many_lines, clippy::match_same_arms, reason = "generated: one match arm per catalog entry")]
 mod generated;
+mod plain;
 mod terminal;
 
+pub use plain::Plain;
 pub use terminal::Terminal;
 
 /// What a message or fix is about.

@@ -131,6 +131,14 @@ fn pins_into_existing() {
 }
 
 #[test]
+fn an_include_with_one_bad_item_applies_none_of_it() {
+    let parsed = Config::parse("include = [\"posts/**\", \"\", \"/abs\"]\nexclude = [\"ok\"]\n");
+    assert_eq!(parsed.config.include().iter().count(), 0, "a key with a problem is not applied");
+    assert_eq!(parsed.config.exclude().iter().count(), 1);
+    assert_eq!(parsed.diagnostics.len(), 2, "each bad item is said: {:?}", parsed.diagnostics);
+}
+
+#[test]
 fn pins_whole_file() {
     let mut all = decisions();
     all.push(decided::<code::Date>(File(path("old.md")), Some(When::Day(date(-5, 1, 1)))));

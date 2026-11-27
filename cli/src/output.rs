@@ -4,6 +4,7 @@ use std::fmt;
 use std::io::Write;
 use std::path::Path;
 
+use diag::Plain;
 use model::{Diagnostic, Notice, Severity};
 use serde::Serialize;
 
@@ -75,7 +76,7 @@ impl<'a> Io<'a> {
     /// The result, as a line of text, or nothing with `--json` (see [`Io::json`]).
     pub(crate) fn line(&mut self, line: impl fmt::Display) -> Result<(), Error> {
         if !self.json {
-            writeln!(self.out, "{line}")?;
+            writeln!(self.out, "{}", Plain::text(line))?;
         }
         Ok(())
     }
@@ -84,7 +85,7 @@ impl<'a> Io<'a> {
     /// with `--json`, whose result carries it.
     pub(crate) fn aside(&mut self, report: impl fmt::Display) -> Result<(), Error> {
         if !self.json {
-            write!(self.err, "{report}")?;
+            write!(self.err, "{}", Plain::text(report))?;
         }
         Ok(())
     }
@@ -118,7 +119,7 @@ impl<'a> Io<'a> {
                     .map_err(|source| Error::Json { source })?;
                 writeln!(self.err)?;
             } else {
-                writeln!(self.err, "{}", Shown { diagnostic, texts })?;
+                writeln!(self.err, "{}", Plain::text(Shown { diagnostic, texts }))?;
             }
         }
         let notices = if self.level == Level::Notice { notices } else { &[] };
@@ -128,7 +129,7 @@ impl<'a> Io<'a> {
                     .map_err(|source| Error::Json { source })?;
                 writeln!(self.err)?;
             } else {
-                writeln!(self.err, "{}", Noted(notice))?;
+                writeln!(self.err, "{}", Plain::text(Noted(notice)))?;
             }
         }
         Ok(tally)
@@ -223,10 +224,10 @@ struct Chain<'a>(&'a Error);
 
 impl Chain<'_> {
     fn write(self, err: &mut dyn Write) -> Result<(), Error> {
-        writeln!(err, "error: {}", self.0)?;
+        writeln!(err, "error: {}", Plain::text(self.0))?;
         let mut cause = std::error::Error::source(self.0);
         while let Some(error) = cause {
-            writeln!(err, "  caused by: {error}")?;
+            writeln!(err, "  caused by: {}", Plain::text(error))?;
             cause = error.source();
         }
         Ok(())

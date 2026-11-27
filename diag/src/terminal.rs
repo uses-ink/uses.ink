@@ -11,7 +11,7 @@ use std::fmt;
 
 use model::{Diagnostic, Notice, Span, Subject};
 
-use crate::{Fix, Message};
+use crate::{Fix, Message, Plain};
 
 /// A diagnostic or a notice, laid out for a terminal without colour.
 #[derive(Clone, Copy, Debug)]
@@ -43,7 +43,7 @@ impl fmt::Display for Terminal<'_> {
                     if i > 0 {
                         out.write_str("\n  caused by ")?;
                     }
-                    write!(out, "{}[{}]: {}", d.severity().name(), d.code(), Message::from(&d.problem))?;
+                    write!(out, "{}[{}]: {}", d.severity().name(), d.code(), Plain::text(Message::from(&d.problem)))?;
                     write!(out, "{}", Place(d.subject.as_ref(), d.span))?;
                     if let Some(fix) = Fix::of_problem(&d.problem) {
                         write!(out, "\n  fix: {fix}")?;
@@ -52,7 +52,7 @@ impl fmt::Display for Terminal<'_> {
                 Ok(())
             }
             Shown::Notice(notice) => {
-                write!(out, "notice[{}]: {}", notice.code(), Message::from(&notice.announcement))?;
+                write!(out, "notice[{}]: {}", notice.code(), Plain::text(Message::from(&notice.announcement)))?;
                 write!(out, "{}", Place(notice.subject.as_ref(), notice.span))?;
                 match Fix::of_announcement(&notice.announcement) {
                     Some(fix) => write!(out, "\n  fix: {fix}"),
@@ -69,8 +69,8 @@ struct Place<'a>(Option<&'a Subject>, Option<Span>);
 impl fmt::Display for Place<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match (self.0, self.1) {
-            (Some(subject), Some(span)) => write!(out, "\n  at {subject}, {span}"),
-            (Some(subject), None) => write!(out, "\n  at {subject}"),
+            (Some(subject), Some(span)) => write!(out, "\n  at {}, {span}", Plain::flat(subject)),
+            (Some(subject), None) => write!(out, "\n  at {}", Plain::flat(subject)),
             (None, Some(span)) => write!(out, "\n  at {span}"),
             (None, None) => Ok(()),
         }
@@ -105,6 +105,18 @@ mod test {
              fix: write the path of the one you mean\n  \
              caused by error[source.file.unreadable]: b.md could not be read: denied"
         );
+    }
+
+    #[test]
+    fn a_name_cannot_write_escape_sequences_to_the_terminal() {
+        let hostile = path("\u{1b}]52;c;AAAA\u{7}.md");
+        let diagnostic =
+            Diagnostic::new(Problem::SourceFileUnreadable { path: hostile.clone(), reason: "denied".into() })
+                .on(Subject::File(hostile));
+        let shown = Terminal::from(&diagnostic).to_string();
+        assert!(!shown.contains('\u{1b}') && !shown.contains('\u{7}'), "{shown:?}");
+        assert!(shown.contains("\\u{1b}]52;c;AAAA\\u{7}.md could not be read"), "{shown}");
+        assert!(shown.contains("at \\u{1b}]52;c;AAAA\\u{7}.md"), "{shown}");
     }
 
     #[test]

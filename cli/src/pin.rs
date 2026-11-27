@@ -12,6 +12,7 @@ use crate::asked::Asked;
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::output::{Io, Strict};
+use crate::replace::Replacing;
 use crate::report::Texts;
 use crate::site::Source;
 
@@ -65,7 +66,9 @@ impl Pin {
                 Err(source) => return Err(Error::Read { path, source }),
             };
             let text = config::pins_into(&existing, [decision]).map_err(|source| Error::Pin { source })?;
-            std::fs::write(&path, text).map_err(|source| Error::Write { path: path.clone(), source })?;
+            let mut replacing = Replacing::default();
+            replacing.push(path.clone(), text);
+            replacing.commit()?;
             Outcome::Written(&path)
         };
         io.line(pin.trim_end())?;

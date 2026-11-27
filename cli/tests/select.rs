@@ -194,6 +194,21 @@ fn nothing_is_written_when_one_file_is_refused() {
 }
 
 #[test]
+fn a_write_that_fails_part_way_leaves_every_file_as_it_was() {
+    let dir = copied("vault", "atomic");
+    std::fs::write(dir.join("Notes/Second.md"), "---\ntitle: Second\n---\nHello.\n").unwrap();
+    let private = dir.join("Private.md");
+    let before = std::fs::read_to_string(&private).unwrap();
+    // the second note's temporary file name is taken, so staging it fails after the first is staged
+    std::fs::create_dir(dir.join("Notes/.Second.md.ink-new")).unwrap();
+    let (exit, _, stderr) = select(&dir, &["Private.md", "Notes/Second.md"]);
+    assert_ne!(exit, Exit::Done, "{stderr}");
+    assert!(stderr.contains("Second.md could not be written"), "{stderr}");
+    assert_eq!(std::fs::read_to_string(&private).unwrap(), before, "the first file is as it was");
+    assert!(!dir.join(".Private.md.ink-new").exists(), "no temporary file is left");
+}
+
+#[test]
 fn a_file_that_cannot_be_selected_is_a_typed_refusal() {
     let dir = copied("vault", "refused");
     let refused = |path: &str| {

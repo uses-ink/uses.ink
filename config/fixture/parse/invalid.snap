@@ -1,9 +1,7 @@
 ---
-source: config/tests/fixture.rs
-input_file: config/fixture/parse/invalid.toml
+source: fixture/src/lib.rs
 ---
 theme default
-exclude ok/*.md at 50..59 `"ok/*.md"`
 error config.value.invalid: ConfigValueInvalid { key: "include", expected: "an array of glob patterns (`*`, `?`, `**`)" } at 10..20 `"notes/**"`
 error config.value.invalid: ConfigValueInvalid { key: "exclude", expected: "an array of glob patterns (`*`, `?`, `**`), and part 1 of the pattern has `**` next to other characters" } at 32..37 `"a**"`
 error config.value.invalid: ConfigValueInvalid { key: "exclude", expected: "an array of glob patterns (`*`, `?`, `**`)" } at 39..40 `3`

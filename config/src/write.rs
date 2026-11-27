@@ -176,13 +176,18 @@ struct NotPinned(Vec<PinsError>);
 impl fmt::Display for NotPinned {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         for error in &self.0 {
-            write!(out, "# not pinned: {error}")?;
+            let mut line = error.to_string();
             let mut cause = error.source();
             while let Some(source) = cause {
-                write!(out, ": {source}")?;
+                line.extend([": ", &source.to_string()]);
                 cause = source.source();
             }
-            writeln!(out)?;
+            // an error can hold a file name with a line break in it: one comment line, always
+            let escaped: String = line
+                .chars()
+                .map(|c| if c.is_control() { format!("\\u{{{:x}}}", u32::from(c)) } else { c.to_string() })
+                .collect();
+            writeln!(out, "# not pinned: {escaped}")?;
         }
         Ok(())
     }
@@ -275,5 +280,21 @@ impl Error for PinsError {
             Self::Value { source, .. } => Some(source),
             Self::NotTable { .. } => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use model::{AnyCode, ContentPath, Subject};
+
+    use super::{NotPinned, PinsError};
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
+    fn a_line_break_in_an_error_stays_inside_its_comment() {
+        let subject = Subject::File(ContentPath::parse("a\nb = 1.md").unwrap());
+        let written = NotPinned(vec![PinsError::NotTable { code: AnyCode::Date, subject }]).to_string();
+        assert_eq!(written.lines().count(), 1, "{written:?}");
+        assert!(written.starts_with("# not pinned: "), "{written:?}");
     }
 }

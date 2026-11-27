@@ -5,7 +5,8 @@
 //!
 //! The listing is the decision `page.publish` and its evidence. A selection is planned whole
 //! before anything is written: one refused file stops all of them. It reads the files on disk,
-//! since it writes into them.
+//! since it writes into them, and writes them together (`Replacing`): every text goes to a
+//! temporary file first, so a failed write leaves every file as it was.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -23,6 +24,7 @@ use crate::error::Error;
 use crate::exit::Exit;
 use crate::explain::Because;
 use crate::output::{Io, Strict};
+use crate::replace::Replacing;
 use crate::report::Texts;
 use crate::site::{Loaded, Source};
 
@@ -415,11 +417,13 @@ impl Select {
         if self.dry_run && !steps.is_empty() {
             return Ok(Ended::Dry);
         }
-        for (step, at) in &changed {
-            if let Some(text) = &step.text {
-                std::fs::write(at, text).map_err(|source| Error::Write { path: at.clone(), source })?;
-            }
+        let mut replacing = Replacing::default();
+        for (step, at) in changed {
+            replacing.push(at, step.text.clone().unwrap_or_default());
         }
-        Ok(if changed.is_empty() { Ended::Nothing } else { Ended::Wrote(changed.len()) })
+        Ok(match replacing.commit()? {
+            0 => Ended::Nothing,
+            count => Ended::Wrote(count),
+        })
     }
 }
