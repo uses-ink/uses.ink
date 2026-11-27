@@ -182,6 +182,14 @@ reason = "historical research, written before the code; its banners say so"
 path = "docs/history"
 reason = "logs of fixes, with the paths as they were then"
 
+[[docs.future]]
+path = "docs/hosted.md"
+reason = "the plan for the hosted milestone: it names the adapter crates to come"
+
+[[docs.future]]
+path = "docs/decisions/0079-hosted-is-adapters-of-the-existing-ports-queue.md"
+reason = "the hosted decision names the adapter crates to come"
+
 [[docs.quoted]]
 path = "xtask/src/docs"
 reason = "the citation check's own tests quote the forms it reads"

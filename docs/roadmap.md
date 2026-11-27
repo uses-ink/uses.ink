@@ -246,19 +246,32 @@ the update, roll back, export, delete: every step with no flags and every defaul
 
 ## M4: Hosted
 
-- Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`.
+The same product on Cloudflare. The implementation plan is `docs/hosted.md` (decision 0079,
+proposed): work packages in dependency order, what each owns, the conformance suite it must
+pass, what runs in `workerd` with no account, and the owner questions with defaults. Crates are
+named for the layout after `docs/layout.md` S6; no M4 crate is added to the workspace before that
+freeze.
 
-The same product on Cloudflare.
-
-- Planned crates: `edge/worker`, `db/d1`, `blob/r2`, `queue/cf`, `build/container`; the per-handle Durable
-  Object; deploy pipeline from CI with `wrangler`.
+- Planned, test rig first (H1): the conformance suites run inside `workerd`, then `db/d1` on it.
+- Planned adapters, in parallel after H1: `blob/r2`, `queue/cf` (the rows of `queue/local` over D1 plus a
+  wake-up, since Cloudflare Queues has no lease or dedupe key), `secret/worker`, `mail/cf`,
+  `watch/worker`, the nonce store as a per-account Durable Object (`auth.md` section 5).
+- Planned: `edge/worker` (serve, API, dashboard, sign-in) over the `Send` twin of the edge traits (0051);
+  the per-handle build Durable Object and `build/container`, with the container's blobs written
+  through the egress handler (0037); deploy pipeline from CI with `wrangler`.
+- `control` features, tested natively on SQLite, in parallel (S2 has landed): handles with reservations
+  and tombstones **(owner: O3, Q5)**; budgets enforced and the limits page **(owner: O7, Q13)**;
+  deletion with receipt; abuse report endpoint and takedown; orgs, roles and per-account
+  recovery policy (`auth.md` sections 8, 9, 12); previews of branches **(owner: Q7)**; custom
+  domains through Cloudflare for SaaS (our TXT proof first, then the hostname).
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
-  `ink:authority-dns`; handles with reservations and tombstones **(owner: O3, Q5)**.
-- Orgs, roles, per-account recovery policy and a Durable Object nonce store for signed requests (`auth.md` sections 8, 9, 12); OIDC trusted publishing for CI after launch (open choice 6).
-- Custom domains through Cloudflare for SaaS.
-- Budgets enforced and the limits page **(owner: O7, Q13)**.
-- Deletion with receipt; abuse report endpoint and takedown.
-- Previews of branches **(owner: Q7)**.
+  `ink:authority-dns`.
+- Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`
+  (engine work, native, no hosted dependency).
+- OIDC trusted publishing for CI after launch (open choice 6).
+- **(owner)** The Cloudflare account, the zone, billing, R2 buckets and their jurisdiction, the
+  mail provider and the GitHub App are owner steps; `docs/hosted.md` section 12 lists each with a
+  recommended default. Nothing outward-facing is done before they are answered.
 
 **Exit:** a GitHub repo goes from sign-in to live at `<handle>.uses.ink` in about a minute; a
 push is live within the measured time; a custom domain goes live with a valid certificate.
