@@ -56,6 +56,12 @@ pub(crate) enum Error {
         path: PathBuf,
         source: toml::de::Error,
     },
+    /// `.config/layout.toml` is not the rule data expected, at this line.
+    Config {
+        path: PathBuf,
+        line: Option<usize>,
+        source: Box<toml::de::Error>,
+    },
     /// A module of the workspace that does not parse.
     Parse {
         path: PathBuf,
@@ -132,6 +138,10 @@ impl fmt::Display for Error {
             Self::Rustfmt { path, .. } => write!(out, "rustfmt on {} failed", path.display()),
             Self::Metadata(_) => write!(out, "`cargo metadata` failed"),
             Self::Manifest { path, .. } => write!(out, "{} is not the TOML expected", path.display()),
+            Self::Config { path, line: Some(line), .. } => {
+                write!(out, "{} line {line} is not the rule data expected", path.display())
+            }
+            Self::Config { path, line: None, .. } => write!(out, "{} is not the rule data expected", path.display()),
             Self::Parse { path, .. } => write!(out, "{} does not parse as a Rust file", path.display()),
             Self::Module { path, name } => write!(out, "{}: no file for `mod {name};`", path.display()),
             Self::Layout(problems) => write!(out, "layout problems:{}", Lines(problems)),
@@ -174,6 +184,7 @@ impl std::error::Error for Error {
         match self {
             Self::Read { source, .. } | Self::Write { source, .. } | Self::Progress(source) => Some(source),
             Self::Source { flaw: Flaw::Toml(source), .. } | Self::Manifest { source, .. } => Some(source),
+            Self::Config { source, .. } => Some(source.as_ref()),
             Self::Generated { source, .. } | Self::Parse { source, .. } => Some(source),
             Self::Rustfmt { source, .. }
             | Self::Metadata(source)

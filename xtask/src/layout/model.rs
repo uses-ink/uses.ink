@@ -6,6 +6,8 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 
+use super::config::Config;
+
 /// The workspace, read.
 #[derive(Debug)]
 pub(crate) struct Workspace {
@@ -17,6 +19,8 @@ pub(crate) struct Workspace {
     pub(crate) aliased: Vec<String>,
     /// Every path in the tree, relative to the root, outside [`Workspace::SKIP`].
     pub(crate) entries: Vec<PathBuf>,
+    /// The rule data of `.config/layout.toml`.
+    pub(crate) config: Config,
 }
 
 /// One crate of the workspace.
@@ -168,6 +172,7 @@ impl Workspace {
             crates,
             aliased: aliased.iter().map(|name| (*name).to_owned()).collect(),
             entries: vec![],
+            config: Config::default(),
         }
     }
 }

@@ -1,0 +1,116 @@
+# The data the layout rules read (`cargo xtask layout`, xtask's `layout/config.rs`). A crate path
+# or a list that changes with the tree is a row here, one per line and sorted, so two branches that
+# add a row merge without a conflict. `MAY_USE`, keyed by crate name, stays in xtask's order rule.
+
+# The crates a gradual rule (`words`, `free`) fails. The rest are counted in a note until their
+# port lands and they join this list. A new crate joins with its first commit.
+[enforced]
+crates = [
+    "farm",
+    "freehand",
+    "freehand-web",
+    "uses-ink-blob",
+    "uses-ink-blob-conformance",
+    "uses-ink-blob-dir",
+    "uses-ink-build",
+    "uses-ink-build-conformance",
+    "uses-ink-build-local",
+    "uses-ink-cli",
+    "uses-ink-clock",
+    "uses-ink-config",
+    "uses-ink-control",
+    "uses-ink-db",
+    "uses-ink-db-conformance",
+    "uses-ink-db-sqlite",
+    "uses-ink-diag",
+    "uses-ink-edge",
+    "uses-ink-edge-api",
+    "uses-ink-edge-axum",
+    "uses-ink-edge-control",
+    "uses-ink-edge-folder",
+    "uses-ink-engine",
+    "uses-ink-fixture",
+    "uses-ink-format-markdown",
+    "uses-ink-format-markdown-guest",
+    "uses-ink-format-obsidian",
+    "uses-ink-format-obsidian-guest",
+    "uses-ink-host-image",
+    "uses-ink-host-native",
+    "uses-ink-host-wasmtime",
+    "uses-ink-host-wasmtime-hostile",
+    "uses-ink-https",
+    "uses-ink-mail",
+    "uses-ink-mail-smtp",
+    "uses-ink-model",
+    "uses-ink-queue",
+    "uses-ink-queue-conformance",
+    "uses-ink-queue-local",
+    "uses-ink-sdk",
+    "uses-ink-secret",
+    "uses-ink-secret-conformance",
+    "uses-ink-secret-local",
+    "uses-ink-sig",
+    "uses-ink-source-git",
+    "uses-ink-source-git-guest",
+    "uses-ink-theme-quiet",
+    "uses-ink-theme-quiet-guest",
+    "uses-ink-token",
+    "uses-ink-trace",
+    "uses-ink-watch",
+    "uses-ink-watch-git",
+    "uses-ink-web",
+    "xtask",
+]
+
+# The only files that may hold unsafe code: the pen's wasm exports, whose names need the unsafe
+# `no_mangle` attribute (0034), and the plugin boundary's (0035): loading a `.cwasm` from the cache,
+# and each guest's exports by symbol. The workspace denies the lint rather than forbidding it so
+# these can allow it.
+[unsafe]
+allowed = [
+    "freehand-web/src/lib.rs",
+    "host/wasmtime/hostile/src/bind.rs",
+    "host/wasmtime/src/cache.rs",
+    "plugin/format/markdown/guest/src/bind.rs",
+    "plugin/format/obsidian/guest/src/bind.rs",
+    "plugin/source/git/guest/src/bind.rs",
+    "plugin/theme/quiet/guest/src/bind.rs",
+]
+
+# Free functions allowed outside a crate's entry points, by file and name, each with the reason no
+# type can hold it. Kept tiny: a new row needs a reason a type cannot answer.
+[free]
+allowed = []
+
+# `own` is the file of the SQL rule whose list of keywords is the one place they are written;
+# `foreign` the folders whose `.sql` files are not ours.
+[sql]
+own = ["xtask/src/layout/rules/sql.rs"]
+foreign = ["spikes", "target"]
+
+# The files outside the crates that the release rule reads and checks against each other.
+[release]
+config = "dist-workspace.toml"
+dockerfile = "Dockerfile"
+ignore = ".dockerignore"
+pending = []
+root = ["Cargo.lock", "Cargo.toml", "rust-toolchain.toml"]
+toolchain = "rust-toolchain.toml"
+workflow = ".github/workflows/release.yml"
+workflows = ".github/workflows"
+
+# The layers a crate path may sit under, as `crates/<layer>/<family>`, first to last. A crate in a
+# layer depends only on layers before it. No crate sits under `crates/` yet.
+[layers]
+order = ["core", "port", "server", "runtime", "surface", "standalone"]
+
+# At most `limit` entries in a directory. `mode` is `report` (a note) or `enforce` (a failure).
+# Directories with a part named in `exempt` are not checked; a waiver names a path and why.
+[fanout]
+limit = 8
+mode = "report"
+exempt = ["fixture", "support", "tests"]
+
+[[fanout.waive]]
+path = "docs"
+reason = "one file per concern, and the decision files"

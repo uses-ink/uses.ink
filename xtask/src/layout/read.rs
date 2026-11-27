@@ -7,6 +7,7 @@ use std::process::Command;
 
 use serde::Deserialize;
 
+use super::config::Config;
 use super::model::{Attributes, Crate, Dependency, Kind, Module, Role, Source, Workspace};
 use crate::error::Error;
 use crate::generate::output::Origin;
@@ -20,6 +21,7 @@ impl Workspace {
     pub(crate) fn read(root: impl AsRef<Path>) -> Result<Self, Error> {
         let metadata = Metadata::read(root.as_ref())?;
         let root = metadata.workspace_root.as_path();
+        let config = Config::read(root)?;
         let aliased = Self::aliased(root)?;
         let mut entries = Vec::new();
         Self::walk(root, root, &mut entries)?;
@@ -27,7 +29,7 @@ impl Workspace {
             metadata.packages.iter().filter(|p| metadata.workspace_members.contains(&p.id)).collect();
         let dirs: Vec<PathBuf> = packages.iter().map(|p| p.dir(root)).collect();
         let crates = packages.iter().map(|package| package.read(root, &dirs, &entries)).collect::<Result<_, _>>()?;
-        Ok(Self { root: root.to_path_buf(), crates, aliased, entries })
+        Ok(Self { root: root.to_path_buf(), crates, aliased, entries, config })
     }
 
     /// The crates `[workspace.dependencies]` names.

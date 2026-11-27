@@ -1,7 +1,7 @@
 //! What a task did: its [`Report`] of [`Line`]s and failures.
 
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::error::Error;
 
@@ -56,6 +56,8 @@ pub(crate) enum Line {
     Unchanged,
     /// A crate breaking a rule that is not enforced on it yet, and how often.
     Waived { krate: String, rule: &'static str, count: usize },
+    /// Directories over the fan-out limit, which only report: how many, and the largest.
+    Crowded { count: usize, limit: usize, largest: Vec<(PathBuf, usize)> },
     /// The layout and every generated file are as they should be.
     Checked,
     /// A site fixture built the same deploy natively and through the components.
@@ -71,7 +73,20 @@ impl fmt::Display for Line {
             Self::Removed(path) => write!(out, "removed {} (no longer generated)", path.display()),
             Self::Unchanged => write!(out, "nothing changed"),
             Self::Waived { krate, rule, count } => {
-                write!(out, "note: `{rule}` finds {count} in `{krate}`, not enforced there yet (xtask's ENFORCED)")
+                write!(
+                    out,
+                    "note: `{rule}` finds {count} in `{krate}`, not enforced there yet (`enforced` in .config/layout.toml)"
+                )
+            }
+            Self::Crowded { count, limit, largest } => {
+                write!(
+                    out,
+                    "note: {count} directories hold more than {limit} entries (fan-out, report only); the largest:"
+                )?;
+                largest.iter().try_for_each(|(dir, entries)| {
+                    let shown = if dir.as_os_str().is_empty() { Path::new(".") } else { dir };
+                    write!(out, " {} ({entries})", shown.display())
+                })
             }
             Self::Checked => write!(out, "layout fine, generated files fresh"),
             Self::Matched(path) => write!(out, "{}: same deploy natively and as components", path.display()),

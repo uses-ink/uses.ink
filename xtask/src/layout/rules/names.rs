@@ -20,14 +20,23 @@ pub(super) const FARM: &str = "farm";
 pub(crate) struct Names;
 
 impl Names {
+    /// `path` without the `crates/<layer>/` it may sit under, for a layer of `layers`.
+    fn below<'p>(path: &'p str, layers: &[String]) -> &'p str {
+        let Some((layer, below)) = path.strip_prefix("crates/").and_then(|rest| rest.split_once('/')) else {
+            return path;
+        };
+        if layers.iter().any(|known| known == layer) { below } else { path }
+    }
+
     /// The name `krate`'s path predicts.
-    fn expected(krate: &Crate) -> String {
-        let path = krate.place();
+    fn expected(krate: &Crate, layers: &[String]) -> String {
+        let place = krate.place();
+        let path = Self::below(&place, layers);
         if krate.name == TASKS || krate.name == FARM || OWN.contains(&krate.name.as_str()) {
-            path.rsplit('/').next().unwrap_or(&path).to_owned()
+            path.rsplit('/').next().unwrap_or(path).to_owned()
         } else {
             // the slot directory drops
-            format!("uses-ink-{}", path.strip_prefix("plugin/").unwrap_or(&path).replace('/', "-"))
+            format!("uses-ink-{}", path.strip_prefix("plugin/").unwrap_or(path).replace('/', "-"))
         }
     }
 }
@@ -37,7 +46,7 @@ impl Rule for Names {
 
     fn check(&self, workspace: &Workspace, problems: &mut Problems) {
         for krate in &workspace.crates {
-            let expected = Self::expected(krate);
+            let expected = Self::expected(krate, &workspace.config.layers.order);
             if krate.name != expected {
                 problems.push(Problem::Name { krate: krate.name.clone(), path: krate.place(), expected });
             }
@@ -62,6 +71,22 @@ mod tests {
         assert!(matches!(
             named("freehand-pen", "freehand").as_slice(),
             [Problem::Name { expected, .. }] if expected == "uses-ink-freehand"
+        ));
+    }
+
+    #[test]
+    fn a_crate_below_a_layer_is_named_for_the_path_below_it() {
+        let workspace = |name, dir| {
+            let mut workspace = Workspace::sample(vec![Crate::sample(name, dir, None, &[])], &[]);
+            workspace.config.layers.order = vec!["core".to_owned(), "runtime".to_owned(), "standalone".to_owned()];
+            Problems::of(&Names, &workspace)
+        };
+        assert!(workspace("uses-ink-model", "crates/core/model").is_empty());
+        assert!(workspace("uses-ink-theme-quiet", "crates/runtime/plugin/theme/quiet").is_empty());
+        assert!(workspace("freehand", "crates/standalone/freehand").is_empty());
+        assert!(matches!(
+            workspace("uses-ink-model", "crates/other/model").as_slice(),
+            [Problem::Name { expected, .. }] if expected == "uses-ink-crates-other-model"
         ));
     }
 }

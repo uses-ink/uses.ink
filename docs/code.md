@@ -376,7 +376,7 @@ and hands the generator a `Files` that writes or, for `layout`, compares each fi
 which task a stale one comes from. The generators' Rust is built through `ToTokens` impls
 (`Palette`, `Faces`) and methods on the catalog's types, never free functions.
 
-The gate is a tuple of steps (`Gate::steps`): each cargo step is one generic
+The gate is one tuple of steps per stage (`Gate::lint()`, `test()`, `docs()`, `wasm()`, `sites()`, in `xtask/src/check/`): each cargo step is one generic
 `Cargo<S: Scope>` (a `Command`, a scope of `Every` crate, a `[&str; N]` of packages or `()`,
 typed `Flag`s and a `Target`), whose command line and needed `Tool`s follow from that data, and
 the last step is `Layout`. Rules run over a `Workspace` read once: `cargo metadata`, the
@@ -386,8 +386,15 @@ The rules are `Names`, `Order`, `Licence` (each crate's licence, and no AGPL cra
 a permissive one), `Alias`, `Banned`, `Unsafe` (on tokens, so comments
 and literals never count), `Words`, `Free`, `Sql` (section 9) and `Release` (the release files name the
 workspace's binary and versions). `Gradual<R>` wraps a rule so it fails only the
-crates in `ENFORCED` and counts the rest in a note; every crate is in it, so a new crate joins
-it with its first commit. Lists of generators, steps and rules are tuples, given their list
+crates `enforced` lists in `.config/layout.toml` and counts the rest in a note; every crate is in it, so a new
+crate joins it with its first commit. That file holds every rule list that names a crate or a path
+(`enforced`, the files that may hold unsafe code, the free-function exceptions, the SQL rule's paths, the
+release files, the layers, the fan-out limit and its waivers), read into a typed `Config` whose errors
+name the file and the line; `MAY_USE` stays in `layout/rules/order.rs`, keyed by name. The `Fanout`
+rule reports directories over the limit and fails them once the file says `mode = "enforce"`. The source is split
+by what a module does: `generate/` (the generators and `Output`), `build/` (components and sites), `check/`
+(`Gate`, `Stage`, the `Cargo` step), `layout/` (`Workspace`, `Config`, `rules/`, and `release/` with its
+workflow and Dockerfile readers). Lists of generators, steps and rules are tuples, given their list
 trait by one `tuples!` macro. `cargo xtask check` runs every step and reports every failure; `cargo xtask check <stage>`
 (`lint`, `test`, `docs`, `wasm`, `sites`) runs one `Stage`, which is how CI runs them in parallel
 jobs. A new check is a new `Rule` added to `Layout::RULES`.

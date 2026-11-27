@@ -74,12 +74,6 @@ impl Sql {
     /// The types whose `custom` function is the raw escape.
     const OWNERS: &'static [&'static str] = &["ColumnType", "ColumnDef"];
 
-    /// This file, whose list of keywords is the one place they are written.
-    const OWN: &'static str = "xtask/src/layout/rules/sql.rs";
-
-    /// The folders whose `.sql` files are not ours.
-    const FOREIGN: &'static [&'static str] = &["spikes", "target"];
-
     /// What `text` holds that is refused, in the order it appears.
     pub(crate) fn find(text: &str) -> Result<Vec<Found>, LexError> {
         let mut found = Vec::new();
@@ -159,16 +153,18 @@ impl Rule for Sql {
 
     fn check(&self, workspace: &Workspace, problems: &mut Problems) {
         for path in &workspace.entries {
-            let foreign = path
-                .components()
-                .next()
-                .is_some_and(|first| Self::FOREIGN.iter().any(|name| first.as_os_str() == *name));
+            let foreign = path.components().next().is_some_and(|first| {
+                workspace.config.sql.foreign.iter().any(|name| first.as_os_str() == name.as_str())
+            });
             if path.extension().is_some_and(|extension| extension == "sql") && !foreign {
                 problems.push(Problem::Sql { path: path.clone(), found: Found::File });
             }
         }
-        for file in
-            workspace.crates.iter().flat_map(|c| &c.files).filter(|file| file.path != std::path::Path::new(Self::OWN))
+        for file in workspace
+            .crates
+            .iter()
+            .flat_map(|c| &c.files)
+            .filter(|file| !workspace.config.sql.own.iter().any(|own| file.path == std::path::Path::new(own)))
         {
             match Self::find(&file.text) {
                 Ok(found) => {

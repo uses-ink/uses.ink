@@ -2,7 +2,6 @@
 
 use std::path::{Path, PathBuf};
 
-use super::Release;
 use super::drift::Drift;
 
 /// A workflow file, read for the rules every one of them keeps.
@@ -14,9 +13,9 @@ pub(super) struct Workflow {
 
 impl Workflow {
     /// Every workflow under `.github/workflows`, in name order.
-    pub(super) fn all(root: &Path) -> Result<Vec<Self>, Drift> {
-        let dir = root.join(Release::WORKFLOWS);
-        let unread = |source| Drift::Unreadable { path: Release::WORKFLOWS.into(), source };
+    pub(super) fn all(root: &Path, folder: &str) -> Result<Vec<Self>, Drift> {
+        let dir = root.join(folder);
+        let unread = |source| Drift::Unreadable { path: folder.into(), source };
         let mut names = std::fs::read_dir(&dir)
             .map_err(unread)?
             .map(|entry| entry.map(|e| e.file_name()))
@@ -25,7 +24,7 @@ impl Workflow {
         names.sort();
         let mut flows = Vec::new();
         for name in names.into_iter().filter(|n| n.to_string_lossy().ends_with(".yml")) {
-            let path = PathBuf::from(Release::WORKFLOWS).join(name);
+            let path = PathBuf::from(folder).join(name);
             let text = std::fs::read_to_string(root.join(&path))
                 .map_err(|source| Drift::Unreadable { path: path.clone(), source })?;
             flows.push(Self { path, text });

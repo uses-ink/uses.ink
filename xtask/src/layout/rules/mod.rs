@@ -10,7 +10,7 @@ mod sql;
 
 pub(crate) use alias::Alias;
 pub(crate) use code::{Free, Words};
-pub(crate) use files::{Banned, Unsafe};
+pub(crate) use files::{Banned, Fanout, Unsafe};
 pub(crate) use licence::Licence;
 pub(crate) use names::Names;
 pub(crate) use order::Order;

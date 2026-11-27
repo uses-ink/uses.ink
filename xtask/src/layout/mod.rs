@@ -5,6 +5,7 @@
 //! the statement builders, function names of one or two words, no free functions, and release
 //! files that name the binary that exists.
 
+mod config;
 mod model;
 mod read;
 mod release;
@@ -22,9 +23,10 @@ use crate::generate::output::{Generators, Mode, Output};
 use crate::generate::token::Token;
 use crate::report::{Line, Report};
 
+pub(crate) use config::Config;
 pub(crate) use model::Workspace;
 pub(crate) use release::{Drift, Release};
-pub(crate) use rules::{Alias, Banned, Found, Free, Licence, Names, Order, Sql, Unsafe, Words};
+pub(crate) use rules::{Alias, Banned, Fanout, Found, Free, Licence, Names, Order, Sql, Unsafe, Words};
 
 /// One check over the whole workspace. A new check is a new rule.
 pub(crate) trait Rule {
@@ -42,66 +44,7 @@ pub(crate) trait Rules {
 
 tuples! { Rules: Rule, fn check(&self, workspace: &Workspace, problems: &mut Problems) { |rule| rule.check(workspace, problems) } }
 
-/// The crates a [`Gradual`] rule fails. The rest are counted in a note until their port lands
-/// and they join this list.
-pub(crate) const ENFORCED: &[&str] = &[
-    "freehand",
-    "freehand-web",
-    "uses-ink-cli",
-    "uses-ink-config",
-    "uses-ink-diag",
-    "uses-ink-clock",
-    "uses-ink-edge",
-    "uses-ink-edge-api",
-    "uses-ink-edge-control",
-    "uses-ink-watch",
-    "uses-ink-watch-git",
-    "uses-ink-edge-axum",
-    "uses-ink-edge-folder",
-    "uses-ink-engine",
-    "uses-ink-fixture",
-    "uses-ink-format-markdown",
-    "uses-ink-format-obsidian",
-    "uses-ink-host-image",
-    "uses-ink-host-native",
-    "uses-ink-host-wasmtime",
-    "uses-ink-host-wasmtime-hostile",
-    "uses-ink-model",
-    "uses-ink-sdk",
-    "uses-ink-sig",
-    "uses-ink-source-git",
-    "uses-ink-source-git-guest",
-    "uses-ink-format-markdown-guest",
-    "uses-ink-format-obsidian-guest",
-    "uses-ink-theme-quiet-guest",
-    "uses-ink-theme-quiet",
-    "uses-ink-token",
-    "uses-ink-trace",
-    "uses-ink-blob",
-    "uses-ink-blob-conformance",
-    "uses-ink-blob-dir",
-    "uses-ink-build",
-    "uses-ink-build-conformance",
-    "uses-ink-build-local",
-    "uses-ink-control",
-    "uses-ink-db",
-    "uses-ink-db-conformance",
-    "uses-ink-db-sqlite",
-    "uses-ink-queue",
-    "uses-ink-queue-conformance",
-    "uses-ink-queue-local",
-    "uses-ink-secret",
-    "uses-ink-secret-conformance",
-    "uses-ink-secret-local",
-    "uses-ink-web",
-    "uses-ink-mail",
-    "uses-ink-mail-smtp",
-    "uses-ink-https",
-    "xtask",
-    "farm",
-];
-
-/// A rule that fails only the crates in [`ENFORCED`]; another crate's problems are counted, so
+/// A rule that fails only the crates `enforced` lists in `.config/layout.toml`; another crate's problems are counted, so
 /// the rule reports on every crate while the code moves onto it.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Gradual<R>(pub(crate) R);
@@ -114,7 +57,7 @@ impl<R: Rule> Rule for Gradual<R> {
         self.0.check(workspace, &mut own);
         for problem in own.found {
             match problem.krate() {
-                Some(krate) if !ENFORCED.contains(&krate) => {
+                Some(krate) if !workspace.config.enforces(krate) => {
                     *problems.waived.entry((krate.to_owned(), R::NAME)).or_default() += 1;
                 }
                 _ => problems.found.push(problem),
@@ -129,11 +72,12 @@ impl<R: Rule> Rule for Gradual<R> {
 pub(crate) struct Layout;
 
 /// Every rule of the layout task, as a tuple.
-type Every = (Names, Order, Licence, Alias, Banned, Unsafe, Sql, Gradual<Words>, Gradual<Free>, Release);
+type Every = (Names, Order, Licence, Alias, Banned, Unsafe, Sql, Gradual<Words>, Gradual<Free>, Release, Fanout);
 
 impl Layout {
     /// Every rule, in the order their problems are listed.
-    const RULES: Every = (Names, Order, Licence, Alias, Banned, Unsafe, Sql, Gradual(Words), Gradual(Free), Release);
+    const RULES: Every =
+        (Names, Order, Licence, Alias, Banned, Unsafe, Sql, Gradual(Words), Gradual(Free), Release, Fanout);
 }
 
 impl Step for Layout {
@@ -165,6 +109,10 @@ impl fmt::Display for Layout {
 pub(crate) struct Problems {
     found: Vec<Problem>,
     waived: BTreeMap<(String, &'static str), usize>,
+    /// Directories over the fan-out limit, with their entries, when that only reports.
+    crowded: Vec<(PathBuf, usize)>,
+    /// The fan-out limit they are over.
+    limit: usize,
 }
 
 impl Problems {
@@ -184,6 +132,13 @@ impl Problems {
     fn settle(self, report: &mut Report) {
         for ((krate, rule), count) in self.waived {
             report.line(Line::Waived { krate, rule, count });
+        }
+        if !self.crowded.is_empty() {
+            let mut largest = self.crowded.clone();
+            largest.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+            let count = largest.len();
+            largest.truncate(5);
+            report.line(Line::Crowded { count, limit: self.limit, largest });
         }
         if !self.found.is_empty() {
             report.fail(Error::Layout(self.found));
@@ -249,6 +204,12 @@ pub(crate) enum Problem {
     Free(Function),
     /// Release files that disagree with the workspace or with each other.
     Release(Drift),
+    /// A directory with more entries than the fan-out limit.
+    Crowded {
+        dir: PathBuf,
+        entries: usize,
+        limit: usize,
+    },
 }
 
 /// A function a syntax rule names: where it is, and what it is called.
@@ -271,9 +232,12 @@ impl Problem {
             | Self::Licence { krate, .. }
             | Self::Copyleft { krate, .. }
             | Self::Alias { krate } => Some(krate),
-            Self::Banned { .. } | Self::Unsafe { .. } | Self::Sql { .. } | Self::Lexed { .. } | Self::Release(_) => {
-                None
-            }
+            Self::Banned { .. }
+            | Self::Unsafe { .. }
+            | Self::Sql { .. }
+            | Self::Lexed { .. }
+            | Self::Release(_)
+            | Self::Crowded { .. } => None,
         }
     }
 }
@@ -301,10 +265,10 @@ impl fmt::Display for Problem {
             Self::Banned { path } => write!(out, "`{}` uses a banned name", path.display()),
             Self::Unsafe { path } => write!(
                 out,
-                "`{}` holds {} code; only {} may (xtask's Unsafe::ALLOWED)",
+                "`{}` holds {} code; only the files `unsafe.allowed` lists in {} may",
                 path.display(),
                 Unsafe::KEYWORD,
-                Unsafe::ALLOWED.join(", ")
+                Config::PATH
             ),
             Self::Sql { path, found } => write!(out, "`{}` {found}", path.display()),
             Self::Lexed { path, source } => write!(out, "`{}` is not Rust tokens: {source}", path.display()),
@@ -315,6 +279,9 @@ impl fmt::Display for Problem {
                 write!(out, "`{}`: `{name}` is a free function; put it on the type it acts on", path.display())
             }
             Self::Release(drift) => write!(out, "release: {drift}"),
+            Self::Crowded { dir, entries, limit } => {
+                write!(out, "`{}` holds {entries} entries; the limit is {limit}", dir.display())
+            }
         }
     }
 }

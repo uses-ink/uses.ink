@@ -225,9 +225,9 @@ No `utils.rs`, `helpers.rs`, `common.rs`, `misc.rs`. A name of three words or mo
 `atom::Entry`. Function and method names are one or two words; `cargo xtask check` refuses
 longer ones outside tests (a test's name is a sentence and may be long), and refuses a free
 function outside a crate's entry points (the `pub` functions and `main` of a target's root, a
-function exported by symbol name, and xtask's `Free::ALLOWED`, kept tiny). Both rules skip
+function exported by symbol name, and the few `free.allowed` lists in `.config/layout.toml`, kept tiny). Both rules skip
 `#[test]` functions, `#[cfg(test)]` modules, test targets and generated files, and count a
-trait impl's methods under the trait. They fail only the crates in xtask's `ENFORCED` and count
+trait impl's methods under the trait. They fail only the crates in `enforced` in `.config/layout.toml` and count
 the others in a note; a crate joins the list when its code passes.
 
 **No strings where a type belongs.** A path is a validated newtype (`ContentPath`, `Route`), a
@@ -287,7 +287,7 @@ holding a secret redacts itself in `Debug` and has no `Display`. No telemetry.
 **Hacks.** Every `#[allow]`/`#[expect]` has `reason = "..."`; prefer `#[expect]`. A workaround is
 `// HACK(<condition for removal>): <why>`. No `TODO` without a condition. No commented-out code.
 `unsafe` is denied at the workspace level; `cargo xtask layout` allows it only in the files
-xtask's `Unsafe::ALLOWED` lists, each because a decision says.
+`unsafe.allowed` lists in `.config/layout.toml`, each because a decision says.
 
 **One source of truth.** Every fact lives in one place; everything else is generated from it and
 a check fails when the copies differ. Validate once, in a type: code holding a `Slug` does not

@@ -2,8 +2,11 @@
 //! one or two words, and no free functions outside a crate's entry points (docs/conventions.md,
 //! Code). Test code and generated files are not checked.
 
+use std::path::Path;
+
 use syn::visit::{self, Visit};
 
+use crate::layout::config::Exception;
 use crate::layout::model::{Attributes, Crate, Module, Role, Workspace};
 use crate::layout::{Function, Problem, Problems, Rule};
 
@@ -35,19 +38,15 @@ impl Rule for Words {
 }
 
 /// No free function, except a crate's entry points: the `pub` API and `main` of a target's root,
-/// a function exported by its symbol name, and the few in [`Free::ALLOWED`].
+/// a function exported by its symbol name, and the few `free.allowed` lists in `.config/layout.toml`.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Free;
 
 impl Free {
-    /// Free functions allowed outside the entry points, by file and name, each with its reason.
-    /// Kept tiny: a new entry needs a reason a type cannot answer.
-    const ALLOWED: &'static [Exception] = &[];
-
     /// Whether a free function `found` in `module` is allowed.
-    fn allows(module: &Module, found: &Found) -> bool {
+    fn allows(module: &Module, found: &Found, listed: &[Exception]) -> bool {
         let entry = module.role == Role::Entry && (found.place == Place::Free(Reach::Public) || found.name == "main");
-        let listed = Self::ALLOWED.iter().any(|e| module.path == std::path::Path::new(e.path) && e.name == found.name);
+        let listed = listed.iter().any(|e| module.path == Path::new(&e.path) && e.name == found.name);
         entry || found.export || listed
     }
 }
@@ -57,21 +56,11 @@ impl Rule for Free {
 
     fn check(&self, workspace: &Workspace, problems: &mut Problems) {
         for (krate, module, found) in Found::each(workspace) {
-            if matches!(found.place, Place::Free(_)) && !Self::allows(module, &found) {
+            if matches!(found.place, Place::Free(_)) && !Self::allows(module, &found, &workspace.config.free.allowed) {
                 problems.push(Problem::Free(found.into_function(krate, module)));
             }
         }
     }
-}
-
-/// A free function [`Free`] allows, and why.
-#[derive(Debug)]
-struct Exception {
-    path: &'static str,
-    name: &'static str,
-    /// Why no type can hold it; read by people, not by the rule.
-    #[expect(dead_code, reason = "the reason is written for the reader of the list")]
-    reason: &'static str,
 }
 
 /// A function as written, outside test code.
@@ -275,11 +264,12 @@ mod tests {
     fn only_a_roots_public_functions_and_its_main_are_entries() {
         let root = module(Role::Entry, "");
         let inner = module(Role::Inner, "");
-        assert!(Free::allows(&root, &free("read", Reach::Public, false)));
-        assert!(Free::allows(&root, &free("main", Reach::Private, false)));
-        assert!(!Free::allows(&root, &free("helper", Reach::Private, false)));
-        assert!(!Free::allows(&inner, &free("read", Reach::Public, false)));
-        assert!(Free::allows(&inner, &free("symbol", Reach::Private, true)));
+        let none = [];
+        assert!(Free::allows(&root, &free("read", Reach::Public, false), &none));
+        assert!(Free::allows(&root, &free("main", Reach::Private, false), &none));
+        assert!(!Free::allows(&root, &free("helper", Reach::Private, false), &none));
+        assert!(!Free::allows(&inner, &free("read", Reach::Public, false), &none));
+        assert!(Free::allows(&inner, &free("symbol", Reach::Private, true), &none));
     }
 
     #[test]
@@ -292,12 +282,8 @@ mod tests {
             files: vec![],
             modules: vec![module(Role::Entry, "fn push_text_node() {}")],
         };
-        let workspace = Workspace {
-            root: PathBuf::from("/w"),
-            crates: vec![crate_with("freehand"), crate_with("waived-crate")],
-            aliased: vec![],
-            entries: vec![],
-        };
+        let mut workspace = Workspace::sample(vec![crate_with("freehand"), crate_with("waived-crate")], &[]);
+        workspace.config.enforced.crates = vec!["freehand".to_owned()];
         let mut problems = Problems::default();
         Gradual(Words).check(&workspace, &mut problems);
         assert!(matches!(problems.found.as_slice(), [Problem::Words(function)] if function.krate == "freehand"));
