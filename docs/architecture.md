@@ -106,6 +106,7 @@ uses.ink/
     (worker/             planned: uses-ink-edge-worker, the workers-rs entry point)
   web/                   uses-ink-web           the dashboard screens (stack in section 14); the landing is planned
   cli/                   uses-ink-cli           the `ink` binary
+  trace/                 uses-ink-trace         the log: typed fields, span macros, the one subscriber setup
   plugin/
     sdk/                 uses-ink-sdk           guest-side bindings and their conversions to the model;
                                                 MIT OR Apache-2.0, depends on model and freehand only (0041)

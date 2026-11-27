@@ -73,3 +73,4 @@ Passkeys (`webauthn-rs` 0.6 builds for wasm32) come after v1. `chrono` stays in 
 | Pen in the browser | `freehand-web`: plain wasm exports and a 40-line loader, `freehand.js` | one pen (0025), no generated JS (0034) |
 | Themes | `wit-bindgen` 0.63 guest built for `wasm32-unknown-unknown`, wrapped with `wasm-tools component new` | a small theme stays small: `unspliced` has no dependencies |
 | Slot overrides | `minijinja` in the host | 734 KB inside a theme, so it lives once in the host |
+| Logging | `tracing` with `tracing-subscriber` (`registry`, `std` only), behind `trace` | the facade is the one every crate uses; no `fmt`, `env-filter` or `tracing-error`, no `#[instrument]` (0065) |

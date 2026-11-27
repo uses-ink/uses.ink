@@ -24,6 +24,8 @@ Each word means one thing everywhere: code, CLI, dashboard copy, docs, diagnosti
 | **proof** | a dated, typed record that an identity controls something | a session |
 | **source** | where content comes from: a source plugin plus a locator | a repo |
 | **ability** | something a source can do: `snapshot`, `history`, `watch`, `private` | a host function |
+| **log** | the process's own record of what it did and why, on a channel apart from output | a diagnostic, an event |
+| **span** | a timed scope in the log (command, build, stage, unit, request, job) | a source span |
 | **snapshot** | an immutable, hashed tree from a source at one version | a deploy |
 | **file** | a path in a snapshot | a page |
 | **page** | one routed document on a site | a file |
@@ -347,8 +349,9 @@ a doc comment.
   `note[code]: wording` and its `fix:`. An error that stops a command ends with a state line
   (`nothing was changed`). Each is a typed value rendered once through `cli/src/term` (decision
   0061); no command builds output with `format!`.
-- One-shot commands log at warn with no timestamps; `ink serve` logs at info with timestamps.
-  `-v`/`-q` move one level and win over `INK_LOG`, which wins over `RUST_LOG`.
+- The log is a channel of its own (`docs/tracing.md`, decision 0065): off by default, never
+  stdout, never inside `--json`. `-v` count, then `INK_LOG`, then `--log` set its filter, each
+  stronger than the last; `RUST_LOG` is not read. Only the `trace` crate sets up a subscriber.
 - Exit codes are a closed, documented set (`research/flow.md` section 7).
 
 ## Docs and prose

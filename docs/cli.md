@@ -167,9 +167,11 @@ types (open choice 12 asks whether to add one).
 | `-vv` | The above, one line per file read, per image made, per page rendered, timings |
 
 `-q` keeps the newly-public list because it is the one thing in a build that cannot be undone
-(decision 0042: a page made public is out before anyone reads the log). Tracing logs are separate:
-`INK_LOG` (then `RUST_LOG`) sets their filter and they go to stderr with timestamps from `ink serve`
-only, as `conventions.md` says. `-v` and `-q` win over `INK_LOG`.
+(decision 0042: a page made public is out before anyone reads the log). The log is separate
+(`docs/tracing.md`, decision 0065): `-v` keeps the meaning above for output, and its count is also
+the weakest filter of the log (`-vv` is `info`, `-vvv` is `debug`). `INK_LOG` and `--log
+<FILTER>` refine it per area, `--log-file <PATH>` writes JSON lines, and under `--json` the log
+goes to a file only. `-q` does not silence a log asked for by name.
 
 ## 4. Help
 
@@ -928,7 +930,7 @@ plain, as baudelaire's `Color::declared` does.
 |---|---|
 | `INK_COLOR`, `INK_GLYPHS`, `INK_NO_PROGRESS`, `INK_TIMES`, `INK_WIDTH` | The `[ui]` keys above |
 | `INK_DIR` | `-C` |
-| `INK_LOG`, `RUST_LOG` | The tracing filter (`INK_LOG` wins) |
+| `INK_LOG`, `INK_LOG_FILE`, `INK_LOG_FORMAT`, `INK_LOG_SPANS`, `INK_LOG_TIMINGS` | The log (`docs/tracing.md`): `--log`, `--log-file`, and the `[log]` keys `filter`, `file`, `format`. `RUST_LOG` is not read |
 | `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE` | Colour, as above |
 | `TERM`, `COLUMNS`, `LANG`, `LC_ALL` | Dumb terminal, width, whether the locale is UTF-8 |
 | `INK_COMPONENTS` | The folder the build script reads components from (0054) |
