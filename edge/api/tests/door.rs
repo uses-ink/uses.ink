@@ -138,6 +138,8 @@ impl Fixture {
             query: None,
             authorization: held.signed.map(|header| header.as_bytes().to_vec()),
             cookie: held.cookie.map(|cookie| cookie.as_bytes().to_vec()),
+            origin: None,
+            site: None,
             source: Some(held.source.parse().unwrap()),
             body: Payload::Whole(body.to_vec()),
         };
@@ -423,6 +425,8 @@ fn nothing_that_prints_holds_a_secret() {
         query: None,
         authorization: Some(b"Bearer sekrit".to_vec()),
         cookie: Some(b"ink-session=sekrit".to_vec()),
+        origin: None,
+        site: None,
         source: None,
         body: Payload::Whole(vec![]),
     };

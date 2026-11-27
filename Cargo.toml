@@ -138,6 +138,15 @@ zeroize = "1.9.2"
 # Ed25519 for the signed-request profile (decision 0068); no `rand_core` feature: seeds come from the
 # clock's Draw port, and strict verification is the only verify the code calls
 ed25519-dalek = { version = "3.0.0", default-features = false, features = ["zeroize"] }
+# the WebAuthn verifier behind the `Passkeys` port (decision 0068, spikes/passkeys): an experts-only
+# API that may change within minor versions, so it is pinned exactly. MPL-2.0, see `deny.toml`.
+webauthn-rs-core = "=0.6.2"
+# origins for it
+url = "2.5.9"
+# test-only: the software authenticator of edge/api's passkey tests signs ES256 and writes CBOR
+p256 = { version = "0.14", default-features = false, features = ["ecdsa"] }
+serde_cbor_2 = "0.13.0"
+sha2 = "0.11"
 wit-bindgen = { version = "0.63.0", default-features = false, features = ["macros", "realloc"] }
 wit-component = { version = "0.263.0", default-features = false }
 # wit-component's error type, named by xtask

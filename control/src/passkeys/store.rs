@@ -152,7 +152,7 @@ impl Fresh<'_> {
 }
 
 /// A ceremony to keep.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Begin<'a> {
     /// What it is for.
     pub flow: Flow,

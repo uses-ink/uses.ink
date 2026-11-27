@@ -22,6 +22,7 @@
 
 mod api;
 pub mod body;
+mod ceremony;
 mod cookie;
 mod credential;
 pub mod door;
@@ -37,12 +38,14 @@ mod route;
 mod signature;
 pub mod tar;
 pub mod view;
+mod webauthn;
 
 pub use api::{Answers, Api};
+pub use ceremony::{Ceremonies, Passing, Step, Stop};
 pub use cookie::{Cookie, Jar, JarError, Name, NameError};
 pub use credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
 pub use door::{
-    Approver, Approving, Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Rate, Rates, Routed,
+    Approver, Approving, Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Owner, Rate, Rates, Routed,
     Strength,
 };
 pub use enrol::{Closed, Closing, Enrol, Gate};
@@ -52,4 +55,5 @@ pub use limits::{Asked, Limit, Limits, Raised};
 pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Unreadable as OperatorError};
 pub use reply::{Media, Method, Payload, Reply, Request, Status, UnknownMethod};
 pub use route::{Call, RouteError};
+pub use webauthn::{Failed as Unavailable, Webauthn};
 pub use signature::{Claimed, Config as Signing, Failed, Nonces, Signatures, Window, WindowError};

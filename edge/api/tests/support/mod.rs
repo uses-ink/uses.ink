@@ -132,6 +132,8 @@ impl Rig {
             query,
             authorization,
             cookie: None,
+            origin: None,
+            site: None,
             source: None,
             body: Payload::Whole(body.to_vec()),
         }

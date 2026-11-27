@@ -23,8 +23,18 @@ model.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sig.workspace = true
+url.workspace = true
+webauthn-rs-core.workspace = true
+
+# the Worker target (spikes/passkeys): rand and uuid, under the WebAuthn verifier, need their JavaScript entropy
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }
+uuid = { version = "1", features = ["js"] }
 
 [dev-dependencies]
+p256.workspace = true
+serde_cbor_2.workspace = true
+sha2.workspace = true
 trace = { workspace = true, features = ["capture"] }
 blob-dir.workspace = true
 build.workspace = true

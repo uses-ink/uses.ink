@@ -74,6 +74,12 @@ pub struct Request {
     pub authorization: Option<Vec<u8>>,
     /// The `Cookie` header's value, if there was one. Never printed.
     pub cookie: Option<Vec<u8>>,
+    /// The `Origin` header's value, if there was one. Read only by the cookie routes that change
+    /// state (`docs/auth.md` section 8, CSRF).
+    pub origin: Option<String>,
+    /// The `Sec-Fetch-Site` header's value, if there was one: the browser's own word on whether
+    /// the request came from the same origin.
+    pub site: Option<String>,
     /// The address the connection came from, as the adapter saw it. Behind a reverse proxy this
     /// is the proxy's, so a limit per source is then a limit for everyone behind it.
     pub source: Option<IpAddr>,
@@ -90,6 +96,8 @@ impl fmt::Debug for Request {
             .field("query", &self.query)
             .field("authorization", &held(&self.authorization))
             .field("cookie", &held(&self.cookie))
+            .field("origin", &self.origin)
+            .field("site", &self.site)
             .field("source", &self.source)
             .field("body", &self.body)
             .finish()
@@ -221,6 +229,8 @@ pub struct Reply {
     pub challenge: bool,
     /// The cookie to set, for a sign-in or a sign-out.
     pub cookie: Option<Cookie>,
+    /// The cookie of a passkey ceremony, to set when one starts and to clear when it ends.
+    pub ceremony: Option<Cookie>,
     /// How long to wait before asking again (`Retry-After`), for a `429` or a `503`.
     pub retry: Option<Duration>,
 }
@@ -234,6 +244,7 @@ impl fmt::Debug for Reply {
             .field("allow", &self.allow)
             .field("challenge", &self.challenge)
             .field("cookie", &self.cookie)
+            .field("ceremony", &self.ceremony)
             .field("retry", &self.retry)
             .finish()
     }
@@ -242,7 +253,7 @@ impl fmt::Debug for Reply {
 impl Reply {
     /// A reply with a body.
     pub const fn new(status: Status, media: Media, body: Vec<u8>) -> Self {
-        Self { status, media, body, allow: Vec::new(), challenge: false, cookie: None, retry: None }
+        Self { status, media, body, allow: Vec::new(), challenge: false, cookie: None, ceremony: None, retry: None }
     }
 
     /// A reply with no body.

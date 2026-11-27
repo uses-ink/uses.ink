@@ -526,8 +526,8 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     }
 }
 
-/// Two answerers, with the sign-in routes going to the second: the API in front, the door
-/// beside it. One `Answers` for the server, and the API's own routes unchanged.
+/// Two answerers, with the routes the second owns going to it: the API in front, the door
+/// beside it (and a second `Routed` for the passkey routes beside that). One `Answers` for the server, and the API's own routes unchanged.
 #[derive(Debug)]
 pub struct Routed<A, B> {
     api: A,
@@ -541,8 +541,21 @@ impl<A, B> Routed<A, B> {
     }
 }
 
-impl<A: Answers, B: Answers> Answers for Routed<A, B> {
+/// An answerer that owns some paths: [`Routed`] sends it those, and everything else goes to the
+/// answerer in front.
+pub trait Owner: Answers {
+    /// Whether `path` is one of its routes, whatever the method.
+    fn owns(&self, path: &str) -> bool;
+}
+
+impl<D: Db, K: Clock, R: Draw> Owner for Door<D, K, R> {
+    fn owns(&self, path: &str) -> bool {
+        Enter::owns(path)
+    }
+}
+
+impl<A: Answers, B: Owner> Answers for Routed<A, B> {
     async fn answer(&self, request: &Request) -> Reply {
-        if Enter::owns(&request.path) { self.door.answer(request).await } else { self.api.answer(request).await }
+        if self.door.owns(&request.path) { self.door.answer(request).await } else { self.api.answer(request).await }
     }
 }

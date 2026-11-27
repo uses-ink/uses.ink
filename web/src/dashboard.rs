@@ -11,7 +11,7 @@ use crate::form::{Action, Asked};
 use crate::route::{Only, Path, Route, Screen};
 use crate::shell::{Document, Frame, View};
 use crate::stream::{Follow, Streamed};
-use crate::view::{Account, Build, Deploys, Failed, Live, Settings, Site, Understood, Why};
+use crate::view::{Account, Build, Deploys, Failed, Live, Settings, SignIn, Site, Understood, Why};
 use crate::{Failure, Request, Status};
 
 /// What a request for a build's log finds.
@@ -109,6 +109,8 @@ pub enum Body<F> {
     Streamed(Streamed<F>),
     /// A file to save.
     Download(Download),
+    /// The dashboard's script, as static text with a JavaScript content type.
+    Script(&'static str),
 }
 
 /// What the dashboard answers.
@@ -129,7 +131,7 @@ impl<F> Reply<F> {
         ("cache-control", "no-store"),
         (
             "content-security-policy",
-            "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+            "default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'unsafe-inline'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
         ),
         ("x-content-type-options", "nosniff"),
         ("referrer-policy", "same-origin"),
@@ -149,6 +151,9 @@ impl<F> Reply<F> {
 pub struct Dashboard<S>(pub S);
 
 impl<S: Screens> Dashboard<S> {
+    /// The script the passkey buttons need: one static file, served from this host.
+    pub const SCRIPT: &'static str = include_str!("passkey.js");
+
     /// Answers `request` from `who`, who is signed in or is not. A failure is a page with its
     /// code, cause and fix, and the status the failure says.
     pub async fn respond(&self, who: Option<Id<AccountKind>>, request: &Request<'_>) -> Reply<S::Follow> {
@@ -173,6 +178,13 @@ impl<S: Screens> Dashboard<S> {
     }
 
     async fn serve(&self, who: Option<Id<AccountKind>>, route: &Route) -> Result<Reply<S::Follow>, Failure> {
+        match route {
+            Route::SignIn => return Reply::page(Status::Ok, &SignIn::new()),
+            Route::Script => {
+                return Ok(Reply { status: Status::Ok, location: None, body: Body::Script(Self::SCRIPT) });
+            }
+            _ => {}
+        }
         let who = who.ok_or(Failure::SignedOut)?;
         let screens = &self.0;
         match route {
@@ -182,6 +194,7 @@ impl<S: Screens> Dashboard<S> {
             Route::Deploys(handle) => Reply::page(Status::Ok, &screens.deploys(who, handle).await?),
             Route::Settings(handle) => Reply::page(Status::Ok, &screens.settings(who, handle).await?),
             Route::Account => Reply::page(Status::Ok, &screens.account(who).await?),
+            Route::SignIn | Route::Script => Err(Failure::Unrouted { source: crate::Unrouted::Path }),
             Route::Build(handle, build) => match screens.log(who, handle, *build).await? {
                 Logged::Done(page) => Reply::page(Status::Ok, &page),
                 Logged::Running(live, follow) => {

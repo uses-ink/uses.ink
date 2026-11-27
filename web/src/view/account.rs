@@ -13,6 +13,7 @@ use crate::said::Said;
 use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Empty, Link, Post, Stamp};
+use crate::view::passkeys::{Kept, Section};
 use crate::view::word::Word;
 
 /// One of the person's sites.
@@ -35,12 +36,20 @@ pub struct Account {
     pub created: Timestamp,
     /// The person's sites.
     pub sites: Vec<Owned>,
+    /// The person's passkeys.
+    pub passkeys: Vec<Kept>,
 }
 
 impl Account {
     /// An Account screen.
     pub fn new(created: Timestamp, sites: Vec<Owned>) -> Self {
-        Self { frame: Frame::account(), created, sites }
+        Self { frame: Frame::account(), created, sites, passkeys: Vec::new() }
+    }
+
+    /// The same screen listing `passkeys`.
+    #[must_use]
+    pub fn with_passkeys(self, passkeys: Vec<Kept>) -> Self {
+        Self { passkeys, ..self }
     }
 }
 
@@ -63,7 +72,8 @@ impl View for Account {
                 @for owned in &self.sites { (Lazy(move |out: &mut dyn Sink| Self::site(owned, out))) }
             }
             h2 { "Sign-in" }
-            (Empty { title: "No identity linked", what: "Signing in is by an email link. Linked identities (a forge account, a domain) will be listed here when they exist." })
+            p { "You can sign in with an email link or with a passkey." }
+            (Section(&self.passkeys))
             h2 { "Notifications" }
             p { "Failure notices are sent by email: the first failure and its fix only." }
         }

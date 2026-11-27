@@ -1,8 +1,8 @@
 //! The dashboard: five screens (Site, What we understood, Deploys, Settings, Account) as typed
 //! view models and pure rendering, and the trait the edge mounts them through (decision 0053).
 //!
-//! - A page is a function of a typed view model to `unspliced` values: no string is spliced, no
-//!   script is shipped. Interaction is full-page forms answered by a redirect, `<details>` for
+//! - A page is a function of a typed view model to `unspliced` values: no string is spliced, and the
+//!   one script (`passkey.js`, for the passkey buttons) is static text. Interaction is full-page forms answered by a redirect, `<details>` for
 //!   open and close, and one streamed page for a running build's log.
 //! - The crate knows no HTTP server and no adapter. The edge reads a request into a [`Request`],
 //!   calls [`Dashboard::respond`] over its implementation of [`Screens`], and sends the [`Reply`].

@@ -69,6 +69,8 @@ impl Bridge {
         let limit = self.limits.budget(method, &path);
         let authorization = head.headers.get("authorization").map(|value| value.as_bytes().to_vec());
         let cookie = head.headers.get("cookie").map(|value| value.as_bytes().to_vec());
+        let origin = head.headers.get("origin").and_then(|value| value.to_str().ok()).map(str::to_owned);
+        let site = head.headers.get("sec-fetch-site").and_then(|value| value.to_str().ok()).map(str::to_owned);
         let source = head.extensions.get::<Peer>().and_then(|peer| peer.0).map(|address| address.ip().to_canonical());
         let read = axum::body::to_bytes(body, usize::try_from(limit).unwrap_or(usize::MAX));
         let body = match tokio::time::timeout(std::time::Duration::from_secs(600), read).await {
@@ -77,7 +79,7 @@ impl Bridge {
             Ok(Err(_)) => Payload::Over { limit },
         };
         let (reply, answered) = oneshot::channel();
-        let request = Request { method, path, query, authorization, cookie, source, body };
+        let request = Request { method, path, query, authorization, cookie, origin, site, source, body };
         if self.calls.try_send(Call { request, reply }).is_err() {
             return Self::plain(Status::Internal);
         }
@@ -96,10 +98,10 @@ impl Bridge {
         let mut response = Response::new(Body::from(reply.body.clone()));
         *response.status_mut() = axum::http::StatusCode::from_u16(reply.status.code()).unwrap_or_default();
         let headers = response.headers_mut();
-        if let Some(cookie) = &reply.cookie
-            && let Ok(value) = HeaderValue::from_str(&cookie.to_string())
-        {
-            headers.append(HeaderName::from_static("set-cookie"), value);
+        for cookie in reply.cookie.iter().chain(&reply.ceremony) {
+            if let Ok(value) = HeaderValue::from_str(&cookie.to_string()) {
+                headers.append(HeaderName::from_static("set-cookie"), value);
+            }
         }
         let mut put = |name: &'static str, value: &str| {
             if let Ok(value) = HeaderValue::from_str(value) {

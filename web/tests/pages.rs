@@ -582,3 +582,36 @@ fn text_from_a_source_never_carries_a_control_character() {
     }
     assert!(pages.iter().all(|page| page.contains("\\u{1b}")), "the escape is shown, not dropped");
 }
+
+#[test]
+fn the_sign_in_page_and_the_script_need_no_session_and_nothing_else_is_scripted() {
+    let page = reply(&Ask::get("/signin"), None);
+    assert_eq!(page.status, Status::Ok);
+    let Body::Page(text) = page.body else { panic!("a page") };
+    assert!(text.contains(r#"data-passkey="login""#) && text.contains(r#"src="/passkey.js""#), "{text}");
+    assert!(!text.contains("<script>"), "no inline script");
+    let script = reply(&Ask::get("/passkey.js"), None);
+    let Body::Script(source) = script.body else { panic!("a script") };
+    assert!(source.contains("/v1/passkeys/challenge") && !source.contains("localStorage"));
+    // the policy allows the one script and the fetches to this host, and no inline script
+    let csp = Reply::<Replay>::HEADERS.iter().find(|(name, _)| *name == "content-security-policy").unwrap().1;
+    assert!(csp.contains("script-src 'self'") && csp.contains("connect-src 'self'"), "{csp}");
+    assert!(!csp.contains("script-src 'unsafe-inline'"));
+    // a person's pages still need one
+    assert_eq!(reply(&Ask::get("/account"), None).status, Status::Unauthorized);
+}
+
+#[test]
+fn the_account_screen_lists_passkeys_with_a_remove_button() {
+    use uses_ink_web::view::Kept;
+    let kept = Kept {
+        id: "ab".repeat(16),
+        label: "Laptop".to_owned(),
+        created: Fixtures::at("2026-11-27T09:30:00Z"),
+        used: Some("2026-11-28".to_owned()),
+        synced: true,
+    };
+    let account = Account::new(Fixtures::at("2026-11-01T00:00:00Z"), Vec::new()).with_passkeys(vec![kept]);
+    let text = Document(&account).write().unwrap();
+    assert!(text.contains("Laptop") && text.contains(r#"data-passkey="remove""#) && text.contains(r#"data-passkey="register""#));
+}
