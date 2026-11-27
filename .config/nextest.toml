@@ -2,6 +2,13 @@
 # A test over 100 ms is a bug (docs/conventions.md, Tests).
 slow-timeout = { period = "100ms", terminate-after = 1 }
 
+# HACK(performance pass): the blog fixture holds photos, so every CLI site test that builds it
+# encodes AVIF. Until encodes are shared across builds, these tests have the image budget. It
+# comes first because nextest applies the first override that matches.
+[[profile.default.overrides]]
+filter = "package(uses-ink-cli) & binary(site)"
+slow-timeout = { period = "500ms", terminate-after = 1 }
+
 # Compiling a tree-sitter grammar's queries takes 40 to 90 ms, once per process: the tests that
 # highlight code (every test of host-native's `highlight`, and those with `highlight` in their
 # name) have this budget instead.
@@ -15,3 +22,10 @@ slow-timeout = { period = "250ms", terminate-after = 1 }
 [[profile.default.overrides]]
 filter = "package(uses-ink-host-image) | test(/_image$/)"
 slow-timeout = { period = "500ms", terminate-after = 1 }
+
+# The git tests write a repository object by object and walk its history on up to four threads:
+# about 30 ms alone, but past 100 ms beside the rest of the suite. Every test of the `git`
+# binaries (host-native's and the CLI's) has this budget instead.
+[[profile.default.overrides]]
+filter = "binary(git)"
+slow-timeout = { period = "250ms", terminate-after = 1 }
