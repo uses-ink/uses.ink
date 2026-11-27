@@ -150,6 +150,21 @@ fn date_takes_frontmatter_then_file_name_then_exact_history() {
 }
 
 #[test]
+fn a_false_date_decides_the_page_undated_over_its_file_name() {
+    let tree = Tree::new()
+        .file("posts/2024-03-01-x.md", "---\ndate: false\ndescription: false\n---\nFirst paragraph.\n")
+        .file("posts/2024-03-02-y.md", "First paragraph.\n");
+    let u = tree.understand(&Pinned::none());
+    assert_eq!(codes(&u), Vec::<&str>::new(), "{:?}", u.diagnostics);
+    let undated = on::<code::Date>(&u, "posts/2024-03-01-x.md");
+    assert_eq!(undated.value, None);
+    assert!(matches!(undated.evidence, Evidence::Frontmatter { .. }), "{:?}", undated.evidence);
+    assert_eq!(on::<code::Summary>(&u, "posts/2024-03-01-x.md").value, None);
+    assert_eq!(on::<code::Date>(&u, "posts/2024-03-02-y.md").value, Some(When::Day(date(2024, 3, 2))));
+    assert_eq!(on::<code::Summary>(&u, "posts/2024-03-02-y.md").value.as_deref(), Some("First paragraph."));
+}
+
+#[test]
 fn a_bound_is_never_a_date() {
     let bound = Known::NotAfter { value: instant("2023-05-06T07:08:09Z"), from: Provenance::Filesystem };
     let u = Tree::new().file("posts/c.md", "x\n").created("posts/c.md", bound).understand(&Pinned::none());

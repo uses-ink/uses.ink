@@ -6,7 +6,7 @@
 use model::code::{AnyCode, AnyDecision};
 use model::decision::Site;
 use model::record::PluginId;
-use model::{Notice, Snapshot, Subject};
+use model::{Diagnostic, Notice, Snapshot, Subject};
 
 use crate::Pins;
 use crate::interpret::Trace;
@@ -19,6 +19,7 @@ use crate::interpret::journal::Journal;
 pub struct Chosen {
     format: PluginId,
     decisions: Vec<AnyDecision>,
+    diagnostics: Vec<Diagnostic>,
     notices: Vec<Notice>,
     trace: Option<Trace>,
 }
@@ -30,8 +31,8 @@ impl Chosen {
         let mut journal = asked.map_or_else(Journal::default, |(code, subject)| Journal::asking(code, subject));
         let about = About { subject: &Site, ground: snapshot };
         let format = precedence::Format::default().record(about, pins, &mut journal).unwrap_or_else(PluginId::markdown);
-        let (decisions, _, notices, trace) = journal.into_parts();
-        Self { format, decisions, notices, trace }
+        let (decisions, diagnostics, notices, trace) = journal.into_parts();
+        Self { format, decisions, diagnostics, notices, trace }
     }
 
     /// The format plugin that reads the site's markdown.
@@ -39,8 +40,9 @@ impl Chosen {
         &self.format
     }
 
-    /// The decision's notices, in the order said.
-    pub(crate) fn into_parts(self) -> (Vec<AnyDecision>, Vec<Notice>, Option<Trace>) {
-        (self.decisions, self.notices, self.trace)
+    /// The decision, what the ladder said of it (an error when it could not decide, in which
+    /// case the markdown format reads), its notices, and its replay.
+    pub(crate) fn into_parts(self) -> (Vec<AnyDecision>, Vec<Diagnostic>, Vec<Notice>, Option<Trace>) {
+        (self.decisions, self.diagnostics, self.notices, self.trace)
     }
 }

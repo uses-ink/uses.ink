@@ -237,6 +237,15 @@ fn refuses_links_out_of_the_tree_and_links_to_nothing() {
 }
 
 #[test]
+fn a_tree_nested_far_past_the_stack_is_read() {
+    let repo = Repo::new("deep");
+    let deep = format!("{}a.md", "d/".repeat(6_000));
+    repo.commit(0, &[], &[(deep.as_str(), Node::Text("a"))]);
+    let read = repo.read().unwrap();
+    assert_eq!(read.snapshot.tree().len(), 1);
+}
+
+#[test]
 fn refuses_past_each_budget_with_the_numbers() {
     let repo = Repo::new("budget");
     repo.commit(0, &[], &[("a.md", Node::Text("aaaa")), ("b.md", Node::Text("bbbb")), ("c.md", Node::Text("cccc"))]);

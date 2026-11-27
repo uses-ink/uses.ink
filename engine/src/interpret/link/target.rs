@@ -100,7 +100,8 @@ pub(crate) struct Targets<'a> {
     pub(crate) attachments: Option<Attachments>,
 }
 
-/// The pages each alias names (frontmatter `aliases`), by the alias in lower case.
+/// The pages each alias names (frontmatter `aliases`), by the alias as written, so the letter
+/// for letter pass compares it as written and only the folded pass ignores case.
 #[derive(Debug, Default)]
 pub(crate) struct Aliases(BTreeMap<String, BTreeSet<ContentPath>>);
 
@@ -110,7 +111,7 @@ impl<'a> FromIterator<&'a Source> for Aliases {
         for source in sources {
             let names = source.read.front.aliases.iter().flat_map(|aliases| &aliases.value);
             for name in names {
-                aliases.0.entry(name.trim().to_lowercase()).or_default().insert(source.path.clone());
+                aliases.0.entry(name.trim().to_owned()).or_default().insert(source.path.clone());
             }
         }
         aliases
@@ -182,7 +183,7 @@ impl Targets<'_> {
         let written = written.trim_start_matches('/');
         if !written.contains('/') {
             let mut found = self.named(written, case);
-            let aliased = self.aliases.0.iter().filter(|(alias, _)| case.same(alias, &written.to_lowercase()));
+            let aliased = self.aliases.0.iter().filter(|(alias, _)| case.same(alias, written));
             for path in aliased.flat_map(|(_, paths)| paths) {
                 if !found.contains(path) {
                     found.push(path.clone());

@@ -60,11 +60,12 @@ pub struct Understood {
 
 impl Understood {
     /// What was understood, with the decision of the format it was read with: its decision
-    /// first, its notices before the engine's, and its replay when that was asked for.
+    /// first, its diagnostics and notices before the engine's, and its replay when that was asked for.
     #[must_use]
     pub fn with(mut self, chosen: Chosen) -> Self {
-        let (decisions, notices, trace) = chosen.into_parts();
+        let (decisions, diagnostics, notices, trace) = chosen.into_parts();
         self.decisions.splice(0..0, decisions);
+        self.diagnostics.splice(0..0, diagnostics);
         self.notices.splice(0..0, notices);
         self.trace = trace.or(self.trace);
         self

@@ -168,3 +168,41 @@ fn an_anchor_the_page_lacks_is_named() {
     assert_eq!(codes(&u), ["link.anchor.missing"]);
     assert!(matches!(&u.diagnostics[0].problem, Problem::LinkAnchorMissing { written } if written == "#gone"));
 }
+
+#[test]
+fn an_anchor_with_no_letter_or_digit_is_said_not_dropped() {
+    let u = Tree::new().file("a.md", "[x](b.md#???)\n").file("b.md", "x\n").understand(&Pinned::none());
+    assert_eq!(
+        u.diagnostics.iter().map(|d| &d.problem).collect::<Vec<_>>(),
+        [&Problem::LinkAnchorMissing { written: "#???".into() }]
+    );
+    let site = u.site.unwrap();
+    assert!(matches!(target(&inlines(&site, "a.md")[0]), LinkTarget::Page { anchor: None, .. }));
+}
+
+#[test]
+fn a_file_name_with_a_colon_is_found_before_a_scheme_is_assumed() {
+    let u = Tree::new()
+        .file("a.md", "[x](meet: notes)\n[y](https://example.org)\n")
+        .file("meet: notes.md", "x\n")
+        .understand(&Pinned::none());
+    assert!(codes(&u).is_empty(), "{:?}", u.diagnostics);
+    let site = u.site.unwrap();
+    let links = inlines(&site, "a.md");
+    assert!(matches!(target(&links[0]), LinkTarget::Page { id, .. } if *id == PageId::of(&path("meet: notes.md"))));
+    assert!(matches!(target(&links[1]), LinkTarget::External(_)));
+}
+
+#[test]
+fn an_alias_is_compared_letter_for_letter_before_it_is_folded() {
+    let u = Tree::new()
+        .file("a.md", "[x](meeting)\n")
+        .file("meeting.md", "x\n")
+        .file("other.md", "---\naliases: [Meeting]\n---\nx\n")
+        .understand(&Pinned::none());
+    assert!(codes(&u).is_empty(), "{:?}", u.diagnostics);
+    let site = u.site.unwrap();
+    assert!(
+        matches!(target(&inlines(&site, "a.md")[0]), LinkTarget::Page { id, .. } if *id == PageId::of(&path("meeting.md")))
+    );
+}

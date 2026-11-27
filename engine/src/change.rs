@@ -1,6 +1,7 @@
 //! A build compared with its baseline (decision 0042): what became public, what is no longer
 //! served or moved, and each decision that changed with the first cause that holds, in order:
-//! config named by either side's evidence, a format plugin that is another build, an ability
+//! config named by either side's evidence, a format plugin that is another build (for a
+//! decision read from a file's text, not one from its name, its history or its place), an ability
 //! a history-based decision reads, the subject's own file, `ink.toml`, any other file, else ink
 //! itself, which is a warning.
 
@@ -93,26 +94,40 @@ impl<'a> Attribution<'a> {
     }
 
     /// Every decision that differs, in the order the later build made them, then the ones it no
-    /// longer makes.
+    /// longer makes. A decision is paired with the one of its code and subject in the other
+    /// build; when a record holds several of one pair, the nth pairs with the nth, so none is
+    /// hidden by another.
     fn changes(&self) -> Vec<Change> {
-        let index = |build: &'a Build| -> BTreeMap<Key, &'a AnyDecision> {
-            build.decisions.iter().map(|decision| ((decision.code(), decision.subject()), decision)).collect()
+        let numbered = |build: &'a Build| -> Vec<(Key, usize, &'a AnyDecision)> {
+            let mut counts: BTreeMap<Key, usize> = BTreeMap::new();
+            build
+                .decisions
+                .iter()
+                .map(|decision| {
+                    let key = (decision.code(), decision.subject());
+                    let count = counts.entry(key.clone()).or_default();
+                    *count += 1;
+                    (key, *count, decision)
+                })
+                .collect()
         };
-        let (was, is) = (index(self.before), index(self.after));
+        let index = |all: &[(Key, usize, &'a AnyDecision)]| -> BTreeMap<(Key, usize), &'a AnyDecision> {
+            all.iter().map(|(key, count, decision)| ((key.clone(), *count), *decision)).collect()
+        };
+        let (before, after) = (numbered(self.before), numbered(self.after));
+        let (was, is) = (index(&before), index(&after));
         let mut changes = Vec::new();
-        for decision in &self.after.decisions {
-            let key = (decision.code(), decision.subject());
-            let before = was.get(&key).copied();
-            if before.is_none_or(|before| !before.agrees(decision)) {
-                let cause = self.cause(&key, before, Some(decision));
-                changes.push(Change::new(key, before.cloned(), Some(decision.clone()), cause));
+        for (key, count, decision) in &after {
+            let earlier = was.get(&(key.clone(), *count)).copied();
+            if earlier.is_none_or(|earlier| !earlier.agrees(decision)) {
+                let cause = self.cause(key, earlier, Some(decision));
+                changes.push(Change::new(key.clone(), earlier.cloned(), Some((*decision).clone()), cause));
             }
         }
-        for decision in &self.before.decisions {
-            let key = (decision.code(), decision.subject());
-            if !is.contains_key(&key) {
-                let cause = self.cause(&key, Some(decision), None);
-                changes.push(Change::new(key, Some(decision.clone()), None, cause));
+        for (key, count, decision) in &before {
+            if !is.contains_key(&(key.clone(), *count)) {
+                let cause = self.cause(key, Some(decision), None);
+                changes.push(Change::new(key.clone(), Some((*decision).clone()), None, cause));
             }
         }
         changes
@@ -125,7 +140,16 @@ impl<'a> Attribution<'a> {
         if evidence.iter().any(|evidence| matches!(evidence, Evidence::Config { .. })) {
             return Cause::Config;
         }
-        if let Some(plugin) = self.plugin(key) {
+        let read = evidence.iter().any(|evidence| {
+            matches!(
+                evidence,
+                Evidence::Frontmatter { .. }
+                    | Evidence::Heading { .. }
+                    | Evidence::Inline { .. }
+                    | Evidence::Body { .. }
+            )
+        });
+        if let Some(plugin) = self.plugin(key).filter(|_| read) {
             return Cause::Plugin { plugin };
         }
         let historic = evidence.iter().any(|evidence| {
@@ -147,7 +171,8 @@ impl<'a> Attribution<'a> {
     }
 
     /// A format plugin that is another build of itself, or ran in only one build, when the
-    /// subject is a file.
+    /// subject is a file. The caller asks only for a decision some side of which was read from
+    /// the file's text (frontmatter, heading, inline or body), which is what a format makes.
     fn plugin(&self, key: &Key) -> Option<model::record::PluginId> {
         let Subject::File(_) = key.1 else { return None };
         let ran = |inputs: &'a Inputs| -> BTreeSet<&'a model::record::Plugin> { inputs.plugins.iter().collect() };

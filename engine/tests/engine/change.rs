@@ -107,3 +107,36 @@ fn a_deepened_clone_is_the_sources_and_no_warning() {
     assert_eq!(date.after.as_ref().unwrap().get::<code::Date>().unwrap().value, Some(When::Instant(at)));
     assert_eq!(compared.diagnostics, []);
 }
+
+#[test]
+fn a_changed_format_is_blamed_only_for_what_it_read() {
+    use model::record::{Plugin, PluginId};
+    let tree = Tree::new().file("a.md", "# A\n").file("b.md", "# B\n");
+    let before = tree.record(&Pinned::none());
+    let mut after = Tree::new().file("a.md", "# A\n").record(&Pinned::none());
+    after.inputs.plugins.push(Plugin::new(PluginId::obsidian(), model::Hash::of(b"another build")));
+    let compared = Compared::of(against(), Some(&before), &after);
+    let found = causes(&compared);
+    let b = Subject::File(path("b.md"));
+    let plugin = Cause::Plugin { plugin: PluginId::obsidian() };
+    let title = found.iter().find(|(code, subject, _)| *code == AnyCode::Title && *subject == b).unwrap();
+    assert_eq!(title.2, plugin, "the heading was read by the format: {found:?}");
+    let publish = found.iter().find(|(code, subject, _)| *code == AnyCode::Publish && *subject == b).unwrap();
+    assert_eq!(publish.2, Cause::Content(Touched::Removed), "a default is no reading: {found:?}");
+}
+
+#[test]
+fn two_decisions_of_one_code_and_subject_in_a_record_are_each_compared() {
+    let build = |text: &str| Tree::new().file("a.md", text).record(&Pinned::none());
+    let title = |build: &model::record::Build| {
+        build.decisions.iter().find(|decision| decision.code() == AnyCode::Title).unwrap().clone()
+    };
+    let (a, b) = (build("# A\n"), build("# B\n"));
+    let mut earlier = a.clone();
+    earlier.decisions.push(title(&b));
+    let mut later = b.clone();
+    later.decisions.push(title(&b));
+    let compared = Compared::of(against(), Some(&earlier), &later);
+    let titles = causes(&compared).into_iter().filter(|(code, ..)| *code == AnyCode::Title).count();
+    assert_eq!(titles, 1, "the first title changed and the second did not: {:?}", compared.changes);
+}

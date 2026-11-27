@@ -30,21 +30,20 @@ impl<C: Fronted, G: Sourced + ?Sized> Witness<C, G> for Front<C> {
     }
 }
 
-/// Implements [`Fronted`] for each code from its field of `model::Front`, wrapping the value
-/// where the code's value is optional. The same impl over a list of types, which a generic
-/// cannot write.
+/// Implements [`Fronted`] for each code from its field of `model::Front`. The same impl over a
+/// list of types, which a generic cannot write.
 ///
 /// ```text
-/// fronted! { Title => title; Date => date as Some; }
-/// // makes `impl Fronted for Date`, reading `front.date` as `Some(date)`
+/// fronted! { Title => title; Date => date; }
+/// // makes `impl Fronted for Date`, reading `front.date`, whose none (`date: false`) is a value
 /// ```
 macro_rules! fronted {
-    ($($code:ty => $field:ident $(as $wrap:ident)?;)+) => {
+    ($($code:ty => $field:ident;)+) => {
         $(
             impl Fronted for $code {
                 fn front(front: &model::Front) -> Option<(Self::Value, Span)> {
                     let written = front.$field.as_ref()?;
-                    Some(($($wrap)?(written.value.clone()), written.span))
+                    Some((written.value.clone(), written.span))
                 }
             }
         )+
@@ -55,9 +54,9 @@ fronted! {
     Kind => kind;
     Publish => publish;
     Title => title;
-    Summary => description as Some;
-    Date => date as Some;
-    Updated => updated as Some;
+    Summary => description;
+    Date => date;
+    Updated => updated;
     Slug => slug;
     Tags => tags;
     Language => language;

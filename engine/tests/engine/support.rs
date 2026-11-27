@@ -310,13 +310,13 @@ fn key(front: &mut Front, line: &str, span: Span) -> Result<(), String> {
     let (key, value) = line.split_once(": ").ok_or_else(|| line.to_owned())?;
     match key {
         "title" => front.title = at(value.to_owned(), span),
-        "date" => front.date = at(when(value), span),
-        "updated" => front.updated = at(when(value), span),
+        "date" => front.date = at((value != "false").then(|| when(value)), span),
+        "updated" => front.updated = at((value != "false").then(|| when(value)), span),
         "slug" => front.slug = at(value.parse().unwrap(), span),
         "tags" => front.tags = at(value.split(", ").map(|t| Tag::new(t).unwrap()).collect(), span),
         "publish" => front.publish = at(value == "true", span),
         "draft" => front.draft = at(value == "true", span),
-        "description" => front.description = at(value.to_owned(), span),
+        "description" => front.description = at((value != "false").then(|| value.to_owned()), span),
         "lang" => front.language = at(value.parse().unwrap(), span),
         "aliases" => front.aliases = at(value.split(", ").map(str::to_owned).collect(), span),
         "type" => front.kind = at(if value == "post" { PageKind::Post } else { PageKind::Page }, span),

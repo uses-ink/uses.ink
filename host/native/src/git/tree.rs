@@ -1,4 +1,10 @@
 //! A commit's tree walked into entries, with the folder's budgets.
+//!
+//! The walk keeps its own stack of folders, so a tree nested as deep as the folder budget
+//! allows cannot overflow the thread's. A link out of the tree is refused (`source.link.outside`)
+//! and so is one to nothing (`source.link.broken`), wherever it is, even in a folder nothing
+//! publishes: the folder source refuses the same links, and a build that skipped them would
+//! publish a different site from the one the author sees.
 
 use std::collections::{BTreeMap, HashMap};
 use std::ffi::OsStr;
@@ -39,6 +45,9 @@ pub(super) struct Walk<'a, S> {
     seen: HashMap<ObjectId, (Hash, Bytes)>,
 }
 
+/// One entry of a tree still to visit: its path, its kind and its object.
+type Child = (ContentPath, EntryKind, ObjectId);
+
 /// A tree read.
 #[derive(Debug, Default)]
 pub(super) struct Walked {
@@ -69,7 +78,7 @@ impl<'a, S: Store> Walk<'a, S> {
     /// Walks the tree `root`, then resolves its links. The walk stops at the first budget
     /// passed, as the folder's does.
     pub(super) fn read(mut self, root: ObjectId) -> Result<Walked, Refused> {
-        self.tree(root, None)?;
+        self.walk(root)?;
         let links = std::mem::take(&mut self.links);
         for (path, target) in links {
             let links = Links { nodes: &self.nodes, hops: self.source.limits.hops };
@@ -90,8 +99,24 @@ impl<'a, S: Store> Walk<'a, S> {
         Ok(self.walked)
     }
 
-    /// Walks the tree `id`, whose paths start with `prefix`.
-    fn tree(&mut self, id: ObjectId, prefix: Option<&ContentPath>) -> Result<(), Refused> {
+    /// Walks the tree `root` and every tree under it, depth first, in the order the entries are
+    /// held, on a stack of the children still to visit.
+    fn walk(&mut self, root: ObjectId) -> Result<(), Refused> {
+        let mut pending: Vec<std::vec::IntoIter<Child>> = Vec::new();
+        pending.extend(self.tree(root, None)?.map(Vec::into_iter));
+        while let Some(top) = pending.last_mut() {
+            let Some((path, kind, id)) = top.next() else {
+                pending.pop();
+                continue;
+            };
+            pending.extend(self.child(path, kind, id)?.map(Vec::into_iter));
+        }
+        Ok(())
+    }
+
+    /// Enters the tree `id`, whose paths start with `prefix`: its children to walk, or none when
+    /// it is skipped.
+    fn tree(&mut self, id: ObjectId, prefix: Option<&ContentPath>) -> Result<Option<Vec<Child>>, Refused> {
         self.folders += 1;
         let budget = self.source.budget;
         if self.folders > budget.folders {
@@ -117,16 +142,14 @@ impl<'a, S: Store> Walk<'a, S> {
             if let Some(reason) = reason {
                 self.walked.skipped.push(Skipped { path: path.clone(), reason });
                 self.nodes.insert(path.as_str().to_owned(), Node::Other);
-                return Ok(());
+                return Ok(None);
             }
         }
-        for (path, kind, id) in children {
-            self.child(path, kind, id)?;
-        }
-        Ok(())
+        Ok(Some(children))
     }
 
-    fn child(&mut self, path: ContentPath, kind: EntryKind, id: ObjectId) -> Result<(), Refused> {
+    /// One entry of a tree: its children to walk when it is a folder that is read.
+    fn child(&mut self, path: ContentPath, kind: EntryKind, id: ObjectId) -> Result<Option<Vec<Child>>, Refused> {
         let key = path.as_str().to_owned();
         match kind {
             EntryKind::Tree if self.source.output.contains(&path) => {
@@ -135,7 +158,7 @@ impl<'a, S: Store> Walk<'a, S> {
             }
             EntryKind::Tree => {
                 self.nodes.insert(key, Node::Folder);
-                self.tree(id, Some(&path))?;
+                return self.tree(id, Some(&path));
             }
             EntryKind::Commit => {
                 self.nodes.insert(key, Node::Other);
@@ -154,7 +177,7 @@ impl<'a, S: Store> Walk<'a, S> {
                 self.walked.entries.push(Entry::new(path, blob, size));
             }
         }
-        Ok(())
+        Ok(None)
     }
 
     /// One more file met, refused past the budget.
@@ -194,7 +217,7 @@ impl<'a, S: Store> Walk<'a, S> {
 
     /// Whether a tree's `children` hold a file `name` starting with `mark`: a manifest `ink
     /// build` wrote ([`Folder::MANIFEST`]), or the mark of ink's cache ([`Disk::LABEL`]).
-    fn holds(&self, children: &[(ContentPath, EntryKind, ObjectId)], name: &str, mark: &str) -> Result<bool, Refused> {
+    fn holds(&self, children: &[Child], name: &str, mark: &str) -> Result<bool, Refused> {
         let found = children.iter().find(|(path, kind, _)| {
             path.file_name() == name && matches!(kind, EntryKind::Blob | EntryKind::BlobExecutable)
         });

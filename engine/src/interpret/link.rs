@@ -204,13 +204,14 @@ impl Resolve<'_, '_> {
     /// What a link points at: an anchor of this page, a link out, or a published page.
     fn target(&mut self, written: Written<'_>) -> Option<LinkTarget> {
         let (path, anchor) = written.split();
-        let anchor = anchor.and_then(|anchor| Slug::from_text(anchor).ok()).map(Anchor::new);
         if path.is_empty() {
+            let anchor = anchor.and_then(|anchor| Slug::from_text(anchor).ok()).map(Anchor::new);
             return self.missing(written, anchor.map(LinkTarget::Anchor));
         }
-        if Written(path).is_external() {
+        if self.outside(path) {
             return self.missing(written, ExternalUrl::parse(written.0).ok().map(LinkTarget::External));
         }
+        let anchor = anchor.and_then(|text| self.anchored(text));
         match self.settle(written, self.targets.find(self.from, Written(path))) {
             Found::Page(page) => Some(LinkTarget::Page { id: PageId::of(&page), anchor }),
             Found::File(target) => self.refuse(Problem::LinkTargetAsset { written: written.into(), target }),
@@ -218,13 +219,32 @@ impl Resolve<'_, '_> {
         }
     }
 
+    /// Whether `path` is a link out: shaped like a URL (`https:`) and naming no file of the
+    /// vault, which is looked up first since a file name may hold a colon (`meet: notes.md`).
+    fn outside(&self, path: &str) -> bool {
+        Written(path).is_external() && matches!(self.targets.find(self.from, Written(path)), Found::Missing)
+    }
+
+    /// The anchor a link's text after `#` names: none when it is empty, and `link.anchor.missing`
+    /// when it has no letter or digit to make an anchor of.
+    fn anchored(&mut self, text: &str) -> Option<Anchor> {
+        match Slug::from_text(text) {
+            Ok(slug) => Some(Anchor::new(slug)),
+            Err(_) if text.trim().is_empty() => None,
+            Err(_) => {
+                self.problems.push(Problem::LinkAnchorMissing { written: format!("#{text}") });
+                None
+            }
+        }
+    }
+
     /// What an image shows: a link out, or a plain file of a kind the engine serves, which a page
     /// showing it publishes.
     fn picture(&mut self, written: Written<'_>) -> Option<ImageSource> {
-        if written.is_external() {
+        let (path, _) = written.split();
+        if self.outside(path) {
             return self.missing(written, ExternalUrl::parse(written.0).ok().map(ImageSource::External));
         }
-        let (path, _) = written.split();
         match self.settle(written, self.targets.find(self.from, Written(path))) {
             Found::File(file) => match MediaType::try_from(&file) {
                 Ok(_) => {
