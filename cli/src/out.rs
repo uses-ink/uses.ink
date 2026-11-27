@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 
 use engine::Blobs;
 use model::record::{Against, Build};
-use model::{ContentPath, DeployId, Hash, Manifest, MediaType, PathError, Route};
+use model::{ContentPath, DeployId, Hash, Manifest, MediaType, PathError, Route, Written};
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
@@ -17,25 +17,7 @@ use crate::failure::Remedy;
 
 /// The manifest's file in the output folder. A dotted name is never a route, so no entry can
 /// take it. The folder walk knows it by this name, so no command reads the folder as content.
-const MANIFEST: &str = host_native::Folder::MANIFEST;
-
-/// The manifest as written into the output folder: compact, its schema first, so it starts with
-/// [`host_native::Folder::MARK`].
-#[derive(Debug, Serialize)]
-struct Written<'a> {
-    schema: &'static str,
-    deploy: DeployId,
-    /// Every file written, so the next build can remove exactly those.
-    files: &'a [Listed],
-    manifest: &'a Manifest,
-    /// What the build decided and was made from, so the next build can say what changed.
-    record: &'a Build,
-}
-
-impl Written<'_> {
-    /// The schema of what [`Written`] writes and [`Previous`] reads.
-    const SCHEMA: &'static str = "uses.manifest/v3";
-}
+const MANIFEST: &str = <Written>::MANIFEST;
 
 /// What the next build reads back from [`Written`] to clear the folder.
 #[derive(Debug, Deserialize)]
@@ -307,7 +289,7 @@ impl OutFolder {
         for (path, bytes) in &files.0 {
             Under(&self.root).put(path, bytes)?;
         }
-        let written = Written { schema: Written::SCHEMA, deploy: manifest.id(), files: &listed, manifest, record };
+        let written = Written::new(manifest.id(), listed.as_slice(), manifest, record);
         let json = serde_json::to_vec(&written).map_err(|source| Error::Json { source })?;
         Under(&self.root).put(&self.manifest, &json)
     }

@@ -6,3 +6,4 @@ pub(crate) mod format;
 pub mod git;
 pub(crate) mod manifest;
 pub mod record;
+pub(crate) mod written;

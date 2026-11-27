@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use blob::{Blob, Tenant};
 use clock::{Clock, Draw};
 use control::{Ports, Site};
-use edge_folder::{MANIFEST, Written};
+use edge_folder::{MANIFEST, Unchecked};
 use model::{ContentPath, Hash};
 
 use crate::Api;
@@ -50,7 +50,7 @@ impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
         let tree = Tree::read(body, limits).map_err(Fault::Archive)?;
         let manifest = ContentPath::parse(MANIFEST).map_err(|_| Fault::Intake(Intake::NoManifest))?;
         let bytes = tree.get(&manifest).ok_or(Fault::Intake(Intake::NoManifest))?;
-        let written: Written = serde_json::from_slice(bytes)
+        let written: Unchecked = serde_json::from_slice(bytes)
             .map_err(|source| edge_folder::Error::Manifest { path: MANIFEST.into(), source })
             .map_err(Fault::Folder)?;
         let checked = written.check(std::path::Path::new(MANIFEST)).map_err(Fault::Folder)?;

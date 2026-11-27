@@ -28,6 +28,7 @@ mod site;
 mod value;
 
 pub use decision::{code, coded};
+pub use output::written::Written;
 pub use output::{git, record};
 pub use site::highlight;
 

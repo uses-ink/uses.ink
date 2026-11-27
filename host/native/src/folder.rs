@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use model::{
     Ability, AnyCode, Bytes, ContentPath, Entry, FileFacts, Gap, Hash, Known, Lack, Observed, Provenance, Snapshot,
-    Timestamp, UnknownReason, Version,
+    Timestamp, UnknownReason, Version, Written,
 };
 
 use crate::blob::Store;
@@ -55,10 +55,10 @@ struct Walk<'a, S> {
 impl Folder {
     /// The manifest `ink build` writes into its output folder. A folder holding one that
     /// starts with [`Folder::MARK`] is output, so no read takes it as content.
-    pub const MANIFEST: &'static str = ".ink-manifest.json";
+    pub const MANIFEST: &'static str = <Written>::MANIFEST;
 
     /// How a manifest `ink build` wrote starts: its schema, first.
-    pub const MARK: &'static str = "{\"schema\":\"uses.manifest/";
+    pub const MARK: &'static str = <Written>::MARK;
 
     /// A folder read with the v1 budget, skipping nothing but version control.
     pub fn new(root: impl Into<PathBuf>) -> Self {

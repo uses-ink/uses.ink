@@ -13,7 +13,7 @@ use model::ContentPath;
 use model::Hash;
 
 use crate::error::Error;
-use crate::written::{MANIFEST, Written};
+use crate::written::{MANIFEST, Unchecked};
 
 /// How hosts map to folders.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -161,7 +161,7 @@ impl Deploys {
             return Ok(Some(Resolved { deploy: Arc::clone(&cached.deploy), scope: Arc::clone(&cached.placed) }));
         }
         let bytes = Self::slurp(&path).await?;
-        let written: Written =
+        let written: Unchecked =
             serde_json::from_slice(&bytes).map_err(|source| Error::Manifest { path: path.clone(), source })?;
         let checked = written.check(&path)?;
         let files: BTreeMap<Hash, ContentPath> = checked.files.into_iter().rev().collect();
