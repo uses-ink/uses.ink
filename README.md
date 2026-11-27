@@ -26,7 +26,7 @@ To self-host in a container, `docker build -t uses-ink .`; the run line is in th
   names any tool it needs. Heavy builds and checks go through `farm`, the build farm client: see
   [docs/workflow.md](docs/workflow.md).
 - Naming and code rules are in [docs/conventions.md](docs/conventions.md). A decision goes in
-  [docs/decisions.md](docs/decisions.md).
+  [docs/decisions/](docs/decisions/README.md).
 
 ## Where things are
 
@@ -44,7 +44,7 @@ To self-host in a container, `docker build -t uses-ink .`; the run line is in th
 - What it is: [PRODUCT.md](PRODUCT.md)
 - How it works: [docs/architecture.md](docs/architecture.md)
 - Rules: [docs/conventions.md](docs/conventions.md) and [docs/code.md](docs/code.md)
-- Why: [docs/decisions.md](docs/decisions.md)
+- Why: [docs/decisions/](docs/decisions/README.md)
 - Plans: [docs/roadmap.md](docs/roadmap.md), and [docs/layout.md](docs/layout.md) for the repository layout
 
 ## Licence
