@@ -182,7 +182,7 @@ credentials sealed at rest, export, removal with a tombstone) with tests on the 
 No SQL text exists: statements and migrations are typed values (0049). Not done: the edge's API and intake, `web`,
 sign-in, `ink push` and the CLI verbs.
 - `edge` and `edge/axum`: serve, API, intake; polling watch; on-demand ACME. **Serving built
-  (0051):** `edge` (ports, refusals, limits, conditional, range, 404, headers), `edge/axum`
+  (0051), gate green on the farm:** `edge` (ports, refusals, limits, conditional, range, 404, headers), `edge/axum`
   (hyper loop, streaming, budgets, events, `/healthz`, graceful stop), `edge/folder` and
   `ink serve`. Open: API, intake, polling watch, on-demand ACME and TLS, the worker adapter,
   redirect and variant entries in the manifest.
