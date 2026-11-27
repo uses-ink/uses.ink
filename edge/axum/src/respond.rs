@@ -7,8 +7,10 @@ use edge::{Field, Status};
 /// A header the edge wrote that http does not take: the edge checks its values, so this is a bug
 /// and the response is a `500` that says so in the event.
 #[derive(Debug)]
-pub(crate) enum Malformed {
+pub enum Malformed {
+    /// The name is not a valid http header name.
     Name(axum::http::header::InvalidHeaderName),
+    /// The value is not a valid http header value.
     Value(axum::http::header::InvalidHeaderValue),
 }
 

@@ -25,6 +25,7 @@ use crate::error::Error;
 use trace::{Field as _, Instrument as _};
 
 use crate::event::{Answered, Called, Clip, Event, Kind, Logged as _, Observe, Stopped};
+use crate::fault::{AnswerFault, Cause, ConnectionFault};
 use crate::linger::Linger;
 use crate::respond::{Code, Fields};
 
@@ -105,7 +106,7 @@ where
         let (stream, linger) = match Linger::new(stream, limits) {
             Ok(pair) => pair,
             Err(source) => {
-                self.inner.observe.say(Event::Connection { source: Box::new(source) });
+                self.inner.observe.say(Event::Connection { source: ConnectionFault::Linger(source) });
                 return;
             }
         };
@@ -120,7 +121,7 @@ where
         tokio::spawn(async move {
             let _slot = slot;
             if let Err(source) = connection.await {
-                observe.say(Event::Connection { source: Box::new(source) });
+                observe.say(Event::Connection { source: ConnectionFault::Serve(source) });
             }
             // hyper has dropped its handle: end the reply before the socket can be reset
             linger.close().await;
@@ -153,7 +154,7 @@ where
                         self.connect(&graceful, router.clone(), Accepted { stream, slot });
                     }
                     Err(source) => {
-                        observe.say(Event::Connection { source: Box::new(source) });
+                        observe.say(Event::Connection { source: ConnectionFault::Accept(source) });
                         tokio::time::sleep(REST).await;
                     }
                 },
@@ -278,7 +279,7 @@ where
         let mut kind = Kind::from(&outcome);
         let (refusal, mut fault) = match outcome {
             Outcome::Refused(refusal) => (Some(refusal), None),
-            Outcome::Failed(fault) => (None, Some(Box::new(fault) as Box<dyn std::error::Error + Send + Sync>)),
+            Outcome::Failed(fault) => (None, Some(AnswerFault::Edge(Cause::of(&fault)))),
             _ => (None, None),
         };
         let body = self.pump(response.body, seen, permit);
@@ -287,7 +288,7 @@ where
         if let Err(malformed) = Fields(&response.fields).put(&mut built) {
             status = edge::Status::Internal;
             kind = Kind::Failed;
-            fault = Some(Box::new(malformed));
+            fault = Some(AnswerFault::Header(malformed));
         }
         *built.status_mut() = Code(status).into();
         self.observe.say(Event::Answered(Answered {

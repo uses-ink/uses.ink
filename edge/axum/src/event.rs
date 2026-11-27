@@ -1,6 +1,5 @@
 //! What the server tells the operator, as data.
 
-use std::error::Error;
 use std::fmt;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -9,6 +8,7 @@ use axum::http::StatusCode;
 use edge::{Chain, Hostname, Outcome, Refusal, Stage, Status};
 use trace::Field as _;
 
+use crate::fault::{AnswerFault, ConnectionFault};
 use crate::respond::Code;
 
 /// How an answered request ended, without the data.
@@ -78,7 +78,7 @@ pub struct Answered {
     /// Why, when it was refused.
     pub refusal: Option<Refusal>,
     /// What failed, when it failed.
-    pub fault: Option<Box<dyn Error + Send + Sync>>,
+    pub fault: Option<AnswerFault>,
 }
 
 /// One API call answered. It holds the path (site ids, never a token), the status and how long
@@ -137,7 +137,7 @@ pub enum Event {
     /// A connection or an accept failed; the server goes on.
     Connection {
         /// What failed.
-        source: Box<dyn Error + Send + Sync>,
+        source: ConnectionFault,
     },
     /// Told to stop; no new connections.
     Stopping,
@@ -153,7 +153,7 @@ impl fmt::Display for Answered {
             write!(out, ": {}", Chain(refusal))?;
         }
         if let Some(fault) = &self.fault {
-            write!(out, ": {}", Chain(fault.as_ref()))?;
+            write!(out, ": {}", Chain(fault))?;
         }
         Ok(())
     }
@@ -170,7 +170,7 @@ impl fmt::Display for Event {
             Self::Cut(Cut { stage, limit, sent }) => {
                 write!(out, "response cut after {sent} bytes: {stage} took more than {limit:?}")
             }
-            Self::Connection { source } => write!(out, "connection: {}", Chain(source.as_ref())),
+            Self::Connection { source } => write!(out, "connection: {}", Chain(source)),
             Self::Stopping => write!(out, "stopping"),
             Self::Stopped(Stopped::Drained) => write!(out, "stopped"),
             Self::Stopped(Stopped::Abandoned { limit }) => write!(out, "stopped with connections left after {limit:?}"),
@@ -224,7 +224,7 @@ impl Event {
                 sent = trace::Size(*sent).field(),
             ),
             Self::Connection { source } => {
-                trace::error!(name: trace::event::CONNECTION_FAILED, error = trace::Failure(source.as_ref()).field());
+                trace::error!(name: trace::event::CONNECTION_FAILED, error = trace::Failure(source).field());
             }
             Self::Stopping => trace::info!(name: trace::event::EDGE_STOPPING, accepting = false),
             Self::Stopped(Stopped::Drained) => trace::info!(name: trace::event::EDGE_STOPPED, drained = true),
@@ -259,7 +259,7 @@ impl Answered {
                 host,
                 status,
                 took_us = took,
-                error = trace::Failure(fault.as_ref()).field(),
+                error = trace::Failure(fault).field(),
             ),
             (_, _, kind) => trace::info!(
                 name: trace::event::REQUEST_ANSWERED,

@@ -29,12 +29,12 @@ use support::{Hosts, Site, Store};
 #[derive(Debug, Default)]
 struct Recorder(Mutex<Vec<Event>>);
 
-/// The recorder, shared with the thread the server runs on.
-struct Shared(Arc<Recorder>);
+/// A handle on the recorder that the server thread observes through.
+struct RecorderHandle(Arc<Recorder>);
 
-impl Observe for Shared {
+impl Observe for RecorderHandle {
     fn event(&self, event: &Event) {
-        // `Event` is not `Clone` (it holds boxed errors): the recorder keeps the parts a test reads
+        // `Event` is not `Clone` (its faults are not clone): the recorder keeps the parts a test reads
         self.0.0.lock().unwrap().push(match event {
             Event::Answered(answered) => Event::Answered(edge_axum::Answered {
                 method: answered.method.clone(),
@@ -75,7 +75,8 @@ impl Running {
         let address = listener.local_addr().unwrap();
         let events = Arc::new(Recorder::default());
         let server =
-            Server::new(Edge::new(hosts, blobs, limits).unwrap(), Shared(Arc::clone(&events)), Scheme::Plain).unwrap();
+            Server::new(Edge::new(hosts, blobs, limits).unwrap(), RecorderHandle(Arc::clone(&events)), Scheme::Plain)
+                .unwrap();
         let (stop, stopped) = tokio::sync::oneshot::channel();
         let thread = std::thread::spawn(move || {
             let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
@@ -304,7 +305,7 @@ fn a_head_limit_hyper_cannot_read_is_refused_at_start() {
     let site = Site::new();
     let limits = Limits { head: model::Bytes(100), ..Limits::default() };
     let edge = Edge::new(site.hosts, site.store, limits).unwrap();
-    let error = Server::new(edge, Shared(Arc::default()), Scheme::Plain).err().unwrap();
+    let error = Server::new(edge, RecorderHandle(Arc::default()), Scheme::Plain).err().unwrap();
     assert!(matches!(error, edge_axum::Error::Head { limit: 100, least: 8192 }));
 }
 
