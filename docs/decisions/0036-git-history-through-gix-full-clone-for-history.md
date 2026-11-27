@@ -1,6 +1,6 @@
 ## 0036 Git history through gix: full clone for history, one walk for dates
 
-Accepted, spike (`spikes/gix/`). The `git` capability uses `gix` 0.91. When history is wanted it
+Accepted, spike (`docs/research/gix-spike.md`). The `git` capability uses `gix` 0.91. When history is wanted it
 clones in full; depth 1 plus `deepen` is for a snapshot first or a bounded window, never as the
 road to full history. File dates come from one walk over history with a parallel tree diff per
 commit (merges skipped, renames not followed), and files older than a shallow window get

@@ -3,7 +3,7 @@
 Built (2026-11-27), closing M2's "bundle the components into `ink`". Supersedes the bullet of 0041
 that reads components from a folder.
 
-- **One list.** `cargo xtask component` (the `Guest` list of `xtask/src/component.rs`) builds every
+- **One list.** `cargo xtask component` (the `Guest` list of `xtask/src/build/component.rs`) builds every
   guest and writes `target/plugin/<name>.wasm` plus `target/plugin/bundle.json`
   (`uses.bundle/v1`): for each guest that `ink` carries, its plugin id, file, version and BLAKE3.
   `ink:format-markdown`, `ink:format-obsidian`, `ink:theme-quiet` and `ink:source-git` are carried;
