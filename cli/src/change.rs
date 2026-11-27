@@ -9,7 +9,7 @@ use std::path::Path;
 use model::Subject;
 use model::record::{Against, Change, Changes};
 
-use crate::explain::Value;
+use diag::Value;
 
 /// The change set of a build into the output folder `out`.
 #[derive(Clone, Copy, Debug)]

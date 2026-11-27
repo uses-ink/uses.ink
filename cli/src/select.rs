@@ -12,6 +12,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use config::{Config, Listed, Listing, Pattern};
+use diag::Because;
 use engine::Selection;
 use format_markdown::{Edit, Publishing};
 use model::code::{Ignored, Kind, Publish};
@@ -22,7 +23,6 @@ use serde::Serialize;
 use crate::args::{Kind as Reading, Origin, Select};
 use crate::error::Error;
 use crate::exit::Exit;
-use crate::explain::Because;
 use crate::output::{Io, Strict};
 use crate::replace::Replacing;
 use crate::report::Texts;

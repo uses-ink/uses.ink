@@ -6,8 +6,10 @@
 use std::fmt;
 
 use engine::{Heard, Rung, Standing, Trace};
-use model::{Ability, AnyDecision, ContentPath, Evidence, Gap, Lack, Observed, Oid, Provenance, Subject, Version};
+use model::{Ability, AnyDecision, ContentPath, Gap, Lack, Observed, Subject, Version};
 use serde::Serialize;
+
+use diag::{Because, Short, Value};
 
 use crate::args::Explain;
 use crate::asked::Asked;
@@ -191,52 +193,6 @@ impl fmt::Display for Line<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value = Value(self.0).to_string();
         write!(out, "  {:<18} {value:<24} {}", self.0.code().name(), Because(self.0.evidence()))
-    }
-}
-
-/// A decision's value, as its code words it.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Value<'a>(pub(crate) &'a AnyDecision);
-
-impl fmt::Display for Value<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.word(out)
-    }
-}
-
-/// Where a decision came from.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Because<'a>(pub(crate) &'a Evidence);
-
-impl fmt::Display for Because<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            Evidence::Frontmatter { path, span } => write!(out, "from the frontmatter of {path}, {span}"),
-            Evidence::Filename { path } => write!(out, "from the name of {path}"),
-            Evidence::Heading { path, span } => write!(out, "from the heading of {path}, {span}"),
-            Evidence::Inline { path, span } => write!(out, "from the inline text of {path}, {span}"),
-            Evidence::History { from: Provenance::Commit { commit } } => write!(out, "from commit {}", Short(commit)),
-            Evidence::History { from: Provenance::GitHistory { commit } } => {
-                write!(out, "from the history up to commit {}", Short(commit))
-            }
-            Evidence::History { from: Provenance::Filesystem } => write!(out, "from the file's modification time"),
-            Evidence::History { .. } => write!(out, "from the history"),
-            Evidence::Body { path } => write!(out, "from the text of {path}"),
-            Evidence::Marker { path } => write!(out, "because {path} is there"),
-            Evidence::Config { span } => write!(out, "pinned in ink.toml, {span}"),
-            Evidence::Default { .. } => write!(out, "by default"),
-            _ => write!(out, "from evidence this version cannot show"),
-        }
-    }
-}
-
-/// A commit id as people write it: its first twelve digits.
-#[derive(Clone, Copy, Debug)]
-struct Short<'a>(&'a Oid);
-
-impl fmt::Display for Short<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.write_str(self.0.as_str().get(..12).unwrap_or(self.0.as_str()))
     }
 }
 
