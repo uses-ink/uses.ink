@@ -1,3 +1,12 @@
+---
+number: "0002"
+title: "Nothing hardcoded: four plugin slots"
+status: accepted
+date: 2026-11-26
+area: plugins
+supersedes: []
+---
+
 ## 0002 Nothing hardcoded: four plugin slots
 
 Accepted, owner. Content comes through `source` plugins, ownership through `authority` plugins,

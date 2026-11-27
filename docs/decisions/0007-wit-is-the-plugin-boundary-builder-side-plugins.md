@@ -1,3 +1,12 @@
+---
+number: "0007"
+title: "WIT is the plugin boundary; builder-side plugins are components in v1"
+status: accepted
+date: 2026-11-26
+area: plugins
+supersedes: []
+---
+
 ## 0007 WIT is the plugin boundary; builder-side plugins are components in v1
 
 Accepted. Plugin boundary types are written in WIT (`ink:*@0.1`). Source, format and theme

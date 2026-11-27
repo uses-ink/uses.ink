@@ -1,3 +1,12 @@
+---
+number: "0035"
+title: "Plugins run on wasmtime as written; guests target `wasm32-unknown-unknown`"
+status: accepted
+date: 2026-11-26
+area: plugins
+supersedes: []
+---
+
 ## 0035 Plugins run on wasmtime as written; guests target `wasm32-unknown-unknown`
 
 Accepted. The M0 spike (`spikes/wasmtime/`, removed once `host/wasmtime` replaced it; its README

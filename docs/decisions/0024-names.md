@@ -1,3 +1,12 @@
+---
+number: "0024"
+title: "Names"
+status: accepted
+date: 2026-11-26
+area: product
+supersedes: []
+---
+
 ## 0024 Names
 
 Accepted, owner. Product and site: uses.ink. Binary: `ink`. Config: `ink.toml`. Crates:

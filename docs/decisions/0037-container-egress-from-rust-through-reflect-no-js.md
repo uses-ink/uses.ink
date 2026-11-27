@@ -1,3 +1,12 @@
+---
+number: "0037"
+title: "Container egress from Rust through `Reflect`; no JS shim"
+status: accepted
+date: 2026-11-26
+area: hosting
+supersedes: []
+---
+
 ## 0037 Container egress from Rust through `Reflect`; no JS shim
 
 Accepted, spike (`spikes/workers/`). The build Durable Object starts the Container with

@@ -1,3 +1,12 @@
+---
+number: "0034"
+title: "The pen in the browser is plain wasm and one small loader"
+status: accepted
+date: 2026-11-26
+area: brand
+supersedes: []
+---
+
 ## 0034 The pen in the browser is plain wasm and one small loader
 
 Accepted. `freehand-web` exports the marks (`line`, `underline`, `frame`, `fill`, `patch`,

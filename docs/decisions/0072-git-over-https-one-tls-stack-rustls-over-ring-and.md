@@ -1,3 +1,12 @@
+---
+number: "0072"
+title: "Git over https: one TLS stack, rustls over ring, and one licence exception"
+status: accepted
+date: 2026-11-27
+area: security
+supersedes: []
+---
+
 ## 0072 Git over https: one TLS stack, rustls over ring, and one licence exception
 
 Accepted (2026-11-27). The owner took the recommendation to fix what 0067 refused: the watch's

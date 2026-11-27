@@ -1,3 +1,12 @@
+---
+number: "0004"
+title: "Hosted runtime: Worker edge, Container builds"
+status: accepted
+date: 2026-11-26
+area: hosting
+supersedes: []
+---
+
 ## 0004 Hosted runtime: Worker edge, Container builds
 
 Accepted. A workers-rs Worker serves, runs the control plane and takes webhooks; every build runs

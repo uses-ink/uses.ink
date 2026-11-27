@@ -1,3 +1,12 @@
+---
+number: "0077"
+title: "`ink push` sends a tree and only the blobs the site lacks; the folder verbs know their site by `.uses/site`"
+status: accepted
+date: 2026-11-27
+area: cli
+supersedes: []
+---
+
 ## 0077 `ink push` sends a tree and only the blobs the site lacks; the folder verbs know their site by `.uses/site`
 
 Accepted (2026-11-27). Builds on 0046 (source plugins), 0052 (the API and its intake), 0061 (the

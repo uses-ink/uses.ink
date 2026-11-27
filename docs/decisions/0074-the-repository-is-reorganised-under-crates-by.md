@@ -1,3 +1,12 @@
+---
+number: "0074"
+title: "The repository is reorganised under `crates/` by layer; monoliths are split into directories first"
+status: accepted
+date: 2026-11-27
+area: repo
+supersedes: []
+---
+
 ## 0074 The repository is reorganised under `crates/` by layer; monoliths are split into directories first
 
 Accepted, owner (2026-11-27), with every open choice of `docs/layout.md` section 15 taken as

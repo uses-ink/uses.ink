@@ -1,3 +1,12 @@
+---
+number: "0003"
+title: "Rust everywhere, one workspace, one binary"
+status: accepted
+date: 2026-11-26
+area: repo
+supersedes: []
+---
+
 ## 0003 Rust everywhere, one workspace, one binary
 
 Accepted. Engine, control plane, edge, builder and CLI are Rust in one workspace; the binary is

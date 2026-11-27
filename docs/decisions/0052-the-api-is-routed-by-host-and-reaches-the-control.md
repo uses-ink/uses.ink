@@ -1,3 +1,12 @@
+---
+number: "0052"
+title: "The API is routed by host and reaches the control plane over a channel; intake takes a built folder; the watch keeps its state in memory"
+status: built
+date: 2026-11-27
+area: edge
+supersedes: []
+---
+
 ## 0052 The API is routed by host and reaches the control plane over a channel; intake takes a built folder; the watch keeps its state in memory
 
 Built (2026-11-27) as the second half of M3's edge: `edge/api`, the polling `watch`, `clock`, the

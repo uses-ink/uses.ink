@@ -1,3 +1,12 @@
+---
+number: "0068"
+title: "Authentication has no passwords: passkeys for people, signed requests for machines"
+status: accepted
+date: 2026-11-27
+area: security
+supersedes: []
+---
+
 ## 0068 Authentication has no passwords: passkeys for people, signed requests for machines
 
 Accepted (2026-11-27). The owner chose the direction ("no passwords anywhere"), reviewed the

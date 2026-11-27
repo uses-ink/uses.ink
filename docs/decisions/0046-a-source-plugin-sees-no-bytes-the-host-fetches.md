@@ -1,3 +1,12 @@
+---
+number: "0046"
+title: "A source plugin sees no bytes; the host fetches, stores and measures"
+status: accepted
+date: 2026-11-27
+area: plugins
+supersedes: []
+---
+
 ## 0046 A source plugin sees no bytes; the host fetches, stores and measures
 
 Accepted, as built (2026-11-27). The `ink:source` world imports `ink:host/git` and exports one

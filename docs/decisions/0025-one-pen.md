@@ -1,3 +1,12 @@
+---
+number: "0025"
+title: "One pen"
+status: accepted
+date: 2026-11-26
+area: brand
+supersedes: []
+---
+
 ## 0025 One pen
 
 Accepted, owner. Every hand-drawn mark in the product comes from one Rust crate: themes through

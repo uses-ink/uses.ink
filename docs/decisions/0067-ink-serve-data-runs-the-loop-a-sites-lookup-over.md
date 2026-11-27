@@ -1,3 +1,12 @@
+---
+number: "0067"
+title: "`ink serve --data` runs the loop: a sites lookup over the control plane, the watch and the worker as supervised threads, git through the source plugin"
+status: accepted
+date: 2026-11-26
+area: edge
+supersedes: []
+---
+
 ## 0067 `ink serve --data` runs the loop: a sites lookup over the control plane, the watch and the worker as supervised threads, git through the source plugin
 
 Accepted. 0052 left four gaps between a built control plane and a self-host that runs it. This

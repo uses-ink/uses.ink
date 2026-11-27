@@ -1,3 +1,12 @@
+---
+number: "0041"
+title: "Components as built: values across, one shared mirror"
+status: accepted
+date: 2026-11-26
+area: plugins
+supersedes: []
+---
+
 ## 0041 Components as built: values across, one shared mirror
 
 Accepted. `ink:format-markdown` and `ink:theme-quiet` run as components through `host/wasmtime`,

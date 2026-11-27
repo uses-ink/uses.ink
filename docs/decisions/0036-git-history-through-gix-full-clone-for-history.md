@@ -1,3 +1,12 @@
+---
+number: "0036"
+title: "Git history through gix: full clone for history, one walk for dates"
+status: accepted
+date: 2026-11-26
+area: plugins
+supersedes: []
+---
+
 ## 0036 Git history through gix: full clone for history, one walk for dates
 
 Accepted, spike (`docs/research/gix-spike.md`). The `git` capability uses `gix` 0.91. When history is wanted it

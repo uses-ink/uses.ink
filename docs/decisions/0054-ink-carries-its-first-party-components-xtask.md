@@ -1,3 +1,12 @@
+---
+number: "0054"
+title: "`ink` carries its first-party components; xtask lists them, the build script embeds them"
+status: built
+date: 2026-11-27
+area: release
+supersedes: []
+---
+
 ## 0054 `ink` carries its first-party components; xtask lists them, the build script embeds them
 
 Built (2026-11-27), closing M2's "bundle the components into `ink`". Supersedes the bullet of 0041

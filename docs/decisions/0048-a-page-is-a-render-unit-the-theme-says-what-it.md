@@ -1,3 +1,12 @@
+---
+number: "0048"
+title: "A page is a render unit; the theme says what it reads"
+status: accepted
+date: 2026-11-26
+area: engine
+supersedes: []
+---
+
 ## 0048 A page is a render unit; the theme says what it reads
 
 Accepted. Incremental builds key each page by the hash of the engine's release, the theme's

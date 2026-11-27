@@ -1,3 +1,12 @@
+---
+number: "0043"
+title: "Obsidian is a dialect of the markdown format; the engine resolves and embeds"
+status: accepted
+date: 2026-11-26
+area: format
+supersedes: []
+---
+
 ## 0043 Obsidian is a dialect of the markdown format; the engine resolves and embeds
 
 Accepted. `ink:format-obsidian` (`plugin/format/obsidian`, its component in `guest/`) reads one

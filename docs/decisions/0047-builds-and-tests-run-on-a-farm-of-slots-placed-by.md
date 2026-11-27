@@ -1,3 +1,12 @@
+---
+number: "0047"
+title: "Builds and tests run on a farm of slots, placed by the `farm` binary"
+status: accepted
+date: 2026-11-26
+area: farm
+supersedes: []
+---
+
 ## 0047 Builds and tests run on a farm of slots, placed by the `farm` binary
 
 Accepted, owner. Agents and people run the gate and the inner loop through `farm`

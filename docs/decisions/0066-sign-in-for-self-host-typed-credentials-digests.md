@@ -1,3 +1,12 @@
+---
+number: "0066"
+title: "Sign-in for self-host: typed credentials, digests at rest, a mail port, links that look before they spend"
+status: built
+date: 2026-11-27
+area: control
+supersedes: []
+---
+
 ## 0066 Sign-in for self-host: typed credentials, digests at rest, a mail port, links that look before they spend
 
 Built (2026-11-27) as M3's sign-in: `control::signin`, `mail` and `mail/smtp`, and `edge/api`'s

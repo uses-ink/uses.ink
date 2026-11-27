@@ -1,3 +1,12 @@
+---
+number: "0051"
+title: "The edge answers from two ports and refuses what it cannot name; the adapter owns the times"
+status: built
+date: 2026-11-27
+area: edge
+supersedes: []
+---
+
 ## 0051 The edge answers from two ports and refuses what it cannot name; the adapter owns the times
 
 Built (2026-11-27) as the serving half of M3: `edge`, `edge/axum`, `edge/folder` and `ink serve`.

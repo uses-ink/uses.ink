@@ -1,3 +1,12 @@
+---
+number: "0016"
+title: "A quiet default theme; the hand-drawn theme is opt-in"
+status: accepted
+date: 2026-11-26
+area: theme
+supersedes: []
+---
+
 ## 0016 A quiet default theme; the hand-drawn theme is opt-in
 
 Accepted, owner. `ink:theme-quiet` is the default: calm, the author's voice. `ink:theme-notebook`

@@ -1,3 +1,12 @@
+---
+number: "0076"
+title: "The farm places a job where it will finish first, by what that job took before"
+status: accepted
+date: 2026-11-26
+area: farm
+supersedes: []
+---
+
 ## 0076 The farm places a job where it will finish first, by what that job took before
 
 Accepted, owner. 994 job records from one day on three hosts showed the placement of 0047 (a free

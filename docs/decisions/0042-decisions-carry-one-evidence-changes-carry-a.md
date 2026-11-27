@@ -1,3 +1,12 @@
+---
+number: "0042"
+title: "Decisions carry one evidence; changes carry a cause; inference rules are versioned"
+status: accepted
+date: 2026-11-26
+area: engine
+supersedes: []
+---
+
 ## 0042 Decisions carry one evidence; changes carry a cause; inference rules are versioned
 
 Accepted, owner (`research/inference.md`). A decision is its value and the evidence that chose

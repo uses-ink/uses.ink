@@ -1,3 +1,12 @@
+---
+number: "0014"
+title: "Theme contract: the engine owns structure, themes render pages"
+status: accepted
+date: 2026-11-26
+area: theme
+supersedes: []
+---
+
 ## 0014 Theme contract: the engine owns structure, themes render pages
 
 Accepted, owner. The engine owns routes, feeds, sitemap, images, CSP and headers. A theme

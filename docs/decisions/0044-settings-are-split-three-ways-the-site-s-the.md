@@ -1,3 +1,12 @@
+---
+number: "0044"
+title: "Settings are split three ways: the site's, the operator's, and the fixed"
+status: accepted
+date: 2026-11-26
+area: config
+supersedes: []
+---
+
 ## 0044 Settings are split three ways: the site's, the operator's, and the fixed
 
 Accepted, owner. The owner asked for the hardcoded values and limits to be configurable. The

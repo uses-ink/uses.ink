@@ -1,3 +1,12 @@
+---
+number: "0075"
+title: "The farm reuses a pass: results are cached by what the job read, and only passes"
+status: accepted
+date: 2026-11-26
+area: farm
+supersedes: []
+---
+
 ## 0075 The farm reuses a pass: results are cached by what the job read, and only passes
 
 Accepted, owner. A day on the build host showed 16 full `farm check` runs, stage `test` 50 times,

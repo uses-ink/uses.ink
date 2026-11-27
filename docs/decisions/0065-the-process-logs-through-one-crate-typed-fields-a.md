@@ -1,3 +1,12 @@
+---
+number: "0065"
+title: "The process logs through one crate: typed fields, a span per layer of work, a channel of its own"
+status: accepted
+date: 2026-11-26
+area: logging
+supersedes: []
+---
+
 ## 0065 The process logs through one crate: typed fields, a span per layer of work, a channel of its own
 
 - **One crate.** `trace` owns the subscriber and the span macros; no other crate sets up logging.

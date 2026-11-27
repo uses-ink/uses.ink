@@ -1,3 +1,12 @@
+---
+number: "0018"
+title: "One config file, `ink.toml`; the decision code is the pin path"
+status: accepted
+date: 2026-11-26
+area: config
+supersedes: []
+---
+
 ## 0018 One config file, `ink.toml`; the decision code is the pin path
 
 Accepted. One optional file at the source root. Every key pins a decision or chooses a slot

@@ -1,3 +1,12 @@
+---
+number: "0032"
+title: "HTML, SVG and CSS through `unspliced`; no maud, no Datastar"
+status: accepted
+date: 2026-11-26
+area: web
+supersedes: []
+---
+
 ## 0032 HTML, SVG and CSS through `unspliced`; no maud, no Datastar
 
 Accepted, owner. Every page uses.ink renders (themes, dashboard, landing) is written with

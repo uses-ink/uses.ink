@@ -1,3 +1,12 @@
+---
+number: "0039"
+title: "Highlighting is a host capability, through arborium"
+status: accepted
+date: 2026-11-26
+area: engine
+supersedes: []
+---
+
 ## 0039 Highlighting is a host capability, through arborium
 
 Accepted, owner. Code is highlighted by the host, behind a WIT interface `ink:host/highlight`

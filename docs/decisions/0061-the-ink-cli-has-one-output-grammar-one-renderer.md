@@ -1,3 +1,12 @@
+---
+number: "0061"
+title: "The `ink` CLI has one output grammar, one renderer and a grouped command tree"
+status: accepted
+date: 2026-11-26
+area: cli
+supersedes: []
+---
+
 ## 0061 The `ink` CLI has one output grammar, one renderer and a grouped command tree
 
 Accepted by the owner after reviewing `docs/cli.md` (with `docs/cli-preview.html`); every open choice takes the recommendation in that document.

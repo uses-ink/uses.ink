@@ -1,3 +1,12 @@
+---
+number: "0053"
+title: "The dashboard is server-rendered with `unspliced`; no Datastar, no script; the log is a streamed page"
+status: accepted
+date: 2026-11-26
+area: web
+supersedes: []
+---
+
 ## 0053 The dashboard is server-rendered with `unspliced`; no Datastar, no script; the log is a streamed page
 
 **Decision.** `web` is the dashboard (Site, What we understood, Deploys, Settings, Account) as

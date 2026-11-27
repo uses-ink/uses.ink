@@ -1,3 +1,12 @@
+---
+number: "0015"
+title: "Themes are wasm components in v1"
+status: accepted
+date: 2026-11-26
+area: theme
+supersedes: []
+---
+
 ## 0015 Themes are wasm components in v1
 
 Accepted, owner. Themes are WebAssembly components from the first release, written in any

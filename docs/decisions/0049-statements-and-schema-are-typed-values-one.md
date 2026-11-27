@@ -1,3 +1,12 @@
+---
+number: "0049"
+title: "Statements and schema are typed values; one renderer writes the text"
+status: accepted
+date: 2026-11-26
+area: data
+supersedes: []
+---
+
 ## 0049 Statements and schema are typed values; one renderer writes the text
 
 Accepted. No SQL text is written in code, tests or files. A table is an identifier type (an

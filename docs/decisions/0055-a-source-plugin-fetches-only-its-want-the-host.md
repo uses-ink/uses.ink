@@ -1,3 +1,12 @@
+---
+number: "0055"
+title: "A source plugin fetches only its want; the host checks what it returns"
+status: accepted
+date: 2026-11-26
+area: plugins
+supersedes: []
+---
+
 ## 0055 A source plugin fetches only its want; the host checks what it returns
 
 Accepted. A source plugin chooses how much to fetch, not what. The host binds `git.fetch` to the

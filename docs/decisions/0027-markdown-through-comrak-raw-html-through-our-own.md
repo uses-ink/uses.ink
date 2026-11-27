@@ -1,3 +1,12 @@
+---
+number: "0027"
+title: "Markdown through comrak; raw HTML through our own allowlist"
+status: accepted
+date: 2026-11-26
+area: format
+supersedes: []
+---
+
 ## 0027 Markdown through comrak; raw HTML through our own allowlist
 
 Accepted. comrak is the only parser with nodes for wikilinks, embeds, callouts and block ids,

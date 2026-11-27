@@ -1,3 +1,12 @@
+---
+number: "0030"
+title: "The `Db` port is shaped like D1"
+status: accepted
+date: 2026-11-26
+area: data
+supersedes: []
+---
+
 ## 0030 The `Db` port is shaped like D1
 
 Accepted. Queries and atomic batches of raw SQL, no interactive transactions, one migration set

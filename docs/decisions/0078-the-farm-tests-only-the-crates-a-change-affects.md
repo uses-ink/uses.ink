@@ -1,3 +1,12 @@
+---
+number: "0078"
+title: "The farm tests only the crates a change affects, when asked"
+status: accepted
+date: 2026-11-26
+area: farm
+supersedes: []
+---
+
 ## 0078 The farm tests only the crates a change affects, when asked
 
 Accepted, owner. A second measurement of 100 agent transcripts showed 278 `farm cargo nextest`

@@ -1,3 +1,12 @@
+---
+number: "0040"
+title: "Images are prepared by the host, deterministically, and served as hashed copies"
+status: accepted
+date: 2026-11-26
+area: engine
+supersedes: []
+---
+
 ## 0040 Images are prepared by the host, deterministically, and served as hashed copies
 
 Accepted. The engine decides which files get copies, their routes, headers and what a theme

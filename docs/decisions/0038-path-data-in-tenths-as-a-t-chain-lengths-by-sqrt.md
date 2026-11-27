@@ -1,3 +1,12 @@
+---
+number: "0038"
+title: "Path data in tenths, as a `T` chain; lengths by `sqrt`"
+status: accepted
+date: 2026-11-26
+area: brand
+supersedes: []
+---
+
 ## 0038 Path data in tenths, as a `T` chain; lengths by `sqrt`
 
 Accepted, owner. Paths are written in whole tenths of a pixel (no leading zero, no trailing

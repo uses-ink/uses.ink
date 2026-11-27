@@ -1,3 +1,12 @@
+---
+number: "0045"
+title: "Releases are `dist` on version tags; the image is built from source; a rule keeps them in step"
+status: proposed
+date: 2026-11-26
+area: release
+supersedes: []
+---
+
 ## 0045 Releases are `dist` on version tags; the image is built from source; a rule keeps them in step
 
 Proposed (M5); the owner confirms when they first publish. `dist` (formerly cargo-dist; its
