@@ -59,3 +59,9 @@ inherits = "default"
 [[profile.ci.overrides]]
 filter = "all()"
 slow-timeout = { period = "5s", terminate-after = 1 }
+
+# The incremental properties build a site cold and again after each of many edits: every test of
+# the `incremental` binaries (the engine's and the CLI's) has this budget instead.
+[[profile.default.overrides]]
+filter = "binary(incremental)"
+slow-timeout = { period = "5s", terminate-after = 1 }
