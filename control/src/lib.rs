@@ -20,12 +20,9 @@ mod case;
 mod control;
 mod credential;
 mod deploy;
-mod digest;
 mod error;
 mod event;
-mod fields;
 mod handle;
-mod id;
 mod job;
 pub mod keys;
 mod listed;
@@ -36,10 +33,9 @@ mod ports;
 mod receipt;
 pub mod signin;
 mod site;
-#[allow(missing_docs, reason = "each variant is the table or column of its name")]
-pub mod table;
-mod typed;
-mod unreadable;
+
+pub use control_rows::table;
+pub(crate) use control_rows::{digest, fields, id, typed, unreadable};
 
 pub use account::{Account, New as NewAccount};
 pub use case::export::{Exported, Sink, Summary};

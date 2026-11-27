@@ -1,0 +1,23 @@
+[package]
+name = "uses-ink-control-rows"
+description = "The floor the control plane's tables share: typed ids, column kinds, row reading and the error for a column that does not read back"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+blake3.workspace = true
+blob.workspace = true
+db.workspace = true
+jiff.workspace = true
+mail.workspace = true
+model.workspace = true
+sea-query.workspace = true
+serde.workspace = true
+sig.workspace = true
+
+[lints]
+workspace = true

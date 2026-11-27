@@ -229,6 +229,12 @@ impl Order {
         ("uses-ink-secret", &[]),
         ("uses-ink-secret-conformance", &["uses-ink-secret"]),
         ("uses-ink-secret-local", &["uses-ink-secret", "uses-ink-secret-conformance", "uses-ink-trace"]),
+        // The floor the control plane's tables share (decision 0074): the database port, the model,
+        // and the address and key types a stored column reads back as.
+        (
+            "uses-ink-control-rows",
+            &["uses-ink-blob", "uses-ink-db", "uses-ink-mail", "uses-ink-model", "uses-ink-sig"],
+        ),
         // The use cases know the ports; the adapters are what its tests run against.
         (
             "uses-ink-control",
@@ -236,6 +242,7 @@ impl Order {
                 "uses-ink-blob",
                 "uses-ink-blob-dir",
                 "uses-ink-build",
+                "uses-ink-control-rows",
                 "uses-ink-db",
                 "uses-ink-db-sqlite",
                 "uses-ink-mail",

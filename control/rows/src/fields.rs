@@ -53,7 +53,8 @@ impl Fields<'_> {
             .transpose()
     }
 
-    pub(crate) fn id<K>(self, column: impl IdenStatic) -> Result<Id<K>, Unreadable> {
+    /// A column of 32 hex digits, as the id of a `K`.
+    pub fn id<K>(self, column: impl IdenStatic) -> Result<Id<K>, Unreadable> {
         self.text(column)?.parse().map_err(|source| Unreadable::Id { column: column.as_str(), source })
     }
 
@@ -69,7 +70,8 @@ impl Fields<'_> {
             .transpose()
     }
 
-    pub(crate) fn maybe_id<K>(self, column: impl IdenStatic) -> Result<Option<Id<K>>, Unreadable> {
+    /// A nullable id column.
+    pub fn maybe_id<K>(self, column: impl IdenStatic) -> Result<Option<Id<K>>, Unreadable> {
         let text: Option<String> = self.0.get(column)?;
         text.map(|text| text.parse().map_err(|source| Unreadable::Id { column: column.as_str(), source })).transpose()
     }

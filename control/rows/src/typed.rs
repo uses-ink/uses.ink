@@ -3,6 +3,7 @@
 use sea_query::{ColumnDef, IntoIden};
 
 /// The two kinds of column most of the schema is made of.
+#[derive(Clone, Copy, Debug)]
 pub struct Typed;
 
 impl Typed {

@@ -6440,6 +6440,7 @@ dependencies = [
  "uses-ink-blob",
  "uses-ink-blob-dir",
  "uses-ink-build",
+ "uses-ink-control-rows",
  "uses-ink-db",
  "uses-ink-db-sqlite",
  "uses-ink-mail",
@@ -6450,6 +6451,21 @@ dependencies = [
  "uses-ink-secret-local",
  "uses-ink-sig",
  "uses-ink-trace",
+]
+
+[[package]]
+name = "uses-ink-control-rows"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "jiff 1.0.3",
+ "sea-query",
+ "serde",
+ "uses-ink-blob",
+ "uses-ink-db",
+ "uses-ink-mail",
+ "uses-ink-model",
+ "uses-ink-sig",
 ]
 
 [[package]]

@@ -19,6 +19,7 @@ crates = [
     "uses-ink-clock",
     "uses-ink-config",
     "uses-ink-control",
+    "uses-ink-control-rows",
     "uses-ink-db",
     "uses-ink-db-conformance",
     "uses-ink-db-sqlite",

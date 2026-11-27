@@ -3,7 +3,7 @@
 //! its manifest. Nothing here is derived: the Site, decisions and rendered output are not stored.
 
 use db::{Migration, Statement};
-use sea_query::{ColumnDef, Expr, ExprTrait, ForeignKey, IdenStatic, Index, IntoIden, Table};
+use sea_query::{ColumnDef, Expr, ExprTrait, ForeignKey, IdenStatic, Index, Table};
 
 use crate::credential::Use;
 use crate::typed::Typed;
