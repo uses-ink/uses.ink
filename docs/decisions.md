@@ -339,6 +339,11 @@ exception, and giallo, zstd and their exceptions are gone. host-native builds fo
 `wasm32-unknown-unknown` with the system clang (arborium ships its own sysroot), so the plan
 holds if the host ever runs in wasm; the theme no longer links any highlighter, nor C.
 
+As measured (2026-11-27, `research/performance.md`): highlighting is 79% of rendering a post
+with eight code blocks, nearly all of it tree-sitter's parse and query; a 25-line Rust block
+takes 2.7 million instructions, about 270 us. Reusing the parser between calls saves 0.5%, so
+`Grammars` still makes one per call.
+
 ## 0040 Images are prepared by the host, deterministically, and served as hashed copies
 
 Accepted. The engine decides which files get copies, their routes, headers and what a theme
