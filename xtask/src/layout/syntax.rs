@@ -141,6 +141,9 @@ struct Walk {
     depth: usize,
     /// Whether the walk is inside a trait impl, whose method names are the trait's.
     imposed: bool,
+    /// How many inline `mod x { .. }` the walk is inside. A `pub` function in one is part of
+    /// the module's API, not the target root's, so it is not an entry.
+    inline: usize,
 }
 
 impl Walk {
@@ -153,7 +156,10 @@ impl Walk {
 impl<'ast> Visit<'ast> for Walk {
     fn visit_item_mod(&mut self, item: &'ast syn::ItemMod) {
         if !item.attrs.is_test() {
+            let inline = usize::from(item.content.is_some());
+            self.inline += inline;
             visit::visit_item_mod(self, item);
+            self.inline -= inline;
         }
     }
 
@@ -161,7 +167,8 @@ impl<'ast> Visit<'ast> for Walk {
         if item.attrs.is_test() {
             return;
         }
-        let place = if self.depth == 0 { Place::Free(Reach::from(&item.vis)) } else { Place::Local };
+        let reach = if self.inline == 0 { Reach::from(&item.vis) } else { Reach::Private };
+        let place = if self.depth == 0 { Place::Free(reach) } else { Place::Local };
         self.push(&item.sig, place, &item.attrs);
         visit::visit_item_fn(self, item);
     }
@@ -209,7 +216,10 @@ impl<'ast> Visit<'ast> for Walk {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
+    use crate::layout::Gradual;
 
     fn walk(code: &str) -> Vec<(String, Place)> {
         let mut walk = Walk::default();
@@ -244,5 +254,53 @@ mod tests {
         let code = "#[cfg(test)] mod tests { fn helper_for_tests() {} } #[test] fn a_long_test_name() {} \
                     impl Display for X { fn fmt_the_thing(&self) {} } extern \"C\" { fn foreign_named_thing(); }";
         assert_eq!(walk(code), []);
+    }
+
+    fn module(role: Role, code: &str) -> Module {
+        Module { path: PathBuf::from("src/x.rs"), syntax: syn::parse_file(code).unwrap(), role }
+    }
+
+    fn free(name: &str, reach: Reach, export: bool) -> Found {
+        Found { name: name.to_owned(), place: Place::Free(reach), export }
+    }
+
+    #[test]
+    fn a_public_function_of_an_inline_module_is_not_a_root_entry() {
+        let mut walk = Walk::default();
+        walk.visit_file(&syn::parse_file("pub mod inner { pub fn read() {} }").unwrap());
+        assert_eq!(walk.found.first().map(|f| f.place), Some(Place::Free(Reach::Private)));
+    }
+
+    #[test]
+    fn only_a_roots_public_functions_and_its_main_are_entries() {
+        let root = module(Role::Entry, "");
+        let inner = module(Role::Inner, "");
+        assert!(Free::allows(&root, &free("read", Reach::Public, false)));
+        assert!(Free::allows(&root, &free("main", Reach::Private, false)));
+        assert!(!Free::allows(&root, &free("helper", Reach::Private, false)));
+        assert!(!Free::allows(&inner, &free("read", Reach::Public, false)));
+        assert!(Free::allows(&inner, &free("symbol", Reach::Private, true)));
+    }
+
+    #[test]
+    fn a_long_name_outside_the_enforced_crates_is_counted_not_failed() {
+        let crate_with = |name: &str| Crate {
+            name: name.to_owned(),
+            dir: PathBuf::from(name),
+            licence: None,
+            dependencies: vec![],
+            files: vec![],
+            modules: vec![module(Role::Entry, "fn push_text_node() {}")],
+        };
+        let workspace = Workspace {
+            root: PathBuf::from("/w"),
+            crates: vec![crate_with("freehand"), crate_with("waived-crate")],
+            aliased: vec![],
+            entries: vec![],
+        };
+        let mut problems = Problems::default();
+        Gradual(Words).check(&workspace, &mut problems);
+        assert!(matches!(problems.found.as_slice(), [Problem::Words(function)] if function.krate == "freehand"));
+        assert_eq!(problems.waived.get(&("waived-crate".to_owned(), Words::NAME)), Some(&1));
     }
 }
