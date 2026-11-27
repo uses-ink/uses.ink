@@ -16,7 +16,9 @@ mod support;
 
 use std::time::Duration;
 
-use edge_api::{Credentials, Limits, Method, Offered, OperatorFile, Presented, Reply, Signatures, Signing, Status, Verdict, Window};
+use edge_api::{
+    Credentials, Limits, Method, Offered, OperatorFile, Presented, Reply, Signatures, Signing, Status, Verdict, Window,
+};
 use serde_json::{Value, json};
 use support::{AUDIENCE, Rig, SKEW, signer};
 
@@ -159,7 +161,7 @@ fn skew_is_a_window_either_side_and_says_what_the_server_thinks() {
     let route = (Method::Get, "/v1/whoami");
     let now = rig.now();
     for (created, taken) in [(now - SKEW, true), (now + SKEW, true), (now - SKEW - 1, false), (now + SKEW + 1, false)] {
-        let header = rig.header(&rig.operator, route, b"", (created, rig.nonce()));
+        let header = Rig::header(&rig.operator, route, b"", (created, rig.nonce()));
         let reply = rig.answer(&Rig::unsigned(route, Some(header), b""));
         assert_eq!(reply.status == Status::Ok, taken, "{created} against {now}: {}", text(&reply));
         if !taken {
@@ -263,7 +265,7 @@ fn every_component_is_signed_and_what_fails_is_one_answer() {
     }
     assert_eq!(first, wrong_signature);
     // a body that is not the signed one is its own answer, after the signature verified
-    let signed_for = rig.header(&rig.operator, (Method::Post, "/v1/sites"), b"{}", (rig.now(), rig.nonce()));
+    let signed_for = Rig::header(&rig.operator, (Method::Post, "/v1/sites"), b"{}", (rig.now(), rig.nonce()));
     let reply = refused(&Rig::unsigned((Method::Post, "/v1/sites"), Some(signed_for), b"{ }"));
     assert_eq!((reply.status, code(&reply)), (Status::BadRequest, "auth.digest.mismatch".to_owned()));
     // the original, once, still works: none of that spent its nonce
@@ -273,7 +275,7 @@ fn every_component_is_signed_and_what_fails_is_one_answer() {
 #[test]
 fn what_is_not_canonical_or_not_a_signature_is_refused_as_such() {
     let rig = rig();
-    let header = rig.header(&rig.operator, (Method::Get, "/v1/sites"), b"", (rig.now(), rig.nonce()));
+    let header = Rig::header(&rig.operator, (Method::Get, "/v1/sites"), b"", (rig.now(), rig.nonce()));
     let mut request = Rig::unsigned((Method::Get, "/v1/sites"), Some(header.clone()), b"");
     request.query = Some("b=1&a=2".into());
     let reply = rig.answer(&request);
@@ -295,7 +297,8 @@ fn the_passkey_is_reserved_and_refused_as_a_bad_signature_is() {
     let config = Signing::new(sig::Audience::parse(AUDIENCE).unwrap(), rig.account);
     let verifier = Signatures::new(rig.enrol.keys().clone(), (rig.clock, file), config);
     let (method, target) = (sig::Method::parse("GET").unwrap(), sig::Target::parse("/v1/sites").unwrap());
-    let verdict = pollster::block_on(verifier.verify(&Offered::Passkey, &Presented { method: &method, target: &target }));
+    let verdict =
+        pollster::block_on(verifier.verify(&Offered::Passkey, &Presented { method: &method, target: &target }));
     assert!(matches!(verdict, Ok(Verdict::Refused(edge_api::Denied::Refused))));
 }
 
@@ -343,11 +346,15 @@ fn enrolling_is_closed_when_too_many_wait_and_the_ask_is_checked() {
     assert_eq!((reply.status, code(&reply)), (Status::TooMany, "auth.enrolment.limited".to_owned()));
     assert_eq!(reply.retry, Some(Duration::from_secs(60)));
     // closed means closed for a minute, and then open again once the others have expired
-    rig.clock.advance(Duration::from_secs(11 * 60));
+    rig.clock.advance(Duration::from_mins(11));
     let reply = rig.answer(&Rig::unsigned((Method::Post, "/v1/enrol"), None, body.as_bytes()));
     assert_eq!(reply.status, Status::Created);
     // a bad ask is one that says what is wrong
-    for bad in [json!({}), json!({ "key": "x", "label": "l", "purpose": "device" }), json!({ "key": signer(1).public().to_string(), "label": "l", "purpose": "root" })] {
+    for bad in [
+        json!({}),
+        json!({ "key": "x", "label": "l", "purpose": "device" }),
+        json!({ "key": signer(1).public().to_string(), "label": "l", "purpose": "root" }),
+    ] {
         let reply = rig.answer(&Rig::unsigned((Method::Post, "/v1/enrol"), None, bad.to_string().as_bytes()));
         assert_eq!(reply.status, Status::BadRequest, "{bad}");
     }
@@ -362,24 +369,41 @@ fn each_shape_of_refusal_is_a_golden() {
     let route = (Method::Get, "/v1/whoami");
     let goldens = [
         (
-            rig.answer(&Rig::unsigned(route, Some(changed(&rig.header(&rig.operator, route, b"", (rig.now(), rig.nonce())), "s")), b"")),
-            (401, r#"{"problem":"auth.signature.refused","message":"the server did not accept the signature","causes":[]}"#),
+            rig.answer(&Rig::unsigned(
+                route,
+                Some(changed(&Rig::header(&rig.operator, route, b"", (rig.now(), rig.nonce())), "s")),
+                b"",
+            )),
+            (
+                401,
+                r#"{"problem":"auth.signature.refused","message":"the server did not accept the signature","causes":[]}"#,
+            ),
         ),
         (
             rig.answer(&Rig::unsigned(route, None, b"")),
-            (400, r#"{"problem":"auth.signature.malformed","message":"sign the request: `Authorization: Ink-Sig-1 ...`","causes":[]}"#),
+            (
+                400,
+                r#"{"problem":"auth.signature.malformed","message":"sign the request: `Authorization: Ink-Sig-1 ...`","causes":[]}"#,
+            ),
         ),
         (
             {
                 let mut request = Rig::unsigned(route, None, b"");
-                request.authorization = Some(rig.header(&rig.operator, route, b"", (rig.now(), rig.nonce())));
+                request.authorization = Some(Rig::header(&rig.operator, route, b"", (rig.now(), rig.nonce())));
                 request.query = Some("z".into());
                 rig.answer(&request)
             },
-            (400, r#"{"problem":"auth.target.not-canonical","message":"the request target is not in canonical form","causes":[]}"#),
+            (
+                400,
+                r#"{"problem":"auth.target.not-canonical","message":"the request target is not in canonical form","causes":[]}"#,
+            ),
         ),
         (
-            rig.answer(&Rig::unsigned(route, Some(rig.header(&rig.operator, route, b"", (rig.now() + 100, rig.nonce()))), b"")),
+            rig.answer(&Rig::unsigned(
+                route,
+                Some(Rig::header(&rig.operator, route, b"", (rig.now() + 100, rig.nonce()))),
+                b"",
+            )),
             (
                 401,
                 r#"{"problem":"auth.signature.skewed","message":"the request's time is 100 seconds from the server's, over the allowed 5","causes":[],"fields":{"server_time":"2027-01-15T08:00:11Z","skew":"100","window":"5"}}"#,

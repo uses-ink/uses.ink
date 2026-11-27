@@ -79,8 +79,12 @@ impl fmt::Display for Unreadable {
         match self {
             Self::Read { path, .. } => write!(out, "{} could not be read", path.display()),
             Self::Shape { line } => write!(out, "line {line} of the operator keys is not `<type> <key> <label>`"),
-            Self::Type { line, .. } => write!(out, "line {line} of the operator keys has a key type this server does not accept"),
-            Self::Key { line, .. } => write!(out, "line {line} of the operator keys has a public key that is not valid"),
+            Self::Type { line, .. } => {
+                write!(out, "line {line} of the operator keys has a key type this server does not accept")
+            }
+            Self::Key { line, .. } => {
+                write!(out, "line {line} of the operator keys has a public key that is not valid")
+            }
             Self::Label { line, .. } => write!(out, "line {line} of the operator keys has no usable label"),
         }
     }
@@ -168,12 +172,14 @@ impl OperatorFile {
         if held.iter().any(|known| known.public == key.public) {
             return Ok(false);
         }
-        let mut file = std::fs::OpenOptions::new().append(true).create(true).open(&self.path).map_err(|e| self.io(e))?;
-        let separator = if std::fs::read_to_string(&self.path).is_ok_and(|text| !text.is_empty() && !text.ends_with('\n')) {
-            "\n"
-        } else {
-            ""
-        };
+        let mut file =
+            std::fs::OpenOptions::new().append(true).create(true).open(&self.path).map_err(|e| self.io(e))?;
+        let separator =
+            if std::fs::read_to_string(&self.path).is_ok_and(|text| !text.is_empty() && !text.ends_with('\n')) {
+                "\n"
+            } else {
+                ""
+            };
         writeln!(file, "{separator}{key}").map_err(|e| self.io(e))?;
         Ok(true)
     }
@@ -234,12 +240,12 @@ mod test {
     fn the_file_is_read_again_when_it_changes_and_a_missing_file_holds_nothing() {
         let folder = tempfile::tempdir().unwrap();
         let file = OperatorFile::at(folder.path().join("operator-keys"));
-        assert!(file.keys().unwrap().is_empty());
+        assert_eq!(file.keys().unwrap(), Vec::new());
         let key = OperatorKey::parse(&line()).unwrap().remove(0);
         assert!(file.add(&key).unwrap());
         assert!(!file.add(&key).unwrap());
         assert_eq!(file.keys().unwrap(), [key]);
         std::fs::write(file.path(), "").unwrap();
-        assert!(file.keys().unwrap().is_empty());
+        assert_eq!(file.keys().unwrap(), Vec::new());
     }
 }

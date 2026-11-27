@@ -98,6 +98,7 @@ impl args::Serve {
 
     /// Sets the control plane up, prints every setting it runs with, and returns the API's way
     /// into the server and the half that answers.
+    #[expect(clippy::too_many_lines, reason = "one listing of every setting, a field each")]
     fn start_api(&self, product: Product, data: &std::path::Path, io: &mut Io<'_>) -> Result<(Mount, Beside), Error> {
         let (limits, interval) = (product.limits, product.interval);
         let sites = self.origin.trim_start_matches("http://").trim_start_matches("https://");
@@ -106,7 +107,11 @@ impl args::Serve {
             .field("data", Line::plain(data.display().to_string()))
             .field(
                 "operator keys",
-                Line::plain(format!("{} (enrol yours with `ink login --data {}`)", product.operators.display(), data.display())),
+                Line::plain(format!(
+                    "{} (enrol yours with `ink login --data {}`)",
+                    product.operators.display(),
+                    data.display()
+                )),
             )
             .field("signatures", Line::plain(Self::describe_keys(&product.keys)))
             .field("sites", Line::plain(format!("<handle>.{sites}")))
@@ -120,7 +125,14 @@ impl args::Serve {
         let record = match &product.retired {
             Some(file) => {
                 let note = model::Announcement::AuthTokenRetired { token_file: file.display().to_string() };
-                record.field("owner token", Line::plain(format!("{} ({})", diag::Message::from(&note), diag::Fix::of_announcement(&note).map_or_else(String::new, |fix| fix.to_string()))))
+                record.field(
+                    "owner token",
+                    Line::plain(format!(
+                        "{} ({})",
+                        diag::Message::from(&note),
+                        diag::Fix::of_announcement(&note).map_or_else(String::new, |fix| fix.to_string())
+                    )),
+                )
             }
             None => record,
         };

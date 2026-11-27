@@ -42,13 +42,14 @@ pub use api::{Answers, Api};
 pub use cookie::{Cookie, Jar, JarError, Name, NameError};
 pub use credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
 pub use door::{
-    Approver, Approving, Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Rate, Rates, Routed, Strength,
+    Approver, Approving, Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Rate, Rates, Routed,
+    Strength,
 };
 pub use enrol::{Closed, Closing, Enrol, Gate};
-pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Unreadable as OperatorError};
-pub use signature::{Claimed, Config as Signing, Failed, Nonces, Signatures, Window, WindowError};
 pub use export::{Exports, Route};
 pub use fault::{Denied, Fault, Intake};
 pub use limits::{Asked, Limit, Limits, Raised};
+pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Unreadable as OperatorError};
 pub use reply::{Media, Method, Payload, Reply, Request, Status, UnknownMethod};
 pub use route::{Call, RouteError};
+pub use signature::{Claimed, Config as Signing, Failed, Nonces, Signatures, Window, WindowError};

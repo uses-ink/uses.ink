@@ -45,7 +45,9 @@ pub enum StoreError {
 impl fmt::Display for StoreError {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoHome => out.write_str("there is no config folder to keep a key in: set `HOME` or `XDG_CONFIG_HOME`"),
+            Self::NoHome => {
+                out.write_str("there is no config folder to keep a key in: set `HOME` or `XDG_CONFIG_HOME`")
+            }
             Self::Io { path, .. } => write!(out, "{} could not be made, read or removed", path.display()),
             Self::Unreadable { path, .. } => write!(out, "{} holds no key", path.display()),
             Self::Held { path } => {
@@ -92,11 +94,7 @@ impl Keystore {
     pub(crate) fn load(&self, authority: &str) -> Result<Option<Seed>, StoreError> {
         let path = self.file(authority);
         match std::fs::read_to_string(&path) {
-            Ok(text) => text
-                .trim()
-                .parse()
-                .map(Some)
-                .map_err(|source| StoreError::Unreadable { path, source }),
+            Ok(text) => text.trim().parse().map(Some).map_err(|source| StoreError::Unreadable { path, source }),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(source) => Err(StoreError::Io { path, source }),
         }

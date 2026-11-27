@@ -88,7 +88,15 @@ impl Fixture {
     fn new(wanted: Wanted) -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db: Store = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap().with::<Entry>().unwrap().with::<control::keys::Entry>().unwrap();
+        let steps = Steps::new()
+            .with::<Domain>()
+            .unwrap()
+            .with::<Queued>()
+            .unwrap()
+            .with::<Entry>()
+            .unwrap()
+            .with::<control::keys::Entry>()
+            .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
             db.clone(),
@@ -105,7 +113,12 @@ impl Fixture {
         let audience = sig::Audience::parse("api.example").unwrap();
         let config = Signing::new(audience, control::Id::from_bytes([9; 16]));
         let signatures = Signatures::new(enrol.keys().clone(), (clock, NoOperators), config);
-        let api = Api::new(Control::new(ports, origin), (signatures, enrol.clone()), (clock, Counter::new()), Limits::default());
+        let api = Api::new(
+            Control::new(ports, origin),
+            (signatures, enrol.clone()),
+            (clock, Counter::new()),
+            Limits::default(),
+        );
         let config = Config {
             jar: Jar::new(None, "/", wanted.secure).unwrap(),
             base: BASE.parse::<Base>().unwrap(),
@@ -238,7 +251,10 @@ fn a_person_with_a_session_approves_a_key_and_a_stranger_cannot_guess_the_code()
     let seen = fixture.send((Method::Get, &path), held, b"");
     assert_eq!(seen.status, Status::Ok);
     let seen = json(&seen);
-    assert_eq!((seen["label"].clone(), seen["fingerprint"].clone()), (json!("laptop"), json!(device.id().fingerprint().to_string())));
+    assert_eq!(
+        (seen["label"].clone(), seen["fingerprint"].clone()),
+        (json!("laptop"), json!(device.id().fingerprint().to_string()))
+    );
     // the fingerprint compared must be the one asked
     let wrong = json!({ "fingerprint": "AAAA-AAAA-AA" }).to_string();
     assert_eq!(fixture.send((Method::Post, &path), held, wrong.as_bytes()).status, Status::Conflict);

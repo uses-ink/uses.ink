@@ -3,7 +3,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::base::{Base64, Undecodable};
+use crate::alphabet::{Base64, Undecodable};
 use crate::key::KeyId;
 
 /// The five fields of the header, in wire order.
@@ -291,7 +291,9 @@ impl fmt::Display for Malformed {
             Self::Text => out.write_str("the header is not ASCII text"),
             Self::Scheme => write!(out, "the header does not start with `{}`", Signed::SCHEME),
             Self::Label { field, at } => write!(out, "`{}` was expected at byte {at}", field.label()),
-            Self::Encoding { field, at, .. } => write!(out, "the value of `{}` at byte {at} is not valid", field.label()),
+            Self::Encoding { field, at, .. } => {
+                write!(out, "the value of `{}` at byte {at} is not valid", field.label())
+            }
             Self::Time { at, .. } => write!(out, "the time at byte {at} is not valid"),
             Self::Separator { at } => write!(out, "a comma and one space were expected at byte {at}"),
             Self::Trailing { at } => write!(out, "the header goes on after the signature, at byte {at}"),
@@ -361,7 +363,8 @@ impl Cursor<'_> {
         let at = self.at;
         let rest = self.text.get(at..).unwrap_or_default();
         let length = rest.bytes().take_while(u8::is_ascii_digit).count();
-        let created = rest.get(..length).unwrap_or_default().parse().map_err(|source| Malformed::Time { at, source })?;
+        let created =
+            rest.get(..length).unwrap_or_default().parse().map_err(|source| Malformed::Time { at, source })?;
         self.at += length;
         Ok(created)
     }
@@ -457,7 +460,10 @@ mod test {
         assert!(matches!(parse(&text.replacen(", c=", ",  c=", 1)), Err(Malformed::Label { .. })));
         assert!(matches!(parse(&format!("{text} ")), Err(Malformed::Trailing { .. })));
         assert!(matches!(parse(&format!("{text}A")), Err(Malformed::Trailing { .. } | Malformed::Encoding { .. })));
-        assert!(matches!(parse(&text.replacen("c=1795", "c=01795", 1)), Err(Malformed::Time { source: CreatedError::Zero, .. })));
+        assert!(matches!(
+            parse(&text.replacen("c=1795", "c=01795", 1)),
+            Err(Malformed::Time { source: CreatedError::Zero, .. })
+        ));
         assert!(matches!(parse(&text.replacen("c=1795000000", "c=17950000000", 1)), Err(Malformed::Time { .. })));
         assert!(matches!(parse(&text.replacen("c=1795000000", "c=+795000000", 1)), Err(Malformed::Time { .. })));
         assert_eq!(Signed::parse(&[0xff]), Err(Malformed::Text));

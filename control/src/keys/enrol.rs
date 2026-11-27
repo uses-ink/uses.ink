@@ -214,10 +214,14 @@ impl TryFrom<&Row> for Enrolment {
         let seconds = fields.count(table::Enrolment::Lifetime)?;
         Ok(Self {
             id: fields.id(table::Enrolment::Id)?,
-            code: fields.text(table::Enrolment::UserCode)?.parse().map_err(|_| Unreadable::Text { column: "user_code" })?,
+            code: fields
+                .text(table::Enrolment::UserCode)?
+                .parse()
+                .map_err(|_| Unreadable::Text { column: "user_code" })?,
             key_type: fields.name(table::Enrolment::KeyType, &KeyType::NAMES)?,
             public,
-            label: Label::parse(&fields.text(table::Enrolment::Label)?).map_err(|_| Unreadable::Text { column: "label" })?,
+            label: Label::parse(&fields.text(table::Enrolment::Label)?)
+                .map_err(|_| Unreadable::Text { column: "label" })?,
             purpose: fields.name(table::Enrolment::Purpose, &Kind::NAMES)?,
             site: fields.maybe_id(table::Enrolment::SiteId)?,
             rights: Rights::read(&fields.text(table::Enrolment::Rights)?)

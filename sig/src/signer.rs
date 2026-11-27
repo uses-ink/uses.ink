@@ -97,8 +97,9 @@ mod test {
     use super::*;
 
     fn hex<const N: usize>(text: &str) -> [u8; N] {
-        let bytes: Vec<u8> =
-            (0..text.len() / 2).map(|at| u8::from_str_radix(text.get(at * 2..at * 2 + 2).unwrap_or("zz"), 16).unwrap()).collect();
+        let bytes: Vec<u8> = (0..text.len() / 2)
+            .map(|at| u8::from_str_radix(text.get(at * 2..at * 2 + 2).unwrap_or("zz"), 16).unwrap())
+            .collect();
         <[u8; N]>::try_from(bytes).unwrap()
     }
 
@@ -106,7 +107,10 @@ mod test {
     fn rfc_8032_test_1_gives_the_public_key_and_the_signature() {
         let seed = Seed::new(hex("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"));
         let signer = Signer::from_seed(&seed);
-        assert_eq!(signer.public().bytes(), &hex::<32>("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"));
+        assert_eq!(
+            signer.public().bytes(),
+            &hex::<32>("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")
+        );
         let signature = signer.key.sign(b"");
         let expected = hex::<64>(
             "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b",
@@ -125,29 +129,30 @@ mod test {
         let audience = Audience::parse("api.uses.ink").unwrap();
         let method = Method::parse("POST").unwrap();
         let target = Target::parse("/v1/sites?a=1").unwrap();
-        let signed = signer.sign(&parts(&audience, &method, &target, b"{}"), Created::new(1_795_000_000), Nonce::new([9; 16]));
-        let check = |audience: &Audience, method: &Method, target: &Target, claim: &Claim| {
-            verifying.verify(&Covered { audience, method, target, claim }, &signed.signature)
+        let issued =
+            signer.sign(&parts(&audience, &method, &target, b"{}"), Created::new(1_795_000_000), Nonce::new([9; 16]));
+        let verdict = |aud: &Audience, verb: &Method, path: &Target, claim: &Claim| {
+            verifying.verify(&Covered { audience: aud, method: verb, target: path, claim }, &issued.signature)
         };
-        assert_eq!(check(&audience, &method, &target, &signed.claim), Ok(()));
-        assert_eq!(check(&Audience::parse("api.other.ink").unwrap(), &method, &target, &signed.claim), Err(Forged));
-        assert_eq!(check(&audience, &Method::parse("PUT").unwrap(), &target, &signed.claim), Err(Forged));
-        assert_eq!(check(&audience, &method, &Target::parse("/v1/sites?a=2").unwrap(), &signed.claim), Err(Forged));
-        let mut moved = signed.claim;
+        assert_eq!(verdict(&audience, &method, &target, &issued.claim), Ok(()));
+        assert_eq!(verdict(&Audience::parse("api.other.ink").unwrap(), &method, &target, &issued.claim), Err(Forged));
+        assert_eq!(verdict(&audience, &Method::parse("PUT").unwrap(), &target, &issued.claim), Err(Forged));
+        assert_eq!(verdict(&audience, &method, &Target::parse("/v1/sites?a=2").unwrap(), &issued.claim), Err(Forged));
+        let mut moved = issued.claim;
         moved.digest = Digest::of(b"{ }");
-        assert_eq!(check(&audience, &method, &target, &moved), Err(Forged));
-        moved = signed.claim;
+        assert_eq!(verdict(&audience, &method, &target, &moved), Err(Forged));
+        moved = issued.claim;
         moved.created = Created::new(1_795_000_001);
-        assert_eq!(check(&audience, &method, &target, &moved), Err(Forged));
-        moved = signed.claim;
+        assert_eq!(verdict(&audience, &method, &target, &moved), Err(Forged));
+        moved = issued.claim;
         moved.nonce = Nonce::new([8; 16]);
-        assert_eq!(check(&audience, &method, &target, &moved), Err(Forged));
-        moved = signed.claim;
+        assert_eq!(verdict(&audience, &method, &target, &moved), Err(Forged));
+        moved = issued.claim;
         moved.key = KeyId::new([1; 16]);
-        assert_eq!(check(&audience, &method, &target, &moved), Err(Forged));
-        let mut bad = *signed.signature.bytes();
+        assert_eq!(verdict(&audience, &method, &target, &moved), Err(Forged));
+        let mut bad = *issued.signature.bytes();
         bad[0] ^= 1;
-        let covered = Covered { audience: &audience, method: &method, target: &target, claim: &signed.claim };
+        let covered = Covered { audience: &audience, method: &method, target: &target, claim: &issued.claim };
         assert_eq!(verifying.verify(&covered, &Signature::new(bad)), Err(Forged));
     }
 
@@ -162,7 +167,12 @@ mod test {
         let verifying = Verifying::new(&identity).unwrap();
         let audience = Audience::parse("a").unwrap();
         let (method, target) = (Method::parse("GET").unwrap(), Target::parse("/").unwrap());
-        let claim = Claim { key: KeyId::new([0; 16]), created: Created::new(1), nonce: Nonce::new([0; 16]), digest: Digest::of(b"") };
+        let claim = Claim {
+            key: KeyId::new([0; 16]),
+            created: Created::new(1),
+            nonce: Nonce::new([0; 16]),
+            digest: Digest::of(b""),
+        };
         let covered = Covered { audience: &audience, method: &method, target: &target, claim: &claim };
         let mut signature = [0_u8; 64];
         signature[0] = 1;

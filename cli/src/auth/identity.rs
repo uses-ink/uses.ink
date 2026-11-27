@@ -23,8 +23,8 @@ impl std::fmt::Debug for Identity {
 impl Identity {
     /// `seed`, for the server at `authority`.
     pub(crate) fn new(seed: &Seed, authority: &str) -> Result<Self, Failure> {
-        let audience = Audience::parse(authority)
-            .map_err(|source| Failure::Audience { written: authority.to_owned(), source })?;
+        let audience =
+            Audience::parse(authority).map_err(|source| Failure::Audience { written: authority.to_owned(), source })?;
         Ok(Self { signer: Signer::from_seed(seed), audience })
     }
 
@@ -37,8 +37,9 @@ impl Identity {
         let seed = if let Some(text) = env.get("INK_KEY").filter(|text| !text.is_empty()) {
             parse("`INK_KEY`", &text)?
         } else if let Some(path) = env.get("INK_KEY_FILE").filter(|path| !path.is_empty()) {
-            let text = std::fs::read_to_string(&path)
-                .map_err(|source| Failure::Store { source: super::StoreError::Io { path: path.clone().into(), source } })?;
+            let text = std::fs::read_to_string(&path).map_err(|source| Failure::Store {
+                source: super::StoreError::Io { path: path.clone().into(), source },
+            })?;
             parse(&format!("`{path}`"), &text)?
         } else {
             // no home to keep a key in is no key kept

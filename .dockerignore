@@ -32,6 +32,7 @@
 !plugin
 !queue
 !secret
+!sig
 !token
 !trace
 !watch

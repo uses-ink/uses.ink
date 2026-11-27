@@ -2,9 +2,9 @@
 
 use std::fmt;
 
+use crate::alphabet::Base64;
 use crate::signed::Claim;
 use crate::target::Target;
-use crate::base::Base64;
 
 /// The authority a request is for, as the server is configured: lower-case letters, digits, `.`,
 /// `-` and `:`. A signed request to one instance fails on another.
@@ -42,7 +42,10 @@ impl Audience {
             return Err(AudienceError::Empty);
         }
         let lower = text.to_ascii_lowercase();
-        match lower.bytes().position(|byte| !(byte.is_ascii_lowercase() || byte.is_ascii_digit() || b".-:".contains(&byte))) {
+        match lower
+            .bytes()
+            .position(|byte| !(byte.is_ascii_lowercase() || byte.is_ascii_digit() || b".-:".contains(&byte)))
+        {
             Some(at) => Err(AudienceError::Character { at }),
             None => Ok(Self(lower)),
         }
@@ -158,11 +161,15 @@ mod test {
         let audience = Audience::parse("API.Uses.Ink:8080").unwrap();
         let method = Method::parse("GET").unwrap();
         let target = Target::parse("/v1/sites?a=1").unwrap();
-        let text = String::from_utf8(Covered { audience: &audience, method: &method, target: &target, claim: &claim }.bytes()).unwrap();
+        let text =
+            String::from_utf8(Covered { audience: &audience, method: &method, target: &target, claim: &claim }.bytes())
+                .unwrap();
         let labels: Vec<&str> = text.lines().map(|line| line.split(' ').next().unwrap_or_default()).collect();
         assert_eq!(labels, ["uses.ink", "aud", "method", "target", "digest", "created", "nonce", "key"]);
         assert!(text.ends_with('\n'));
-        assert!(text.starts_with("uses.ink ink-sig 1\naud api.uses.ink:8080\nmethod GET\ntarget /v1/sites?a=1\ndigest "));
+        assert!(
+            text.starts_with("uses.ink ink-sig 1\naud api.uses.ink:8080\nmethod GET\ntarget /v1/sites?a=1\ndigest ")
+        );
         assert!(Audience::parse("a\nb").is_err());
         assert!(Audience::parse("a b").is_err());
         assert!(Audience::parse("").is_err());

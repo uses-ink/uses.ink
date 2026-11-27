@@ -47,8 +47,8 @@ pub use error::{Error, Failed, Refusal, Unreadable};
 pub use event::{Event, Unwritten};
 pub use handle::{Handle, HandleError};
 pub use id::{
-    Account as AccountKind, Credential as CredentialKind, Enrolment as EnrolmentKind, Factor as FactorKind, Id, IdError, Kind,
-    Session as SessionKind, Site as SiteKind,
+    Account as AccountKind, Credential as CredentialKind, Enrolment as EnrolmentKind, Factor as FactorKind, Id,
+    IdError, Kind, Session as SessionKind, Site as SiteKind,
 };
 pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked};
 pub use listed::{Canonical, Listed};

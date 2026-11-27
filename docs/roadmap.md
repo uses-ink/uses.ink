@@ -221,7 +221,8 @@ Git over HTTPS followed (0072): the watch's head read and the source fetch go th
   starts a delayed recovery (never a login), per the scheme in `auth.md` (0068, accepted). **Built
   (0066):** the magic-link bootstrap, sessions and the mail port. Its three spikes come first for
   passkeys: `webauthn-rs-core` on `wasm32-unknown-unknown`, the browser matrix, and the licence
-  list. `ink login`, `key` and the signed-request profile replace the owner token.
+  list. **Built (0068, slice 1):** `ink login`, `logout`, `whoami`, `key`, the `Ink-Sig-1` profile and
+  device-code enrolment replace the owner token; passkeys and the dashboard are slice 2.
 - `ink push` and `ink:source-upload`; `ink status`, `watch`, `deploys`, `rollback`, `resume`,
   `export`.
 - CLI redesign (0061, Accepted; `docs/cli.md`): the typed output grammar and one renderer, then the

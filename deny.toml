@@ -32,6 +32,9 @@ exceptions = [
     { crate = "matchit", allow = ["BSD-3-Clause"] },
     # the constant-time comparisons under the sealer's XChaCha20-Poly1305 (secret/local)
     { crate = "subtle", allow = ["BSD-3-Clause"] },
+    # Ed25519 for the signed-request profile (0068, `sig`), and the curve under it
+    { crate = "curve25519-dalek", allow = ["BSD-3-Clause"] },
+    { crate = "ed25519-dalek", allow = ["BSD-3-Clause"] },
     # AVIF, through rav1e (host/image)
     { crate = "av1-grain", allow = ["BSD-2-Clause"] },
     { crate = "avif-serialize", allow = ["BSD-3-Clause"] },

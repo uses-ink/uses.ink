@@ -62,7 +62,8 @@ fn a_key_made_by_login_deploys_is_not_replayable_and_ends_when_removed() {
     std::fs::create_dir_all(&site).unwrap();
     std::fs::write(site.join("index.html"), "hi").unwrap();
     let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
-    let (addr, audience, api) = (format!("127.0.0.1:{port}"), format!("api.localhost:{port}"), format!("http://api.localhost:{port}"));
+    let (addr, audience, api) =
+        (format!("127.0.0.1:{port}"), format!("api.localhost:{port}"), format!("http://api.localhost:{port}"));
     let mut child = Command::new(env!("CARGO_BIN_EXE_ink"))
         .args(["serve", site.to_str().unwrap(), "--addr", &addr, "--data", data.to_str().unwrap()])
         .args(["--audience", &audience, "--auth-skew", "1"])
@@ -72,7 +73,9 @@ fn a_key_made_by_login_deploys_is_not_replayable_and_ends_when_removed() {
         .spawn()
         .unwrap();
     let (into, received) = channel();
-    for stream in [Box::new(child.stdout.take().unwrap()) as Box<dyn Read + Send>, Box::new(child.stderr.take().unwrap())] {
+    for stream in
+        [Box::new(child.stdout.take().unwrap()) as Box<dyn Read + Send>, Box::new(child.stderr.take().unwrap())]
+    {
         let into = into.clone();
         std::thread::spawn(move || {
             for line in BufReader::new(stream).lines().map_while(Result::ok) {

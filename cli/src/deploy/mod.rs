@@ -106,7 +106,8 @@ impl Remote {
         let site = site.parse::<Id<_>>().map_err(|source| Failure::Site { written: site, source })?;
         let endpoint = Endpoint::parse(&api)?;
         let identity = Identity::find(env, endpoint.authority())?;
-        let api = Api { wire: Wire { endpoint, identity: Some(identity), budget: Duration::from_secs(self.timeout) }, site };
+        let api =
+            Api { wire: Wire { endpoint, identity: Some(identity), budget: Duration::from_secs(self.timeout) }, site };
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -252,7 +253,11 @@ mod test {
                     request.extend_from_slice(&buffer[..read]);
                 }
                 let text = String::from_utf8_lossy(&request).into_owned();
-                seen.push(format!("{} | {}", text.lines().next().unwrap_or_default(), text.to_ascii_lowercase().contains("authorization: ink-sig-1 k=")));
+                seen.push(format!(
+                    "{} | {}",
+                    text.lines().next().unwrap_or_default(),
+                    text.to_ascii_lowercase().contains("authorization: ink-sig-1 k=")
+                ));
                 let reply = format!(
                     "HTTP/1.1 {status} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
                     body.len()
@@ -336,8 +341,7 @@ mod test {
     #[test]
     fn the_config_file_fills_what_the_flags_leave_out() {
         let preferences: Preferences =
-            toml::from_str(&format!("[account]\napi = \"http://127.0.0.1:1\"\nsite = \"{SITE}\"\n"))
-                .unwrap();
+            toml::from_str(&format!("[account]\napi = \"http://127.0.0.1:1\"\nsite = \"{SITE}\"\n")).unwrap();
         let bare = Remote { api: None, site: None, timeout: 5 };
         assert!(bare.connect(&env(), &preferences).is_ok());
     }

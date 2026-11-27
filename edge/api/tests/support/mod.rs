@@ -10,12 +10,13 @@ use std::time::Duration;
 
 use blob_dir::Directory;
 use clock::{Manual, System};
-use control::keys::{Settings as KeySettings, Rights};
+use control::keys::{Rights, Settings as KeySettings};
 use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Remembered};
 use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::{
-    Api, Closing, Enrol, Limits, Method, OperatorFile, OperatorKey, Payload, Reply, Request, Signatures, Signing, Window,
+    Api, Closing, Enrol, Limits, Method, OperatorFile, OperatorKey, Payload, Reply, Request, Signatures, Signing,
+    Window,
 };
 use jiff::Timestamp;
 use queue_local::{Local as Queue, Queued};
@@ -105,7 +106,7 @@ impl Rig {
     }
 
     /// The header of `method` `target` with `body`, made by `by` at `created`, with `nonce`.
-    pub fn header(&self, by: &Signer, (method, target): (Method, &str), body: &[u8], when: (u64, Nonce)) -> Vec<u8> {
+    pub fn header(by: &Signer, (method, target): (Method, &str), body: &[u8], when: (u64, Nonce)) -> Vec<u8> {
         let method = sig::Method::parse(&method.to_string()).unwrap();
         let target = sig::Target::parse(target).unwrap();
         let audience = Audience::parse(AUDIENCE).unwrap();
@@ -115,7 +116,7 @@ impl Rig {
 
     /// A request signed by `by` now.
     pub fn request(&self, by: &Signer, route: (Method, &str), body: &[u8]) -> Request {
-        let authorization = self.header(by, route, body, (self.now(), self.nonce()));
+        let authorization = Self::header(by, route, body, (self.now(), self.nonce()));
         Self::unsigned(route, Some(authorization), body)
     }
 
@@ -141,6 +142,7 @@ impl Rig {
     }
 
     /// A call signed by `by`, with its JSON answer.
+    #[allow(clippy::too_many_arguments, reason = "a test helper: who, verb, target and body read best flat")]
     pub fn call_as(&self, by: &Signer, method: Method, target: &str, body: &[u8]) -> (Reply, Value) {
         let reply = self.answer(&self.request(by, (method, target), body));
         let value = serde_json::from_slice(&reply.body).unwrap_or(Value::Null);

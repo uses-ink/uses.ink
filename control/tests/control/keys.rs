@@ -61,13 +61,16 @@ fn a_person_approves_a_device_key_and_it_gets_the_least_that_works() {
     assert!(!key.grant.rights.has(Right::Destroy) && key.grant.rights.has(Right::Deploy));
     assert_eq!(key.expires, at(20 + 180 * 86_400));
     assert_eq!(world.run(keys.key(device.id())).unwrap().as_ref(), Some(&key));
-    assert_eq!(world.run(keys.list(account)).unwrap(), [key.clone()]);
+    assert_eq!(world.run(keys.list(account)).unwrap(), std::slice::from_ref(&key));
     assert_eq!(world.run(keys.poll(new.id, at(21))).unwrap().unwrap().1, Poll::Approved { expires: key.expires });
     let events = world.run(keys.events(account, 10)).unwrap();
     assert_eq!(events.iter().map(|e| e.name.as_str()).collect::<Vec<_>>(), ["key.approved"]);
     assert!(!events[0].body.contains("seed") && events[0].body.contains(&device.id().to_string()));
     // the code is spent: the same answer as for a code that never existed
-    assert_eq!(world.run(keys.approve(approval(&new, account, Rights::EVERY), at(22))).unwrap_err().refusal(), Some(&Refused::NoEnrolment));
+    assert_eq!(
+        world.run(keys.approve(approval(&new, account, Rights::EVERY), at(22))).unwrap_err().refusal(),
+        Some(&Refused::NoEnrolment)
+    );
     assert_eq!(world.run(keys.look(&new.code, at(22))).unwrap(), None);
     assert_eq!(world.run(keys.events(account, 10)).unwrap().len(), 1);
 }
@@ -77,7 +80,8 @@ fn an_unknown_an_expired_and_a_decided_code_are_the_same_refusal() {
     let world = World::new();
     let account = world.site("garden").account;
     let keys = keys(&world);
-    let (first, second) = (asking(&world, &signer(1), Kind::Device, None), asking(&world, &signer(2), Kind::Device, None));
+    let (first, second) =
+        (asking(&world, &signer(1), Kind::Device, None), asking(&world, &signer(2), Kind::Device, None));
     world.run(keys.enrol(first.clone())).unwrap();
     world.run(keys.enrol(second.clone())).unwrap();
     world.run(keys.deny(&second.code, at(11))).unwrap();
@@ -117,12 +121,19 @@ fn a_deploy_key_is_one_site_of_the_approver_with_a_lifetime_under_the_ceiling() 
     let other = world.site("wild");
     let keys = keys(&world);
     let ci = signer(3);
-    assert_eq!(world.run(keys.enrol(asking(&world, &ci, Kind::Deploy, None))).unwrap_err().refusal(), Some(&Refused::Site));
-    let long = NewEnrolment { lifetime: Some(Ttl::secs(366 * 86_400)), ..asking(&world, &ci, Kind::Deploy, Some(site.id)) };
+    assert_eq!(
+        world.run(keys.enrol(asking(&world, &ci, Kind::Deploy, None))).unwrap_err().refusal(),
+        Some(&Refused::Site)
+    );
+    let long =
+        NewEnrolment { lifetime: Some(Ttl::secs(366 * 86_400)), ..asking(&world, &ci, Kind::Deploy, Some(site.id)) };
     assert!(matches!(world.run(keys.enrol(long)).unwrap_err().refusal(), Some(Refused::Lifetime { .. })));
     let strangers = asking(&world, &signer(4), Kind::Deploy, Some(other.id));
     world.run(keys.enrol(strangers.clone())).unwrap();
-    assert_eq!(world.run(keys.approve(approval(&strangers, site.account, Rights::EVERY), at(12))).unwrap_err().refusal(), Some(&Refused::Site));
+    assert_eq!(
+        world.run(keys.approve(approval(&strangers, site.account, Rights::EVERY), at(12))).unwrap_err().refusal(),
+        Some(&Refused::Site)
+    );
     let new = asking(&world, &ci, Kind::Deploy, Some(site.id));
     world.run(keys.enrol(new.clone())).unwrap();
     let key = world.run(keys.approve(approval(&new, site.account, Rights::EVERY), at(20))).unwrap();
@@ -150,12 +161,21 @@ fn a_key_is_revoked_once_with_its_event_and_last_use_is_a_date() {
     let print = key.id.fingerprint();
     let revoked = world.run(keys.revoke((account, &print), Why::Revoked, at(40))).unwrap();
     assert_eq!(revoked.state(at(41)), State::Revoked { at: at(40), why: Why::Revoked });
-    assert_eq!(world.run(keys.revoke((account, &print), Why::Revoked, at(41))).unwrap_err().refusal(), Some(&Refused::NoKey));
+    assert_eq!(
+        world.run(keys.revoke((account, &print), Why::Revoked, at(41))).unwrap_err().refusal(),
+        Some(&Refused::NoKey)
+    );
     let other = world.site("wild").account;
-    assert_eq!(world.run(keys.revoke((other, &print), Why::Revoked, at(41))).unwrap_err().refusal(), Some(&Refused::NoKey));
+    assert_eq!(
+        world.run(keys.revoke((other, &print), Why::Revoked, at(41))).unwrap_err().refusal(),
+        Some(&Refused::NoKey)
+    );
     let names: Vec<String> = world.run(keys.events(account, 10)).unwrap().into_iter().map(|e| e.name).collect();
     assert_eq!(names, ["key.revoked", "key.approved"]);
-    assert_eq!(world.run(keys.key(key.id)).unwrap().unwrap().state(at(41)), State::Revoked { at: at(40), why: Why::Revoked });
+    assert_eq!(
+        world.run(keys.key(key.id)).unwrap().unwrap().state(at(41)),
+        State::Revoked { at: at(40), why: Why::Revoked }
+    );
 }
 
 #[test]
@@ -172,7 +192,8 @@ fn an_expired_key_says_so_and_events_anyone_can_repeat_are_written_once_an_hour(
         world.run(keys.record(account, Audit::ReplayDetected { key: key.id }, at(second))).unwrap();
     }
     world.run(keys.record(account, Audit::ReplayDetected { key: key.id }, at(200 + 3_601))).unwrap();
-    let replays = world.run(keys.events(account, 10)).unwrap().into_iter().filter(|e| e.name == "replay.detected").count();
+    let replays =
+        world.run(keys.events(account, 10)).unwrap().into_iter().filter(|e| e.name == "replay.detected").count();
     assert_eq!(replays, 2);
     let _: PublicKey = key.public;
 }

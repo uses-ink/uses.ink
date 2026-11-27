@@ -37,10 +37,12 @@ impl Entry {
                 .col(ColumnDef::new(Key::PublicKey).blob().not_null())
                 .col(Typed::text(Key::Label))
                 .col(Typed::text(Key::Rights))
-                .col(ColumnDef::new(Key::ScopeKind).text().not_null().check(Allowed::of(
-                    Key::ScopeKind,
-                    &[("account", ()), ("site", ())],
-                )))
+                .col(
+                    ColumnDef::new(Key::ScopeKind)
+                        .text()
+                        .not_null()
+                        .check(Allowed::of(Key::ScopeKind, &[("account", ()), ("site", ())])),
+                )
                 .col(ColumnDef::new(Key::SiteId).text())
                 .col(Typed::time(Key::CreatedAt))
                 .col(Typed::text(Key::ApprovedBy))
@@ -69,30 +71,40 @@ impl Entry {
                 .col(ColumnDef::new(Enrolment::Id).text().not_null().primary_key())
                 .col(ColumnDef::new(Enrolment::UserCode).text().not_null().unique_key())
                 .col(ColumnDef::new(Enrolment::KeyId).text().not_null().unique_key())
-                .col(ColumnDef::new(Enrolment::KeyType).text().not_null().check(Allowed::of(
-                    Enrolment::KeyType,
-                    &KeyType::NAMES,
-                )))
+                .col(
+                    ColumnDef::new(Enrolment::KeyType)
+                        .text()
+                        .not_null()
+                        .check(Allowed::of(Enrolment::KeyType, &KeyType::NAMES)),
+                )
                 .col(ColumnDef::new(Enrolment::PublicKey).blob().not_null())
                 .col(Typed::text(Enrolment::Label))
-                .col(ColumnDef::new(Enrolment::Purpose).text().not_null().check(Allowed::of(
-                    Enrolment::Purpose,
-                    &Kind::NAMES,
-                )))
+                .col(
+                    ColumnDef::new(Enrolment::Purpose)
+                        .text()
+                        .not_null()
+                        .check(Allowed::of(Enrolment::Purpose, &Kind::NAMES)),
+                )
                 .col(ColumnDef::new(Enrolment::SiteId).text())
                 .col(Typed::text(Enrolment::Rights))
                 // seconds the key will live once approved
                 .col(ColumnDef::new(Enrolment::Lifetime).big_integer().not_null())
-                .col(ColumnDef::new(Enrolment::State).text().not_null().check(Allowed::of(
-                    Enrolment::State,
-                    &State::NAMES,
-                )))
+                .col(
+                    ColumnDef::new(Enrolment::State)
+                        .text()
+                        .not_null()
+                        .check(Allowed::of(Enrolment::State, &State::NAMES)),
+                )
                 .col(Typed::time(Enrolment::CreatedAt))
                 .col(Typed::time(Enrolment::ExpiresAt))
                 .col(ColumnDef::new(Enrolment::ApprovedBy).text())
                 .col(ColumnDef::new(Enrolment::ApprovedAt).big_integer())
                 .into(),
-            Index::create().name(Named::EnrolmentExpires.as_str()).table(Enrolment::Table).col(Enrolment::ExpiresAt).into(),
+            Index::create()
+                .name(Named::EnrolmentExpires.as_str())
+                .table(Enrolment::Table)
+                .col(Enrolment::ExpiresAt)
+                .into(),
         ]
     }
 
@@ -108,7 +120,11 @@ impl Entry {
                 .col(Typed::text(AuthEvent::Name))
                 .col(Typed::text(AuthEvent::Body))
                 .into(),
-            Index::create().name(Named::AuthEventAccount.as_str()).table(AuthEvent::Table).col(AuthEvent::AccountId).into(),
+            Index::create()
+                .name(Named::AuthEventAccount.as_str())
+                .table(AuthEvent::Table)
+                .col(AuthEvent::AccountId)
+                .into(),
         ]
     }
 }

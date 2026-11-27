@@ -15,14 +15,14 @@
 //! There is no algorithm agility: a key's type ([`KeyType`]) is fixed when it is enrolled and the
 //! request cannot name or change it.
 
-mod base;
+mod alphabet;
 mod covered;
 mod key;
 mod signed;
 mod signer;
 mod target;
 
-pub use base::{Base64, Crockford, Undecodable};
+pub use alphabet::{Base64, Crockford, Undecodable};
 pub use covered::{Audience, AudienceError, Covered, Method, MethodError};
 pub use key::{Fingerprint, FingerprintError, KeyError, KeyId, KeyText, KeyType, PublicKey, Seed, UnknownKeyType};
 pub use signed::{Claim, Created, CreatedError, Digest, Field, Malformed, Nonce, Signature, Signed, Skew, Tampered};

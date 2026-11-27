@@ -212,7 +212,11 @@ impl<D: Db> Keys<D> {
     }
 
     /// The enrolment of `id`, and what a poll answers about it at `now`.
-    pub async fn poll(&self, id: Id<EnrolmentKind>, now: Timestamp) -> Result<Option<(Enrolment, Poll)>, Error<D::Error>> {
+    pub async fn poll(
+        &self,
+        id: Id<EnrolmentKind>,
+        now: Timestamp,
+    ) -> Result<Option<(Enrolment, Poll)>, Error<D::Error>> {
         let Some(found) = self.select_enrolment(Expr::col(table::Enrolment::Id).eq(id.to_string())).await? else {
             return Ok(None);
         };
@@ -251,7 +255,8 @@ impl<D: Db> Keys<D> {
     #[expect(clippy::too_many_lines, reason = "one transaction, its statements read top to bottom")]
     pub async fn approve(&self, approval: Approval, now: Timestamp) -> Result<Key, Error<D::Error>> {
         let found = self.by_code(&approval.code).await?;
-        let found = found.filter(|found| found.state == State::Pending && found.expires > now).ok_or(Refused::NoEnrolment)?;
+        let found =
+            found.filter(|found| found.state == State::Pending && found.expires > now).ok_or(Refused::NoEnrolment)?;
         if found.fingerprint() != approval.fingerprint {
             return Err(Refused::Fingerprint.into());
         }
@@ -379,7 +384,12 @@ impl<D: Db> Keys<D> {
     }
 
     /// The statement that writes `audit` for `account`, only if `guard` holds.
-    fn guarded(account: Id<AccountKind>, audit: &Audit, now: Timestamp, guard: Expr) -> Result<Statement, Error<D::Error>> {
+    fn guarded(
+        account: Id<AccountKind>,
+        audit: &Audit,
+        now: Timestamp,
+        guard: Expr,
+    ) -> Result<Statement, Error<D::Error>> {
         let mut select = Query::select();
         select
             .exprs([
@@ -469,9 +479,7 @@ impl<D: Db> Keys<D> {
             .table(table::Key::Table)
             .value(table::Key::LastUsedOn, day.clone())
             .and_where(Expr::col(table::Key::Id).eq(key.to_string()))
-            .and_where(
-                Expr::col(table::Key::LastUsedOn).is_null().or(Expr::col(table::Key::LastUsedOn).lt(day)),
-            )
+            .and_where(Expr::col(table::Key::LastUsedOn).is_null().or(Expr::col(table::Key::LastUsedOn).lt(day)))
             .to_owned();
         self.db.run(update.into()).await?;
         Ok(())
@@ -500,7 +508,12 @@ impl<D: Db> Keys<D> {
     /// The newest events of `account`, newest first.
     pub async fn events(&self, account: Id<AccountKind>, limit: u64) -> Result<Vec<Entry>, Error<D::Error>> {
         let select = Query::select()
-            .columns([table::AuthEvent::AccountId, table::AuthEvent::At, table::AuthEvent::Name, table::AuthEvent::Body])
+            .columns([
+                table::AuthEvent::AccountId,
+                table::AuthEvent::At,
+                table::AuthEvent::Name,
+                table::AuthEvent::Body,
+            ])
             .from(table::AuthEvent::Table)
             .and_where(Expr::col(table::AuthEvent::AccountId).eq(account.to_string()))
             .order_by(table::AuthEvent::Seq, Order::Desc)

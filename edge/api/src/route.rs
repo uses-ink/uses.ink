@@ -5,10 +5,10 @@ use std::fmt;
 use build::BuildId;
 use control::keys::Right;
 use control::{EnrolmentKind, Id, IdError, SiteKind};
-use sig::Fingerprint;
 use model::DeployId;
 use serde::Deserialize;
 use serde::de::IntoDeserializer;
+use sig::Fingerprint;
 
 use crate::reply::Method;
 
@@ -146,7 +146,9 @@ impl Call {
         match (parts.first(), parts.get(1)) {
             (Some(&"v1"), Some(&"sites")) => {}
             (Some(&"v1"), Some(&"whoami")) if rest.is_empty() => return by(&[(Method::Get, Self::Whoami)]),
-            (Some(&"v1"), Some(&noun @ ("enrol" | "keys"))) => return Self::credentials(noun, rest, &by).ok_or_else(no_route)?,
+            (Some(&"v1"), Some(&noun @ ("enrol" | "keys"))) => {
+                return Self::credentials(noun, rest, &by).ok_or_else(no_route)?;
+            }
             _ => return Err(no_route()),
         }
         match rest {
@@ -203,11 +205,15 @@ impl Call {
         Some(match self {
             Self::Sites => (Right::Read, None),
             Self::Add => (Right::Edit, None),
-            Self::Status(site) | Self::Deploys(site) | Self::Builds(site) | Self::Log { site, .. } | Self::Export { site, .. } => {
-                (Right::Read, Some(*site))
-            }
+            Self::Status(site)
+            | Self::Deploys(site)
+            | Self::Builds(site)
+            | Self::Log { site, .. }
+            | Self::Export { site, .. } => (Right::Read, Some(*site)),
             Self::Remove(site) => (Right::Destroy, Some(*site)),
-            Self::Rollback(site) | Self::Resume(site) | Self::Build(site) | Self::Intake(site) => (Right::Deploy, Some(*site)),
+            Self::Rollback(site) | Self::Resume(site) | Self::Build(site) | Self::Intake(site) => {
+                (Right::Deploy, Some(*site))
+            }
             Self::Keys | Self::Revoke(_) => (Right::Keys, None),
             Self::Enrol | Self::Polled(_) | Self::Whoami => return None,
         })

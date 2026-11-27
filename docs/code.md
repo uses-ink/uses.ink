@@ -516,6 +516,13 @@ runs on the caller's task. `watch::Watch::step` polls what is due and `run` loop
 `Clock::sleep`; a test uses `clock::Manual` (a sleep moves the time and is recorded, and stops the
 loop after N rounds) and `clock::Counter` (ids count up).
 
+Credentials are signatures (0068). `Credentials::verify(Offered, Presented)` returns a `Verdict`;
+`Signatures` is the adapter: `sig` parses and checks the header, then the order is skew, boot
+barrier, key lookup (`OperatorFile`, then the key table, then a pending enrolment), key live, nonce,
+and the body digest once the body is read. `Call::needs()` gives the `Right` a call requires.
+The CLI signs through `auth::Identity`; its key is in `auth::Keystore`. Tests that speak raw HTTP
+sign with `cli/tests/keyed`.
+
 ## 12. Signing in
 
 `control::signin` is sign-in over the row port alone. `SignIn<D: Db>` has the use cases:

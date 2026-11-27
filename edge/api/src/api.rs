@@ -153,8 +153,11 @@ where
         let target = request.target().map_err(|_| Fault::Denied(Denied::NotCanonical))?;
         let method = sig::Method::parse(&request.method.to_string()).map_err(|_| Fault::Denied(Denied::Malformed))?;
         let presented = Presented { method: &method, target: &target };
-        let verdict =
-            self.credentials.verify(&Offered::Signed(signed), &presented).await.map_err(|error| Fault::Credentials(Box::new(error)));
+        let verdict = self
+            .credentials
+            .verify(&Offered::Signed(signed), &presented)
+            .await
+            .map_err(|error| Fault::Credentials(Box::new(error)));
         // what was decided, and never the header
         let caller = match verdict? {
             Verdict::Granted(principal) => {
@@ -354,7 +357,12 @@ where
     async fn revoke(&self, principal: &Principal, print: &sig::Fingerprint) -> Result<Reply, Fault<P>> {
         let own = principal.via.key().map(|key| key.fingerprint());
         let why = if own.as_ref() == Some(print) { Why::LoggedOut } else { Why::Revoked };
-        let key = self.enrol.keys().revoke((principal.account, print), why, self.clock.now()).await.map_err(Self::keys_failed)?;
+        let key = self
+            .enrol
+            .keys()
+            .revoke((principal.account, print), why, self.clock.now())
+            .await
+            .map_err(Self::keys_failed)?;
         Self::json(Status::Ok, &KeyView::from(&key))
     }
 

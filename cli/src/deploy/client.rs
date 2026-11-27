@@ -17,8 +17,8 @@ use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 
 use super::failure::{Failure, Said};
-use crate::auth::Identity;
 use super::wire::{Built, Items, Moved, Row, Target};
+use crate::auth::Identity;
 
 /// Where the API is: a host and port, and what to put in `Host`.
 #[derive(Clone, Debug, PartialEq, Eq)]

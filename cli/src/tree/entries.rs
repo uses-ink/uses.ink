@@ -116,7 +116,10 @@ impl Entry {
 
 const AUTH: &[Ending] = &[
     Ending { exit: Exit::Done, about: "Done" },
-    Ending { exit: Exit::Usage, about: "Wrong usage: no API named, a key that is none, a private key that would print to a terminal" },
+    Ending {
+        exit: Exit::Usage,
+        about: "Wrong usage: no API named, a key that is none, a private key that would print to a terminal",
+    },
     Ending { exit: Exit::Auth, about: "No key, or the API refused the signature, or nobody approved the key in time" },
     Ending { exit: Exit::Network, about: "The API could not be reached or failed; safe to retry" },
 ];
@@ -247,7 +250,10 @@ const ENTRIES: &[Entry] = &[
         detail: "Makes a key pair on this machine; only its public half and a fingerprint leave it. A person approves the fingerprint, or with --data the operator's file takes it. The private key stays in a file of yours (mode 0600) and is never printed.",
         examples: &[
             Example { line: "ink login --api http://api.localhost:8080", about: "Ask for approval, and wait for it" },
-            Example { line: "ink login --data ./data --api http://api.localhost:8080", about: "Enrol as the operator of a local server, with no browser" },
+            Example {
+                line: "ink login --data ./data --api http://api.localhost:8080",
+                about: "Enrol as the operator of a local server, with no browser",
+            },
         ],
         endings: AUTH,
         env: SITE_ENV,
@@ -267,7 +273,10 @@ const ENTRIES: &[Entry] = &[
     },
     Entry {
         children: KEY_CHILDREN,
-        examples: &[Example { line: "ink key list", about: "Every key of the account, and the day each was last used" }],
+        examples: &[Example {
+            line: "ink key list",
+            about: "Every key of the account, and the day each was last used",
+        }],
         endings: AUTH,
         env: SITE_ENV,
         ..Entry::built("key", Group::Publish, "List, make and end keys")

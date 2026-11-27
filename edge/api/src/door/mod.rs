@@ -42,9 +42,9 @@ use crate::body::{Approve, Ask, Redeem, Unreadable};
 use crate::cookie::Jar;
 use crate::enrol::{Closed, Enrol};
 use crate::refusal::Turned;
-use control::keys::{Approval, Refused as KeyRefused, Rights};
 use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::view::Problem;
+use control::keys::{Approval, Refused as KeyRefused, Rights};
 
 pub use approver::{Approver, Approving, Strength};
 pub use limiter::{Limited, Limiter, Rate, RateError, Rates, Scope, Who};
@@ -194,7 +194,12 @@ impl<E: std::error::Error + 'static> Turn<E> {
             causes.push(cause.to_string());
             below = cause.source();
         }
-        let problem = Problem { problem: self.name(), message: self.to_string(), causes, fields: std::collections::BTreeMap::default() };
+        let problem = Problem {
+            problem: self.name(),
+            message: self.to_string(),
+            causes,
+            fields: std::collections::BTreeMap::default(),
+        };
         let mut reply = Reply::new(status, Media::Json, serde_json::to_vec(&problem).unwrap_or_default());
         reply.challenge = matches!(self, Self::Anonymous);
         match self {
@@ -440,7 +445,11 @@ impl<D: Db, K: Clock, R: Draw> Approver for Door<D, K, R> {
     async fn approver(&self, request: &Request, now: Timestamp) -> Result<Option<Approving>, Self::Error> {
         let Some(proof) = self.held(request) else { return Ok(None) };
         let session = self.entry.resolve(&proof, now).await?;
-        Ok(session.map(|session| Approving { account: session.account, rights: Rights::EVERY, strength: Strength::Session }))
+        Ok(session.map(|session| Approving {
+            account: session.account,
+            rights: Rights::EVERY,
+            strength: Strength::Session,
+        }))
     }
 }
 
@@ -505,7 +514,11 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         }
     }
 
-    async fn declining(&self, request: &Request, code: Option<control::keys::UserCode>) -> Result<Reply, Turn<D::Error>> {
+    async fn declining(
+        &self,
+        request: &Request,
+        code: Option<control::keys::UserCode>,
+    ) -> Result<Reply, Turn<D::Error>> {
         let (_, now) = self.gated(request).await?;
         let Some(code) = code else { return Err(self.missed(now)) };
         self.enrol.keys().deny(&code, now).await.map_err(Self::store)?;

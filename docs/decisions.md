@@ -1537,6 +1537,26 @@ too large, or the licence exceptions are refused: then the passkey library or th
 changes behind its port, and the scheme stands. The open choices are the last section of
 `docs/auth.md`.
 
+**Build note (slice 1, 2026-11-27).** The signed-request half is built; passkeys and the dashboard
+are not. What differs from the text above, or was left out:
+
+- The profile, the verifier, the key table, device-code enrolment and the `auth_event` audit
+  table are built (`sig`, `control/keys`, `edge/api`, `ink login|logout|whoami|key`). The verifier
+  runs in the documented order; the nonce store is in memory, bounded per key, with a boot barrier
+  of one skew window so a restart cannot replay.
+- `ink serve --data` makes no key: the server holds no private key. It makes an empty
+  `<data>/operator-keys` and prints `ink login --data <folder>`, which makes the pair on the
+  client and appends the public line. A removed line is a refused signature (`auth.signature.refused`);
+  `auth.key.revoked` is for keys in the table. An `owner-token` file of an older version is left
+  in place, unread, and the start says so (`auth.token.retired`).
+- The operator key is not an approver: only a signed-in person at the Door approves an enrolment.
+  The Door stays mounted beside the API until the dashboard host exists.
+- The private key lives in a 0600 file under the config folder, not a keyring. `ink key add`
+  prints a key only to a pipe or `--out`, never to a terminal.
+- Not built: rotation with overlap (`--replaces`), passkeys, and a fuzz target (the repository
+  has no fuzz infrastructure; the strict parser is covered by property tests with mutation). The
+  `ed25519-dalek` and `curve25519-dalek` licence exceptions of this decision are in `deny.toml`.
+
 ## 0072 Git over https: one TLS stack, rustls over ring, and one licence exception
 
 Accepted (2026-11-27). The owner took the recommendation to fix what 0067 refused: the watch's

@@ -15,13 +15,13 @@
 
 mod args;
 mod asked;
+mod auth;
 mod build;
 mod bundle;
 mod cache;
 mod change;
 mod completions;
 mod component;
-mod auth;
 mod deploy;
 mod dispatch;
 mod error;

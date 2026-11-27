@@ -149,7 +149,11 @@ impl Server {
     }
 
     /// The calls, signed with `identity` or, for the ask nobody signs, with none.
-    fn calls(&self, preferences: &Preferences, who: impl FnOnce(&str) -> Result<Option<Identity>, Failure>) -> Result<Calls, Failure> {
+    fn calls(
+        &self,
+        preferences: &Preferences,
+        who: impl FnOnce(&str) -> Result<Option<Identity>, Failure>,
+    ) -> Result<Calls, Failure> {
         let api = self.address(preferences)?;
         let endpoint = Endpoint::parse(&api)?;
         let identity = who(endpoint.authority())?;
@@ -197,7 +201,12 @@ struct Enrolment<'a> {
 impl Enrolment<'_> {
     /// Asks the server to enrol `key` with `ask`, shows what to approve, and waits. The key's
     /// end, once it was approved.
-    fn run(&self, key: &Fresh, ask: &serde_json::Value, io: &mut Io<'_>) -> Result<(Enrolled, Option<jiff::Timestamp>), Error> {
+    fn run(
+        &self,
+        key: &Fresh,
+        ask: &serde_json::Value,
+        io: &mut Io<'_>,
+    ) -> Result<(Enrolled, Option<jiff::Timestamp>), Error> {
         let public = Signer::from_seed(&key.seed).public();
         let mut body = serde_json::json!({ "key": public.to_string() });
         if let (Some(into), Some(from)) = (body.as_object_mut(), ask.as_object()) {
@@ -237,7 +246,11 @@ impl Login {
     }
 
     fn label(&self) -> String {
-        self.label.clone().or_else(|| Process.get("HOSTNAME")).filter(|label| !label.is_empty()).unwrap_or_else(|| "this machine".to_owned())
+        self.label
+            .clone()
+            .or_else(|| Process.get("HOSTNAME"))
+            .filter(|label| !label.is_empty())
+            .unwrap_or_else(|| "this machine".to_owned())
     }
 
     /// The operator's way: the key's public half is a line of the server's file.
@@ -265,7 +278,8 @@ impl Login {
             (Signer::from_seed(&key.seed).id().fingerprint().to_string(), None, "operator")
         } else {
             let ask = serde_json::json!({ "label": label, "purpose": "device" });
-            let wait = Enrolment { calls: &calls, wait: Duration::from_secs(self.wait), poll: Duration::from_secs(self.poll) };
+            let wait =
+                Enrolment { calls: &calls, wait: Duration::from_secs(self.wait), poll: Duration::from_secs(self.poll) };
             let (asked, expires) = wait.run(&key, &ask, io)?;
             (asked.fingerprint, expires, "device")
         };
@@ -295,7 +309,8 @@ impl Server {
 
     fn logout_with(&self, env: &impl Environment, preferences: &Preferences, io: &mut Io<'_>) -> Result<Exit, Error> {
         let calls = self.signed(env, preferences)?;
-        let print = calls.wire.identity.as_ref().map_or_else(String::new, |identity| identity.id().fingerprint().to_string());
+        let print =
+            calls.wire.identity.as_ref().map_or_else(String::new, |identity| identity.id().fingerprint().to_string());
         let result: Result<Row, Failure> = calls.json(Method::DELETE, &format!("/v1/keys/{print}"), Vec::new());
         // a key the server already ended is as logged out as one it just ended; one it could not be asked about is not
         let gone = matches!(result, Ok(_) | Err(Failure::Refused { status: 401, .. }));
@@ -325,7 +340,8 @@ impl Keys {
         let preferences = Preferences::load(&Process).map_err(|source| Error::Preferences { source })?;
         match self {
             Self::List(server) => {
-                let items: Items<Row> = server.signed(&Process, &preferences)?.json(Method::GET, "/v1/keys", Vec::new())?;
+                let items: Items<Row> =
+                    server.signed(&Process, &preferences)?.json(Method::GET, "/v1/keys", Vec::new())?;
                 io.result(&view::Keys(&items.items))?;
                 io.json(&Listed { schema: "uses.keys/v1", keys: &items.items })?;
                 Ok(Exit::Done)
@@ -340,7 +356,11 @@ impl Revoke {
     fn run(self, preferences: &Preferences, io: &mut Io<'_>) -> Result<Exit, Error> {
         let print: Fingerprint =
             self.fingerprint.parse().map_err(|_| Failure::Unknown { written: self.fingerprint.clone() })?;
-        let row: Row = self.server.signed(&Process, preferences)?.json(Method::DELETE, &format!("/v1/keys/{print}"), Vec::new())?;
+        let row: Row = self.server.signed(&Process, preferences)?.json(
+            Method::DELETE,
+            &format!("/v1/keys/{print}"),
+            Vec::new(),
+        )?;
         io.result(&view::Ended(&row))?;
         io.json(&wire::Ended { schema: "uses.key-ended/v1", key: &row })?;
         Ok(Exit::Done)
@@ -370,7 +390,8 @@ impl Add {
     fn keep(&self, text: &sig::KeyText) -> Result<Option<String>, Failure> {
         let Some(path) = &self.out else { return Ok(None) };
         let failed = |source| Failure::Store { source: StoreError::Io { path: path.clone(), source } };
-        let mut file = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path).map_err(failed)?;
+        let mut file =
+            std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path).map_err(failed)?;
         std::io::Write::write_all(&mut file, format!("{}\n", text.reveal()).as_bytes()).map_err(failed)?;
         Ok(Some(path.display().to_string()))
     }
@@ -383,14 +404,17 @@ impl Add {
         let calls = self.server.calls(preferences, |_| Ok(None))?;
         let kind = if self.site.is_some() { "deploy" } else { "device" };
         let key = Fresh::make()?;
-        let wait = Enrolment { calls: &calls, wait: Duration::from_secs(self.wait), poll: Duration::from_secs(self.poll) };
+        let wait =
+            Enrolment { calls: &calls, wait: Duration::from_secs(self.wait), poll: Duration::from_secs(self.poll) };
         let (asked, expires) = wait.run(&key, &self.ask(), io)?;
         let text = key.seed.text();
         let kept = self.keep(&text)?;
-        let joined = view::Joined { fingerprint: &asked.fingerprint, label: &self.label, kind, expires, kept: kept.as_deref() };
+        let joined =
+            view::Joined { fingerprint: &asked.fingerprint, label: &self.label, kind, expires, kept: kept.as_deref() };
         io.result(&joined)?;
         if kept.is_none() {
-            let note = Verbatim("the private key follows on stdout, once; keep it as INK_KEY or INK_KEY_FILE".to_owned());
+            let note =
+                Verbatim("the private key follows on stdout, once; keep it as INK_KEY or INK_KEY_FILE".to_owned());
             io.aside(Say::Warnings, &note)?;
             io.line(text.reveal())?;
         }

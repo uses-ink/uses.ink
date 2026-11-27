@@ -72,6 +72,7 @@ pub(crate) const ENFORCED: &[&str] = &[
     "uses-ink-host-wasmtime-hostile",
     "uses-ink-model",
     "uses-ink-sdk",
+    "uses-ink-sig",
     "uses-ink-source-git",
     "uses-ink-source-git-guest",
     "uses-ink-format-markdown-guest",

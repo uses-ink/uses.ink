@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use zeroize::Zeroize;
 
-use crate::base::{Base64, Crockford, Undecodable};
+use crate::alphabet::{Base64, Crockford, Undecodable};
 
 /// What a key is. Fixed when the key is enrolled and stored beside it; a request cannot name
 /// another (`docs/auth.md` section 5, algorithm agility).

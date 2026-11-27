@@ -1,7 +1,12 @@
 //! A caller's key for tests that speak raw HTTP to `ink serve`: made here, added to the data
 //! folder's `operator-keys` the way `ink login --data` does, and used to sign requests.
 
-#![allow(dead_code, unreachable_pub, clippy::unwrap_used, reason = "shared by several test crates; tests stop at the first surprise")]
+#![allow(
+    dead_code,
+    unreachable_pub,
+    clippy::unwrap_used,
+    reason = "shared by several test crates; tests stop at the first surprise"
+)]
 
 use std::io::Write as _;
 use std::path::Path;

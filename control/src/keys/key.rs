@@ -277,12 +277,16 @@ impl TryFrom<&Row> for Key {
         let account = fields.id::<AccountKind>(table::Key::AccountId)?;
         let scope = match fields.text(table::Key::ScopeKind)?.as_str() {
             "account" => Scope::Account(account),
-            _ => Scope::Site(fields.maybe_id::<SiteKind>(table::Key::SiteId)?.ok_or(Unreadable::Text { column: "site_id" })?),
+            _ => Scope::Site(
+                fields.maybe_id::<SiteKind>(table::Key::SiteId)?.ok_or(Unreadable::Text { column: "site_id" })?,
+            ),
         };
         let rights = Rights::read(&fields.text(table::Key::Rights)?)
             .map_err(|source| Unreadable::Name { column: "rights", found: source.written })?;
         let bytes: Vec<u8> = row.get(table::Key::PublicKey)?;
-        let public = <[u8; 32]>::try_from(bytes.as_slice()).map(PublicKey::new).map_err(|_| Unreadable::Digest { column: "public_key" })?;
+        let public = <[u8; 32]>::try_from(bytes.as_slice())
+            .map(PublicKey::new)
+            .map_err(|_| Unreadable::Digest { column: "public_key" })?;
         Ok(Self {
             id,
             account,

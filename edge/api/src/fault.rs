@@ -13,8 +13,8 @@ use model::git::Scheme;
 
 use crate::body::Unreadable;
 use crate::enrol::Closed;
-use crate::refusal::Turned;
 use crate::limits::Raised;
+use crate::refusal::Turned;
 use crate::reply::{Media, Reply, Status};
 use crate::route::RouteError;
 use crate::tar;
@@ -152,10 +152,16 @@ impl fmt::Display for Denied {
             Self::Revoked { since } => write!(out, "this key was revoked on {since}"),
             Self::Expired { since } => write!(out, "this key expired on {since}"),
             Self::Replayed => out.write_str("a request with the same nonce was already seen"),
-            Self::Flooded { window } => write!(out, "this key sent more signed requests than are remembered in {window} seconds"),
+            Self::Flooded { window } => {
+                write!(out, "this key sent more signed requests than are remembered in {window} seconds")
+            }
             Self::Digest => out.write_str("the body is not the one that was signed"),
-            Self::Restarting { seconds } => write!(out, "the server just started and takes signed requests in {seconds} seconds"),
-            Self::Right { right, scope } => write!(out, "this key has no `{right}` right on the {scope}", right = right.name()),
+            Self::Restarting { seconds } => {
+                write!(out, "the server just started and takes signed requests in {seconds} seconds")
+            }
+            Self::Right { right, scope } => {
+                write!(out, "this key has no `{right}` right on the {scope}", right = right.name())
+            }
             Self::Limited(closed) => closed.fmt(out),
         }
     }

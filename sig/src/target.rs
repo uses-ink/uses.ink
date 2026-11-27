@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::base::Crockford;
+use crate::alphabet::Crockford;
 
 /// Why a target is not in canonical form. The verifier does not repair a target: it refuses one
 /// that is not canonical, before a signature is looked at.
@@ -148,7 +148,9 @@ impl Target {
             let here = base + at;
             if byte == b'%' {
                 let digit = |offset: usize| bytes.get(at + offset).copied().filter(|d| Crockford::hex(*d).is_some());
-                let (Some(high), Some(low)) = (digit(1), digit(2)) else { return Err(NotCanonical::Escape { at: here }) };
+                let (Some(high), Some(low)) = (digit(1), digit(2)) else {
+                    return Err(NotCanonical::Escape { at: here });
+                };
                 let value = Crockford::hex(high).unwrap_or_default() << 4 | Crockford::hex(low).unwrap_or_default();
                 if Self::unreserved(value) {
                     return Err(NotCanonical::Unreserved { at: here });

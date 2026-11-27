@@ -156,9 +156,9 @@ impl Rights {
 
     /// The set a column stored, or the name it does not know.
     pub fn read(text: &str) -> Result<Self, UnknownRight> {
-        text.split(',').filter(|name| !name.is_empty()).try_fold(Self::NONE, |set, name| {
-            name.parse::<Right>().map(|right| set.either(Self::of(&[right])))
-        })
+        text.split(',')
+            .filter(|name| !name.is_empty())
+            .try_fold(Self::NONE, |set, name| name.parse::<Right>().map(|right| set.either(Self::of(&[right]))))
     }
 }
 
@@ -328,7 +328,10 @@ mod test {
         assert_eq!(on(Some(s1)), Rights::of(&[Right::Read, Right::Deploy, Right::Edit]));
         assert_eq!(on(Some(s2)), Rights::of(&[Right::Read]));
         assert_eq!(on(None), Rights::of(&[Right::Read]));
-        assert_eq!(grants.on(&Target { account: account(2), site: Some(s1) }), Rights::of(&[Right::Deploy, Right::Edit]));
+        assert_eq!(
+            grants.on(&Target { account: account(2), site: Some(s1) }),
+            Rights::of(&[Right::Deploy, Right::Edit])
+        );
     }
 
     #[test]

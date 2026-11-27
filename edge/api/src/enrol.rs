@@ -79,7 +79,9 @@ impl Gate {
     pub fn open(&self, now: Timestamp) -> Result<(), Closed> {
         let count = self.count.lock().unwrap_or_else(PoisonError::into_inner);
         match count.until.filter(|until| *until > now) {
-            Some(until) => Err(Closed { seconds: u64::try_from(until.as_second() - now.as_second()).unwrap_or(1).max(1) }),
+            Some(until) => {
+                Err(Closed { seconds: u64::try_from(until.as_second() - now.as_second()).unwrap_or(1).max(1) })
+            }
             None => Ok(()),
         }
     }

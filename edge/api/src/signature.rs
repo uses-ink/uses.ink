@@ -26,7 +26,7 @@ use sig::{Audience, Claim, Covered, KeyId, KeyType, Nonce, Verifying};
 
 use crate::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
 use crate::fault::Denied;
-use crate::operator::{Operators, OperatorKey};
+use crate::operator::{OperatorKey, Operators};
 
 /// The skew window: how many seconds either side of the server's time a request's `created` may
 /// be, and the length of the quiet after a restart. The operator's to set, with a ceiling.
@@ -242,7 +242,12 @@ impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
             Found::Operator(key) => {
                 let account = self.config.operator;
                 let via = Via::Operator { label: key.label.to_string() };
-                Verdict::Granted(Principal { account, via, effective: Effective::own(Grants::owner(account)), expires: None })
+                Verdict::Granted(Principal {
+                    account,
+                    via,
+                    effective: Effective::own(Grants::owner(account)),
+                    expires: None,
+                })
             }
             Found::Key(key) => {
                 let effective = match key.kind {
@@ -275,14 +280,22 @@ impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
     }
 
     /// Claims the nonce: why not when it was seen or the key has too many.
-    async fn claimed(&self, found: &Found, claim: &Claim, now: Timestamp) -> Result<Option<Denied>, Failed<D::Error, O::Error>> {
+    async fn claimed(
+        &self,
+        found: &Found,
+        claim: &Claim,
+        now: Timestamp,
+    ) -> Result<Option<Denied>, Failed<D::Error, O::Error>> {
         let (secs, window) = (Self::seconds(now), self.config.window.seconds());
         let until = claim.created.seconds() + window;
         Ok(match self.nonces.claim((claim.key, claim.nonce), until, (secs, self.config.nonces)) {
             Claimed::Fresh => None,
             Claimed::Replay => {
                 if let Found::Key(key) = found {
-                    self.keys.record(key.account, Audit::ReplayDetected { key: key.id }, now).await.map_err(Failed::Keys)?;
+                    self.keys
+                        .record(key.account, Audit::ReplayDetected { key: key.id }, now)
+                        .await
+                        .map_err(Failed::Keys)?;
                 }
                 Some(Denied::Replayed)
             }
@@ -312,10 +325,11 @@ impl<D: Db, K: Clock, O: Operators> Credentials for Signatures<D, K, O> {
             Found::Key(key) => (key.public, key.key_type),
             Found::Pending(enrolment) => (enrolment.public, enrolment.key_type),
         };
-        let verified = Verifying::new(&public).ok().filter(|_| self.config.types.contains(&key_type)).is_some_and(|key| {
-            let covered = Covered { audience: &self.config.audience, method: at.method, target: at.target, claim };
-            key.verify(&covered, &signed.signature).is_ok()
-        });
+        let verified =
+            Verifying::new(&public).ok().filter(|_| self.config.types.contains(&key_type)).is_some_and(|key| {
+                let covered = Covered { audience: &self.config.audience, method: at.method, target: at.target, claim };
+                key.verify(&covered, &signed.signature).is_ok()
+            });
         if !verified {
             return Ok(Verdict::Refused(Denied::Refused));
         }

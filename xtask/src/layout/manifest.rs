@@ -68,6 +68,9 @@ impl Order {
         ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge", "uses-ink-edge-api", "uses-ink-trace"]),
         ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge"]),
         ("uses-ink-token", &[]),
+        // The signed-request profile (decision 0068): the CLI signs and the server verifies with the
+        // same code; it knows no crate of ours.
+        ("uses-ink-sig", &[]),
         // Logging (decision 0065): a leaf every crate that instruments takes; it knows no crate of ours.
         ("uses-ink-trace", &[]),
         // The API and the polling watch (decision 0052) read time and randomness through the
@@ -88,6 +91,7 @@ impl Order {
                 "uses-ink-model",
                 "uses-ink-queue-local",
                 "uses-ink-secret-local",
+                "uses-ink-sig",
                 "uses-ink-trace",
             ],
         ),
@@ -154,6 +158,7 @@ impl Order {
                 "uses-ink-edge-axum",
                 "uses-ink-edge-folder",
                 "uses-ink-edge-api",
+                "uses-ink-sig",
                 "uses-ink-edge-control",
                 "uses-ink-clock",
                 "uses-ink-control",
@@ -271,6 +276,7 @@ impl Order {
                 "uses-ink-queue-local",
                 "uses-ink-secret",
                 "uses-ink-secret-local",
+                "uses-ink-sig",
                 "uses-ink-trace",
             ],
         ),

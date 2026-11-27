@@ -251,6 +251,7 @@ impl Failure {
 }
 
 impl fmt::Display for Failure {
+    #[expect(clippy::too_many_lines, reason = "one arm of prose for each way a call fails")]
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Setting { needed } => write!(out, "no {} is set: give {}", needed.noun(), needed.given()),
@@ -276,7 +277,9 @@ impl fmt::Display for Failure {
             Self::Unreadable { .. } => write!(out, "the API's answer is not what this ink reads"),
             Self::Store { .. } => write!(out, "the private key could not be kept or read"),
             Self::KeyText { from, .. } => write!(out, "{from} does not hold a key: run `ink login` to make one"),
-            Self::Audience { written, .. } => write!(out, "`{written}` is not an authority a request can be signed for"),
+            Self::Audience { written, .. } => {
+                write!(out, "`{written}` is not an authority a request can be signed for")
+            }
             Self::Target { .. } => write!(out, "the request target is not canonical, so it was not signed"),
             Self::Method { .. } => write!(out, "the method is not one a request is signed with"),
             Self::Draw { .. } => write!(out, "no random bytes were available"),
@@ -285,7 +288,10 @@ impl fmt::Display for Failure {
                 write!(out, "nobody approved the key in {} seconds: run `ink login` again", after.as_secs())
             }
             Self::PrintRefused => {
-                write!(out, "the private key would be printed to a terminal: send it to a file with `--out`, or redirect stdout")
+                write!(
+                    out,
+                    "the private key would be printed to a terminal: send it to a file with `--out`, or redirect stdout"
+                )
             }
         }
     }

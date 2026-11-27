@@ -65,7 +65,9 @@ impl Flags {
     /// The settings, over the defaults. `api_host` and `address` give the audience when none is
     /// set: the port is left out when it is the one `http` has.
     pub(crate) fn resolve(&self, api_host: &str, address: SocketAddr) -> Result<Resolved, Unready> {
-        let setting = |flag: &'static str| move |source: Box<dyn std::error::Error + Send + Sync>| Unready::Setting { flag, source };
+        let setting = |flag: &'static str| {
+            move |source: Box<dyn std::error::Error + Send + Sync>| Unready::Setting { flag, source }
+        };
         let defaults = Settings::default();
         let keys = Settings {
             device: self.key_device.unwrap_or(defaults.device),

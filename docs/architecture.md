@@ -83,6 +83,7 @@ uses.ink/
   mail/  mail/smtp/      uses-ink-mail          mail port: typed messages and a Mailer; Capture and Stdout stand-ins;
                                                 the SMTP adapter on lettre and rustls (0066)
   edge/api/              uses-ink-edge-api      the API and intake over the control plane (0052)
+  sig/                   uses-ink-sig           the Ink-Sig-1 signed-request profile: parse, sign, verify (0068)
   clock/                 uses-ink-clock         time and randomness as ports
   watch/                 uses-ink-watch         the polling watch and the in-process worker
   edge/                  uses-ink-edge          serve, api, intake, independent of the HTTP runtime; the serving half is
