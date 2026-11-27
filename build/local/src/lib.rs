@@ -11,6 +11,7 @@
 //! The pipeline repeats what `cli/src/site.rs` does, because the CLI keeps it private; both
 //! should call one shared function when the CLI next changes (decision 0045).
 
+mod bundle;
 mod error;
 mod local;
 mod pins;

@@ -13,7 +13,7 @@ use blob_dir::Directory;
 use build::Source;
 use clock::{Clock as _, Manual};
 use control::{
-    AccountKind, Control, Domain, Handle, Id, NewAccount, NewDeploy, NewSite, Origin, Ports as _, Remembered, SiteKind,
+    AccountKind, Control, Domain, Handle, Id, NewAccount, NewDeploy, NewSite, Origin, Ports as _, Remembered, SiteKind, Treed,
 };
 use db::Steps;
 use db_sqlite::Sqlite;
@@ -53,7 +53,7 @@ impl World {
         let folder = tempfile::tempdir().unwrap();
         let root = folder.path().join("blobs");
         let db = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Remembered>().unwrap().with::<Queued>().unwrap();
+        let steps = Steps::new().with::<Domain>().unwrap().with::<Remembered>().unwrap().with::<Treed>().unwrap().with::<Queued>().unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports: Wired =
             Arc::new((db.clone(), Directory::open(&root).unwrap(), Queue::new(db), Sealer::ephemeral().unwrap()));

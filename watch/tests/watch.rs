@@ -20,7 +20,7 @@ use blob_dir::Directory;
 use build::{Revision, Source};
 use clock::{Clock, Counter, Manual};
 use control::Ports as _;
-use control::{AccountKind, Control, Domain, Id, JobState, NewAccount, NewSite, Origin, Remembered, SiteKind};
+use control::{AccountKind, Control, Domain, Id, JobState, NewAccount, NewSite, Origin, Remembered, SiteKind, Treed};
 use db::Steps;
 use db_sqlite::Sqlite;
 use jiff::Timestamp;
@@ -92,7 +92,7 @@ impl World {
     fn new() -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new().with::<Domain>().unwrap().with::<Remembered>().unwrap().with::<Queued>().unwrap();
+        let steps = Steps::new().with::<Domain>().unwrap().with::<Remembered>().unwrap().with::<Treed>().unwrap().with::<Queued>().unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
             db.clone(),

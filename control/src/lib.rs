@@ -53,7 +53,7 @@ pub use id::{
 };
 pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked};
 pub use listed::{Canonical, Listed};
-pub use migration::{Domain, Remembered};
+pub use migration::{Domain, Remembered, Treed};
 pub use origin::{Origin, OriginError};
 pub use ports::Ports;
 pub use receipt::Receipt;

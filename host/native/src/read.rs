@@ -17,6 +17,12 @@ pub struct Read {
 }
 
 impl Read {
+    /// A read of `snapshot` that skipped nothing and met no pointer: for a source that holds
+    /// its own files, such as an upload.
+    pub const fn new(snapshot: Snapshot) -> Self {
+        Self { snapshot, skipped: Vec::new(), pointers: Vec::new() }
+    }
+
     /// What the read has to say: each folder it skipped, then each pointer it kept.
     pub fn notices(&self) -> impl Iterator<Item = Notice> + '_ {
         let pointers = self.pointers.iter().map(|path| {

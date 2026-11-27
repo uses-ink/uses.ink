@@ -10,7 +10,7 @@ use build::Source;
 use control::signin::Entry;
 use control::table::Event;
 use control::{
-    AccountKind, Control, CredentialKind, Domain, Handle, Id, NewAccount, NewSite, Origin, Ports, Remembered, Site,
+    AccountKind, Control, CredentialKind, Domain, Handle, Id, NewAccount, NewSite, Origin, Ports, Remembered, Site, Treed,
     SiteKind,
 };
 use db::{Db, Row, Steps};
@@ -63,6 +63,8 @@ impl World {
             .unwrap()
             .with::<Remembered>()
             .unwrap()
+            .with::<Treed>()
+            .unwrap()
             .with::<Queued>()
             .unwrap()
             .with::<Entry>()
@@ -81,6 +83,8 @@ impl World {
             .with::<Domain>()
             .unwrap()
             .with::<Remembered>()
+            .unwrap()
+            .with::<Treed>()
             .unwrap()
             .with::<Queued>()
             .unwrap()

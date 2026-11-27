@@ -268,6 +268,16 @@ pub enum AuthEvent {
     Body,
 }
 
+/// `bundle`: the uploaded tree a build of a push reads.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "bundle"]
+pub enum Bundle {
+    Table,
+    JobId,
+    SiteId,
+    Tree,
+}
+
 #[derive(Clone, Copy, Debug, IdenStatic)]
 #[iden = "seen"]
 pub enum Seen {

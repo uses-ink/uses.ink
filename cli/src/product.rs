@@ -14,7 +14,7 @@ use std::time::Duration;
 use blob_dir::Directory;
 use clock::System;
 use control::signin::{Entry, Settings, SignIn};
-use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Refusal, Remembered};
+use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Refusal, Remembered, Treed};
 use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::door::Config;
@@ -211,6 +211,7 @@ impl Product {
         let steps = Steps::new()
             .with::<Domain>()
             .and_then(Steps::with::<Remembered>)
+            .and_then(Steps::with::<Treed>)
             .and_then(Steps::with::<Queued>)
             .and_then(Steps::with::<Entry>)
             .and_then(Steps::with::<control::keys::Entry>)

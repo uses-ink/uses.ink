@@ -4,6 +4,7 @@ use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use model::Hash;
 use model::git::Locator;
 use serde::Serialize;
 
@@ -117,6 +118,10 @@ pub enum Source {
     /// Built output sent to the control plane (`PUT` of an archive): no builder reads it, and the
     /// poll does not look at it.
     Upload,
+    /// A tree sent to the control plane (`ink push`): the tree is stored as a blob of the site's
+    /// tenant under this hash, and so is every file it lists. Only a build's request holds this;
+    /// a site's source is [`Source::Upload`].
+    Bundle(Hash),
 }
 
 impl Source {
@@ -125,7 +130,7 @@ impl Source {
         match self {
             Self::Folder(_) => Kind::Folder,
             Self::Git { .. } => Kind::Git,
-            Self::Upload => Kind::Upload,
+            Self::Upload | Self::Bundle(_) => Kind::Upload,
         }
     }
 }

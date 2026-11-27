@@ -11,7 +11,7 @@ use std::time::Duration;
 use blob_dir::Directory;
 use clock::{Manual, System};
 use control::keys::{Rights, Settings as KeySettings};
-use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Remembered};
+use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Remembered, Treed};
 use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::{
@@ -60,6 +60,8 @@ impl Rig {
             .with::<Domain>()
             .unwrap()
             .with::<Remembered>()
+            .unwrap()
+            .with::<Treed>()
             .unwrap()
             .with::<Queued>()
             .unwrap()

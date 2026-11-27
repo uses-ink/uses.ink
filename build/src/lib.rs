@@ -15,9 +15,11 @@ mod event;
 mod id;
 mod port;
 mod source;
+mod tree;
 
 pub use error::Error;
 pub use event::{Event, Events, Status, Trigger};
 pub use id::{BuildId, BuildIdError};
 pub use port::{Build, Built, Outcome, Request};
 pub use source::{Kind, Revision, RevisionError, Source};
+pub use tree::{Leaf, Tree, TreeError};

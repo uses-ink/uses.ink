@@ -27,6 +27,48 @@ impl<P: Ports> Control<P> {
     /// Queues a build of a site. A request with the dedupe key of one still in the queue is
     /// dropped, so a forge that sends the same webhook twice builds once.
     pub async fn request_build(&self, new: job::New) -> Result<Requested, Error<P>> {
+        self.queued(new, None).await
+    }
+
+    /// Queues a build of the tree an upload sent (`ink push`): the tree is a blob of the site's
+    /// tenant, and so is every file it lists, which the caller has checked are held. The build
+    /// reads this tree, not whatever a later push sends.
+    pub async fn request_upload(&self, new: job::New, tree: Hash) -> Result<Requested, Error<P>> {
+        self.queued(new, Some(tree)).await
+    }
+
+    /// The tree of the most recent push to `site`, if there was one: the one `ink export
+    /// --source` returns.
+    pub async fn latest_tree(&self, site: Id<SiteKind>) -> Result<Option<Hash>, Error<P>> {
+        let select = Query::select()
+            .column(table::Bundle::Tree)
+            .from(table::Bundle::Table)
+            .and_where(Expr::col(table::Bundle::SiteId).eq(site.to_string()))
+            .order_by(table::Row::Rowid, Order::Desc)
+            .limit(1)
+            .to_owned();
+        self.site(site).await?;
+        self.read_tree(select).await
+    }
+
+    /// The tree the build `id` reads, when it is a build of a push.
+    async fn tree_of(&self, id: BuildId) -> Result<Option<Hash>, Error<P>> {
+        let select = Query::select()
+            .column(table::Bundle::Tree)
+            .from(table::Bundle::Table)
+            .and_where(Expr::col(table::Bundle::JobId).eq(id.to_string()))
+            .to_owned();
+        self.read_tree(select).await
+    }
+
+    async fn read_tree(&self, select: sea_query::SelectStatement) -> Result<Option<Hash>, Error<P>> {
+        match self.ports.db().first(select.into()).await? {
+            Some(row) => Ok(crate::fields::Fields(&row).maybe_hash(table::Bundle::Tree)?),
+            None => Ok(None),
+        }
+    }
+
+    async fn queued(&self, new: job::New, tree: Option<Hash>) -> Result<Requested, Error<P>> {
         let site = self.active(new.site).await?;
         let message = Message { body: new.id.to_string().into_bytes(), dedupe: new.dedupe };
         if let Sent::Duplicate(_) = self.ports.queue().send(message, new.at).await? {
@@ -49,7 +91,15 @@ impl<P: Ports> Control<P> {
                 Expr::val(new.at.as_millisecond()),
             ])?
             .to_owned();
-        let batch = vec![insert.into(), Event::BuildRequested { build: new.id }.insert(site.id, new.at)?];
+        let mut batch = vec![insert.into(), Event::BuildRequested { build: new.id }.insert(site.id, new.at)?];
+        if let Some(tree) = tree {
+            let bundle = Query::insert()
+                .into_table(table::Bundle::Table)
+                .columns([table::Bundle::JobId, table::Bundle::SiteId, table::Bundle::Tree])
+                .values([Expr::val(new.id.to_string()), Expr::val(site.id.to_string()), Expr::val(tree.to_string())])?
+                .to_owned();
+            batch.push(bundle.into());
+        }
         self.ports.db().batch(batch).await?;
         Ok(Requested::Queued(new.id))
     }
@@ -157,8 +207,11 @@ impl<P: Ports> Control<P> {
         let site = self.active(job.site).await?;
         let tenant = Self::tenant(site.id).map_err(Error::from)?;
         let base = self.origin.site(&site.handle).map_err(Error::Origin)?;
-        let request =
-            Request { build: job.id, tenant: tenant.clone(), trigger: job.trigger, source: site.source, base };
+        let source = match (site.source, self.tree_of(job.id).await?) {
+            (build::Source::Upload, Some(tree)) => build::Source::Bundle(tree),
+            (source, _) => source,
+        };
+        let request = Request { build: job.id, tenant: tenant.clone(), trigger: job.trigger, source, base };
         let mut events: Vec<build::Event> = Vec::new();
         match builder.run(&request, &mut events).await {
             Err(error) => {

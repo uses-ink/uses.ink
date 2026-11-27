@@ -10,7 +10,7 @@ use crate::deploy::Cause;
 use crate::job::{State as JobState, Stored as Trigger};
 use crate::site::{State as SiteState, Stored as SourceKind};
 use crate::table::{
-    Account, Allowed, Credential, Deploy, Event, Job, Live, Named, Publication, Seen, Site, Source, Tombstone,
+    Account, Allowed, Bundle, Credential, Deploy, Event, Job, Live, Named, Publication, Seen, Site, Source, Tombstone,
 };
 
 /// The two kinds of column most of the schema is made of.
@@ -58,6 +58,28 @@ impl Migration for Remembered {
                 .col(Typed::text(Seen::Head))
                 .col(Typed::time(Seen::At))
                 .foreign_key(ForeignKey::create().from(Seen::Table, Seen::SiteId).to(Site::Table, Site::Id))
+                .into(),
+        ]
+    }
+}
+
+/// The migration that lets a build job name the uploaded tree it builds (`ink push`, decision
+/// 0076): a row for each build of a push, and none for a build of a git source or a folder.
+#[derive(Clone, Copy, Debug)]
+pub struct Treed;
+
+impl Migration for Treed {
+    const NUMBER: u32 = 3;
+    const NAME: &'static str = "tree";
+
+    fn statements() -> Vec<Statement> {
+        vec![
+            Table::create()
+                .table(Bundle::Table)
+                .col(ColumnDef::new(Bundle::JobId).text().not_null().primary_key())
+                .col(Typed::text(Bundle::SiteId))
+                .col(Typed::text(Bundle::Tree))
+                .foreign_key(ForeignKey::create().from(Bundle::Table, Bundle::SiteId).to(Site::Table, Site::Id))
                 .into(),
         ]
     }

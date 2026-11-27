@@ -25,6 +25,17 @@ pub enum Error<E> {
     },
     /// The remote's fetch failed in its own right, not as a repository that cannot be read.
     Remote(Box<dyn std::error::Error>),
+    /// A blob of an uploaded tree is not held: the push that made the build said they were.
+    Absent {
+        /// The blob.
+        blob: Hash,
+    },
+    /// An uploaded tree, or a file of it, could not be read from the blob store.
+    Stored(blob::Error<E>),
+    /// The uploaded tree is not a tree.
+    Tree(build::TreeError),
+    /// The uploaded files do not make a snapshot.
+    Snapshot(model::SnapshotError),
     /// The manifest names a blob that neither the render nor the snapshot holds: a bug in the
     /// engine, never a user's mistake.
     Missing {
@@ -39,6 +50,10 @@ impl<E> fmt::Display for Error<E> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Blob(_) => out.write_str("a blob of the deploy could not be stored"),
+            Self::Absent { blob } => write!(out, "the uploaded blob {blob} is not held"),
+            Self::Stored(_) => out.write_str("an uploaded blob could not be read"),
+            Self::Tree(_) => out.write_str("the uploaded tree is not a tree"),
+            Self::Snapshot(_) => out.write_str("the uploaded files do not make a snapshot"),
             Self::Base { .. } => out.write_str("the base URL is not one a site is served under"),
             Self::Remote(_) => out.write_str("the remote could not fetch the repository"),
             Self::Format { id } => write!(out, "this builder holds no format {id}"),
@@ -50,11 +65,13 @@ impl<E> fmt::Display for Error<E> {
 impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Blob(source) => Some(source),
+            Self::Blob(source) | Self::Stored(source) => Some(source),
+            Self::Tree(source) => Some(source),
+            Self::Snapshot(source) => Some(source),
             Self::Base { source } => Some(source),
             Self::Missing { source, .. } => Some(source),
             Self::Remote(source) => Some(source.as_ref()),
-            Self::Format { .. } => None,
+            Self::Format { .. } | Self::Absent { .. } => None,
         }
     }
 }

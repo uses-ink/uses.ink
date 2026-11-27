@@ -11,6 +11,7 @@ use model::Bytes;
 use trace::{Field as _, Instrument as _};
 
 use crate::Error;
+use crate::bundle::Bundle;
 use crate::pipeline::{Made, Pipeline};
 use crate::remote::{Offline, Remote};
 
@@ -67,6 +68,11 @@ impl<B: Blob, R: Remote> Local<B, R> {
                 Source::Git { .. } if self.remote.reaches() => {
                     let fetched = self.remote.fetch(request, &mut store).await;
                     fetched.map_err(|source| Self::fail(Error::Remote(Box::new(source))))
+                }
+                Source::Bundle(tree) => {
+                    let bundle = Bundle { blobs: &self.blobs, tenant: &request.tenant };
+                    let read = bundle.read(*tree, &mut store).await.map_err(Self::fail)?;
+                    Ok(Ok(read))
                 }
                 other => Err(build::Error::Unsupported { kind: other.kind() }),
             }
