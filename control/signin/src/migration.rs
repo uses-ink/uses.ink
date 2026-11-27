@@ -4,8 +4,8 @@ use db::{Migration, Statement};
 use sea_query::{ColumnDef, ForeignKey, IdenStatic, Index, Table};
 
 use super::{Purpose, Sort};
-use crate::typed::Typed;
-use crate::table::{Account, Allowed, Challenge, Factor, Named, Session};
+use control_rows::typed::Typed;
+use control_rows::table::{Account, Allowed, Challenge, Factor, Named, Session};
 
 /// The migration that makes the tables of signing in: `factor`, `challenge` and `session`. Only
 /// digests are stored: a token or a session secret is in no row, and no password exists.

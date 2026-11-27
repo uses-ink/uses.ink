@@ -4,7 +4,7 @@ use jiff::Timestamp;
 use mail::Address;
 
 use super::{Proof, Session};
-use crate::id::{Account as AccountKind, Id};
+use control_rows::id::{Account as AccountKind, Id};
 
 /// What a one-time token is for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

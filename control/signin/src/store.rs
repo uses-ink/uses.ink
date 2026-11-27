@@ -9,9 +9,9 @@ use super::{
     Audit, Context, Digest, Drawn, Entered, Error, Factor, Issued, Passed, Pending, Presented, Proof, Purpose, Refused,
     Requested, Session, Settings, Sort,
 };
-use crate::fields::Fields;
-use crate::id::{Account as AccountKind, Id, Session as SessionKind};
-use crate::table;
+use control_rows::fields::Fields;
+use control_rows::id::{Account as AccountKind, Id, Session as SessionKind};
+use control_rows::table;
 
 /// Signing in over a database: one-time links, sessions, the first-run link and the policy
 /// that says who may make an account.
@@ -47,7 +47,7 @@ struct Making {
     account: Id<AccountKind>,
     fresh: bool,
     attach: Option<Address>,
-    factor: Id<crate::id::Factor>,
+    factor: Id<control_rows::id::Factor>,
     now: Timestamp,
 }
 

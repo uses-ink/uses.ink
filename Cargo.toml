@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "sig", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "trace", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "control/rows", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp", "https"]
+members = ["cli", "sig", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "trace", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "control/rows", "control/signin", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp", "https"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -23,6 +23,7 @@ clock = { package = "uses-ink-clock", path = "clock" }
 config = { package = "uses-ink-config", path = "config" }
 control = { package = "uses-ink-control", path = "control" }
 control-rows = { package = "uses-ink-control-rows", path = "control/rows" }
+control-signin = { package = "uses-ink-control-signin", path = "control/signin" }
 # test-only: a dev-dependency of any crate, a normal dependency of none
 fixture = { package = "uses-ink-fixture", path = "fixture" }
 db = { package = "uses-ink-db", path = "db" }

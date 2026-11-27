@@ -235,6 +235,12 @@ impl Order {
             "uses-ink-control-rows",
             &["uses-ink-blob", "uses-ink-db", "uses-ink-mail", "uses-ink-model", "uses-ink-sig"],
         ),
+        // Signing in (decision 0066) over the row port alone: the rows' floor, the mail port for
+        // links, the secret type a proof is held as, and the key type a credential names.
+        (
+            "uses-ink-control-signin",
+            &["uses-ink-control-rows", "uses-ink-db", "uses-ink-mail", "uses-ink-secret", "uses-ink-sig"],
+        ),
         // The use cases know the ports; the adapters are what its tests run against.
         (
             "uses-ink-control",
@@ -243,6 +249,7 @@ impl Order {
                 "uses-ink-blob-dir",
                 "uses-ink-build",
                 "uses-ink-control-rows",
+                "uses-ink-control-signin",
                 "uses-ink-db",
                 "uses-ink-db-sqlite",
                 "uses-ink-mail",

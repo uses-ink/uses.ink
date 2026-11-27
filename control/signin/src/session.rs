@@ -4,10 +4,10 @@ use db::Row;
 use jiff::Timestamp;
 
 use super::Ends;
-use crate::unreadable::Unreadable;
-use crate::fields::Fields;
-use crate::id::{Account as AccountKind, Id, Session as Kind};
-use crate::table;
+use control_rows::unreadable::Unreadable;
+use control_rows::fields::Fields;
+use control_rows::id::{Account as AccountKind, Id, Session as Kind};
+use control_rows::table;
 
 /// A signed-in session. Its secret is not here: only the person who was given it has the
 /// secret, and the database has a digest of it.
@@ -34,7 +34,7 @@ pub struct Passed {
     /// The account the passkey belongs to.
     pub account: Id<AccountKind>,
     /// The passkey's row id.
-    pub passkey: Id<crate::id::Factor>,
+    pub passkey: Id<control_rows::id::Factor>,
 }
 
 impl Session {

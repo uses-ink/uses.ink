@@ -7,8 +7,8 @@ use jiff::Timestamp;
 use sea_query::{Expr, Query};
 use serde_json::json;
 
-use crate::id::{Account as AccountKind, Factor as FactorKind, Id};
-use crate::table;
+use control_rows::id::{Account as AccountKind, Factor as FactorKind, Id};
+use control_rows::table;
 
 /// One lifecycle event of a passkey.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

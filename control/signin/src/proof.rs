@@ -5,9 +5,9 @@ use std::str::FromStr;
 
 use secret::Plain;
 
-use crate::digest::Digest;
+use control_rows::Digest;
 
-use crate::id::{Account as AccountKind, Factor as FactorKind, Id, Session as SessionKind};
+use control_rows::id::{Account as AccountKind, Factor as FactorKind, Id, Session as SessionKind};
 
 /// A random 256-bit secret as 64 lower-case hex digits: a one-time sign-in token, or the secret
 /// of a session. It prints as `Proof(<redacted>)`, is zeroed when dropped, and cannot be cloned
@@ -138,7 +138,7 @@ impl Drawn {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::digest::NotDigest;
+    use control_rows::NotDigest;
 
     #[test]
     fn a_proof_is_64_hex_digits_and_never_prints() {

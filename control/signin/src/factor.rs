@@ -4,10 +4,10 @@ use db::Row;
 use jiff::Timestamp;
 use mail::Address;
 
-use crate::unreadable::Unreadable;
-use crate::fields::Fields;
-use crate::id::{Account as AccountKind, Factor as Kind, Id, Site as SiteKind};
-use crate::table;
+use control_rows::unreadable::Unreadable;
+use control_rows::fields::Fields;
+use control_rows::id::{Account as AccountKind, Factor as Kind, Id, Site as SiteKind};
+use control_rows::table;
 
 /// A way to sign in, as the account has it (decision 0068, `docs/auth.md` section 2). Nothing
 /// that matches on a credential should assume the list is closed, and nothing here holds a
@@ -15,7 +15,7 @@ use crate::table;
 /// on the machine that made it.
 ///
 /// A [`Credential::Link`] is a row of the `factor` table. The two keys are rows of the `key`
-/// table ([`crate::keys::Key::credential`]), which holds what only a key has: its rights, expiry
+/// table (`keys::Key::credential`), which holds what only a key has: its rights, expiry
 /// and last use.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
