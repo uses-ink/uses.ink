@@ -15,12 +15,15 @@ use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
 use crate::interpret::stage::Stage;
 
-/// Whether pages are published until said otherwise, or only once selected (decision 0017).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Selection {
+/// Whether pages are published until said otherwise, or only once selected (decisions 0017
+/// and 0042, open.md Q16).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum Selection {
     /// A public source: every page is published unless it says otherwise.
     Implicit,
-    /// A vault or a private source: only selected pages are published.
+    /// A vault or a private source: only selected pages are published, so a new note is private.
     Explicit,
 }
 

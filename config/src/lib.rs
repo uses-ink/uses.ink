@@ -44,7 +44,7 @@ use model::{AnyCode, AnyDecision, AnyOf, Code, ContentPath, Diagnostic, Span, Su
 pub use pattern::{Pattern, PatternError, Patterns};
 pub use pin::Pinned;
 pub use theme::{IdPart, Theme, ThemeId, ThemeIdError, Token};
-pub use write::{PinsError, SyntaxError, Unwritable};
+pub use write::{IncludeError, Included, Listed, Listing, PinsError, SyntaxError, Unwritable};
 
 /// A whole `ink.toml` that pins every decision: sitewide tables first, then the per-file tables
 /// (`[file."..."]`, then `[page."..."]`), each sorted by path, keys in decision order. A later
@@ -65,6 +65,17 @@ pub fn pins_into<'a>(
     decisions: impl IntoIterator<Item = &'a AnyDecision>,
 ) -> Result<String, PinsError> {
     write::Document::pins_into(existing, decisions)
+}
+
+/// `existing` with `pattern` added to or removed from its top-level `include` list, which is made
+/// when there is none to add to: comments and spacing stay, and a pattern already listed (or not
+/// listed, for a removal) changes nothing.
+///
+/// # Errors
+///
+/// [`IncludeError`] when `existing` is not TOML, or its `include` is not an array of strings.
+pub fn include_into(existing: &str, pattern: &Pattern, listing: Listing) -> Result<Included, IncludeError> {
+    write::Includes::edit(existing, pattern, listing)
 }
 
 /// What `ink.toml` says. The default is what no `ink.toml` says: no pins, the default theme,

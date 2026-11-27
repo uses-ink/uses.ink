@@ -153,6 +153,15 @@ exit check "pins reproduce the deploy" is now "a second build reports no change,
 Left: the change set in `ink check`, the two diagnostics of `research/inference.md` 7.2, hiding
 defaults behind `ink explain --all`.
 
+Progress (2026-11-27): selection is built (Q16, Q17). In a vault or a private source a page is
+private until it is selected, by `publish: true` in its frontmatter or an `include` pattern;
+`ink select` lists each page with its `page.publish` decision and evidence
+(`uses.select/v1`), `ink select <path>...` writes `publish: true` into the frontmatter of the
+pages, `--folder <glob>` adds an `include` entry to `ink.toml` with its comments kept, `--remove`
+takes either back out and `--dry-run` writes nothing. A page with no frontmatter or an invalid one
+is a typed refusal, and nothing is written when any file of the call is refused. Left: the
+dashboard's selection held outside the source (Q20), which waits for hosting.
+
 **Exit:** a real Obsidian vault and a real notes repo with history build into sites the owner
 would publish; a one-file change rebuilds only its page, its neighbours and the index.
 

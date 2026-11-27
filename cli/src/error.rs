@@ -66,6 +66,32 @@ pub enum Error {
         /// The path.
         path: model::ContentPath,
     },
+    /// A page's frontmatter cannot take or lose `publish`.
+    Front {
+        /// The page.
+        path: model::ContentPath,
+        /// Why.
+        source: format_markdown::Refusal,
+    },
+    /// A file `ink select` was asked about is not a page whose frontmatter selects it.
+    Unselectable {
+        /// The file.
+        path: model::ContentPath,
+        /// Why not.
+        why: crate::select::Unselectable,
+    },
+    /// `--folder` is no glob pattern.
+    Folder {
+        /// The pattern, as given.
+        written: String,
+        /// Why it is none.
+        source: config::PatternError,
+    },
+    /// `include` could not be written into ink.toml.
+    Include {
+        /// Why.
+        source: config::IncludeError,
+    },
     /// `site.format` names a format plugin this ink does not hold.
     Format {
         /// The id.
@@ -166,6 +192,10 @@ impl Error {
             Self::Words { .. } => "decision.words.invalid",
             Self::Undecided { .. } => "decision.subject.undecided",
             Self::Pin { .. } => "pin.config.unwritable",
+            Self::Front { .. } => "select.frontmatter.refused",
+            Self::Unselectable { .. } => "select.file.unselectable",
+            Self::Folder { .. } => "select.folder.invalid",
+            Self::Include { .. } => "select.include.unwritable",
             Self::Format { .. } => "format.plugin.unknown",
             Self::Output(refusal) => refusal.kind(),
             Self::Placed { .. } => "output.entry.unplaced",
@@ -204,6 +234,10 @@ impl fmt::Display for Error {
             Self::Undecided { code, subject } => {
                 write!(out, "`{code}` is not decided on {subject}; `ink explain` lists what is")
             }
+            Self::Front { path, .. } => write!(out, "`publish` cannot be written into the frontmatter of {path}"),
+            Self::Unselectable { path, why } => write!(out, "{path} cannot be selected: {why}"),
+            Self::Folder { written, .. } => write!(out, "`{written}` is not a glob pattern"),
+            Self::Include { .. } => write!(out, "the selection could not be written into ink.toml"),
             Self::Format { id } => {
                 write!(
                     out,
@@ -235,6 +269,9 @@ impl std::error::Error for Error {
             Self::Path { source, .. } => Some(source),
             Self::Code { source } => Some(source),
             Self::Pin { source } => Some(source),
+            Self::Front { source, .. } => Some(source),
+            Self::Folder { source, .. } => Some(source),
+            Self::Include { source } => Some(source),
             Self::Write { source, .. }
             | Self::Read { source, .. }
             | Self::Serve { source }
@@ -247,6 +284,7 @@ impl std::error::Error for Error {
             Self::Output(_)
             | Self::Format { .. }
             | Self::Unknown { .. }
+            | Self::Unselectable { .. }
             | Self::Unversioned { .. }
             | Self::Scope { .. }
             | Self::Words { .. }

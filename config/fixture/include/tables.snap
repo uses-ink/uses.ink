@@ -1,0 +1,14 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/include/tables.toml
+---
+Add: Added, listed now: true
+include = ["notes/**"]
+# the site
+[site]
+home = "README.md"
+
+Remove: Absent, listed now: false
+# the site
+[site]
+home = "README.md"

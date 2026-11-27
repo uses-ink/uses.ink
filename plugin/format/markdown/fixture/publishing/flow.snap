@@ -1,0 +1,6 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/flow.md
+---
+select: refused: the edit would not read back as `publish`, so nothing was changed (Misplaced)
+clear: was None, unchanged

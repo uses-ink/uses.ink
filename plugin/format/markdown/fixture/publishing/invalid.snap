@@ -1,0 +1,9 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/invalid.md
+---
+refused: the frontmatter cannot be read (Malformed(Malformed(Yaml { source: error: line 1 column 8: unclosed bracket '['
+ --> <input>:1:8
+  |
+1 | title: [unclosed
+  |        ^ unclosed bracket '[', before: 1 })))

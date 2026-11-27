@@ -1,0 +1,5 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/missing.md
+---
+refused: the file has no frontmatter block (`---` lines) to hold `publish` (Missing)

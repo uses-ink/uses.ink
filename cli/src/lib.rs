@@ -1,6 +1,6 @@
 //! The `ink` command: a folder becomes a site.
 //!
-//! `ink build`, `ink check`, `ink explain`, `ink pin` and `ink preview` (architecture.md section 14). Results
+//! `ink build`, `ink check`, `ink explain`, `ink pin`, `ink preview` and `ink select` (architecture.md section 14). Results
 //! go to stdout, everything else to stderr; `--json` makes the result one JSON document on stdout
 //! with a `schema` field, an error's document (`uses.error/v1`) included, and every diagnostic an
 //! NDJSON event on stderr; notices are printed only with `-v`, in either form. Exit codes are the
@@ -26,6 +26,7 @@ mod pin;
 mod pins;
 mod preview;
 mod report;
+mod select;
 mod site;
 
 pub use args::{Cli, Command};
@@ -72,6 +73,7 @@ impl Cli {
             Command::Explain(explain) => explain.run(&mut io),
             Command::Pin(pin) => pin.run(&mut io),
             Command::Preview(preview) => preview.run(&mut io),
+            Command::Select(select) => select.run(&mut io),
         };
         match result {
             Ok(exit) => exit,

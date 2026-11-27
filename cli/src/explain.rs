@@ -206,7 +206,7 @@ impl fmt::Display for Value<'_> {
 
 /// Where a decision came from.
 #[derive(Clone, Copy, Debug)]
-struct Because<'a>(&'a Evidence);
+pub(crate) struct Because<'a>(pub(crate) &'a Evidence);
 
 impl fmt::Display for Because<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {

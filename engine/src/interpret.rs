@@ -26,6 +26,7 @@ use model::{Diagnostic, Notice, Snapshot, Subject};
 
 pub use crate::interpret::decide::trace::{Fact, Heard, List, Marker, Reading, Rung, Standing, Trace, Witnessed};
 pub use crate::interpret::format::Chosen;
+pub use crate::interpret::page::Selection;
 
 use crate::interpret::file::read::Split;
 use crate::interpret::file::{Assets, Files, Read};
@@ -53,6 +54,8 @@ pub struct Understood {
     pub site: Option<model::Site>,
     /// The ladder asked for by [`Engine::trace`], when its decision was made.
     pub trace: Option<Trace>,
+    /// Whether the site publishes every page it does not hold back, or only the pages selected.
+    pub selection: Selection,
 }
 
 impl Understood {
@@ -113,6 +116,6 @@ impl<B: Blobs, P: Pins, F: Formats, T> Engine<B, P, F, T> {
         Guard { selection }.run((), &mut journal);
         let site = site.filter(|_| !journal.stops());
         let (decisions, diagnostics, notices, trace) = journal.into_parts();
-        Understood { decisions, diagnostics, notices, site, trace }
+        Understood { decisions, diagnostics, notices, site, trace, selection }
     }
 }

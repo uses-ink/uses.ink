@@ -1,0 +1,10 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/twice.md
+---
+refused: the frontmatter cannot be read (Malformed(Malformed(Yaml { source: error: line 2 column 1: duplicate mapping key: publish, set DuplicateKeyPolicy in Options if acceptable
+ --> <input>:2:1
+  |
+1 | publish: true
+2 | publish: false
+  | ^ duplicate mapping key: publish, set DuplicateKeyPolicy in Options if acceptable, before: 1 })))

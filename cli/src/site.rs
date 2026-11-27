@@ -54,6 +54,8 @@ pub(crate) struct Loaded {
     /// The engine's decisions and site, `ink.toml`'s problems and the folder's notices among its
     /// diagnostics and notices.
     pub(crate) understood: Understood,
+    /// What `ink.toml` said that applied.
+    pub(crate) config: Config,
     /// The format the folder's markdown is read with natively.
     pub(crate) native: Native,
 }
@@ -156,7 +158,7 @@ impl<'a> Source<'a> {
             understood.site = None;
         }
         understood.notices.splice(0..0, said);
-        Ok(Loaded { snapshot, store, understood, native })
+        Ok(Loaded { snapshot, store, understood, config, native })
     }
 }
 

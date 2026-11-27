@@ -1,0 +1,5 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/unclosed.md
+---
+refused: the frontmatter opens with `---` and never closes (Unclosed { opening: Span { start: 0, end: 4 } })

@@ -72,6 +72,8 @@ use error::Report;
 use file::File;
 use front::{Aliased, Keys, Yaml};
 
+pub use front::{Edit, Malformed, Publishing, Refusal};
+
 /// Whether a file is markdown: its extension is `md` or `markdown`, in any case.
 pub fn handles(path: &ContentPath) -> bool {
     path.extension().is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "md" | "markdown"))

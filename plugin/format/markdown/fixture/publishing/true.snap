@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/true.md
+---
+select: was Some(true), unchanged
+clear: was Some(true), now:
+"---\ntitle: Hello\n---\nBody.\n"

@@ -30,7 +30,9 @@ pub use change::{Compared, RELEASE};
 pub use error::Error;
 pub use host::{BlobMissing, Blobs, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Theme};
 pub use image::Images;
-pub use interpret::{Chosen, Fact, Heard, List, Marker, Reading, Rung, Standing, Trace, Understood, Witnessed};
+pub use interpret::{
+    Chosen, Fact, Heard, List, Marker, Reading, Rung, Selection, Standing, Trace, Understood, Witnessed,
+};
 /// What a theme takes and gives that the model holds, named here beside the [`Theme`] that uses
 /// them: the files it serves and where it says what it found.
 pub use model::{File, Record, Said};

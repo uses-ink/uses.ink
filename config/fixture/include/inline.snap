@@ -1,0 +1,13 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/include/inline.toml
+---
+Add: Added, listed now: true
+# keep me
+include = ["a.md", "notes/**"] # one
+exclude = ["x"]
+
+Remove: Absent, listed now: false
+# keep me
+include = ["a.md"] # one
+exclude = ["x"]

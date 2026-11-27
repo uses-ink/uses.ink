@@ -358,6 +358,14 @@ preserving the author's formatting and comments. Nothing dumps every decision as
 froze content into config. A JSON schema for editor completion through Taplo is not
 generated yet; it has to come from the decision codes, not from a second set of config types.
 
+`ink select` lists every page with its `page.publish` decision and why (frontmatter, an `include`
+pattern, a pin, the default, or that a vault or private source keeps it private until selected,
+open.md Q16). `ink select <path>...` writes `publish: true` into those pages' frontmatter,
+`--folder <glob>` adds an `include` entry to `ink.toml`, `--remove` takes either back out, and
+`--dry-run` writes nothing. Every edit is planned before any is written, and the frontmatter
+writer lives beside its reader in the markdown format, so it edits exactly the block the reader
+reads. It reads the files on disk, since it writes into them; a git read builds from a commit.
+
 ## 11. Build, storage, serving
 
 - **Blob**: any byte string at `blake3(bytes)`, under `t/<tenant>/b/<hash>`. Scoped per tenant:

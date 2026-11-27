@@ -1,0 +1,6 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/include/broken.toml
+---
+Add: error: Syntax(SyntaxError(TomlError { message: "unclosed array, expected `]`", input: Some("include = [\n"), keys: [], span: Some(11..11) }))
+Remove: error: Syntax(SyntaxError(TomlError { message: "unclosed array, expected `]`", input: Some("include = [\n"), keys: [], span: Some(11..11) }))

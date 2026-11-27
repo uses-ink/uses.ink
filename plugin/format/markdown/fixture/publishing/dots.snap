@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/dots.md
+---
+select: was None, now:
+"---\ntitle: Hello\npublish: true\n...\nBody.\n"
+clear: was None, unchanged

@@ -1,0 +1,16 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/include/multiline.toml
+---
+Add: Added, listed now: true
+include = [
+  "a.md",
+  "b/**",
+  "notes/**", # two
+]
+
+Remove: Absent, listed now: false
+include = [
+  "a.md",
+  "b/**", # two
+]

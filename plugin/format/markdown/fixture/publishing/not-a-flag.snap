@@ -1,0 +1,5 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/not-a-flag.md
+---
+refused: `publish` is neither `true` nor `false` (Flag { span: Span { start: 13, end: 20 } })

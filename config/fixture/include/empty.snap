@@ -1,0 +1,8 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/include/empty.toml
+---
+Add: Added, listed now: true
+include = ["notes/**"]
+
+Remove: Absent, listed now: false

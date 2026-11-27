@@ -2,6 +2,7 @@
 //! that sees `toml_edit`. Values are written exactly as [`Config::parse`](crate::Config::parse)
 //! reads them, so the file read back pins every decision it was written from.
 
+mod include;
 mod written;
 
 use std::error::Error;
@@ -11,6 +12,8 @@ use model::decision::{Decision, Scope};
 use model::{AnyCode, AnyDecision, Code, Span, Subject, Typed, When};
 use toml_edit::{DocumentMut, InlineTable, Item, TableLike, TomlError, Value};
 
+pub use include::{IncludeError, Included, Listed, Listing};
+pub(crate) use include::Includes;
 pub(crate) use written::Written;
 
 use crate::Offsets;

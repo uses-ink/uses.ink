@@ -34,6 +34,8 @@ pub enum Command {
     Pin(Pin),
     /// Build the folder in memory and serve it on 127.0.0.1.
     Preview(Preview),
+    /// List what is published and why, or record a selection of what to publish.
+    Select(Select),
 }
 
 /// Where a site's files are read from: the folder as it is on disk, or a git repository at
@@ -155,4 +157,30 @@ pub struct Preview {
     /// Where the files are read from.
     #[command(flatten)]
     pub origin: Origin,
+}
+
+/// `ink select [path...]`, `ink select --folder <glob>` and `ink select --remove ...`.
+///
+/// It reads the files on disk, since it writes into them: a build of a git repository reads a
+/// commit, so commit the selection before building that.
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("target").args(["paths", "folder"]).multiple(false))]
+pub struct Select {
+    /// Pages to select, as paths in the folder: `publish: true` is written into the frontmatter
+    /// of each, which the file must already have. Without a path or `--folder`, every page is
+    /// listed with whether it is published and why.
+    pub paths: Vec<String>,
+    /// Select every file a glob matches (`notes/**`) by adding it to `include` in ink.toml.
+    #[arg(long, value_name = "GLOB")]
+    pub folder: Option<String>,
+    /// Take the selection back: remove `publish: true` from each page, or the glob from `include`.
+    /// In a public source a page that is not selected is still published by default.
+    #[arg(long, requires = "target")]
+    pub remove: bool,
+    /// Say what would be written and write nothing.
+    #[arg(long)]
+    pub dry_run: bool,
+    /// The site's folder.
+    #[arg(short = 'C', long, default_value = ".")]
+    pub dir: PathBuf,
 }

@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/empty-block.md
+---
+select: was None, now:
+"---\npublish: true\n---\nBody.\n"
+clear: was None, unchanged

@@ -1,0 +1,6 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/include/not-strings.toml
+---
+Add: error: NotList
+Remove: error: NotList

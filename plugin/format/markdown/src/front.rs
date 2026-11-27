@@ -5,6 +5,7 @@
 
 mod field;
 mod node;
+mod publishing;
 
 use model::code::{Date, Kind, Publish, Slug, Summary, Tags, Title, Updated};
 use model::{Expected, FromFront, Front, Raw, Span, Spanned};
@@ -14,6 +15,8 @@ use crate::error::{Error, Report};
 use crate::file::{Fence, File};
 use field::{Aliases, Draft, Field, Lang};
 use node::{Entries, Node};
+
+pub use publishing::{Edit, Malformed, Publishing, Refusal};
 
 /// The fields the engine reads, each a [`Field`]. Every other key is the author's own and is
 /// neither kept nor refused.
@@ -48,17 +51,11 @@ impl<'a> Yaml<'a> {
     /// Parses the YAML and fills `front` with the fields `F`. A block that does not parse is
     /// one diagnostic and fills nothing; refused values are reported in the order written.
     fn fill<F: Fields>(self, front: &mut Front, report: &mut Report) {
-        // the fences cut at line ends, which are character boundaries
-        let Some(yaml) = self.file.get(self.region.range()) else { return };
-        let entries = match serde_saphyr::from_str::<Option<Entries>>(yaml) {
+        let entries = match self.entries() {
             Ok(Some(entries)) => entries,
             // an empty block: no keys
             Ok(None) => return,
-            Err(source) => {
-                let span = source.location().and_then(|at| self.place(at)).unwrap_or(self.region);
-                let before = self.file.get(..self.region.start()).map_or(0, |before| before.matches('\n').count());
-                return report.refuse(Error::Yaml { source, before: before as u64 }, span);
-            }
+            Err((error, span)) => return report.refuse(error, span),
         };
         let mut refused = Refused::default();
         F::fill(&Reading { yaml: self, entries: &entries }, front, &mut refused);
@@ -66,6 +63,23 @@ impl<'a> Yaml<'a> {
         for (error, span) in refused.0 {
             report.refuse(error, span);
         }
+    }
+
+    /// The keys of the block, `None` for an empty one; the error and its place when the YAML does
+    /// not parse or is not a mapping of keys.
+    fn entries(self) -> Result<Option<Entries>, (Error, Span)> {
+        // the fences cut at line ends, which are character boundaries
+        let Some(yaml) = self.file.get(self.region.range()) else { return Ok(None) };
+        serde_saphyr::from_str::<Option<Entries>>(yaml).map_err(|source| {
+            let span = source.location().and_then(|at| self.place(at)).unwrap_or(self.region);
+            let before = self.file.get(..self.region.start()).map_or(0, |before| before.matches('\n').count());
+            (Error::Yaml { source, before: before as u64 }, span)
+        })
+    }
+
+    /// The block of `file` between its fences, when it has a closed one.
+    const fn between(file: &'a str, region: Span) -> Self {
+        Self { file, region }
     }
 
     /// A YAML location as a span of the file.

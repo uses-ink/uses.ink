@@ -1,0 +1,6 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/markdown/fixture/publishing/flow-true.md
+---
+select: was Some(true), unchanged
+clear: refused: `publish` is written in a form that is not one line of its own (Inline { span: Span { start: 14, end: 18 } })

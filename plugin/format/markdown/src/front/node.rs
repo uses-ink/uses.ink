@@ -25,6 +25,13 @@ pub(super) enum Node {
 #[derive(Debug, Default)]
 pub(super) struct Entries(pub(super) Vec<(String, Located<Node>)>);
 
+impl Node {
+    /// Whether it is `null`, which is the same as no key.
+    pub(super) const fn is_null(&self) -> bool {
+        matches!(self, Self::Null)
+    }
+}
+
 impl<'de> Deserialize<'de> for Node {
     fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         deserializer.deserialize_any(NodeVisitor)

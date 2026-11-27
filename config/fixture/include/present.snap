@@ -1,0 +1,9 @@
+---
+source: fixture/src/lib.rs
+input_file: config/fixture/include/present.toml
+---
+Add: Present, listed now: true
+include = ["notes/**"]
+
+Remove: Removed, listed now: false
+include = []

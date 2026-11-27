@@ -11,7 +11,7 @@ use model::{
     AnyCode, AnyDecision, Author, ContentPath, DefaultReason, Each, Evidence, Layout, PageKind, Root, Slug, Span,
     Subject, Tag, Timestamp, When,
 };
-use uses_ink_config::{Config, Parsed, pins, pins_into};
+use uses_ink_config::{Config, Listing, Parsed, Pattern, include_into, pins, pins_into};
 
 use crate::Pins;
 
@@ -141,4 +141,24 @@ fn pins_whole_file() {
     for decision in decisions() {
         assert!(decision.code().each(&mut Pins { config: &parsed.config, decision: &decision }), "{decision:?}");
     }
+}
+
+#[test]
+fn include_is_added_and_removed_in_place() {
+    fixture::files("fixture/include", "toml", |_, bytes| {
+        let text = std::str::from_utf8(bytes).unwrap();
+        let pattern: Pattern = "notes/**".parse().unwrap();
+        let mut out = String::new();
+        for listing in [Listing::Add, Listing::Remove] {
+            match include_into(text, &pattern, listing) {
+                Ok(included) => {
+                    let reparsed = Config::parse(&included.text);
+                    let listed = reparsed.config.include().iter().any(|listed| listed.value == pattern);
+                    writeln!(out, "{listing:?}: {:?}, listed now: {listed}\n{}", included.listed, included.text).unwrap();
+                }
+                Err(error) => writeln!(out, "{listing:?}: error: {error:?}").unwrap(),
+            }
+        }
+        out
+    });
 }
