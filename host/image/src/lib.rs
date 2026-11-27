@@ -25,7 +25,6 @@ mod thumbhash;
 mod work;
 
 use std::collections::BTreeMap;
-use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
 
@@ -34,7 +33,7 @@ use engine::image::{Prepared, Source};
 use engine::{Images, cache};
 
 pub use error::{Reason, Refused};
-pub use settings::{Key, Settings};
+pub use settings::{Key, Limits, Settings};
 
 use record::Record;
 
@@ -44,14 +43,10 @@ pub struct Pixels {
     made: Mutex<BTreeMap<Key, Prepared>>,
     /// Where work is kept between builds; `()` keeps nothing.
     cache: Arc<dyn Cache>,
-    /// The most threads the work runs on.
-    workers: NonZeroUsize,
+    limits: Limits,
 }
 
 impl Pixels {
-    /// Threads at most, so a machine with many cores does not hold as many copies in memory.
-    const WORKERS: NonZeroUsize = NonZeroUsize::MIN.saturating_add(7);
-
     /// The work under `settings`, nothing made yet, nothing kept between builds.
     pub fn new(settings: Settings) -> Self {
         Self::cached(settings, Arc::new(()))
@@ -60,7 +55,7 @@ impl Pixels {
     /// The work under `settings`, taking what an earlier build kept in `cache` and keeping what
     /// it makes there.
     pub fn cached(settings: Settings, cache: Arc<dyn Cache>) -> Self {
-        Self { settings, made: Mutex::default(), cache, workers: Self::WORKERS }
+        Self { settings, made: Mutex::default(), cache, limits: Limits::default() }
     }
 
     /// Its settings.
@@ -68,18 +63,23 @@ impl Pixels {
         &self.settings
     }
 
-    /// The same pixel work on `workers` threads at most; the bytes made are the same on any
-    /// number.
+    /// Its limits.
+    pub const fn limits(&self) -> &Limits {
+        &self.limits
+    }
+
+    /// The same work under `limits`; the bytes made are the same under any threads or opening
+    /// limit, and a lower pixel limit refuses what it did not.
     #[must_use]
-    pub fn with_workers(mut self, workers: NonZeroUsize) -> Self {
-        self.workers = workers;
+    pub const fn with_limits(mut self, limits: Limits) -> Self {
+        self.limits = limits;
         self
     }
 
     /// What was made under `source`'s key in this process, or kept by an earlier build. What
     /// does not read back as a record is rejected, so the cache drops it and says so.
     fn taken(&self, source: &Source<'_>) -> Option<Prepared> {
-        let key = Key::of(source.blob, &self.settings);
+        let key = Key::of(source.blob, &self.settings, &self.limits);
         if let Some(made) = self.made.lock().unwrap_or_else(PoisonError::into_inner).get(&key) {
             return Some(made.clone());
         }
@@ -95,7 +95,7 @@ impl Pixels {
     /// Keeps what was made of `source` for this process and, when it is new, for later builds;
     /// what a record cannot say is kept in this process only.
     fn keep(&self, source: &Source<'_>, prepared: &Prepared) {
-        let key = Key::of(source.blob, &self.settings);
+        let key = Key::of(source.blob, &self.settings, &self.limits);
         let new = self.made.lock().unwrap_or_else(PoisonError::into_inner).insert(key, prepared.clone()).is_none();
         if let (true, Some(values)) = (new, Record::values(prepared)) {
             let values: Vec<&[u8]> = values.iter().map(Vec::as_slice).collect();
@@ -122,11 +122,12 @@ impl Images for Pixels {
     type Refusal = Refused;
 
     /// Each image opened on one thread and its copies encoded on any, on as many threads as
-    /// the machine has cores (at most eight), with at most two images decoded at once; the
+    /// the machine has cores (at most [`Limits::workers`]), with at most [`Limits::opening`] images
+    /// decoded at once; the
     /// order of the work changes no byte.
     fn prepare(&self, sources: &[Source<'_>]) -> Vec<Result<Prepared, Refused>> {
         let cores = thread::available_parallelism().map_or(1, usize::from);
-        let threads = cores.min(self.workers.get());
+        let threads = cores.min(self.limits.workers.get());
         work::Run::new(self, sources).finish(threads)
     }
 }

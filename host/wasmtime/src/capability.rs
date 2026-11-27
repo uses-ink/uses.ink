@@ -26,7 +26,7 @@ pub(crate) struct State {
 
 impl State {
     pub(crate) fn new(plugin: impl Into<String>, grammars: Grammars, budget: &Budget) -> Self {
-        let limit = Limit { memory: budget.bytes(), hit: false };
+        let limit = Limit { memory: budget.bytes(), table: budget.table, refused: None };
         Self { plugin: plugin.into(), grammars, said: Said::default(), limit }
     }
 
@@ -37,22 +37,36 @@ impl State {
     }
 }
 
-/// The memory an instance may grow to, and whether it asked for more.
+/// The memory and table an instance may grow to, and the first growth it was refused.
 #[derive(Debug)]
 pub(crate) struct Limit {
     memory: usize,
-    pub(crate) hit: bool,
+    table: u32,
+    pub(crate) refused: Option<Refusal>,
+}
+
+/// A growth the limiter refused, with the size asked for.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Refusal {
+    Memory { wanted: usize },
+    Table { wanted: usize },
 }
 
 impl ResourceLimiter for Limit {
     fn memory_growing(&mut self, _current: usize, desired: usize, _maximum: Option<usize>) -> wasmtime::Result<bool> {
         let allowed = desired <= self.memory;
-        self.hit |= !allowed;
+        if !allowed {
+            self.refused.get_or_insert(Refusal::Memory { wanted: desired });
+        }
         Ok(allowed)
     }
 
     fn table_growing(&mut self, _current: usize, desired: usize, _maximum: Option<usize>) -> wasmtime::Result<bool> {
-        Ok(desired <= 1 << 16)
+        let allowed = u64::try_from(desired).is_ok_and(|desired| desired <= u64::from(self.table));
+        if !allowed {
+            self.refused.get_or_insert(Refusal::Table { wanted: desired });
+        }
+        Ok(allowed)
     }
 }
 

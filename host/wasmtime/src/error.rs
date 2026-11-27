@@ -3,6 +3,7 @@
 
 use std::fmt;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use model::{Bytes, Diagnostic, Problem};
 
@@ -38,6 +39,11 @@ pub enum Error {
         /// Why.
         source: std::io::Error,
     },
+    /// The budget's epoch tick is zero, so no time budget could be counted.
+    Tick {
+        /// The tick given.
+        tick: Duration,
+    },
     /// The component's first call, asking its name, failed.
     Named {
         /// Why.
@@ -52,6 +58,7 @@ impl fmt::Display for Error {
             Self::Compile { plugin, .. } => write!(out, "the plugin `{plugin}` is no component wasmtime compiles"),
             Self::Link { plugin, .. } => write!(out, "the plugin `{plugin}` imports what the host does not give"),
             Self::Cache { path, .. } => write!(out, "the compiled plugin cache {} could not be used", path.display()),
+            Self::Tick { tick } => write!(out, "the epoch tick of {tick:?} cannot count a time budget"),
             Self::Named { .. } => out.write_str("the theme did not say its name"),
         }
     }
@@ -62,6 +69,7 @@ impl std::error::Error for Error {
         match self {
             Self::Engine { source } | Self::Compile { source, .. } | Self::Link { source, .. } => Some(source.as_ref()),
             Self::Cache { source, .. } => Some(source),
+            Self::Tick { .. } => None,
             Self::Named { failure } => Some(failure),
         }
     }
@@ -85,6 +93,15 @@ pub enum Failure {
     Memory {
         /// Its budget.
         limit: Bytes,
+        /// The size it asked to grow to.
+        wanted: Bytes,
+    },
+    /// It asked for a table larger than it may have.
+    Table {
+        /// Its budget, in elements.
+        limit: u32,
+        /// The size it asked to grow to, in elements.
+        wanted: u64,
     },
     /// It trapped: a panic, a stack overflow, an unreachable instruction.
     Trapped {
@@ -112,11 +129,11 @@ impl Failure {
         Diagnostic::new(match self {
             Self::Fuel { limit } => Problem::PluginBudgetFuel { plugin, limit: *limit },
             Self::Time { limit } => Problem::PluginBudgetTime { plugin, limit: *limit },
-            Self::Memory { limit } => Problem::PluginBudgetMemory { plugin, limit: *limit },
+            Self::Memory { limit, .. } => Problem::PluginBudgetMemory { plugin, limit: *limit },
             Self::Trapped { source } => Problem::PluginCallTrapped { plugin, reason: Trace(source).to_string() },
             Self::Malformed { source } => Problem::PluginValueMalformed { plugin, reason: Chain(source).to_string() },
             Self::Unmirrored { source } => Problem::PluginValueUnmirrored { reason: source.to_string() },
-            Self::Ended => Problem::PluginCallTrapped { plugin, reason: self.to_string() },
+            Self::Table { .. } | Self::Ended => Problem::PluginCallTrapped { plugin, reason: self.to_string() },
         })
     }
 }
@@ -126,7 +143,12 @@ impl fmt::Display for Failure {
         match self {
             Self::Fuel { limit } => write!(out, "the plugin ran past its {limit} units of fuel"),
             Self::Time { limit } => write!(out, "the plugin ran past its {limit} ms"),
-            Self::Memory { limit } => write!(out, "the plugin asked for more than its {limit} of memory"),
+            Self::Memory { limit, wanted } => {
+                write!(out, "the plugin asked for {wanted} of memory, more than its {limit}")
+            }
+            Self::Table { limit, wanted } => {
+                write!(out, "the plugin asked for a table of {wanted} elements, more than its {limit}")
+            }
             Self::Trapped { .. } => out.write_str("the plugin trapped"),
             Self::Malformed { .. } => out.write_str("the plugin gave back a value the model refuses"),
             Self::Unmirrored { .. } => out.write_str("a value has no case at the plugin boundary"),
@@ -141,7 +163,7 @@ impl std::error::Error for Failure {
             Self::Trapped { source } => Some(source.as_ref()),
             Self::Malformed { source } => Some(source),
             Self::Unmirrored { source } => Some(source),
-            Self::Fuel { .. } | Self::Time { .. } | Self::Memory { .. } | Self::Ended => None,
+            Self::Fuel { .. } | Self::Time { .. } | Self::Memory { .. } | Self::Table { .. } | Self::Ended => None,
         }
     }
 }

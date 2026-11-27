@@ -119,6 +119,15 @@ pub enum Refused {
         /// What it holds.
         target: PathBuf,
     },
+    /// A link whose chain of links is longer than the limit: a loop, or as good as one.
+    Looped {
+        /// The link.
+        path: ContentPath,
+        /// What it holds.
+        target: PathBuf,
+        /// The most links one chain may follow.
+        limit: usize,
+    },
 }
 
 impl fmt::Display for Refused {
@@ -148,6 +157,9 @@ impl fmt::Display for Refused {
             Self::Broken { path, target } => {
                 write!(out, "{path} links to {}, which the commit does not hold", target.display())
             }
+            Self::Looped { path, target, limit } => {
+                write!(out, "{path} links to {}, which leads through more than {limit} links", target.display())
+            }
         }
     }
 }
@@ -163,6 +175,7 @@ impl std::error::Error for Refused {
             Self::Diff { source } => Some(source),
             Self::Id { source } => Some(source),
             Self::Broken { .. }
+            | Self::Looped { .. }
             | Self::Encoding { .. }
             | Self::Outside { .. }
             | Self::Folders { .. }
@@ -206,7 +219,7 @@ impl From<&Refused> for Diagnostic {
             Refused::Revision { written, source } => {
                 Self::new(Problem::SourceRevisionUnknown { written: written.clone(), reason: source.to_string() })
             }
-            Refused::Broken { path, target } => {
+            Refused::Broken { path, target } | Refused::Looped { path, target, .. } => {
                 let written = target.display().to_string();
                 Self::new(Problem::SourceLinkBroken { path: path.clone(), written }).on(on(path))
             }

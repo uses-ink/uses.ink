@@ -42,8 +42,39 @@ pub struct Repository {
     pub budget: Budget,
     /// Folders of the tree holding the build's own output, not read.
     pub output: Vec<ContentPath>,
-    /// How many threads diff the history.
+    /// What reading may spend; set by the operator of the build.
+    pub limits: Limits,
+}
+
+/// What one read of a repository's history spends, and the longest chain of links it follows.
+/// Set by the operator of the build, never by the site being built. None of it changes a byte of
+/// the snapshot, except `hops`, which decides whether a chain of links resolves or is refused.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Limits {
+    /// How many threads diff the history. The dates are the same on any number.
     pub threads: NonZeroUsize,
+    /// Bytes of delta bases each thread keeps inflated: on tldr, 4 MiB to 32 MiB all take the
+    /// dates from 4.6 s to 2.7 s on 4 threads; 8 MiB costs 55 MiB more at its peak.
+    pub deltas: NonZeroUsize,
+    /// Links followed before a chain counts as a loop, as Linux's `ELOOP` does.
+    pub hops: usize,
+    /// Commits handed to a diffing thread at a time.
+    pub block: NonZeroUsize,
+}
+
+impl Default for Limits {
+    /// Up to four threads (the spike's measured sweet spot, fewer when the machine has fewer),
+    /// 8 MiB of delta bases a thread, 40 hops and blocks of 256 commits.
+    fn default() -> Self {
+        let four = NonZeroUsize::MIN.saturating_add(3);
+        let threads = std::thread::available_parallelism().map_or(four, |cores| cores.min(four));
+        Self {
+            threads,
+            deltas: NonZeroUsize::MIN.saturating_add((8 << 20) - 1),
+            hops: 40,
+            block: NonZeroUsize::MIN.saturating_add(255),
+        }
+    }
 }
 
 /// Which commit a [`Repository`] is read at.
@@ -58,17 +89,10 @@ pub enum Revision {
 }
 
 impl Repository {
-    /// Threads when the machine does not say how many it has: the spike's measured sweet spot.
-    const THREADS: NonZeroUsize = NonZeroUsize::MIN.saturating_add(3);
-
-    /// Bytes of delta bases each thread keeps inflated: on tldr, 4 MiB to 32 MiB all take the
-    /// dates from 4.6 s to 2.7 s on 4 threads; 8 MiB costs 55 MiB more at its peak.
-    const DELTAS: usize = 8 << 20;
-
-    /// The repository at `root`, read at `HEAD` with the v1 budget on up to four threads.
+    /// The repository at `root`, read at `HEAD` with the v1 budget and the default [`Limits`].
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        let threads = std::thread::available_parallelism().map_or(Self::THREADS, |n| n.min(Self::THREADS));
-        Self { root: root.into(), revision: Revision::Head, budget: Budget::default(), output: Vec::new(), threads }
+        let (revision, budget, output, limits) = (Revision::Head, Budget::default(), Vec::new(), Limits::default());
+        Self { root: root.into(), revision, budget, output, limits }
     }
 
     /// Reads the commit's tree into `store` and the snapshot, with every file's dates from the
@@ -79,7 +103,7 @@ impl Repository {
         let tree = commit.tree_id().map_err(|source| Refused::Git { source })?.detach();
         let walked = tree::Walk::new(&repo, self, store).read(tree)?;
         let paths: Vec<&ContentPath> = walked.entries.iter().map(|entry| &entry.path).collect();
-        let history = history::History { repo: &repo, tip: commit.id, threads: self.threads };
+        let history = history::History { repo: &repo, tip: commit.id, limits: self.limits };
         let dates = history.dates(&paths)?;
         let observed = Observed::new(vec![Ability::Snapshot, Ability::History], dates.lacks);
         let version = Version::GitCommit(Id(commit.id).try_into()?);
@@ -96,7 +120,8 @@ impl Repository {
         // gix sets a delta-base cache from `core.deltaBaseCacheLimit` only with its
         // `max-performance` feature, which pulls MPL code; so it is set here, and every thread's
         // handle makes its own (decision 0036, as measured)
-        repo.objects.set_pack_cache(|| Box::new(MemoryCappedHashmap::new(Self::DELTAS)));
+        let deltas = self.limits.deltas.get();
+        repo.objects.set_pack_cache(move || Box::new(MemoryCappedHashmap::new(deltas)));
         Ok(repo)
     }
 

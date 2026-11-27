@@ -72,7 +72,8 @@ impl<'a, S: Store> Walk<'a, S> {
         self.tree(root, None)?;
         let links = std::mem::take(&mut self.links);
         for (path, target) in links {
-            match Links(&self.nodes).land(&path, target.as_ref()) {
+            let links = Links { nodes: &self.nodes, hops: self.source.limits.hops };
+            match links.land(&path, target.as_ref()) {
                 Ok(Landing::File(id)) => {
                     let (blob, size) = self.blob(id, &path)?;
                     self.walked.entries.push(Entry::new(path, blob, size));
@@ -80,6 +81,10 @@ impl<'a, S: Store> Walk<'a, S> {
                 Ok(Landing::Folder) => self.walked.skipped.push(Skipped { path, reason: Skip::Link }),
                 Err(Unresolved::Outside) => return Err(Refused::Outside { path, target: Text(&target).into() }),
                 Err(Unresolved::Broken) => return Err(Refused::Broken { path, target: Text(&target).into() }),
+                Err(Unresolved::Looped) => {
+                    let limit = self.source.limits.hops;
+                    return Err(Refused::Looped { path, target: Text(&target).into(), limit });
+                }
             }
         }
         Ok(self.walked)

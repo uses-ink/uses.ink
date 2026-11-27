@@ -11,7 +11,7 @@ use std::path::Path;
 
 use engine::Images;
 use engine::image::{Encoded, Kept, Prepared, Source};
-use host_image::{Pixels, Reason, Refused, Settings};
+use host_image::{Limits, Pixels, Reason, Refused, Settings};
 use model::{ContentPath, Diagnostic, Dimensions, Hash, MediaType};
 
 const FIXTURE: &str = "fixture";
@@ -174,9 +174,12 @@ fn said(results: &[Result<Prepared, Refused>]) -> Vec<String> {
 
 #[test]
 fn the_bytes_do_not_follow_the_number_of_threads_image() {
-    let one = said(&all(&Pixels::default().with_workers(std::num::NonZeroUsize::MIN)));
+    let one = said(&all(
+        &Pixels::default().with_limits(Limits { workers: std::num::NonZeroUsize::MIN, ..Limits::default() })
+    ));
     for workers in [2, 3, 8] {
-        let pixels = Pixels::default().with_workers(std::num::NonZeroUsize::new(workers).unwrap());
+        let pixels = Pixels::default()
+            .with_limits(Limits { workers: std::num::NonZeroUsize::new(workers).unwrap(), ..Limits::default() });
         assert_eq!(said(&all(&pixels)), one, "{workers} threads");
     }
 }
@@ -228,4 +231,22 @@ fn a_record_that_does_not_read_is_rejected_and_made_again_image() {
     assert_eq!(shelf.rejected.lock().unwrap().len(), 5);
     // made again and kept again
     assert_eq!(shelf.kept.lock().unwrap().len(), 5);
+}
+
+#[test]
+fn a_lowered_pixel_limit_refuses_with_the_limit_and_the_size_image() {
+    let limits = Limits { pixels: 100, ..Limits::default() };
+    let refused = prepare(&Pixels::default().with_limits(limits), "gradient.jpg").unwrap_err();
+    let Reason::Budget { width, height, limit } = refused.reason else { panic!("{refused:?}") };
+    assert_eq!(limit, 100);
+    assert!(u64::from(width) * u64::from(height) > 100);
+}
+
+#[test]
+fn a_lowered_pixel_limit_refuses_what_an_earlier_build_kept_image() {
+    let shelf = std::sync::Arc::new(Shelf::default());
+    prepare(&Pixels::cached(Settings::default(), shelf.clone()), "gradient.jpg").unwrap();
+    let lowered = Pixels::cached(Settings::default(), shelf).with_limits(Limits { pixels: 100, ..Limits::default() });
+    let refused = prepare(&lowered, "gradient.jpg").unwrap_err();
+    assert!(matches!(refused.reason, Reason::Budget { limit: 100, .. }));
 }

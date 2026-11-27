@@ -2,7 +2,6 @@
 
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
-use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use gix::ObjectId;
@@ -14,11 +13,8 @@ use gix::revision::walk::Sorting;
 use gix::traverse::commit::simple::CommitTimeOrder;
 use model::{Ability, AnyCode, ContentPath, FileFacts, Gap, Known, Lack, Oid, Provenance, Timestamp, UnknownReason};
 
-use super::{Id, Repository};
+use super::{Id, Limits};
 use crate::error::Refused;
-
-/// Commits handed to a thread at a time.
-const BLOCK: usize = 256;
 
 /// The history behind a commit, to be walked once.
 #[derive(Debug)]
@@ -26,7 +22,7 @@ pub(super) struct History<'a> {
     pub(super) repo: &'a gix::Repository,
     /// The commit the snapshot is taken at.
     pub(super) tip: ObjectId,
-    pub(super) threads: NonZeroUsize,
+    pub(super) limits: Limits,
 }
 
 /// Every file's dates, and what the history lacked.
@@ -120,27 +116,27 @@ impl History<'_> {
         Ok((jobs, boundary))
     }
 
-    /// Diffs every job on [`History::threads`] threads, blocks of jobs handed out through a
+    /// Diffs every job on [`Limits::threads`] threads, blocks of jobs handed out through a
     /// counter so a slow stretch of history does not hold up one thread.
     fn diff(&self, jobs: &[Job], index: &HashMap<&[u8], u32>) -> Result<Vec<Hits>, Refused> {
         let sync = self.repo.clone().into_sync();
         let next = AtomicUsize::new(0);
         let parts: Vec<Result<Vec<(usize, Hits)>, Refused>> = std::thread::scope(|scope| {
-            let handles: Vec<_> = (0..self.threads.get())
+            let handles: Vec<_> = (0..self.limits.threads.get())
                 .map(|_| {
-                    let (sync, next) = (&sync, &next);
+                    let (sync, next, deltas, block) = (&sync, &next, self.limits.deltas.get(), self.limits.block.get());
                     scope.spawn(move || {
                         let mut repo = sync.to_thread_local();
                         // a handle made from the shared one has no delta-base cache of its own
-                        repo.objects.set_pack_cache(|| Box::new(MemoryCappedHashmap::new(Repository::DELTAS)));
+                        repo.objects.set_pack_cache(move || Box::new(MemoryCappedHashmap::new(deltas)));
                         let mut differ = Differ { repo, state: State::default(), index };
                         let mut done = Vec::new();
                         loop {
-                            let from = next.fetch_add(BLOCK, Ordering::Relaxed);
+                            let from = next.fetch_add(block, Ordering::Relaxed);
                             if from >= jobs.len() {
                                 return Ok(done);
                             }
-                            for (at, job) in jobs.iter().enumerate().skip(from).take(BLOCK) {
+                            for (at, job) in jobs.iter().enumerate().skip(from).take(block) {
                                 done.push((at, differ.touched(job)?));
                             }
                         }

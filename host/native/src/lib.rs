@@ -34,6 +34,6 @@ pub use budget::Budget;
 pub use cache::Disk;
 pub use error::Refused;
 pub use folder::Folder;
-pub use git::{Repository, Revision};
+pub use git::{Limits as GitLimits, Repository, Revision};
 pub use highlight::{GrammarError, Grammars};
 pub use read::{Read, Skip, Skipped};

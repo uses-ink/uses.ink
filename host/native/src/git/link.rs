@@ -33,19 +33,21 @@ pub(super) enum Landing {
 pub(super) enum Unresolved {
     /// It leaves the tree: an absolute target, or more `..` than it has folders above it.
     Outside,
-    /// It names a path the tree does not hold, goes through a file, or links on past
-    /// [`Links::HOPS`] links, as a loop does.
+    /// It names a path the tree does not hold, or goes through a file.
     Broken,
+    /// It links on past the limit of links, as a loop does.
+    Looped,
 }
 
 /// Every path of a tree, asked where links lead.
 #[derive(Clone, Copy, Debug)]
-pub(super) struct Links<'a>(pub(super) &'a BTreeMap<String, Node>);
+pub(super) struct Links<'a> {
+    pub(super) nodes: &'a BTreeMap<String, Node>,
+    /// Links followed before a chain counts as a loop ([`Limits::hops`](super::Limits::hops)).
+    pub(super) hops: usize,
+}
 
 impl Links<'_> {
-    /// Links followed before a chain counts as a loop, as Linux's `ELOOP` does.
-    const HOPS: usize = 40;
-
     /// Where the link at `path`, holding `target`, leads: resolved part by part, so a link
     /// through a linked folder is followed as the system would follow it.
     pub(super) fn land(self, path: &ContentPath, target: &BStr) -> Result<Landing, Unresolved> {
@@ -63,11 +65,11 @@ impl Links<'_> {
                 name => {
                     let name = name.to_str().map_err(|_| Unresolved::Broken)?;
                     at.push(name);
-                    match self.0.get(&at.join("/")) {
+                    match self.nodes.get(&at.join("/")) {
                         Some(Node::Link(next)) => {
                             hops += 1;
-                            if hops > Self::HOPS {
-                                return Err(Unresolved::Broken);
+                            if hops > self.hops {
+                                return Err(Unresolved::Looped);
                             }
                             at.pop();
                             Self::push(&mut pending, next.as_ref())?;
@@ -84,7 +86,7 @@ impl Links<'_> {
         if at.is_empty() {
             return Ok(Landing::Folder);
         }
-        match self.0.get(&at.join("/")) {
+        match self.nodes.get(&at.join("/")) {
             Some(Node::File(id)) => Ok(Landing::File(*id)),
             Some(Node::Folder | Node::Other) => Ok(Landing::Folder),
             Some(Node::Link(_)) | None => Err(Unresolved::Broken),
@@ -126,7 +128,8 @@ mod test {
 
     fn land(path: &str, target: &str) -> Result<Landing, Unresolved> {
         let tree = tree();
-        Links(&tree).land(&ContentPath::parse(path).unwrap(), target.into())
+        Links { nodes: &tree, hops: crate::git::Limits::default().hops }
+            .land(&ContentPath::parse(path).unwrap(), target.into())
     }
 
     #[test]
@@ -140,6 +143,6 @@ mod test {
         assert_eq!(land("x", "/etc/passwd"), Err(Unresolved::Outside));
         assert_eq!(land("x", "missing.md"), Err(Unresolved::Broken));
         assert_eq!(land("x", "a.md/b"), Err(Unresolved::Broken), "a file is no folder");
-        assert_eq!(land("x", "loop"), Err(Unresolved::Broken));
+        assert_eq!(land("x", "loop"), Err(Unresolved::Looped));
     }
 }

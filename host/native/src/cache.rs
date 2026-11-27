@@ -57,6 +57,13 @@ impl Disk {
     /// The bound when none is set: room for the copies of some thousand photos.
     pub const BOUND: Bytes = Bytes(2 << 30);
 
+    /// The same cache, swept down to `bound` bytes of values instead of [`Disk::BOUND`].
+    #[must_use]
+    pub const fn with_bound(mut self, bound: Bytes) -> Self {
+        self.bound = bound;
+        self
+    }
+
     /// The cache in `root`. Nothing is written until the first value is put, so a site with
     /// nothing to keep leaves no folder; a folder made then says `render.cache.cold`.
     pub fn open(root: impl AsRef<Path>) -> Self {

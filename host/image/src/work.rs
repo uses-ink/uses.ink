@@ -3,7 +3,7 @@
 //! its full-size pixels dropped as soon as the copies are cut; each copy is then encoded as its
 //! own job, the costliest first across every image, so one large photo keeps every thread busy
 //! and ten photos do not wait on the last one's widest copy. Images are opened ahead of the
-//! encoding, but at most [`Run::OPENING`] at once, which bounds the memory to a couple of
+//! encoding, but at most [`crate::Limits::opening`] at once, which bounds the memory to a couple of
 //! full-size images, the cut copies (some 7 MB a photo) and the encoders at work.
 //!
 //! The order the jobs finish in changes no byte: each copy lands in its own slot, and an image
@@ -108,9 +108,6 @@ enum Opened {
 }
 
 impl<'a> Run<'a> {
-    /// Images decoded at once, at most.
-    const OPENING: usize = 2;
-
     pub(crate) fn new(work: &'a Work, sources: &'a [Source<'a>]) -> Self {
         let images = sources.iter().map(|_| Image::Waiting).collect();
         Self { work, sources, state: Mutex::new(State { images, ..State::default() }), wake: Condvar::new() }
@@ -135,7 +132,7 @@ impl<'a> Run<'a> {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// One thread's loop: an image to open while fewer than [`Run::OPENING`] are, so every
+    /// One thread's loop: an image to open while fewer than [`crate::Limits::opening`] are, so every
     /// copy is known early and the costliest go first; else a copy to encode; else a wait.
     fn serve(&self) {
         while let Some(task) = self.take() {
@@ -156,7 +153,7 @@ impl<'a> Run<'a> {
     fn take(&self) -> Option<Task> {
         let mut state = self.lock();
         loop {
-            if state.next < self.sources.len() && state.opening < Self::OPENING {
+            if state.next < self.sources.len() && state.opening < self.work.limits().opening.get() {
                 let image = state.next;
                 state.next += 1;
                 state.opening += 1;
@@ -183,7 +180,7 @@ impl<'a> Run<'a> {
         }
         let settings = self.work.settings();
         let refuse = |reason| Refused::new(source.file, reason);
-        let pixels = match Decoded::read(source, settings) {
+        let pixels = match Decoded::read(source, self.work.limits()) {
             Err(refused) => return Opened::Done(Err(refused)),
             Ok(Decoded::Kept(dimensions, reason)) => return Opened::Done(Ok(Prepared::Kept { dimensions, reason })),
             Ok(Decoded::Pixels(pixels)) => pixels,

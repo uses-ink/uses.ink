@@ -4,12 +4,13 @@
 use std::sync::Arc;
 
 use host_native::Grammars;
+use model::Bytes;
 use wasmtime::component::Component as Compiled;
 use wasmtime::{Store, Trap};
 
 use crate::budget::{Budget, Ticker};
 use crate::cache::{Cache, Compile, Origin};
-use crate::capability::State;
+use crate::capability::{Refusal, State};
 use crate::error::{Error, Failure};
 
 /// Loads plugins as components and runs their calls within a [`Budget`].
@@ -35,7 +36,10 @@ impl Runtime {
         let mut config = wasmtime::Config::new();
         config.consume_fuel(true).epoch_interruption(true);
         let engine = wasmtime::Engine::new(&config).map_err(|source| Error::Engine { source })?;
-        let ticker = Ticker::start(engine.clone());
+        if budget.ticks().is_none() {
+            return Err(Error::Tick { tick: budget.tick });
+        }
+        let ticker = Ticker::start(engine.clone(), budget.tick);
         let shared = Shared { engine, budget, cache, grammars: Grammars::default(), _ticker: ticker };
         Ok(Self { shared: Arc::new(shared) })
     }
@@ -70,12 +74,19 @@ impl Shared {
     ) -> Result<T, Failure> {
         let budget = &self.budget;
         let fueled = store.set_fuel(budget.fuel);
-        store.set_epoch_deadline(budget.ticks());
+        store.set_epoch_deadline(budget.ticks().unwrap_or(1));
         store.epoch_deadline_trap();
         let result = fueled.and_then(|()| call(store));
         result.map_err(|source| {
-            if store.data().limit.hit {
-                return Failure::Memory { limit: budget.memory };
+            let bytes = |wanted| Bytes(u64::try_from(wanted).unwrap_or(u64::MAX));
+            match store.data().limit.refused {
+                Some(Refusal::Memory { wanted }) => {
+                    return Failure::Memory { limit: budget.memory, wanted: bytes(wanted) };
+                }
+                Some(Refusal::Table { wanted }) => {
+                    return Failure::Table { limit: budget.table, wanted: u64::try_from(wanted).unwrap_or(u64::MAX) };
+                }
+                None => {}
             }
             match source.downcast_ref::<Trap>() {
                 Some(Trap::OutOfFuel) => Failure::Fuel { limit: budget.fuel },

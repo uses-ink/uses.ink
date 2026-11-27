@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use gix::ObjectId;
 use gix::objs::tree::EntryKind;
-use host_native::{Budget, Memory, Read, Refused, Repository, Revision};
+use host_native::{Budget, GitLimits, Memory, Read, Refused, Repository, Revision};
 use model::{Diagnostic, Known, Provenance, Timestamp, Version};
 
 /// What a path of a commit's tree holds.
@@ -277,4 +277,39 @@ fn refuses_a_folder_that_is_no_repository() {
     let refused = Repository::new(&root).read(&mut Memory::default()).unwrap_err();
     assert!(matches!(refused, Refused::Repository { .. }), "{refused:?}");
     assert_eq!(code(&refused), "source.repository.unreadable");
+}
+
+#[test]
+fn refuses_a_chain_of_links_past_the_limit_with_the_limit() {
+    let repo = Repo::new("hops");
+    repo.commit(
+        0,
+        &[],
+        &[
+            ("a.md", Node::Text("a")),
+            ("one.md", Node::Link("two.md")),
+            ("two.md", Node::Link("three.md")),
+            ("three.md", Node::Link("a.md")),
+        ],
+    );
+    repo.read().unwrap();
+    let limits = GitLimits { hops: 1, ..GitLimits::default() };
+    let refused = Repository { limits, ..Repository::new(&repo.root) }.read(&mut Memory::default()).unwrap_err();
+    assert!(matches!(refused, Refused::Looped { limit: 1, .. }), "{refused:?}");
+    assert_eq!(code(&refused), "source.link.broken");
+}
+
+#[test]
+fn the_snapshot_does_not_follow_the_threads_or_blocks_it_was_read_on() {
+    let repo = Repo::new("threads");
+    let first = repo.commit(0, &[], &[("a.md", Node::Text("a"))]);
+    repo.commit(1, &[first], &[("a.md", Node::Text("b")), ("b.md", Node::Text("b"))]);
+    let one = GitLimits {
+        threads: std::num::NonZeroUsize::MIN,
+        block: std::num::NonZeroUsize::MIN,
+        deltas: std::num::NonZeroUsize::MIN,
+        ..GitLimits::default()
+    };
+    let narrow = Repository { limits: one, ..Repository::new(&repo.root) }.read(&mut Memory::default()).unwrap();
+    assert_eq!(narrow.snapshot, repo.read().unwrap().snapshot);
 }
