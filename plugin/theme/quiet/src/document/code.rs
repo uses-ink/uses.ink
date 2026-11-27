@@ -18,7 +18,8 @@ use crate::style::code;
 struct Shade(Capture);
 
 impl Shade {
-    /// `None` for a capture this theme does not style yet.
+    /// `None` for a capture this theme does not style yet: `Capture` is `non_exhaustive`, so the
+    /// match has a fallback arm, and the test below holds every capture in `Capture::ALL` to a class.
     fn class(self) -> Option<Class> {
         Some(match self.0 {
             Capture::Attribute => code::ATTRIBUTE,
@@ -101,5 +102,17 @@ impl fmt::Display for Causes<'_> {
             cause = error.source();
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{Capture, Shade};
+
+    #[test]
+    fn every_capture_has_a_class() {
+        for capture in Capture::ALL {
+            assert!(Shade(*capture).class().is_some(), "{capture:?} has no class in the code stylesheet");
+        }
     }
 }

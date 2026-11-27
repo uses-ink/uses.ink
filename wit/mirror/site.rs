@@ -276,7 +276,7 @@ impl TryFrom<&Front> for front::Front {
 
     fn try_from(read: &Front) -> Result<Self, Unmirrored> {
         let text = |value: &String| Ok(value.clone());
-        let when = |value: &When| Ok(value.to_string());
+        let when = |value: &Option<When>| Ok(value.as_ref().map(ToString::to_string));
         let yes = |value: &bool| Ok(*value);
         Ok(Self {
             title: Spans(read.title.as_ref()).mirror(text)?,
@@ -287,7 +287,7 @@ impl TryFrom<&Front> for front::Front {
             publish: Spans(read.publish.as_ref()).mirror(yes)?,
             draft: Spans(read.draft.as_ref()).mirror(yes)?,
             kind: Spans(read.kind.as_ref()).mirror(|kind| sited::PageKind::try_from(*kind))?,
-            description: Spans(read.description.as_ref()).mirror(text)?,
+            description: Spans(read.description.as_ref()).mirror(|value| Ok(value.clone()))?,
             language: Spans(read.language.as_ref()).mirror(|language| Ok(language.to_string()))?,
             aliases: Spans(read.aliases.as_ref()).mirror(|aliases| Ok(aliases.clone()))?,
             block: read.block.map(said::Span::from),
@@ -301,8 +301,8 @@ impl TryFrom<front::Front> for model::Front {
     fn try_from(wire: front::Front) -> Result<Self, Malformed> {
         let mut read = Self::default();
         read.title = Spans(wire.title).read(Ok)?;
-        read.date = Spans(wire.date).read(Written::read)?;
-        read.updated = Spans(wire.updated).read(Written::read)?;
+        read.date = Spans(wire.date).read(|when| when.map(Written::read).transpose())?;
+        read.updated = Spans(wire.updated).read(|when| when.map(Written::read).transpose())?;
         read.slug = Spans(wire.slug).read(Written::read)?;
         read.tags = Spans(wire.tags).read(|tags| tags.into_iter().map(Tag::try_from).collect())?;
         read.publish = Spans(wire.publish).read(Ok)?;

@@ -45,7 +45,9 @@
 //! part, in the order written, and the key counts as absent; nothing is guessed. A list is
 //! refused whole when any item is (`tags: [good, "!!!"]` sets no tags), with a diagnostic at
 //! every bad item. A `null` value is the same as no key. `false` for a key whose value may be
-//! none (`date: false`) is refused until the frontmatter can hold an explicit none. Keys that set
+//! none (`date`, `updated`, `description`) is an explicit none, held as `Some(None)`: the page
+//! is decided undated, never updated or without a summary, not left to the file name or the
+//! text. Keys that set
 //! the same thing (`description` and `summary`): when several are set, the first written is kept
 //! and each later one is a `frontmatter.key.conflict` diagnostic. `lang` is a language tag
 //! (`en`, `fr-CH`). A key written twice is a `frontmatter.syntax.invalid` diagnostic.

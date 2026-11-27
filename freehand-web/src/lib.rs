@@ -11,7 +11,7 @@
 //! 3. `output()` returns where that output starts.
 //!
 //! A name that is not UTF-8 draws nothing and returns 0, as do a point count the input cannot
-//! hold and a point that is not finite.
+//! hold, a point that is not finite and any number given to an export that is not finite.
 //!
 //! Every mark export is one `Call` drawn through the one generic `Call::draw`: the export
 //! only says which mark its numbers make and which tool draws it.
@@ -80,19 +80,28 @@ struct Call<T> {
     count: u32,
     /// The name's length in bytes.
     name: u32,
+    /// Whether every number the export was given is finite; one that is not draws nothing.
+    finite: bool,
 }
 
 impl<T: Tool> Call<T> {
     /// A call drawing with `tool` in the page's hand, reading a name of `name` bytes and no points.
     fn new(tool: T, name: u32) -> Self {
-        Self { tool, hand: Hand::default(), count: 0, name }
+        Self { tool, hand: Hand::default(), count: 0, name, finite: true }
+    }
+
+    /// This call, drawing nothing unless every one of `scalars` is finite.
+    #[must_use]
+    fn only(mut self, scalars: &[f64]) -> Self {
+        self.finite = scalars.iter().copied().all(f64::is_finite);
+        self
     }
 
     /// Draws the mark `mark` makes of the input's points, seeded by the input's name, into the
     /// output, and returns the output's length; an input it cannot read draws nothing.
     fn draw<M: Mark>(self, mark: impl FnOnce(Vec<Point>) -> M) -> u32 {
         BUFFER.with_borrow_mut(|buffer| {
-            let paths = match buffer.read(self.count, self.name) {
+            let paths = match buffer.read(self.count, self.name).filter(|_| self.finite) {
                 Some((points, seed)) => mark(points).draw(&self.hand, &self.tool, &mut Mulberry::from(seed)),
                 None => Paths::default(),
             };
@@ -116,13 +125,15 @@ pub extern "C" fn output() -> *const u8 {
 /// [`Line`] drawn with a pencil of `weight`.
 #[unsafe(no_mangle)]
 pub extern "C" fn line(from_x: f64, from_y: f64, to_x: f64, to_y: f64, weight: f64, name: u32) -> u32 {
-    Call::new(Pencil::new(weight), name).draw(|_| Line { from: Point::new(from_x, from_y), to: Point::new(to_x, to_y) })
+    Call::new(Pencil::new(weight), name)
+        .only(&[from_x, from_y, to_x, to_y, weight])
+        .draw(|_| Line { from: Point::new(from_x, from_y), to: Point::new(to_x, to_y) })
 }
 
 /// [`Underline`] drawn with a pencil of `weight`.
 #[unsafe(no_mangle)]
 pub extern "C" fn underline(width: f64, y: f64, weight: f64, name: u32) -> u32 {
-    Call::new(Pencil::new(weight), name).draw(|_| Underline { width, y })
+    Call::new(Pencil::new(weight), name).only(&[width, y, weight]).draw(|_| Underline { width, y })
 }
 
 /// [`Frame`] around a `width` by `height` box at the origin, drawn with a pencil of `weight`:
@@ -130,14 +141,16 @@ pub extern "C" fn underline(width: f64, y: f64, weight: f64, name: u32) -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn frame(width: f64, height: f64, slack: f64, weight: f64, name: u32) -> u32 {
     let around = Rectangle { top_left: Point::default(), bottom_right: Point::new(width, height) };
-    Call::new(Pencil::new(weight), name).draw(|_| Frame { around, slack })
+    Call::new(Pencil::new(weight), name).only(&[width, height, slack, weight]).draw(|_| Frame { around, slack })
 }
 
 /// [`Fill`] behind a `width` by `height` box at the origin, with a highlighter.
 #[unsafe(no_mangle)]
 pub extern "C" fn fill(width: f64, height: f64, shift_x: f64, shift_y: f64, name: u32) -> u32 {
     let behind = Rectangle { top_left: Point::default(), bottom_right: Point::new(width, height) };
-    Call::new(Highlighter::default(), name).draw(|_| Fill { behind, shift: Point::new(shift_x, shift_y) })
+    Call::new(Highlighter::default(), name)
+        .only(&[width, height, shift_x, shift_y])
+        .draw(|_| Fill { behind, shift: Point::new(shift_x, shift_y) })
 }
 
 /// [`Patch`] over `count` corners, with a highlighter.
@@ -150,8 +163,8 @@ pub extern "C" fn patch(count: u32, name: u32) -> u32 {
 /// `wobble` and `tremor`: one path, or two for a loop.
 #[unsafe(no_mangle)]
 pub extern "C" fn drawn(count: u32, weight: f64, wobble: f64, tremor: f64, name: u32) -> u32 {
-    let call = Call { tool: Pencil::new(weight), hand: Hand { wobble, tremor }, count, name };
-    call.draw(|points| Drawn::<Centreline>(points.into_iter().collect()))
+    let call = Call { tool: Pencil::new(weight), hand: Hand { wobble, tremor }, count, name, finite: true };
+    call.only(&[weight, wobble, tremor]).draw(|points| Drawn::<Centreline>(points.into_iter().collect()))
 }
 
 #[cfg(test)]
@@ -213,6 +226,16 @@ mod tests {
     fn infinite_points_draw_nothing() {
         let name = put(&[0.0, 0.0, f64::INFINITY, 0.0, 1.0, 1.0], "x");
         assert_eq!(patch(3, name), 0);
+    }
+
+    #[test]
+    fn a_scalar_that_is_not_finite_draws_nothing() {
+        let name = put(&[], "x");
+        assert_eq!(frame(f64::NAN, 40.0, 3.0, 3.0, name), 0);
+        assert_eq!(line(0.0, 0.0, f64::INFINITY, 0.0, 2.0, name), 0);
+        assert_eq!(underline(10.0, f64::NAN, 2.0, name), 0);
+        assert_eq!(fill(10.0, 10.0, f64::NAN, 0.0, name), 0);
+        assert_eq!(drawn(0, 2.0, f64::NAN, 0.0, name), 0);
     }
 
     #[test]

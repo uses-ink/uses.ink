@@ -178,6 +178,9 @@ impl Count {
     /// absurd line draws nothing rather than exhausting memory.
     pub(crate) fn of(length: f64, spacing: f64, least: f64) -> Option<Self> {
         let ratio = length / spacing;
+        if !ratio.is_finite() {
+            return None;
+        }
         // `Math.round`: halves round up
         let floor = libm::floor(ratio);
         let rounded = if ratio - floor >= 0.5 { floor + 1.0 } else { floor };
@@ -197,5 +200,17 @@ impl From<Count> for u32 {
         #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "a whole count up to MOST")]
         let whole = count.0 as u32;
         whole
+    }
+}
+
+#[cfg(test)]
+mod count_test {
+    use super::Count;
+
+    #[test]
+    fn a_length_that_is_not_a_number_has_no_count() {
+        assert!(Count::of(f64::NAN, 2.0, 1.0).is_none());
+        assert!(Count::of(1.0, 0.0, 1.0).is_none(), "an infinite ratio");
+        assert_eq!(Count::of(10.0, 2.0, 1.0).map(f64::from), Some(5.0));
     }
 }

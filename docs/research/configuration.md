@@ -109,7 +109,7 @@ old value now exists and is passed through; no CLI flag or `ink.toml` key exists
 | preview port 4000 | `args.rs`, `site.rs` `DEFAULT` | 2 | A default for the existing `--port` flag. |
 | preview bound to 127.0.0.1 | `preview.rs` | 3 | Preview serves unreviewed output; loopback only is a security choice. |
 | `ink.toml` file name | `site.rs` `CONFIG`, `engine` `name.rs` `CONFIG` | 3 | Identity of the config file. Two copies: a one-source-of-truth item for another change. |
-| schemas `uses.error/v1`, `uses.manifest/v2`, `uses.event/v1` | `output.rs`, `out.rs`, `report.rs` | 3 | Wire formats. |
+| schemas `uses.error/v1`, `uses.manifest/v3`, `uses.event/v1` | `output.rs`, `out.rs`, `report.rs` | 3 | Wire formats. |
 | `explain` column widths 18 and 24, hash cut at 12 | `explain.rs` | 3 | Presentation of one report. |
 | 404 file name `404.html` | `out.rs` | 3 | Output layout. |
 

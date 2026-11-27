@@ -366,10 +366,11 @@ learns of them; the host does the pixel work behind `engine::Images`, as with hi
 (0039), in `host/image` (`uses-ink-host-image`). Before any page is rendered, each raster asset
 is decoded within a pixel budget (50 million by default; a header over it is
 `image.budget.pixels`, refused before a pixel is decoded), its EXIF orientation applied, resized
-with Catmull-Rom to the widths 480, 960 and 1440 that are narrower than it (plus its own width;
-never wider), and encoded as AVIF (ravif, quality 70, speed 9) and JPEG (quality 80,
+with Catmull-Rom to the widths 480, 960 and 1440 that are narrower than it (a width within a tenth of the image's own is replaced by the
+image's own width when the image is narrower than the widest step; never wider), and encoded as AVIF (ravif, quality 70, speed 9) and JPEG (quality 80,
 baseline with optimized tables), or PNG when it has transparency. Re-encoding leaves every bit of metadata behind,
-so the original is not served. Each copy is served at `<name>.<width>.<hash>.<ext>` with
+so the original is not served; the images kept as they are (below) are, metadata included, and
+each notice says so. Each copy is served at `<name>.<width>.<hash>.<ext>` with
 `cache-control: public, max-age=31536000, immutable`; the asset carries a `model::Picture` (its
 size, its copies, its placeholder) for the theme's `width`, `height`, `srcset` and `<picture>`.
 The placeholder is the image's thumbhash drawn as a 32-pixel PNG, served as a hashed file and
@@ -382,8 +383,8 @@ Determinism, measured: ravif cuts as many tiles as rayon has threads, so its byt
 core count; the work runs rav1e on one thread (one tile) without assembly, jpeg-encoder without
 its SIMD feature, `fast_image_resize`'s SIMD paths give the scalar path's bytes for this filter,
 and the ported thumbhash takes its cosines from `libm`. The goldens in `host/image/fixture` hold
-the hash of every copy. A `Key` (the source's hash, the settings, the crates' versions) names
-one image's work; `host_image::Pixels` keeps what it made by key, and keeps it across builds
+the hash of every copy. A `Key` (the source's hash and media type, the settings, the pixel limit, and the version of
+every registry crate the image crate reaches through `Cargo.lock`) names one image's work; `host_image::Pixels` keeps what it made by key, and keeps it across builds
 in an `engine::Cache` (as measured, below). **Why:** layout stability and small pages for readers,
 no metadata leaks, no C. **Reversal:** encode time on hosted builders (a 4000 by 3000 photo
 costs about 5 s of one core at speed 9) pushes builds past their budget: speed 10 again, or
@@ -1175,6 +1176,56 @@ Built (2026-11-27), from a read-only review of the control plane and the serving
 **Why:** each was a way for a failure to leave a job running forever, a store to lie, or a
 budget to be a number nothing read. **Reversal:** none expected; the connection default of 1024
 follows the common soft descriptor limit and is the number to change if it bites.
+
+## 0060 Review fixes: keys, panics, escapes, atomic writes, held nones
+
+Accepted. A read-only review of the image work, the engine, the model and the formats gave these
+changes, each with the test that failed first; what was refused is listed last.
+
+- **Image cache key.** `host_image::Key` hashes the media type, since the decoder follows it (the
+  same bytes named `.png` and `.jpg` are two images), and `build.rs` hashes every registry
+  package reached from the crate through the lock's dependency graph, not only its direct
+  dependencies: `cargo update -p rav1e` changes AVIF bytes and now changes every key. The key is
+  wider than the codecs (the image crate also reaches the engine's dependencies), which costs a
+  cold cache on a bump of any of them and nothing else.
+- **A panic refuses the file.** A decoder or encoder that panics on one hostile file is caught at
+  the step (`Reason::Panicked(Step)`) and refuses that file with `image.decode.failed` or
+  `image.encode.failed`; the rest of the build goes on. A thumbhash that draws nothing is
+  `Reason::Placeholder`, not a silent missing placeholder. The settings' clamps stay (0044).
+- **Ladder wording.** The code was right and the doc was not: a step within a tenth of the
+  image's width is left out and the last copy is at the widest step or the image's own width,
+  whichever is narrower. The nine and the ten are named. The animated-image notice now says the
+  original is served with its metadata, as the AVIF one does.
+- **Links.** A wikilink anchor with no letter or digit is `link.anchor.missing`, not dropped. A
+  file name holding a colon (`meet: notes.md`) is looked up before the text is taken for a URL
+  scheme. Aliases are kept as written, so the letter for letter pass is.
+- **Atomic writes.** `ink select` and `ink pin` write every file to `.name.ink-new` beside it
+  (created exclusively, synced, with the target's permissions) and rename each over its target
+  only when all are written, so a failed write leaves every file as it was; the renames are the
+  one step a failure can split.
+- **Git tree walk.** The walk keeps its own stack, so nesting as deep as the folder budget allows
+  cannot overflow the thread's stack. A link to nothing stays a refusal (0036, tested): the
+  folder source refuses it too.
+- **Frontmatter none.** `Front` holds `date: false`, `updated: false` and `description: false`
+  as `Some(None)` (WIT: `option<tuple<option<..>, span>>`), so the page is decided undated, never
+  updated or without a summary, with frontmatter evidence, as `ink.toml`'s `date = false` is.
+- **Terminal text.** Control characters in a name or message reach no terminal: `diag::Plain`
+  shows them as `\u{..}`, `Terminal` and every text sink of the CLI go through it, and `pins`'s
+  `# not pinned` comment stays one line.
+- **Change attribution.** A format plugin is blamed only for a decision some side of which was
+  read from the file's text (frontmatter, heading, inline, body). A record holding several
+  decisions of one code and subject pairs the nth with the nth. A `site.format` error is no
+  longer discarded. An `include` or `exclude` with a bad item applies none of it, as the
+  `Config` doc says.
+- **Smaller.** A quote opens an HTML attribute value only after `=`; a NaN length has no stroke
+  count; a non-finite scalar given to a `freehand-web` export draws nothing; the `sql` rule reads
+  `r#cust` and a statement behind `\n` or `(`, and its module doc lists what it cannot see.
+
+Refused: the CMYK fixture does hold an Adobe marker (transform 0), so its colour is the
+convention's own; the SQL rule already finds a keyword in a raw string and checks every literal of
+`concat!` and `format!`; the clamps of `avif_speed` and `jpeg_quality` stay as 0044 says. Not
+built: the `image.*` keys of `ink.toml` and the operator ceilings, which 0044 names as its next
+step.
 
 ## 0061 The `ink` CLI has one output grammar, one renderer and a grouped command tree
 

@@ -36,10 +36,10 @@ impl<T> Spanned<T> {
 pub struct Front {
     /// `title:`.
     pub title: Option<Spanned<String>>,
-    /// `date:`.
-    pub date: Option<Spanned<When>>,
-    /// `updated:`.
-    pub updated: Option<Spanned<When>>,
+    /// `date:`; `Some(None)` when it says `false`, which decides the page undated.
+    pub date: Option<Spanned<Option<When>>>,
+    /// `updated:`; `Some(None)` when it says `false`, which decides the page never updated.
+    pub updated: Option<Spanned<Option<When>>>,
     /// `slug:`.
     pub slug: Option<Spanned<Slug>>,
     /// `tags:`.
@@ -50,8 +50,9 @@ pub struct Front {
     pub draft: Option<Spanned<bool>>,
     /// `type:` (`post`, `page`).
     pub kind: Option<Spanned<PageKind>>,
-    /// `description:` or `summary:`.
-    pub description: Option<Spanned<String>>,
+    /// `description:` or `summary:`; `Some(None)` when it says `false`, which decides the page
+    /// has no summary.
+    pub description: Option<Spanned<Option<String>>>,
     /// `lang:`.
     pub language: Option<Spanned<Language>>,
     /// `aliases:`: other names a link may use for the page (`[[Alias]]`).

@@ -121,7 +121,8 @@ impl<'a> Pieces<'a> {
     }
 
     /// The end of a tag starting at `start`, which holds `<`: after its closing `>` outside
-    /// quotes, after `-->` for a comment, or the end of the text.
+    /// quotes, after `-->` for a comment, or the end of the text. A quote opens a value only
+    /// right after `=`, as in a browser: `alt=Ben's` holds an apostrophe, not a quote.
     fn end(&self, start: usize) -> usize {
         let rest = self.html.get(start..).unwrap_or_default();
         if rest.starts_with("<!--") {
@@ -131,12 +132,16 @@ impl<'a> Pieces<'a> {
                 .map_or(self.html.len(), |end| start + 4 + end + 3);
         }
         let mut quote = None;
+        let mut before = ' ';
         for (offset, c) in rest.char_indices().skip(1) {
             match (quote, c) {
-                (None, '"' | '\'') => quote = Some(c),
+                (None, '"' | '\'') if before == '=' => quote = Some(c),
                 (Some(open), _) if open == c => quote = None,
                 (None, '>') => return start + offset + 1,
                 _ => {}
+            }
+            if quote.is_none() && !c.is_whitespace() {
+                before = c;
             }
         }
         self.html.len()
@@ -185,6 +190,20 @@ mod test {
                 Piece::Open(Tag { name: "i".into(), start: 40, end: 43, rest: ">" }),
             ]
         );
+    }
+
+    #[test]
+    fn an_apostrophe_in_an_unquoted_value_opens_no_quote() {
+        let pieces: Vec<_> = Pieces::new("<img alt=Ben's src=a.png>\ntext\n<img alt=x src=y>").collect();
+        let kinds: Vec<&str> = pieces
+            .iter()
+            .map(|piece| match piece {
+                Piece::Open(_) => "open",
+                Piece::Text(_) => "text",
+                _ => "other",
+            })
+            .collect();
+        assert_eq!(kinds, ["open", "text", "open"], "{pieces:?}");
     }
 
     #[test]

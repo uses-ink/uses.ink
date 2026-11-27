@@ -333,8 +333,9 @@ pub enum Capture { Attribute, Comment, Constant, Function, Keyword, String, Type
 ```
 
 `host_native::Grammars` implements it with arborium; `ink:theme-quiet` is `Quiet<H: Highlight>`
-and maps each `Capture` to a class of its code stylesheet in one exhaustive `match`, so a
-capture without a class does not compile and no highlighter's markup reaches a page.
+and maps each `Capture` to a class of its code stylesheet in one `match` (the enum is
+`non_exhaustive`, so it has a fallback arm), and a test holds every entry of `Capture::ALL` to a
+class, so a capture without one fails the gate and no highlighter's markup reaches a page.
 
 ## 6. The pen: tools and marks are types
 
@@ -449,12 +450,13 @@ a statement is a builder expression, `Query::select().column(Site::Id).from(Site
 `db::Migration` (a number, a name, statements), and `Steps::new().with::<A>()?.with::<B>()?`
 applies what the ledger lacks. When a CHECK lists the values of a column, it is built from the
 `NAMES` table the code reads the column back with. The layout rule `sql` fails a literal that
-starts with a SQL keyword, a raw escape of the builders (`cust*`, `raw_sql`, and `custom` as a
-method or on `ColumnType` and `ColumnDef`) and any `.sql` file; it reads tokens, so a lower case
-literal and text built at run time are not seen (its doc lists the gaps). `Steps::apply` refuses
+starts with an upper-case SQL keyword (after white space, a leading `\n` or `(`), a raw escape of
+the builders (`cust*`, `raw_sql`, `r#cust` too, and `custom` as a method or on `ColumnType` and
+`ColumnDef`) and any `.sql` file. It reads tokens, so it does not catch a keyword in lower case,
+one that is not first in its literal, a statement cut across literals or an interpolation, an
+attribute's arguments or text built at run time (its doc lists the gaps). `Steps::apply` refuses
 a ledger that is not a prefix of its set. A job that ended is never reopened by a redelivered
-request, and a failure after the build counts as an attempt like a builder failure (0058).
-## 10. The edge: a pure answer over two ports
+request, and a failure after the build counts as an attempt like a builder failure (0058).## 10. The edge: a pure answer over two ports
 
 Serving is one function of a typed request, and everything that touches the world is a port the
 edge is generic over (decision 0051):

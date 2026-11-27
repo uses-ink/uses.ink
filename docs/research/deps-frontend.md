@@ -265,7 +265,7 @@ use them: settings, extra CSS, then replacing one template piece. Full themes ar
 Proposed rungs for uses.ink, all in `ink.toml` plus a `theme/` folder, none required:
 
 1. **Tokens.** The theme ships a manifest listing its tokens with types and defaults
-   (colour, length, font stack, boolean). `[theme.tokens]` in `ink.toml` sets them. The host
+   (colour, length, font stack, boolean). The flat `[theme]` table of `ink.toml` sets them, one key a token. The host
    checks types, then passes them to the component as a typed record, and the theme writes
    them as CSS custom properties. Unknown token is a `Diagnostic`, as with every other key.
 2. **Custom CSS.** `theme/custom.css` is appended by the host after the theme CSS, through

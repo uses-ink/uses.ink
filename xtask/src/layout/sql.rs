@@ -2,12 +2,24 @@
 //! from typed values, and one renderer turns them into text. So no string literal of code starts
 //! with a SQL keyword, no method writes raw SQL into a builder, and no `.sql` file is committed.
 //!
-//! The rule reads tokens, not types, so it has gaps: a lower case literal is not flagged (prose
-//! is, and SQL is written in upper case); text built at run time (`format!`, `concat!`, a joined
-//! string) is not seen; a raw escape under a name this file does not list is not seen; and
-//! `custom`, which sea-query's `ColumnType` and `ColumnDef` write into DDL as text, is flagged
-//! only as a method call or as a path call on those two types, since other crates have a
-//! `custom` that is not SQL (serde's `Error::custom`).
+//! What it does not catch, so nobody reads a pass as more than it is. It reads tokens, never
+//! meaning:
+//!
+//! - a keyword in lower or mixed case (`"select"`, `"Select"`), since those are words of
+//!   ordinary text; a statement written that way passes;
+//! - a keyword that is not the first word of its literal, or a statement cut across literals
+//!   (`concat!("SEL", "ECT 1")`) or across an interpolation (`format!("{verb} * FROM t")`),
+//!   since each literal is judged alone;
+//! - the arguments of an attribute (`#[query("SELECT 1")]`), skipped because they hold doc text
+//!   and lint reasons;
+//! - text built at run time, or read from a file that is not `.sql`;
+//! - a raw escape under a name this file does not list.
+//!
+//! A leading line break, tab, space or `(` in the literal does not hide the keyword, and a raw
+//! identifier (`r#cust`) is the builder's escape all the same. `custom`, which sea-query's
+//! `ColumnType` and `ColumnDef` write into DDL as text, is flagged only as a method call or as a
+//! path call on those two types, since other crates have a `custom` that is not SQL (serde's
+//! `Error::custom`).
 
 use std::fmt;
 
@@ -107,6 +119,7 @@ impl Sql {
                 TokenTree::Group(group) => Self::within(group.stream(), found),
                 TokenTree::Ident(ident) => {
                     let name = ident.to_string();
+                    let name = name.strip_prefix("r#").unwrap_or(&name).to_owned();
                     if Self::ESCAPES.contains(&name.as_str()) || (name == Self::CUSTOM && Self::raw(&trail)) {
                         found.push(Found::Escape(name));
                     }
@@ -125,7 +138,17 @@ impl Sql {
 
     /// The keyword a string literal (as the token prints, quotes and prefix included) starts with.
     fn keyword(literal: &str) -> Option<&'static str> {
-        let body = literal.split_once('"')?.1.trim_start();
+        let mut body = literal.split_once('"')?.1;
+        // what leads a statement without being it: white space, a literal `\n`, `\t` or `\r`, a `(`
+        while let Some(rest) = body
+            .strip_prefix("\\n")
+            .or_else(|| body.strip_prefix("\\t"))
+            .or_else(|| body.strip_prefix("\\r"))
+            .or_else(|| body.strip_prefix('('))
+            .or_else(|| body.strip_prefix(char::is_whitespace))
+        {
+            body = rest;
+        }
         let word = body.split(|c: char| !c.is_ascii_alphabetic()).next()?;
         Self::KEYWORDS.iter().copied().find(|keyword| *keyword == word)
     }
@@ -215,6 +238,22 @@ mod tests {
     }
 
     #[test]
+    fn a_statement_behind_a_line_break_or_a_bracket_or_a_raw_name_is_found() {
+        assert_eq!(find(r#"let q = "\nSELECT 1";"#), [Found::Literal("SELECT".into())]);
+        assert_eq!(find(r#"let q = "\t(SELECT 1)";"#), [Found::Literal("SELECT".into())]);
+        assert_eq!(find(r#"let e = Expr::r#cust("1");"#), [Found::Escape("cust".into())]);
+        assert_eq!(find(r#"let q = concat!("a", "SELECT 1");"#), [Found::Literal("SELECT".into())]);
+    }
+
+    #[test]
+    fn the_gaps_the_module_names_are_gaps() {
+        assert_eq!(find(r#"let q = concat!("SEL", "ECT 1");"#), Vec::<Found>::new());
+        assert_eq!(find(r#"let q = format!("{verb} * FROM t");"#), Vec::<Found>::new());
+        assert_eq!(find(r#"#[query("SELECT 1")] fn f() {}"#), Vec::<Found>::new());
+    }
+
+    #[test]
+
     fn this_rules_own_words_are_not_matched_by_a_lowercase_literal() {
         assert_eq!(find(r#"let q = "select";"#), Vec::<Found>::new());
     }

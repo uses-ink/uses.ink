@@ -8,7 +8,7 @@ mod node;
 mod publishing;
 
 use model::code::{Date, Kind, Publish, Slug, Summary, Tags, Title, Updated};
-use model::{Expected, FromFront, Front, Raw, Span, Spanned};
+use model::{FromFront, Front, Raw, Span, Spanned};
 use serde_saphyr::Spanned as Located;
 
 use crate::error::{Error, Report};
@@ -128,7 +128,7 @@ impl Reading<'_> {
     /// more than one key holds a value, the first written is kept and each later one is a
     /// conflict.
     fn field<F: Field>(&self, front: &mut Front, refused: &mut Refused) {
-        let mut held: Vec<(&'static str, Spanned<F::Held>)> = Vec::new();
+        let mut held: Vec<(&'static str, Spanned<F::Value>)> = Vec::new();
         for &key in F::KEYS {
             for (_, node) in self.entries.0.iter().filter(|(name, _)| name == key) {
                 let raw = self.yaml.raw(node);
@@ -136,12 +136,8 @@ impl Reading<'_> {
                     continue;
                 }
                 let span = raw.span();
-                match F::Value::read(&raw).map(F::hold) {
-                    Ok(Some(value)) => held.push((key, Spanned::new(value, span))),
-                    Ok(None) => {
-                        let source = Expected::new(<F::Value as FromFront>::WANTED, span);
-                        refused.0.push((Error::Value { key, source }, span));
-                    }
+                match F::Value::read(&raw) {
+                    Ok(value) => held.push((key, Spanned::new(value, span))),
                     Err(refusal) => {
                         for source in refusal {
                             let span = source.span;
@@ -203,13 +199,7 @@ mod test {
     impl Field for Name {
         const KEYS: &'static [&'static str] = &["name", "alias"];
         type Value = String;
-        type Held = String;
-
-        fn hold(value: String) -> Option<String> {
-            Some(value)
-        }
-
-        fn slot(front: &mut Front) -> &mut Option<Spanned<String>> {
+        fn slot(front: &mut Front) -> &mut Option<Spanned<Self::Value>> {
             &mut front.title
         }
     }

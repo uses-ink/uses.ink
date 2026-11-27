@@ -9,14 +9,15 @@ interface read {
 
     record front {
         title: option<tuple<string, span>>,
-        date: option<tuple<when, span>>,
-        updated: option<tuple<when, span>>,
+        /// `none` inside is `date: false`, a decided none.
+        date: option<tuple<option<when>, span>>,
+        updated: option<tuple<option<when>, span>>,
         slug: option<tuple<slug, span>>,
         tags: option<tuple<list<tag>, span>>,
         publish: option<tuple<bool, span>>,
         draft: option<tuple<bool, span>>,
         kind: option<tuple<page-kind, span>>,
-        description: option<tuple<string, span>>,
+        description: option<tuple<option<string>, span>>,
         language: option<tuple<language, span>>,
         /// Other names a link may use for the page.
         aliases: option<tuple<list<string>, span>>,

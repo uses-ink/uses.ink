@@ -577,8 +577,8 @@ Wrote [site] rules = 2 to ink.toml.
 `ink rules` prints the ladders (precedence.rs, worded) and the amendments of each version:
 paradigm D's useful half, as a view.
 
-JSON: `uses.explain/v2` (decisions without `rejected`), `uses.trace/v1`, `uses.changes/v1`
-(inside `uses.check/v2` and `uses.build/v2`).
+JSON: `uses.explain/v2` (decisions without `rejected`), `uses.trace/v1`. The change set has no
+schema of its own: it is a field of `uses.build/v2`.
 
 Hosted surfaces carry the same change set:
 
