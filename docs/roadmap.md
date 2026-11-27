@@ -130,6 +130,14 @@ the `page.tags` ladder), and `site.format` pins the format (`ink pin site.format
 format = "ink:format-obsidian"`), with the pin, the `.obsidian/` marker and the default each
 replayable by `ink explain --why site.format`.
 
+Progress (2026-11-27): incremental builds are built (0045). A page is a render unit keyed by the
+theme's identity and what `Theme::reads` says it reads; `ink build` keeps pages in `--cache`
+(`host_native::Disk`) and says `render.cache.cold` or `render.cache.used`. Properties over the
+fixtures and the generated blog hold that any single edit gives the deploy a cold build gives and
+that an untouched page is not rendered again (`engine/tests/engine/incremental.rs`,
+`cli/tests/incremental.rs`, `cli/benches/incremental.rs`). Left: the notebook theme declares its
+`reads` when it lands as a component.
+
 Progress (2026-11-27): the git source's native core is `host_native::Repository` (0036, as
 built): a local repository at a commit, dates from one history walk, shallow bounds and moves
 as lacks, `ink build`, `check`, `explain` and `preview` reading it when the folder holds `.git`

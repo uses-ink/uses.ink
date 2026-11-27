@@ -192,6 +192,9 @@ everything). A hit is served without asking the theme; a miss renders, and keeps
 `Kind::Page` only when the theme said nothing about the page. `Rendered.steps` is one typed
 `Step { unit, outcome }` per page, `Reused` or `Rendered`, and `render.cache.used` counts them.
 The feeds, sitemap and `robots.txt` are made every build: they are small and need no theme.
+`ink build` keeps the pages in the same `--cache` folder as the images. The tests are properties over
+the fixtures: after any one edit, a build on the previous build's cache is byte-identical to a
+cold build, and only the pages whose reads changed are rendered.
 
 A build keeps a record of itself (`model::record::Build`: its `Inputs`, every decision, every
 file's blob, every published file's route), made by `Understood::record` and written by the CLI
