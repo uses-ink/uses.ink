@@ -1,7 +1,7 @@
 //! A host as the config describes it, and as a probe finds it.
 
 use std::fmt;
-use std::num::ParseIntError;
+use std::num::{ParseIntError, TryFromIntError};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -322,17 +322,20 @@ impl Found {
         let int = |text: &str| -> Result<u64, ReadFault> {
             text.parse().map_err(|source| ReadFault::Int { line: line.to_owned(), source })
         };
+        let count = |text: &str| -> Result<u32, ReadFault> {
+            u32::try_from(int(text)?).map_err(|source| ReadFault::Range { line: line.to_owned(), source })
+        };
         let mut words = line.splitn(2, ' ');
         let (key, rest) = (words.next().unwrap_or(""), words.next().unwrap_or(""));
         match key {
             "now" => self.now = Some(int(rest)?),
             "arch" => self.arch = host.arch.clone().or_else(|| rest.parse().ok()),
-            "cores" => self.cores = Some(u32::try_from(int(rest)?).unwrap_or(u32::MAX)),
-            "slots" => self.slots = Some(u32::try_from(int(rest)?).unwrap_or(u32::MAX)),
+            "cores" => self.cores = Some(count(rest)?),
+            "slots" => self.slots = Some(count(rest)?),
             "load" => {
                 self.load = Some(rest.parse().map_err(|source| ReadFault::Int { line: line.to_owned(), source })?);
             }
-            "queued" => self.queued = u32::try_from(int(rest)?).unwrap_or(u32::MAX),
+            "queued" => self.queued = count(rest)?,
             "slot" if rest.ends_with(" busy") => self.busy += 1,
             "slot" if rest.ends_with(" free") => self.free += 1,
             "job" => {
@@ -413,10 +416,25 @@ impl fmt::Display for Snapshot {
 /// A probe's output that is not what a probe prints.
 #[derive(Debug)]
 pub(crate) enum ReadFault {
-    Unknown { line: String },
-    Int { line: String, source: ParseIntError },
-    Job { line: String, fault: JobReadFault },
-    Missing { key: &'static str },
+    Unknown {
+        line: String,
+    },
+    Int {
+        line: String,
+        source: ParseIntError,
+    },
+    /// A number that parses but is out of the range its field holds.
+    Range {
+        line: String,
+        source: TryFromIntError,
+    },
+    Job {
+        line: String,
+        fault: JobReadFault,
+    },
+    Missing {
+        key: &'static str,
+    },
 }
 
 /// A job line that is not one.
@@ -432,6 +450,7 @@ impl fmt::Display for ReadFault {
         match self {
             Self::Unknown { line } => write!(out, "unexpected probe line `{line}`"),
             Self::Int { line, .. } => write!(out, "probe line `{line}` has a bad number"),
+            Self::Range { line, .. } => write!(out, "probe line `{line}` has a number out of range"),
             Self::Job { line, .. } => write!(out, "probe job line `{line}` is not one"),
             Self::Missing { key } => write!(out, "the probe did not say `{key}`"),
         }
@@ -452,6 +471,7 @@ impl std::error::Error for ReadFault {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Int { source, .. } => Some(source),
+            Self::Range { source, .. } => Some(source),
             Self::Job { fault, .. } => Some(fault),
             Self::Unknown { .. } | Self::Missing { .. } => None,
         }
@@ -526,6 +546,12 @@ job petal.19e queued 1699990000 cargo xtask check lint
         for bad in ["", "now x", "now 1\nwhat 1", "now 1\narch x86_64\ncores 4\nload 1\nslots 1\njob a b c"] {
             assert!(Snapshot::read(&host("petal"), bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn a_count_out_of_its_range_is_refused_not_clamped() {
+        let read = Snapshot::read(&host("petal"), "now 1\nqueued 4294967296");
+        assert!(matches!(read, Err(ReadFault::Range { .. })), "{read:?}");
     }
 
     #[test]

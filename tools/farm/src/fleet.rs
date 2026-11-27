@@ -178,7 +178,10 @@ impl<T: Transport> Member<T> {
     /// Removes the state of jobs older than seven days; how many.
     pub(crate) fn sweep(&self) -> Result<u32, Error> {
         let said = self.say(&Call::new(Program::Sweep, vec![self.host.dir.as_str().to_owned()]), "sweeping")?;
-        Ok(said.events.iter().find_map(|event| if let Event::Swept(n) = event { Some(*n) } else { None }).unwrap_or(0))
+        said.events
+            .iter()
+            .find_map(|event| if let Event::Swept(n) = event { Some(*n) } else { None })
+            .ok_or_else(|| Error::Silent { host: self.host.name.clone(), what: "how many it swept" })
     }
 
     /// The way to reach the host.

@@ -1,7 +1,7 @@
 //! What a program says about itself: a line `@@farm:<word> <numbers>` among a job's output.
 
 use std::fmt;
-use std::num::ParseIntError;
+use std::num::{ParseIntError, TryFromIntError};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -72,8 +72,18 @@ impl Line {
 /// A line that carries the mark and is not an event.
 #[derive(Debug)]
 pub(crate) enum Fault {
-    Unknown { line: String },
-    Number { line: String, source: ParseIntError },
+    Unknown {
+        line: String,
+    },
+    Number {
+        line: String,
+        source: ParseIntError,
+    },
+    /// A number that parses but is out of the range its field holds.
+    Range {
+        line: String,
+        source: TryFromIntError,
+    },
 }
 
 impl fmt::Display for Fault {
@@ -81,6 +91,7 @@ impl fmt::Display for Fault {
         match self {
             Self::Unknown { line } => write!(out, "`{line}` is not something a farm program says"),
             Self::Number { line, .. } => write!(out, "`{line}` holds a number that is not one"),
+            Self::Range { line, .. } => write!(out, "`{line}` holds a number out of range"),
         }
     }
 }
@@ -89,6 +100,7 @@ impl std::error::Error for Fault {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Number { source, .. } => Some(source),
+            Self::Range { source, .. } => Some(source),
             Self::Unknown { .. } => None,
         }
     }
@@ -103,8 +115,9 @@ impl FromStr for Event {
             let text = word.ok_or_else(|| Fault::Unknown { line: line.to_owned() })?;
             text.parse().map_err(|source| Fault::Number { line: line.to_owned(), source })
         };
-        let seconds = |n: i64| Duration::from_secs(u64::try_from(n).unwrap_or(0));
-        let count = |n: i64| u32::try_from(n).unwrap_or(0);
+        let range = |source: TryFromIntError| Fault::Range { line: line.to_owned(), source };
+        let seconds = |n: i64| u64::try_from(n).map(Duration::from_secs).map_err(range);
+        let count = |n: i64| u32::try_from(n).map_err(range);
         let first = words.next();
         Ok(match first {
             Some("started") => Self::Started,
@@ -115,15 +128,15 @@ impl FromStr for Event {
             Some("nojob") => Self::NoJob,
             Some("nodir") => Self::NoDir,
             Some("nobody") => Self::NoBody,
-            Some("queued") => Self::Queued { behind: count(number(words.next())?) },
-            Some("swept") => Self::Swept(count(number(words.next())?)),
+            Some("queued") => Self::Queued { behind: count(number(words.next())?)? },
+            Some("swept") => Self::Swept(count(number(words.next())?)?),
             Some("slot") => {
-                let slot = count(number(words.next())?);
-                Self::Slot { slot, queued: seconds(number(words.next())?) }
+                let slot = count(number(words.next())?)?;
+                Self::Slot { slot, queued: seconds(number(words.next())?)? }
             }
             Some("done") => {
-                let code = i32::try_from(number(words.next())?).unwrap_or(i32::MAX);
-                Self::Done { code, ran: seconds(number(words.next())?) }
+                let code = i32::try_from(number(words.next())?).map_err(range)?;
+                Self::Done { code, ran: seconds(number(words.next())?)? }
             }
             Some("seed") => Self::Seed(match (words.next(), words.next()) {
                 (Some("present"), _) => Seeded::Present,
@@ -164,6 +177,13 @@ mod tests {
         assert_eq!(Line::read("").unwrap(), Line::Output(String::new()));
         for bad in ["@@farm:", "@@farm:wat", "@@farm:slot x 1", "@@farm:done", "@@farm:seed reflink"] {
             assert!(Line::read(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_number_out_of_its_range_is_refused_not_clamped() {
+        for bad in ["@@farm:swept 4294967296", "@@farm:done 2147483648 1", "@@farm:slot 1 -1"] {
+            assert!(matches!(Line::read(bad), Err(Fault::Range { .. })), "{bad}");
         }
     }
 }
