@@ -3,24 +3,14 @@
 
 #![allow(clippy::unwrap_used, clippy::panic, clippy::too_many_lines, reason = "tests stop at the first surprise")]
 
+mod guard;
 mod keyed;
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
-use std::sync::mpsc::channel;
+use std::process::Command;
 use std::time::Duration;
-
-/// The running `ink serve`, killed when it goes out of scope.
-struct Running(Child);
-
-impl Drop for Running {
-    fn drop(&mut self) {
-        self.0.kill().ok();
-        self.0.wait().ok();
-    }
-}
 
 /// `ink <args>` with a config folder of its own and no key in the environment: exit code, stdout
 /// and stderr.
@@ -64,26 +54,12 @@ fn a_key_made_by_login_deploys_is_not_replayable_and_ends_when_removed() {
     let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
     let (addr, audience, api) =
         (format!("127.0.0.1:{port}"), format!("api.localhost:{port}"), format!("http://api.localhost:{port}"));
-    let mut child = Command::new(env!("CARGO_BIN_EXE_ink"))
-        .args(["serve", site.to_str().unwrap(), "--addr", &addr, "--data", data.to_str().unwrap()])
-        .args(["--audience", &audience, "--auth-skew", "1"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let (into, received) = channel();
-    for stream in
-        [Box::new(child.stdout.take().unwrap()) as Box<dyn Read + Send>, Box::new(child.stderr.take().unwrap())]
-    {
-        let into = into.clone();
-        std::thread::spawn(move || {
-            for line in BufReader::new(stream).lines().map_while(Result::ok) {
-                into.send(line).ok();
-            }
-        });
-    }
-    let _running = Running(child);
+    let mut running = guard::Guard::spawn(
+        Command::new(env!("CARGO_BIN_EXE_ink"))
+            .args(["serve", site.to_str().unwrap(), "--addr", &addr, "--data", data.to_str().unwrap()])
+            .args(["--audience", &audience, "--auth-skew", "1"]),
+    );
+    let received = running.lines();
     loop {
         let line = received.recv_timeout(Duration::from_secs(60)).unwrap();
         if line.contains("backing off") {

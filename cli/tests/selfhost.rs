@@ -12,13 +12,14 @@
 )]
 
 use std::fmt::Write as _;
-use std::io::{BufRead, BufReader, Read, Write as _};
+use std::io::{Read, Write as _};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
-use std::sync::mpsc::{Receiver, channel};
+use std::process::Command;
+use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
+mod guard;
 mod keyed;
 
 use gix::ObjectId;
@@ -72,17 +73,6 @@ impl Repo {
 struct Lines(Receiver<String>);
 
 impl Lines {
-    fn of(stream: impl Read + Send + 'static, into: &std::sync::mpsc::Sender<String>) {
-        let into = into.clone();
-        std::thread::spawn(move || {
-            for line in BufReader::new(stream).lines().map_while(Result::ok) {
-                if into.send(line).is_err() {
-                    return;
-                }
-            }
-        });
-    }
-
     /// The next line that holds `needle`.
     fn until(&self, needle: &str) -> String {
         loop {
@@ -96,17 +86,11 @@ impl Lines {
 
 /// The running `ink serve`, killed when it goes out of scope.
 struct Running {
-    child: Child,
     lines: Lines,
     port: u16,
     key: keyed::Keyed,
-}
-
-impl Drop for Running {
-    fn drop(&mut self) {
-        self.child.kill().ok();
-        self.child.wait().ok();
-    }
+    // last: the child is killed after the rest is gone, and a panic in `start` still drops it
+    _child: guard::Guard,
 }
 
 /// What a request does.
@@ -144,25 +128,19 @@ impl Got {
 
 impl Running {
     fn start(data: &Path, folder: &Path) -> Self {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_ink"))
-            .args(["serve", folder.to_str().unwrap(), "--addr", "127.0.0.1:0", "--data", data.to_str().unwrap()])
-            // a file address is the only kind a test with no network can add
-            // the boot barrier is the skew: a short one keeps the test quick
-            .args(["--audience", "api.localhost", "--auth-skew", "1"])
-            .args(["--git-scheme", "file", "--site-ttl", "0", "--poll-lookout", "1", "--worker-idle", "1"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
-        let (into, received) = channel();
-        Lines::of(child.stdout.take().unwrap(), &into);
-        Lines::of(child.stderr.take().unwrap(), &into);
-        let lines = Lines(received);
+        let mut child = guard::Guard::spawn(
+            Command::new(env!("CARGO_BIN_EXE_ink"))
+                .args(["serve", folder.to_str().unwrap(), "--addr", "127.0.0.1:0", "--data", data.to_str().unwrap()])
+                // a file address is the only kind a test with no network can add
+                // the boot barrier is the skew: a short one keeps the test quick
+                .args(["--audience", "api.localhost", "--auth-skew", "1"])
+                .args(["--git-scheme", "file", "--site-ttl", "0", "--poll-lookout", "1", "--worker-idle", "1"]),
+        );
+        let lines = Lines(child.lines());
         let address = lines.until("http://127.0.0.1:");
         let port = address.trim().strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap();
         let key = keyed::Keyed::operator(data, "api.localhost");
-        Self { child, lines, port, key }
+        Self { lines, port, key, _child: child }
     }
 
     /// `method target` with `Host: host`, read to the end.
