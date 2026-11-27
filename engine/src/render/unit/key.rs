@@ -103,7 +103,7 @@ struct Linked<'a> {
 /// What the same for every page of a site: its identity, root, layout, home and navigation, and
 /// whether it has feeds.
 #[derive(Serialize)]
-struct Shared<'a> {
+struct Common<'a> {
     identity: &'a model::Identity,
     root: &'a model::Root,
     layout: model::Layout,
@@ -132,7 +132,7 @@ pub(crate) struct Units<'a, C> {
     base: &'a BaseUrl,
     site: &'a Site,
     briefs: RefCell<BTreeMap<PageId, Hash>>,
-    shared: OnceCell<Hash>,
+    common: OnceCell<Hash>,
     frame: OnceCell<Hash>,
     world: OnceCell<Hash>,
     assets: OnceCell<BTreeMap<&'a ContentPath, &'a Asset>>,
@@ -147,7 +147,7 @@ impl<'a, C: Cache> Units<'a, C> {
             base,
             site,
             briefs: RefCell::default(),
-            shared: OnceCell::new(),
+            common: OnceCell::new(),
             frame: OnceCell::new(),
             world: OnceCell::new(),
             assets: OnceCell::new(),
@@ -216,18 +216,18 @@ impl<'a, C: Cache> Units<'a, C> {
         let reached = Reached::of(page);
         let assets = self.assets.get_or_init(|| self.site.assets().iter().map(|asset| (&asset.file, asset)).collect());
         Ok(Linked {
-            site: self.shared()?,
+            site: self.common()?,
             pages: self.briefs_of(reached.pages)?,
             assets: reached.files.iter().filter_map(|file| assets.get(file).copied()).collect(),
         })
     }
 
-    fn shared(&self) -> Result<Hash, serde_json::Error> {
-        if let Some(hash) = self.shared.get() {
+    fn common(&self) -> Result<Hash, serde_json::Error> {
+        if let Some(hash) = self.common.get() {
             return Ok(*hash);
         }
         let site = self.site;
-        let shared = Shared {
+        let common = Common {
             identity: site.identity(),
             root: site.root(),
             layout: site.layout(),
@@ -235,8 +235,8 @@ impl<'a, C: Cache> Units<'a, C> {
             nav: self.briefs_of(site.nav().iter().copied())?,
             feeds: Channel::is_dated(site),
         };
-        let digest = Digest::of(&shared)?;
-        Ok(*self.shared.get_or_init(|| digest))
+        let digest = Digest::of(&common)?;
+        Ok(*self.common.get_or_init(|| digest))
     }
 
     /// Every page without its body, in the site's order.
