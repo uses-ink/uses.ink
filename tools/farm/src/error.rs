@@ -174,10 +174,7 @@ impl fmt::Display for Error {
             Self::Lost { job } => {
                 write!(out, "the connection for job `{job}` ended before it did, and the host stopped the job")
             }
-            Self::NoBody { job } => write!(
-                out,
-                "the host did not report the start of job `{job}` in time; it may be running, see `farm wait {job}` and `farm log {job}`"
-            ),
+            Self::NoBody { job } => write!(out, "the body of job `{job}` was not seen to start; see `farm wait {job}`"),
             Self::NoJob { job } => {
                 write!(out, "the host has no record of job `{job}`; it may be older than seven days")
             }

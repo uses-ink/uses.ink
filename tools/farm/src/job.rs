@@ -108,6 +108,16 @@ impl LogFile {
     }
 }
 
+/// What the host said about a job's body.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Body {
+    #[default]
+    Unsaid,
+    Started,
+    /// It was not seen to start in time: the job may be running unobserved.
+    Missing,
+}
+
 /// A job's output and events, as they arrive.
 #[derive(Debug, Default)]
 pub(crate) struct Flow {
@@ -116,9 +126,8 @@ pub(crate) struct Flow {
     pub(crate) done: Option<(i32, Duration)>,
     pub(crate) aborted: bool,
     pub(crate) detached: bool,
-    pub(crate) started: bool,
-    /// The host never saw the job's body start.
-    pub(crate) nobody: bool,
+    /// What the host said about the job's body.
+    pub(crate) body: Body,
     /// The first line that carried the mark and was not an event.
     pub(crate) fault: Option<crate::event::Fault>,
     /// The job's own output.
@@ -144,8 +153,8 @@ impl Flow {
                     Event::Done { code, ran } => self.done = Some((*code, *ran)),
                     Event::Aborted => self.aborted = true,
                     Event::Detached => self.detached = true,
-                    Event::Started => self.started = true,
-                    Event::NoBody => self.nobody = true,
+                    Event::Started => self.body = Body::Started,
+                    Event::NoBody => self.body = Body::Missing,
                     _ => {}
                 }
                 Some(event)
@@ -159,11 +168,19 @@ impl Flow {
 
     /// How it ended, as far as the lines say.
     pub(crate) fn verdict(&self) -> Verdict {
-        match (self.done, self.detached, self.started, self.aborted) {
+        match (self.done, self.detached, self.body == Body::Started, self.aborted) {
             (Some((code, ran)), ..) => Verdict::Done { code, ran },
             (None, true, ..) | (None, false, true, _) => Verdict::Running,
             (None, false, false, true) => Verdict::Aborted,
             (None, false, false, false) => Verdict::Lost,
+        }
+    }
+
+    /// The error for a job that ended with no word: its body never showed, or the connection ended.
+    pub(crate) fn lost(&self, job: JobId) -> crate::error::Error {
+        match self.body {
+            Body::Missing => crate::error::Error::NoBody { job },
+            Body::Unsaid | Body::Started => crate::error::Error::Lost { job },
         }
     }
 

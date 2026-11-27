@@ -176,12 +176,9 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         if let Some(source) = flow.log_error() {
             return Err(Error::Io { path: log, source });
         }
-        if flow.nobody {
-            return Err(Error::NoBody { job: id });
-        }
         let verdict = flow.verdict();
         if verdict == Verdict::Lost {
-            return Err(Error::Lost { job: id });
+            return Err(flow.lost(id));
         }
         Ok(Finished {
             summary: Summary::of(&flow.log),
@@ -681,7 +678,7 @@ mod tests {
         let batch = farm.bless(&[]).unwrap();
         let Some(Error::Edited { paths, .. }) = batch.failed.first() else { panic!("{:?}", batch.failed) };
         assert_eq!(paths, &["a.snap"], "a snapshot that is not here yet is not an edit");
-        assert!(batch.blessed.is_empty());
+        assert_eq!(batch.blessed, Vec::<String>::new());
         assert!(farm.fleet.members().first().unwrap().transport().pulled.lock().unwrap().is_empty());
         std::fs::remove_dir_all(&farm.tree.root).ok();
     }
