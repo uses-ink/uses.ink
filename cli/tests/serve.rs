@@ -1,0 +1,215 @@
+//! `ink serve` serves what `ink build` wrote, through the edge: pages with the manifest's
+//! headers, conditional and range requests, the site's 404, hostile paths refused, a folder of
+//! deploys by host.
+
+#![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
+
+extern crate uses_ink_cli as cli;
+
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::path::{Path, PathBuf};
+
+use clap::Parser;
+
+/// Stdout sent to the test while `ink serve` runs in its own thread.
+struct Sent(std::sync::mpsc::Sender<Vec<u8>>);
+
+impl Write for Sent {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.send(bytes.to_vec()).map_err(|_| std::io::ErrorKind::BrokenPipe)?;
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// `ink <args>`: the exit, stdout and stderr.
+fn ink(args: &[&str]) -> (cli::Exit, String, String) {
+    let cli = cli::Cli::try_parse_from(std::iter::once("ink").chain(args.iter().copied())).unwrap();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let exit = cli.run(&mut out, &mut err);
+    (exit, String::from_utf8(out).unwrap(), String::from_utf8(err).unwrap())
+}
+
+/// A scratch folder for `name`, empty.
+fn scratch(name: &str) -> PathBuf {
+    let path = Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-serve").join(name);
+    if path.exists() {
+        std::fs::remove_dir_all(&path).unwrap();
+    }
+    std::fs::create_dir_all(&path).unwrap();
+    path
+}
+
+/// Builds a two-page site into `<root>/out` and returns `out`.
+fn build(root: &Path) -> PathBuf {
+    let site = root.join("site");
+    std::fs::create_dir_all(&site).unwrap();
+    std::fs::write(site.join("index.md"), "# Home\n").unwrap();
+    std::fs::write(site.join("tea.md"), "# Tea\n\nA pot of tea.\n").unwrap();
+    let out = root.join("out");
+    let (exit, _, err) = ink(&["build", site.to_str().unwrap(), "-o", out.to_str().unwrap()]);
+    assert_eq!(exit, cli::Exit::Done, "{err}");
+    out
+}
+
+/// Runs `ink serve <args>` in a thread and returns its port.
+fn serve(args: &[&str]) -> u16 {
+    let mut full = vec!["ink", "serve"];
+    full.extend(args);
+    full.extend(["--addr", "127.0.0.1:0"]);
+    let cli = cli::Cli::try_parse_from(full).unwrap();
+    let (sender, received) = std::sync::mpsc::channel();
+    std::thread::spawn(move || cli.run(&mut Sent(sender), &mut std::io::sink()));
+    let mut printed = String::new();
+    while !printed.ends_with('\n') {
+        printed
+            .push_str(std::str::from_utf8(&received.recv_timeout(std::time::Duration::from_secs(5)).unwrap()).unwrap());
+    }
+    printed.trim().strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap()
+}
+
+/// One response.
+struct Got {
+    text: String,
+}
+
+impl Got {
+    fn status(&self) -> &str {
+        self.text.split(' ').nth(1).unwrap_or_default()
+    }
+
+    fn header(&self, name: &str) -> Option<&str> {
+        self.text.lines().take_while(|line| !line.is_empty()).find_map(|line| {
+            let (field, value) = line.split_once(": ")?;
+            field.eq_ignore_ascii_case(name).then_some(value)
+        })
+    }
+
+    fn body(&self) -> &str {
+        self.text.split_once("\r\n\r\n").map_or("", |(_, body)| body)
+    }
+}
+
+/// Sends `method target` with `Host: host` and these headers, and reads to the end.
+fn fetch(port: u16, method: &str, target: &str, host: &str, headers: &[&str]) -> Got {
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    let extra: String = headers.iter().map(|line| format!("{line}\r\n")).collect();
+    write!(stream, "{method} {target} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n{extra}\r\n").unwrap();
+    let mut bytes = Vec::new();
+    stream.read_to_end(&mut bytes).unwrap();
+    Got { text: String::from_utf8_lossy(&bytes).into_owned() }
+}
+
+fn get(port: u16, target: &str, headers: &[&str]) -> Got {
+    fetch(port, "GET", target, "localhost", headers)
+}
+
+#[test]
+fn serves_a_built_deploy_with_the_edge_behaviour() {
+    let root = scratch("deploy");
+    let out = build(&root);
+    let port = serve(&[out.to_str().unwrap()]);
+
+    let tea = get(port, "/tea", &[]);
+    assert_eq!(tea.status(), "200", "{}", tea.text);
+    assert_eq!(tea.header("content-type"), Some("text/html; charset=utf-8"));
+    assert!(tea.header("content-security-policy").unwrap().starts_with("default-src 'none'; img-src"));
+    assert_eq!(tea.header("x-content-type-options"), Some("nosniff"));
+    assert!(tea.body().contains("A pot of tea."));
+    let etag = tea.header("etag").unwrap();
+    assert_eq!(get(port, "/tea", &[&format!("If-None-Match: {etag}")]).status(), "304");
+
+    let css = get(port, "/style.css", &[]);
+    assert_eq!(css.status(), "200");
+    let length: usize = css.header("content-length").unwrap().parse().unwrap();
+    let ranged = get(port, "/style.css", &["Range: bytes=0-9"]);
+    assert_eq!(ranged.status(), "206");
+    assert_eq!(ranged.header("content-range"), Some(format!("bytes 0-9/{length}").as_str()));
+    assert_eq!(ranged.body(), &css.body()[..10]);
+    assert_eq!(get(port, "/style.css", &[&format!("Range: bytes={length}-")]).status(), "416");
+    assert_eq!(
+        fetch(port, "HEAD", "/style.css", "localhost", &[]).header("content-length"),
+        css.header("content-length")
+    );
+
+    let missing = get(port, "/no/such/page", &[]);
+    assert_eq!(missing.status(), "404");
+    assert!(missing.body().contains("Page not found"), "{}", missing.text);
+    assert_eq!(missing.header("content-security-policy"), tea.header("content-security-policy"));
+
+    for target in [
+        "/../etc/passwd",
+        "/%2e%2e/%2e%2e/etc/passwd",
+        "/..%2f..%2fetc/passwd",
+        "//evil.example/",
+        "/%252e%252e/",
+        "/a%00b",
+    ] {
+        let refused = get(port, target, &[]);
+        assert_eq!(refused.status(), "400", "{target}: {}", refused.text);
+        assert!(!refused.body().contains("root:"));
+    }
+    for target in ["/.ink-manifest.json", "/%2Eink-manifest.json", "/.ink", "/tea.html"] {
+        let hidden = get(port, target, &[]);
+        assert_eq!(hidden.status(), "404", "{target}");
+        assert!(!hidden.body().contains("uses.manifest"), "the manifest is never served: {target}");
+    }
+    assert_eq!(fetch(port, "POST", "/", "localhost", &["Content-Length: 0"]).status(), "405");
+    assert_eq!(fetch(port, "GET", "/", "evil.example/x", &[]).status(), "400");
+}
+
+#[test]
+fn the_edges_own_headers_match_what_the_engine_writes() {
+    let root = scratch("policy");
+    let out = build(&root);
+    let port = serve(&[out.to_str().unwrap()]);
+    let manifest = get(port, "/style.css", &[]);
+    let refusal = fetch(port, "POST", "/", "localhost", &["Content-Length: 0"]);
+    for name in ["content-security-policy", "cross-origin-resource-policy", "x-content-type-options"] {
+        assert!(manifest.header(name).is_some(), "{name}");
+        assert_eq!(
+            refusal.header(name),
+            manifest.header(name),
+            "{name}: the edge's copy drifted from the engine's Policy"
+        );
+    }
+}
+
+#[test]
+fn serves_a_folder_of_deploys_by_host() {
+    let root = scratch("hosts");
+    let out = build(&root);
+    let hosts = root.join("hosts");
+    let one = hosts.join("notes.example");
+    std::fs::create_dir_all(&one).unwrap();
+    for entry in std::fs::read_dir(&out).unwrap() {
+        let entry = entry.unwrap();
+        if entry.file_type().unwrap().is_dir() {
+            continue;
+        }
+        std::fs::copy(entry.path(), one.join(entry.file_name())).unwrap();
+    }
+    let port = serve(&[hosts.to_str().unwrap(), "--host-mode", "folders"]);
+    assert_eq!(fetch(port, "GET", "/tea", "notes.example", &[]).status(), "200");
+    assert_eq!(fetch(port, "GET", "/tea", "NOTES.example:8080", &[]).status(), "200");
+    assert_eq!(fetch(port, "GET", "/tea", "other.example", &[]).status(), "404");
+    assert_eq!(fetch(port, "GET", "/tea", "..", &[]).status(), "400");
+    assert_eq!(fetch(port, "GET", "/tea", "../notes.example", &[]).status(), "400");
+    assert_eq!(fetch(port, "GET", "/healthz", "10.1.2.3", &[]).status(), "200");
+}
+
+#[test]
+fn a_folder_that_is_no_deploy_is_refused() {
+    let root = scratch("empty");
+    let (exit, _, err) = ink(&["serve", root.to_str().unwrap(), "--host-mode", "single", "--addr", "127.0.0.1:0"]);
+    assert_eq!(exit, cli::Exit::Usage);
+    assert!(err.contains("serve.folder.unservable"), "{err}");
+    let missing = root.join("nothing-here");
+    let (exit, _, err) = ink(&["serve", missing.to_str().unwrap(), "--addr", "127.0.0.1:0"]);
+    assert_eq!(exit, cli::Exit::Usage, "a folder that does not exist serves nothing, said aloud: {err}");
+    assert!(err.contains("serve.folder.unservable"), "{err}");
+}

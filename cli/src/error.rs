@@ -156,6 +156,28 @@ pub enum Error {
         /// Why.
         source: host_wasmtime::Error,
     },
+    /// The folder `ink serve` was given is no deploy it can serve.
+    Folder {
+        /// Why.
+        source: edge_folder::Error,
+    },
+    /// `ink serve` could not listen on its address.
+    Listen {
+        /// The address, as given.
+        address: std::net::SocketAddr,
+        /// What the system said.
+        source: std::io::Error,
+    },
+    /// The edge could not be built.
+    Edge {
+        /// Why.
+        source: edge::Error,
+    },
+    /// The server could not be built or run.
+    Server {
+        /// Why.
+        source: edge_axum::Error,
+    },
     /// A result could not be written as JSON.
     Json {
         /// Why it could not.
@@ -204,6 +226,10 @@ impl Error {
             Self::Write { .. } => "output.file.unwritable",
             Self::Manifest { .. } => "output.manifest.invalid",
             Self::Serve { .. } => "preview.serve.failed",
+            Self::Folder { .. } => "serve.folder.unservable",
+            Self::Listen { .. } => "serve.address.unusable",
+            Self::Edge { .. } => "serve.edge.invalid",
+            Self::Server { .. } => "serve.server.invalid",
             Self::Terminal { .. } => "cli.terminal.unwritable",
             Self::Component { .. } => "component.file.unreadable",
             Self::Plugin { .. } => "component.load.failed",
@@ -254,6 +280,10 @@ impl fmt::Display for Error {
                 write!(out, "the earlier build's manifest {} does not parse", path.display())
             }
             Self::Serve { .. } => write!(out, "the preview could not be served"),
+            Self::Folder { .. } => write!(out, "the folder is not a deploy `ink serve` can serve"),
+            Self::Listen { address, .. } => write!(out, "`ink serve` could not listen on {address}"),
+            Self::Edge { .. } => write!(out, "the edge could not be built"),
+            Self::Server { .. } => write!(out, "the server could not be started"),
             Self::Terminal { .. } => write!(out, "the terminal could not be written to"),
             Self::Component { path, .. } => write!(out, "the component {} could not be read", path.display()),
             Self::Plugin { .. } => write!(out, "a component could not be loaded"),
@@ -279,6 +309,10 @@ impl std::error::Error for Error {
             | Self::Terminal { source }
             | Self::Component { source, .. } => Some(source),
             Self::Plugin { source } => Some(source),
+            Self::Folder { source } => Some(source),
+            Self::Listen { source, .. } => Some(source),
+            Self::Edge { source } => Some(source),
+            Self::Server { source } => Some(source),
             Self::Placed { source, .. } => Some(source),
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),

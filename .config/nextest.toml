@@ -51,6 +51,13 @@ slow-timeout = { period = "1s", terminate-after = 1 }
 filter = "binary(fetch) | binary(source)"
 slow-timeout = { period = "2s", terminate-after = 1 }
 
+# The edge's socket tests run a server on a thread, with time budgets of tens of milliseconds
+# on the wire (a client that never finishes its head, a response that stops flowing); the CLI's
+# serve tests also build a site first.
+[[profile.default.overrides]]
+filter = "binary_id(uses-ink-edge-axum::serve) | binary_id(uses-ink-cli::serve)"
+slow-timeout = { period = "3s", terminate-after = 1 }
+
 # A component's tests pay a Cranelift compile on a cold cache (tens of milliseconds for the
 # hostile component, about a second for the markdown format) and the spinning plugin's 50 ms
 # deadline; the components themselves are built once per run by `cargo xtask component`.

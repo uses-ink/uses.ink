@@ -36,6 +36,8 @@ pub enum Command {
     Preview(Preview),
     /// List what is published and why, or record a selection of what to publish.
     Select(Select),
+    /// Serve a built deploy through the edge the product runs, with its production headers.
+    Serve(Serve),
 }
 
 /// Where a site's files are read from: the folder as it is on disk, or a git repository at
@@ -183,4 +185,36 @@ pub struct Select {
     /// The site's folder.
     #[arg(short = 'C', long, default_value = ".")]
     pub dir: PathBuf,
+}
+
+/// How `ink serve` maps a request's host to a deploy.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
+pub enum HostMode {
+    /// One deploy when the folder holds a manifest, else one folder per host.
+    #[default]
+    Auto,
+    /// The folder is one deploy, served for every host name.
+    Single,
+    /// `<folder>/<host>` is the deploy of `<host>`; a host with no folder is no site.
+    Folders,
+}
+
+/// `ink serve [folder]`: the deploy `ink build` wrote, served by the edge crate the product uses.
+///
+/// Unlike `ink preview`, which builds the site in memory on every start and serves it on
+/// 127.0.0.1 for writing, this serves what `ink build` already wrote, through `edge` and
+/// `edge-axum`: conditional and range requests, the host and path refusals, the request and
+/// response budgets, and the manifest's headers as they are in production.
+#[derive(Debug, Args)]
+pub struct Serve {
+    /// A folder `ink build` wrote into, or with `--host-mode folders` a folder of them, one per
+    /// host name.
+    #[arg(default_value = ".ink/out")]
+    pub folder: PathBuf,
+    /// The address to listen on.
+    #[arg(long = "addr", default_value = "127.0.0.1:8080")]
+    pub address: std::net::SocketAddr,
+    /// How a request's host picks a deploy.
+    #[arg(long, value_enum, default_value_t)]
+    pub host_mode: HostMode,
 }
