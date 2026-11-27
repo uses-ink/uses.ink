@@ -48,14 +48,14 @@ impl Stage<&mut [Source]> for Embeds<'_> {
             let mut taken = Headings::default();
             taken.document(&source.read.document);
             let mut fill =
-                Fill { pages: &pages, shown: vec![(id, None)], budget: BUDGET, said: Vec::new(), taken: taken.0 };
+                Fill { pages: &pages, shown: vec![(id, None)], budget: BUDGET, found: Vec::new(), taken: taken.0 };
             let document = std::mem::take(&mut source.read.document);
             source.read.document = fill.document(document);
             let subject = Subject::from(source.subject());
-            for said in fill.said {
-                match said {
-                    Said::Problem(problem) => journal.diagnose(Diagnostic::new(problem).on(subject.clone())),
-                    Said::Notice(announcement) => journal.notice(Notice::new(announcement).on(subject.clone())),
+            for finding in fill.found {
+                match finding {
+                    Finding::Problem(problem) => journal.diagnose(Diagnostic::new(problem).on(subject.clone())),
+                    Finding::Notice(announcement) => journal.notice(Notice::new(announcement).on(subject.clone())),
                 }
             }
         }
@@ -64,7 +64,7 @@ impl Stage<&mut [Source]> for Embeds<'_> {
 
 /// What filling one page's embeds found worth saying.
 #[derive(Debug)]
-enum Said {
+enum Finding {
     Problem(Problem),
     Notice(Announcement),
 }
@@ -79,7 +79,7 @@ struct Fill<'a> {
     shown: Vec<(PageId, Option<Anchor>)>,
     /// Embeds still allowed.
     budget: usize,
-    said: Vec<Said>,
+    found: Vec<Finding>,
     /// Every anchor on the page: its own, then each one an embed has shown.
     taken: BTreeSet<Anchor>,
 }
@@ -131,23 +131,23 @@ impl Fill<'_> {
                 .filter_map(|(shown, _)| self.pages.get(shown))
                 .map(|(path, _)| path.clone())
                 .collect();
-            self.said.push(Said::Problem(Problem::EmbedTargetCycle { written: written.clone(), files }));
+            self.found.push(Finding::Problem(Problem::EmbedTargetCycle { written: written.clone(), files }));
             return link(written);
         }
         if self.budget == 0 {
             self.found
-                .push(Said::Problem(Problem::EmbedBudgetCount { written: written.clone(), limit: BUDGET as u64 }));
+                .push(Finding::Problem(Problem::EmbedBudgetCount { written: written.clone(), limit: BUDGET as u64 }));
             return link(written);
         }
         let Some(part) = Part::of(&document.blocks, anchor.as_ref()) else {
-            self.said.push(Said::Problem(Problem::EmbedAnchorMissing { written: written.clone() }));
+            self.found.push(Finding::Problem(Problem::EmbedAnchorMissing { written: written.clone() }));
             return link(written);
         };
         self.budget -= 1;
         let mut carried = Carried { id, dropped: false, taken: &mut self.taken };
         let blocks = carried.blocks(part);
         if carried.dropped {
-            self.said.push(Said::Notice(Announcement::EmbedFootnoteDropped { written }));
+            self.found.push(Finding::Notice(Announcement::EmbedFootnoteDropped { written }));
         }
         self.shown.push((id, anchor.clone()));
         let blocks = self.blocks(blocks);

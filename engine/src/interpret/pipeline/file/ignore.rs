@@ -53,7 +53,7 @@ impl<'s, P: Pins> Stage<&Scope<'s>> for Files<'_, P> {
     fn run(&self, scope: &Scope<'s>, journal: &mut Journal) -> Vec<InRoot<'s>> {
         let ladder = precedence::Ignored::default();
         let mut kept = Vec::new();
-        let mut said = Said::default();
+        let mut announced = Announced::default();
         let layout = journal.value::<Layout>(&Site).copied();
         for file in &scope.inside {
             let subject = File(file.entry.path.clone());
@@ -62,7 +62,7 @@ impl<'s, P: Pins> Stage<&Scope<'s>> for Files<'_, P> {
                 Some(false) => kept.push(file.clone()),
                 Some(true) => {
                     let evidence = journal.decision::<Ignored>(&subject).map(|decision| decision.evidence.clone());
-                    said.announce(evidence, &subject, journal);
+                    announced.announce(evidence, &subject, journal);
                 }
                 None => {}
             }
@@ -72,11 +72,11 @@ impl<'s, P: Pins> Stage<&Scope<'s>> for Files<'_, P> {
 }
 
 /// The folders and files already announced as ignored by inference, so a hidden folder of a
-/// thousand files is said once.
+/// thousand files is announced once.
 #[derive(Debug, Default)]
-struct Said(BTreeSet<ContentPath>);
+struct Announced(BTreeSet<ContentPath>);
 
-impl Said {
+impl Announced {
     /// `file.ignore.inferred` for `file`, ignored on `evidence`, when a folder or a name ignored
     /// it rather than the author: once per folder or file, on the first file it ignored.
     fn announce(&mut self, evidence: Option<Evidence>, file: &File, journal: &mut Journal) {
