@@ -183,6 +183,16 @@ knows its size and copies; `Assets` then serves the copies at hashed routes, `Ca
 order; adding an output is adding an artifact to that tuple. An artifact that fails is recorded
 and the next still runs.
 
+A page is a render unit (0045). `Engine::render_with(site, settings, Host::new(&images).cached(&cache))`
+keys each page by the hash of everything the theme may read to write it: the engine's release,
+`Theme::identity` (a component's hash, its tokens), the base address, the page, and the part of
+the site `Theme::reads(page)` names (`Reads::Linked`: identity, nav, linked pages without their
+bodies, the assets shown; `Listed`: also every page without its body; `Whole`, the default:
+everything). A hit is served without asking the theme; a miss renders, and keeps the HTML under
+`Kind::Page` only when the theme said nothing about the page. `Rendered.steps` is one typed
+`Step { unit, outcome }` per page, `Reused` or `Rendered`, and `render.cache.used` counts them.
+The feeds, sitemap and `robots.txt` are made every build: they are small and need no theme.
+
 A build keeps a record of itself (`model::record::Build`: its `Inputs`, every decision, every
 file's blob, every published file's route), made by `Understood::record` and written by the CLI
 beside the manifest in the output folder. `engine::Compared::of(against, before, after)` diffs

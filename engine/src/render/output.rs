@@ -11,7 +11,7 @@ use crate::error::Error;
 use crate::render::policy::{Cache, Policy};
 use crate::render::settings::BaseUrl;
 use crate::render::xml::Xml;
-use crate::render::{Rendered, Reserved};
+use crate::render::{Outcome, Rendered, Reserved, Step, Unit};
 
 /// Who serves a route.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,13 +66,31 @@ pub(crate) struct Output<'a> {
     blobs: BTreeMap<Hash, Vec<u8>>,
     diagnostics: Vec<Diagnostic>,
     notices: Vec<Notice>,
+    steps: Vec<Step>,
 }
 
 impl<'a> Output<'a> {
     /// Nothing served yet, headers from `policy`, absolute links under `base`.
     pub(crate) fn new(policy: &'a Policy, base: &'a BaseUrl) -> Self {
         let (entries, blobs) = (BTreeMap::new(), BTreeMap::new());
-        Self { policy, base, entries, blobs, diagnostics: Vec::new(), notices: Vec::new() }
+        Self { policy, base, entries, blobs, diagnostics: Vec::new(), notices: Vec::new(), steps: Vec::new() }
+    }
+
+    /// How much has been said so far, diagnostics and notices together: a page that left it as
+    /// it was had nothing to say.
+    pub(crate) fn said(&self) -> usize {
+        self.diagnostics.len() + self.notices.len()
+    }
+
+    /// Records what became of one unit.
+    pub(crate) fn step(&mut self, unit: Unit, outcome: Outcome) {
+        self.steps.push(Step::new(unit, outcome));
+    }
+
+    /// How many units were taken from the cache and how many were rendered.
+    pub(crate) fn tally(&self) -> (u64, u64) {
+        let reused = self.steps.iter().filter(|step| step.outcome == Outcome::Reused).count() as u64;
+        (reused, self.steps.len() as u64 - reused)
     }
 
     /// Who already serves `route`.
@@ -134,6 +152,12 @@ impl<'a> Output<'a> {
             self.diagnostics.push(Error::Served { route: duplicate.route }.into());
             Manifest::default()
         });
-        Rendered { manifest, blobs: self.blobs, diagnostics: self.diagnostics, notices: self.notices }
+        Rendered {
+            manifest,
+            blobs: self.blobs,
+            diagnostics: self.diagnostics,
+            notices: self.notices,
+            steps: self.steps,
+        }
     }
 }

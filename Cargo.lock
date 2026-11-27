@@ -3858,6 +3858,7 @@ dependencies = [
  "divan",
  "gix",
  "insta",
+ "proptest",
  "serde",
  "serde_json",
  "tokio",

@@ -7,7 +7,7 @@
 use std::cell::RefCell;
 
 use engine::{BaseUrl, File, Html, Record, Said};
-use model::{ContentPath, Diagnostic, Document, Front, Page, Read, Site, Subject};
+use model::{ContentPath, Diagnostic, Document, Front, Hash, Page, Read, Site, Subject};
 use wasmtime::Store;
 use wasmtime::component::{Linker, ResourceAny};
 
@@ -38,6 +38,8 @@ pub struct Format {
 pub struct Theme {
     pre: ThemePre<State>,
     base: BaseUrl,
+    /// The hash of the component's bytes.
+    digest: Hash,
     session: RefCell<Option<Session>>,
 }
 
@@ -92,7 +94,7 @@ impl Runtime {
             .shared
             .call(&mut store, |store| pre.instantiate(&mut *store)?.call_name(store))
             .map_err(|failure| Error::Named { failure })?;
-        let world = Theme { pre, base, session: RefCell::new(None) };
+        let world = Theme { pre, base, digest: Hash::of(bytes), session: RefCell::new(None) };
         Ok(Component { shared: self.shared.clone(), name, origin, world, aside: RefCell::default() })
     }
 }
@@ -240,6 +242,14 @@ impl engine::Theme for Component<Theme> {
             .into_iter()
             .filter_map(|file| File::try_from(file).map_err(|source| self.fail(&Failure::Malformed { source })).ok())
             .collect()
+    }
+
+    /// The hash of the component's bytes and of the workspace's `Cargo.lock`: the host's
+    /// highlighter is imported by the component and reaches its bytes, so its version is part of
+    /// what the pages are made from. Its tokens join the hash when themes take them.
+    fn identity(&self) -> Option<Hash> {
+        const LOCK: &[u8] = include_bytes!("../../../Cargo.lock");
+        Some(Hash::of([self.world.digest.as_bytes().as_slice(), LOCK].concat()))
     }
 
     /// The page as the component renders it; a call that fails is the theme's refusal, with

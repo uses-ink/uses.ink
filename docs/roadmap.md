@@ -115,7 +115,7 @@ The two real audiences, locally.
 - Selection: `publish` frontmatter, `include`/`exclude`, `ink select` **(owner: Q16, Q17)**.
 - `ink:source-git` over `git.fetch`, `Known<T>` dates, abilities observed and shown.
 - Images: variants, AVIF and JPEG, dimensions, EXIF stripped, thumbhash placeholders.
-- Incremental builds through the render unit index; `render.cache.cold` notice.
+- Incremental builds through the render unit index (0045); `render.cache.cold` and `render.cache.used` notices.
 - `ink:theme-notebook` as a component, the pen drawing measured marks **(owner: its design)**.
 - `ink build --check` in CI on every fixture.
 

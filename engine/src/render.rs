@@ -11,16 +11,18 @@ mod policy;
 mod settings;
 mod sitemap;
 mod theme;
+mod unit;
 mod xml;
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use model::{Diagnostic, Hash, Manifest, Notice, Route, Site};
+use model::{Announcement, Diagnostic, Hash, Manifest, Notice, Route, Site};
 
+use crate::cache::Cache;
 use crate::error::Error;
 use crate::image::Images;
-use crate::{Blobs, Engine, Theme};
+use crate::{Blobs, Engine, Record, Theme};
 use asset::Assets;
 use feed::{Atom, Feed, Rss};
 use output::Output;
@@ -30,6 +32,8 @@ pub use settings::{BaseUrl, BaseUrlError, RenderSettings};
 use sitemap::{Robots, Sitemap};
 pub use theme::Generated;
 use theme::{NotFound, Pages, ThemeFiles};
+use unit::Units;
+pub use unit::{Host, Outcome, Reads, Step, Unit};
 
 /// What a render produced.
 #[derive(Debug)]
@@ -45,6 +49,9 @@ pub struct Rendered {
     pub diagnostics: Vec<Diagnostic>,
     /// What is worth knowing: feeds left out, posts not in them.
     pub notices: Vec<Notice>,
+    /// What became of each page the theme was asked for, in the order they were served: taken
+    /// from the cache, or rendered.
+    pub steps: Vec<Step>,
 }
 
 /// One output of a render: files it serves for `site`. A tuple of artifacts is an artifact,
@@ -130,6 +137,20 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
     /// when the site has none, the plain files pages use, the feeds, the sitemap, `robots.txt`,
     /// then the theme's own files, which may take no route already served.
     pub fn render<I: Images>(&self, site: &Site, settings: &RenderSettings, images: &I) -> Rendered {
+        self.render_with(site, settings, Host::new(images))
+    }
+
+    /// As [`Engine::render`], taking each page from the host's cache when the cache holds it
+    /// under the key of everything the page was made from, and keeping it there when not
+    /// (decision 0045). What the render gives is the same, byte for byte, with a cache, a cold
+    /// one, or none.
+    pub fn render_with<I: Images, C: Cache>(
+        &self,
+        site: &Site,
+        settings: &RenderSettings,
+        host: Host<'_, I, C>,
+    ) -> Rendered {
+        let images = host.images;
         let policy = match Policy::new() {
             Ok(policy) => policy,
             Err(error) => {
@@ -139,6 +160,7 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
                     blobs: BTreeMap::new(),
                     diagnostics,
                     notices: vec![],
+                    steps: vec![],
                 };
             }
         };
@@ -154,9 +176,10 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
         };
         let site = &*site;
         let theme = &self.theme;
+        let units = Units::new(host.cache(), theme.identity(), &settings.base, site);
         let artifacts = (
-            Pages { theme },
-            NotFound { theme },
+            Pages { theme, units: &units },
+            NotFound { theme, units: &units },
             Assets { pictures: &pictures },
             Feed::<(Atom, Rss)>::default(),
             Sitemap,
@@ -165,6 +188,12 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
         );
         if let Err(error) = artifacts.files(site, &mut out) {
             out.fail(error);
+        }
+        if units.is_unkeyed() {
+            out.notice(Notice::new(Announcement::RenderCacheUnkeyed { theme: theme.name().to_owned() }));
+        } else if units.is_keyed() {
+            let (reused, rendered) = out.tally();
+            out.notice(Notice::new(Announcement::RenderCacheUsed { reused, rendered }));
         }
         out.finish()
     }

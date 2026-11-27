@@ -1,6 +1,6 @@
 //! `ink build` and `ink check`.
 
-use engine::Compared;
+use engine::{Compared, Host};
 use model::record::{Build as Record, Changes};
 use model::{Announcement, DeployId, Manifest, Notice};
 use serde::Serialize;
@@ -60,7 +60,8 @@ impl Build {
         let loaded = source.load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let caching = Caching::new(&self.dir, self.cache.as_deref());
-        let mut rendered = loaded.render(&address, &caching.pixels());
+        let images = caching.pixels();
+        let mut rendered = loaded.render(&address, Host::new(&images).cached(caching.disk()));
         rendered.notices.extend(caching.finish());
         let record = loaded.record();
         let compared = baseline.compare(&loaded, &record, &mut rendered);

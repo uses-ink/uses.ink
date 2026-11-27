@@ -10,6 +10,8 @@ use std::fmt;
 use model::code::Code;
 use model::{ContentPath, Diagnostic, File, Hash, Page, Read, Record, Site, Span};
 
+use crate::render::Reads;
+
 /// Where the engine reads a snapshot's bytes from.
 pub trait Blobs {
     /// The bytes whose hash is `hash`.
@@ -168,6 +170,22 @@ pub trait Theme {
         expect(clippy::result_large_err, reason = "the theme contract returns the model's diagnostic as is (0014)")
     )]
     fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>;
+
+    /// A hash of everything about the theme that reaches the bytes of a page besides the page
+    /// and what [`Theme::reads`] says: a component's own hash, the tokens it was given, its
+    /// version. It keys the pages a cache keeps, so two themes that write different bytes must
+    /// not share one. `None`, which is what a theme that says nothing gives, keeps no page.
+    fn identity(&self) -> Option<Hash> {
+        None
+    }
+
+    /// What rendering `page` reads of the site beyond the page itself. A theme that reads
+    /// only what [`Reads::Linked`] lists, or also the other pages' fronts for a listing
+    /// ([`Reads::Listed`]), is rendered again only when that changed; the default,
+    /// [`Reads::Whole`], is rendered again when anything did.
+    fn reads(&self, _page: &Page) -> Reads {
+        Reads::Whole
+    }
 }
 
 impl<T: Theme + ?Sized> Theme for &T {
@@ -181,6 +199,14 @@ impl<T: Theme + ?Sized> Theme for &T {
 
     fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         T::render(self, page, site, record)
+    }
+
+    fn identity(&self) -> Option<Hash> {
+        T::identity(self)
+    }
+
+    fn reads(&self, page: &Page) -> Reads {
+        T::reads(self, page)
     }
 }
 

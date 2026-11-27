@@ -7,7 +7,7 @@ use std::sync::Arc;
 use axum::Router;
 use axum::body::Body;
 use axum::http::{HeaderName, HeaderValue, Request, Response, StatusCode, header};
-use engine::Blobs;
+use engine::{Blobs, Host};
 use host_native::Memory;
 use model::{Manifest, Route};
 use serde::Serialize;
@@ -49,7 +49,8 @@ impl args::Preview {
         let loaded = Source::new(&self.dir, &self.origin).load()?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let caching = Caching::new(&self.dir, self.cache.as_deref());
-        let mut rendered = loaded.render(&address, &caching.pixels());
+        let images = caching.pixels();
+        let mut rendered = loaded.render(&address, Host::new(&images).cached(caching.disk()));
         rendered.notices.extend(caching.finish());
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
         let preview = Preview::assemble(loaded, rendered);
@@ -73,7 +74,7 @@ impl Preview {
     pub fn of(dir: &Path, base: &str) -> Result<Option<Self>, Error> {
         let address = Address::from_flag(Some(base))?;
         let loaded = Source::new(dir, &args::Origin::default()).load()?;
-        let rendered = loaded.render(&address, &host_image::Pixels::default());
+        let rendered = loaded.render(&address, Host::new(&host_image::Pixels::default()));
         Ok(Self::assemble(loaded, rendered))
     }
 

@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use config::{Config, Parsed};
-use engine::{BaseUrl, Blobs, Chosen, Engine, Formats, NoPins, RenderSettings, Theme, Understood};
+use engine::{BaseUrl, Blobs, Cache, Chosen, Engine, Formats, Host, NoPins, RenderSettings, Theme, Understood};
 use host_image::Pixels;
 use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
 use model::record::{Build, Inputs};
@@ -204,12 +204,17 @@ impl Loaded {
 
     /// Renders the site through `ink:theme-quiet`, its images through the host's image work, if
     /// interpreting gave one.
-    pub(crate) fn render(&self, address: &Address, images: &Pixels) -> Rendering {
-        self.through(address, &Quiet::new(address.base.clone(), Grammars::default()), images)
+    pub(crate) fn render<C: Cache>(&self, address: &Address, host: Host<'_, Pixels, C>) -> Rendering {
+        self.through(address, &Quiet::new(address.base.clone(), Grammars::default()), host)
     }
 
     /// Renders the site through `theme`, its images through `images`, if interpreting gave one.
-    pub(crate) fn through<T: Theme>(&self, address: &Address, theme: &T, images: &Pixels) -> Rendering {
+    pub(crate) fn through<T: Theme, C: Cache>(
+        &self,
+        address: &Address,
+        theme: &T,
+        host: Host<'_, Pixels, C>,
+    ) -> Rendering {
         let understood = &self.understood;
         let mut diagnostics = understood.diagnostics.clone();
         let mut notices = understood.notices.clone();
@@ -218,7 +223,7 @@ impl Loaded {
             return Rendering { deploy: None, blobs: BTreeMap::new(), diagnostics, notices };
         };
         let engine = Engine::new(&self.store, NoPins, (), theme);
-        let rendered = engine.render(site, &RenderSettings { base: address.base.clone() }, images);
+        let rendered = engine.render_with(site, &RenderSettings { base: address.base.clone() }, host);
         diagnostics.extend(rendered.diagnostics);
         notices.extend(rendered.notices);
         Rendering { deploy: Some(rendered.manifest), blobs: rendered.blobs, diagnostics, notices }

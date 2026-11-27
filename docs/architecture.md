@@ -362,9 +362,11 @@ generated yet; it has to come from the decision codes, not from a second set of 
 
 - **Blob**: any byte string at `blake3(bytes)`, under `t/<tenant>/b/<hash>`. Scoped per tenant:
   no cross-tenant dedup, exact deletion, no timing leak.
-- **Render unit**: one output file, cache key `blake3(engine version, plugin digests, resolved
-  config, hashes of every recorded read)`. Unchanged keys reuse their blob. A missing cache is
-  `render.cache.cold`, a notice.
+- **Render unit**: one page, cache key `blake3(engine release, theme identity, base address, the
+  page, the part of the site the theme says it reads)`. The theme declares what it reads
+  (`Reads`), since it is handed the whole site and a read cannot be observed (0045, refining
+  0006). Unchanged keys serve the kept HTML without asking the theme. A cache folder made for
+  the first time says `render.cache.cold`; every build with a cache says `render.cache.used`.
 - **Deploy**: the manifest, stored as a blob, id = its hash. Identical builds give the same deploy.
 - **Publish** writes `site.live = <deploy>` and records the previous value; **rollback** writes an
   older one. Both are commands with events. Rollback pauses automatic publishing until `resume`.

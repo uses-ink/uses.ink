@@ -43,6 +43,8 @@ native = "The deploy the native plugins built."
 plugin = "The plugin's name."
 path = "The file."
 reason = "Why, as the part that refused it says."
+reused = "How many were taken from the cache."
+rendered = "How many were made again."
 route = "The route."
 segment = "The segment of the path, as written."
 size = "How large it is."
@@ -310,6 +312,13 @@ severity = "error"
 fault = "ours"
 fields = { route = "route" }
 message = "{route} could not be written"
+fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."engine.key.unwritten"]
+severity = "warning"
+fault = "ours"
+fields = { path = "path" }
+message = "the cache key of {path} could not be made, so the page is rendered again by every build"
 fix = "report it: this is a bug in uses.ink"
 
 [diagnostic."engine.date.unrepresentable"]
@@ -655,6 +664,14 @@ fix = "a plugin's component and its native core disagree; `ink build` natively i
 [notice."render.cache.cold"]
 fields = { folder = "text" }
 message = "{folder} held no cache, so everything this build makes is made from scratch"
+
+[notice."render.cache.used"]
+fields = { reused = "count", rendered = "count" }
+message = "{reused} pages were taken from the cache and {rendered} rendered"
+
+[notice."render.cache.unkeyed"]
+fields = { theme = "text" }
+message = "the theme {theme} does not say what its pages are made from, so every page is rendered again by every build"
 
 [notice."cache.folder.unusable"]
 fields = { folder = "text" }

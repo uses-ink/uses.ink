@@ -128,6 +128,9 @@ impl Message<'_> {
             Problem::EngineXmlUnwritten { route, .. } => {
                 write!(out, "{route} could not be written")
             }
+            Problem::EngineKeyUnwritten { path, .. } => {
+                write!(out, "the cache key of {path} could not be made, so the page is rendered again by every build")
+            }
             Problem::EngineDateUnrepresentable { date, .. } => {
                 write!(out, "{date} has no instant a feed can write")
             }
@@ -362,6 +365,15 @@ impl Message<'_> {
             Announcement::RenderCacheCold { folder, .. } => {
                 write!(out, "{folder} held no cache, so everything this build makes is made from scratch")
             }
+            Announcement::RenderCacheUsed { reused, rendered, .. } => {
+                write!(out, "{reused} pages were taken from the cache and {rendered} rendered")
+            }
+            Announcement::RenderCacheUnkeyed { theme, .. } => {
+                write!(
+                    out,
+                    "the theme {theme} does not say what its pages are made from, so every page is rendered again by every build"
+                )
+            }
             Announcement::CacheFolderUnusable { folder, .. } => {
                 write!(out, "{folder} cannot hold the cache, so nothing is kept between builds")
             }
@@ -418,6 +430,7 @@ impl Fix<'_> {
             Problem::EngineRouteRepeated { .. } => true,
             Problem::EngineSiteRefused => true,
             Problem::EngineXmlUnwritten { .. } => true,
+            Problem::EngineKeyUnwritten { .. } => true,
             Problem::EngineDateUnrepresentable { .. } => true,
             Problem::EngineImageMiscounted { .. } => true,
             Problem::SourceBudgetBytes { .. } => true,
@@ -484,6 +497,8 @@ impl Fix<'_> {
             Announcement::ImageAnimationKept { .. } => false,
             Announcement::ImageFormatKept { .. } => true,
             Announcement::RenderCacheCold { .. } => false,
+            Announcement::RenderCacheUsed { .. } => false,
+            Announcement::RenderCacheUnkeyed { .. } => false,
             Announcement::CacheFolderUnusable { .. } => true,
             Announcement::CacheEntryCorrupt { .. } => false,
             Announcement::CacheEntryUnwritten { .. } => false,
@@ -595,6 +610,9 @@ impl Fix<'_> {
                 write!(out, "report it: this is a bug in uses.ink")
             }
             Problem::EngineXmlUnwritten { .. } => {
+                write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::EngineKeyUnwritten { .. } => {
                 write!(out, "report it: this is a bug in uses.ink")
             }
             Problem::EngineDateUnrepresentable { .. } => {
@@ -748,6 +766,8 @@ impl Fix<'_> {
                 write!(out, "publish a JPEG or PNG of it to get smaller copies with the metadata removed")
             }
             Announcement::RenderCacheCold { .. } => Ok(()),
+            Announcement::RenderCacheUsed { .. } => Ok(()),
+            Announcement::RenderCacheUnkeyed { .. } => Ok(()),
             Announcement::CacheFolderUnusable { .. } => {
                 write!(out, "make the folder writable, or pass `--cache <dir>` with one that is")
             }

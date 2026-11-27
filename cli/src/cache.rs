@@ -30,6 +30,11 @@ impl Caching {
         Pixels::cached(Settings::default(), self.disk.clone())
     }
 
+    /// The cache itself, for the pages a render takes from it and keeps in it.
+    pub(crate) fn disk(&self) -> &Disk {
+        &self.disk
+    }
+
     /// Keeps the cache within its bound, then what it has said.
     pub(crate) fn finish(&self) -> Vec<Notice> {
         self.disk.sweep();

@@ -34,7 +34,9 @@ pub use interpret::{Chosen, Fact, Heard, List, Marker, Reading, Rung, Standing, 
 /// What a theme takes and gives that the model holds, named here beside the [`Theme`] that uses
 /// them: the files it serves and where it says what it found.
 pub use model::{File, Record, Said};
-pub use render::{BaseUrl, BaseUrlError, Generated, RenderSettings, Rendered, Reserved};
+pub use render::{
+    BaseUrl, BaseUrlError, Generated, Host, Outcome, Reads, RenderSettings, Rendered, Reserved, Step, Unit,
+};
 
 /// The engine over one host: where bytes come from (`B`), what `ink.toml` pins (`P`), which
 /// formats read files (`F`) and which theme writes pages (`T`). Interpreting needs the first

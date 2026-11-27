@@ -36,9 +36,14 @@ fixture.workspace = true
 # test repositories are written object by object
 gix.workspace = true
 insta.workspace = true
+proptest.workspace = true
 
 [[bench]]
 name = "site"
+harness = false
+
+[[bench]]
+name = "incremental"
 harness = false
 
 # `publish = false` hides the binary from dist; this puts it back (dist-workspace.toml)

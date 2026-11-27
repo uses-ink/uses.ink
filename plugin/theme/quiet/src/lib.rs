@@ -17,9 +17,9 @@ mod document;
 mod page;
 mod style;
 
-use engine::{BaseUrl, File, Html, Record, Theme};
+use engine::{BaseUrl, File, Html, Reads, Record, Theme};
 use model::highlight::Highlight;
-use model::{Diagnostic, MediaType, Page, Problem, Route, Site, Subject};
+use model::{Diagnostic, Hash, MediaType, Page, PageKind, Problem, Route, Site, Subject};
 
 use document::Source;
 use page::Layout;
@@ -55,6 +55,28 @@ impl<H> Quiet<H> {
     }
 }
 
+/// The theme's own code, as compiled in, for [`Theme::identity`].
+#[derive(Clone, Copy, Debug)]
+struct Code;
+
+impl Code {
+    /// Every source file of this crate. A test holds the list to the folder.
+    const SOURCES: &'static [&'static [u8]] = &[
+        include_bytes!("lib.rs"),
+        include_bytes!("page.rs"),
+        include_bytes!("style.rs"),
+        include_bytes!("document.rs"),
+        include_bytes!("document/code.rs"),
+        include_bytes!("document/math.rs"),
+        include_bytes!("document/math/allow.rs"),
+        include_bytes!("document/note.rs"),
+        include_bytes!("document/picture.rs"),
+    ];
+
+    /// The versions of everything the workspace builds with.
+    const LOCK: &'static [u8] = include_bytes!("../../../../Cargo.lock");
+}
+
 impl<H: Highlight> Theme for Quiet<H> {
     fn name(&self) -> &'static str {
         "ink:theme-quiet"
@@ -62,6 +84,31 @@ impl<H: Highlight> Theme for Quiet<H> {
 
     fn assets(&self) -> Vec<File> {
         Self::files()
+    }
+
+    /// What its pages are made from besides the page and the site: its name and release, its
+    /// stylesheets, its own code as compiled in (a change to how a page is written changes the
+    /// key, with no version bump), and the workspace's `Cargo.lock`, which holds the versions of
+    /// `unspliced`, the highlighter's grammars and every other crate that reaches a page's
+    /// bytes. It has no tokens yet; when it has, they join this hash.
+    fn identity(&self) -> Option<Hash> {
+        let mut parts = vec![self.name().as_bytes(), env!("CARGO_PKG_VERSION").as_bytes(), Code::LOCK];
+        parts.extend(Code::SOURCES);
+        let files = Self::files();
+        parts.extend(files.iter().map(|file| file.bytes.as_slice()));
+        // each part is length-prefixed, so two lists of parts never join into the same bytes
+        let mut joined = Vec::new();
+        for part in parts {
+            joined.extend((part.len() as u64).to_le_bytes());
+            joined.extend(part);
+        }
+        Some(Hash::of(joined))
+    }
+
+    /// The home lists the posts and, on a generated home, every page; every other page shows
+    /// the site's navigation, its links and its images.
+    fn reads(&self, page: &Page) -> Reads {
+        if page.kind == PageKind::Home { Reads::Listed } else { Reads::Linked }
     }
 
     /// A page the theme could not write whole is `render.page.failed`: a bug in the theme.
@@ -75,6 +122,35 @@ impl<H: Highlight> Theme for Quiet<H> {
                 let problem = Problem::RenderPageFailed { reason: unwritten.to_string() };
                 Err(Diagnostic::new(problem).on(Subject::File(page.file.clone())))
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::path::Path;
+
+    use super::Code;
+
+    fn sources(dir: &Path, found: &mut Vec<Vec<u8>>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                sources(&path, found);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                found.push(std::fs::read(&path).unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn the_identity_holds_every_source_file_of_the_theme() {
+        let mut found = Vec::new();
+        sources(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut found);
+        let compiled: Vec<&[u8]> = Code::SOURCES.to_vec();
+        assert_eq!(found.len(), compiled.len(), "a source file is missing from `Code::SOURCES`, or listed twice");
+        for file in &found {
+            assert!(compiled.contains(&file.as_slice()));
         }
     }
 }

@@ -6,10 +6,12 @@ use std::fmt;
 use model::{Block, ContentPath, Diagnostic, Document, Inline, MediaType, Page, PageKind, Problem, Route, Site};
 use model::{Status, Subject};
 
+use crate::cache::Cache as Kept;
 use crate::error::Error;
 use crate::render::output::{Body, Entry, Output, Owner};
 use crate::render::policy::Cache;
-use crate::render::{Artifact, Reserved};
+use crate::render::unit::Units;
+use crate::render::{Artifact, Outcome, Reserved, Unit};
 use crate::{Record, Theme};
 
 /// A page the engine makes when the author wrote none, rendered by the theme like any other.
@@ -63,27 +65,48 @@ impl fmt::Display for Missing {
 }
 
 /// Every page through the theme, then a generated home when no page is the home. The page at
-/// `/404`, if the author wrote one, is served as the not-found page.
+/// `/404`, if the author wrote one, is served as the not-found page. A page whose key the cache
+/// holds is not rendered: its bytes are taken (decision 0045).
 #[derive(Debug)]
-pub(crate) struct Pages<'t, T> {
+pub(crate) struct Pages<'t, T, C> {
     pub(crate) theme: &'t T,
+    pub(crate) units: &'t Units<'t, C>,
 }
 
-impl<T: Theme> Pages<'_, T> {
-    /// Serves `page` as the theme renders it, recording what the theme says on the way; the
-    /// page at `/404` is served with status 404. A page the theme refuses is
-    /// `theme.page.refused`, caused by the theme's diagnostic.
-    fn serve(&self, page: &Page, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
+impl<T: Theme, C: Kept> Pages<'_, T, C> {
+    /// Serves `page` as the theme renders it, or as the cache kept it, recording what the
+    /// theme says on the way; the page at `/404` is served with status 404. A page the theme
+    /// refuses is `theme.page.refused`, caused by the theme's diagnostic. Only a page the theme
+    /// wrote without a word to say is kept: what it says is said again by the next build.
+    fn serve(&self, unit: Unit, page: &Page, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
         let status = if page.route == Reserved::NotFound.route()? { Status::NotFound } else { Status::Ok };
+        let entry = |body| Entry {
+            route: page.route.clone(),
+            media: MediaType::Html,
+            status,
+            body: Body::Bytes(body),
+            owner: Owner::Page(page.file.clone()),
+            cache: Cache::Revalidate,
+        };
+        let key = self.units.key(page, self.theme.reads(page)).unwrap_or_else(|source| {
+            out.fail(Error::Key { page: page.file.clone(), source });
+            None
+        });
+        if let Some(html) = key.as_ref().and_then(|key| self.units.take(key)) {
+            out.step(unit, Outcome::Reused);
+            out.serve(entry(html));
+            return Ok(());
+        }
+        out.step(unit, Outcome::Rendered);
+        let said = out.said();
         match self.theme.render(page, site, out) {
-            Ok(html) => out.serve(Entry {
-                route: page.route.clone(),
-                media: MediaType::Html,
-                status,
-                body: Body::Bytes(html.into()),
-                owner: Owner::Page(page.file.clone()),
-                cache: Cache::Revalidate,
-            }),
+            Ok(html) => {
+                let html: Vec<u8> = html.into();
+                if let (Some(key), true) = (&key, out.said() == said) {
+                    self.units.keep(key, &html);
+                }
+                out.serve(entry(html));
+            }
             Err(cause) => {
                 let problem = Problem::ThemePageRefused { theme: self.theme.name().to_owned() };
                 out.diagnose(Diagnostic::new(problem).on(Subject::File(page.file.clone())).caused_by(cause));
@@ -93,14 +116,15 @@ impl<T: Theme> Pages<'_, T> {
     }
 }
 
-impl<T: Theme> Artifact for Pages<'_, T> {
+impl<T: Theme, C: Kept> Artifact for Pages<'_, T, C> {
     fn files(&self, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
         for page in site.pages() {
-            self.serve(page, site, out)?;
+            self.serve(Unit::Page(page.file.clone()), page, site, out)?;
         }
         let root = Route::root();
         if site.home().is_none() && out.owner(&root).is_none() {
-            self.serve(&Generated::Home.page(site, root)?, site, out)?;
+            let home = Generated::Home;
+            self.serve(Unit::Generated(home), &home.page(site, root)?, site, out)?;
         }
         Ok(())
     }
@@ -108,18 +132,20 @@ impl<T: Theme> Artifact for Pages<'_, T> {
 
 /// The engine's not-found page, when no page of the site is at `/404`.
 #[derive(Debug)]
-pub(crate) struct NotFound<'t, T> {
+pub(crate) struct NotFound<'t, T, C> {
     pub(crate) theme: &'t T,
+    pub(crate) units: &'t Units<'t, C>,
 }
 
-impl<T: Theme> Artifact for NotFound<'_, T> {
+impl<T: Theme, C: Kept> Artifact for NotFound<'_, T, C> {
     fn files(&self, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
         let route = Reserved::NotFound.route()?;
         if out.owner(&route).is_some() {
             return Ok(());
         }
-        let page = Generated::NotFound.page(site, route)?;
-        Pages { theme: self.theme }.serve(&page, site, out)?;
+        let missing = Generated::NotFound;
+        let page = missing.page(site, route)?;
+        Pages { theme: self.theme, units: self.units }.serve(Unit::Generated(missing), &page, site, out)?;
         Ok(())
     }
 }

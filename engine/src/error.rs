@@ -87,6 +87,13 @@ pub enum Error {
         /// Why.
         source: std::io::Error,
     },
+    /// The cache key of a page could not be written.
+    Key {
+        /// The page's file.
+        page: model::ContentPath,
+        /// Why.
+        source: serde_json::Error,
+    },
     /// A date with no instant in range.
     Date {
         /// The date.
@@ -113,6 +120,7 @@ impl Error {
             Self::Served { route } => Problem::EngineRouteRepeated { route: route.clone() },
             Self::Site { .. } => Problem::EngineSiteRefused,
             Self::Xml { route, .. } => Problem::EngineXmlUnwritten { route: route.clone() },
+            Self::Key { page, .. } => Problem::EngineKeyUnwritten { path: page.clone() },
             Self::Date { when, .. } => Problem::EngineDateUnrepresentable { date: when.to_string() },
         }
     }
@@ -142,6 +150,7 @@ impl std::error::Error for Error {
             Self::Language { source, .. } => Some(source),
             Self::Site { source } => Some(source),
             Self::Xml { source, .. } => Some(source),
+            Self::Key { source, .. } => Some(source),
             Self::Date { source, .. } => Some(source),
             Self::Repeated { .. } | Self::Missing { .. } | Self::Served { .. } | Self::Images { .. } => None,
         }

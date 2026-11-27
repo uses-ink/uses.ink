@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use engine::Said;
+use engine::{Host, Said};
 use host_wasmtime::{Budget, Cache, Component, Runtime};
 use model::{DeployId, Diagnostic, Manifest, Problem};
 use serde::Serialize;
@@ -65,7 +65,7 @@ impl Compare<'_> {
         let loaded = Source::new(&self.build.dir, &self.build.origin).load()?;
         let caching = Caching::new(&self.build.dir, self.build.cache.as_deref());
         let images = caching.pixels();
-        let native = loaded.render(&address, &images);
+        let native = loaded.render(&address, Host::new(&images));
 
         let runtime =
             Runtime::new(Budget::default(), Some(Cache::new(self.components.join("cache")))).map_err(Self::plugin)?;
@@ -75,7 +75,7 @@ impl Compare<'_> {
         let theme =
             runtime.theme(&Plugin::Theme.bytes(self.components)?, address.base.clone()).map_err(Self::plugin)?;
         let through = Source::new(&self.build.dir, &self.build.origin).interpret(|_| (&format,))?;
-        let built = through.through(&address, &theme, &images);
+        let built = through.through(&address, &theme, Host::new(&images));
 
         // the native build's diagnostics, then what only the components said
         let mut diagnostics = native.diagnostics.clone();

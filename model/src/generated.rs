@@ -268,6 +268,12 @@ pub enum Problem {
         /// The route.
         route: Route,
     },
+    /// `engine.key.unwritten`: the cache key of {path} could not be made, so the page is rendered again by every build
+    #[serde(rename = "engine.key.unwritten")]
+    EngineKeyUnwritten {
+        /// The file.
+        path: ContentPath,
+    },
     /// `engine.date.unrepresentable`: {date} has no instant a feed can write
     #[serde(rename = "engine.date.unrepresentable")]
     EngineDateUnrepresentable {
@@ -524,6 +530,7 @@ impl Problem {
         "engine.route.repeated",
         "engine.site.refused",
         "engine.xml.unwritten",
+        "engine.key.unwritten",
         "engine.date.unrepresentable",
         "engine.image.miscounted",
         "source.budget.bytes",
@@ -595,6 +602,7 @@ impl Problem {
             Self::EngineRouteRepeated { .. } => "engine.route.repeated",
             Self::EngineSiteRefused => "engine.site.refused",
             Self::EngineXmlUnwritten { .. } => "engine.xml.unwritten",
+            Self::EngineKeyUnwritten { .. } => "engine.key.unwritten",
             Self::EngineDateUnrepresentable { .. } => "engine.date.unrepresentable",
             Self::EngineImageMiscounted { .. } => "engine.image.miscounted",
             Self::SourceBudgetBytes { .. } => "source.budget.bytes",
@@ -667,6 +675,7 @@ impl Problem {
             Self::EngineRouteRepeated { .. } => Severity::Error,
             Self::EngineSiteRefused => Severity::Error,
             Self::EngineXmlUnwritten { .. } => Severity::Error,
+            Self::EngineKeyUnwritten { .. } => Severity::Warning,
             Self::EngineDateUnrepresentable { .. } => Severity::Error,
             Self::EngineImageMiscounted { .. } => Severity::Error,
             Self::SourceBudgetBytes { .. } => Severity::Error,
@@ -739,6 +748,7 @@ impl Problem {
             Self::EngineRouteRepeated { .. } => Fault::Ours,
             Self::EngineSiteRefused => Fault::Ours,
             Self::EngineXmlUnwritten { .. } => Fault::Ours,
+            Self::EngineKeyUnwritten { .. } => Fault::Ours,
             Self::EngineDateUnrepresentable { .. } => Fault::Ours,
             Self::EngineImageMiscounted { .. } => Fault::Ours,
             Self::SourceBudgetBytes { .. } => Fault::Author,
@@ -978,6 +988,20 @@ pub enum Announcement {
         /// The folder on disk, as the system names it.
         folder: String,
     },
+    /// `render.cache.used`: {reused} pages were taken from the cache and {rendered} rendered
+    #[serde(rename = "render.cache.used")]
+    RenderCacheUsed {
+        /// How many were taken from the cache.
+        reused: u64,
+        /// How many were made again.
+        rendered: u64,
+    },
+    /// `render.cache.unkeyed`: the theme {theme} does not say what its pages are made from, so every page is rendered again by every build
+    #[serde(rename = "render.cache.unkeyed")]
+    RenderCacheUnkeyed {
+        /// The theme's name.
+        theme: String,
+    },
     /// `cache.folder.unusable`: {folder} cannot hold the cache, so nothing is kept between builds
     #[serde(rename = "cache.folder.unusable")]
     CacheFolderUnusable {
@@ -1041,6 +1065,8 @@ impl Announcement {
         "image.animation.kept",
         "image.format.kept",
         "render.cache.cold",
+        "render.cache.used",
+        "render.cache.unkeyed",
         "cache.folder.unusable",
         "cache.entry.corrupt",
         "cache.entry.unwritten",
@@ -1082,6 +1108,8 @@ impl Announcement {
             Self::ImageAnimationKept { .. } => "image.animation.kept",
             Self::ImageFormatKept { .. } => "image.format.kept",
             Self::RenderCacheCold { .. } => "render.cache.cold",
+            Self::RenderCacheUsed { .. } => "render.cache.used",
+            Self::RenderCacheUnkeyed { .. } => "render.cache.unkeyed",
             Self::CacheFolderUnusable { .. } => "cache.folder.unusable",
             Self::CacheEntryCorrupt { .. } => "cache.entry.corrupt",
             Self::CacheEntryUnwritten { .. } => "cache.entry.unwritten",
@@ -1199,6 +1227,9 @@ impl From<&Problem> for Coded {
             Problem::EngineSiteRefused => Coded::new("engine.site.refused", vec![]),
             Problem::EngineXmlUnwritten { route, .. } => {
                 Coded::new("engine.xml.unwritten", vec![Field::from(route.clone())])
+            }
+            Problem::EngineKeyUnwritten { path, .. } => {
+                Coded::new("engine.key.unwritten", vec![Field::from(path.clone())])
             }
             Problem::EngineDateUnrepresentable { date, .. } => {
                 Coded::new("engine.date.unrepresentable", vec![Field::from(date.clone())])
@@ -1342,6 +1373,7 @@ impl TryFrom<Coded> for Problem {
             "engine.route.repeated" => Self::EngineRouteRepeated { route: fields.next()? },
             "engine.site.refused" => Self::EngineSiteRefused,
             "engine.xml.unwritten" => Self::EngineXmlUnwritten { route: fields.next()? },
+            "engine.key.unwritten" => Self::EngineKeyUnwritten { path: fields.next()? },
             "engine.date.unrepresentable" => Self::EngineDateUnrepresentable { date: fields.next()? },
             "engine.image.miscounted" => Self::EngineImageMiscounted { count: fields.next()?, asked: fields.next()? },
             "source.budget.bytes" => Self::SourceBudgetBytes { size: fields.next()?, limit: fields.next()? },
@@ -1479,6 +1511,12 @@ impl From<&Announcement> for Coded {
             Announcement::RenderCacheCold { folder, .. } => {
                 Coded::new("render.cache.cold", vec![Field::from(folder.clone())])
             }
+            Announcement::RenderCacheUsed { reused, rendered, .. } => {
+                Coded::new("render.cache.used", vec![Field::from(*reused), Field::from(*rendered)])
+            }
+            Announcement::RenderCacheUnkeyed { theme, .. } => {
+                Coded::new("render.cache.unkeyed", vec![Field::from(theme.clone())])
+            }
             Announcement::CacheFolderUnusable { folder, .. } => {
                 Coded::new("cache.folder.unusable", vec![Field::from(folder.clone())])
             }
@@ -1536,6 +1574,8 @@ impl TryFrom<Coded> for Announcement {
             "image.animation.kept" => Self::ImageAnimationKept { path: fields.next()? },
             "image.format.kept" => Self::ImageFormatKept { path: fields.next()? },
             "render.cache.cold" => Self::RenderCacheCold { folder: fields.next()? },
+            "render.cache.used" => Self::RenderCacheUsed { reused: fields.next()?, rendered: fields.next()? },
+            "render.cache.unkeyed" => Self::RenderCacheUnkeyed { theme: fields.next()? },
             "cache.folder.unusable" => Self::CacheFolderUnusable { folder: fields.next()? },
             "cache.entry.corrupt" => Self::CacheEntryCorrupt { entry: fields.next()? },
             "cache.entry.unwritten" => Self::CacheEntryUnwritten { entry: fields.next()? },

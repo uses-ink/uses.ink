@@ -115,6 +115,11 @@ pub(crate) struct Channel<'a> {
 }
 
 impl<'a> Channel<'a> {
+    /// Whether `site` has feeds: a post is dated.
+    pub(crate) fn is_dated(site: &Site) -> bool {
+        site.pages().iter().any(|page| page.kind == PageKind::Post && page.date.is_some())
+    }
+
     /// The channel of `site`'s dated posts, or `None` when no post is dated.
     fn of(site: &'a Site, out: &mut Output<'_>) -> Result<Option<Self>, Error> {
         let mut items = Vec::new();

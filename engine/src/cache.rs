@@ -1,5 +1,5 @@
-//! Work kept between builds. A build that makes something expensive (an image's copies now, a
-//! render unit once the render unit index lands) puts it under a [`Key`] naming everything it
+//! Work kept between builds. A build that makes something expensive (an image's copies, a
+//! render unit: a page's HTML) puts it under a [`Key`] naming everything it
 //! was made from; a later build with the same key takes it instead of making it again. Values
 //! are bytes, so a cache can hold them by their hash and check them when they come back.
 //!
@@ -82,6 +82,8 @@ impl fmt::Display for Key {
 pub enum Kind {
     /// One image's copies and placeholder, as the host's image work made them.
     Image,
+    /// One page as the theme rendered it: its HTML (decision 0045).
+    Page,
 }
 
 impl Kind {
@@ -89,6 +91,7 @@ impl Kind {
     pub const fn name(self) -> &'static str {
         match self {
             Self::Image => "image",
+            Self::Page => "page",
         }
     }
 }
