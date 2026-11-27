@@ -222,6 +222,20 @@ ends returns its result and report; a job still running exits 75, and calling `w
 safe. A foreground `farm` call that outlives its timeout does the same: it lets the job go on,
 prints the id and exits 75.
 
+### The Bash tool has its own timeout
+
+An agent's Bash tool moves any call to the background after 2 minutes by default, and also
+when a message reaches the agent while the call runs. A `farm` call blocks for up to 9 minutes,
+so most gates cross that line. Two rules keep the agent out of trouble:
+
+1. Pass `timeout: 600000` to the Bash tool on every `farm` call that may run past 2 minutes
+   (`check`, `cargo nextest`, `cargo clippy`, `bless`, `wait`).
+2. When the tool reports "moved to the background", the call is not lost. Its result arrives as
+   a completion notice. Do nothing in the meantime: do not read the output file in a loop, do
+   not write `pgrep`, `until`, `while` or `sleep`, and do not start the same job a second time.
+   Either end the turn with one line saying what you wait for, or block once with
+   `farm wait <id>` and `timeout: 600000`.
+
 Ctrl-c, or a dropped connection, stops a foreground job on the host and frees its slot. A
 detached job, and a foreground job past its timeout, are left running on purpose.
 
@@ -330,8 +344,11 @@ Paste this into an agent's prompt:
 > commit, run `farm check` once and fix what it reports; if a golden file changed on
 > purpose, run `farm bless` and read every diff it lists. Format with `farm fmt`, never with
 > plain `cargo fmt`. Never poll and never write
-> sleep loops: start long jobs with `--detach` and block with `farm wait <id>`; exit
-> code 75 means still running, call `wait` again. If the queue says you are waiting, wait: the
+> `pgrep`, `until`, `while` or `sleep` loops. Pass `timeout: 600000` to the Bash tool on every
+> `farm` call that may run past 2 minutes. If the tool says a call was moved to the background,
+> its result arrives as a notice: end your turn with one line, or block once with `farm wait
+> <id>`. Start long jobs with `--detach` and block with `farm wait <id>`; exit code 75 means
+> still running, call `wait` again. If the queue says you are waiting, wait: the
 > slots keep jobs from starving each other, so do not retry a test to get past a failure. Make a workspace with `farm workspace <name>`, not `jj
 > workspace add`. Exit codes: 0 passed, 1 failed, 2 usage, 3 farm trouble, 4 refused, 75 still
 > running, 124 hit its limit.
