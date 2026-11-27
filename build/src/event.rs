@@ -104,3 +104,24 @@ impl Events for Vec<Event> {
         self.push(event);
     }
 }
+
+impl trace::Kind for Trigger {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Manual => "manual",
+            Self::Push => "push",
+            Self::Poll => "poll",
+            Self::Upload => "upload",
+        }
+    }
+}
+
+impl trace::Kind for Status {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Succeeded => "succeeded",
+            Self::Refused => "refused",
+            Self::Failed => "failed",
+        }
+    }
+}

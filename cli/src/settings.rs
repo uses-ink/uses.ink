@@ -70,6 +70,18 @@ pub(crate) struct Ui {
     pub(crate) width: Option<u16>,
 }
 
+/// The `[log]` table: what the log says when no flag or variable does (`docs/tracing.md`).
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub(crate) struct Log {
+    /// An `INK_LOG` filter.
+    pub(crate) filter: Option<String>,
+    /// A file for JSON lines.
+    pub(crate) file: Option<PathBuf>,
+    /// `pretty`, `compact` or `json`.
+    pub(crate) format: Option<String>,
+}
+
 /// The `[account]` table: which API, which site and which token the remote commands use when the
 /// flags and the environment say nothing.
 #[derive(Clone, Default, Deserialize)]
@@ -96,6 +108,7 @@ impl fmt::Debug for Account {
 #[serde(default, deny_unknown_fields)]
 pub(crate) struct Preferences {
     pub(crate) ui: Ui,
+    pub(crate) log: Log,
     pub(crate) account: Account,
 }
 

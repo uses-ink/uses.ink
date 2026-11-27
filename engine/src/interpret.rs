@@ -39,6 +39,7 @@ use crate::interpret::stage::Stage;
 use crate::interpret::tree::{Layout, Root};
 use crate::interpret::vault::Settings;
 use crate::{Blobs, Engine, Formats, Pins};
+use trace::Field as _;
 
 /// What interpreting a snapshot understood.
 #[derive(Debug)]
@@ -91,32 +92,64 @@ impl<B: Blobs, P: Pins, F: Formats, T> Engine<B, P, F, T> {
         self.run(snapshot, Journal::asking(code, subject))
     }
 
+    /// Says how many decisions, diagnostics, notices and published pages a run made.
+    fn said([decisions, diagnostics, notices, published]: [usize; 4]) {
+        trace::debug!(
+            name: trace::event::INTERPRETED,
+            decisions = trace::Count::from(decisions).field(),
+            diagnostics = trace::Count::from(diagnostics).field(),
+            notices = trace::Count::from(notices).field(),
+            published = trace::Count::from(published).field(),
+        );
+    }
+
     /// Every stage in order, recording into `journal`.
+    #[allow(clippy::too_many_lines, reason = "the stages in order, each named for the log")]
     fn run(&self, snapshot: &Snapshot, mut journal: Journal) -> Understood {
         let pins = &self.pins;
-        let scope = Root { formats: &self.formats, pins }.run(snapshot, &mut journal);
-        let selection = Layout { pins }.run(&scope, &mut journal);
-        let vault = Settings { blobs: &self.blobs }.run(&scope, &mut journal);
-        let kept = Files { pins, templates: &vault.templates }.run(&scope, &mut journal);
+        let scope =
+            Root { formats: &self.formats, pins }.step((trace::Stage::Discover, "root"), snapshot, &mut journal);
+        let selection = Layout { pins }.step((trace::Stage::Discover, "layout"), &scope, &mut journal);
+        let vault = Settings { blobs: &self.blobs }.step((trace::Stage::Discover, "vault"), &scope, &mut journal);
+        let kept =
+            Files { pins, templates: &vault.templates }.step((trace::Stage::Discover, "files"), &scope, &mut journal);
         let kept_paths = kept.iter().map(|file| file.entry.path.clone()).collect();
-        let Split { mut sources, files } = Read { blobs: &self.blobs, formats: &self.formats }.run(kept, &mut journal);
-        let published = Pages { pins, selection }.run(&sources, &mut journal);
+        let Split { mut sources, files } = Read { blobs: &self.blobs, formats: &self.formats }.step(
+            (trace::Stage::Source, "read"),
+            kept,
+            &mut journal,
+        );
+        let published = Pages { pins, selection }.step((trace::Stage::Decide, "pages"), &sources, &mut journal);
         let pages = sources.iter().map(|source| source.path.clone()).collect();
         let aliases: Aliases = sources.iter().collect();
         let targets =
             Targets { scope: &scope, kept: kept_paths, pages, published, aliases, attachments: vault.attachments };
-        let used = Links { targets: &targets }.run(&mut sources, &mut journal);
-        Embeds { published: &targets.published }.run(&mut sources, &mut journal);
+        let used = Links { targets: &targets }.step((trace::Stage::Decide, "links"), &mut sources, &mut journal);
+        Embeds { published: &targets.published }.step((trace::Stage::Decide, "embeds"), &mut sources, &mut journal);
         let published = targets.published;
-        let assets = Assets { pins, used: &used }.run(&files, &mut journal);
-        let home = Site { pins, scope: &scope, published: &published }.run(&sources, &mut journal);
+        let assets = Assets { pins, used: &used }.step((trace::Stage::Decide, "assets"), &files, &mut journal);
+        let home = Site { pins, scope: &scope, published: &published }.step(
+            (trace::Stage::Decide, "site"),
+            &sources,
+            &mut journal,
+        );
         let shown: Vec<_> = sources.iter().filter(|source| published.contains(&source.path)).collect();
-        let routes = Routing { home: home.as_ref(), assets: &assets }.run(&shown, &mut journal);
+        let routes = Routing { home: home.as_ref(), assets: &assets }.step(
+            (trace::Stage::Decide, "routes"),
+            &shown,
+            &mut journal,
+        );
         let parts = Parts { scope: &scope, sources, assets: &assets, routes: &routes };
-        let site = Assemble.run(parts, &mut journal);
-        Guard { selection }.run((), &mut journal);
+        let site = Assemble.step((trace::Stage::Decide, "assemble"), parts, &mut journal);
+        Guard { selection }.step((trace::Stage::Decide, "guard"), (), &mut journal);
         let site = site.filter(|_| !journal.stops());
         let (decisions, diagnostics, notices, trace) = journal.into_parts();
+        Self::said([
+            decisions.len(),
+            diagnostics.len(),
+            notices.len(),
+            site.as_ref().map_or(0, |site| site.pages().len()),
+        ]);
         Understood { decisions, diagnostics, notices, site, trace, selection }
     }
 }

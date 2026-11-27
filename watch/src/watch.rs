@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::time::Duration;
+use trace::Field as _;
 
 use build::{BuildId, Source, Trigger};
 use clock::{Clock, Draw, Slept};
@@ -143,6 +144,24 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
                 Err(outcome) => (outcome, None),
             },
         };
+        match &outcome {
+            Outcome::Failed(error) => trace::warn!(
+                name: trace::event::WATCH_POLLED,
+                site = trace::Shown(site).field(),
+                outcome = "failed",
+                error = trace::Failure(error.as_ref()).field(),
+            ),
+            Outcome::Queued { build, .. } => trace::info!(
+                name: trace::event::WATCH_QUEUED,
+                site = trace::Shown(site).field(),
+                build = trace::Shown(build).field(),
+            ),
+            other => trace::debug!(
+                name: trace::event::WATCH_POLLED,
+                site = trace::Shown(site).field(),
+                outcome = if matches!(other, Outcome::Unchanged) { "unchanged" } else { "duplicate" },
+            ),
+        }
         if let Some(tracked) = self.tracked.get_mut(&site) {
             tracked.wait = if moved.is_some() { interval.base() } else { interval.backed(tracked.wait) };
             if moved.is_some() {

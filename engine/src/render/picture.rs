@@ -67,6 +67,7 @@ impl Raster {
 impl<B: Blobs, I: Images> Prepare<'_, B, I> {
     /// Asks the host for every raster image of `site` at once, and says what it refused or kept.
     pub(crate) fn run(&self, site: &Site, out: &mut Output<'_>) -> Pictures {
+        let _stage = trace::stage!(trace::Stage::Image, "prepare").entered();
         let mut read = Vec::new();
         for asset in site.assets() {
             let Some(media) = Raster::of(asset) else { continue };

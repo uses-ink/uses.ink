@@ -3,6 +3,7 @@
 use std::future::Future;
 use std::pin::pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use axum::Router;
@@ -21,7 +22,9 @@ use tokio::time::Instant;
 use crate::body::Pump;
 use crate::bridge::{Mount, Peer};
 use crate::error::Error;
-use crate::event::{Answered, Called, Event, Kind, Observe, Stopped};
+use trace::{Field as _, Instrument as _};
+
+use crate::event::{Answered, Called, Clip, Event, Kind, Logged as _, Observe, Stopped};
 use crate::linger::Linger;
 use crate::respond::{Code, Fields};
 
@@ -45,6 +48,8 @@ struct Inner<S: Sites, B: Blobs<Scope = S::Scope>, O> {
     gate: Arc<Semaphore>,
     scheme: Scheme,
     api: Option<Mount>,
+    /// The next request's number, for its span.
+    requests: AtomicU64,
 }
 
 impl<S, B, O> Server<S, B, O>
@@ -64,7 +69,16 @@ where
         }
         let edge = edge.with_probe("/healthz".parse().map_err(Error::Probe)?);
         let gate = Arc::new(Semaphore::new(edge.limits().requests));
-        Ok(Self { inner: Arc::new(Inner { edge, observe: Arc::new(observe), gate, scheme, api: None }) })
+        Ok(Self {
+            inner: Arc::new(Inner {
+                edge,
+                observe: Arc::new(observe),
+                gate,
+                scheme,
+                api: None,
+                requests: AtomicU64::new(0),
+            }),
+        })
     }
 
     /// Serves the API at `mount`: a request whose `Host` is the mount's host is an API call and
@@ -91,7 +105,7 @@ where
         let (stream, linger) = match Linger::new(stream, limits) {
             Ok(pair) => pair,
             Err(source) => {
-                self.inner.observe.event(&Event::Connection { source: Box::new(source) });
+                self.inner.observe.say(Event::Connection { source: Box::new(source) });
                 return;
             }
         };
@@ -106,7 +120,7 @@ where
         tokio::spawn(async move {
             let _slot = slot;
             if let Err(source) = connection.await {
-                observe.event(&Event::Connection { source: Box::new(source) });
+                observe.say(Event::Connection { source: Box::new(source) });
             }
             // hyper has dropped its handle: end the reply before the socket can be reset
             linger.close().await;
@@ -119,7 +133,7 @@ where
         let address = listener.local_addr().map_err(Error::Address)?;
         let observe = &self.inner.observe;
         let limits = *self.inner.edge.limits();
-        observe.event(&Event::Listening { address });
+        observe.say(Event::Listening { address });
         let router = self.router();
         let graceful = GracefulShutdown::new();
         let mut shutdown = pin!(shutdown);
@@ -134,21 +148,24 @@ where
             let Ok(slot) = slot else { break };
             tokio::select! {
                 accepted = listener.accept() => match accepted {
-                    Ok((stream, _)) => self.connect(&graceful, router.clone(), Accepted { stream, slot }),
+                    Ok((stream, peer)) => {
+                        trace::debug!(name: trace::event::EDGE_ACCEPTED, peer = trace::Shown(peer).field());
+                        self.connect(&graceful, router.clone(), Accepted { stream, slot });
+                    }
                     Err(source) => {
-                        observe.event(&Event::Connection { source: Box::new(source) });
+                        observe.say(Event::Connection { source: Box::new(source) });
                         tokio::time::sleep(REST).await;
                     }
                 },
                 () = &mut shutdown => break,
             }
         }
-        observe.event(&Event::Stopping);
+        observe.say(Event::Stopping);
         let stopped = tokio::select! {
             () = graceful.shutdown() => Stopped::Drained,
             () = tokio::time::sleep(limits.drain) => Stopped::Abandoned { limit: limits.drain },
         };
-        observe.event(&Event::Stopped(stopped));
+        observe.say(Event::Stopped(stopped));
         Ok(())
     }
 }
@@ -178,6 +195,12 @@ where
 {
     /// One request: within the concurrency limit, within the lookup budget, answered by the edge.
     async fn answer(State(inner): State<Arc<Self>>, request: Request) -> Response<Body> {
+        let id = inner.requests.fetch_add(1, Ordering::Relaxed);
+        let span = trace::request!(id, request.method().as_str(), Clip(request.uri().path()));
+        Self::serve(inner, request).instrument(span).await
+    }
+
+    async fn serve(inner: Arc<Self>, request: Request) -> Response<Body> {
         if let Some(mount) = inner.api.as_ref().filter(|mount| Self::names(mount, &request)) {
             return inner.call(mount, request).await;
         }
@@ -218,7 +241,7 @@ where
         let path: String = edge_api::Enter::redact(request.uri().path()).chars().take(200).collect();
         let response = mount.bridge.call(request).await;
         let status = response.status().as_u16();
-        self.observe.event(&Event::Called(Called { method, path, status, took: started.elapsed() }));
+        self.observe.say(Event::Called(Called { method, path, status, took: started.elapsed() }));
         response
     }
 
@@ -249,6 +272,9 @@ where
         permit: Option<tokio::sync::OwnedSemaphorePermit>,
     ) -> Response<Body> {
         let edge::Answer { response, outcome, hostname } = reply;
+        if let Some(hostname) = &hostname {
+            trace::Span::current().record("host", trace::Shown(hostname.as_str()).field());
+        }
         let mut kind = Kind::from(&outcome);
         let (refusal, mut fault) = match outcome {
             Outcome::Refused(refusal) => (Some(refusal), None),
@@ -264,7 +290,7 @@ where
             fault = Some(Box::new(malformed));
         }
         *built.status_mut() = Code(status).into();
-        self.observe.event(&Event::Answered(Answered {
+        self.observe.say(Event::Answered(Answered {
             method: seen.method.clone(),
             path: seen.target.split('?').next().unwrap_or_default().chars().take(200).collect(),
             hostname,
@@ -274,6 +300,9 @@ where
             refusal,
             fault,
         }));
+        let span = trace::Span::current();
+        span.record("status", trace::Count(u64::from(built.status().as_u16())).field());
+        span.record("took_us", trace::Took(seen.started.elapsed()).field());
         built
     }
 }

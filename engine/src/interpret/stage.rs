@@ -11,4 +11,13 @@ pub(crate) trait Stage<I> {
 
     /// Runs the step.
     fn run(&self, input: I, journal: &mut Journal) -> Self::Out;
+
+    /// Runs inside a `stage` span of `at`'s stage, named `at`'s step.
+    fn step(&self, at: (trace::Stage, &'static str), input: I, journal: &mut Journal) -> Self::Out
+    where
+        Self: Sized,
+    {
+        let _span = trace::stage!(at.0, at.1).entered();
+        self.run(input, journal)
+    }
 }

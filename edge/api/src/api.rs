@@ -5,6 +5,7 @@ use clock::{Clock, Draw};
 use control::{Control, Id, NewJob, NewSite, Ports, Requested, Resumed, Site, SiteKind};
 use model::git::Scheme;
 use serde::Serialize;
+use trace::{Field as _, Instrument as _};
 
 use crate::Route;
 use crate::body::{self, AddSite, Rollback, Unreadable};
@@ -57,15 +58,35 @@ impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
 
     /// Answers `request`. Never fails: a failure is a reply that says what went wrong.
     pub async fn respond(&self, request: &Request) -> Reply {
-        match self.answer(request).await {
-            Ok(reply) => reply,
-            Err(fault) => fault.reply(),
+        let span = trace::api!(request.method);
+        let reply = async {
+            match self.answer(request).await {
+                Ok(reply) => reply,
+                Err(fault) => {
+                    trace::warn!(name: trace::event::API_ANSWERED, error = trace::Failure(&fault).field());
+                    fault.reply()
+                }
+            }
         }
+        .instrument(span.clone())
+        .await;
+        span.record("status", trace::Count(u64::from(reply.status.code())).field());
+        reply
     }
 
     async fn answer(&self, request: &Request) -> Result<Reply, Fault<P>> {
-        let principal = self.principal(request).await?;
+        let principal = self.principal(request).await;
+        // what was decided, and never the header or the token
+        match &principal {
+            Ok(_) => trace::debug!(name: trace::event::API_AUTH, outcome = "granted"),
+            Err(Fault::Denied(denied)) => {
+                trace::warn!(name: trace::event::API_AUTH, outcome = trace::Kind::kind(denied));
+            }
+            Err(_) => trace::error!(name: trace::event::API_AUTH, outcome = "unavailable"),
+        }
+        let principal = principal?;
         let call = Call::parse(request.method, &request.path).map_err(Fault::Route)?;
+        trace::Span::current().record("route", trace::Kind::kind(&call));
         let body = match &request.body {
             Payload::Whole(body) => body.as_slice(),
             Payload::Over { limit } => return Err(Fault::Large { limit: *limit }),

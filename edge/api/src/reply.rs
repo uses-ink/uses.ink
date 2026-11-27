@@ -230,3 +230,14 @@ impl Reply {
         Self::new(status, Media::Empty, Vec::new())
     }
 }
+
+impl trace::Kind for Method {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Get => "get",
+            Self::Post => "post",
+            Self::Put => "put",
+            Self::Delete => "delete",
+        }
+    }
+}

@@ -35,6 +35,12 @@ pub mod event {
     pub const BUILD_START: &str = "build.start";
     /// A build ended, with its status.
     pub const BUILD_END: &str = "build.end";
+    /// The engine finished interpreting: counts of what it decided and said.
+    pub const INTERPRETED: &str = "engine.interpreted";
+    /// The engine finished rendering: counts of units reused and rendered.
+    pub const RENDERED: &str = "engine.rendered";
+    /// A folder or a repository was opened as a source.
+    pub const SOURCE_OPENED: &str = "source.opened";
     /// A source gave a snapshot.
     pub const SOURCE_FETCHED: &str = "source.fetched";
     /// The planner decided what to do with one unit, and why.

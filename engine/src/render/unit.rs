@@ -45,6 +45,47 @@ pub enum Unit {
     Generated(Generated),
 }
 
+impl Unit {
+    /// The kind of `unit` span this is.
+    pub(crate) const fn layer(&self) -> trace::Unit {
+        match self {
+            Self::Page(_) => trace::Unit::Page,
+            Self::Generated(_) => trace::Unit::Generated,
+        }
+    }
+}
+
+impl trace::Kind for Outcome {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Reused => "reused",
+            Self::Rendered => "rendered",
+        }
+    }
+}
+
+/// Why the planner chose what it did for one unit. The cache is keyed by a digest of everything
+/// the unit read, so the reason is how the lookup went, not which input changed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Reason {
+    /// The cache held the unit under its key.
+    Hit,
+    /// The cache held nothing usable under the key: absent, or an entry that was not one page.
+    Miss,
+    /// No cache, or a theme with no identity to key by: every build renders.
+    Unkeyed,
+}
+
+impl trace::Kind for Reason {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Hit => "hit",
+            Self::Miss => "miss",
+            Self::Unkeyed => "unkeyed",
+        }
+    }
+}
+
 impl fmt::Display for Unit {
     /// The file the page is read from, or the file a generated page stands for.
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {

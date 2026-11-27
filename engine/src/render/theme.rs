@@ -10,9 +10,10 @@ use crate::cache::Cache as Kept;
 use crate::error::Error;
 use crate::render::output::{Body, Entry, Output, Owner};
 use crate::render::policy::Cache;
-use crate::render::unit::Units;
+use crate::render::unit::{Reason, Units};
 use crate::render::{Artifact, Outcome, Reserved, Unit};
 use crate::{Record, Theme};
+use trace::Field as _;
 
 /// A page the engine makes when the author wrote none, rendered by the theme like any other.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,12 +81,23 @@ pub(crate) struct Served<'p> {
 }
 
 impl<T: Theme, C: Kept> Pages<'_, T, C> {
+    /// Says what the planner decided for the unit in scope, and why.
+    fn planned(outcome: Outcome, reason: Reason, key: Option<&crate::cache::Key>) {
+        trace::debug!(
+            name: trace::event::UNIT_PLANNED,
+            outcome = trace::Kind::kind(outcome),
+            reason = trace::Kind::kind(reason),
+            key = key.map(|key| trace::Digest(key.digest.as_bytes()).field()),
+        );
+    }
+
     /// Serves `page` as the theme renders it, or as the cache kept it, recording what the
     /// theme says on the way; the page at `/404` is served with status 404. A page the theme
     /// refuses is `theme.page.refused`, caused by the theme's diagnostic. Only a page the theme
     /// wrote without a word to say is kept: what it says is said again by the next build.
     fn serve(&self, served: Served<'_>, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
         let Served { unit, page } = served;
+        let _unit = trace::unit!(unit.layer(), &unit).entered();
         let status = if page.route == Reserved::NotFound.route()? { Status::NotFound } else { Status::Ok };
         let entry = |body| Entry {
             route: page.route.clone(),
@@ -100,10 +112,12 @@ impl<T: Theme, C: Kept> Pages<'_, T, C> {
             None
         });
         if let Some(html) = key.as_ref().and_then(|key| self.units.take(key)) {
+            Self::planned(Outcome::Reused, Reason::Hit, key.as_ref());
             out.step(unit, Outcome::Reused);
             out.serve(entry(html));
             return Ok(());
         }
+        Self::planned(Outcome::Rendered, if key.is_some() { Reason::Miss } else { Reason::Unkeyed }, key.as_ref());
         out.step(unit, Outcome::Rendered);
         let said = out.said();
         match self.theme.render(page, site, out) {

@@ -11,7 +11,7 @@
 //! decision (`ink explain --why`). This crate is about the process, not about decisions.
 
 mod field;
-mod name;
+pub mod name;
 mod tree;
 
 #[cfg(any(feature = "layers", feature = "capture"))]
@@ -35,13 +35,13 @@ mod timing;
 
 pub use field::{Count, Digest, Failure, Field, Kind, Located, Redacted, Secret, Short, Shown, Size, Status, Took};
 pub use name::{event, span};
-pub use tree::{Io, Slot, Stage, Unit};
+/// A span that was entered and stays entered until it drops.
+pub use tracing::span::EnteredSpan as Entered;
 /// The macros of `tracing` that write events, so a crate depends on this one alone. An event
 /// is written `trace::info!(name: event::UNIT_PLANNED, bytes = Size(n).field())`.
 pub use tracing::{self, Instrument, debug, error, info, trace, warn};
-/// A span that was entered and stays entered until it drops.
-pub use tracing::span::EnteredSpan as Entered;
 pub use tracing::{Level, Span};
+pub use tree::{Io, Stage, Unit};
 
 #[cfg(feature = "capture")]
 pub use capture::{Capture, Seen, Shape};

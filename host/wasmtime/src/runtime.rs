@@ -2,6 +2,9 @@
 //! budget of each call, the cache, the epoch's ticker and the host's grammars.
 
 use std::sync::Arc;
+use std::time::Instant;
+
+use trace::Field as _;
 
 use host_native::Grammars;
 use model::Bytes;
@@ -53,10 +56,23 @@ impl Runtime {
 impl Shared {
     /// The component in `bytes`, compiled or from the cache.
     pub(crate) fn compile(&self, plugin: &str, bytes: &[u8]) -> Result<(Compiled, Origin), Error> {
-        match &self.cache {
+        let loaded = match &self.cache {
             Some(cache) => cache.load(&self.engine, plugin, bytes),
             None => Ok((Compile(plugin).run(&self.engine, bytes)?, Origin::Compiled)),
+        };
+        if let Ok((_, origin)) = &loaded {
+            trace::debug!(
+                name: trace::event::PLUGIN_LOADED,
+                plugin = trace::Shown(plugin).field(),
+                origin = match origin {
+                    Origin::Compiled => "compiled",
+                    Origin::Cached => "cached",
+                    _ => "replaced",
+                },
+                bytes = trace::Size::from(bytes.len()).field(),
+            );
         }
+        loaded
     }
 
     /// A fresh store for one instance of `plugin`, its memory limited.
@@ -84,6 +100,12 @@ impl Shared {
 
     /// Like [`Shared::call`], with `budget` in place of the runtime's: a source's fetch takes
     /// longer than a page's render.
+    /// Records on a call's span what it used: fuel, and how long it took.
+    fn measured(span: &trace::Span, started: Instant, fuel: u64) {
+        span.record("fuel", trace::Count(fuel).field());
+        span.record("took_us", trace::Took(started.elapsed()).field());
+    }
+
     pub(crate) fn call_in<T>(
         budget: &Budget,
         store: &mut Store<State>,
@@ -92,12 +114,19 @@ impl Shared {
         // A refusal belongs to the call that met it: one a plugin handled on an earlier call
         // (a theme's session lives across pages) must not name a later trap.
         store.data_mut().limit.refused = None;
+        let span = trace::plugin!(store.data().plugin());
+        let _entered = span.clone().entered();
+        // the clock is read only when something listens
+        let started = (!span.is_disabled()).then(Instant::now);
         let fueled = store.set_fuel(budget.fuel);
         // Never zero: a runtime refuses a zero tick, and a source's terms must carry its tick.
         store.set_epoch_deadline(budget.ticks().unwrap_or(1));
         store.epoch_deadline_trap();
         let result = fueled.and_then(|()| call(store));
-        result.map_err(|source| {
+        if let Some(started) = started {
+            Self::measured(&span, started, budget.fuel.saturating_sub(store.get_fuel().unwrap_or(budget.fuel)));
+        }
+        let result = result.map_err(|source| {
             let bytes = |wanted| Bytes(u64::try_from(wanted).unwrap_or(u64::MAX));
             // Fuel and time end a call whatever a growth refusal said before them.
             match source.downcast_ref::<Trap>() {
@@ -117,7 +146,15 @@ impl Shared {
                 None => {}
             }
             Failure::Trapped { source }
-        })
+        });
+        if let Err(failure) = &result {
+            trace::warn!(
+                name: trace::event::PLUGIN_REFUSED,
+                plugin = trace::Shown(store.data().plugin()).field(),
+                error = trace::Failure(failure).field(),
+            );
+        }
+        result
     }
 }
 

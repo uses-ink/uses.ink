@@ -56,6 +56,7 @@ serde_json.workspace = true
 theme-quiet.workspace = true
 tokio.workspace = true
 toml.workspace = true
+trace = { workspace = true, features = ["layers"] }
 watch.workspace = true
 watch-git.workspace = true
 

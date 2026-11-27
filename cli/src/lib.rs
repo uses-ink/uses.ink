@@ -28,6 +28,7 @@ mod explain;
 mod format;
 mod help;
 mod hosting;
+mod logging;
 mod man;
 mod out;
 mod output;
@@ -109,6 +110,7 @@ impl Cli {
 
     /// Runs the command, writing its result to `out` and everything else to `err`.
     pub fn run(self, out: &mut dyn std::io::Write, err: &mut dyn std::io::Write) -> Exit {
+        let _logging = self.logged(err);
         let level = if self.verbose > 0 { output::Level::Notice } else { output::Level::Warning };
         let mut io = output::Io::new(out, err, self.json, level);
         let settings = match self.settings() {

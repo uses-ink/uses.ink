@@ -126,6 +126,11 @@ impl State {
         Self { plugin: plugin.into(), grammars, said: Said::default(), limit, sourcing: Sourcing::default() }
     }
 
+    /// The plugin's name, as its spans and events carry it.
+    pub(crate) fn plugin(&self) -> &str {
+        &self.plugin
+    }
+
     /// This state with `sourcing` as what its `git` calls use.
     pub(crate) fn sourcing(mut self, sourcing: Sourcing) -> Self {
         self.sourcing = sourcing;

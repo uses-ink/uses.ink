@@ -113,3 +113,12 @@ impl Encoded {
         Self { media, dimensions, bytes }
     }
 }
+
+impl trace::Kind for Kept {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Animated => "animated",
+            Self::Format => "format",
+        }
+    }
+}

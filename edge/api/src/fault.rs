@@ -274,3 +274,14 @@ impl<P: Ports + 'static> Fault<P> {
         reply
     }
 }
+
+impl trace::Kind for &Denied {
+    /// Why the caller was turned away, never the token.
+    fn kind(self) -> &'static str {
+        match self {
+            Denied::Missing => "missing",
+            Denied::Malformed(_) => "malformed",
+            Denied::Unknown => "unknown",
+        }
+    }
+}

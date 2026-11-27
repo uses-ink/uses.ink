@@ -352,7 +352,8 @@ impl Logging {
         if stderr && self.format == Format::Json {
             lines.push(Lines { sink: human_sink.clone(), spans: self.spans });
         } else if stderr {
-            human = Some(Human { sink: human_sink.clone(), format: self.format, spans: self.spans, paint: self.paint() });
+            human =
+                Some(Human { sink: human_sink.clone(), format: self.format, spans: self.spans, paint: self.paint() });
         }
         let table = file.clone().map(|sink| Lines { sink, spans: self.spans });
         lines.extend(table.clone());
@@ -438,10 +439,7 @@ mod test {
             .verbosity(3)
             .filter("edge=warn".parse().unwrap());
         let by_area: Vec<_> = logging.effective().directives().iter().map(|d| (d.area.to_string(), d.level)).collect();
-        assert_eq!(
-            by_area,
-            [("ink".to_owned(), LevelFilter::INFO), ("edge".to_owned(), LevelFilter::WARN)]
-        );
+        assert_eq!(by_area, [("ink".to_owned(), LevelFilter::INFO), ("edge".to_owned(), LevelFilter::WARN)]);
     }
 
     #[test]

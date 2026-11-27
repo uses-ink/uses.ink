@@ -4693,6 +4693,7 @@ dependencies = [
  "uses-ink-blob",
  "uses-ink-blob-conformance",
  "uses-ink-model",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -4702,6 +4703,7 @@ dependencies = [
  "serde",
  "uses-ink-blob",
  "uses-ink-model",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -4732,6 +4734,7 @@ dependencies = [
  "uses-ink-host-native",
  "uses-ink-model",
  "uses-ink-theme-quiet",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -4787,6 +4790,7 @@ dependencies = [
  "uses-ink-secret",
  "uses-ink-secret-local",
  "uses-ink-theme-quiet",
+ "uses-ink-trace",
  "uses-ink-watch",
  "uses-ink-watch-git",
 ]
@@ -4835,6 +4839,7 @@ dependencies = [
  "uses-ink-queue-local",
  "uses-ink-secret",
  "uses-ink-secret-local",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -4842,6 +4847,7 @@ name = "uses-ink-db"
 version = "0.0.0"
 dependencies = [
  "sea-query",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -4860,6 +4866,7 @@ dependencies = [
  "rusqlite",
  "uses-ink-db",
  "uses-ink-db-conformance",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -4901,6 +4908,7 @@ dependencies = [
  "uses-ink-model",
  "uses-ink-queue-local",
  "uses-ink-secret-local",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -4913,10 +4921,10 @@ dependencies = [
  "hyper",
  "hyper-util",
  "tokio",
- "tracing",
  "uses-ink-edge",
  "uses-ink-edge-api",
  "uses-ink-model",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -4965,6 +4973,7 @@ dependencies = [
  "uses-ink-diag",
  "uses-ink-fixture",
  "uses-ink-model",
+ "uses-ink-trace",
 ]
 
 [[package]]
@@ -5036,6 +5045,7 @@ dependencies = [
  "uses-ink-engine",
  "uses-ink-fixture",
  "uses-ink-model",
+ "uses-ink-trace",
  "zune-jpeg",
 ]
 
@@ -5067,6 +5077,7 @@ dependencies = [
  "uses-ink-model",
  "uses-ink-source-git",
  "uses-ink-theme-quiet",
+ "uses-ink-trace",
  "wasmtime",
 ]
 
@@ -5246,6 +5257,7 @@ dependencies = [
  "uses-ink-queue-local",
  "uses-ink-secret",
  "uses-ink-secret-local",
+ "uses-ink-trace",
 ]
 
 [[package]]

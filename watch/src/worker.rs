@@ -2,6 +2,7 @@
 
 use std::error::Error;
 use std::time::Duration;
+use trace::Field as _;
 
 use build::Build;
 use clock::{Clock, Slept};
@@ -41,8 +42,22 @@ where
     /// Takes one request off the queue and works it.
     pub async fn step(&self) -> Done {
         match self.control.work(&self.builder, self.clock.now(), self.lease).await {
-            Ok(worked) => Done::Worked(worked),
-            Err(error) => Done::Failed(Box::new(error)),
+            Ok(worked) => {
+                trace::debug!(
+                    name: trace::event::WORKER_TICK,
+                    outcome = match &worked {
+                        Worked::Idle => "idle",
+                        Worked::Built { .. } => "built",
+                        Worked::Refused { .. } => "refused",
+                        _ => "dropped",
+                    },
+                );
+                Done::Worked(worked)
+            }
+            Err(error) => {
+                trace::error!(name: trace::event::WORKER_TICK, outcome = "failed", error = trace::Failure(&error).field());
+                Done::Failed(Box::new(error))
+            }
         }
     }
 

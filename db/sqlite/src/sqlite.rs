@@ -8,6 +8,8 @@ use db::{Constraint, Db, Outcome, Renderer, Row, Statement, Value};
 use rusqlite::types::{Value as Stored, ValueRef};
 use rusqlite::{Connection, ffi};
 
+use trace::Field as _;
+
 use crate::{Error, Stage};
 
 /// A SQLite database: a file, or memory.
@@ -86,7 +88,23 @@ impl Execution<'_> {
         })
     }
 
+    /// Runs one statement inside its `statement` span: its shape, how many rows came back and
+    /// how many it changed. Never its text and never a value bound to it.
     fn run(&self, statement: &Statement, index: usize) -> Result<Outcome, Error> {
+        let span = trace::statement!(statement.shape());
+        let outcome = span.in_scope(|| self.execute(statement, index));
+        span.in_scope(|| match &outcome {
+            Ok(done) => trace::debug!(
+                name: trace::event::DB_STATEMENT,
+                rows = trace::Count::from(done.rows.len()).field(),
+                changes = trace::Count(done.changes).field(),
+            ),
+            Err(error) => trace::warn!(name: trace::event::DB_STATEMENT, error = trace::Failure(error).field()),
+        });
+        outcome
+    }
+
+    fn execute(&self, statement: &Statement, index: usize) -> Result<Outcome, Error> {
         let rendered = Renderer.render(statement).map_err(|source| Error::Render { index, source })?;
         let failed = |source| Error::Run { stage: Stage::Statement(statement.shape()), source };
         let mut prepared = self.connection.prepare_cached(rendered.text()).map_err(failed)?;
@@ -160,6 +178,7 @@ impl Db for Sqlite {
             .map(|(index, statement)| execution.run(statement, index))
             .collect::<Result<Vec<_>, _>>()?;
         transaction.commit().map_err(|source| Error::Run { stage: Stage::Commit, source })?;
+        trace::debug!(name: trace::event::DB_BATCH, statements = trace::Count::from(outcomes.len()).field());
         Ok(outcomes)
     }
 }

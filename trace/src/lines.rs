@@ -31,7 +31,9 @@ impl Lines {
     }
 
     fn frames(frames: &[Frame]) -> Json {
-        Json::Array(frames.iter().map(|frame| json!({ "name": frame.name, "fields": Self::fields(&frame.fields) })).collect())
+        Json::Array(
+            frames.iter().map(|frame| json!({ "name": frame.name, "fields": Self::fields(&frame.fields) })).collect(),
+        )
     }
 
     pub(crate) fn write(&self, entry: &Entry<'_>) {

@@ -129,10 +129,9 @@ pub enum FilterError {
 impl fmt::Display for FilterError {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Level { directive, word } => write!(
-                out,
-                "`{word}` in `{directive}` is not a level: use off, error, warn, info, debug or trace"
-            ),
+            Self::Level { directive, word } => {
+                write!(out, "`{word}` in `{directive}` is not a level: use off, error, warn, info, debug or trace")
+            }
             Self::Area { directive } => write!(out, "`{directive}` names no area before the `=`"),
         }
     }
@@ -234,7 +233,11 @@ mod test {
         let areas: Vec<_> = filter.directives().iter().map(|d| (d.area.to_string(), d.level)).collect();
         assert_eq!(
             areas,
-            [("ink".into(), LevelFilter::INFO), ("edge".into(), LevelFilter::TRACE), ("control".into(), LevelFilter::DEBUG)]
+            [
+                ("ink".into(), LevelFilter::INFO),
+                ("edge".into(), LevelFilter::TRACE),
+                ("control".into(), LevelFilter::DEBUG)
+            ]
         );
         assert_eq!("debug".parse::<Filter>().unwrap(), Filter::of(Area::Ink, LevelFilter::DEBUG));
         assert_eq!("edge".parse::<Filter>().unwrap(), Filter::of(Area::Edge, LevelFilter::TRACE));

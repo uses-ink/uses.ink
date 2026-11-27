@@ -20,5 +20,5 @@ mod server;
 
 pub use bridge::{Bridge, Local, Mount};
 pub use error::Error;
-pub use event::{Answered, Called, Cut, Event, Kind, Observe, Stopped, Tracing};
+pub use event::{Answered, Called, Cut, Event, Kind, Observe, Stopped};
 pub use server::Server;

@@ -12,6 +12,7 @@ use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
 use model::record::PluginId;
 use model::{Bytes, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Severity, Snapshot, Subject};
 use theme_quiet::Quiet;
+use trace::Field as _;
 
 use crate::pins::Pinned;
 use crate::reader::Reader;
@@ -47,6 +48,11 @@ impl Pipeline {
                 return Err(Box::new(Diagnostic::new(problem)));
             }
         };
+        trace::debug!(
+            name: trace::event::SOURCE_OPENED,
+            kind = if versioned { "git" } else { "folder" },
+            path = trace::Located(dir).field(),
+        );
         let read = if versioned {
             Repository { revision: Revision::Head, ..Repository::new(dir) }.read(store)
         } else {
@@ -96,6 +102,22 @@ impl Pipeline {
         }
     }
 
+    /// Says the snapshot arrived: to the log, and as an event.
+    fn arrived(events: &mut impl Events, snapshot: &Snapshot) {
+        let bytes = Bytes(snapshot.tree().iter().map(|entry| entry.size.count()).sum());
+        trace::debug!(
+            name: trace::event::SOURCE_FETCHED,
+            files = trace::Count::from(snapshot.tree().len()).field(),
+            bytes = trace::Size(bytes.count()).field(),
+        );
+        events.event(Event::SourceFetched {
+            version: snapshot.version().clone(),
+            files: snapshot.tree().len() as u64,
+            bytes,
+            observed: snapshot.observed().clone(),
+        });
+    }
+
     /// Runs the pipeline on what was `read` into `store`, saying everything to `events`.
     /// `Ok(None)` is a site that does not build; its diagnostics have been said. An error is a
     /// format pinned that is not held.
@@ -108,17 +130,13 @@ impl Pipeline {
         let read = match read {
             Ok(read) => read,
             Err(diagnostic) => {
+                trace::info!(name: trace::event::BUILD_END, outcome = "refused-at-source");
                 events.event(Event::Refused(*diagnostic));
                 return Ok(None);
             }
         };
         let snapshot = read.snapshot;
-        events.event(Event::SourceFetched {
-            version: snapshot.version().clone(),
-            files: snapshot.tree().len() as u64,
-            bytes: Bytes(snapshot.tree().iter().map(|entry| entry.size.count()).sum()),
-            observed: snapshot.observed().clone(),
-        });
+        Self::arrived(events, &snapshot);
         let Parsed { config, diagnostics } = Self::parse(&snapshot, &store);
         let pins = Pinned(&config);
         let chosen = Chosen::new(&snapshot, &pins, None);

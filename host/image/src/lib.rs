@@ -28,6 +28,7 @@ mod work;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
+use trace::Field as _;
 
 use engine::cache::Cache;
 use engine::image::{Prepared, Source};
@@ -79,16 +80,33 @@ impl Pixels {
 
     /// What was made under `source`'s key in this process, or kept by an earlier build. What
     /// does not read back as a record is rejected, so the cache drops it and says so.
+    /// Says how the image cache answered for `key`, which is a hit or a miss and never a reason.
+    fn looked(outcome: &'static str, key: &cache::Key) {
+        trace::debug!(
+            name: trace::event::CACHE_LOOKUP,
+            kind = "image",
+            outcome,
+            key = trace::Digest(key.digest.as_bytes()).field(),
+        );
+    }
+
     fn taken(&self, source: &Source<'_>) -> Option<Prepared> {
         let key = Key::of(source.blob, source.media, &self.settings, &self.limits);
+        let kept = cache::Key::from(key);
         if let Some(made) = self.made.lock().unwrap_or_else(PoisonError::into_inner).get(&key) {
+            Self::looked("memory", &kept);
             return Some(made.clone());
         }
-        let kept = cache::Key::from(key);
-        let Some(prepared) = Record::read(self.cache.get(&kept)?) else {
+        let Some(stored) = self.cache.get(&kept) else {
+            Self::looked("miss", &kept);
+            return None;
+        };
+        let Some(prepared) = Record::read(stored) else {
+            Self::looked("rejected", &kept);
             self.cache.reject(&kept);
             return None;
         };
+        Self::looked("disk", &kept);
         self.made.lock().unwrap_or_else(PoisonError::into_inner).insert(key, prepared.clone());
         Some(prepared)
     }

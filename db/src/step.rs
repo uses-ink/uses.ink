@@ -2,6 +2,7 @@
 //! wrangler's ledger table so a D1 database keeps one history.
 
 use std::fmt;
+use trace::Field as _;
 
 use sea_query::{ColumnDef, Expr, IdenStatic, Order, Query, Table};
 
@@ -184,20 +185,32 @@ impl Steps {
         }
     }
 
-    /// Applies every migration the ledger does not hold, in order, each with its ledger row as
-    /// one atomic batch. A database that already has them all is left alone. A ledger that is
-    /// not a prefix of this set (a name it does not know, or a gap before one it holds) is
-    /// refused before anything runs.
-    pub async fn apply<D: Db>(&self, db: &D) -> Result<Applied, Unapplied<D::Error>> {
-        db.run(Statement::from(
+    /// Says a migration was applied.
+    fn announce(name: &str, statements: usize) {
+        trace::info!(
+            name: trace::event::DB_MIGRATED,
+            migration = trace::Shown(name).field(),
+            statements = trace::Count::from(statements).field(),
+        );
+    }
+
+    fn ledger_table() -> Statement {
+        Statement::from(
             Table::create()
                 .table(Ledger::Table)
                 .if_not_exists()
                 .col(ColumnDef::new(Ledger::Id).integer().not_null().auto_increment().primary_key())
                 .col(ColumnDef::new(Ledger::Name).text().unique_key())
                 .col(ColumnDef::new(Ledger::AppliedAt).timestamp().not_null().default(Expr::current_timestamp())),
-        ))
-        .await?;
+        )
+    }
+
+    /// Applies every migration the ledger does not hold, in order, each with its ledger row as
+    /// one atomic batch. A database that already has them all is left alone. A ledger that is
+    /// not a prefix of this set (a name it does not know, or a gap before one it holds) is
+    /// refused before anything runs.
+    pub async fn apply<D: Db>(&self, db: &D) -> Result<Applied, Unapplied<D::Error>> {
+        db.run(Self::ledger_table()).await?;
         let listing =
             Statement::from(Query::select().column(Ledger::Name).from(Ledger::Table).order_by(Ledger::Id, Order::Asc));
         let mut held = Vec::new();
@@ -222,7 +235,9 @@ impl Steps {
                     .values([Expr::val(name.as_str())])
                     .map_err(Unapplied::Statement)?,
             ));
+            let statements = batch.len();
             db.batch(batch).await?;
+            Self::announce(&name, statements);
             applied.names.push(name);
         }
         Ok(applied)

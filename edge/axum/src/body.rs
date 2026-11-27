@@ -11,7 +11,7 @@ use futures_util::stream;
 use tokio::sync::OwnedSemaphorePermit;
 use tokio::time::Instant;
 
-use crate::event::{Cut, Event, Observe};
+use crate::event::{Cut, Event, Logged as _, Observe};
 
 /// Why a body stopped: the connection is closed, since the status is already sent.
 #[derive(Debug)]
@@ -70,7 +70,7 @@ impl<C: Chunks + 'static, O: Observe> Pump<C, O> {
                 Err(_) => {
                     let (stage, limit) =
                         if wait == pump.idle { (Stage::Idle, pump.idle) } else { (Stage::Send, pump.send) };
-                    pump.observe.event(&Event::Cut(Cut { stage, limit, sent: pump.sent }));
+                    pump.observe.say(Event::Cut(Cut { stage, limit, sent: pump.sent }));
                     Some((Err(Stopped::Slow { stage, limit }), None))
                 }
             }

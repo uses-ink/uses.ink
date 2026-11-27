@@ -9,6 +9,7 @@ use jiff::Timestamp;
 use model::Hash;
 use queue::{Delivery, Message, Queue, Sent};
 use sea_query::{Expr, ExprTrait, Order, Query};
+use trace::{Field as _, Instrument as _};
 
 use crate::deploy::{self, Published};
 use crate::id::{Id, Site as SiteKind};
@@ -107,13 +108,52 @@ impl<P: Ports> Control<P> {
         builder: &W,
         now: Timestamp,
         lease: Duration,
-    ) -> Result<Worked, Failed<P, build::Error<W::Error>>> {
-        let Some(delivery) = self.ports.queue().receive(now, lease).await.map_err(Error::from)? else {
-            return Ok(Worked::Idle);
+    ) -> Result<Worked, Failed<P, build::Error<W::Error>>>
+    where
+        P: 'static,
+    {
+        let claimed = match self.take(now, lease).await? {
+            Taken::Idle => return Ok(Worked::Idle),
+            Taken::Dropped(dropped) => return Ok(Worked::Dropped(dropped)),
+            Taken::Job(claimed) => claimed,
         };
-        let Some(job) = self.claim(&delivery, now).await? else {
-            return Ok(Worked::Dropped(self.drop_request(&delivery).await?));
-        };
+        let span = trace::job!(claimed.job.id, claimed.job.site, claimed.delivery.attempt);
+        self.attempt(builder, claimed).instrument(span).await
+    }
+
+    /// The next request off the queue, claimed when it names a job that can run.
+    async fn take(&self, now: Timestamp, lease: Duration) -> Result<Taken, Error<P>> {
+        let Some(delivery) = self.ports.queue().receive(now, lease).await? else { return Ok(Taken::Idle) };
+        match self.claim(&delivery, now).await? {
+            Some(job) => Ok(Taken::Job(Claimed { delivery, job, now })),
+            None => Ok(Taken::Dropped(self.drop_request(&delivery).await?)),
+        }
+    }
+
+    /// Says an attempt failed, with its whole chain, and whether the queue will try again.
+    fn lost(delivery: &Delivery, error: &(dyn std::error::Error + 'static)) {
+        trace::error!(
+            name: trace::event::JOB_FAILED,
+            retry = delivery.attempt < Self::ATTEMPTS,
+            error = trace::Failure(error).field(),
+        );
+    }
+
+    /// One claimed job, from its builder to its settlement; the caller holds its `job` span.
+    async fn attempt<W: Build>(
+        &self,
+        builder: &W,
+        claimed: Claimed,
+    ) -> Result<Worked, Failed<P, build::Error<W::Error>>>
+    where
+        P: 'static,
+    {
+        let Claimed { delivery, job, now } = claimed;
+        trace::info!(
+            name: trace::event::JOB_CLAIMED,
+            trigger = trace::Kind::kind(job.trigger),
+            tries = trace::Count(u64::from(Self::ATTEMPTS)).field(),
+        );
         let site = self.active(job.site).await?;
         let tenant = Self::tenant(site.id).map_err(Error::from)?;
         let base = self.origin.site(&site.handle).map_err(Error::Origin)?;
@@ -122,6 +162,7 @@ impl<P: Ports> Control<P> {
         let mut events: Vec<build::Event> = Vec::new();
         match builder.run(&request, &mut events).await {
             Err(error) => {
+                Self::lost(&delivery, &error);
                 self.give_up(&delivery, &job, now).await?;
                 Err(Failed::Other(error))
             }
@@ -133,6 +174,7 @@ impl<P: Ports> Control<P> {
                         Ok(worked)
                     }
                     Err(error) => {
+                        Self::lost(&delivery, &error);
                         // a failure to give up is the one returned: the job is still running
                         self.give_up(&delivery, &job, now).await?;
                         Err(Failed::Control(error))
@@ -142,8 +184,6 @@ impl<P: Ports> Control<P> {
         }
     }
 
-    /// Ends a job whose build ran: records and publishes what it made and stores its log. The
-    /// request is acked by the caller, once the job has ended.
     async fn settle(&self, running: Settling, outcome: Outcome) -> Result<Worked, Error<P>> {
         let Settling { job, tenant, mut events, now } = running;
         let (ended, worked) = match outcome {
@@ -164,6 +204,11 @@ impl<P: Ports> Control<P> {
         };
         let log = self.log(&tenant, &events).await?;
         self.finish(&job, Ended { state: ended, deploy, log }, now).await?;
+        trace::info!(
+            name: trace::event::JOB_SETTLED,
+            state = ended.name(),
+            events = trace::Count::from(events.len()).field(),
+        );
         Ok(worked)
     }
 
@@ -205,6 +250,7 @@ impl<P: Ports> Control<P> {
             },
         };
         self.ports.queue().ack(delivery).await?;
+        trace::info!(name: trace::event::JOB_DROPPED, reason = trace::Kind::kind(&dropped));
         Ok(dropped)
     }
 
@@ -247,6 +293,22 @@ impl<P: Ports> Control<P> {
 }
 
 /// A job whose build ran and has not been settled yet.
+/// What the queue gave.
+#[derive(Debug)]
+enum Taken {
+    Idle,
+    Dropped(Dropped),
+    Job(Claimed),
+}
+
+/// A job that was claimed, with the delivery that carried it.
+#[derive(Debug)]
+struct Claimed {
+    delivery: Delivery,
+    job: Job,
+    now: Timestamp,
+}
+
 #[derive(Debug)]
 struct Settling {
     job: Job,

@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+trace.workspace = true
 blake3.workspace = true
 engine.workspace = true
 freehand.workspace = true
@@ -17,6 +18,7 @@ model.workspace = true
 wasmtime.workspace = true
 
 [dev-dependencies]
+trace = { workspace = true, features = ["capture"] }
 # the source's conformance test builds a repository object by object
 gix.workspace = true
 source-git.workspace = true

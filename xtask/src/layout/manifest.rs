@@ -234,7 +234,14 @@ impl Order {
         ("uses-ink-queue-conformance", &["uses-ink-model", "uses-ink-queue"]),
         (
             "uses-ink-queue-local",
-            &["uses-ink-db", "uses-ink-db-sqlite", "uses-ink-model", "uses-ink-queue", "uses-ink-queue-conformance", "uses-ink-trace"],
+            &[
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-model",
+                "uses-ink-queue",
+                "uses-ink-queue-conformance",
+                "uses-ink-trace",
+            ],
         ),
         // The mail port (decision 0066): typed messages and a trait, no adapter; the SMTP adapter
         // takes the port and the secret type that holds its password.

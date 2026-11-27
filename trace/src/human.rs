@@ -115,7 +115,11 @@ impl Human {
             What::Close { elapsed, own } if tree && self.spans.closes() => {
                 let label = entry.frames.last().map_or_default(crate::layer::Frame::label);
                 let own = if own == elapsed { String::new() } else { format!(", own {own:.1?}") };
-                format!("< {label} {}{}", self.paint.faint(&format!("{elapsed:.1?}{own}")), Self::fields(entry.fields, &["kind"]))
+                format!(
+                    "< {label} {}{}",
+                    self.paint.faint(&format!("{elapsed:.1?}{own}")),
+                    Self::fields(entry.fields, &["kind"])
+                )
             }
             What::Event { name } => {
                 let shown = if name.starts_with("event ") {

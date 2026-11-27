@@ -167,6 +167,26 @@ impl Call {
     }
 }
 
+impl trace::Kind for &Call {
+    /// The route's name, with no site or build in it.
+    fn kind(self) -> &'static str {
+        match self {
+            Call::Sites => "sites",
+            Call::Add => "add",
+            Call::Status(_) => "status",
+            Call::Remove(_) => "remove",
+            Call::Deploys(_) => "deploys",
+            Call::Rollback(_) => "rollback",
+            Call::Resume(_) => "resume",
+            Call::Builds(_) => "builds",
+            Call::Build(_) => "build",
+            Call::Log { .. } => "log",
+            Call::Export { .. } => "export",
+            Call::Intake(_) => "intake",
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

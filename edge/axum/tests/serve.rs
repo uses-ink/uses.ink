@@ -304,7 +304,7 @@ fn a_head_limit_hyper_cannot_read_is_refused_at_start() {
     let site = Site::new();
     let limits = Limits { head: model::Bytes(100), ..Limits::default() };
     let edge = Edge::new(site.hosts, site.store, limits).unwrap();
-    let error = Server::new(edge, edge_axum::Tracing, Scheme::Plain).unwrap_err();
+    let error = Server::new(edge, Shared(Arc::default()), Scheme::Plain).err().unwrap();
     assert!(matches!(error, edge_axum::Error::Head { limit: 100, least: 8192 }));
 }
 

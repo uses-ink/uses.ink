@@ -190,9 +190,11 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
             Robots,
             ThemeFiles { theme },
         );
+        let stage = trace::stage!(trace::Stage::Render, "artifacts").entered();
         if let Err(error) = artifacts.files(site, &mut out) {
             out.fail(error);
         }
+        drop(stage);
         if units.is_unkeyed() {
             out.notice(Notice::new(Announcement::RenderCacheUnkeyed { theme: theme.name().to_owned() }));
         } else if units.is_keyed() {

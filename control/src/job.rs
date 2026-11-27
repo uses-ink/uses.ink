@@ -173,3 +173,14 @@ pub enum Dropped {
         site: Id<Site>,
     },
 }
+
+impl trace::Kind for &Dropped {
+    fn kind(self) -> &'static str {
+        match self {
+            Dropped::Unnamed => "unnamed",
+            Dropped::NoJob { .. } => "no-job",
+            Dropped::Settled { .. } => "settled",
+            _ => "no-site",
+        }
+    }
+}

@@ -56,10 +56,15 @@ impl Timing {
     /// The summary as a table, one row per path, indented by depth.
     pub fn table(&self) -> String {
         let rows = self.rows();
-        let width = rows.iter().map(|row| row.path.len() * 2 + row.path.last().map_or(0, String::len)).max().unwrap_or(4);
+        let width =
+            rows.iter().map(|row| row.path.len() * 2 + row.path.last().map_or(0, String::len)).max().unwrap_or(4);
         let mut text = format!("{:<width$} {:>6} {:>10} {:>10} {:>10}\n", "span", "count", "total", "own", "slowest");
         for row in &rows {
-            let name = format!("{}{}", "  ".repeat(row.path.len().saturating_sub(1)), row.path.last().map_or("", String::as_str));
+            let name = format!(
+                "{}{}",
+                "  ".repeat(row.path.len().saturating_sub(1)),
+                row.path.last().map_or("", String::as_str)
+            );
             let _written = writeln!(
                 text,
                 "{name:<width$} {:>6} {:>10} {:>10} {:>10}",

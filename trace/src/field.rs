@@ -76,6 +76,18 @@ numbers! {
     Took: Duration => |d| u64::try_from(d.as_micros()).unwrap_or(u64::MAX),
 }
 
+macro_rules! lengths {
+    ($($name:ident),+) => {$(
+        impl From<usize> for $name {
+            fn from(length: usize) -> Self {
+                Self(u64::try_from(length).unwrap_or(u64::MAX))
+            }
+        }
+    )+};
+}
+
+lengths!(Size, Count);
+
 /// The first bytes of a digest, as hex: enough to tell two apart in a log, not enough to name
 /// one in a URL.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

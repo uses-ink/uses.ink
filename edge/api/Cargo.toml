@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+trace.workspace = true
 blake3.workspace = true
 blob.workspace = true
 build.workspace = true
@@ -23,6 +24,7 @@ serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+trace = { workspace = true, features = ["capture"] }
 blob-dir.workspace = true
 build.workspace = true
 db-sqlite.workspace = true

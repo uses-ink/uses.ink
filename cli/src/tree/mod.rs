@@ -41,6 +41,8 @@ impl Heading {
     pub(crate) const HOSTING: &'static str = "Hosting";
     /// Which site and which account a remote call is made as.
     pub(crate) const ACCOUNT: &'static str = "Account";
+    /// The log: what to say about the run itself, and where.
+    pub(crate) const DIAGNOSTICS: &'static str = "Diagnostics";
     /// The options every command takes.
     pub(crate) const GLOBAL: &'static str = "Global options";
 }

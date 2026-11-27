@@ -3,6 +3,7 @@
 
 use std::collections::BTreeMap;
 use std::io;
+use trace::Field as _;
 
 use model::{ContentPath, Diagnostic, Hash, Manifest, MediaType, Notice, Route, Served, Status};
 
@@ -147,6 +148,11 @@ impl<'a> Output<'a> {
 
     /// The manifest of everything served, and everything said.
     pub(crate) fn finish(mut self) -> Rendered {
+        trace::debug!(
+            name: trace::event::RENDERED,
+            reused = trace::Count(self.tally().0).field(),
+            rendered = trace::Count(self.tally().1).field(),
+        );
         let entries = self.entries.into_values().map(|(served, _)| served).collect();
         let manifest = Manifest::new(entries).unwrap_or_else(|duplicate| {
             self.diagnostics.push(Error::Served { route: duplicate.route }.into());

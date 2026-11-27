@@ -4,6 +4,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use trace::Field as _;
 
 use blob::{Blob, Deleted, Listed, Stored, Tenant};
 use model::{Bytes, Hash};
@@ -117,6 +118,9 @@ impl Blob for Directory {
         hash: Hash,
         chunks: impl IntoIterator<Item = impl AsRef<[u8]>>,
     ) -> Result<Stored, Failure> {
+        // the body has no await point, so the span can be held across it
+        let span = trace::blob!(trace::Io::Write, hash.as_bytes());
+        let _entered = span.clone().entered();
         let target = self.file(tenant, hash);
         let partial = self.partial(hash);
         let (found, size) = Self::fill(&partial, chunks).map_err(|error| Self::discard(&partial, error.into()))?;
@@ -129,13 +133,17 @@ impl Blob for Directory {
         } else {
             Self::place(&partial, &target).map_err(|error| Self::discard(&partial, error.into()))?;
         }
+        span.record("bytes", trace::Size(size).field());
+        trace::debug!(name: trace::event::BLOB_IO, created = !held);
         Ok(Stored { size: Bytes(size), created: !held })
     }
 
     #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn get(&self, tenant: &Tenant, hash: Hash) -> Result<Option<Reading>, Failure> {
+        let _entered = trace::blob!(trace::Io::Read, hash.as_bytes()).entered();
         let path = self.file(tenant, hash);
         if Self::find(&path)?.is_none() {
+            trace::debug!(name: trace::event::BLOB_IO, found = false);
             return Ok(None);
         }
         match File::open(&path) {
@@ -147,6 +155,7 @@ impl Blob for Directory {
 
     #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn stat(&self, tenant: &Tenant, hash: Hash) -> Result<Option<Bytes>, Failure> {
+        let _entered = trace::blob!(trace::Io::Probe, hash.as_bytes()).entered();
         Ok(Self::find(&self.file(tenant, hash))?.map(|meta| Bytes(meta.len())))
     }
 
@@ -176,6 +185,7 @@ impl Blob for Directory {
 
     #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn delete(&self, tenant: &Tenant, hash: Hash) -> Result<Deleted, Failure> {
+        let _entered = trace::blob!(trace::Io::Remove, hash.as_bytes()).entered();
         let path = self.file(tenant, hash);
         let Some(meta) = Self::find(&path)? else { return Ok(Deleted::Absent) };
         match fs::remove_file(&path) {

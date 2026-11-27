@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+trace.workspace = true
 blob.workspace = true
 model.workspace = true
 serde.workspace = true

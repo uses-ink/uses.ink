@@ -12,6 +12,7 @@
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
+use trace::Field as _;
 
 use engine::image::{Encoded, Prepared, Source, Variants};
 use model::Dimensions;
@@ -115,9 +116,11 @@ impl<'a> Run<'a> {
 
     /// Every source's result, in order, made on `threads` threads.
     pub(crate) fn finish(self, threads: usize) -> Vec<Result<Prepared, Refused>> {
+        // worker threads do not inherit the caller's span: hand it over
+        let parent = trace::Span::current();
         std::thread::scope(|scope| {
             for _ in 0..threads.max(1) {
-                scope.spawn(|| self.serve());
+                scope.spawn(|| parent.in_scope(|| self.serve()));
             }
         });
         let state = self.state.into_inner().unwrap_or_else(PoisonError::into_inner);
@@ -184,6 +187,7 @@ impl<'a> Run<'a> {
         let Some(source) = self.sources.get(image) else {
             return Opened::Cut { dimensions: Dimensions::new(0, 0), placeholder: None, copies: Vec::new() };
         };
+        let _unit = trace::unit!(trace::Unit::Image, source.file).entered();
         if let Some(prepared) = self.work.taken(source) {
             return Opened::Done(Ok(prepared));
         }
@@ -191,13 +195,22 @@ impl<'a> Run<'a> {
         let refuse = |reason| Refused::new(source.file, reason);
         let pixels = match Decoded::read(source, self.work.limits()) {
             Err(refused) => return Opened::Done(Err(refused)),
-            Ok(Decoded::Kept(dimensions, reason)) => return Opened::Done(Ok(Prepared::Kept { dimensions, reason })),
+            Ok(Decoded::Kept(dimensions, reason)) => {
+                trace::debug!(name: trace::event::IMAGE_DECODED, kept = trace::Kind::kind(reason));
+                return Opened::Done(Ok(Prepared::Kept { dimensions, reason }));
+            }
             Ok(Decoded::Pixels(pixels)) => pixels,
         };
+        trace::debug!(
+            name: trace::event::IMAGE_DECODED,
+            width = trace::Count(u64::from(pixels.width)).field(),
+            bytes = trace::Size::from(source.bytes.len()).field(),
+        );
         let cut = || -> Result<Opened, Reason> {
             let placeholder = pixels.placeholder()?;
             let mut copies = Vec::new();
             for width in settings.ladder(pixels.width) {
+                trace::trace!(name: trace::event::IMAGE_RESIZED, width = trace::Count(u64::from(width)).field());
                 copies.push(Arc::new(pixels.resize(width)?));
             }
             Ok(Opened::Cut { dimensions: pixels.dimensions(), placeholder, copies })
@@ -232,7 +245,17 @@ impl<'a> Run<'a> {
 
     fn encode(&self, job: &Job) -> Result<Encoded, Reason> {
         let settings = self.work.settings();
-        if job.slot.is_multiple_of(2) { job.copy.avif(settings) } else { job.copy.fallback(settings) }
+        let _unit = self.sources.get(job.image).map(|source| trace::unit!(trace::Unit::Image, source.file).entered());
+        let encoded = if job.slot.is_multiple_of(2) { job.copy.avif(settings) } else { job.copy.fallback(settings) };
+        if let Ok(done) = &encoded {
+            trace::debug!(
+                name: trace::event::IMAGE_ENCODED,
+                format = done.media.essence(),
+                width = trace::Count(u64::from(done.dimensions.width)).field(),
+                bytes = trace::Size::from(done.bytes.len()).field(),
+            );
+        }
+        encoded
     }
 
     fn encoded(&self, job: &Job, encoded: Result<Encoded, Reason>) {
@@ -276,6 +299,13 @@ impl<'a> Run<'a> {
 
     /// Records an image's result, kept for later calls and builds when it was made.
     fn done(&self, image: usize, done: Result<Prepared, Refused>) {
+        if let Err(refused) = &done {
+            trace::warn!(
+                name: trace::event::IMAGE_REFUSED,
+                file = trace::Shown(&refused.file).field(),
+                error = trace::Failure(refused).field(),
+            );
+        }
         if let (Ok(prepared), Some(source)) = (&done, self.sources.get(image)) {
             self.work.keep(source, prepared);
         }

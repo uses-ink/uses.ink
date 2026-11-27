@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+trace.workspace = true
 axum.workspace = true
 bytes.workspace = true
 edge.workspace = true
@@ -18,9 +19,9 @@ hyper.workspace = true
 hyper-util.workspace = true
 model.workspace = true
 tokio.workspace = true
-tracing.workspace = true
 
 [dev-dependencies]
+trace = { workspace = true, features = ["capture"] }
 bytes.workspace = true
 model.workspace = true
 tokio.workspace = true

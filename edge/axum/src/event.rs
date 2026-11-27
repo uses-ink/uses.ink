@@ -5,7 +5,11 @@ use std::fmt;
 use std::net::SocketAddr;
 use std::time::Duration;
 
+use axum::http::StatusCode;
 use edge::{Chain, Hostname, Outcome, Refusal, Stage, Status};
+use trace::Field as _;
+
+use crate::respond::Code;
 
 /// How an answered request ended, without the data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -180,20 +184,118 @@ pub trait Observe: Send + Sync + 'static {
     fn event(&self, event: &Event);
 }
 
-/// Events to `tracing`: refusals at warn, failures at error, the rest at info.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Tracing;
+/// A request path as the log shows it: its first [`Clip::LIMIT`] characters. The query is never
+/// part of what is passed in.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Clip<'a>(pub(crate) &'a str);
 
-impl Observe for Tracing {
-    fn event(&self, event: &Event) {
-        match event {
-            Event::Answered(Answered { kind: Kind::Failed, .. }) | Event::Connection { .. } => {
-                tracing::error!(target: "edge", %event);
+impl Clip<'_> {
+    /// How many characters of a path are logged.
+    pub(crate) const LIMIT: usize = 200;
+}
+
+impl fmt::Display for Clip<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.chars().take(Self::LIMIT).try_for_each(|c| fmt::Write::write_char(out, c))
+    }
+}
+
+impl Event {
+    /// Writes the event to the log as a typed `trace` event: every field a number, a flag or a
+    /// short name, and an error with its whole chain. Never the query of a request, never a
+    /// header.
+    pub(crate) fn emit(&self) {
+        match self {
+            Self::Listening { address } => {
+                trace::info!(name: trace::event::EDGE_LISTENING, address = trace::Shown(address).field());
             }
-            Event::Answered(Answered { kind: Kind::Refused, .. }) | Event::Cut(_) => {
-                tracing::warn!(target: "edge", %event);
+            Self::Answered(answered) => answered.emit(),
+            Self::Called(Called { method, path, status, took }) => trace::info!(
+                name: trace::event::API_ANSWERED,
+                method = method.as_str(),
+                path = trace::Shown(path).field(),
+                status = trace::Count(u64::from(*status)).field(),
+                took_us = trace::Took(*took).field(),
+            ),
+            Self::Cut(Cut { stage, limit, sent }) => trace::warn!(
+                name: trace::event::RESPONSE_CUT,
+                stage = trace::Shown(stage).field(),
+                limit_us = trace::Took(*limit).field(),
+                sent = trace::Size(*sent).field(),
+            ),
+            Self::Connection { source } => {
+                trace::error!(name: trace::event::CONNECTION_FAILED, error = trace::Failure(source.as_ref()).field());
             }
-            _ => tracing::info!(target: "edge", %event),
+            Self::Stopping => trace::info!(name: trace::event::EDGE_STOPPING, accepting = false),
+            Self::Stopped(Stopped::Drained) => trace::info!(name: trace::event::EDGE_STOPPED, drained = true),
+            Self::Stopped(Stopped::Abandoned { limit }) => trace::warn!(
+                name: trace::event::EDGE_STOPPED,
+                drained = false,
+                limit_us = trace::Took(*limit).field(),
+            ),
         }
     }
 }
+
+impl Answered {
+    fn emit(&self) {
+        let status = trace::Count(u64::from(StatusCode::from(Code(self.status)).as_u16())).field();
+        let host = self.hostname.as_ref().map(|hostname| trace::Shown(hostname.as_str()).field());
+        let took = trace::Took(self.took).field();
+        match (&self.refusal, &self.fault, self.kind) {
+            (Some(refusal), _, _) => trace::warn!(
+                name: trace::event::REQUEST_REFUSED,
+                method = self.method.as_str(),
+                path = trace::Shown(&self.path).field(),
+                host,
+                status,
+                took_us = took,
+                error = trace::Failure(refusal).field(),
+            ),
+            (_, Some(fault), _) => trace::error!(
+                name: trace::event::REQUEST_FAILED,
+                method = self.method.as_str(),
+                path = trace::Shown(&self.path).field(),
+                host,
+                status,
+                took_us = took,
+                error = trace::Failure(fault.as_ref()).field(),
+            ),
+            (_, _, kind) => trace::info!(
+                name: trace::event::REQUEST_ANSWERED,
+                method = self.method.as_str(),
+                path = trace::Shown(&self.path).field(),
+                host,
+                status,
+                outcome = trace::Kind::kind(kind),
+                took_us = took,
+            ),
+        }
+    }
+}
+
+impl trace::Kind for Kind {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Served => "served",
+            Self::Unchanged => "unchanged",
+            Self::Moved => "moved",
+            Self::Missing => "missing",
+            Self::Probed => "probed",
+            Self::Refused => "refused",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+/// An event with its log line: what the server and the response body call instead of
+/// `Observe::event`, so one call writes both.
+pub(crate) trait Logged: Observe {
+    /// Logs the event, then hands it to the observer.
+    fn say(&self, event: Event) {
+        event.emit();
+        self.event(&event);
+    }
+}
+
+impl<O: Observe + ?Sized> Logged for O {}

@@ -73,28 +73,6 @@ impl Kind for Unit {
     }
 }
 
-/// A plugin slot.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum Slot {
-    /// A source plugin.
-    Source,
-    /// A format plugin.
-    Format,
-    /// A theme plugin.
-    Theme,
-}
-
-impl Kind for Slot {
-    fn kind(self) -> &'static str {
-        match self {
-            Self::Source => "source",
-            Self::Format => "format",
-            Self::Theme => "theme",
-        }
-    }
-}
-
 /// What a blob call does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -160,19 +138,16 @@ macro_rules! unit {
     };
 }
 
-/// A `plugin` span: one call into a plugin. `fuel`, `took_us` and `memory` are recorded when it
-/// ends.
+/// A `plugin` span: one call into a plugin, named by the plugin. `fuel` and `took_us` are
+/// recorded when it ends.
 #[macro_export]
 macro_rules! plugin {
-    ($slot:expr, $name:expr, $call:expr) => {
+    ($name:expr) => {
         $crate::tracing::debug_span!(
             $crate::name::span::PLUGIN,
-            kind = $crate::Kind::kind($slot),
-            plugin = $crate::Field::field($crate::Shown($name)),
-            call = $call,
+            kind = $crate::Field::field($crate::Shown($name)),
             fuel = $crate::tracing::field::Empty,
             took_us = $crate::tracing::field::Empty,
-            memory = $crate::tracing::field::Empty,
         )
     };
 }
@@ -194,14 +169,15 @@ macro_rules! request {
     };
 }
 
-/// An `api` span: one call of the API, by method and route.
+/// An `api` span: one call of the API, by method. `route` and `status` are recorded when they
+/// are known.
 #[macro_export]
 macro_rules! api {
-    ($method:expr, $route:expr) => {
+    ($method:expr) => {
         $crate::tracing::info_span!(
             $crate::name::span::API,
-            method = $method,
-            route = $crate::Field::field($crate::Shown($route)),
+            kind = $crate::Kind::kind($method),
+            route = $crate::tracing::field::Empty,
             status = $crate::tracing::field::Empty,
         )
     };

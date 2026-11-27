@@ -146,9 +146,8 @@ where
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         let mut fields = Fields::default();
         event.record(&mut fields);
-        let frames: Vec<Frame> = ctx
-            .event_scope(event)
-            .map_or_default(|scope| scope.from_root().map(|span| Frame::of(&span)).collect());
+        let frames: Vec<Frame> =
+            ctx.event_scope(event).map_or_default(|scope| scope.from_root().map(|span| Frame::of(&span)).collect());
         let metadata = event.metadata();
         self.say(&Entry {
             at: self.start.elapsed(),

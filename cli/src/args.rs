@@ -32,6 +32,14 @@ pub struct Cli {
     /// Print log lines only, no live redraw.
     #[arg(long, global = true, env = "INK_NO_PROGRESS")]
     pub no_progress: bool,
+    /// Log to stderr as `ink=debug,edge=trace` says: areas (ink, engine, build, edge, control, db,
+    /// blob, host, plugin, watch, queue, cli) or targets, at a level. Off unless this, `-v` or
+    /// `INK_LOG` asks.
+    #[arg(long, global = true, value_name = "FILTER", env = "INK_LOG", help_heading = Heading::DIAGNOSTICS)]
+    pub log: Option<trace::Filter>,
+    /// Also write the log as JSON lines to this file.
+    #[arg(long, global = true, value_name = "PATH", env = "INK_LOG_FILE", help_heading = Heading::DIAGNOSTICS)]
+    pub log_file: Option<PathBuf>,
     /// What to do.
     #[command(subcommand)]
     pub command: Command,

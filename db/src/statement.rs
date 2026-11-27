@@ -98,3 +98,16 @@ statements! {
     TableCreateStatement => Table,
     IndexCreateStatement => Index,
 }
+
+impl trace::Kind for Shape {
+    fn kind(self) -> &'static str {
+        match self {
+            Self::Select => "select",
+            Self::Insert => "insert",
+            Self::Update => "update",
+            Self::Delete => "delete",
+            Self::Table => "table",
+            Self::Index => "index",
+        }
+    }
+}
