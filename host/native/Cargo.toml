@@ -16,9 +16,14 @@ gix.workspace = true
 model.workspace = true
 
 [dev-dependencies]
+divan.workspace = true
 fixture.workspace = true
 # test repositories are written object by object
 gix.workspace = true
+
+[[bench]]
+name = "read"
+harness = false
 
 [lints]
 workspace = true

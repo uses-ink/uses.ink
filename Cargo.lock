@@ -3932,6 +3932,7 @@ name = "uses-ink-host-image"
 version = "0.0.0"
 dependencies = [
  "blake3",
+ "divan",
  "fast_image_resize",
  "image",
  "imagesize",
@@ -3949,6 +3950,7 @@ version = "0.0.0"
 dependencies = [
  "arborium",
  "arborium-theme",
+ "divan",
  "gix",
  "uses-ink-engine",
  "uses-ink-fixture",

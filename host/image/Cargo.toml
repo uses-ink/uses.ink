@@ -20,7 +20,12 @@ model.workspace = true
 ravif.workspace = true
 
 [dev-dependencies]
+divan.workspace = true
 fixture.workspace = true
+
+[[bench]]
+name = "prepare"
+harness = false
 
 [lints]
 workspace = true
