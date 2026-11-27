@@ -1,0 +1,187 @@
+//! Build jobs, with a builder that does what the test says.
+
+use std::cell::RefCell;
+use std::collections::VecDeque;
+use std::fmt;
+use std::time::Duration;
+
+use blob::{Blob, Chunks, Tenant};
+use blob_dir::Directory;
+use build::{Build, BuildId, Built, Event, Events, Outcome, Request, Status, Trigger};
+use control::{Ports, Dropped, JobState, NewJob, Published, Requested, Worked};
+use model::{Bytes, Hash, Manifest, MediaType, Route, Served};
+use queue::Dedupe;
+
+use crate::world::{World, at};
+
+#[derive(Debug)]
+struct Broke;
+
+impl fmt::Display for Broke {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str("the builder broke")
+    }
+}
+
+impl std::error::Error for Broke {}
+
+/// What a scripted build does.
+enum Step {
+    Build(&'static str),
+    Refuse,
+    Break,
+}
+
+/// A builder that follows a script, storing its blobs in the world's folder like a real one.
+struct Scripted {
+    store: Directory,
+    steps: RefCell<VecDeque<Step>>,
+    seen: RefCell<Vec<Request>>,
+}
+
+impl Scripted {
+    fn new(world: &World, steps: impl IntoIterator<Item = Step>) -> Self {
+        Self { store: Directory::open(&world.root).unwrap(), steps: RefCell::new(steps.into_iter().collect()), seen: RefCell::default() }
+    }
+}
+
+impl Build for Scripted {
+    type Error = Broke;
+
+    async fn run(&self, request: &Request, events: &mut impl Events) -> Result<Outcome, build::Error<Broke>> {
+        self.seen.borrow_mut().push(request.clone());
+        events.event(Event::Started { build: request.build, trigger: request.trigger });
+        let step = self.steps.borrow_mut().pop_front().unwrap();
+        let (outcome, status) = match step {
+            Step::Build(text) => {
+                let hash = Hash::of(text);
+                self.store.put(&request.tenant, hash, [text.as_bytes()]).await.unwrap();
+                let served = Served::new(Route::root(), hash, MediaType::Html, vec![]);
+                events.event(Event::Rendered { files: 1, bytes: Bytes(text.len() as u64) });
+                let manifest = Manifest::new(vec![served]).unwrap();
+                (Outcome::Built(Built { manifest, bytes: Bytes(text.len() as u64) }), Status::Succeeded)
+            }
+            Step::Refuse => (Outcome::Refused, Status::Refused),
+            Step::Break => {
+                events.event(Event::Finished { status: Status::Failed, wall: Duration::ZERO });
+                return Err(build::Error::Backend { source: Broke });
+            }
+        };
+        events.event(Event::Finished { status, wall: Duration::ZERO });
+        Ok(outcome)
+    }
+}
+
+fn request(site: &control::Site, n: i64, key: Option<&str>) -> (BuildId, NewJob) {
+    let id = BuildId::from_bytes([u8::try_from(n).unwrap(); 16]);
+    let dedupe = key.map(|key| key.parse::<Dedupe>().unwrap());
+    (id, NewJob { id, site: site.id, trigger: Trigger::Push, dedupe, at: at(n) })
+}
+
+const LEASE: Duration = Duration::from_secs(60);
+
+#[test]
+fn builds_a_requested_site_publishes_it_and_keeps_the_log_as_ndjson() {
+    let world = World::new();
+    let site = world.site("cstef");
+    let (id, new) = request(&site, 10, None);
+    assert_eq!(world.run(world.control.request_build(new)).unwrap(), Requested::Queued(id));
+    assert_eq!(world.run(world.control.job(id)).unwrap().unwrap().state, JobState::Queued);
+    let builder = Scripted::new(&world, [Step::Build("hello")]);
+    let worked = world.run(world.control.work(&builder, at(11), LEASE)).unwrap();
+    let Worked::Built { build, recorded } = worked else { panic!("{worked:?}") };
+    assert_eq!((build, recorded.published), (id, Published::Live { previous: None }));
+    let request = builder.seen.borrow().first().cloned().unwrap();
+    assert_eq!((request.tenant, request.source), (Tenant::try_from(site.id).unwrap(), site.source.clone()));
+    let job = world.run(world.control.job(id)).unwrap().unwrap();
+    assert_eq!((job.state, job.deploy, job.finished), (JobState::Succeeded, Some(recorded.deploy), Some(at(11))));
+    // the log is NDJSON in the site's own blobs, ending with the publication the builder cannot say
+    let tenant = Tenant::try_from(site.id).unwrap();
+    let log = world.run(world.control.ports().blob().get(&tenant, job.log.unwrap())).unwrap().unwrap();
+    let log = String::from_utf8(world.run(log.all()).unwrap()).unwrap();
+    let kinds: Vec<String> =
+        log.lines().map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap()["event"].as_str().unwrap().to_owned()).collect();
+    assert_eq!(kinds, ["started", "rendered", "finished", "published"]);
+    assert_eq!(world.run(world.control.work(&builder, at(12), LEASE)).unwrap(), Worked::Idle, "the request was settled");
+    assert_eq!(world.run(world.control.jobs(site.id, 5)).unwrap().len(), 1);
+}
+
+#[test]
+fn a_site_that_does_not_build_is_refused_and_not_retried() {
+    let world = World::new();
+    let site = world.site("cstef");
+    let (id, new) = request(&site, 10, None);
+    world.run(world.control.request_build(new)).unwrap();
+    let builder = Scripted::new(&world, [Step::Refuse]);
+    assert_eq!(world.run(world.control.work(&builder, at(11), LEASE)).unwrap(), Worked::Refused { build: id });
+    let job = world.run(world.control.job(id)).unwrap().unwrap();
+    assert_eq!((job.state, job.deploy), (JobState::Refused, None));
+    assert!(job.log.is_some());
+    assert_eq!(world.run(world.control.live(site.id)).unwrap(), None);
+    assert_eq!(world.run(world.control.work(&builder, at(500), LEASE)).unwrap(), Worked::Idle);
+}
+
+#[test]
+fn a_broken_builder_is_retried_then_given_up_on() {
+    let world = World::new();
+    let site = world.site("cstef");
+    let (id, new) = request(&site, 10, None);
+    world.run(world.control.request_build(new)).unwrap();
+    let builder = Scripted::new(&world, [Step::Break, Step::Break, Step::Break]);
+    for (n, now) in [(1, 11), (2, 100), (3, 200)] {
+        let failed = world.run(world.control.work(&builder, at(now), LEASE)).unwrap_err();
+        assert!(matches!(failed, control::Failed::Other(build::Error::Backend { source: Broke })), "attempt {n}");
+        let state = world.run(world.control.job(id)).unwrap().unwrap().state;
+        assert_eq!(state, if n < 3 { JobState::Running } else { JobState::Failed }, "after attempt {n}");
+    }
+    assert_eq!(world.run(world.control.work(&builder, at(1000), LEASE)).unwrap(), Worked::Idle, "a given-up request leaves the queue");
+}
+
+#[test]
+fn a_retry_waits_its_delay() {
+    let world = World::new();
+    let site = world.site("cstef");
+    let (_, new) = request(&site, 10, None);
+    world.run(world.control.request_build(new)).unwrap();
+    let builder = Scripted::new(&world, [Step::Break, Step::Build("second try")]);
+    world.run(world.control.work(&builder, at(11), LEASE)).unwrap_err();
+    // released for 30 s from the failure
+    assert_eq!(world.run(world.control.work(&builder, at(40), LEASE)).unwrap(), Worked::Idle);
+    assert!(matches!(world.run(world.control.work(&builder, at(41), LEASE)).unwrap(), Worked::Built { .. }));
+}
+
+#[test]
+fn a_duplicate_request_while_queued_is_dropped() {
+    let world = World::new();
+    let site = world.site("cstef");
+    let (first, one) = request(&site, 10, Some("delivery-1"));
+    let (_, two) = request(&site, 11, Some("delivery-1"));
+    assert_eq!(world.run(world.control.request_build(one)).unwrap(), Requested::Queued(first));
+    assert_eq!(world.run(world.control.request_build(two)).unwrap(), Requested::Duplicate);
+    assert_eq!(world.run(world.control.jobs(site.id, 5)).unwrap().len(), 1, "a dropped request made no job");
+}
+
+#[test]
+fn a_request_for_a_removed_site_is_dropped_and_said() {
+    let world = World::new();
+    let site = world.site("cstef");
+    let (id, new) = request(&site, 10, None);
+    world.run(world.control.request_build(new)).unwrap();
+    world.run(world.control.remove_site(site.id, at(20))).unwrap();
+    let builder = Scripted::new(&world, []);
+    let worked = world.run(world.control.work(&builder, at(30), LEASE)).unwrap();
+    assert_eq!(worked, Worked::Dropped(Dropped::NoJob { build: id }));
+    assert!(builder.seen.borrow().is_empty(), "nothing was built for a removed site");
+}
+
+#[test]
+fn a_message_that_names_no_build_is_dropped() {
+    let world = World::new();
+    world.site("cstef");
+    let queue = world.control.ports().queue();
+    let message = queue::Message { body: b"not a build id".to_vec(), dedupe: None };
+    world.run(queue::Queue::send(queue, message, at(1))).unwrap();
+    let builder = Scripted::new(&world, []);
+    assert_eq!(world.run(world.control.work(&builder, at(2), LEASE)).unwrap(), Worked::Dropped(Dropped::Unnamed));
+    assert_eq!(world.run(world.control.work(&builder, at(500), LEASE)).unwrap(), Worked::Idle);
+}

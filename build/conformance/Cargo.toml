@@ -1,0 +1,18 @@
+[package]
+name = "uses-ink-build-conformance"
+description = "The conformance suite every build port adapter runs: the local builder now, the container when it lands"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+blob.workspace = true
+build.workspace = true
+model.workspace = true
+pollster.workspace = true
+
+[lints]
+workspace = true

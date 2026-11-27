@@ -1,0 +1,15 @@
+[package]
+name = "uses-ink-queue"
+description = "The queue port: at-least-once delivery with a visibility timeout and a dedupe key"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+model.workspace = true
+
+[lints]
+workspace = true

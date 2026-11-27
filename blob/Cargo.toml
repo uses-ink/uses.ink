@@ -1,0 +1,15 @@
+[package]
+name = "uses-ink-blob"
+description = "The blob port: bytes at their BLAKE3 hash, scoped per tenant, read and written as chunks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+model.workspace = true
+
+[lints]
+workspace = true

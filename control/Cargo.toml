@@ -1,0 +1,31 @@
+[package]
+name = "uses-ink-control"
+description = "The control plane's core: accounts, sites, deploys, build jobs and credentials over the db, blob, queue, build and secret ports"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+blob.workspace = true
+build.workspace = true
+db.workspace = true
+jiff.workspace = true
+model.workspace = true
+queue.workspace = true
+secret.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+blob-dir.workspace = true
+db-sqlite.workspace = true
+pollster.workspace = true
+queue-local.workspace = true
+secret-local.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,30 @@
+[package]
+name = "uses-ink-build-local"
+description = "The build port in this process: the engine, the native host and the bundled plugins"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+blob.workspace = true
+build.workspace = true
+config.workspace = true
+engine.workspace = true
+format-markdown.workspace = true
+format-obsidian.workspace = true
+host-image.workspace = true
+host-native.workspace = true
+model.workspace = true
+theme-quiet.workspace = true
+
+[dev-dependencies]
+blob-dir.workspace = true
+build-conformance.workspace = true
+pollster.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

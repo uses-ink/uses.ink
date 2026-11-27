@@ -1,0 +1,17 @@
+[package]
+name = "uses-ink-queue-conformance"
+description = "The conformance suite every queue port adapter runs: the local queue now, Cloudflare Queues when they land"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+model.workspace = true
+pollster.workspace = true
+queue.workspace = true
+
+[lints]
+workspace = true

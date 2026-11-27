@@ -1,0 +1,19 @@
+[package]
+name = "uses-ink-db-sqlite"
+description = "The row port on a SQLite file or memory, for self-hosting"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+db.workspace = true
+rusqlite.workspace = true
+
+[dev-dependencies]
+db-conformance.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,17 @@
+[package]
+name = "uses-ink-build"
+description = "The build port: run a build of a source into a deploy, reporting the typed event stream"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+blob.workspace = true
+model.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

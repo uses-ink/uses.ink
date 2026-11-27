@@ -1,0 +1,16 @@
+[package]
+name = "uses-ink-db-conformance"
+description = "The conformance suite every row port adapter runs: SQLite now, D1 when it lands"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+db.workspace = true
+pollster.workspace = true
+
+[lints]
+workspace = true

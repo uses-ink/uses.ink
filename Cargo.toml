@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest"]
+members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -13,9 +13,19 @@ publish = false
 
 # Every crate of ours by its short name, so code says `token::Colour`.
 [workspace.dependencies]
+blob = { package = "uses-ink-blob", path = "blob" }
+blob-conformance = { package = "uses-ink-blob-conformance", path = "blob/conformance" }
+blob-dir = { package = "uses-ink-blob-dir", path = "blob/dir" }
+build = { package = "uses-ink-build", path = "build" }
+build-conformance = { package = "uses-ink-build-conformance", path = "build/conformance" }
+build-local = { package = "uses-ink-build-local", path = "build/local" }
 config = { package = "uses-ink-config", path = "config" }
+control = { package = "uses-ink-control", path = "control" }
 # test-only: a dev-dependency of any crate, a normal dependency of none
 fixture = { package = "uses-ink-fixture", path = "fixture" }
+db = { package = "uses-ink-db", path = "db" }
+db-conformance = { package = "uses-ink-db-conformance", path = "db/conformance" }
+db-sqlite = { package = "uses-ink-db-sqlite", path = "db/sqlite" }
 diag = { package = "uses-ink-diag", path = "diag" }
 engine = { package = "uses-ink-engine", path = "engine" }
 format-markdown = { package = "uses-ink-format-markdown", path = "plugin/format/markdown" }
@@ -25,6 +35,12 @@ host-image = { package = "uses-ink-host-image", path = "host/image" }
 host-native = { package = "uses-ink-host-native", path = "host/native" }
 host-wasmtime = { package = "uses-ink-host-wasmtime", path = "host/wasmtime" }
 model = { package = "uses-ink-model", path = "model" }
+secret = { package = "uses-ink-secret", path = "secret" }
+secret-conformance = { package = "uses-ink-secret-conformance", path = "secret/conformance" }
+secret-local = { package = "uses-ink-secret-local", path = "secret/local" }
+queue = { package = "uses-ink-queue", path = "queue" }
+queue-conformance = { package = "uses-ink-queue-conformance", path = "queue/conformance" }
+queue-local = { package = "uses-ink-queue-local", path = "queue/local" }
 sdk = { package = "uses-ink-sdk", path = "plugin/sdk" }
 source-git = { package = "uses-ink-source-git", path = "plugin/source/git" }
 theme-quiet = { package = "uses-ink-theme-quiet", path = "plugin/theme/quiet" }
@@ -39,6 +55,11 @@ arborium = { version = "2.18.2", features = [
 arborium-theme = { version = "2.18.2", default-features = false }
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 blake3 = "1.8.7"
+# the control plane's ports (decision 0045): SQLite with the C library bundled, XChaCha20-Poly1305
+# for sealed credentials, zeroing for plaintext, a minimal executor for the conformance suites
+chacha20poly1305 = "0.10.1"
+# the 0.6 line chacha20poly1305 uses; `std` makes its `Error` a `std::error::Error`
+rand_core = { version = "0.6.4", features = ["std"] }
 clap = { version = "4.6.9", features = ["derive"] }
 # benchmarks only: a dev-dependency of any crate, a normal dependency of none
 divan = "0.1.21"
@@ -50,7 +71,10 @@ insta = { version = "1.49.0", features = ["glob"] }
 jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"] }
 libm = "0.2.16"
 math-core = "0.9.0"
+pollster = "0.4.0"
 proptest = "1.12.0"
+rusqlite = { version = "0.41.0", features = ["bundled"] }
+tempfile = "3.27.0"
 quick-xml = "0.42.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
@@ -64,6 +88,7 @@ unspliced = "0.1.2"
 wasmtime = { version = "51.0.0", default-features = false, features = [
     "component-model", "cranelift", "parallel-compilation", "runtime", "std",
 ] }
+zeroize = "1.9.2"
 wit-bindgen = { version = "0.63.0", default-features = false, features = ["macros", "realloc"] }
 wit-component = { version = "0.263.0", default-features = false }
 # wit-component's error type, named by xtask
