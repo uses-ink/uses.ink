@@ -81,7 +81,7 @@ pub struct Door<D, K, R> {
 /// Why a sign-in call was not answered with what it asked for.
 #[derive(Debug)]
 #[non_exhaustive]
-pub enum Turn<E> {
+pub enum Step<E> {
     /// The path is no sign-in route.
     Route,
     /// The method is not taken there.
@@ -111,7 +111,7 @@ pub enum Turn<E> {
     Json(serde_json::Error),
 }
 
-impl<E> std::fmt::Display for Turn<E> {
+impl<E> std::fmt::Display for Step<E> {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Route => out.write_str("there is no such route"),
@@ -130,7 +130,7 @@ impl<E> std::fmt::Display for Turn<E> {
     }
 }
 
-impl<E: std::error::Error + 'static> std::error::Error for Turn<E> {
+impl<E: std::error::Error + 'static> std::error::Error for Step<E> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Method(source) => Some(source),
@@ -146,7 +146,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Turn<E> {
     }
 }
 
-impl<E: std::error::Error + 'static> Turn<E> {
+impl<E: std::error::Error + 'static> Step<E> {
     /// A stable name for what went wrong.
     pub fn name(&self) -> &'static str {
         match self {
@@ -279,7 +279,7 @@ struct Ended {
     ended: bool,
 }
 
-impl<E> Turn<E> {
+impl<E> Step<E> {
     /// The refusal for a link that cannot be used, which is one answer for every reason.
     const fn unusable() -> Self {
         Self::Sign(Error::Refused(Refused::Unusable))
@@ -302,9 +302,9 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     pub async fn respond(&self, request: &Request) -> Reply {
         match self.answer(request).await {
             Ok(reply) => reply,
-            Err(turn) => {
-                let mut reply = turn.reply();
-                if matches!(turn, Turn::Anonymous) && request.cookie.is_some() {
+            Err(step) => {
+                let mut reply = step.reply();
+                if matches!(step, Step::Anonymous) && request.cookie.is_some() {
                     reply.cookie = Some(self.config.jar.clear());
                 }
                 reply
@@ -312,11 +312,11 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         }
     }
 
-    async fn answer(&self, request: &Request) -> Result<Reply, Turn<D::Error>> {
-        let call = Enter::parse(request.method, &request.path).ok_or(Turn::Route)?.map_err(Turn::Method)?;
+    async fn answer(&self, request: &Request) -> Result<Reply, Step<D::Error>> {
+        let call = Enter::parse(request.method, &request.path).ok_or(Step::Route)?.map_err(Step::Method)?;
         let body = match &request.body {
             Payload::Whole(body) => body.as_slice(),
-            Payload::Over { limit } => return Err(Turn::Large { limit: *limit }),
+            Payload::Over { limit } => return Err(Step::Large { limit: *limit }),
         };
         match call {
             Enter::Ask => self.ask(request, body).await,
@@ -330,13 +330,13 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         }
     }
 
-    fn json<T: Serialize>(status: Status, value: &T) -> Result<Reply, Turn<D::Error>> {
-        let body = serde_json::to_vec(value).map_err(Turn::Json)?;
+    fn json<T: Serialize>(status: Status, value: &T) -> Result<Reply, Step<D::Error>> {
+        let body = serde_json::to_vec(value).map_err(Step::Json)?;
         Ok(Reply::new(status, Media::Json, body))
     }
 
-    fn drawn(&self) -> Result<Drawn, Turn<D::Error>> {
-        Draws(&self.draw).drawn().map_err(|error| Turn::Draw(Box::new(error)))
+    fn drawn(&self) -> Result<Drawn, Step<D::Error>> {
+        Draws(&self.draw).drawn().map_err(|error| Step::Draw(Box::new(error)))
     }
 
     /// The session secret a request holds: its cookie. The API reads signatures and ignores
@@ -345,12 +345,12 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         request.cookie.as_deref().and_then(|header| self.config.jar.read(header))
     }
 
-    async fn ask(&self, request: &Request, body: &[u8]) -> Result<Reply, Turn<D::Error>> {
-        let address = Unreadable::read::<Ask>(body).map_err(Turn::Body)?.address.0;
+    async fn ask(&self, request: &Request, body: &[u8]) -> Result<Reply, Step<D::Error>> {
+        let address = Unreadable::read::<Ask>(body).map_err(Step::Body)?.address.0;
         let now = self.clock.now();
         let who = Who { address: &address, source: request.source };
-        self.limiter.admit(&self.config.rates, who, now).map_err(Turn::Limited)?;
-        let requested = self.entry.request(&address, self.drawn()?, now).await.map_err(Turn::Sign)?;
+        self.limiter.admit(&self.config.rates, who, now).map_err(Step::Limited)?;
+        let requested = self.entry.request(&address, self.drawn()?, now).await.map_err(Step::Sign)?;
         if let Requested::Issued(issued) = requested {
             let link = self.config.base.link(issued.proof.reveal());
             let valid = self.entry.settings().login.duration();
@@ -360,24 +360,24 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         Self::json(Status::Accepted, &Asked { requested: true })
     }
 
-    async fn look(&self, proof: Option<Proof>) -> Result<Reply, Turn<D::Error>> {
-        let proof = proof.ok_or_else(Turn::unusable)?;
-        let pending = self.entry.peek(&proof, self.clock.now()).await.map_err(Turn::Sign)?;
-        let pending = pending.ok_or_else(Turn::unusable)?;
+    async fn look(&self, proof: Option<Proof>) -> Result<Reply, Step<D::Error>> {
+        let proof = proof.ok_or_else(Step::unusable)?;
+        let pending = self.entry.peek(&proof, self.clock.now()).await.map_err(Step::Sign)?;
+        let pending = pending.ok_or_else(Step::unusable)?;
         Self::json(Status::Ok, &Looked { purpose: pending.purpose.name(), expires: pending.expires })
     }
 
-    async fn redeem(&self, proof: Option<Proof>, body: &[u8]) -> Result<Reply, Turn<D::Error>> {
-        let proof = proof.ok_or_else(Turn::unusable)?;
+    async fn redeem(&self, proof: Option<Proof>, body: &[u8]) -> Result<Reply, Step<D::Error>> {
+        let proof = proof.ok_or_else(Step::unusable)?;
         let asked: Redeem =
-            if body.is_empty() { Redeem::default() } else { Unreadable::read(body).map_err(Turn::Body)? };
+            if body.is_empty() { Redeem::default() } else { Unreadable::read(body).map_err(Step::Body)? };
         let address = asked.address.map(|address| address.0);
         let now = self.clock.now();
         let entered = self
             .entry
             .redeem(Presented { proof: &proof, address: address.as_ref() }, self.drawn()?, now)
             .await
-            .map_err(Turn::Sign)?;
+            .map_err(Step::Sign)?;
         let age = Duration::try_from(entered.session.limit.duration_since(now)).unwrap_or_default();
         let signed = Signed {
             session: entered.secret.reveal(),
@@ -389,16 +389,16 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         Ok(reply)
     }
 
-    async fn show(&self, request: &Request) -> Result<Reply, Turn<D::Error>> {
-        let proof = self.held(request).ok_or(Turn::Anonymous)?;
-        let session = self.entry.resolve(&proof, self.clock.now()).await.map_err(Turn::Sign)?;
-        Self::json(Status::Ok, &Shown::from(&session.ok_or(Turn::Anonymous)?))
+    async fn show(&self, request: &Request) -> Result<Reply, Step<D::Error>> {
+        let proof = self.held(request).ok_or(Step::Anonymous)?;
+        let session = self.entry.resolve(&proof, self.clock.now()).await.map_err(Step::Sign)?;
+        Self::json(Status::Ok, &Shown::from(&session.ok_or(Step::Anonymous)?))
     }
 
-    async fn end(&self, request: &Request) -> Result<Reply, Turn<D::Error>> {
-        let proof = self.held(request).ok_or(Turn::Anonymous)?;
-        if !self.entry.end(&proof, self.clock.now()).await.map_err(Turn::Sign)? {
-            return Err(Turn::Anonymous);
+    async fn end(&self, request: &Request) -> Result<Reply, Step<D::Error>> {
+        let proof = self.held(request).ok_or(Step::Anonymous)?;
+        if !self.entry.end(&proof, self.clock.now()).await.map_err(Step::Sign)? {
+            return Err(Step::Anonymous);
         }
         let mut reply = Self::json(Status::Ok, &Ended { ended: true })?;
         reply.cookie = Some(self.config.jar.clear());
@@ -455,27 +455,27 @@ impl<D: Db, K: Clock, R: Draw> Approver for Door<D, K, R> {
 
 impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     /// The person a request is from, with the gate open: a wrong code is counted against it.
-    async fn gated(&self, request: &Request) -> Result<(Approving, Timestamp), Turn<D::Error>> {
+    async fn gated(&self, request: &Request) -> Result<(Approving, Timestamp), Step<D::Error>> {
         let now = self.clock.now();
-        let who = self.approver(request, now).await.map_err(Turn::Sign)?.ok_or(Turn::Anonymous)?;
-        self.enrol.gate().open(now).map_err(Turn::Closed)?;
+        let who = self.approver(request, now).await.map_err(Step::Sign)?.ok_or(Step::Anonymous)?;
+        self.enrol.gate().open(now).map_err(Step::Closed)?;
         Ok((who, now))
     }
 
-    fn store(error: control::keys::Error<D::Error>) -> Turn<D::Error> {
+    fn store(error: control::keys::Error<D::Error>) -> Step<D::Error> {
         match error.refusal() {
-            Some(refused) => Turn::Keys(refused.clone()),
-            None => Turn::Store(Box::new(error)),
+            Some(refused) => Step::Keys(refused.clone()),
+            None => Step::Store(Box::new(error)),
         }
     }
 
     /// A code that names nothing is counted, and answered as every unusable code is.
-    fn missed(&self, now: Timestamp) -> Turn<D::Error> {
+    fn missed(&self, now: Timestamp) -> Step<D::Error> {
         self.enrol.gate().miss(now);
-        Turn::Keys(KeyRefused::NoEnrolment)
+        Step::Keys(KeyRefused::NoEnrolment)
     }
 
-    async fn seeing(&self, request: &Request, code: Option<control::keys::UserCode>) -> Result<Reply, Turn<D::Error>> {
+    async fn seeing(&self, request: &Request, code: Option<control::keys::UserCode>) -> Result<Reply, Step<D::Error>> {
         let (_, now) = self.gated(request).await?;
         let Some(code) = code else { return Err(self.missed(now)) };
         let seen = self.enrol.keys().look(&code, now).await.map_err(Self::store)?;
@@ -497,9 +497,9 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         request: &Request,
         code: Option<control::keys::UserCode>,
         body: &[u8],
-    ) -> Result<Reply, Turn<D::Error>> {
+    ) -> Result<Reply, Step<D::Error>> {
         let (who, now) = self.gated(request).await?;
-        let asked: Approve = Unreadable::read(body).map_err(Turn::Body)?;
+        let asked: Approve = Unreadable::read(body).map_err(Step::Body)?;
         let Some(code) = code else { return Err(self.missed(now)) };
         let fingerprint = asked.fingerprint.0;
         let approval = Approval { code, fingerprint: fingerprint.clone(), by: who.account, within: who.rights };
@@ -518,7 +518,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         &self,
         request: &Request,
         code: Option<control::keys::UserCode>,
-    ) -> Result<Reply, Turn<D::Error>> {
+    ) -> Result<Reply, Step<D::Error>> {
         let (_, now) = self.gated(request).await?;
         let Some(code) = code else { return Err(self.missed(now)) };
         self.enrol.keys().deny(&code, now).await.map_err(Self::store)?;
