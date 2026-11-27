@@ -228,8 +228,11 @@ interface git {
     }
 
     /// Fetches the repository into the host's cache, or brings a clone already there to the depth.
+    /// The request must be the call's own want: any other locator, revision or grant is refused
+    /// (decision 0055).
     fetch: func(request: request) -> result<cloned, refusal>;
-    /// The snapshot of a fetched commit, its files stored for the build to read.
+    /// The snapshot of a commit this call fetched, its files stored for the build to read. A
+    /// clone of another call is refused.
     read: func(cloned: cloned) -> result<snapshot, refusal>;
 }
 

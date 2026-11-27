@@ -14,10 +14,12 @@ world source {
         record want {
             /// `file:///path` or `https://host/path`.
             locator: string,
+            /// A branch, tag or commit; the repository's `HEAD` when none.
             revision: option<string>,
             /// Whether the site's dates come from history: the whole history is fetched when
             /// they do, and one commit when they do not.
             history: bool,
+            /// The name of a credential the host holds; never its value.
             grant: option<string>,
         }
 
