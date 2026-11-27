@@ -289,6 +289,15 @@ same shapes and share no type, so inclusion is the one way to write the impls on
 signature has room for: a format's read carries it, a theme's render returns it, and what has no
 room (a theme's files) is kept aside for the caller to take.
 
+A source is the same shape without the engine (decision 0046): `uses-ink-source-git` is
+`Source<G: model::git::Git>`, whose `read(&Want)` fetches as much history as the site needs and
+refuses a snapshot of another commit than the one fetched. `host_native::Cloning` is the `Git`
+over the host's own fetching, and the `ink:source-git` guest is the same rule over the imported
+`ink:host/git`. `host_wasmtime::Component<Source>::read(&Want, &mut impl Store)` runs the
+component and returns the `Read` the native `Repository::read` returns; the files move to the
+caller's store only once a snapshot came back, and a refusal is `Unsourced::Refused` carrying the
+typed `Refused`.
+
 A capability a plugin imports and the engine never calls is a trait in `model`, so the plugin
 and the host that implements it meet without going through the engine. Highlighting is the first
 (decision 0039):

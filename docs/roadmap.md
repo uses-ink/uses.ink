@@ -141,8 +141,10 @@ that an untouched page is not rendered again (`engine/tests/engine/incremental.r
 Progress (2026-11-27): the git source's native core is `host_native::Repository` (0036, as
 built): a local repository at a commit, dates from one history walk, shallow bounds and moves
 as lacks, `ink build`, `check`, `explain` and `preview` reading it when the folder holds `.git`
-(`--source`, `--rev`). Left: `git.fetch` (clone and deepen) as a host capability and
-`ink:source-git` as a component over it, which wait for `host/wasmtime`.
+(`--source`, `--rev`). Update (2026-11-27): `git.fetch` (clone and deepen into a host cache, with
+the limits of 0044 and typed refusals) and `ink:source-git` as a component over it are built
+(0046); `host_wasmtime::Component<Source>::read` gives the same snapshot as the native core, held
+by a conformance test. Left: the CLI choosing a remote `--source` through the component.
 
 Progress (2026-11-27): 0042's first step is built. A decision is its value and one evidence;
 `ink explain --why [path] <code>` replays its ladder; `ink pin [path] <code>` writes one pin and
