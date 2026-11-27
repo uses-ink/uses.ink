@@ -3,9 +3,9 @@
 //! keys' values through its value type's [`FromFront`]. Nothing here knows what a title or a
 //! date is.
 
+mod edit;
 mod field;
 mod node;
-mod publishing;
 
 use model::code::{Date, Kind, Publish, Slug, Summary, Tags, Title, Updated};
 use model::{FromFront, Front, Raw, Span, Spanned};
@@ -16,7 +16,7 @@ use crate::file::{Fence, File};
 use field::{Aliases, Draft, Field, Lang};
 use node::{Entries, Node};
 
-pub use publishing::{Edit, Malformed, Publishing, Refusal};
+pub use edit::{Edit, Malformed, Publishing, Refusal};
 
 /// The fields the engine reads, each a [`Field`]. Every other key is the author's own and is
 /// neither kept nor refused.
