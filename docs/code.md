@@ -341,6 +341,23 @@ trait by one `tuples!` macro. `cargo xtask check` runs every step and reports ev
 (`lint`, `test`, `docs`, `wasm`, `sites`) runs one `Stage`, which is how CI runs them in parallel
 jobs. A new check is a new `Rule` added to `Layout::RULES`.
 
+`cargo xtask farm <verb>` (`xtask/src/farm/`, docs/workflow.md, decision 0047) is a client over
+a `Transport` trait with two implementations: `Local` (this machine through `sh -c`, in the
+workspace itself) and `Ssh` (the system `ssh` and `rsync`, over one multiplexed connection per
+host); a `Link` enum is the production `T` and a fake is the test one. A `Fleet<T>` of
+`Member<T>` probes the hosts and syncs the workspace. A `Placement` trait picks the host
+(`LeastLoaded`: a free slot with the fewest in use, then the lowest load, else the shortest
+queue per slot), and `Need` (any or golden) says which hosts fit. What runs on a host is a
+`Program` (probe, run, body, wait, log, seed, changed, sweep): fixed `sh` text whose every
+variable is a positional parameter, wrapped in a `Call`; the slots are `flock` files and the
+queue is ticket files, so no daemon runs. Names that reach a path or a command line are `Word`s
+of a `Kind` (host name, path segment, ssh destination), shell words are `Quoted`, a job's id is
+a `JobId`, its events are `Event`s read from lines marked `@@farm:`, and its log becomes a
+`Summary` (nextest counts and failures, compiler diagnostics, the gate's `check:` lines). The
+exit codes are an `Exit` enum. The `Local` transport and the programs are tested for real
+(`flock`, `timeout`, `tail`) on temp directories; placement, flags, config, summaries and the
+exit mapping are table tests, the summaries over real nextest and cargo output.
+
 ## 8. Generic, and where it stops
 
 - Arguments take traits (`impl AsRef<str>`, `impl IntoIterator`, `W: Witnesses<C>`), not

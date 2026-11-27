@@ -8,8 +8,8 @@ use std::process::Command;
 use std::time::SystemTime;
 
 use crate::name::Segment;
-use crate::tree::Tree;
 use crate::process::{Failure, Process};
+use crate::tree::Tree;
 
 /// How a new workspace got its `target/`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,19 +164,41 @@ impl Store {
 /// Why a workspace could not be made or forgotten.
 #[derive(Debug)]
 pub(crate) enum Fault {
-    Exists { path: PathBuf },
-    Missing { path: PathBuf },
+    Exists {
+        path: PathBuf,
+    },
+    Missing {
+        path: PathBuf,
+    },
     /// The path is not a direct child of the repo's workspace directory.
-    Outside { path: PathBuf, container: PathBuf },
+    Outside {
+        path: PathBuf,
+        container: PathBuf,
+    },
     /// The workspace is the one the command runs in.
-    Current { name: Segment },
+    Current {
+        name: Segment,
+    },
     /// Not a jj workspace of this repo.
-    Foreign { path: PathBuf },
+    Foreign {
+        path: PathBuf,
+    },
     /// It holds changes that are not in a commit.
-    Dirty { name: Segment },
-    Jj { what: &'static str, source: Failure },
-    Seed { from: PathBuf, source: Failure },
-    Io { path: PathBuf, source: std::io::Error },
+    Dirty {
+        name: Segment,
+    },
+    Jj {
+        what: &'static str,
+        source: Failure,
+    },
+    Seed {
+        from: PathBuf,
+        source: Failure,
+    },
+    Io {
+        path: PathBuf,
+        source: std::io::Error,
+    },
 }
 
 impl Fault {
@@ -184,7 +206,11 @@ impl Fault {
     pub(crate) const fn is_refusal(&self) -> bool {
         matches!(
             self,
-            Self::Exists { .. } | Self::Outside { .. } | Self::Current { .. } | Self::Foreign { .. } | Self::Dirty { .. }
+            Self::Exists { .. }
+                | Self::Outside { .. }
+                | Self::Current { .. }
+                | Self::Foreign { .. }
+                | Self::Dirty { .. }
         )
     }
 }
@@ -197,9 +223,15 @@ impl fmt::Display for Fault {
             Self::Outside { path, container } => {
                 write!(out, "{} is not directly inside {}; nothing was removed", path.display(), container.display())
             }
-            Self::Current { name } => write!(out, "`{name}` is the workspace this command runs in; run it from another"),
-            Self::Foreign { path } => write!(out, "{} is not a jj workspace of this repo; nothing was removed", path.display()),
-            Self::Dirty { name } => write!(out, "workspace `{name}` has changes that are not committed; commit or abandon them first"),
+            Self::Current { name } => {
+                write!(out, "`{name}` is the workspace this command runs in; run it from another")
+            }
+            Self::Foreign { path } => {
+                write!(out, "{} is not a jj workspace of this repo; nothing was removed", path.display())
+            }
+            Self::Dirty { name } => {
+                write!(out, "workspace `{name}` has changes that are not committed; commit or abandon them first")
+            }
             Self::Jj { what, .. } => write!(out, "`jj {what}` failed"),
             Self::Seed { from, .. } => write!(out, "copying target/ from {} failed", from.display()),
             Self::Io { path, .. } => write!(out, "cannot use {}", path.display()),

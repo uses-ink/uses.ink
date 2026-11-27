@@ -99,7 +99,16 @@ mod tests {
 
     #[test]
     fn nothing_else_is_ever_copied() {
-        for bad in ["./a/x.snap.new", "./src/lib.rs", "/etc/x.snap", "./../x.snap", "./a/../../x.snap", "./a//x.snap", "./a\tb.snap", "./x.pending-snap"] {
+        for bad in [
+            "./a/x.snap.new",
+            "./src/lib.rs",
+            "/etc/x.snap",
+            "./../x.snap",
+            "./a/../../x.snap",
+            "./a//x.snap",
+            "./a\tb.snap",
+            "./x.pending-snap",
+        ] {
             assert!(read(&[bad]).is_err(), "{bad:?}");
         }
     }

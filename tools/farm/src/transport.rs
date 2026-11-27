@@ -13,9 +13,9 @@ use std::time::{Duration, Instant};
 
 use crate::console::Console;
 use crate::name::Destination;
+use crate::process::Failure;
 use crate::program::{Call, Stdin};
 use crate::quote::Line;
-use crate::process::Failure;
 
 /// What a call left: how it ended and what it said on stderr.
 #[derive(Debug)]
@@ -105,7 +105,8 @@ impl Exec {
     /// Runs `argv`, each line of its stdout into `lines`.
     fn spawn(&self, argv: &[String], feed: Feed<'_>, lines: &mut impl FnMut(&str)) -> Result<Done, Failure> {
         self.console.show(Line(argv));
-        let (first, rest) = argv.split_first().ok_or_else(|| Failure::Spawn(std::io::ErrorKind::InvalidInput.into()))?;
+        let (first, rest) =
+            argv.split_first().ok_or_else(|| Failure::Spawn(std::io::ErrorKind::InvalidInput.into()))?;
         let mut command = Command::new(first);
         command.args(rest).stdout(Stdio::piped()).stderr(Stdio::piped());
         command.stdin(match feed {
@@ -201,7 +202,9 @@ impl<'a> Follow<'a> {
     /// How long to wait for the next line: until the deadline, or the end of the grace after it.
     fn next_wait(&self) -> Duration {
         let limit = self.detaching.or(self.deadline);
-        limit.map_or(Duration::from_secs(3600), |at| at.saturating_duration_since(Instant::now()).max(Duration::from_millis(10)))
+        limit.map_or(Duration::from_secs(3600), |at| {
+            at.saturating_duration_since(Instant::now()).max(Duration::from_millis(10))
+        })
     }
 }
 
@@ -397,7 +400,18 @@ mod tests {
         let push = Push { root: Path::new("/w/farm"), tree: "farm/uses.ink/farm", lock: "farm/locks/farm.lock" };
         let argv = ssh().sync(&push);
         assert_eq!(argv.first().map(String::as_str), Some("rsync"));
-        for want in ["-a", "--delete", "--filter=:- .gitignore", "--exclude=target", "--exclude=.jj", "--exclude=.git", "--exclude=.env", "--exclude=*.pem", "--exclude=*.key", "--exclude=.impeccable"] {
+        for want in [
+            "-a",
+            "--delete",
+            "--filter=:- .gitignore",
+            "--exclude=target",
+            "--exclude=.jj",
+            "--exclude=.git",
+            "--exclude=.env",
+            "--exclude=*.pem",
+            "--exclude=*.key",
+            "--exclude=.impeccable",
+        ] {
             assert!(argv.iter().any(|word| word == want), "{want}");
         }
         assert!(argv.contains(&"--rsync-path=flock 'farm/locks/farm.lock' rsync".to_owned()));

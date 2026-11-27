@@ -12,10 +12,10 @@ use crate::event::{Event, Line, Seeded};
 use crate::host::{Host, Snapshot};
 use crate::job::{Attach, Job};
 use crate::name::{HostName, JobId};
+use crate::process::Failure;
 use crate::program::{Call, Program};
 use crate::transport::{Done, Pull, Push, Transport};
 use crate::tree::Tree;
-use crate::process::Failure;
 
 /// What a quick call printed: its events, and every other line.
 #[derive(Debug, Default)]
@@ -77,7 +77,8 @@ impl<T: Transport> Member<T> {
         let slots = self.host.slots.map_or_else(String::new, |slots| slots.to_string());
         let call = Call::new(Program::Probe, vec![self.host.dir.as_str().to_owned(), slots]);
         let said = self.say(&call, "the probe")?;
-        Snapshot::read(&self.host, &said.output.join("\n")).map_err(|source| Error::Probe { host: self.host.name.clone(), source })
+        Snapshot::read(&self.host, &said.output.join("\n"))
+            .map_err(|source| Error::Probe { host: self.host.name.clone(), source })
     }
 
     /// Makes the workspace's tree on the host equal to the workspace here; the first time on a
@@ -97,7 +98,8 @@ impl<T: Transport> Member<T> {
             Event::Seed(seeded) => Some(seeded),
             _ => None,
         });
-        let seeded = seeded.ok_or_else(|| Error::Silent { host: self.host.name.clone(), what: "how the tree was seeded" })?;
+        let seeded =
+            seeded.ok_or_else(|| Error::Silent { host: self.host.name.clone(), what: "how the tree was seeded" })?;
         let (path, lock) = (tree.on(&self.host), tree.lock(&self.host));
         self.transport.push(&Push { root: &tree.root, tree: &path, lock: &lock }).map_err(self.failed("rsync"))?;
         *synced = true;
@@ -148,7 +150,9 @@ impl<T: Transport> Member<T> {
 
     /// The job's log on the host, whole or the last `tail` lines.
     pub(crate) fn log(&self, id: &JobId, tail: Option<u32>) -> Result<Said, Error> {
-        let args = [self.host.dir.as_str(), &id.dir(), &tail.map_or_else(String::new, |n| n.to_string())].map(str::to_owned).to_vec();
+        let args = [self.host.dir.as_str(), &id.dir(), &tail.map_or_else(String::new, |n| n.to_string())]
+            .map(str::to_owned)
+            .to_vec();
         self.say(&Call::new(Program::Log, args), "reading the log")
     }
 
@@ -301,7 +305,8 @@ mod tests {
         Tree { root: "/w/farm".into(), repo: "uses.ink".parse().unwrap(), workspace: "farm".parse().unwrap() }
     }
 
-    const PROBE: &[&str] = &["now 1", "arch x86_64", "cores 12", "load 0.5", "slots 2", "slot 0 free", "slot 1 busy", "queued 0"];
+    const PROBE: &[&str] =
+        &["now 1", "arch x86_64", "cores 12", "load 0.5", "slots 2", "slot 0 free", "slot 1 busy", "queued 0"];
 
     #[test]
     fn a_probe_call_asks_with_the_dir_and_the_configured_slots() {
@@ -340,14 +345,24 @@ mod tests {
     fn the_launch_passes_every_value_as_its_own_argument_and_the_command_after_env() {
         let member = Member::new(Host { mold: true, ..remote("petal") }, Fake::default());
         let snap = Snapshot::read(&member.host, &PROBE.join("\n")).unwrap();
-        let job = Job { label: "x".to_owned(), words: ["cargo", "test", "-E", "test(a b;c)"].map(str::to_owned).to_vec(), need: Need::Any, env: vec![], limit: None };
+        let job = Job {
+            label: "x".to_owned(),
+            words: ["cargo", "test", "-E", "test(a b;c)"].map(str::to_owned).to_vec(),
+            need: Need::Any,
+            env: vec![],
+            limit: None,
+        };
         let id = JobId::new(member.host.name.clone(), 255, 1);
-        let call = member.launch(&Start { tree: &tree(), snap: &snap, job: &job, id: &id }, Attach::Detach, Seconds(1500));
+        let call =
+            member.launch(&Start { tree: &tree(), snap: &snap, job: &job, id: &id }, Attach::Detach, Seconds(1500));
         assert_eq!(call.program, Program::Run);
         let args = &call.args;
         assert_eq!(args.first().map(String::as_str), Some("detach"));
         assert_eq!(args.get(1).map(String::as_str), Some(Program::Body.text()));
-        assert_eq!(&args[2..9], ["farm", "petal.ff1", "2", "1500", "farm/uses.ink/farm", "mold", "cargo test -E test(a b;c)"]);
+        assert_eq!(
+            &args[2..9],
+            ["farm", "petal.ff1", "2", "1500", "farm/uses.ink/farm", "mold", "cargo test -E test(a b;c)"]
+        );
         assert_eq!(args.get(9).map(String::as_str), Some("env"));
         assert_eq!(args.last().map(String::as_str), Some("test(a b;c)"));
         assert!(args.contains(&"CARGO_BUILD_JOBS=6".to_owned()));
@@ -357,7 +372,8 @@ mod tests {
     fn a_held_launch_holds_stdin_for_the_timeout() {
         let member = Member::new(remote("petal"), Fake::default());
         let snap = Snapshot::read(&member.host, &PROBE.join("\n")).unwrap();
-        let job = Job { label: "x".to_owned(), words: vec!["cargo".to_owned()], need: Need::Any, env: vec![], limit: None };
+        let job =
+            Job { label: "x".to_owned(), words: vec!["cargo".to_owned()], need: Need::Any, env: vec![], limit: None };
         let id = JobId::new(member.host.name.clone(), 1, 1);
         let start = Start { tree: &tree(), snap: &snap, job: &job, id: &id };
         let call = member.launch(&start, Attach::Hold(std::time::Duration::from_secs(540)), Seconds(1500));

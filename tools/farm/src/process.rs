@@ -19,7 +19,13 @@ impl From<Command> for Process {
 impl Process {
     /// Runs it with `input` on stdin, and returns its stdout as text once it exits with success.
     pub(crate) fn text(mut self, input: &[u8]) -> Result<String, Failure> {
-        let mut child = self.0.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(Failure::Spawn)?;
+        let mut child = self
+            .0
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(Failure::Spawn)?;
         if let Some(mut stdin) = child.stdin.take() {
             stdin.write_all(input).map_err(Failure::Stdin)?;
         }

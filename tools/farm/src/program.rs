@@ -362,4 +362,3 @@ mod tests {
         assert!(call.to_string().ends_with(r" 'sh' 'd' 'it'\''s'"));
     }
 }
-

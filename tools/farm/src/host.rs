@@ -5,7 +5,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::name::{Destination, HostName, JobId, JobFault};
+use crate::name::{Destination, HostName, JobFault, JobId};
 
 /// A CPU architecture.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -148,7 +148,9 @@ impl fmt::Display for DirFault {
         let given = &self.given;
         match self.why {
             Why::Empty => write!(out, "the host directory is empty"),
-            Why::Char(found) => write!(out, "host directory `{given}` holds {found:?}; use letters, digits and `/ . _ -`"),
+            Why::Char(found) => {
+                write!(out, "host directory `{given}` holds {found:?}; use letters, digits and `/ . _ -`")
+            }
             Why::Dots => write!(out, "host directory `{given}` holds a `.` or `..` part"),
         }
     }
@@ -226,7 +228,10 @@ pub(crate) enum JobState {
     Queued,
     Running,
     /// Ended with `code` after `ran`.
-    Done { code: i32, ran: Duration },
+    Done {
+        code: i32,
+        ran: Duration,
+    },
     /// Its body died without a result.
     Lost,
 }
@@ -324,11 +329,15 @@ impl Found {
             "arch" => self.arch = host.arch.clone().or_else(|| rest.parse().ok()),
             "cores" => self.cores = Some(u32::try_from(int(rest)?).unwrap_or(u32::MAX)),
             "slots" => self.slots = Some(u32::try_from(int(rest)?).unwrap_or(u32::MAX)),
-            "load" => self.load = Some(rest.parse().map_err(|source| ReadFault::Int { line: line.to_owned(), source })?),
+            "load" => {
+                self.load = Some(rest.parse().map_err(|source| ReadFault::Int { line: line.to_owned(), source })?);
+            }
             "queued" => self.queued = u32::try_from(int(rest)?).unwrap_or(u32::MAX),
             "slot" if rest.ends_with(" busy") => self.busy += 1,
             "slot" if rest.ends_with(" free") => self.free += 1,
-            "job" => self.jobs.push(JobRow::read(rest).map_err(|fault| ReadFault::Job { line: line.to_owned(), fault })?),
+            "job" => {
+                self.jobs.push(JobRow::read(rest).map_err(|fault| ReadFault::Job { line: line.to_owned(), fault })?);
+            }
             _ => return Err(ReadFault::Unknown { line: line.to_owned() }),
         }
         Ok(())
@@ -493,7 +502,10 @@ job petal.19e queued 1699990000 cargo xtask check lint
         assert!(snap.golden);
         assert_eq!(snap.jobs.len(), 5);
         assert_eq!(snap.jobs.first().map(|job| job.shown.as_str()), Some("cargo clippy -p engine"));
-        assert_eq!(snap.jobs.get(1).map(|job| job.state), Some(JobState::Done { code: 0, ran: Duration::from_secs(85) }));
+        assert_eq!(
+            snap.jobs.get(1).map(|job| job.state),
+            Some(JobState::Done { code: 0, ran: Duration::from_secs(85) })
+        );
         assert_eq!(snap.share(), 7);
     }
 
@@ -521,13 +533,18 @@ job petal.19e queued 1699990000 cargo xtask check lint
         let snap = Snapshot::read(&host("petal"), PROBE).unwrap();
         // done with code 0: 85 s; running since 60 s before now
         assert_eq!(snap.eta(), Some(Duration::from_secs(25)));
-        let idle = Snapshot::read(&host("petal"), "now 1\narch x\ncores 1\nload 0\nslots 1\nslot 0 free\nqueued 0\n").unwrap();
+        let idle =
+            Snapshot::read(&host("petal"), "now 1\narch x\ncores 1\nload 0\nslots 1\nslot 0 free\nqueued 0\n").unwrap();
         assert_eq!(idle.eta(), None);
     }
 
     #[test]
     fn reserving_fills_slots_then_the_queue() {
-        let mut snap = Snapshot::read(&host("petal"), "now 1\narch x86_64\ncores 12\nload 0\nslots 2\nslot 0 free\nslot 1 free\nqueued 0\n").unwrap();
+        let mut snap = Snapshot::read(
+            &host("petal"),
+            "now 1\narch x86_64\ncores 12\nload 0\nslots 2\nslot 0 free\nslot 1 free\nqueued 0\n",
+        )
+        .unwrap();
         snap.reserve();
         snap.reserve();
         assert_eq!((snap.busy, snap.queued), (2, 0));

@@ -11,9 +11,9 @@ use crate::error::{Chain, Error};
 use crate::event::{Event, Seeded};
 use crate::exit::Exit;
 use crate::fleet::{Fleet, Start};
-use crate::jobs::Jobs;
 use crate::host::Snapshot;
 use crate::job::{Attach, Document, Finished, Flow, Job, LogFile, Verdict};
+use crate::jobs::Jobs;
 use crate::name::{HostName, JobId, JobName};
 use crate::place::{Need, Placement};
 use crate::snap::Snaps;
@@ -99,6 +99,15 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         self.fleet.probe(&self.console).up
     }
 
+    /// Runs the jobs of a check without printing a report.
+    #[cfg(test)]
+    pub(crate) fn go_for_test(&self, verb: &Verb) -> Result<Batch, Error> {
+        match verb {
+            Verb::Check(names) => self.check(names),
+            _ => Err(Usage::NoVerb.into()),
+        }
+    }
+
     /// Runs one job on a chosen host.
     #[cfg(test)]
     pub(crate) fn run_for_test(&self, job: &Job, snap: &Snapshot, attach: Attach) -> Result<Finished, Error> {
@@ -118,23 +127,40 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     fn seeded(&self, host: &HostName, seeded: Option<Seeded>) {
         match seeded {
             Some(Seeded::Copy(from)) => {
-                self.console.note(format!("`{host}` has no reflinks: its tree was copied in full from `{from}` (slow once)"));
+                self.console
+                    .note(format!("`{host}` has no reflinks: its tree was copied in full from `{from}` (slow once)"));
             }
             Some(Seeded::Reflink(from)) => self.console.note(format!("`{host}`: new tree seeded from `{from}`")),
             Some(Seeded::Present | Seeded::Empty) | None => {}
         }
     }
 
+    /// Says where a job is about to run.
+    fn announce(&self, job: &Job, snap: &Snapshot) {
+        self.console.note(format!(
+            "{}: on `{}`, {} of {} slots busy, {} queued",
+            job.label, snap.name, snap.busy, snap.slots, snap.queued
+        ));
+    }
+
+    /// The hard limit of a job: the person's `--limit`, else the job's own, else the default.
+    fn limit(&self, job: &Job) -> Seconds {
+        self.flags.limit.or(job.limit).unwrap_or(Seconds::LIMIT)
+    }
+
     /// Runs one job on the host `snap` describes: sync, take a slot, run, summarise.
     fn run(&self, job: &Job, snap: &Snapshot, attach: Attach) -> Result<Finished, Error> {
-        let member = self.fleet.member(&snap.name).ok_or_else(|| Error::NoHost { need: job.need, up: vec![snap.name.clone()] })?;
+        let member = self
+            .fleet
+            .member(&snap.name)
+            .ok_or_else(|| Error::NoHost { need: job.need, up: vec![snap.name.clone()] })?;
         let id = self.next(&snap.name);
-        self.console.note(format!("{}: on `{}`, {} of {} slots busy, {} queued", job.label, snap.name, snap.busy, snap.slots, snap.queued));
+        self.announce(job, snap);
         self.seeded(&snap.name, member.sync(&self.tree)?);
         let log = self.tree.root.join(LOGS[0]).join(LOGS[1]).join(format!("{id}.log"));
         let file = LogFile::create(&log).map_err(|source| Error::Io { path: log.clone(), source })?;
         let mut flow = Flow { file: Some(file), ..Flow::default() };
-        let call = member.launch(&Start { tree: &self.tree, snap, job, id: &id }, attach, self.flags.limit.or(job.limit).unwrap_or(Seconds::LIMIT));
+        let call = member.launch(&Start { tree: &self.tree, snap, job, id: &id }, attach, self.limit(job));
         let eta = snap.eta().map_or_else(|| "unknown".to_owned(), |eta| format!("about {} s", eta.as_secs()));
         member.run(&call, &mut |text| {
             if let Some(Event::Queued { behind }) = flow.feed(text) {
@@ -168,7 +194,8 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     fn fan(&self, jobs: &[Job], snaps: &[Snapshot]) -> Batch {
         let attach = self.attach();
         let results: Vec<Result<Finished, Error>> = thread::scope(|scope| {
-            let running: Vec<_> = jobs.iter().zip(snaps).map(|(job, snap)| scope.spawn(move || self.run(job, snap, attach))).collect();
+            let running: Vec<_> =
+                jobs.iter().zip(snaps).map(|(job, snap)| scope.spawn(move || self.run(job, snap, attach))).collect();
             running
                 .into_iter()
                 .zip(jobs)
@@ -226,7 +253,10 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
 
     /// Brings back the snapshots a bless job changed.
     fn fetch(&self, done: &Finished) -> Result<Snaps, Error> {
-        let member = self.fleet.member(&done.host).ok_or_else(|| Error::Silent { host: done.host.clone(), what: "anything: it left the fleet" })?;
+        let member = self
+            .fleet
+            .member(&done.host)
+            .ok_or_else(|| Error::Silent { host: done.host.clone(), what: "anything: it left the fleet" })?;
         let said = member.changed(&self.tree, &done.id)?;
         let snaps = Snaps::read(&said.output).map_err(|source| Error::Snap { host: done.host.clone(), source })?;
         if !snaps.is_empty() {
@@ -255,7 +285,9 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         match said.events.first() {
             Some(Event::Done { code, ran }) => {
                 let text = member.log(id, None)?.output.join("\n");
-                std::fs::create_dir_all(path.parent().unwrap_or(&self.tree.root)).and_then(|()| std::fs::write(&path, &text)).map_err(|source| Error::Io { path: path.clone(), source })?;
+                std::fs::create_dir_all(path.parent().unwrap_or(&self.tree.root))
+                    .and_then(|()| std::fs::write(&path, &text))
+                    .map_err(|source| Error::Io { path: path.clone(), source })?;
                 batch.done.push(finished(Verdict::Done { code: *code, ran: *ran }, Summary::of(&text), path));
             }
             Some(Event::Running) => batch.done.push(finished(Verdict::Running, Summary::default(), path)),
@@ -300,7 +332,9 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             if let Some(member) = self.fleet.member(&snap.name) {
                 match member.sweep() {
                     Ok(0) => {}
-                    Ok(count) => self.console.note(format!("swept {count} job(s) older than seven days on `{}`", snap.name)),
+                    Ok(count) => {
+                        self.console.note(format!("swept {count} job(s) older than seven days on `{}`", snap.name));
+                    }
                     Err(error) => self.console.note(format!("sweeping `{}` failed: {}", snap.name, Chain(&error))),
                 }
             }
@@ -353,8 +387,8 @@ impl Need {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fleet::fake::{Fake, Reply};
     use crate::fleet::Member;
+    use crate::fleet::fake::{Fake, Reply};
     use crate::host::{Host, Via};
     use crate::place::LeastLoaded;
 
@@ -363,12 +397,30 @@ mod tests {
     }
 
     fn probe(cores: u32, arch: &str) -> Reply {
-        Reply::ok(&["now 1000", &format!("arch {arch}"), &format!("cores {cores}"), "load 0.10", "slots 1", "slot 0 free", "queued 0"])
+        Reply::ok(&[
+            "now 1000",
+            &format!("arch {arch}"),
+            &format!("cores {cores}"),
+            "load 0.10",
+            "slots 1",
+            "slot 0 free",
+            "queued 0",
+        ])
     }
 
     fn farm(members: Vec<Member<Fake>>) -> Farm<Fake, LeastLoaded> {
-        let tree = Tree { root: std::env::temp_dir().join(format!("farm-run-{}", std::process::id())), repo: "r".parse().unwrap(), workspace: "w".parse().unwrap() };
-        Farm::new(Setup { fleet: Fleet::new(members), placement: LeastLoaded, console: Arc::new(Console::default()), flags: Flags::default(), tree })
+        let tree = Tree {
+            root: std::env::temp_dir().join(format!("farm-run-{}", std::process::id())),
+            repo: "r".parse().unwrap(),
+            workspace: "w".parse().unwrap(),
+        };
+        Farm::new(Setup {
+            fleet: Fleet::new(members),
+            placement: LeastLoaded,
+            console: Arc::new(Console::default()),
+            flags: Flags::default(),
+            tree,
+        })
     }
 
     #[test]
@@ -405,8 +457,17 @@ mod tests {
 
     #[test]
     fn a_job_runs_from_sync_to_summary_over_the_fake() {
-        let events = Reply::ok(&["@@farm:slot 0 3", "   Compiling x v0.1.0", "warning: unused variable: `a`", " --> src/lib.rs:1:1", "@@farm:done 0 12"]);
-        let member = Member::new(host("x86"), Fake::saying(vec![probe(12, "x86_64"), Reply::ok(&["@@farm:seed empty"]), events]));
+        let events = Reply::ok(&[
+            "@@farm:slot 0 3",
+            "   Compiling x v0.1.0",
+            "warning: unused variable: `a`",
+            " --> src/lib.rs:1:1",
+            "@@farm:done 0 12",
+        ]);
+        let member = Member::new(
+            host("x86"),
+            Fake::saying(vec![probe(12, "x86_64"), Reply::ok(&["@@farm:seed empty"]), events]),
+        );
         let farm = farm(vec![member]);
         let batch = farm.cargo(&["clippy".to_owned(), "-p".to_owned(), "engine".to_owned()]).unwrap();
         let done = batch.done.first().unwrap();
@@ -421,10 +482,24 @@ mod tests {
 
     #[test]
     fn a_connection_that_ends_without_a_result_is_lost_and_a_failed_command_is_failed() {
-        let lost = Member::new(host("a"), Fake::saying(vec![probe(12, "x86_64"), Reply::ok(&["@@farm:seed empty"]), Reply::ok(&["@@farm:slot 0 0", "output"])]));
+        let lost = Member::new(
+            host("a"),
+            Fake::saying(vec![
+                probe(12, "x86_64"),
+                Reply::ok(&["@@farm:seed empty"]),
+                Reply::ok(&["@@farm:slot 0 0", "output"]),
+            ]),
+        );
         let batch = farm(vec![lost]).cargo(&["check".to_owned()]).unwrap();
         assert!(matches!(batch.failed.first(), Some(Error::Lost { .. })), "{:?}", batch.failed);
-        let failed = Member::new(host("a"), Fake::saying(vec![probe(12, "x86_64"), Reply::ok(&["@@farm:seed empty"]), Reply::ok(&["@@farm:slot 0 0", "@@farm:done 101 2"])]));
+        let failed = Member::new(
+            host("a"),
+            Fake::saying(vec![
+                probe(12, "x86_64"),
+                Reply::ok(&["@@farm:seed empty"]),
+                Reply::ok(&["@@farm:slot 0 0", "@@farm:done 101 2"]),
+            ]),
+        );
         let farm = farm(vec![failed]);
         let batch = farm.cargo(&["check".to_owned()]).unwrap();
         assert_eq!(farm.report(&batch), Exit::Failed);
@@ -433,13 +508,29 @@ mod tests {
 
     #[test]
     fn bless_pulls_only_listed_snapshots_and_refuses_a_hostile_list() {
-        let ok = Member::new(host("x86"), Fake::saying(vec![probe(12, "x86_64"), Reply::ok(&["@@farm:seed empty"]), Reply::ok(&["@@farm:slot 0 0", "@@farm:done 0 5"]), Reply::ok(&["./a/x.snap"])]));
+        let ok = Member::new(
+            host("x86"),
+            Fake::saying(vec![
+                probe(12, "x86_64"),
+                Reply::ok(&["@@farm:seed empty"]),
+                Reply::ok(&["@@farm:slot 0 0", "@@farm:done 0 5"]),
+                Reply::ok(&["./a/x.snap"]),
+            ]),
+        );
         let farm_ok = farm(vec![ok]);
         let batch = farm_ok.bless(&[]).unwrap();
         assert_eq!(batch.blessed, ["a/x.snap"]);
         assert_eq!(*farm_ok.fleet.members().first().unwrap().transport().pulled.lock().unwrap(), ["a/x.snap\n"]);
         std::fs::remove_dir_all(&farm_ok.tree.root).ok();
-        let bad = Member::new(host("x86"), Fake::saying(vec![probe(12, "x86_64"), Reply::ok(&["@@farm:seed empty"]), Reply::ok(&["@@farm:slot 0 0", "@@farm:done 0 5"]), Reply::ok(&["./src/lib.rs"])]));
+        let bad = Member::new(
+            host("x86"),
+            Fake::saying(vec![
+                probe(12, "x86_64"),
+                Reply::ok(&["@@farm:seed empty"]),
+                Reply::ok(&["@@farm:slot 0 0", "@@farm:done 0 5"]),
+                Reply::ok(&["./src/lib.rs"]),
+            ]),
+        );
         let farm_bad = farm(vec![bad]);
         let batch = farm_bad.bless(&[]).unwrap();
         assert!(matches!(batch.failed.first(), Some(Error::Snap { .. })));

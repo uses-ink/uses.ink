@@ -47,7 +47,10 @@ impl fmt::Display for Version {
 pub(crate) enum Freshness {
     Current,
     /// The checkout's farm source differs from the binary's.
-    Stale { built: &'static str, now: Digest },
+    Stale {
+        built: &'static str,
+        now: Digest,
+    },
     /// The checkout has no farm source.
     Absent,
     Unreadable(std::io::Error),
@@ -62,7 +65,9 @@ impl fmt::Display for Freshness {
                 "the installed farm (source {built}) is not this checkout's (source {now}); run `cargo install --path tools/farm --locked`"
             ),
             Self::Absent => write!(out, "this checkout has no tools/farm to compare the installed farm with"),
-            Self::Unreadable(_) => write!(out, "this checkout's tools/farm could not be read to compare it with the installed farm"),
+            Self::Unreadable(_) => {
+                write!(out, "this checkout's tools/farm could not be read to compare it with the installed farm")
+            }
         }
     }
 }

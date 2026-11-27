@@ -67,13 +67,44 @@ pub(crate) struct Failure {
 
 /// The words nextest starts a status line with.
 const STATUSES: [&str; 22] = [
-    "PASS", "FAIL", "TIMEOUT", "SLOW", "LEAK", "LEAK-FAIL", "FLAKY", "START", "SKIP", "RETRY", "TERMINATING", "SIGABRT",
-    "SIGSEGV", "SIGKILL", "SIGTERM", "SIGINT", "SIGBUS", "SIGILL", "SIGFPE", "SIGPIPE", "SIGQUIT", "EXECFAIL",
+    "PASS",
+    "FAIL",
+    "TIMEOUT",
+    "SLOW",
+    "LEAK",
+    "LEAK-FAIL",
+    "FLAKY",
+    "START",
+    "SKIP",
+    "RETRY",
+    "TERMINATING",
+    "SIGABRT",
+    "SIGSEGV",
+    "SIGKILL",
+    "SIGTERM",
+    "SIGINT",
+    "SIGBUS",
+    "SIGILL",
+    "SIGFPE",
+    "SIGPIPE",
+    "SIGQUIT",
+    "EXECFAIL",
 ];
 
 /// Statuses that are failures.
-const FAILING: [&str; 11] =
-    ["FAIL", "TIMEOUT", "LEAK-FAIL", "EXECFAIL", "SIGABRT", "SIGSEGV", "SIGKILL", "SIGTERM", "SIGBUS", "SIGILL", "SIGFPE"];
+const FAILING: [&str; 11] = [
+    "FAIL",
+    "TIMEOUT",
+    "LEAK-FAIL",
+    "EXECFAIL",
+    "SIGABRT",
+    "SIGSEGV",
+    "SIGKILL",
+    "SIGTERM",
+    "SIGBUS",
+    "SIGILL",
+    "SIGFPE",
+];
 
 /// A nextest status line: `FAIL [   0.084s] (1/3) fx tests::fails`.
 #[derive(Debug, PartialEq, Eq)]
@@ -114,7 +145,8 @@ impl Tests {
 
     /// Reads `3 tests run: 0 passed, 1 failed, 2 timed out, 0 skipped`.
     fn count(&mut self, text: &str) {
-        let words: Vec<&str> = text.split(|c: char| c.is_whitespace() || c == ',' || c == ':').filter(|w| !w.is_empty()).collect();
+        let words: Vec<&str> =
+            text.split(|c: char| c.is_whitespace() || c == ',' || c == ':').filter(|w| !w.is_empty()).collect();
         for (at, word) in words.iter().enumerate() {
             let Some(number) = word.parse::<u32>().ok() else { continue };
             let next = words.get(at + 1).copied();
@@ -136,7 +168,10 @@ impl Tests {
         for line in log.lines() {
             if let Some(status) = Status::read(line) {
                 open = status.fails().then(|| self.open(&status));
-            } else if line.trim_start().starts_with("Cancelling") || line.starts_with("────") || line.trim_start().starts_with("Summary [") {
+            } else if line.trim_start().starts_with("Cancelling")
+                || line.starts_with("────")
+                || line.trim_start().starts_with("Summary [")
+            {
                 open = None;
             } else if let Some(failure) = open.and_then(|at| self.failures.get_mut(at)) {
                 failure.add(line);
@@ -150,10 +185,17 @@ impl Tests {
     /// The index of the failure for `status`, added if new; a repeat does not take output again.
     fn open(&mut self, status: &Status<'_>) -> usize {
         match self.failures.iter().position(|failure| failure.name == status.name) {
-            Some(at) if self.failures.get(at).is_some_and(|failure| failure.output.is_empty() && failure.cut == 0) => at,
+            Some(at) if self.failures.get(at).is_some_and(|failure| failure.output.is_empty() && failure.cut == 0) => {
+                at
+            }
             Some(_) => usize::MAX,
             None => {
-                self.failures.push(Failure { status: status.word.to_owned(), name: status.name.to_owned(), output: Vec::new(), cut: 0 });
+                self.failures.push(Failure {
+                    status: status.word.to_owned(),
+                    name: status.name.to_owned(),
+                    output: Vec::new(),
+                    cut: 0,
+                });
                 self.failures.len() - 1
             }
         }
@@ -212,7 +254,15 @@ impl Diagnostic {
             }
             None => (None, rest.strip_prefix(": ")?),
         };
-        let summary = ["could not compile", "aborting due to", "test run failed", "build failed", "check:", "layout problems", "stale generated"];
+        let summary = [
+            "could not compile",
+            "aborting due to",
+            "test run failed",
+            "build failed",
+            "check:",
+            "layout problems",
+            "stale generated",
+        ];
         if summary.iter().any(|start| message.starts_with(start)) || message.contains(" generated ") {
             return None;
         }
@@ -463,7 +513,10 @@ error: layout problems:
     fn clippy_warnings_are_counted_and_shown_short() {
         let diagnostics = Summary::of(CLIPPY).diagnostics;
         assert_eq!((diagnostics.errors, diagnostics.warnings), (0, 3));
-        assert_eq!(diagnostics.first.first().map(String::as_str), Some("warning src/lib.rs:9:21: unused variable: `unused`"));
+        assert_eq!(
+            diagnostics.first.first().map(String::as_str),
+            Some("warning src/lib.rs:9:21: unused variable: `unused`")
+        );
         assert!(diagnostics.first.iter().any(|line| line.contains("length comparison to zero")));
     }
 

@@ -33,7 +33,13 @@ pub(crate) struct Job {
 
 impl From<Recipe> for Job {
     fn from(recipe: Recipe) -> Self {
-        Self { label: recipe.name.to_string(), words: recipe.words, need: recipe.need, env: Vec::new(), limit: recipe.limit }
+        Self {
+            label: recipe.name.to_string(),
+            words: recipe.words,
+            need: recipe.need,
+            env: Vec::new(),
+            limit: recipe.limit,
+        }
     }
 }
 
@@ -230,7 +236,9 @@ impl fmt::Display for Finished {
         }
         writeln!(out, "\n   $ {}", self.command)?;
         match self.verdict {
-            Verdict::Done { code, .. } => writeln!(out, "{} (exit {code}), log {}", self.exit().to_string().to_uppercase(), self.log.display())?,
+            Verdict::Done { code, .. } => {
+                writeln!(out, "{} (exit {code}), log {}", self.exit().to_string().to_uppercase(), self.log.display())?;
+            }
             Verdict::Running => writeln!(out, "RUNNING as {}; continue with `farm wait {}`", self.id, self.id)?,
             Verdict::Aborted => writeln!(out, "ABORTED on the host")?,
             Verdict::Lost => writeln!(out, "LOST: the connection ended and no result came")?,
@@ -311,7 +319,13 @@ mod tests {
 
     #[test]
     fn the_environment_is_the_same_every_time_and_never_sets_the_target_dir() {
-        let job = Job { label: "x".to_owned(), words: vec!["cargo".to_owned()], need: Need::Any, env: vec!["INSTA_UPDATE=always".to_owned()], limit: None };
+        let job = Job {
+            label: "x".to_owned(),
+            words: vec!["cargo".to_owned()],
+            need: Need::Any,
+            env: vec!["INSTA_UPDATE=always".to_owned()],
+            limit: None,
+        };
         let snap = crate::host::Snapshot::read(
             &crate::host::Host::local(),
             "now 1\narch x86_64\ncores 14\nload 0.1\nslots 2\nslot 0 free\nslot 1 free\nqueued 0\n",
@@ -321,7 +335,11 @@ mod tests {
         assert!(vars.contains(&"CARGO_BUILD_JOBS=7".to_owned()));
         assert!(vars.contains(&"NEXTEST_TEST_THREADS=7".to_owned()));
         assert!(vars.contains(&"CARGO_PROFILE_DEV_DEBUG=line-tables-only".to_owned()));
-        assert_eq!(vars.last().map(String::as_str), Some("INSTA_UPDATE=always"), "the job's own variable comes last and wins");
+        assert_eq!(
+            vars.last().map(String::as_str),
+            Some("INSTA_UPDATE=always"),
+            "the job's own variable comes last and wins"
+        );
         assert!(!vars.iter().any(|var| var.starts_with("CARGO_TARGET_DIR")));
         assert_eq!(vars, job.vars(&snap));
     }

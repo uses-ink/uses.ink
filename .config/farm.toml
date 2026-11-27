@@ -1,0 +1,21 @@
+# The jobs `farm check` runs, one per stage of the gate (`cargo xtask check <stage>`), all placed
+# at once. `golden` jobs need a host whose output matches the reference architecture (x86_64).
+[job.lint]
+run = "cargo xtask check lint"
+golden = false
+
+[job.test]
+run = "cargo xtask check test"
+golden = true
+
+[job.docs]
+run = "cargo xtask check docs"
+golden = false
+
+[job.wasm]
+run = "cargo xtask check wasm"
+golden = false
+
+[job.sites]
+run = "cargo xtask check sites"
+golden = true

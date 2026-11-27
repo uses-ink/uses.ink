@@ -24,7 +24,10 @@ impl Tree {
     /// Finds the workspace `start` is in: the nearest directory above it with a `.jj`.
     pub(crate) fn find(start: &Path) -> Result<Self, Error> {
         let start = start.canonicalize().map_err(|source| Error::Io { path: start.to_path_buf(), source })?;
-        let root = start.ancestors().find(|dir| dir.join(".jj").is_dir()).ok_or_else(|| Error::NoRepo { start: start.clone() })?;
+        let root = start
+            .ancestors()
+            .find(|dir| dir.join(".jj").is_dir())
+            .ok_or_else(|| Error::NoRepo { start: start.clone() })?;
         Self::locate(root)
     }
 
@@ -46,7 +49,11 @@ impl Tree {
     pub(crate) fn container(&self) -> PathBuf {
         let own = self.root.file_name().and_then(|name| name.to_str()).unwrap_or_default();
         match self.root.parent() {
-            Some(parent) if own == self.workspace.as_str() && parent.ends_with(format!("{}{}", self.repo, Self::SUFFIX)) => parent.to_path_buf(),
+            Some(parent)
+                if own == self.workspace.as_str() && parent.ends_with(format!("{}{}", self.repo, Self::SUFFIX)) =>
+            {
+                parent.to_path_buf()
+            }
             Some(parent) => parent.join(format!("{}{}", self.repo, Self::SUFFIX)),
             None => self.root.join(format!("{}{}", self.repo, Self::SUFFIX)),
         }

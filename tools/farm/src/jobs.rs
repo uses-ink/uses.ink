@@ -47,17 +47,19 @@ impl Jobs {
     /// Reads the job file of the workspace at `root`.
     pub(crate) fn load(root: &Path) -> Result<Self, Error> {
         let path: PathBuf = FILE.iter().fold(root.to_path_buf(), |path, part| path.join(part));
-        let text = std::fs::read_to_string(&path).map_err(|source| Error::Jobs { path: path.clone(), fault: Fault::Read(source) })?;
+        let text = std::fs::read_to_string(&path)
+            .map_err(|source| Error::Jobs { path: path.clone(), fault: Fault::Read(source) })?;
         Self::parse(&text, path.clone()).map_err(|fault| Error::Jobs { path, fault })
     }
 
     /// Reads a job file's text.
     pub(crate) fn parse(text: &str, path: PathBuf) -> Result<Self, Fault> {
-        let raw: Raw = toml::from_str(text).map_err(Fault::Toml)?;
+        let raw: Raw = toml::from_str(text).map_err(|source| Fault::Toml(Box::new(source)))?;
         let mut recipes = Vec::new();
         for (key, value) in raw.job {
             let name: JobName = key.parse().map_err(Fault::Name)?;
-            let entry: Entry = value.try_into().map_err(|source| Fault::Entry { name: name.clone(), source })?;
+            let entry: Entry =
+                value.try_into().map_err(|source| Fault::Entry { name: name.clone(), source: Box::new(source) })?;
             recipes.push(Recipe {
                 name,
                 words: entry.run.0,
@@ -81,7 +83,10 @@ impl Jobs {
             .map(|name| {
                 self.all.iter().find(|recipe| recipe.name == *name).cloned().ok_or_else(|| Error::Jobs {
                     path: self.path.clone(),
-                    fault: Fault::Unknown { given: name.clone(), known: self.all.iter().map(|recipe| recipe.name.clone()).collect() },
+                    fault: Fault::Unknown {
+                        given: name.clone(),
+                        known: self.all.iter().map(|recipe| recipe.name.clone()).collect(),
+                    },
                 })
             })
             .collect()
@@ -135,15 +140,21 @@ impl std::error::Error for Blank {}
 #[derive(Debug)]
 pub(crate) enum Fault {
     Read(std::io::Error),
-    Toml(toml::de::Error),
+    Toml(Box<toml::de::Error>),
     /// A job name the farm does not allow.
     Name(crate::name::Fault),
     /// A `[job.<name>]` table that is not one.
-    Entry { name: JobName, source: toml::de::Error },
+    Entry {
+        name: JobName,
+        source: Box<toml::de::Error>,
+    },
     /// A file with no `[job.*]`.
     Empty,
     /// A job asked for that the file does not declare.
-    Unknown { given: JobName, known: Vec<JobName> },
+    Unknown {
+        given: JobName,
+        known: Vec<JobName>,
+    },
 }
 
 impl Fault {
@@ -159,7 +170,9 @@ impl fmt::Display for Fault {
             Self::Read(_) => write!(out, "cannot be read"),
             Self::Toml(_) => write!(out, "is not the TOML expected"),
             Self::Name(_) => write!(out, "names a job that is not allowed"),
-            Self::Entry { name, .. } => write!(out, "has a `[job.{name}]` that is not `run`, `golden` and an optional `limit`"),
+            Self::Entry { name, .. } => {
+                write!(out, "has a `[job.{name}]` that is not `run`, `golden` and an optional `limit`")
+            }
             Self::Empty => write!(out, "declares no `[job.<name>]`"),
             Self::Unknown { given, known } => write!(out, "declares no job `{given}`; the jobs are {}", Listed(known)),
         }
@@ -204,8 +217,34 @@ mod tests {
     }
 
     #[test]
+    fn this_repos_file_declares_the_five_stages_and_only_test_and_sites_are_golden() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+        let all = Jobs::load(&root).unwrap().pick(&[]).unwrap();
+        let golden: Vec<&str> =
+            all.iter().filter(|job| job.need == Need::Golden).map(|job| job.name.as_str()).collect();
+        assert_eq!(
+            all.iter().map(|job| job.name.as_str()).collect::<Vec<_>>(),
+            ["lint", "test", "docs", "wasm", "sites"]
+        );
+        assert_eq!(golden, ["test", "sites"]);
+        assert!(all.iter().all(|job| job.words.starts_with(&[
+            "cargo".to_owned(),
+            "xtask".to_owned(),
+            "check".to_owned()
+        ])));
+    }
+
+    #[test]
     fn a_bad_file_says_what_is_wrong() {
-        for bad in ["", "[job.a]\nrun = \"\"\ngolden = true\n", "[job.a]\nrun = \"x\"\n", "[job.A]\nrun = \"x\"\ngolden = true\n", "[job.a]\nrun = \"x\"\ngolden = true\nlimit = 0\n", "[job.a]\nrun = \"x\"\ngolden = true\nextra = 1\n", "jobs = 1\n"] {
+        for bad in [
+            "",
+            "[job.a]\nrun = \"\"\ngolden = true\n",
+            "[job.a]\nrun = \"x\"\n",
+            "[job.A]\nrun = \"x\"\ngolden = true\n",
+            "[job.a]\nrun = \"x\"\ngolden = true\nlimit = 0\n",
+            "[job.a]\nrun = \"x\"\ngolden = true\nextra = 1\n",
+            "jobs = 1\n",
+        ] {
             assert!(Jobs::parse(bad, PathBuf::new()).is_err(), "{bad:?}");
         }
     }

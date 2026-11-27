@@ -103,7 +103,9 @@ impl<K: Kind> FromStr for Word<K> {
         let mut chars = given.chars();
         match chars.next() {
             None => return Err(fault(Flaw::Empty)),
-            Some(first) if !(first.is_ascii_alphanumeric() && K::allows(first)) => return Err(fault(Flaw::Start { found: first })),
+            Some(first) if !(first.is_ascii_alphanumeric() && K::allows(first)) => {
+                return Err(fault(Flaw::Start { found: first }));
+            }
             Some(_) => {}
         }
         if let Some(found) = chars.find(|found| !K::allows(*found)) {

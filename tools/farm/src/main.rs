@@ -121,7 +121,7 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
-    use crate::cli::{Action, Flags};
+    use crate::cli::{Action, Flags, Verb};
     use crate::exit::Exit;
     use crate::job::Verdict;
     use crate::name::HostName;
@@ -144,7 +144,13 @@ mod tests {
             let console = Arc::new(Console::default());
             let local = Link::Local(Local::new(Exec::new(Arc::clone(&console))));
             let tree = Tree { root: self.root.join("w"), repo: "r".parse().unwrap(), workspace: "w".parse().unwrap() };
-            Farm::new(Setup { fleet: Fleet::new(vec![Member::new(host, local)]), placement: LeastLoaded, console, flags, tree })
+            Farm::new(Setup {
+                fleet: Fleet::new(vec![Member::new(host, local)]),
+                placement: LeastLoaded,
+                console,
+                flags,
+                tree,
+            })
         }
 
         fn dir(&self) -> host::HostDir {
@@ -171,7 +177,13 @@ mod tests {
     }
 
     fn job(label: &str, script: &str) -> job::Job {
-        job::Job { label: label.to_owned(), words: cargo_free(&[script]), need: place::Need::Any, env: vec![], limit: None }
+        job::Job {
+            label: label.to_owned(),
+            words: cargo_free(&[script]),
+            need: place::Need::Any,
+            env: vec![],
+            limit: None,
+        }
     }
 
     fn run_one(rig: &Rig, job: &job::Job, attach: job::Attach, slots: u32) -> job::Finished {
@@ -183,7 +195,12 @@ mod tests {
     #[test]
     fn a_job_runs_in_a_slot_with_its_environment_and_streams_its_output() {
         let rig = Rig::new("env");
-        let finished = run_one(&rig, &job("env", "echo hi; echo \"$CARGO_BUILD_JOBS $CARGO_TERM_COLOR $INSTA_UPDATE\"; exit 3"), job::Attach::Hold(Duration::from_secs(30)), 2);
+        let finished = run_one(
+            &rig,
+            &job("env", "echo hi; echo \"$CARGO_BUILD_JOBS $CARGO_TERM_COLOR $INSTA_UPDATE\"; exit 3"),
+            job::Attach::Hold(Duration::from_secs(30)),
+            2,
+        );
         assert_eq!(finished.verdict.exit(), Exit::Failed);
         assert!(matches!(finished.verdict, Verdict::Done { code: 3, .. }));
         assert_eq!(finished.slot, Some(0));
@@ -199,7 +216,8 @@ mod tests {
         let flags = Flags { limit: Some(cli::Seconds(1)), ..Flags::default() };
         let farm = rig.farm(1, flags);
         let snap = farm.fleet_probe().remove(0);
-        let finished = farm.run_for_test(&job("slow", "sleep 30"), &snap, job::Attach::Hold(Duration::from_secs(30))).unwrap();
+        let finished =
+            farm.run_for_test(&job("slow", "sleep 30"), &snap, job::Attach::Hold(Duration::from_secs(30))).unwrap();
         assert_eq!(finished.verdict.exit(), Exit::TimedOut);
     }
 
@@ -256,7 +274,8 @@ mod tests {
         let farm = rig.farm(1, Flags::default());
         let snap = farm.fleet_probe().remove(0);
         // a held run that outlives its 1 s timeout is let go: the job survives, as `detach` says
-        let finished = farm.run_for_test(&job("held", "sleep 3"), &snap, job::Attach::Hold(Duration::from_secs(1))).unwrap();
+        let finished =
+            farm.run_for_test(&job("held", "sleep 3"), &snap, job::Attach::Hold(Duration::from_secs(1))).unwrap();
         assert_eq!(finished.verdict, Verdict::Running);
         let said = member.wait(&finished.id, cli::Seconds(20)).unwrap();
         assert!(matches!(said.events.first(), Some(event::Event::Done { code: 0, .. })), "{:?}", said.events);
@@ -310,13 +329,33 @@ mod tests {
         std::fs::write(queue.join("0000000000000000001-ghost"), "999999999\n").unwrap();
         let farm = rig.farm(1, Flags::default());
         let snap = farm.fleet_probe().remove(0);
-        let finished = farm.run_for_test(&job("late", "true"), &snap, job::Attach::Hold(Duration::from_secs(30))).unwrap();
+        let finished =
+            farm.run_for_test(&job("late", "true"), &snap, job::Attach::Hold(Duration::from_secs(30))).unwrap();
         assert_eq!(finished.verdict.exit(), Exit::Passed);
         assert!(!queue.join("0000000000000000001-ghost").exists(), "the stale ticket was removed");
     }
 
     fn farm_tree(rig: &Rig) -> Tree {
         Tree { root: rig.root.join("w"), repo: "r".parse().unwrap(), workspace: "w".parse().unwrap() }
+    }
+
+    #[test]
+    fn a_check_runs_the_jobs_of_the_repos_file_and_exits_with_the_worst() {
+        let rig = Rig::new("check");
+        let config = rig.root.join("w").join(".config");
+        std::fs::create_dir_all(&config).unwrap();
+        std::fs::write(
+            config.join("farm.toml"),
+            "[job.good]\nrun = \"true\"\ngolden = false\n\n[job.bad]\nrun = \"false\"\ngolden = false\n",
+        )
+        .unwrap();
+        let farm = rig.farm(2, Flags::default());
+        let batch = farm.go_for_test(&Verb::Check(vec![])).unwrap();
+        let labels: Vec<&str> = batch.done.iter().map(|done| done.label.as_str()).collect();
+        assert_eq!(labels, ["good", "bad"]);
+        assert_eq!(batch.done.iter().map(|done| done.verdict.exit()).collect::<Vec<_>>(), [Exit::Passed, Exit::Failed]);
+        let none = farm.go_for_test(&Verb::Check(vec!["nope".parse().unwrap()])).unwrap_err();
+        assert_eq!(none.exit(), Exit::Usage);
     }
 
     #[test]
@@ -334,7 +373,9 @@ mod tests {
 
     #[test]
     fn the_workflow_doc_names_every_verb_flag_exit_code_and_config_key() {
-        let doc = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/workflow.md")).unwrap();
+        let doc =
+            std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/workflow.md"))
+                .unwrap();
         for action in Action::ALL {
             assert!(doc.contains(&format!("`farm {action}")), "verb {action}");
         }
@@ -344,7 +385,19 @@ mod tests {
         for word in [".config/farm.toml", "[job.", "cargo install --path tools/farm --locked", "--version"] {
             assert!(doc.contains(word), "{word}");
         }
-        for word in ["--detach", "--timeout", "--limit", "--host", "--json", "--verbose", "--tail", "--at", "--forget", "INK_FARM_CONFIG", "uses.farm/v1"] {
+        for word in [
+            "--detach",
+            "--timeout",
+            "--limit",
+            "--host",
+            "--json",
+            "--verbose",
+            "--tail",
+            "--at",
+            "--forget",
+            "INK_FARM_CONFIG",
+            "uses.farm/v1",
+        ] {
             assert!(doc.contains(word), "{word}");
         }
         for key in ["name", "ssh", "slots", "arch", "golden", "mold", "dir"] {

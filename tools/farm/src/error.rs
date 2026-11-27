@@ -12,44 +12,87 @@ use crate::host::ReadFault;
 use crate::jobs;
 use crate::name::{Fault, HostName, JobId};
 use crate::place::Need;
-use crate::workspace;
 use crate::process::Failure;
+use crate::workspace;
 
 /// One failure of the farm: it could not do what was asked, or would not.
 #[derive(Debug)]
 pub(crate) enum Error {
     Usage(Usage),
     /// The config file.
-    Config { path: PathBuf, fault: config::Fault },
+    Config {
+        path: PathBuf,
+        fault: config::Fault,
+    },
     /// The repo's job file.
-    Jobs { path: PathBuf, fault: jobs::Fault },
-    Io { path: PathBuf, source: std::io::Error },
+    Jobs {
+        path: PathBuf,
+        fault: jobs::Fault,
+    },
+    Io {
+        path: PathBuf,
+        source: std::io::Error,
+    },
     /// No jj workspace around the current directory.
-    NoRepo { start: PathBuf },
+    NoRepo {
+        start: PathBuf,
+    },
     /// A path that is not UTF-8, so it cannot be an argument.
-    Utf8 { path: PathBuf },
+    Utf8 {
+        path: PathBuf,
+    },
     /// The workspace's directory names are not usable as path segments.
-    Name { path: PathBuf, source: Fault },
+    Name {
+        path: PathBuf,
+        source: Fault,
+    },
     /// A program or `rsync` on a host that failed.
-    Call { host: HostName, what: &'static str, source: Failure },
+    Call {
+        host: HostName,
+        what: &'static str,
+        source: Failure,
+    },
     /// A probe that printed what a probe does not.
-    Probe { host: HostName, source: ReadFault },
+    Probe {
+        host: HostName,
+        source: ReadFault,
+    },
     /// A program that said what no program says.
-    Said { host: HostName, source: event::Fault },
+    Said {
+        host: HostName,
+        source: event::Fault,
+    },
     /// A program that did not say what it must.
-    Silent { host: HostName, what: &'static str },
+    Silent {
+        host: HostName,
+        what: &'static str,
+    },
     /// No host can run the job.
-    NoHost { need: Need, up: Vec<HostName> },
+    NoHost {
+        need: Need,
+        up: Vec<HostName>,
+    },
     /// A golden job pinned to a host that is not golden.
-    NotGolden { host: HostName },
+    NotGolden {
+        host: HostName,
+    },
     /// The connection ended and the job was stopped with it.
-    Lost { job: JobId },
+    Lost {
+        job: JobId,
+    },
     /// A job the host has no record of.
-    NoJob { job: JobId },
+    NoJob {
+        job: JobId,
+    },
     /// A thread running a job panicked.
-    Crashed { label: String },
+    Crashed {
+        label: String,
+    },
     /// A changed snapshot path that cannot be trusted.
-    Snap { host: HostName, source: crate::snap::Fault },
+    Snap {
+        host: HostName,
+        source: crate::snap::Fault,
+    },
     Workspace(workspace::Fault),
 }
 
@@ -108,12 +151,22 @@ impl fmt::Display for Error {
             Self::Said { host, .. } => write!(out, "`{host}` said something unreadable"),
             Self::Silent { host, what } => write!(out, "`{host}` did not say {what}"),
             Self::NoHost { need: Need::Golden, up } => {
-                write!(out, "no golden host to run on; the hosts up are {}; a golden host is x86_64 or `golden = true` in the config", Listed(up))
+                write!(
+                    out,
+                    "no golden host to run on; the hosts up are {}; a golden host is x86_64 or `golden = true` in the config",
+                    Listed(up)
+                )
             }
             Self::NoHost { need, up } => write!(out, "no {need} host to run on; the hosts up are {}", Listed(up)),
-            Self::NotGolden { host } => write!(out, "`{host}` is not a golden host, and this job's output depends on the architecture"),
-            Self::Lost { job } => write!(out, "the connection for job `{job}` ended before it did, and the host stopped the job"),
-            Self::NoJob { job } => write!(out, "the host has no record of job `{job}`; it may be older than seven days"),
+            Self::NotGolden { host } => {
+                write!(out, "`{host}` is not a golden host, and this job's output depends on the architecture")
+            }
+            Self::Lost { job } => {
+                write!(out, "the connection for job `{job}` ended before it did, and the host stopped the job")
+            }
+            Self::NoJob { job } => {
+                write!(out, "the host has no record of job `{job}`; it may be older than seven days")
+            }
             Self::Crashed { label } => write!(out, "the thread running `{label}` crashed"),
             Self::Snap { host, .. } => write!(out, "`{host}` listed a changed snapshot that is not safe to copy"),
             Self::Workspace(fault) => write!(out, "{fault}"),

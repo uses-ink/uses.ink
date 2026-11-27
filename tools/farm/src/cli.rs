@@ -52,7 +52,10 @@ impl FromStr for Action {
     type Err = Usage;
 
     fn from_str(given: &str) -> Result<Self, Usage> {
-        Self::ALL.into_iter().find(|action| action.name() == given).ok_or_else(|| Usage::Unknown { given: given.to_owned() })
+        Self::ALL
+            .into_iter()
+            .find(|action| action.name() == given)
+            .ok_or_else(|| Usage::Unknown { given: given.to_owned() })
     }
 }
 
@@ -303,7 +306,10 @@ mod tests {
     #[test]
     fn a_check_names_jobs_or_none() {
         assert_eq!(parse("check").unwrap().verb, Verb::Check(vec![]));
-        assert_eq!(parse("check lint test").unwrap().verb, Verb::Check(vec!["lint".parse().unwrap(), "test".parse().unwrap()]));
+        assert_eq!(
+            parse("check lint test").unwrap().verb,
+            Verb::Check(vec!["lint".parse().unwrap(), "test".parse().unwrap()])
+        );
         assert!(matches!(parse("check ../x"), Err(Usage::Task(_))));
     }
 

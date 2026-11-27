@@ -74,7 +74,7 @@ impl Config {
 
     /// Reads a config file's text.
     pub(crate) fn parse(text: &str) -> Result<Self, Fault> {
-        let raw: Raw = toml::from_str(text).map_err(Fault::Toml)?;
+        let raw: Raw = toml::from_str(text).map_err(|source| Fault::Toml(Box::new(source)))?;
         let mut seen = HashSet::new();
         let mut hosts = Vec::new();
         for entry in raw.host {
@@ -167,9 +167,11 @@ impl From<Entry> for Host {
 #[derive(Debug)]
 pub(crate) enum Fault {
     Read(std::io::Error),
-    Toml(toml::de::Error),
+    Toml(Box<toml::de::Error>),
     /// Two hosts with one name.
-    Twice { name: HostName },
+    Twice {
+        name: HostName,
+    },
     /// A file with no `[[host]]`.
     Empty,
 }
