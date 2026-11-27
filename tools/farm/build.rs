@@ -3,7 +3,7 @@
 use std::io::Write as _;
 use std::path::PathBuf;
 
-#[path = "src/digest.rs"]
+#[path = "src/cli/digest.rs"]
 mod digest;
 
 fn main() -> std::io::Result<()> {

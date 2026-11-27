@@ -15,35 +15,65 @@
 //! - [`version`]: the hash of the source the binary was built from.
 //! - [`workspace`]: `farm workspace`, which needs no host.
 
+#[path = "cache/mod.rs"]
 mod cache;
+#[path = "run/changes.rs"]
 mod changes;
+#[path = "cli/mod.rs"]
 mod cli;
+#[path = "config/hosts.rs"]
 mod config;
+#[path = "cli/console.rs"]
 mod console;
+#[path = "cli/digest.rs"]
 mod digest;
+#[path = "cli/error.rs"]
 mod error;
+#[path = "job/event.rs"]
 mod event;
+#[path = "cli/exit.rs"]
 mod exit;
+#[path = "host/fleet.rs"]
 mod fleet;
+#[path = "cache/inputs/glob.rs"]
 mod glob;
+#[path = "cache/hash.rs"]
 mod hash;
+#[path = "place/history.rs"]
 mod history;
+#[path = "host/mod.rs"]
 mod host;
+#[path = "cache/inputs/mod.rs"]
 mod inputs;
+#[path = "job/mod.rs"]
 mod job;
+#[path = "config/jobs.rs"]
 mod jobs;
+#[path = "cli/name.rs"]
 mod name;
+#[path = "run/overview.rs"]
 mod overview;
+#[path = "place/mod.rs"]
 mod place;
+#[path = "host/transport/process.rs"]
 mod process;
+#[path = "host/transport/program.rs"]
 mod program;
+#[path = "job/quote.rs"]
 mod quote;
+#[path = "run/mod.rs"]
 mod run;
+#[path = "job/summary/mod.rs"]
 mod summary;
+#[path = "host/transport/mod.rs"]
 mod transport;
+#[path = "config/tree.rs"]
 mod tree;
+#[path = "cli/version.rs"]
 mod version;
+#[path = "place/wake.rs"]
 mod wake;
+#[path = "config/workspace.rs"]
 mod workspace;
 
 use std::process::ExitCode;
