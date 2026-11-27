@@ -1,11 +1,11 @@
-//! The control plane behind `ink serve --data`: its adapters, its owner, its limits, as one value.
+//! The control plane behind `ink serve --data`: its adapters, its operator, its limits, as one value.
 //!
 //! The adapters are SQLite in `<data>/ink.db`, a directory of blobs in `<data>/blobs`, the queue
 //! in the same database, and a sealing key in `<data>/secret.key`. The one owner is an account
-//! with a fixed id, and holds one token, kept in `<data>/owner-token` (mode 0600) and shown once,
-//! when it is made.
+//! with a fixed id. Its credential is a line in `<data>/operator-keys`, a public key that
+//! `ink login --data <folder>` adds: the server holds no private key and prints no secret. A
+//! `<data>/owner-token` left by an older version is not read, and the start says so.
 
-use std::io::Write as _;
 use std::os::unix::fs::OpenOptionsExt as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -18,7 +18,7 @@ use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Refusal, Rem
 use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::door::Config;
-use edge_api::{Api, Courier, Door, Draws, Either, Limits, Outbox, Owner, Rates, Routed, Sessions, Token};
+use edge_api::{Api, Courier, Door, Draws, Enrol, Limits, OperatorFile, Outbox, Rates, Routed, Signatures, Signing};
 use edge_control::{Back, Fronts};
 use mail::{Base, Link};
 use queue_local::{Local as Queue, Queued};
@@ -40,8 +40,8 @@ pub(crate) type Lookup = Back<Ports, System, Directory>;
 /// The database the API and the sign-in share.
 pub(crate) type Store = Arc<Sqlite>;
 
-/// Who may call: the operator's owner token, or a session that signing in made.
-pub(crate) type Callers = Either<Owner, Sessions<Store, System>>;
+/// Who may call: a signature of the operator's key, or of a key a person approved.
+pub(crate) type Callers = Signatures<Store, System, OperatorFile>;
 
 /// The API as `ink serve` wires it, with the sign-in routes beside it.
 pub(crate) type Wired = Routed<Api<Ports, Callers, System, System>, Door<Store, System, System>>;
@@ -112,7 +112,10 @@ pub(crate) struct Product {
     pub(crate) mailing: Mailing,
     pub(crate) limits: Limits,
     pub(crate) interval: watch::Interval,
-    pub(crate) token: PathBuf,
+    /// The operator's keys file.
+    pub(crate) operators: PathBuf,
+    /// What the keys and signatures run with.
+    pub(crate) keys: crate::auth::Resolved,
     /// The ports the loops run over, shared with the API and the lookups.
     pub(crate) ports: Ports,
     /// Where the control plane says its sites are served.
@@ -125,8 +128,8 @@ pub(crate) struct Product {
     pub(crate) fronts: Fronts,
     /// The half that answers the edge's lookups.
     pub(crate) back: Option<Lookup>,
-    /// The token, when this start made it.
-    pub(crate) fresh: Option<Token>,
+    /// The owner token file of an older version, when one is there: it no longer works.
+    pub(crate) retired: Option<PathBuf>,
 }
 
 impl Product {
@@ -138,6 +141,7 @@ impl Product {
     }
 
     /// Sets the control plane up in `settings.data`, migrating the database and making the owner.
+    #[expect(clippy::too_many_lines, reason = "one sequence of adapters, each a line")]
     pub(crate) fn open(settings: &args::Serve, data: &Path) -> Result<Self, Unready> {
         std::fs::create_dir_all(data).map_err(|source| Unready::Data { path: data.to_path_buf(), source })?;
         let file = data.join("ink.db");
@@ -148,21 +152,22 @@ impl Product {
         let ports: Ports = Arc::new((db.clone(), blobs, Queue::new(db.clone()), sealer));
         let control = Control::new(Arc::clone(&ports), origin.clone());
         let account = Self::owner(&control)?;
-        let (token, fresh) = Self::token(&data.join("owner-token"))?;
+        let (operators, retired, keys) = Self::credentials(settings, data)?;
         let limits = Self::limits(settings)?;
         let flags = &settings.signin;
         let secure = Flags::secure(&settings.origin)?;
         let base = flags.base(&settings.origin, &settings.api_host)?;
         let (sign, rates) = (flags.settings(), flags.rates());
         let (courier, outbox, capacity) = Self::courier(flags)?;
+        let db_for_keys = Arc::clone(&db);
         let entry = SignIn::new(db, sign);
         let admin = Self::admin(&entry, account, &base)?;
-        let credentials = Either(Owner::new(account, &token), Sessions::new(entry.clone(), System));
-        let api = Api::new(control, credentials, (System, System), limits).with_schemes(settings.hosting.schemes());
+        let (api, enrol) = Self::api(control, &keys, (account, &operators), (db_for_keys, limits));
+        let api = api.with_schemes(settings.hosting.schemes());
         let (fronts, back) = Self::lookups(&ports, &origin, data, settings)?;
         let config =
             Config { jar: flags.jar(secure)?, base: base.clone(), rates, outbox, reveals: flags.login_get_signs_in };
-        let door = Door::new(entry, (System, System), config);
+        let door = Door::new(entry, (System, System), enrol, config);
         let told = Told(std::sync::Mutex::new(std::io::stderr()));
         let mailing = Mailing { courier, told, settings: sign, rates, base, outbox: capacity, secure, admin };
         Ok(Self {
@@ -170,14 +175,15 @@ impl Product {
             mailing,
             limits,
             interval: Self::interval(settings)?,
-            token: data.join("owner-token"),
+            operators,
+            keys,
             ports,
             origin,
             data: data.to_path_buf(),
             https: Self::https(settings)?,
             fronts,
             back: Some(back),
-            fresh,
+            retired,
         })
     }
 
@@ -188,7 +194,8 @@ impl Product {
             .with::<Domain>()
             .and_then(Steps::with::<Remembered>)
             .and_then(Steps::with::<Queued>)
-            .and_then(Steps::with::<Entry>);
+            .and_then(Steps::with::<Entry>)
+            .and_then(Steps::with::<control::keys::Entry>);
         let steps = steps.map_err(|e| Self::adapter("migration")(Box::new(e)))?;
         pollster::block_on(steps.apply(&db)).map_err(|e| Self::adapter("migration")(Box::new(e)))?;
         Ok(db)
@@ -241,19 +248,43 @@ impl Product {
         Ok(issued.map(|issued| base.link(issued.proof.reveal())))
     }
 
-    /// The owner's token: read from its file, or made and written there with mode 0600.
-    fn token(path: &Path) -> Result<(Token, Option<Token>), Unready> {
-        let io = |source| Unready::Data { path: path.to_path_buf(), source };
-        match std::fs::read_to_string(path) {
-            Ok(text) => Ok((Token::from(text.trim()), None)),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                let token = Token::drawn(&System).map_err(|e| Self::adapter("randomness")(Box::new(e)))?;
-                let mut file =
-                    std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path).map_err(io)?;
-                file.write_all(token.reveal().as_bytes()).map_err(io)?;
-                Ok((token.clone(), Some(token)))
-            }
-            Err(error) => Err(io(error)),
+    /// The operator's keys file, the owner token file of an older version when one is there, and
+    /// what signatures run with.
+    fn credentials(
+        settings: &args::Serve,
+        data: &Path,
+    ) -> Result<(PathBuf, Option<PathBuf>, crate::auth::Resolved), Unready> {
+        let operators = Self::operators(&data.join("operator-keys"))?;
+        let old = data.join("owner-token");
+        let keys = settings.auth.resolve(&settings.api_host, settings.address)?;
+        Ok((operators, old.exists().then_some(old), keys))
+    }
+
+    /// The API over signatures, and the enrolment its door shares.
+    fn api(
+        control: Control<Ports>,
+        keys: &crate::auth::Resolved,
+        operator: (Id<AccountKind>, &Path),
+        parts: (Store, Limits),
+    ) -> (Api<Ports, Callers, System, System>, Enrol<Store>) {
+        let (account, operators) = operator;
+        let (db, limits) = parts;
+        let enrol = Enrol::new(db, keys.keys, keys.closing);
+        let mut signing = Signing::new(keys.audience.clone(), account);
+        signing.window = keys.window;
+        signing.nonces = keys.nonces;
+        let signatures = Signatures::new(enrol.keys().clone(), (System, OperatorFile::at(operators)), signing);
+        (Api::new(control, (signatures, enrol.clone()), (System, System), limits), enrol)
+    }
+
+    /// The operator's keys file, made empty when it is not there so its place is known. It holds
+    /// public keys only, so a backup of the data folder leaks no credential.
+    fn operators(path: &Path) -> Result<PathBuf, Unready> {
+        let made = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path);
+        match made {
+            Ok(_) => Ok(path.to_path_buf()),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(path.to_path_buf()),
+            Err(source) => Err(Unready::Data { path: path.to_path_buf(), source }),
         }
     }
 

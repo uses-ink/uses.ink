@@ -1,9 +1,9 @@
-//! A typed client of the edge API (`edge/api`): routes under `/v1/sites`, a bearer token.
+//! A typed client of the edge API (`edge/api`): routes under `/v1`, every call signed with the
+//! machine's key (`Ink-Sig-1`, decision 0068).
 //!
 //! One connection per call, HTTP/1.1 over a plain socket. There is no TLS in this tree, so an
 //! `https://` address is refused with a typed error rather than sent in the clear.
 
-use std::fmt;
 use std::time::Duration;
 
 use control::{Id, SiteKind};
@@ -17,17 +17,8 @@ use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 
 use super::failure::{Failure, Said};
+use crate::auth::Identity;
 use super::wire::{Built, Items, Moved, Row, Target};
-
-/// The owner token. It never prints.
-#[derive(Clone)]
-pub(crate) struct Token(pub(crate) String);
-
-impl fmt::Debug for Token {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.write_str("Token(..)")
-    }
-}
 
 /// Where the API is: a host and port, and what to put in `Host`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,6 +38,11 @@ impl Endpoint {
         }
     }
 
+    /// The authority as the client writes it in `Host`, and as a signature names the audience.
+    pub(crate) fn authority(&self) -> &str {
+        &self.authority
+    }
+
     /// `host:port` as a socket address wants it: port 80 when none is given.
     fn address(&self) -> String {
         if self.authority.rsplit_once(':').is_some_and(|(_, port)| port.chars().all(|c| c.is_ascii_digit())) {
@@ -57,14 +53,22 @@ impl Endpoint {
     }
 }
 
+/// The way to the API: where it is, who calls and how long a call may take. Every call is
+/// signed with the key, and sent again once when the server says it has just started.
+#[derive(Debug)]
+pub(crate) struct Wire {
+    pub(crate) endpoint: Endpoint,
+    /// The key to sign with. `None` for the one call nobody signs: asking to enrol.
+    pub(crate) identity: Option<Identity>,
+    /// How long one call may take.
+    pub(crate) budget: Duration,
+}
+
 /// The calls of one site.
 #[derive(Debug)]
 pub(crate) struct Api {
-    pub(crate) endpoint: Endpoint,
-    pub(crate) token: Token,
+    pub(crate) wire: Wire,
     pub(crate) site: Id<SiteKind>,
-    /// How long one call may take.
-    pub(crate) budget: Duration,
 }
 
 impl Api {
@@ -106,32 +110,55 @@ impl Api {
         serde_json::from_slice(&answer).map_err(|source| Failure::Unreadable { source })
     }
 
-    /// One call, within the budget; the body of an answer that is a success.
+    /// One call of the site, within the budget; the body of an answer that is a success.
     async fn send(&self, method: Method, tail: &str, body: Vec<u8>) -> Result<Bytes, Failure> {
-        let path = format!("/v1/sites/{}/{tail}", self.site);
-        match tokio::time::timeout(self.budget, self.exchange(method, &path, body)).await {
+        self.wire.call(method, &format!("/v1/sites/{}/{tail}", self.site), body).await
+    }
+}
+
+impl Wire {
+    /// One call, within the budget, and once more when the server has just started and says so.
+    pub(crate) async fn call(&self, method: Method, path: &str, body: Vec<u8>) -> Result<Bytes, Failure> {
+        let first = self.once(method.clone(), path, body.clone()).await;
+        let Err(Failure::Refused { status: 503, said: Some(said) }) = &first else { return first };
+        if said.problem != "auth.server.restarting" {
+            return first;
+        }
+        let seconds = said.fields.get("seconds").and_then(|text| text.parse().ok()).unwrap_or(1);
+        tokio::time::sleep(Duration::from_secs(seconds).min(self.budget)).await;
+        self.once(method, path, body).await
+    }
+
+    /// One attempt, within the budget.
+    async fn once(&self, method: Method, path: &str, body: Vec<u8>) -> Result<Bytes, Failure> {
+        match tokio::time::timeout(self.budget, self.exchange(method, path, body)).await {
             Ok(answer) => answer,
             Err(_) => Err(Failure::Timeout { after: self.budget }),
         }
     }
 
-    /// The exchange itself: connect, send one request, read the whole answer.
+    /// The exchange itself: sign, connect, send one request, read the whole answer.
     async fn exchange(&self, method: Method, path: &str, body: Vec<u8>) -> Result<Bytes, Failure> {
+        let signed = match &self.identity {
+            Some(identity) => Some(identity.sign(method.as_str(), path, &body)?),
+            None => None,
+        };
         let address = self.endpoint.address();
         let stream = TcpStream::connect(&address).await.map_err(|source| Failure::Connect { address, source })?;
         let (mut sender, connection) = hyper::client::conn::http1::handshake(TokioIo::new(stream))
             .await
             .map_err(|source| Failure::Exchange { source })?;
-        let request = Request::builder()
+        let mut request = Request::builder()
             .method(method)
             .uri(path)
             .header(HOST, &self.endpoint.authority)
-            .header(AUTHORIZATION, format!("Bearer {}", self.token.0))
             .header(ACCEPT, "application/json")
             .header(CONTENT_TYPE, "application/json")
-            .header(CONNECTION, "close")
-            .body(Full::new(Bytes::from(body)))
-            .map_err(|source| Failure::Request { source })?;
+            .header(CONNECTION, "close");
+        if let Some(signed) = signed {
+            request = request.header(AUTHORIZATION, signed);
+        }
+        let request = request.body(Full::new(Bytes::from(body))).map_err(|source| Failure::Request { source })?;
         let asked = async move {
             let response = sender.send_request(request).await?;
             let status = response.status().as_u16();
@@ -169,7 +196,10 @@ mod test {
     }
 
     #[test]
-    fn the_token_does_not_print() {
-        assert_eq!(format!("{:?}", Token("secret".into())), "Token(..)");
+    fn an_identity_does_not_print_its_key() {
+        let seed = sig::Seed::new([5; 32]);
+        let identity = Identity::new(&seed, "api.localhost:8080").unwrap();
+        let shown = format!("{identity:?}");
+        assert!(shown.starts_with("Identity(") && !shown.contains(seed.text().reveal()), "{shown}");
     }
 }

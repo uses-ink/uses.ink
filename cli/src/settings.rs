@@ -82,25 +82,14 @@ pub(crate) struct Log {
     pub(crate) format: Option<String>,
 }
 
-/// The `[account]` table: which API, which site and which token the remote commands use when the
-/// flags and the environment say nothing.
-#[derive(Clone, Default, Deserialize)]
+/// The `[account]` table: which API and which site the remote commands use when the flags and the
+/// environment say nothing. There is no token: a machine's private key is kept by `ink login` in its
+/// own file, never in this one, and an old `token` key is an error that names it.
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub(crate) struct Account {
     pub(crate) api: Option<String>,
     pub(crate) site: Option<String>,
-    pub(crate) token: Option<String>,
-}
-
-impl fmt::Debug for Account {
-    /// The token never prints.
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.debug_struct("Account")
-            .field("api", &self.api)
-            .field("site", &self.site)
-            .field("token", &self.token.as_ref().map(|_| ".."))
-            .finish()
-    }
 }
 
 /// The user's config file, parsed.
@@ -209,9 +198,9 @@ mod test {
     }
 
     #[test]
-    fn an_unknown_key_is_an_error_and_the_token_does_not_print() {
+    fn an_unknown_key_is_an_error_and_a_token_is_not_a_setting_any_more() {
         assert!(toml::from_str::<Preferences>("[ui]\ncolour = \"never\"\n").is_err());
-        let account = Account { token: Some("secret".into()), ..Account::default() };
-        assert!(!format!("{account:?}").contains("secret"));
+        let error = toml::from_str::<Preferences>("[account]\ntoken = \"secret\"\n").unwrap_err();
+        assert!(error.to_string().contains("token"), "{error}");
     }
 }

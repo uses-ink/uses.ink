@@ -80,11 +80,13 @@ pub enum Command {
     /// List what is published and why, or choose what to publish.
     Select(Select),
     /// Sign in to uses.ink.
-    Login,
+    Login(crate::auth::Login),
     /// Sign out.
-    Logout,
+    Logout(crate::auth::Server),
     /// Show who you are signed in as.
-    Whoami,
+    Whoami(crate::auth::Server),
+    /// List, make and end keys.
+    Key(crate::auth::Key),
     /// Send the folder to its site and start a deploy.
     Push,
     /// Show what is live and what is building.
@@ -361,6 +363,9 @@ pub struct Serve {
     /// Sign-in: mail, lifetimes, who may sign up and the limits on asking for a link.
     #[command(flatten)]
     pub signin: Box<crate::signin::Flags>,
+    /// Keys: the audience, the skew window, how long keys live and how enrolling is limited.
+    #[command(flatten)]
+    pub auth: Box<crate::auth::Flags>,
     /// How the lookups and loops behind the API run.
     #[command(flatten)]
     pub hosting: Box<crate::hosting::Hosting>,

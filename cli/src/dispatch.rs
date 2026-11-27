@@ -118,9 +118,10 @@ impl Command {
             }
             Self::Help(topic) => topic.run(io),
             Self::Init => Err(Error::Pending { verb: "init" }),
-            Self::Login => Err(Error::Pending { verb: "login" }),
-            Self::Logout => Err(Error::Pending { verb: "logout" }),
-            Self::Whoami => Err(Error::Pending { verb: "whoami" }),
+            Self::Login(login) => login.run(io),
+            Self::Logout(server) => server.logout(io),
+            Self::Whoami(server) => server.whoami(io),
+            Self::Key(key) => key.command.run(io),
             Self::Push => Err(Error::Pending { verb: "push" }),
             Self::Status => Err(Error::Pending { verb: "status" }),
             Self::Watch => Err(Error::Pending { verb: "watch" }),

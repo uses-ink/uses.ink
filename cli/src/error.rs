@@ -287,6 +287,12 @@ impl Error {
     }
 }
 
+impl From<crate::deploy::Failure> for Error {
+    fn from(source: crate::deploy::Failure) -> Self {
+        Self::Deploy { source }
+    }
+}
+
 impl fmt::Display for Error {
     #[expect(clippy::too_many_lines, reason = "one arm for each variant of the error")]
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {

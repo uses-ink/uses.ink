@@ -14,8 +14,8 @@ pub enum Needed {
     Api,
     /// The site.
     Site,
-    /// The owner token.
-    Token,
+    /// The key that signs requests.
+    Key,
 }
 
 impl Needed {
@@ -24,18 +24,36 @@ impl Needed {
         match self {
             Self::Api => "`--api`, `INK_API` or `api` under `[account]` in the config file",
             Self::Site => "`--site`, `INK_SITE` or `site` under `[account]` in the config file",
-            Self::Token => "`INK_TOKEN` or `token` under `[account]` in the config file",
+            Self::Key => "`ink login`, or `INK_KEY` or `INK_KEY_FILE` for a CI job",
         }
     }
 }
 
-/// An error answer of the API: `{problem, message, causes}`.
+/// An error answer of the API: `{problem, message, causes, fields}`.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Said {
     /// A stable name for the refusal.
     pub problem: String,
     /// What is wrong, in a sentence.
     pub message: String,
+    /// The data of the refusal, under the names of the diagnostic catalog.
+    #[serde(default)]
+    pub fields: std::collections::BTreeMap<String, String>,
+}
+
+impl Said {
+    /// What to do about it, for the refusals a person can fix.
+    pub fn fix(&self) -> Option<&'static str> {
+        Some(match self.problem.as_str() {
+            "auth.signature.skewed" => "set this machine's clock, for example `timedatectl set-ntp true`",
+            "auth.signature.refused" | "auth.key.unknown" => "run `ink login` to sign in again on this machine",
+            "auth.key.revoked" | "auth.key.expired" => "run `ink login`; for CI, make a new key with `ink key add`",
+            "auth.right.missing" => "use a key with that right, or approve one with `ink key add`",
+            "auth.enrolment.expired" | "auth.enrolment.denied" | "auth.enrolment.limited" => "run `ink login` again",
+            "auth.server.restarting" => "wait a few seconds and run the command again",
+            _ => return None,
+        })
+    }
 }
 
 impl fmt::Display for Said {
@@ -125,20 +143,73 @@ pub enum Failure {
         /// Why.
         source: serde_json::Error,
     },
+    /// The private key could not be kept or read.
+    Store {
+        /// Why.
+        source: crate::auth::StoreError,
+    },
+    /// The key in `INK_KEY` or a key file is not a key.
+    KeyText {
+        /// Where it came from.
+        from: String,
+        /// Why not.
+        source: sig::KeyError,
+    },
+    /// The API's authority is no audience of a signature.
+    Audience {
+        /// The authority.
+        written: String,
+        /// Why not.
+        source: sig::AudienceError,
+    },
+    /// The request target is not canonical, so it cannot be signed.
+    Target {
+        /// Why not.
+        source: sig::NotCanonical,
+    },
+    /// The method is not one a signature names.
+    Method {
+        /// Why not.
+        source: sig::MethodError,
+    },
+    /// No random bytes were available for a key or a nonce.
+    Draw {
+        /// Why.
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    /// The operator's keys file could not be read or written.
+    Operators {
+        /// Why.
+        source: edge_api::OperatorError,
+    },
+    /// Nobody approved the key before the wait ended.
+    Unapproved {
+        /// How long it waited.
+        after: Duration,
+    },
+    /// The private key would be printed to a terminal.
+    PrintRefused,
 }
 
 impl Failure {
     /// The exit code: sign-in is 3, the network 4, a conflict 5, and what the person typed is 2.
     pub const fn exit(&self) -> Exit {
         match self {
-            Self::Setting { needed: Needed::Token } => Exit::Auth,
+            Self::Setting { needed: Needed::Key } | Self::KeyText { .. } | Self::Unapproved { .. } => Exit::Auth,
             Self::Setting { .. }
             | Self::Address { .. }
             | Self::Scheme { .. }
             | Self::Site { .. }
             | Self::Unknown { .. }
             | Self::Ambiguous { .. }
-            | Self::Request { .. } => Exit::Usage,
+            | Self::Request { .. }
+            | Self::Store { .. }
+            | Self::Audience { .. }
+            | Self::Target { .. }
+            | Self::Method { .. }
+            | Self::Draw { .. }
+            | Self::Operators { .. }
+            | Self::PrintRefused => Exit::Usage,
             Self::Runtime { .. }
             | Self::Connect { .. }
             | Self::Exchange { .. }
@@ -167,6 +238,14 @@ impl Failure {
             Self::Timeout { .. } => "deploy.api.slow",
             Self::Refused { .. } => "deploy.api.refused",
             Self::Unreadable { .. } => "deploy.api.unreadable",
+            Self::Store { .. } => "auth.store.failed",
+            Self::KeyText { .. } => "auth.key.invalid",
+            Self::Audience { .. } => "auth.audience.invalid",
+            Self::Target { .. } | Self::Method { .. } => "auth.request.unsignable",
+            Self::Draw { .. } => "auth.random.failed",
+            Self::Operators { .. } => "auth.operator.unreadable",
+            Self::Unapproved { .. } => "auth.enrolment.expired",
+            Self::PrintRefused => "auth.key.print-refused",
         }
     }
 }
@@ -189,8 +268,25 @@ impl fmt::Display for Failure {
             Self::Exchange { .. } => write!(out, "the exchange with the API broke off"),
             Self::Request { .. } => write!(out, "the request could not be built"),
             Self::Timeout { after } => write!(out, "the API did not answer in {} seconds", after.as_secs()),
-            Self::Refused { status, .. } => write!(out, "the API refused the request ({status})"),
+            Self::Refused { status, said: Some(said) } => match said.fix() {
+                Some(fix) => write!(out, "the API refused the request ({status}): {}; {fix}", said.message),
+                None => write!(out, "the API refused the request ({status}): {}", said.message),
+            },
+            Self::Refused { status, said: None } => write!(out, "the API refused the request ({status})"),
             Self::Unreadable { .. } => write!(out, "the API's answer is not what this ink reads"),
+            Self::Store { .. } => write!(out, "the private key could not be kept or read"),
+            Self::KeyText { from, .. } => write!(out, "{from} does not hold a key: run `ink login` to make one"),
+            Self::Audience { written, .. } => write!(out, "`{written}` is not an authority a request can be signed for"),
+            Self::Target { .. } => write!(out, "the request target is not canonical, so it was not signed"),
+            Self::Method { .. } => write!(out, "the method is not one a request is signed with"),
+            Self::Draw { .. } => write!(out, "no random bytes were available"),
+            Self::Operators { .. } => write!(out, "the operator keys of the data folder could not be read or written"),
+            Self::Unapproved { after } => {
+                write!(out, "nobody approved the key in {} seconds: run `ink login` again", after.as_secs())
+            }
+            Self::PrintRefused => {
+                write!(out, "the private key would be printed to a terminal: send it to a file with `--out`, or redirect stdout")
+            }
         }
     }
 }
@@ -201,7 +297,7 @@ impl Needed {
         match self {
             Self::Api => "API address",
             Self::Site => "site",
-            Self::Token => "token",
+            Self::Key => "key",
         }
     }
 }
@@ -215,12 +311,21 @@ impl std::error::Error for Failure {
             Self::Exchange { source } => Some(source),
             Self::Request { source } => Some(source),
             Self::Unreadable { source } => Some(source),
+            Self::Store { source } => Some(source),
+            Self::KeyText { source, .. } => Some(source),
+            Self::Audience { source, .. } => Some(source),
+            Self::Target { source } => Some(source),
+            Self::Method { source } => Some(source),
+            Self::Draw { source } => Some(source.as_ref()),
+            Self::Operators { source } => Some(source),
             Self::Refused { said, .. } => said.as_ref().map(|said| said as &(dyn std::error::Error + 'static)),
             Self::Setting { .. }
             | Self::Scheme { .. }
             | Self::Unknown { .. }
             | Self::Ambiguous { .. }
-            | Self::Timeout { .. } => None,
+            | Self::Timeout { .. }
+            | Self::Unapproved { .. }
+            | Self::PrintRefused => None,
         }
     }
 }

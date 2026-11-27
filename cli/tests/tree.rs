@@ -119,7 +119,7 @@ fn the_manual_is_roff_with_the_sections_clap_has_no_place_for() {
 
 #[test]
 fn a_verb_that_is_not_built_yet_says_so_and_exits_with_a_usage_error() {
-    for verb in ["init", "login", "logout", "whoami", "push", "status", "watch", "export"] {
+    for verb in ["init", "push", "status", "watch", "export"] {
         let (exit, out, err) = ink(&[verb]);
         assert_eq!((exit, out.as_str()), (Exit::Usage, ""), "{verb}");
         assert!(err.contains(&format!("`ink {verb}` is not built yet")), "{verb}: {err}");
@@ -129,11 +129,11 @@ fn a_verb_that_is_not_built_yet_says_so_and_exits_with_a_usage_error() {
 }
 
 #[test]
-fn the_deploy_verbs_without_a_token_are_a_sign_in_error() {
+fn the_deploy_verbs_without_a_key_are_a_sign_in_error() {
     let site = "0123456789abcdef0123456789abcdef";
     let (exit, _, err) = ink(&["deploy", "list", "--api", "http://127.0.0.1:1", "--site", site]);
     assert_eq!(exit, Exit::Auth, "{err}");
-    assert!(err.contains("INK_TOKEN"), "{err}");
+    assert!(err.contains("INK_KEY") && err.contains("ink login"), "{err}");
     let (exit, _, _) = ink(&["deploys", "--site", site]);
     assert_eq!(exit, Exit::Usage);
 }

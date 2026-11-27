@@ -1,8 +1,8 @@
 //! `ink deploy list|show|rollback|resume`: a site's deploys, over the edge API.
 //!
-//! The commands are typed values over [`client::Api`]. Which API, which site and which owner
-//! token come from the flags, the environment and the config file, in that order (decision 0061).
-//! There is no `ink login` yet, so the token is the owner token of `ink serve --data`.
+//! The commands are typed values over [`client::Api`]. Which API, which site and which key come from the flags, the environment and the config file, in that order (decision 0061).
+//! Every call is signed with the key `ink login` kept (`INK_KEY` and `INK_KEY_FILE` replace it for a
+//! CI job).
 
 mod client;
 mod failure;
@@ -15,15 +15,17 @@ use std::time::Duration;
 use clap::Args;
 use control::Id;
 
-pub(crate) use failure::Failure;
+pub(crate) use client::{Endpoint, Wire};
+pub(crate) use failure::{Failure, Needed};
 
+use crate::auth::Identity;
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::output::{Io, Say};
 use crate::settings::{Environment, Preferences, Process};
 use crate::term::Verbatim;
 use crate::tree::Heading;
-use client::{Api, Endpoint, Token};
+use client::Api;
 use view::{Listing, Pointer, Record, Short};
 use wire::{Listed, Pointer as Moved, Row, Shown};
 
@@ -101,18 +103,10 @@ impl Remote {
             .clone()
             .or_else(|| account.site.clone())
             .ok_or(Failure::Setting { needed: failure::Needed::Site })?;
-        let token = env
-            .get("INK_TOKEN")
-            .or_else(|| account.token.clone())
-            .filter(|token| !token.is_empty())
-            .ok_or(Failure::Setting { needed: failure::Needed::Token })?;
         let site = site.parse::<Id<_>>().map_err(|source| Failure::Site { written: site, source })?;
-        let api = Api {
-            endpoint: Endpoint::parse(&api)?,
-            token: Token(token),
-            site,
-            budget: Duration::from_secs(self.timeout),
-        };
+        let endpoint = Endpoint::parse(&api)?;
+        let identity = Identity::find(env, endpoint.authority())?;
+        let api = Api { wire: Wire { endpoint, identity: Some(identity), budget: Duration::from_secs(self.timeout) }, site };
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -236,6 +230,8 @@ mod test {
         }
     }
 
+    /// A well-formed key text; the seed is all zero bits.
+    const KEY: &str = "ink-ed25519-1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     const SITE: &str = "0123456789abcdef0123456789abcdef";
     const FIRST: &str = "1111111111111111111111111111111111111111111111111111111111111111";
     const SECOND: &str = "2222222222222222222222222222222222222222222222222222222222222222";
@@ -256,7 +252,7 @@ mod test {
                     request.extend_from_slice(&buffer[..read]);
                 }
                 let text = String::from_utf8_lossy(&request).into_owned();
-                seen.push(format!("{} | {}", text.lines().next().unwrap_or_default(), text.contains("Bearer secret")));
+                seen.push(format!("{} | {}", text.lines().next().unwrap_or_default(), text.to_ascii_lowercase().contains("authorization: ink-sig-1 k=")));
                 let reply = format!(
                     "HTTP/1.1 {status} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
                     body.len()
@@ -273,7 +269,7 @@ mod test {
     }
 
     fn env() -> Fixed {
-        Fixed(BTreeMap::from([("INK_TOKEN", "secret")]))
+        Fixed(BTreeMap::from([("INK_KEY", KEY)]))
     }
 
     fn history() -> String {
@@ -283,7 +279,7 @@ mod test {
     }
 
     #[test]
-    fn a_history_is_read_with_the_token_as_a_bearer() {
+    fn a_history_is_read_with_a_signed_request() {
         let (api, server) = serve(vec![(200, history())]);
         let calls = remote(&api).connect(&env(), &Preferences::default()).unwrap();
         let rows = calls.block(calls.api.deploys()).unwrap();
@@ -333,16 +329,17 @@ mod test {
         assert_eq!(missing(&bare, &none).exit(), Exit::Usage);
         let no_token = missing(&remote("http://127.0.0.1:1"), &none);
         assert_eq!((no_token.exit(), no_token.kind()), (Exit::Auth, "deploy.setting.missing"));
-        assert!(no_token.to_string().contains("INK_TOKEN"));
+        assert!(no_token.to_string().contains("INK_KEY"));
+        assert!(no_token.to_string().contains("ink login"));
     }
 
     #[test]
     fn the_config_file_fills_what_the_flags_leave_out() {
         let preferences: Preferences =
-            toml::from_str(&format!("[account]\napi = \"http://127.0.0.1:1\"\nsite = \"{SITE}\"\ntoken = \"t\"\n"))
+            toml::from_str(&format!("[account]\napi = \"http://127.0.0.1:1\"\nsite = \"{SITE}\"\n"))
                 .unwrap();
         let bare = Remote { api: None, site: None, timeout: 5 };
-        assert!(bare.connect(&Fixed(BTreeMap::new()), &preferences).is_ok());
+        assert!(bare.connect(&env(), &preferences).is_ok());
     }
 
     #[test]

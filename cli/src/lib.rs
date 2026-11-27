@@ -21,6 +21,7 @@ mod cache;
 mod change;
 mod completions;
 mod component;
+mod auth;
 mod deploy;
 mod dispatch;
 mod error;

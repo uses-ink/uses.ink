@@ -45,7 +45,7 @@ pub use door::{
     Approver, Approving, Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Rate, Rates, Routed, Strength,
 };
 pub use enrol::{Closed, Closing, Enrol, Gate};
-pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators};
+pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Unreadable as OperatorError};
 pub use signature::{Claimed, Config as Signing, Failed, Nonces, Signatures, Window, WindowError};
 pub use export::{Exports, Route};
 pub use fault::{Denied, Fault, Intake};

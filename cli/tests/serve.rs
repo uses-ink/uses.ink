@@ -6,6 +6,8 @@
 
 extern crate uses_ink_cli as cli;
 
+mod keyed;
+
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
@@ -287,11 +289,22 @@ fn archive(root: &Path) -> Vec<u8> {
 }
 
 impl Site {
-    /// An API call with a bearer token and a body, as raw bytes on the wire.
-    fn call(&self, (method, target): (&str, &str), token: &str, body: &[u8]) -> Got {
+    /// An API call signed as `key`, asked again while the server is still quiet after its start.
+    fn signed(&self, (method, target): (&str, &str), key: &keyed::Keyed, body: &[u8]) -> Got {
+        loop {
+            let got = self.call((method, target), &key.sign(method, target, body), body);
+            if !got.text.contains("auth.server.restarting") {
+                return got;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(250));
+        }
+    }
+
+    /// An API call with an `Authorization` value and a body, as raw bytes on the wire.
+    fn call(&self, (method, target): (&str, &str), authorization: &str, body: &[u8]) -> Got {
         let mut stream = TcpStream::connect(("127.0.0.1", self.port)).unwrap();
         let head = format!(
-            "{method} {target} HTTP/1.1\r\nHost: api.localhost:8080\r\nConnection: close\r\nAuthorization: Bearer {token}\r\nContent-Length: {}\r\n\r\n",
+            "{method} {target} HTTP/1.1\r\nHost: api.localhost:8080\r\nConnection: close\r\nAuthorization: {authorization}\r\nContent-Length: {}\r\n\r\n",
             body.len()
         );
         stream.write_all(head.as_bytes()).unwrap();
@@ -315,6 +328,10 @@ fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
         data.to_str().unwrap(),
         "--addr",
         "127.0.0.1:0",
+        "--audience",
+        "api.localhost:8080",
+        "--auth-skew",
+        "1",
     ])
     .unwrap();
     let (sender, received) = std::sync::mpsc::channel();
@@ -325,8 +342,8 @@ fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
         let part = received.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
         printed.push_str(std::str::from_utf8(&part).unwrap());
     }
-    // the API is up once its last setting line is written (to stderr): the owner token file is
-    // written before
+    // the API is up once its last setting line is written (to stderr): the operator keys file is
+    // made before
     let mut settings = String::new();
     while !settings.contains("backing off") {
         let part = heard.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
@@ -334,19 +351,20 @@ fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
     }
     let first = printed.lines().next().unwrap();
     let site = Site { port: first.strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap(), _stdout: received };
-    let file = data.join("owner-token");
     assert!(!handle.is_finished(), "ink serve ended before the API was used");
-    let token = std::fs::read_to_string(&file).unwrap();
-    let denied = site.call(("GET", "/v1/sites"), "wrong", b"");
-    assert_eq!(denied.status(), "401", "{}", denied.text);
-    assert_eq!(denied.header("www-authenticate"), Some("Bearer"));
-    let added = site.call(("POST", "/v1/sites"), &token, br#"{"handle":"diary","source":{"kind":"upload"}}"#);
+    let key = keyed::Keyed::operator(&data, "api.localhost:8080");
+    let denied = site.call(("GET", "/v1/sites"), "Bearer wrong", b"");
+    assert_eq!(denied.status(), "400", "{}", denied.text);
+    assert_eq!(denied.header("www-authenticate"), Some("Ink-Sig-1"));
+    let unsigned = site.call(("GET", "/v1/sites"), "", b"");
+    assert_eq!(unsigned.header("www-authenticate"), Some("Ink-Sig-1"), "{}", unsigned.text);
+    let added = site.signed(("POST", "/v1/sites"), &key, br#"{"handle":"diary","source":{"kind":"upload"}}"#);
     assert_eq!(added.status(), "201", "{}", added.text);
     let id = added.body().split("\"id\":\"").nth(1).unwrap().split('"').next().unwrap().to_owned();
-    let put = site.call(("PUT", &format!("/v1/sites/{id}/deploy")), &token, &archive(&out));
+    let put = site.signed(("PUT", &format!("/v1/sites/{id}/deploy")), &key, &archive(&out));
     assert_eq!(put.status(), "201", "{}", put.text);
     assert!(put.body().contains("\"published\":\"live\""), "{}", put.text);
-    let exported = site.call(("GET", &format!("/v1/sites/{id}/export")), &token, b"");
+    let exported = site.signed(("GET", &format!("/v1/sites/{id}/export")), &key, b"");
     assert_eq!((exported.status(), exported.header("content-type")), ("200", Some("application/x-tar")));
     // the folder is still served on every other host
     assert_eq!(site.get("/tea", &[]).status(), "200");

@@ -72,9 +72,10 @@ const SITE_ENV: &[Variable] = &[
     Variable { name: "INK_API", about: "The address of the API, as --api" },
     Variable { name: "INK_SITE", about: "The site's id, as --site" },
     Variable {
-        name: "INK_TOKEN",
-        about: "The owner token the API checks; never a flag, so it stays out of process lists",
+        name: "INK_KEY",
+        about: "The private key to sign requests with, for a CI job; never a flag, so it stays out of process lists. `ink login` keeps one in the config folder instead",
     },
+    Variable { name: "INK_KEY_FILE", about: "A file that holds that key, in place of INK_KEY" },
 ];
 
 impl Entry {
@@ -112,6 +113,38 @@ impl Entry {
         }
     }
 }
+
+const AUTH: &[Ending] = &[
+    Ending { exit: Exit::Done, about: "Done" },
+    Ending { exit: Exit::Usage, about: "Wrong usage: no API named, a key that is none, a private key that would print to a terminal" },
+    Ending { exit: Exit::Auth, about: "No key, or the API refused the signature, or nobody approved the key in time" },
+    Ending { exit: Exit::Network, about: "The API could not be reached or failed; safe to retry" },
+];
+
+const KEY_CHILDREN: &[Entry] = &[
+    Entry {
+        examples: &[Example { line: "ink key list", about: "Kind, rights, end and last use of each key" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("list", Group::Publish, "The account's keys")
+    },
+    Entry {
+        detail: "A person approves the new key, as with login. Its private key is written to --out, or printed once to a pipe, never to a terminal.",
+        examples: &[Example {
+            line: "ink key add --site 0123abcd --label ci --out ci.key",
+            about: "A deploy key for one site, written to a file",
+        }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("add", Group::Publish, "Make a key for another machine, such as a CI job")
+    },
+    Entry {
+        examples: &[Example { line: "ink key revoke 7QWM-C4TK-9R", about: "End that key at once" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("revoke", Group::Publish, "End a key")
+    },
+];
 
 const DEPLOY_CHILDREN: &[Entry] = &[
     Entry {
@@ -210,9 +243,35 @@ const ENTRIES: &[Entry] = &[
         ],
         ..Entry::built("select", Group::Understand, "List what is published and why, or choose what to publish")
     },
-    Entry::pending("login", Group::Publish, "Sign in to uses.ink"),
-    Entry::pending("logout", Group::Publish, "Sign out"),
-    Entry::pending("whoami", Group::Publish, "Show who you are signed in as"),
+    Entry {
+        detail: "Makes a key pair on this machine; only its public half and a fingerprint leave it. A person approves the fingerprint, or with --data the operator's file takes it. The private key stays in a file of yours (mode 0600) and is never printed.",
+        examples: &[
+            Example { line: "ink login --api http://api.localhost:8080", about: "Ask for approval, and wait for it" },
+            Example { line: "ink login --data ./data --api http://api.localhost:8080", about: "Enrol as the operator of a local server, with no browser" },
+        ],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("login", Group::Publish, "Sign in to uses.ink")
+    },
+    Entry {
+        examples: &[Example { line: "ink logout", about: "End this machine's key and forget it" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("logout", Group::Publish, "Sign out: end this machine's key")
+    },
+    Entry {
+        examples: &[Example { line: "ink whoami", about: "The account, the key and what it may do" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("whoami", Group::Publish, "Show who you are signed in as")
+    },
+    Entry {
+        children: KEY_CHILDREN,
+        examples: &[Example { line: "ink key list", about: "Every key of the account, and the day each was last used" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("key", Group::Publish, "List, make and end keys")
+    },
     Entry::pending("push", Group::Publish, "Send the folder to its site and start a deploy"),
     Entry::pending("status", Group::Publish, "Show what is live and what is building"),
     Entry::pending("watch", Group::Publish, "Wait for the next deploy of this commit and report it"),

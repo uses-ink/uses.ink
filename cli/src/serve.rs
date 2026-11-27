@@ -100,15 +100,15 @@ impl args::Serve {
     /// into the server and the half that answers.
     fn start_api(&self, product: Product, data: &std::path::Path, io: &mut Io<'_>) -> Result<(Mount, Beside), Error> {
         let (limits, interval) = (product.limits, product.interval);
-        let token = match &product.fresh {
-            Some(token) => format!("{} (shown once; kept in {})", token.reveal(), product.token.display()),
-            None => format!("in {}", product.token.display()),
-        };
         let sites = self.origin.trim_start_matches("http://").trim_start_matches("https://");
         let record = Record::new(0)
             .field("api", Line::plain(format!("http://{}/v1/sites (host {})", self.api_host, self.api_host)))
             .field("data", Line::plain(data.display().to_string()))
-            .field("owner token", Line::plain(token))
+            .field(
+                "operator keys",
+                Line::plain(format!("{} (enrol yours with `ink login --data {}`)", product.operators.display(), data.display())),
+            )
+            .field("signatures", Line::plain(Self::describe_keys(&product.keys)))
             .field("sites", Line::plain(format!("<handle>.{sites}")))
             .field(
                 "limits",
@@ -117,12 +117,36 @@ impl args::Serve {
                     limits.body, limits.archive, limits.files, limits.file, limits.export, limits.rows
                 )),
             );
+        let record = match &product.retired {
+            Some(file) => {
+                let note = model::Announcement::AuthTokenRetired { token_file: file.display().to_string() };
+                record.field("owner token", Line::plain(format!("{} ({})", diag::Message::from(&note), diag::Fix::of_announcement(&note).map_or_else(String::new, |fix| fix.to_string()))))
+            }
+            None => record,
+        };
         let record = self.describe_loops(interval, record);
         let record = self.list_signin(&product.mailing, record)?;
         io.aside(Say::Warnings, &record)?;
         let (bridge, local) = Bridge::new(product.api, limits);
         let Mailing { courier, told, .. } = product.mailing;
         Ok((Mount { host: self.api_host.to_ascii_lowercase().into(), bridge }, (local, courier, told)))
+    }
+
+    /// Says how requests are verified and keys are enrolled.
+    fn describe_keys(keys: &crate::auth::Resolved) -> String {
+        format!(
+            "audience {}, skew {}s, {} nonces a key; keys live {} (device), {} (deploy), at most {}; a person has {} to approve; {} wrong codes or {} waiting close enrolling for {}",
+            keys.audience,
+            keys.window.seconds(),
+            keys.nonces,
+            keys.keys.device,
+            keys.keys.deploy,
+            keys.keys.ceiling,
+            keys.keys.enrol,
+            keys.closing.guesses,
+            keys.closing.waiting,
+            keys.closing.closed,
+        )
     }
 
     /// Says what the watch and the worker run with.

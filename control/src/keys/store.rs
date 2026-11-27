@@ -143,7 +143,7 @@ impl<D: Db> Keys<D> {
             .and_where(Expr::col(table::Enrolment::KeyId).eq(key.to_string()))
             .and_where(Expr::col(table::Enrolment::State).ne(State::Approved.name()))
             .to_owned();
-        let expired = Query::delete()
+        let stale = Query::delete()
             .from_table(table::Enrolment::Table)
             .and_where(Expr::col(table::Enrolment::UserCode).eq(row.code.as_str().to_owned()))
             .and_where(Expr::col(table::Enrolment::ExpiresAt).lte(new.at.as_millisecond()))
@@ -181,7 +181,7 @@ impl<D: Db> Keys<D> {
                 Expr::val(row.expires.as_millisecond()),
             ])?
             .to_owned();
-        match self.db.batch(vec![sweep.into(), replace.into(), expired.into(), insert.into()]).await {
+        match self.db.batch(vec![sweep.into(), replace.into(), stale.into(), insert.into()]).await {
             Ok(_) => Ok(row),
             Err(error) if error.constraint() == Some(Constraint::Unique) => Err(Refused::KeyTaken.into()),
             Err(error) => Err(error.into()),

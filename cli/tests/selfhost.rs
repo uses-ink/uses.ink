@@ -19,6 +19,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{Receiver, channel};
 use std::time::Duration;
 
+mod keyed;
+
 use gix::ObjectId;
 use gix::objs::tree::EntryKind;
 use serde_json::{Value, json};
@@ -97,7 +99,7 @@ struct Running {
     child: Child,
     lines: Lines,
     port: u16,
-    token: String,
+    key: keyed::Keyed,
 }
 
 impl Drop for Running {
@@ -145,6 +147,8 @@ impl Running {
         let mut child = Command::new(env!("CARGO_BIN_EXE_ink"))
             .args(["serve", folder.to_str().unwrap(), "--addr", "127.0.0.1:0", "--data", data.to_str().unwrap()])
             // a file address is the only kind a test with no network can add
+            // the boot barrier is the skew: a short one keeps the test quick
+            .args(["--audience", "api.localhost", "--auth-skew", "1"])
             .args(["--git-scheme", "file", "--site-ttl", "0", "--poll-lookout", "1", "--worker-idle", "1"])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -157,9 +161,8 @@ impl Running {
         let lines = Lines(received);
         let address = lines.until("http://127.0.0.1:");
         let port = address.trim().strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap();
-        let token = lines.until("owner token");
-        let token = token.split_once("owner token").unwrap().1.split_whitespace().next().unwrap().to_owned();
-        Self { child, lines, port, token }
+        let key = keyed::Keyed::operator(data, "api.localhost");
+        Self { child, lines, port, key }
     }
 
     /// `method target` with `Host: host`, read to the end.
@@ -181,11 +184,21 @@ impl Running {
         Got { text: String::from_utf8_lossy(&bytes).into_owned() }
     }
 
-    /// An API call as the owner.
+    /// An API call as the operator, signed; asked again while the server is still quiet after its
+    /// start.
     fn api(&self, route: (Verb, &str), body: &Value) -> Got {
-        let auth =
-            [("Authorization", format!("Bearer {}", self.token)), ("Content-Type", "application/json".to_owned())];
-        self.fetch((route.0, route.1, "api.localhost"), &auth, &body.to_string())
+        let body = body.to_string();
+        loop {
+            let auth = [
+                ("Authorization", self.key.sign(&route.0.name(), route.1, body.as_bytes())),
+                ("Content-Type", "application/json".to_owned()),
+            ];
+            let got = self.fetch((route.0, route.1, "api.localhost"), &auth, &body);
+            if !got.text.contains("auth.server.restarting") {
+                return got;
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
     }
 
     /// A page of a site, by its host.
