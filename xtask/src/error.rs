@@ -6,8 +6,8 @@ use std::path::PathBuf;
 
 use crate::Task;
 use crate::check::{Invocation, Stage, Tool};
-use crate::layout::Problem;
 use crate::generate::output::Stale;
+use crate::layout::Problem;
 use crate::process::Failure;
 
 /// One failure of a task.

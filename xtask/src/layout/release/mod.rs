@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use heck::ToKebabCase as _;
 
-use crate::layout::read::{Crate, Workspace};
+use crate::layout::model::{Crate, Workspace};
 use crate::layout::{Problem, Problems, Rule};
 
 /// The release files, read against the crates they name.

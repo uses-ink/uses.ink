@@ -4,7 +4,7 @@
 
 use syn::visit::{self, Visit};
 
-use crate::layout::read::{Attributes, Crate, Module, Role, Workspace};
+use crate::layout::model::{Attributes, Crate, Module, Role, Workspace};
 use crate::layout::{Function, Problem, Problems, Rule};
 
 /// No function or method name of three words or more: such a name is a missing type or module.

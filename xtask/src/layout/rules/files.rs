@@ -3,7 +3,7 @@
 
 use proc_macro2::{LexError, TokenStream, TokenTree};
 
-use crate::layout::read::Workspace;
+use crate::layout::model::Workspace;
 use crate::layout::{Problem, Problems, Rule};
 
 /// No file or directory named for a heap of unrelated code.

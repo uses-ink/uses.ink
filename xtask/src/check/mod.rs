@@ -9,8 +9,8 @@ use std::str::FromStr;
 use crate::build::component::{Components, Sites};
 use crate::error::Error;
 use crate::layout::Layout;
-use crate::report::{Line, Report};
 use crate::process::Process;
+use crate::report::{Line, Report};
 
 /// One step of the gate.
 pub(crate) trait Step: fmt::Display {

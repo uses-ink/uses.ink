@@ -5,6 +5,7 @@
 //! the statement builders, function names of one or two words, no free functions, and release
 //! files that name the binary that exists.
 
+mod model;
 mod read;
 mod release;
 mod rules;
@@ -13,15 +14,15 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+use crate::check::Step;
+use crate::error::Error;
 use crate::generate::brand::Brand;
 use crate::generate::diag::Diag;
 use crate::generate::output::{Generators, Mode, Output};
 use crate::generate::token::Token;
-use crate::check::Step;
-use crate::error::Error;
 use crate::report::{Line, Report};
 
-pub(crate) use read::Workspace;
+pub(crate) use model::Workspace;
 pub(crate) use release::{Drift, Release};
 pub(crate) use rules::{Alias, Banned, Found, Free, Licence, Names, Order, Sql, Unsafe, Words};
 
@@ -167,6 +168,14 @@ pub(crate) struct Problems {
 }
 
 impl Problems {
+    /// What `rule` finds in `workspace`, for the tests.
+    #[cfg(test)]
+    pub(crate) fn of(rule: &impl Rule, workspace: &Workspace) -> Vec<Problem> {
+        let mut problems = Self::default();
+        rule.check(workspace, &mut problems);
+        problems.found
+    }
+
     pub(crate) fn push(&mut self, problem: Problem) {
         self.found.push(problem);
     }

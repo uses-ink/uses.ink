@@ -25,7 +25,7 @@ use std::fmt;
 
 use proc_macro2::{LexError, TokenStream, TokenTree};
 
-use crate::layout::read::Workspace;
+use crate::layout::model::Workspace;
 use crate::layout::{Problem, Problems, Rule};
 
 /// What a file holds that the rule refuses.
