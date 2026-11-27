@@ -10,34 +10,27 @@
 //! journal without an error.
 
 mod decide;
-mod file;
 mod format;
-mod guard;
 mod journal;
-mod link;
-mod page;
-mod site;
-mod stage;
-mod tree;
-mod vault;
+mod pipeline;
 
 use model::code::{AnyCode, AnyDecision};
 use model::{Diagnostic, Notice, Snapshot, Subject};
 
 pub use crate::interpret::decide::trace::{Fact, Heard, List, Marker, Reading, Rung, Standing, Trace, Witnessed};
 pub use crate::interpret::format::Chosen;
-pub use crate::interpret::page::Selection;
+pub use crate::interpret::pipeline::page::Selection;
 
-use crate::interpret::file::read::Split;
-use crate::interpret::file::{Assets, Files, Read};
-use crate::interpret::guard::Guard;
 use crate::interpret::journal::Journal;
-use crate::interpret::link::{Aliases, Embeds, Links, Targets};
-use crate::interpret::page::Pages;
-use crate::interpret::site::{Assemble, Parts, Routing, Site};
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::{Layout, Root};
-use crate::interpret::vault::Settings;
+use crate::interpret::pipeline::file::read::Split;
+use crate::interpret::pipeline::file::{Assets, Files, Read};
+use crate::interpret::pipeline::guard::Guard;
+use crate::interpret::pipeline::link::{Aliases, Embeds, Links, Targets};
+use crate::interpret::pipeline::page::Pages;
+use crate::interpret::pipeline::site::{Assemble, Parts, Routing, Site};
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::{Layout, Root};
+use crate::interpret::pipeline::vault::Settings;
 use crate::{Blobs, Engine, Formats, Pins};
 use trace::Field as _;
 

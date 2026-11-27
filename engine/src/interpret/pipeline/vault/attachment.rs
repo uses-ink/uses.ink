@@ -5,7 +5,7 @@ use model::ContentPath;
 use serde::Deserialize;
 
 use super::{Setting, Unread};
-use crate::interpret::tree::Scope;
+use crate::interpret::pipeline::tree::Scope;
 
 /// Where a vault keeps the files its notes embed, as `attachmentFolderPath` says.
 #[derive(Clone, Debug, PartialEq, Eq)]

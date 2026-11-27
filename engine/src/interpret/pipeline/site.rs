@@ -18,10 +18,10 @@ use crate::Pins;
 use crate::interpret::decide::ladder::{Case, Ladder, Testimony, Witness};
 use crate::interpret::decide::trace::{Named, Witnessed};
 use crate::interpret::decide::{Explain, Filed, Sourced, precedence};
-use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::Scope;
+use crate::interpret::pipeline::file::read::Source;
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::Scope;
 
 /// What the site's decisions are made on: every page, which are published, the home once it is
 /// decided, and the decisions so far.

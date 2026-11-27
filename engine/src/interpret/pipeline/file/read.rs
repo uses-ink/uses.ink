@@ -4,8 +4,8 @@
 use model::{ContentPath, Diagnostic, FileFacts, Problem, Subject};
 
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::InRoot;
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::InRoot;
 use crate::{Blobs, Formats};
 
 /// A file a format read: a page, if it is published.

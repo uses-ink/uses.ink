@@ -9,11 +9,11 @@ use model::decision::{File, Site as Whole};
 use model::{Asset, Diagnostic, Excluded, Identity, Page, PageId, PageKind, Problem, SiteError, SiteParts, Subject};
 
 use crate::error::Error;
-use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
-use crate::interpret::site::route::Routes;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::{InRoot, Scope};
+use crate::interpret::pipeline::file::read::Source;
+use crate::interpret::pipeline::site::route::Routes;
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::{InRoot, Scope};
 
 /// What the site is assembled from, besides the journal.
 #[derive(Debug)]

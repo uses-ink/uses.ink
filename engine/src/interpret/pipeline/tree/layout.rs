@@ -8,9 +8,9 @@ use crate::Pins;
 use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::precedence;
 use crate::interpret::journal::Journal;
-use crate::interpret::page::Selection;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::Scope;
+use crate::interpret::pipeline::page::Selection;
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::Scope;
 
 /// Decides how the site's files are arranged.
 #[derive(Debug)]

@@ -13,8 +13,8 @@ use crate::interpret::decide::ladder::{About, Case, Testimony, Witness};
 use crate::interpret::decide::precedence;
 use crate::interpret::decide::trace::{Named, Witnessed};
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::InRoot;
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::InRoot;
 
 /// Each plain file a published page shows, with the first page that does.
 pub(crate) type Uses = BTreeMap<ContentPath, ContentPath>;

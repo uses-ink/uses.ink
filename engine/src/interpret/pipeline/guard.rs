@@ -8,8 +8,8 @@ use model::decision::{Decision, File};
 use model::{Basis, Diagnostic, Evidence, Problem, Subject};
 
 use crate::interpret::journal::Journal;
-use crate::interpret::page::Selection;
-use crate::interpret::stage::Stage;
+use crate::interpret::pipeline::page::Selection;
+use crate::interpret::pipeline::stage::Stage;
 
 /// Refuses publication no stated selection made, when the site selects pages.
 #[derive(Debug)]

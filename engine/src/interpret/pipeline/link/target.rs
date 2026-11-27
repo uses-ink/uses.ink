@@ -11,10 +11,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use model::{ContentPath, Entry};
 
 use crate::interpret::decide::Filed;
-use crate::interpret::file::name::Name;
-use crate::interpret::file::read::Source;
-use crate::interpret::tree::{InRoot, Scope};
-use crate::interpret::vault::Attachments;
+use crate::interpret::pipeline::file::name::Name;
+use crate::interpret::pipeline::file::read::Source;
+use crate::interpret::pipeline::tree::{InRoot, Scope};
+use crate::interpret::pipeline::vault::Attachments;
 
 /// A link's target as the author wrote it.
 #[derive(Clone, Copy, Debug)]

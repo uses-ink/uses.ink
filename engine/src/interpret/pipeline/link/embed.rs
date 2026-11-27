@@ -19,9 +19,9 @@ use model::{
     Slug, Subject, Visit,
 };
 
-use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
+use crate::interpret::pipeline::file::read::Source;
+use crate::interpret::pipeline::stage::Stage;
 
 use super::Headings;
 
@@ -135,7 +135,8 @@ impl Fill<'_> {
             return link(written);
         }
         if self.budget == 0 {
-            self.said.push(Said::Problem(Problem::EmbedBudgetCount { written: written.clone(), limit: BUDGET as u64 }));
+            self.found
+                .push(Said::Problem(Problem::EmbedBudgetCount { written: written.clone(), limit: BUDGET as u64 }));
             return link(written);
         }
         let Some(part) = Part::of(&document.blocks, anchor.as_ref()) else {

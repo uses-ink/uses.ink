@@ -11,9 +11,9 @@ use model::{Announcement, ContentPath, DefaultReason, Evidence, FileFacts, Known
 use crate::Pins;
 use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::{Explain, Filed, Sourced, precedence};
-use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
+use crate::interpret::pipeline::file::read::Source;
+use crate::interpret::pipeline::stage::Stage;
 
 /// Whether pages are published until said otherwise, or only once selected (decisions 0017
 /// and 0042, open.md Q16).

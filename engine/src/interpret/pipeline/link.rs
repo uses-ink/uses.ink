@@ -19,10 +19,10 @@ pub(crate) use embed::Embeds;
 pub(crate) use target::{Aliases, Targets};
 use target::{Found, Written};
 
-use crate::interpret::file::asset::Uses;
-use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
+use crate::interpret::pipeline::file::asset::Uses;
+use crate::interpret::pipeline::file::read::Source;
+use crate::interpret::pipeline::stage::Stage;
 
 /// Resolves every link of every published page, in its body and its footnotes.
 #[derive(Debug)]

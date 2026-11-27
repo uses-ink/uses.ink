@@ -11,9 +11,9 @@ use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::precedence;
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::{InRoot, Scope};
-use crate::interpret::vault::Templates;
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::{InRoot, Scope};
+use crate::interpret::pipeline::vault::Templates;
 
 /// What `file.ignore` is decided on: the file, and how the site is arranged, as a vault keeps
 /// its templates in a folder of their own.

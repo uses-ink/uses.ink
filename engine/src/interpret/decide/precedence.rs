@@ -10,8 +10,8 @@ use crate::interpret::decide::witness::{
     Heading, Hidden, History, Implied, Include, Inline, Obsidian, Otherwise, Pattern, Pin, Posts, Repository, Stem,
     Templates,
 };
-use crate::interpret::file::asset::Used;
-use crate::interpret::site::Index;
+use crate::interpret::pipeline::file::asset::Used;
+use crate::interpret::pipeline::site::Index;
 
 /// `site.format`: a pin, then a vault's `.obsidian/` at the top, then the markdown format.
 pub(crate) type Format = Ladder<code::Format, (Pin<code::Format>, Folder<Obsidian>, Fallback<code::Format>)>;

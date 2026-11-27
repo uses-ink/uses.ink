@@ -18,8 +18,8 @@ pub(crate) use template::Templates;
 
 use crate::Blobs;
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::Scope;
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::Scope;
 
 /// Why a settings file reads no further.
 #[derive(Debug)]

@@ -11,10 +11,10 @@ use model::{ContentPath, Evidence, PageKind, Snapshot};
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
 use crate::interpret::decide::trace::{Marker, Named, Witnessed};
-use crate::interpret::file::ignore;
-use crate::interpret::file::name::Name;
-use crate::interpret::site;
-use crate::interpret::tree::{Scope, Tree};
+use crate::interpret::pipeline::file::ignore;
+use crate::interpret::pipeline::file::name::Name;
+use crate::interpret::pipeline::site;
+use crate::interpret::pipeline::tree::{Scope, Tree};
 
 /// What a marker found in a file's path below the root.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -15,9 +15,9 @@ use crate::error::Error;
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
 use crate::interpret::decide::trace::{Named, Witnessed};
-use crate::interpret::file::asset;
-use crate::interpret::page::{self, Selection};
-use crate::interpret::site;
+use crate::interpret::pipeline::file::asset;
+use crate::interpret::pipeline::page::{self, Selection};
+use crate::interpret::pipeline::site;
 
 /// What a code is taken to be on ground `G` when nothing testifies to it, and why.
 pub(crate) trait Assumed<G: ?Sized>: model::code::Code {

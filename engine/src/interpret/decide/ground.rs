@@ -3,8 +3,8 @@
 
 use model::{ContentPath, Evidence, FileFacts, Span};
 
-use crate::interpret::file::name::Name;
-use crate::interpret::file::read::Source;
+use crate::interpret::pipeline::file::name::Name;
+use crate::interpret::pipeline::file::read::Source;
 
 /// A ground about one file.
 pub(crate) trait Filed {

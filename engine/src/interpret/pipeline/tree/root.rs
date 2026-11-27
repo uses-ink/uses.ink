@@ -6,8 +6,8 @@ use model::decision::Site;
 use crate::interpret::decide::ladder::About;
 use crate::interpret::decide::precedence;
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::{Scope, Tree};
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::{Scope, Tree};
 use crate::{Formats, Pins};
 
 /// Decides where the site's content starts, and gives the files under it.

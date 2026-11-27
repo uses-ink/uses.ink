@@ -10,10 +10,10 @@ use model::code::Slug;
 use model::{ContentPath, Diagnostic, Evidence, Problem, Route, Subject};
 
 use crate::interpret::decide::Filed;
-use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
-use crate::interpret::stage::Stage;
-use crate::interpret::tree::InRoot;
+use crate::interpret::pipeline::file::read::Source;
+use crate::interpret::pipeline::stage::Stage;
+use crate::interpret::pipeline::tree::InRoot;
 use crate::render::Reserved;
 
 /// Every published file's route.
