@@ -1,4 +1,5 @@
-//! What the API answers with, as typed values that serialize.
+//! What the API answers with, as typed values that serialize and that a client reads back: one
+//! contract for both sides.
 
 use std::collections::BTreeMap;
 
@@ -6,12 +7,11 @@ use build::{BuildId, Source, Trigger};
 use control::{AccountKind, Deploy, Id, Job, JobState, Live, Receipt, Recorded, Site, SiteKind, SiteState};
 use jiff::Timestamp;
 use model::{Bytes, DeployId, ExternalUrl};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Where a site's content comes from.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
-#[non_exhaustive]
 pub enum SourceView {
     /// A git repository.
     Git {
@@ -39,7 +39,7 @@ impl From<&Source> for SourceView {
 }
 
 /// One site.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SiteView {
     /// Its id.
     pub id: Id<SiteKind>,
@@ -70,7 +70,7 @@ impl SiteView {
 }
 
 /// One deploy.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DeployView {
     /// Its id.
     pub id: DeployId,
@@ -100,7 +100,7 @@ impl From<&Deploy> for DeployView {
 }
 
 /// The deploy a site serves.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LiveView {
     /// The deploy.
     pub deploy: DeployId,
@@ -119,7 +119,7 @@ impl From<&Live> for LiveView {
 }
 
 /// One build.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BuildView {
     /// Its id.
     pub id: BuildId,
@@ -149,7 +149,7 @@ impl From<&Job> for BuildView {
 }
 
 /// `GET /v1/sites/{site}`: what a person looks at first.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Status {
     /// The site.
     pub site: SiteView,
@@ -162,14 +162,14 @@ pub struct Status {
 }
 
 /// A list.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Listed<T> {
     /// The rows, newest first (sites: oldest first).
     pub items: Vec<T>,
 }
 
 /// What recording a deploy did.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Published {
@@ -182,7 +182,7 @@ pub enum Published {
 }
 
 /// `PUT /v1/sites/{site}/deploy`.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Deployed {
     /// The deploy.
     pub deploy: DeployId,
@@ -205,7 +205,7 @@ impl Deployed {
 }
 
 /// `POST /v1/sites/{site}/builds`.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Requested {
@@ -219,7 +219,7 @@ pub enum Requested {
 }
 
 /// `DELETE /v1/sites/{site}`: what was removed.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Removed {
     /// The site.
     pub site: Id<SiteKind>,
@@ -255,7 +255,7 @@ impl From<&Receipt> for Removed {
 }
 
 /// What a rollback or a resume left: where the pointer is.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Moved {
     /// The pointer now.
     pub live: Option<LiveView>,

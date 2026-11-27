@@ -18,7 +18,7 @@ use build::{BuildId, Tree, TreeError, Trigger};
 use clock::{Clock, Draw};
 use control::{NewJob, Ports, Requested, Site, SiteKind};
 use model::{Bytes, ContentPath, Hash};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::Api;
 use crate::archive::{self, Writer};
@@ -175,9 +175,8 @@ impl Sourced {
 }
 
 /// What a tree sent to `POST /v1/sites/{site}/source` came to.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "kebab-case")]
-#[non_exhaustive]
 pub enum Probed {
     /// Blobs are missing: send them, then send the tree again.
     Missing {
