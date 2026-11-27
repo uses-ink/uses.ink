@@ -2,3 +2,5 @@ target/
 # insta updates waiting for review; the fixture harness fails while one is left
 *.snap.new
 *.pending-snap
+# the page cache `ink build` keeps beside a site (decision 0048); never source
+.ink/
