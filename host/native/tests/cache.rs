@@ -98,6 +98,36 @@ fn the_sweep_drops_the_entries_used_longest_ago() {
     assert_eq!(codes(&disk.notices()), ["cache.entry.evicted"]);
 }
 
+/// A sweep that cannot remove a file says so, with the system's error, and counts it.
+#[test]
+#[cfg(unix)]
+fn a_file_the_sweep_cannot_remove_is_said_and_counted() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let root = scratch("stays");
+    let mut disk = Disk::open(&root);
+    disk.bound = Bytes(1);
+    for name in ["one", "two"] {
+        disk.put(&key(name), &[name.repeat(4).as_bytes()]);
+    }
+    let folder = root.join("key/image");
+    std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o500)).unwrap();
+    // an account that may write anywhere (root) cannot make a file stay
+    let writable = std::fs::File::create(folder.join("probe")).is_ok();
+    let capture = trace::Capture::new();
+    capture.run(|| disk.sweep());
+    std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o700)).unwrap();
+    if writable {
+        return;
+    }
+    assert_eq!(disk.stayed(), 2, "both entries stay");
+    let said = capture.named(trace::event::CACHE_STAYED);
+    assert_eq!(said.len(), 1, "one event per sweep");
+    assert_eq!(said[0].number("count"), Some(2));
+    assert_eq!(said[0].level, trace::Level::WARN);
+    assert!(said[0].field("error").and_then(trace::Value::chain).is_some(), "the error keeps its chain");
+}
+
 #[test]
 fn no_read_takes_the_cache_as_content() {
     let root = scratch("site");

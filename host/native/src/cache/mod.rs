@@ -17,11 +17,13 @@ mod values;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::SystemTime;
 
 use engine::cache::{Cache, Key};
 use model::{Announcement, Bytes, Hash, Notice};
+use trace::Field as _;
 
 use crate::blob::StoreError;
 use values::{Partial, Values};
@@ -37,6 +39,8 @@ pub struct Disk {
     said: Mutex<Vec<Notice>>,
     /// Whether the folder is made, once the first value is put; `false` when it cannot be.
     made: OnceLock<bool>,
+    /// How many files a sweep could not remove, over the life of this cache.
+    stayed: AtomicU64,
 }
 
 /// One entry, as [`Disk::sweep`] weighs it.
@@ -72,7 +76,14 @@ impl Disk {
     pub fn open(root: impl AsRef<Path>) -> Self {
         let root = root.as_ref().to_path_buf();
         let values = Values::at(root.join("value"));
-        Self { root, values, bound: Self::BOUND, said: Mutex::default(), made: OnceLock::new() }
+        Self {
+            root,
+            values,
+            bound: Self::BOUND,
+            said: Mutex::default(),
+            made: OnceLock::new(),
+            stayed: AtomicU64::new(0),
+        }
     }
 
     /// Its folder.
@@ -98,6 +109,35 @@ impl Disk {
             }
             made.is_ok()
         })
+    }
+
+    /// How many files sweeps have failed to remove since it was opened. Each is a `cache.stayed`
+    /// event with the system's error; the next sweep weighs the file again.
+    pub fn stayed(&self) -> u64 {
+        self.stayed.load(Ordering::Relaxed)
+    }
+
+    /// Removes `path`; a file already gone is removed.
+    fn remove(path: &Path) -> Result<(), StoreError> {
+        match std::fs::remove_file(path) {
+            Err(source) if source.kind() != std::io::ErrorKind::NotFound => {
+                Err(StoreError::Remove { path: path.to_path_buf(), source })
+            }
+            _gone => Ok(()),
+        }
+    }
+
+    /// Counts and says the files a sweep could not remove: one event per sweep, with how many and
+    /// the first error, so a folder that refuses every removal is one line and not thousands.
+    fn stays(&self, stays: &[StoreError]) {
+        let Some(first) = stays.first() else { return };
+        let count = u64::try_from(stays.len()).unwrap_or(u64::MAX);
+        self.stayed.fetch_add(count, Ordering::Relaxed);
+        trace::warn!(
+            name: trace::event::CACHE_STAYED,
+            count = trace::Count(count).field(),
+            error = trace::Failure(first).field(),
+        );
     }
 
     /// Everything it has said since it was opened or last asked, in the order it said it.
@@ -139,11 +179,13 @@ impl Disk {
         }
         let mut kept: u64 = named.keys().filter_map(|hash| sizes.get(hash)).sum();
         let mut evicted = 0u64;
+        let mut stays = Vec::new();
         for entry in &entries {
             if kept <= self.bound.count() {
                 break;
             }
-            if std::fs::remove_file(&entry.path).is_err() {
+            if let Err(error) = Self::remove(&entry.path) {
+                stays.push(error);
                 continue;
             }
             evicted += 1;
@@ -157,10 +199,12 @@ impl Disk {
             }
         }
         for hash in sizes.keys().filter(|hash| named.get(hash).is_none_or(|&count| count == 0)) {
-            if let Err(_stays) = std::fs::remove_file(self.values.path(hash)) {
-                // it stays, and the next sweep weighs it again
+            // a value that stays is weighed again by the next sweep
+            if let Err(error) = Self::remove(&self.values.path(hash)) {
+                stays.push(error);
             }
         }
+        self.stays(&stays);
         evicted
     }
 

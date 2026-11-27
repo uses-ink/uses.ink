@@ -33,6 +33,13 @@ pub enum StoreError {
         /// What the system said.
         source: std::io::Error,
     },
+    /// A file the cache meant to drop could not be removed, and stays.
+    Remove {
+        /// The file.
+        path: PathBuf,
+        /// What the system said.
+        source: std::io::Error,
+    },
 }
 
 impl fmt::Display for StoreError {
@@ -40,6 +47,7 @@ impl fmt::Display for StoreError {
         match self {
             Self::Create { path, .. } => write!(out, "the blob folder {} could not be made", path.display()),
             Self::Write { path, .. } => write!(out, "the blob {} could not be written", path.display()),
+            Self::Remove { path, .. } => write!(out, "the cache file {} could not be removed", path.display()),
         }
     }
 }
@@ -47,7 +55,7 @@ impl fmt::Display for StoreError {
 impl std::error::Error for StoreError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Create { source, .. } | Self::Write { source, .. } => Some(source),
+            Self::Create { source, .. } | Self::Write { source, .. } | Self::Remove { source, .. } => Some(source),
         }
     }
 }
