@@ -11,6 +11,11 @@ use crate::cli::name::JobName;
 pub(crate) struct Line(pub(crate) usize);
 
 impl Line {
+    /// The first line that holds `word`, else the first.
+    pub(super) fn first(text: &str, word: &str) -> Self {
+        Self(text.lines().position(|line| line.contains(word)).map_or(1, |at| at + 1))
+    }
+
     /// The line of `word` in the table of job `name`, else the table's own line, else the first.
     pub(super) fn of(text: &str, name: &JobName, word: &str) -> Self {
         let header = format!("[job.{name}]");
@@ -58,6 +63,15 @@ pub(crate) enum Fault {
         name: JobName,
         at: Line,
     },
+    /// A glob of `[affected] ignore` that is not one.
+    Ignore {
+        at: Line,
+        source: glob::Fault,
+    },
+    /// A job that `--affected` cannot narrow.
+    Whole {
+        name: JobName,
+    },
     /// A file with no `[job.*]`.
     Empty,
     /// A job asked for that the file does not declare.
@@ -70,7 +84,7 @@ pub(crate) enum Fault {
 impl Fault {
     /// Whether the person named a job that is not there: a usage error, not the farm's.
     pub(crate) const fn is_usage(&self) -> bool {
-        matches!(self, Self::Unknown { .. })
+        matches!(self, Self::Unknown { .. } | Self::Whole { .. })
     }
 }
 
@@ -92,6 +106,10 @@ impl fmt::Display for Fault {
             Self::NoInputs { name, at } => {
                 write!(out, "has an empty `inputs` in `[job.{name}]` at {at}; leave it out to read the whole tree")
             }
+            Self::Ignore { at, .. } => write!(out, "has an `[affected] ignore` glob that is not allowed, at {at}"),
+            Self::Whole { name } => {
+                write!(out, "`[job.{name}]` has no `affected = true`, so `--affected` cannot narrow it")
+            }
             Self::Empty => write!(out, "declares no `[job.<name>]`"),
             Self::Unknown { given, known } => write!(out, "declares no job `{given}`; the jobs are {}", Listed(known)),
         }
@@ -104,8 +122,8 @@ impl std::error::Error for Fault {
             Self::Read(source) => Some(source),
             Self::Toml(source) | Self::Entry { source, .. } => Some(source),
             Self::Name(source) => Some(source),
-            Self::Inputs { source, .. } => Some(source),
-            Self::Empty | Self::NoInputs { .. } | Self::Unknown { .. } => None,
+            Self::Inputs { source, .. } | Self::Ignore { source, .. } => Some(source),
+            Self::Empty | Self::NoInputs { .. } | Self::Unknown { .. } | Self::Whole { .. } => None,
         }
     }
 }

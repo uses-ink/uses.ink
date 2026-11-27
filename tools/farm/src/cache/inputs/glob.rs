@@ -136,7 +136,7 @@ impl Pattern {
 }
 
 /// An ordered list of globs.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct Selection(Vec<Pattern>);
 
 impl Selection {

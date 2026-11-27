@@ -18,6 +18,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::affected::{BadBase, Base};
 use crate::cli::error::Listed;
 use crate::cli::name::{Fault, HostName, JobFault, JobId, JobName, Segment};
 
@@ -27,6 +28,7 @@ pub(crate) enum Action {
     Check,
     Cargo,
     Bless,
+    Test,
     Fmt,
     Status,
     Workspace,
@@ -36,8 +38,17 @@ pub(crate) enum Action {
 
 impl Action {
     /// Every verb, in the order the docs list them.
-    pub(crate) const ALL: [Self; 8] =
-        [Self::Check, Self::Cargo, Self::Bless, Self::Fmt, Self::Status, Self::Workspace, Self::Wait, Self::Log];
+    pub(crate) const ALL: [Self; 9] = [
+        Self::Check,
+        Self::Cargo,
+        Self::Bless,
+        Self::Test,
+        Self::Fmt,
+        Self::Status,
+        Self::Workspace,
+        Self::Wait,
+        Self::Log,
+    ];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -45,6 +56,7 @@ impl Action {
             Self::Check => "check",
             Self::Cargo => "cargo",
             Self::Bless => "bless",
+            Self::Test => "test",
             Self::Fmt => "fmt",
             Self::Status => "status",
             Self::Workspace => "workspace",
@@ -121,6 +133,10 @@ pub(crate) struct Flags {
     pub(crate) fresh: bool,
     /// `--budget`: warn after this many full checks in a day; else the job file's.
     pub(crate) budget: Option<u32>,
+    /// `--affected`: `check` runs the job narrowed to the crates the change affects.
+    pub(crate) affected: bool,
+    /// `--base`: the revision `test` and `check --affected` measure the change from.
+    pub(crate) base: Option<Base>,
 }
 
 impl Default for Flags {
@@ -137,6 +153,8 @@ impl Default for Flags {
             forget: false,
             fresh: false,
             budget: None,
+            affected: false,
+            base: None,
         }
     }
 }
@@ -152,6 +170,10 @@ impl Flags {
             "--detach" => self.detach = true,
             "--forget" => self.forget = true,
             "--fresh" => self.fresh = true,
+            "--affected" => self.affected = true,
+            "--base" => {
+                self.base = Some(value(arg)?.parse().map_err(|BadBase { given }| bad(arg, Why::Rev { given }))?);
+            }
             "--budget" => self.budget = Some(value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?),
             "--timeout" => self.timeout = value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?,
             "--limit" => self.limit = Some(value(arg)?.parse().map_err(|e| bad(arg, Why::Number(e)))?),
@@ -170,11 +192,31 @@ impl Flags {
     }
 }
 
+impl Flags {
+    /// Whether the flags suit the verb: `--affected` narrows a `check`, which `test` always is;
+    /// `--base` measures a change, so only those two take it.
+    fn fit(&self, action: Action) -> Result<(), Usage> {
+        let narrows = matches!(action, Action::Check | Action::Test);
+        if self.affected && action != Action::Check {
+            return Err(Usage::Flag {
+                flag: "--affected".to_owned(),
+                why: Why::Verb { verb: action, only: Action::Check },
+            });
+        }
+        if self.base.is_some() && !narrows {
+            return Err(Usage::Flag { flag: "--base".to_owned(), why: Why::Verb { verb: action, only: Action::Test } });
+        }
+        Ok(())
+    }
+}
+
 /// A verb with its arguments.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Verb {
     /// The repo's jobs, fanned out: these, or all.
     Check(Vec<JobName>),
+    /// Nextest for the crates the change affects; the arguments are nextest's.
+    Test(Vec<String>),
     /// A cargo command, as given.
     Cargo(Vec<String>),
     /// Nextest with its snapshots accepted; the arguments are nextest's.
@@ -214,7 +256,7 @@ impl Command {
             }
         };
         let verb = match action {
-            Action::Cargo | Action::Bless => {
+            Action::Cargo | Action::Bless | Action::Test => {
                 let mut tail = Vec::new();
                 while let Some(arg) = rest.next() {
                     if arg == "--" {
@@ -230,10 +272,15 @@ impl Command {
                 if action == Action::Cargo && tail.is_empty() {
                     return Err(Usage::Missing { verb: action, what: "the cargo arguments" });
                 }
-                if action == Action::Cargo { Verb::Cargo(tail) } else { Verb::Bless(tail) }
+                match action {
+                    Action::Cargo => Verb::Cargo(tail),
+                    Action::Bless => Verb::Bless(tail),
+                    _ => Verb::Test(tail),
+                }
             }
             _ => Self::plain(action, &mut flags, rest)?,
         };
+        flags.fit(action)?;
         Ok(Self { flags, verb })
     }
 
@@ -263,7 +310,7 @@ impl Command {
                 let id = id.parse().map_err(Usage::Job)?;
                 if action == Action::Wait { Verb::Wait(id) } else { Verb::Log(id) }
             }
-            Action::Cargo | Action::Bless => return Err(Usage::NoVerb),
+            Action::Cargo | Action::Bless | Action::Test => return Err(Usage::NoVerb),
         };
         match words.next() {
             Some(given) => Err(Usage::Extra { verb: action, given }),
@@ -291,7 +338,14 @@ pub(crate) enum Usage {
 pub(crate) enum Why {
     Number(ParseIntError),
     Word(Fault),
-    Rev { given: String },
+    Rev {
+        given: String,
+    },
+    /// A flag of another verb: `verb` was given, `only` takes it.
+    Verb {
+        verb: Action,
+        only: Action,
+    },
 }
 
 impl fmt::Display for Usage {
@@ -307,6 +361,7 @@ impl fmt::Display for Usage {
                 Why::Number(_) => write!(out, "`{flag}` takes a whole number"),
                 Why::Word(_) => write!(out, "`{flag}` takes a host name"),
                 Why::Rev { given } => write!(out, "`{flag}` takes a revision, not `{given}`"),
+                Why::Verb { verb, only } => write!(out, "`{flag}` goes with `farm {only}`, not `farm {verb}`"),
             },
             Self::Name(_) => write!(out, "the workspace name is not allowed"),
             Self::Job(_) => write!(out, "that is not a job id"),

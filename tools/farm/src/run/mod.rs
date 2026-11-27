@@ -71,6 +71,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             Verb::Check(names) => self.check(names)?,
             Verb::Cargo(args) => self.cargo(args)?,
             Verb::Bless(args) => self.bless(args)?,
+            Verb::Test(args) => self.test(args)?,
             Verb::Fmt => self.fmt()?,
             Verb::Wait(id) => self.wait(id)?,
             Verb::Status => return self.status(),

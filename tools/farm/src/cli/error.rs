@@ -106,6 +106,8 @@ pub(crate) enum Error {
         paths: Vec<String>,
     },
     Workspace(workspace::Fault),
+    /// The affected crates could not be found.
+    Affected(crate::affected::Fault),
     /// The cache could not be set up.
     Cache(Box<crate::cache::Trouble>),
 }
@@ -118,6 +120,7 @@ impl Error {
             Self::Jobs { fault, .. } if fault.is_usage() => Exit::Usage,
             Self::NotGolden { .. } | Self::Edited { .. } => Exit::Refused,
             Self::Workspace(fault) if fault.is_refusal() => Exit::Refused,
+            Self::Affected(fault) => fault.exit(),
             Self::Config { .. }
             | Self::Jobs { .. }
             | Self::Io { .. }
@@ -144,6 +147,12 @@ impl Error {
 impl From<Usage> for Error {
     fn from(usage: Usage) -> Self {
         Self::Usage(usage)
+    }
+}
+
+impl From<crate::affected::Fault> for Error {
+    fn from(fault: crate::affected::Fault) -> Self {
+        Self::Affected(fault)
     }
 }
 
@@ -195,6 +204,7 @@ impl fmt::Display for Error {
                 Listed(paths)
             ),
             Self::Workspace(fault) => write!(out, "{fault}"),
+            Self::Affected(fault) => write!(out, "{fault}"),
             Self::Cache(trouble) => write!(out, "{trouble}"),
         }
     }
@@ -215,6 +225,7 @@ impl std::error::Error for Error {
             Self::Workspace(fault) => fault.source(),
             Self::Cache(trouble) => std::error::Error::source(trouble.as_ref()),
             Self::Changes { source, .. } => Some(source),
+            Self::Affected(fault) => std::error::Error::source(fault),
             Self::NoRepo { .. }
             | Self::Utf8 { .. }
             | Self::Silent { .. }

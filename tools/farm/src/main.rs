@@ -4,6 +4,7 @@
 //! `.config/farm.toml`. See docs/workflow.md for the verbs and docs/decisions.md (0047) for why
 //! it is built this way.
 //!
+//! - [`affected`]: the crates a change affects, so `farm test` runs only those.
 //! - [`cache`]: what the farm remembers on this machine: passes, running jobs, the journal, the
 //!   result key and the digest of a job's inputs.
 //! - [`cli`]: the command line, the exit codes, the console, errors and names, and the version.
@@ -14,6 +15,7 @@
 //! - [`place`]: [`place::Placement`], which host gets a job; how long jobs took there; waking hosts.
 //! - [`run`]: [`run::Farm`], the verbs, one file each.
 
+mod affected;
 mod cache;
 mod cli;
 mod config;

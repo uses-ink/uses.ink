@@ -40,6 +40,7 @@ golden = true
 limit = 900                      # optional: this job's hard limit in seconds
 inputs = ["**", "!docs/**"]      # optional: the files the job reads (see The result cache)
 cache = false                    # optional: never reuse a pass of this job
+affected = true                  # optional: `farm check test --affected` runs it as nextest for the affected crates
 ```
 
 An optional `[workspace]` table lists names that `farm workspace --forget` may delete although jj
@@ -50,7 +51,7 @@ does not track them (see New workspaces):
 disposable = [".ink"]            # file or directory names, matched at any depth
 ```
 
-Five more optional tables (all keys are typed; an unknown key or a zero is an error):
+Six more optional tables (all keys are typed; an unknown key or a zero is an error):
 
 ```toml
 [sync]
@@ -62,6 +63,10 @@ max_entries = 256                # the oldest beyond this many are forgotten; de
 
 [budget]
 full_checks_per_day = 3          # `farm check` warns after this many a day; default off
+
+[affected]
+base = "main"                    # `farm test` measures the change from here; default: where the workspace left `main`
+ignore = ["docs/**", "*.md"]     # paths in no crate that no test reads, as globs; default none
 
 [history]
 max_age_hours = 336              # timings older than this are forgotten; default 336 (two weeks)
@@ -135,6 +140,7 @@ ssh = "local"           # this machine, in the workspace itself, with no copy
 | `farm check [job...]` | The repo's jobs from `.config/farm.toml` (here `lint test docs wasm sites`), all placed at once. |
 | `farm cargo <args...>` | Any cargo command on a placed host, in the synced workspace. |
 | `farm bless [nextest args]` | Nextest with `INSTA_UPDATE=always` on a golden host; brings back only changed `*.snap`. |
+| `farm test [nextest args]` | Nextest for the crates the change affects and their dependents, on a golden host. `farm check test --affected` is the same for a job that declares `affected = true`. See Testing only what changed. |
 | `farm fmt` | `cargo fmt --all` on a placed host; brings back only the `.rs` files whose bytes changed. |
 | `farm status` | Each host: arch, load, slots used, queue, its running and queued jobs, the median seconds by job that placement uses, and where each declared job would go now. `--json` prints the same. |
 | `farm workspace <name>` | A new jj workspace with a warm `target/`. `--forget <name>` removes one safely. |
@@ -157,6 +163,8 @@ cargo word only ends the farm's flags (`farm cargo -- --json nextest`), and is n
 | `--version` | Print the version and the source hash the binary was built from. |
 | `--fresh` | Run the job although an identical one passed before (the result cache is skipped; the new pass is still recorded). |
 | `--budget N` | `check`: warn after N full checks in 24 hours in this workspace; else the `[budget]` setting. |
+| `--affected` | `check`: run the named jobs that declare `affected = true` as nextest for the affected crates. Never implied; the full `farm check` stays the gate. |
+| `--base REV` | `test`, `check --affected`: measure the change from this revision; else `[affected] base`, else where the workspace left `main`. |
 | `--tail N` | `log`: only the last N lines. |
 | `--at REV`, `--forget` | `workspace`: start from a revision; remove instead of make. |
 
@@ -188,6 +196,7 @@ While you work, run the narrowest command that answers the question, scoped to a
 farm cargo check -p uses-ink-engine
 farm cargo clippy -p uses-ink-engine --all-targets
 farm cargo nextest run -p uses-ink-cli -E 'test(parse)'
+farm test
 ```
 
 On a warm target a package-scoped check or test takes seconds. Never run the whole gate after an
@@ -291,12 +300,48 @@ test`) and, if you want the whole gate green once more, once without arguments.
 One whole `farm check` per commit-worthy state, and the cache serves any stage that already
 passed on the same inputs, so a second one on an unchanged tree runs nothing.
 
+### Testing only what changed
+
+`farm test` runs nextest for the crates your change touches and the crates that depend on them,
+instead of the whole workspace. It prints one line first, for example `affected: 5 of 52 crates
+(changed: model, cli; dependents: 3)`, then runs `cargo nextest run -p a -p b ...` on a golden
+host. Arguments after `test` go to nextest (`farm test -E 'test(parse)' --no-fail-fast`).
+
+How the crates are found:
+
+1. The changed files are `jj diff --summary` from the base to the working copy. The base is
+   `--base REV`, else `base` under `[affected]` in `.config/farm.toml`, else the parent of the
+   workspace's first commit above `main`. A rename counts its old and its new path.
+2. A host runs `cargo metadata --no-deps --format-version 1` in the synced workspace. Each
+   changed path belongs to the crate whose directory is its longest prefix. Dependencies between
+   workspace crates (normal, dev and build) give the dependents, and the closure is taken, so a
+   change to `model` tests everything that uses it, directly or not.
+3. `Cargo.toml` at the root, `Cargo.lock`, `rust-toolchain.toml`, `deny.toml`, and anything under
+   `.config/` or `.cargo/` affect all crates, and the run is `--workspace`. So does a path in no
+   crate (a new directory, a root fixture), because any test may read it, unless the repo lists it
+   under `[affected] ignore` as globs (prose, licences). A change of only ignored paths prints
+   `no crate affected`, starts no job and exits 0.
+
+`farm check test --affected` does the same for a job marked `affected = true` in its `[job.*]`
+table, under the job's name and limits; `--affected` needs the job names and fails for a job
+that is not marked. Nothing applies it on its own: `farm check` with no arguments is the gate
+and runs every stage in full, and a stage served from the result cache is never narrowed.
+
+`farm test` is for the loop while you work. It does not replace the gate: a change a dependency
+graph cannot see (a build script reading a file, a test reading a sibling crate's source) is
+caught by the one full `farm check` at the end.
+
 ### Heavy-command budget for agents
 
 The owner measured a day of agents: 16 full gates, `test` 50 times, `sites` 38. The rules:
 
-- **One full `farm check` per task, at the end.** Meanwhile run `farm cargo nextest run -p
-  <crate>` (or `check`, `clippy`) for the crate you changed.
+- **One full `farm check` per task, at the end.** Meanwhile run `farm test` (the crates you
+  changed and their dependents) or `farm cargo nextest run -p <crate>`, and `check` or
+  `clippy` for the crate you changed. A whole-workspace nextest is never a loop command.
+- **Pipeline, do not idle.** Start a long job with `farm --detach`, keep working, and collect it
+  with `farm wait <id>`. Measured: half of an agent's wall time was waiting on a job it started.
+- **Batch.** One multi-file edit per area; read files in parallel; one `grep` with alternation.
+  5,300 small Bash calls averaged 4 s each.
 - **A failed stage is rerun alone:** `farm check lint`, not the whole gate.
 - **Nothing heavy after a clean rebase** except `farm check lint`. If the bytes did not change the
   cache answers anyway; if they did, run the stage that covers it.
@@ -523,21 +568,23 @@ run it in.
 Paste this into an agent's prompt:
 
 > Build, lint and test only through `farm`, never with plain `cargo` and never with
-> `ssh` or `rsync`. While working, run package-scoped commands: `farm cargo check -p
-> <crate>`, `farm cargo clippy -p <crate>`, `farm cargo nextest run -p
-> <crate> -E 'test(<name>)'`. Do not run the whole gate per edit. When a state is ready to
-> commit, run `farm check` once and fix what it reports (one full `farm check` per task, at the
-> end; a failed stage is rerun alone, `farm check lint`; after a clean rebase run nothing heavy
-> except `farm check lint`; never start the same job twice: `farm` serves a stage that already
-> passed on the same inputs and attaches an identical running one, and `--fresh` is not a way
-> past a failure); if a golden file changed on
-> purpose, run `farm bless` and read every diff it lists. Format with `farm fmt`, never with
-> plain `cargo fmt`. Never poll and never write
-> `pgrep`, `until`, `while` or `sleep` loops. Pass `timeout: 600000` to the Bash tool on every
-> `farm` call that may run past 2 minutes. If the tool says a call was moved to the background,
-> its result arrives as a notice: end your turn with one line, or block once with `farm wait
-> <id>`. Start long jobs with `--detach` and block with `farm wait <id>`; exit code 75 means
-> still running, call `wait` again. If the queue says you are waiting, wait: the
-> slots keep jobs from starving each other, so do not retry a test to get past a failure. Make a workspace with `farm workspace <name>`, not `jj
-> workspace add`. Exit codes: 0 passed, 1 failed, 2 usage, 3 farm trouble, 4 refused, 75 still
-> running, 124 hit its limit.
+> `ssh` or `rsync`. While working, run targeted commands: `farm test` (nextest for the crates
+> you changed and their dependents), `farm cargo check -p <crate>`, `farm cargo clippy -p
+> <crate>`, `farm cargo nextest run -p <crate> -E 'test(<name>)'`. Never run the whole
+> workspace's tests per edit. PIPELINE: start every long job with `farm --detach`, keep
+> working, collect it with `farm wait <id>`, and never idle on a job you started. BATCH: one
+> multi-file edit per area with Edit or Write, or one script; read files in parallel; one grep
+> with alternation (5,300 small Bash calls averaged 4 s each). ONE full gate at the end: when a
+> state is ready to commit, run `farm check` once and fix what it reports (a failed stage is
+> rerun alone, `farm check lint`; after a clean rebase run nothing heavy except `farm check
+> lint`; never start the same job twice: `farm` serves a stage that already passed on the same
+> inputs and attaches an identical running one, and `--fresh` is not a way past a failure). If a
+> golden file changed on purpose, run `farm bless` and read every diff it lists. Format with
+> `farm fmt`, never with plain `cargo fmt`. Never poll and never write `pgrep`, `until`,
+> `while` or `sleep` loops. Pass `timeout: 600000` to the Bash tool on every `farm` call that
+> may run past 2 minutes. If the tool says a call was moved to the background, its result
+> arrives as a notice: end your turn with one line, or block once with `farm wait <id>`; exit
+> code 75 means still running, call `wait` again. If the queue says you are waiting, wait: the
+> slots keep jobs from starving each other, so do not retry a test to get past a failure. Make
+> a workspace with `farm workspace <name>`, not `jj workspace add`. Exit codes: 0 passed, 1
+> failed, 2 usage, 3 farm trouble, 4 refused, 75 still running, 124 hit its limit.

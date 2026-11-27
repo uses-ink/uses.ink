@@ -137,3 +137,18 @@ fn a_bad_file_says_what_is_wrong() {
         assert!(Jobs::parse(bad, PathBuf::new()).is_err(), "{bad:?}");
     }
 }
+
+#[test]
+fn the_affected_table_and_a_narrowable_job_are_read_and_bad_globs_are_named() {
+    let text = format!("{FILE}affected = true\n\n[affected]\nbase = \"main\"\nignore = [\"docs/**\", \"*.md\"]\n");
+    let jobs = Jobs::parse(&text, PathBuf::new()).unwrap();
+    let scope = &jobs.settings().scope;
+    assert_eq!(scope.base.as_ref().map(crate::affected::Base::as_str), Some("main"));
+    assert!(scope.ignore.selects("docs/a.png") && scope.ignore.selects("PRODUCT.md") && !scope.ignore.selects("a.rs"));
+    let all = jobs.pick(&[]).unwrap();
+    assert_eq!((all[0].narrow, all[1].narrow), (false, true));
+    let bad = Jobs::parse(&format!("{FILE}\n[affected]\nignore = [\"a/**/b**\"]\n"), PathBuf::new()).unwrap_err();
+    assert!(matches!(bad, Fault::Ignore { .. }), "{bad}");
+    let bad = Jobs::parse(&format!("{FILE}\n[affected]\nbase = \"-x\"\n"), PathBuf::new()).unwrap_err();
+    assert!(matches!(bad, Fault::Toml(_)), "{bad}");
+}

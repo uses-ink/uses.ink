@@ -4,4 +4,5 @@ mod bless;
 mod cargo;
 mod check;
 mod status;
+mod test;
 mod wait;

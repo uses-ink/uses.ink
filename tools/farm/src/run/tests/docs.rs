@@ -39,6 +39,12 @@ fn the_workflow_doc_names_the_cache_flags_keys_and_the_agent_budget() {
     for word in [
         "--fresh",
         "--budget",
+        "--affected",
+        "--base",
+        "affected = true",
+        "[affected]",
+        "Testing only what changed",
+        "PIPELINE",
         "inputs = [",
         "cache = false",
         "[sync]",

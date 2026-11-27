@@ -13,6 +13,7 @@
 //!
 //! inputs = ["**", "!docs/**"]  # optional: the files the job reads; default the whole tree
 //! cache = false        # optional: never reuse a pass of this job
+//! affected = true      # optional: `farm check <job> --affected` runs nextest for the affected crates
 //!
 //! [workspace]           # optional
 //! disposable = [".ink"] # names of files and directories `farm workspace --forget` may delete
@@ -27,6 +28,10 @@
 //! [budget]              # optional: warn after this many full `farm check` runs a day
 //! full_checks_per_day = 3
 //!
+//! [affected]            # optional: how `farm test` narrows to the crates a change affects
+//! base = "main"         # the revision to measure from; default the workspace's fork from `main`
+//! ignore = ["docs/**"]   # paths in no crate that no test reads, as globs
+//!
 //! [history]             # optional: how much timing history placement keeps
 //! max_age_hours = 336
 //! max_samples = 2000
@@ -40,6 +45,7 @@ mod tests;
 use std::num::{NonZeroU32, NonZeroU64};
 use std::path::{Path, PathBuf};
 
+use crate::affected::Scope;
 use crate::cache::hash::{Hash, Hasher};
 use crate::cache::inputs::glob::Selection;
 use crate::cli::Seconds;
@@ -66,6 +72,8 @@ pub(crate) struct Recipe {
     pub(crate) inputs: Option<Selection>,
     /// Whether a pass of it may be reused.
     pub(crate) cache: bool,
+    /// Whether `farm check <job> --affected` may run it narrowed to the affected crates.
+    pub(crate) narrow: bool,
 }
 
 /// How many passes are kept, and for how long.
@@ -104,6 +112,8 @@ pub(crate) struct Settings {
     pub(crate) exclude: Vec<Excluded>,
     /// The digest of the job file's text: a changed job file is a new key for every job.
     pub(crate) config: Hash,
+    /// How `farm test` narrows: the base revision and the paths no test reads.
+    pub(crate) scope: Scope,
 }
 
 impl Settings {
@@ -119,6 +129,7 @@ impl Default for Settings {
             budget: None,
             exclude: Self::EXCLUDE.iter().filter_map(|name| name.parse().ok()).collect(),
             config: Hasher::default().finish(),
+            scope: Scope::default(),
         }
     }
 }
@@ -133,9 +144,14 @@ pub(crate) struct Jobs {
 }
 
 impl Jobs {
+    /// Where the job file of the workspace at `root` is.
+    pub(crate) fn path(root: &Path) -> PathBuf {
+        FILE.iter().fold(root.to_path_buf(), |path, part| path.join(part))
+    }
+
     /// Reads the job file of the workspace at `root`.
     pub(crate) fn load(root: &Path) -> Result<Self, Error> {
-        let path: PathBuf = FILE.iter().fold(root.to_path_buf(), |path, part| path.join(part));
+        let path = Self::path(root);
         let text = std::fs::read_to_string(&path)
             .map_err(|source| Error::Jobs { path: path.clone(), fault: Fault::Read(source) })?;
         Self::parse(&text, path.clone()).map_err(|fault| Error::Jobs { path, fault })
@@ -158,7 +174,7 @@ impl Jobs {
     /// Reads a job file's text.
     pub(crate) fn parse(text: &str, path: PathBuf) -> Result<Self, Fault> {
         let mut raw: Raw = toml::from_str(text).map_err(|source| Fault::Toml(Box::new(source)))?;
-        let settings = raw.settings(text);
+        let settings = raw.settings(text)?;
         let mut recipes = Vec::new();
         for (key, value) in std::mem::take(&mut raw.job) {
             let name: JobName = key.parse().map_err(Fault::Name)?;
@@ -182,6 +198,7 @@ impl Jobs {
                 limit: entry.limit.map(|limit| Seconds(limit.get())),
                 inputs,
                 cache: entry.cache.unwrap_or(true),
+                narrow: entry.affected.unwrap_or(false),
             });
         }
         if recipes.is_empty() {

@@ -6,9 +6,11 @@ use std::num::{NonZeroU32, NonZeroU64};
 
 use serde::Deserialize;
 
+use crate::affected::{Base, Scope};
 use crate::cache::hash::Hasher;
+use crate::cache::inputs::glob::Selection;
 use crate::cli::name::{Disposable, Excluded};
-use crate::config::jobs::{Limits, Settings};
+use crate::config::jobs::{Fault, Limits, Line, Settings};
 use crate::place::history::Memory;
 
 /// The file as written.
@@ -27,13 +29,20 @@ pub(super) struct Raw {
     sync: Ship,
     #[serde(default)]
     history: Recall,
+    #[serde(default)]
+    affected: Reach,
 }
 
 impl Raw {
     /// What the tables beyond the jobs say, over the defaults.
-    pub(super) fn settings(&mut self, text: &str) -> Settings {
+    pub(super) fn settings(&mut self, text: &str) -> Result<Settings, Fault> {
         let (raw, defaults) = (self, Settings::default());
-        Settings {
+        let globs = raw.affected.ignore.take().unwrap_or_default();
+        let ignore = Selection::parse(&globs).map_err(|(at, source)| Fault::Ignore {
+            at: Line::first(text, globs.get(at).map_or("ignore", String::as_str)),
+            source,
+        })?;
+        Ok(Settings {
             limits: Limits {
                 hours: raw.cache.max_age_hours.unwrap_or(defaults.limits.hours),
                 entries: raw.cache.max_entries.unwrap_or(defaults.limits.entries),
@@ -45,8 +54,17 @@ impl Raw {
             budget: raw.budget.full_checks_per_day,
             exclude: raw.sync.exclude.take().unwrap_or(defaults.exclude),
             config: Hasher::default().field(text.as_bytes()).finish(),
-        }
+            scope: Scope { base: raw.affected.base.take(), ignore },
+        })
     }
+}
+
+/// The `[affected]` table.
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Reach {
+    base: Option<Base>,
+    ignore: Option<Vec<String>>,
 }
 
 /// The `[history]` table.
@@ -96,6 +114,7 @@ pub(super) struct Entry {
     pub(super) limit: Option<NonZeroU64>,
     pub(super) inputs: Option<Vec<String>>,
     pub(super) cache: Option<bool>,
+    pub(super) affected: Option<bool>,
 }
 
 /// The `run` key: a command of at least one word.

@@ -96,3 +96,20 @@ fn defaults_are_the_documented_ones_and_bad_input_is_usage() {
         assert!(parse(bad).is_err(), "{bad:?}");
     }
 }
+
+#[test]
+fn test_passes_its_arguments_to_nextest_and_affected_and_base_have_their_verbs() {
+    assert_eq!(parse("test").unwrap().verb, Verb::Test(vec![]));
+    let command = parse("--detach test -E test(a) --no-fail-fast").unwrap();
+    assert_eq!(command.verb, Verb::Test(words("-E test(a) --no-fail-fast")));
+    assert!(command.flags.detach);
+    assert_eq!(parse("test --base main~2 -p x").unwrap().flags.base.unwrap().as_str(), "main~2");
+    let command = parse("check test --affected --base main").unwrap();
+    assert!(command.flags.affected);
+    assert_eq!(command.verb, Verb::Check(vec!["test".parse().unwrap()]));
+    assert!(parse("cargo check --affected").is_ok(), "after the cargo words it is cargo's");
+    assert!(matches!(parse("--affected cargo check"), Err(Usage::Flag { .. })));
+    assert!(matches!(parse("--affected test"), Err(Usage::Flag { .. })), "test is always affected");
+    assert!(matches!(parse("--base main status"), Err(Usage::Flag { .. })));
+    assert!(matches!(parse("--base -x test"), Err(Usage::Flag { .. })));
+}

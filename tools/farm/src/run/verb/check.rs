@@ -5,7 +5,8 @@ use std::thread;
 
 use crate::cli::error::Error;
 use crate::cli::name::JobName;
-use crate::config::jobs::Jobs;
+use crate::cli::{Action, Usage};
+use crate::config::jobs::{self, Jobs, Recipe};
 use crate::host::Snapshot;
 use crate::host::transport::Transport;
 use crate::job::{Finished, Job, Totals};
@@ -38,13 +39,40 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     /// The repo's declared jobs, one per job, all placed at once: the wall time is the slowest
     /// job, not the sum.
     pub(in crate::run) fn check(&self, names: &[JobName]) -> Result<Batch, Error> {
-        let jobs: Vec<Job> = Jobs::load(&self.tree.root)?.pick(names)?.into_iter().map(Job::from).collect();
+        let recipes = Jobs::load(&self.tree.root)?.pick(names)?;
+        let jobs = if self.flags.affected {
+            self.narrow(names, recipes)?
+        } else {
+            recipes.into_iter().map(Job::from).collect()
+        };
+        if jobs.is_empty() {
+            return Ok(Batch::default());
+        }
         let snaps = self.place(&jobs.iter().collect::<Vec<_>>())?;
         let batch = self.fan(&jobs, &snaps);
         if names.is_empty() {
             self.full(&Totals::of(&batch.done));
         }
         Ok(batch)
+    }
+
+    /// The named jobs as nextest for the affected crates; each must declare `affected = true`.
+    fn narrow(&self, names: &[JobName], recipes: Vec<Recipe>) -> Result<Vec<Job>, Error> {
+        if names.is_empty() {
+            return Err(Usage::Missing { verb: Action::Check, what: "the jobs to narrow with `--affected`" }.into());
+        }
+        if let Some(whole) = recipes.iter().find(|recipe| !recipe.narrow) {
+            let path = Jobs::path(&self.tree.root);
+            return Err(Error::Jobs { path, fault: jobs::Fault::Whole { name: whole.name.clone() } });
+        }
+        let choice = self.choose()?;
+        Ok(recipes
+            .into_iter()
+            .filter_map(|recipe| {
+                let job = choice.job(recipe.name.as_str(), &[])?;
+                Some(Job { need: recipe.need, limit: recipe.limit, ..job })
+            })
+            .collect())
     }
 
     /// Counts a full `farm check` and warns when the day's count is over the budget: it never
