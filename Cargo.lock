@@ -3996,7 +3996,6 @@ name = "uses-ink-sdk"
 version = "0.0.0"
 dependencies = [
  "freehand",
- "uses-ink-engine",
  "uses-ink-model",
  "wit-bindgen 0.63.0",
 ]

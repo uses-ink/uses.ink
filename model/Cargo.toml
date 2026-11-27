@@ -3,7 +3,8 @@ name = "uses-ink-model"
 description = "The types every part of uses.ink speaks: snapshots, decisions, sites, documents, manifests, diagnostics"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+# what the SDK and the WIT mirror convert to, so a third-party plugin links it (decisions 0026, 0041)
+license = "MIT OR Apache-2.0"
 repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true

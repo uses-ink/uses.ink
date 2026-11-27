@@ -501,9 +501,17 @@ through them. What 0035 and architecture.md sections 6 and 7 did not settle, as 
 - **Components are read from a folder** (`--components`, written by `cargo xtask component` to
   `target/plugin/`), not bundled in `ink`; their `.cwasm` cache is its `cache/` folder, each file
   checked by its BLAKE3 before it is loaded, a file that does not check compiled again.
-- **The WIT packages and the SDK are AGPL** like the rest: the mirror and the SDK convert to the
-  model, which is AGPL, against 0026 until the model's plain types are cut into a permissive
-  crate (0035's authority types crate).
+- **The model, the SDK and `wit/` are MIT OR Apache-2.0** (0026). The mirror converts to
+  nearly all of the model: a site names decision codes, whose evidence holds a snapshot's
+  provenance, and an asset's picture holds a manifest's media type, so a cut of the types that
+  cross would have left `model` an empty shell around `Snapshot` and `Manifest`. The model is
+  plain values with only permissive dependencies, so it is relicensed whole instead of cut.
+  `Record`, `Said` and a theme's `File` (the WIT's `ink:model/file`) moved from the engine to
+  the model, which the engine re-exports, so the SDK depends on `freehand` and `model` only. `cargo xtask layout` refuses a permissive crate
+  with a normal or build dependency on an AGPL crate of ours (`Licence`, `Problem::Copyleft`).
+  The engine's plugin traits and their types (`Format`, `Theme`, `Html`, `BaseUrl`) stay AGPL: a
+  component needs only the SDK, and a third-party native core written against them is a later
+  decision.
 
 Measured (release, this machine, `host/wasmtime/tests/measure.rs`): the markdown component is
 1,369,744 bytes (464 KB gzipped, a 4.5 MB `.cwasm`), the quiet theme 657,499 (227 KB, 2.2 MB);

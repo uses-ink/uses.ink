@@ -3,13 +3,13 @@ name = "uses-ink-sdk"
 description = "The guest side of the plugin boundary: bindings to ink:host and the model's WIT, and their conversions"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+# the SDK a third-party plugin links (decision 0026)
+license = "MIT OR Apache-2.0"
 repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-engine.workspace = true
 freehand.workspace = true
 model.workspace = true
 wit-bindgen.workspace = true

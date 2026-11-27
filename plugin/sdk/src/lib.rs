@@ -8,7 +8,7 @@
 //!   `wit/mirror.rs` and included here, as `From` and `TryFrom` impls; [`Unmirrored`] and
 //!   [`Malformed`] are their refusals.
 //! - [`Host`]: the host's capabilities as the native traits a plugin's core is written against:
-//!   [`Highlight`](model::highlight::Highlight) and [`Record`](engine::Record).
+//!   [`Highlight`](model::highlight::Highlight) and [`Record`](model::Record).
 
 pub mod bind;
 mod host;

@@ -167,3 +167,33 @@ impl From<Announcement> for Notice {
         Self::new(announcement)
     }
 }
+
+/// Where a plugin says what it found while it worked: the native stand-in for the
+/// `ink:host/diagnostic` capability. The engine's render records into its output, a component
+/// records through its host, a test records into a [`Said`].
+pub trait Record {
+    /// Records a problem.
+    fn diagnose(&mut self, diagnostic: Diagnostic);
+    /// Records an announcement.
+    fn notice(&mut self, notice: Notice);
+}
+
+/// Everything said, in order: a [`Record`] that keeps it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Said {
+    /// Problems, such as `math.syntax.invalid`.
+    pub diagnostics: Vec<Diagnostic>,
+    /// Notices, such as `code.language.unknown`.
+    pub notices: Vec<Notice>,
+}
+
+impl Record for Said {
+    fn diagnose(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    fn notice(&mut self, notice: Notice) {
+        self.notices.push(notice);
+    }
+}

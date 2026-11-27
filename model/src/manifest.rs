@@ -186,6 +186,17 @@ impl Status {
     }
 }
 
+/// One file a theme serves as is, before the engine hashes it into a [`Served`] route.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct File {
+    /// Where it is served.
+    pub route: Route,
+    /// What it is.
+    pub media: MediaType,
+    /// Its bytes.
+    pub bytes: Vec<u8>,
+}
+
 /// One served route.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct Served {

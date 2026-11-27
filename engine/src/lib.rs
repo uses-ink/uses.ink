@@ -24,9 +24,12 @@ mod render;
 
 pub use cache::Cache;
 pub use error::Error;
-pub use host::{BlobMissing, Blobs, File, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Record, Said, Theme};
+pub use host::{BlobMissing, Blobs, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Theme};
 pub use image::Images;
 pub use interpret::Understood;
+/// What a theme takes and gives that the model holds, named here beside the [`Theme`] that uses
+/// them: the files it serves and where it says what it found.
+pub use model::{File, Record, Said};
 pub use render::{BaseUrl, BaseUrlError, Generated, RenderSettings, Rendered, Reserved};
 
 /// The engine over one host: where bytes come from (`B`), what `ink.toml` pins (`P`), which

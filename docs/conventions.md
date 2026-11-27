@@ -155,10 +155,12 @@ The path predicts the name and the name predicts the path.
 
 ## Licence
 
-The service, engine and first-party plugins are AGPL-3.0-or-later. The plugin SDK, the WIT
-packages and product-independent crates (the pen, the text measurer) are MIT OR Apache-2.0, so a
-third-party theme is not bound by the AGPL. Every crate states its licence through
-`[workspace.package]` or its own manifest; `cargo deny` checks dependency licences.
+The service, engine and first-party plugins are AGPL-3.0-or-later. The plugin SDK, the model it
+speaks, the WIT packages and product-independent crates (the pen, the text measurer) are MIT OR
+Apache-2.0, so a third-party theme is not bound by the AGPL (decision 0041). Every crate states
+its licence through `[workspace.package]` or its own manifest. `cargo xtask layout` checks each
+crate's licence and refuses a permissive crate depending on an AGPL crate of ours; `cargo deny`
+checks third-party licences.
 
 ## Code
 

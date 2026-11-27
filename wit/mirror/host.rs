@@ -171,15 +171,15 @@ impl From<served::Media> for MediaType {
     }
 }
 
-impl TryFrom<engine::File> for served::File {
+impl TryFrom<model::File> for served::File {
     type Error = Unmirrored;
 
-    fn try_from(file: engine::File) -> Result<Self, Unmirrored> {
+    fn try_from(file: model::File) -> Result<Self, Unmirrored> {
         Ok(Self { route: file.route.into(), media: file.media.try_into()?, bytes: file.bytes })
     }
 }
 
-impl TryFrom<served::File> for engine::File {
+impl TryFrom<served::File> for model::File {
     type Error = Malformed;
 
     fn try_from(file: served::File) -> Result<Self, Malformed> {

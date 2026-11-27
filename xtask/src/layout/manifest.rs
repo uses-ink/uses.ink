@@ -93,7 +93,7 @@ impl Order {
                 "uses-ink-theme-quiet",
             ],
         ),
-        ("uses-ink-sdk", &["freehand", "uses-ink-model", "uses-ink-engine"]),
+        ("uses-ink-sdk", &["freehand", "uses-ink-model"]),
         ("uses-ink-format-markdown-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-format-markdown"]),
         ("uses-ink-theme-quiet-guest", &["uses-ink-model", "uses-ink-engine", "uses-ink-sdk", "uses-ink-theme-quiet"]),
         ("uses-ink-host-wasmtime-hostile", &["uses-ink-sdk"]),
@@ -128,24 +128,45 @@ impl Rule for Order {
     }
 }
 
-/// A crate's licence matches its kind: permissive for a crate with a name of its own, the
-/// service's otherwise.
+/// A crate's licence matches its kind: permissive for a crate with a name of its own and for
+/// what a third-party plugin links, the service's otherwise (decision 0026). A permissive crate
+/// depends on no crate of ours under the service's licence, so linking it never pulls one in.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Licence;
 
 impl Licence {
-    const PERMISSIVE: &'static str = "MIT OR Apache-2.0";
+    pub(crate) const PERMISSIVE: &'static str = "MIT OR Apache-2.0";
     const SERVICE: &'static str = "AGPL-3.0-or-later";
+
+    /// Crates of ours a third-party plugin links: the model it speaks and the SDK.
+    const LINKED: &'static [&'static str] = &["uses-ink-model", "uses-ink-sdk"];
+
+    /// Whether the crate named `name` must be permissive.
+    fn is_permissive(name: &str) -> bool {
+        OWN.contains(&name) || Self::LINKED.contains(&name)
+    }
 }
 
 impl Rule for Licence {
     const NAME: &'static str = "licence";
 
     fn check(&self, workspace: &Workspace, problems: &mut Problems) {
+        let ours: Vec<&str> = workspace.crates.iter().map(|c| c.name.as_str()).collect();
         for krate in &workspace.crates {
-            let expected = if OWN.contains(&krate.name.as_str()) { Self::PERMISSIVE } else { Self::SERVICE };
+            let permissive = Self::is_permissive(&krate.name);
+            let expected = if permissive { Self::PERMISSIVE } else { Self::SERVICE };
             if krate.licence.as_deref() != Some(expected) {
                 problems.push(Problem::Licence { krate: krate.name.clone(), found: krate.licence.clone(), expected });
+            }
+            if !permissive {
+                continue;
+            }
+            // a dev-dependency is not linked by whoever uses the crate
+            for dependency in krate.dependencies.iter().filter(|d| d.kind != Some(Kind::Dev)) {
+                let name = dependency.name.as_str();
+                if dependency.inside && ours.contains(&name) && !Self::is_permissive(name) {
+                    problems.push(Problem::Copyleft { krate: krate.name.clone(), on: dependency.name.clone() });
+                }
             }
         }
     }

@@ -202,7 +202,7 @@ pub trait Format { fn handles(&self, path: &ContentPath) -> bool; fn read(&self,
 pub trait Formats { fn handles(&self, path: &ContentPath) -> bool; fn read(&self, path: &ContentPath, bytes: &[u8]) -> Option<Read>; }
 impl<A: Format, B: Format> Formats for (A, B) { .. }   // tuples up to four: the first that handles it
 pub trait Theme { fn name(&self) -> &str; fn assets(&self) -> Vec<File>; fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>; }
-pub trait Record { fn diagnose(&mut self, diagnostic: Diagnostic); fn notice(&mut self, notice: Notice); }
+pub trait Record { fn diagnose(&mut self, diagnostic: Diagnostic); fn notice(&mut self, notice: Notice); }   // model's
 pub trait Blobs { fn read(&self, hash: &Hash) -> Result<Cow<'_, [u8]>, BlobMissing>; }
 pub trait Pins: Patterns { fn pin<C: Code>(&self, subject: &C::Subject) -> Option<Pin<C::Value>>; }
 pub trait Images { type Refusal: Into<Diagnostic>; fn prepare(&self, sources: &[Source<'_>]) -> Vec<Result<Prepared, Self::Refusal>>; }
@@ -215,7 +215,9 @@ component adapters implementing the same traits, tests pick in-memory ones. Noth
 names a concrete plugin. A theme says what it finds while it renders (math that does not parse,
 code in a language no grammar knows) into the `Record` it is given, the native stand-in for
 `ink:host/diagnostic`: the render's output records it beside everything else, and a test passes
-an `engine::Said`.
+a `model::Said`. `Record`, `Said` and a theme's `File` live in the model, which is
+permissive, so the SDK implements `Record` and converts `File` without linking the AGPL engine;
+the engine re-exports them.
 
 The component adapters are the same traits over a loaded component: `host_wasmtime::Component<Format>`
 implements `Format` and `Component<Theme>` implements `Theme`, so `Engine<B, P, F, T>` runs a
@@ -292,7 +294,8 @@ typed `Flag`s and a `Target`), whose command line and needed `Tool`s follow from
 the last step is `Layout`. Rules run over a `Workspace` read once: `cargo metadata`, the
 `[workspace.dependencies]` aliases, every path in the tree, every `.rs` file per crate, and the
 module tree each target compiles, parsed with `syn` and marked entry, inner, test or generated.
-The rules are `Names`, `Order`, `Licence`, `Alias`, `Banned`, `Unsafe` (on tokens, so comments
+The rules are `Names`, `Order`, `Licence` (each crate's licence, and no AGPL crate of ours under
+a permissive one), `Alias`, `Banned`, `Unsafe` (on tokens, so comments
 and literals never count), `Words` and `Free`. `Gradual<R>` wraps a rule so it fails only the
 crates in `ENFORCED` and counts the rest in a note; every crate is in it, so a new crate joins
 it with its first commit. Lists of generators, steps and rules are tuples, given their list

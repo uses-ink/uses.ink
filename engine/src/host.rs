@@ -1,13 +1,14 @@
 //! What the engine asks of its host: bytes, pins, formats and a theme. Each is a trait the
 //! [`Engine`](crate::Engine) is generic over; the CLI picks native types, tests pick in-memory
 //! ones. The engine mirrors config's API in [`Pins`] so it builds and tests on its own. What a
-//! plugin finds worth saying while it works goes into a [`Record`] the engine gives it.
+//! plugin finds worth saying while it works goes into a [`Record`] the engine gives it; the trait is
+//! the model's, so a plugin reaches it without the engine.
 
 use std::borrow::Cow;
 use std::fmt;
 
 use model::code::Code;
-use model::{ContentPath, Diagnostic, Hash, MediaType, Notice, Page, Read, Route, Site, Span};
+use model::{ContentPath, Diagnostic, File, Hash, Page, Read, Record, Site, Span};
 
 /// Where the engine reads a snapshot's bytes from.
 pub trait Blobs {
@@ -181,47 +182,6 @@ impl<T: Theme + ?Sized> Theme for &T {
     fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         T::render(self, page, site, record)
     }
-}
-
-/// Where a plugin says what it found while it worked: the native stand-in for the
-/// `ink:host/diagnostic` capability. The engine's render records into its output; a test can
-/// record into a [`Said`].
-pub trait Record {
-    /// Records a problem.
-    fn diagnose(&mut self, diagnostic: Diagnostic);
-    /// Records an announcement.
-    fn notice(&mut self, notice: Notice);
-}
-
-/// Everything said, in order: a [`Record`] that keeps it.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[non_exhaustive]
-pub struct Said {
-    /// Problems, such as `math.syntax.invalid`.
-    pub diagnostics: Vec<Diagnostic>,
-    /// Notices, such as `code.language.unknown`.
-    pub notices: Vec<Notice>,
-}
-
-impl Record for Said {
-    fn diagnose(&mut self, diagnostic: Diagnostic) {
-        self.diagnostics.push(diagnostic);
-    }
-
-    fn notice(&mut self, notice: Notice) {
-        self.notices.push(notice);
-    }
-}
-
-/// One file a theme serves as is.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct File {
-    /// Where it is served.
-    pub route: Route,
-    /// What it is.
-    pub media: MediaType,
-    /// Its bytes.
-    pub bytes: Vec<u8>,
 }
 
 /// A page as a theme rendered it. The engine adds nothing inside it.

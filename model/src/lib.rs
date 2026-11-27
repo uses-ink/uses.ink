@@ -12,9 +12,10 @@
 //! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`].
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
 //!   `cargo xtask diag` generates from `diag/catalog.toml`, with their [`coded`] form for the
-//!   plugin boundary.
+//!   plugin boundary, and the [`Record`] a plugin says them into.
 //!
-//! Nothing here reads a clock, the environment or a file: these are values.
+//! Nothing here reads a clock, the environment or a file: these are values. The crate is
+//! MIT OR Apache-2.0, unlike the engine, because every plugin speaks it (decision 0026).
 
 pub mod code;
 pub mod coded;
@@ -42,7 +43,7 @@ mod value;
 
 pub use code::{AnyCode, AnyDecision, AnyOf, Code, Each, Family, Keyed, Typed, UnknownDecision, Word, Worded};
 pub use decision::{Alternative, Decision, DefaultReason, Evidence, Rejection};
-pub use diagnostic::{Diagnostic, Fault, Notice, Severity};
+pub use diagnostic::{Diagnostic, Fault, Notice, Record, Said, Severity};
 pub use document::{
     Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Footnote, FootnoteName, ImageSource, Inline,
     Item, Level, LevelError, LinkTarget, Task, Visit,
@@ -52,8 +53,8 @@ pub use generated::{Announcement, Problem};
 pub use hash::{Hash, HashError};
 pub use language::{Language, LanguageError};
 pub use manifest::{
-    DeployId, DuplicateRoute, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType, MediaUnknown,
-    Served, Status,
+    DeployId, DuplicateRoute, File, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType,
+    MediaUnknown, Served, Status,
 };
 pub use path::{ContentPath, PathError};
 pub use picture::{Dimensions, Picture, Variant};

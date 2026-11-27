@@ -2,9 +2,8 @@
 
 use std::fmt;
 
-use engine::Record;
 use model::highlight::{Highlight, Run, Unhighlighted};
-use model::{Diagnostic, Notice, Problem};
+use model::{Diagnostic, Notice, Problem, Record};
 
 use crate::bind::ink::host::{diagnostic, highlight};
 use crate::bind::ink::model::diagnostic as said;

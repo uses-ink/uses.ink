@@ -172,6 +172,11 @@ pub(crate) enum Problem {
         found: Option<String>,
         expected: &'static str,
     },
+    /// A permissive crate depending on a crate of ours under the service's licence.
+    Copyleft {
+        krate: String,
+        on: String,
+    },
     /// A crate another uses that has no alias in `[workspace.dependencies]`.
     Alias {
         krate: String,
@@ -211,6 +216,7 @@ impl Problem {
             | Self::Dependency { krate, .. }
             | Self::Fixture { krate }
             | Self::Licence { krate, .. }
+            | Self::Copyleft { krate, .. }
             | Self::Alias { krate } => Some(krate),
             Self::Banned { .. } | Self::Unsafe { .. } | Self::Lexed { .. } => None,
         }
@@ -231,6 +237,11 @@ impl fmt::Display for Problem {
             Self::Licence { krate, found, expected } => {
                 write!(out, "`{krate}` is licensed `{}`, expected `{expected}`", found.as_deref().unwrap_or("nothing"))
             }
+            Self::Copyleft { krate, on } => write!(
+                out,
+                "`{krate}` is {} but depends on `{on}`, which is not: whoever links it would take the AGPL",
+                Licence::PERMISSIVE
+            ),
             Self::Alias { krate } => write!(out, "`{krate}` has no alias in [workspace.dependencies]"),
             Self::Banned { path } => write!(out, "`{}` uses a banned name", path.display()),
             Self::Unsafe { path } => write!(

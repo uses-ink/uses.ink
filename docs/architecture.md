@@ -61,7 +61,8 @@ One builder binary for every source. The Worker never fetches a repo and never r
 ```
 uses.ink/
   Cargo.toml  rust-toolchain.toml  rustfmt.toml  clippy.toml  deny.toml  .config/nextest.toml
-  model/                 uses-ink-model         Snapshot, Site, Page, Document, Decision, Diagnostic, Event, Manifest
+  model/                 uses-ink-model         Snapshot, Site, Page, Document, Decision, Diagnostic, Event, Manifest;
+                                                MIT OR Apache-2.0, as every plugin links it (0041)
   config/                uses-ink-config        ink.toml: parse with spans, pins, schema for editors
   diag/                  uses-ink-diag          diagnostic and notice catalog (catalog.toml), wording, terminal rendering
   engine/                uses-ink-engine        interpret and render, pure, talks to host traits only
@@ -85,7 +86,8 @@ uses.ink/
   web/                   uses-ink-web           landing and dashboard (stack in section 14)
   cli/                   uses-ink-cli           the `ink` binary
   plugin/
-    sdk/                 uses-ink-sdk           guest-side bindings and their conversions to the model (0041)
+    sdk/                 uses-ink-sdk           guest-side bindings and their conversions to the model;
+                                                MIT OR Apache-2.0, depends on model and freehand only (0041)
     source/     wit/  git/  upload/  archive/  atproto/
     authority/  wit/  github/  forgejo/  gitlab/  dns/  email/  atproto/
     format/     markdown/ (its component in markdown/guest/)  obsidian/  typst/
@@ -107,6 +109,7 @@ Dependency direction, enforced by `cargo xtask layout` (a step of `cargo xtask c
 model <- config, diag <- engine <- host <- host/{wasmtime,native,image} <- cli
 model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret (traits only)
 plugin/* <- model, plugin/sdk, wit only, and engine for its plugin traits. Never control, host/* or edge.
+plugin/sdk <- model, freehand only: a permissive crate depends on no AGPL crate of ours.
 host/wasmtime <- host/native (grammars), engine (the traits its components implement).
 freehand, measure <- nothing of ours. freehand-web <- freehand. token <- nothing of ours.
 fixture <- nothing of ours; every crate may take it as a dev-dependency, none as a normal one.
