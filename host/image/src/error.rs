@@ -48,6 +48,36 @@ pub enum Reason {
         /// Its height.
         height: u32,
     },
+    /// The thumbhash could not be drawn back into a placeholder.
+    Placeholder,
+    /// A decoder or an encoder panicked on this file; the rest of the build went on.
+    Panicked(Step),
+}
+
+/// The step of the work a file was in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Step {
+    /// Decoding, resizing and drawing the placeholder.
+    Open,
+    /// Encoding one copy.
+    Encode,
+}
+
+impl Step {
+    /// What `work` gives, or [`Reason::Panicked`] when it panics: a codec's bug on one hostile
+    /// file refuses that file and does not take the build down.
+    pub(crate) fn guard<T>(self, work: impl FnOnce() -> T) -> Result<T, Reason> {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)).map_err(|_| Reason::Panicked(self))
+    }
+}
+
+impl fmt::Display for Step {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(match self {
+            Self::Open => "decoding",
+            Self::Encode => "encoding",
+        })
+    }
 }
 
 impl Refused {
@@ -76,6 +106,8 @@ impl fmt::Display for Reason {
             Self::Avif(error) => fmt::Display::fmt(error, out),
             Self::Jpeg(error) => fmt::Display::fmt(error, out),
             Self::Large { width, height } => write!(out, "a JPEG cannot be {width} by {height} pixels"),
+            Self::Placeholder => out.write_str("its thumbhash drew no placeholder"),
+            Self::Panicked(step) => write!(out, "the codec stopped unexpectedly while {step} it"),
         }
     }
 }
@@ -95,7 +127,7 @@ impl std::error::Error for Refused {
             Reason::Resize(error) => Some(error),
             Reason::Avif(error) => Some(error),
             Reason::Jpeg(error) => Some(error),
-            Reason::Budget { .. } | Reason::Large { .. } => None,
+            Reason::Budget { .. } | Reason::Large { .. } | Reason::Placeholder | Reason::Panicked(_) => None,
         }
     }
 }
@@ -112,11 +144,24 @@ impl From<Refused> for Diagnostic {
                 height: u64::from(*height),
                 limit: *limit,
             },
-            Reason::Decode(_) | Reason::Header(_) => {
+            Reason::Decode(_) | Reason::Header(_) | Reason::Panicked(Step::Open) => {
                 Problem::ImageDecodeFailed { path: path.clone(), reason: refused.reason.to_string() }
             }
             _ => Problem::ImageEncodeFailed { path: path.clone(), reason: refused.reason.to_string() },
         };
         Self::new(problem).on(Subject::File(path))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    #[allow(clippy::panic, reason = "stands in for a codec that panics")]
+    fn a_panic_refuses_the_step_and_nothing_else() {
+        let caught = Step::Encode.guard(|| -> u8 { panic!("a codec bug") });
+        assert!(matches!(caught, Err(Reason::Panicked(Step::Encode))));
+        assert!(matches!(Step::Open.guard(|| 1), Ok(1)));
     }
 }

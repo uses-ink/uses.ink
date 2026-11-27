@@ -113,7 +113,7 @@ impl Pixels {
         let small = self.fit(width, height)?;
         let rgba: Vec<u8> = small.bytes.as_chunks::<3>().0.iter().flat_map(|&[r, g, b]| [r, g, b, u8::MAX]).collect();
         let hash = Thumbhash::of(&Rgba { width: width as usize, height: height as usize, pixels: &rgba });
-        let Some((width, height, drawn)) = hash.draw() else { return Ok(None) };
+        let Some((width, height, drawn)) = hash.draw() else { return Err(Reason::Placeholder) };
         let rgb: Vec<u8> = drawn.as_chunks::<4>().0.iter().flat_map(|&[r, g, b, _]| [r, g, b]).collect();
         let (width, height) = (u32::try_from(width).unwrap_or(1), u32::try_from(height).unwrap_or(1));
         let drawn = Self { width, height, alpha: Alpha::Opaque, bytes: rgb };

@@ -119,6 +119,33 @@ fn a_cmyk_jpeg_is_shown_in_its_colours_image() {
 }
 
 #[test]
+fn a_greyscale_jpeg_stays_grey_through_the_work_image() {
+    let variants = varied("grey.jpg");
+    assert_eq!(variants.dimensions, Dimensions::new(48, 36));
+    let jpeg = variants.copies.iter().find(|copy| copy.media == MediaType::Jpeg).unwrap();
+    let shown = rgb(&jpeg.bytes);
+    for (x, y) in [(2, 2), (24, 18), (45, 33)] {
+        let [r, g, b] = shown.get_pixel(x, y).0;
+        assert!(r.abs_diff(g) < 8 && g.abs_diff(b) < 8, "grey at {x},{y}: {:?}", [r, g, b]);
+    }
+    assert!(shown.get_pixel(2, 2).0[0] > shown.get_pixel(45, 33).0[0], "the gradient runs light to dark");
+}
+
+#[test]
+fn the_same_bytes_under_another_extension_are_decoded_by_it_image() {
+    let png = bytes("clear.png");
+    let (as_png, as_jpg) = (path("logo.png"), path("logo.jpg"));
+    let sources = [
+        Source::new(&as_png, MediaType::Png, Hash::of(&png), &png),
+        Source::new(&as_jpg, MediaType::Jpeg, Hash::of(&png), &png),
+    ];
+    let results = Pixels::default().prepare(&sources);
+    assert!(results[0].is_ok(), "{:?}", results[0]);
+    let refused = results[1].as_ref().unwrap_err();
+    assert!(matches!(refused.reason, Reason::Decode(_)), "the PNG's copies are not served to the JPEG: {refused:?}");
+}
+
+#[test]
 fn a_transparent_png_keeps_its_alpha_and_has_no_placeholder_image() {
     let variants = varied("clear.png");
     let media: Vec<MediaType> = variants.copies.iter().map(|copy| copy.media).collect();

@@ -18,7 +18,7 @@ use model::Dimensions;
 
 use crate::Pixels as Work;
 use crate::decode::{Decoded, Pixels};
-use crate::error::{Reason, Refused};
+use crate::error::{Reason, Refused, Step};
 
 /// The work over one call's sources.
 pub(crate) struct Run<'a> {
@@ -138,11 +138,12 @@ impl<'a> Run<'a> {
         while let Some(task) = self.take() {
             match task {
                 Task::Open(image) => {
-                    let opened = self.open(image);
+                    let opened =
+                        Step::Open.guard(|| self.open(image)).unwrap_or_else(|reason| self.refused(image, reason));
                     self.opened(image, opened);
                 }
                 Task::Encode(job) => {
-                    let encoded = self.encode(&job);
+                    let encoded = Step::Encode.guard(|| self.encode(&job)).unwrap_or_else(Err);
                     self.encoded(&job, encoded);
                 }
             }
@@ -167,6 +168,14 @@ impl<'a> Run<'a> {
                 return None;
             }
             state = self.wake.wait(state).unwrap_or_else(PoisonError::into_inner);
+        }
+    }
+
+    /// The image `image` refused for `reason`: what a panic while opening it comes to.
+    fn refused(&self, image: usize, reason: Reason) -> Opened {
+        match self.sources.get(image) {
+            Some(source) => Opened::Done(Err(Refused::new(source.file, reason))),
+            None => Opened::Cut { dimensions: Dimensions::new(0, 0), placeholder: None, copies: Vec::new() },
         }
     }
 

@@ -1,7 +1,8 @@
-//! Hands the crate `INK_IMAGE_CODECS`: each registry crate it depends on, with the version
-//! `Cargo.lock` holds. The image cache key hashes it, so bumping a codec changes every key and
+//! Hands the crate `INK_IMAGE_CODECS`: every registry crate it reaches through `Cargo.lock`'s
+//! dependency graph, direct or not, with the version the lock holds. The image cache key hashes it, so bumping a codec changes every key and
 //! nobody keeps a list of versions by hand.
 
+use std::collections::BTreeSet;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -65,53 +66,54 @@ impl Lock {
         })
     }
 
-    /// `name version` of every registry crate `package` depends on and `wanted` lists.
-    fn codecs(&self, package: &str, wanted: &[String]) -> Result<Vec<String>, Failure> {
-        let mine = self.package(package, None).ok_or_else(|| Failure::NoPackage(package.to_owned()))?;
-        let listed = mine.get("dependencies").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
-        let mut codecs = Vec::new();
-        for name in wanted {
-            let Some(entry) =
-                listed.iter().filter_map(Value::as_str).find(|entry| entry.split(' ').next() == Some(name))
-            else {
-                continue;
-            };
-            let version = entry.split(' ').nth(1);
-            let found = self.package(name, version).ok_or_else(|| Failure::NoVersion(entry.to_owned()))?;
-            if found.contains_key("source") {
+    /// `name version` of every registry crate `package` reaches through the lock's dependency
+    /// graph, however deep (a git crate also names its source), so a bump anywhere under a codec
+    /// changes the key.
+    fn codecs(&self, package: &str) -> Result<Vec<String>, Failure> {
+        let root = self.package(package, None).ok_or_else(|| Failure::NoPackage(package.to_owned()))?;
+        let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
+        let mut codecs: BTreeSet<String> = BTreeSet::new();
+        let mut pending = vec![root];
+        while let Some(next) = pending.pop() {
+            let listed = next.get("dependencies").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
+            for entry in listed.iter().filter_map(Value::as_str) {
+                let mut words = entry.split(' ');
+                let name = words.next().unwrap_or_default();
+                let found = self.package(name, words.next()).ok_or_else(|| Failure::NoVersion(entry.to_owned()))?;
                 let held = found.get("version").and_then(Value::as_str).unwrap_or_default();
-                codecs.push(format!("{name} {held}"));
+                if !seen.insert((name.to_owned(), held.to_owned())) {
+                    continue;
+                }
+                if let Some(source) = found.get("source").and_then(Value::as_str) {
+                    codecs.insert(if source.starts_with("git+") {
+                        format!("{name} {held} {source}")
+                    } else {
+                        format!("{name} {held}")
+                    });
+                }
+                pending.push(found);
             }
         }
-        codecs.sort();
-        Ok(codecs)
+        Ok(codecs.into_iter().collect())
     }
 }
 
-/// The names under `[dependencies]` and `[package] name` of a manifest.
-struct Manifest {
-    name: String,
-    dependencies: Vec<String>,
-}
+/// The `[package] name` of a manifest.
+struct Manifest;
 
 impl Manifest {
-    /// `dir/Cargo.toml`, read.
-    fn read(dir: &Path) -> Result<Self, Failure> {
+    /// The name of the package in `dir/Cargo.toml`.
+    fn name(dir: &Path) -> Result<String, Failure> {
         let path = dir.join("Cargo.toml");
         let text = std::fs::read_to_string(&path).map_err(|error| Failure::Read(path.clone(), error))?;
         let table: Table = text.parse().map_err(|error| Failure::Parse(path, error))?;
-        let name = table
+        Ok(table
             .get("package")
             .and_then(Value::as_table)
             .and_then(|package| package.get("name"))
             .and_then(Value::as_str)
             .unwrap_or_default()
-            .to_owned();
-        let dependencies = table
-            .get("dependencies")
-            .and_then(Value::as_table)
-            .map_or_else(Vec::new, |deps| deps.keys().cloned().collect());
-        Ok(Self { name, dependencies })
+            .to_owned())
     }
 }
 
@@ -122,9 +124,9 @@ impl Codecs {
     /// Writes `INK_IMAGE_CODECS` and what it depends on for cargo.
     fn emit() -> Result<(), Failure> {
         let dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").unwrap_or_default());
-        let manifest = Manifest::read(&dir)?;
+        let name = Manifest::name(&dir)?;
         let (path, lock) = Lock::find(&dir)?;
-        let codecs = lock.codecs(&manifest.name, &manifest.dependencies)?.join(" ");
+        let codecs = lock.codecs(&name)?.join(" ");
         let mut out = std::io::stdout().lock();
         let _ = writeln!(out, "cargo:rerun-if-changed={}", path.display());
         let _ = writeln!(out, "cargo:rerun-if-changed=Cargo.toml");

@@ -33,7 +33,7 @@ use engine::cache::Cache;
 use engine::image::{Prepared, Source};
 use engine::{Images, cache};
 
-pub use error::{Reason, Refused};
+pub use error::{Reason, Refused, Step};
 pub use settings::{Key, Limits, Settings};
 
 use record::Record;
@@ -80,7 +80,7 @@ impl Pixels {
     /// What was made under `source`'s key in this process, or kept by an earlier build. What
     /// does not read back as a record is rejected, so the cache drops it and says so.
     fn taken(&self, source: &Source<'_>) -> Option<Prepared> {
-        let key = Key::of(source.blob, &self.settings, &self.limits);
+        let key = Key::of(source.blob, source.media, &self.settings, &self.limits);
         if let Some(made) = self.made.lock().unwrap_or_else(PoisonError::into_inner).get(&key) {
             return Some(made.clone());
         }
@@ -96,7 +96,7 @@ impl Pixels {
     /// Keeps what was made of `source` for this process and, when it is new, for later builds;
     /// what a record cannot say is kept in this process only.
     fn keep(&self, source: &Source<'_>, prepared: &Prepared) {
-        let key = Key::of(source.blob, &self.settings, &self.limits);
+        let key = Key::of(source.blob, source.media, &self.settings, &self.limits);
         let new = self.made.lock().unwrap_or_else(PoisonError::into_inner).insert(key, prepared.clone()).is_none();
         if let (true, Some(values)) = (new, Record::values(prepared)) {
             let values: Vec<&[u8]> = values.iter().map(Vec::as_slice).collect();

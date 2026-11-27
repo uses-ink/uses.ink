@@ -1046,7 +1046,7 @@ pub enum Announcement {
         /// The language, as written after the opening fence.
         language: String,
     },
-    /// `image.animation.kept`: {path} is animated, so it is served as it is, with no smaller copies
+    /// `image.animation.kept`: {path} is animated, so it is served as it is, metadata included, with no smaller copies
     #[serde(rename = "image.animation.kept")]
     ImageAnimationKept {
         /// The file.

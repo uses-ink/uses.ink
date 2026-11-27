@@ -375,7 +375,7 @@ impl Message<'_> {
                 write!(out, "no grammar knows the language `{language}`, so its code is shown without highlighting")
             }
             Announcement::ImageAnimationKept { path, .. } => {
-                write!(out, "{path} is animated, so it is served as it is, with no smaller copies")
+                write!(out, "{path} is animated, so it is served as it is, metadata included, with no smaller copies")
             }
             Announcement::ImageFormatKept { path, .. } => {
                 write!(

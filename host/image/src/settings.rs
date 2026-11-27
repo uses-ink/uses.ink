@@ -6,7 +6,7 @@
 use std::fmt;
 use std::num::NonZeroUsize;
 
-use model::Hash;
+use model::{Hash, MediaType};
 
 use crate::error::Reason;
 
@@ -15,9 +15,10 @@ use crate::error::Reason;
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Settings {
-    /// The widths copies are made at, narrowest first. A width the image is not wider than is
-    /// left out (no copy is wider than its image); the image's own width is added when the
-    /// widest step left is more than a tenth narrower than it.
+    /// The widths copies are made at, narrowest first. A step that is not under nine tenths of
+    /// the image's width is left out, since the image's own copy would differ little from it;
+    /// the last copy is at the widest step or the image's own width, whichever is narrower, so
+    /// no copy is wider than its image.
     pub widths: Vec<u32>,
     /// AVIF quality, 1 to 100.
     pub avif_quality: u8,
@@ -74,10 +75,19 @@ impl Default for Limits {
 }
 
 impl Settings {
+    /// A step is kept only when it is under `NEAR` tenths of the image's width.
+    const NEAR: u64 = 9;
+    /// The tenths `NEAR` counts in.
+    const TENTHS: u64 = 10;
+
     /// The widths of the copies of an image `width` pixels wide.
     pub fn ladder(&self, width: u32) -> Vec<u32> {
-        let mut ladder: Vec<u32> =
-            self.widths.iter().copied().filter(|&step| u64::from(step) * 10 < u64::from(width) * 9).collect();
+        let mut ladder: Vec<u32> = self
+            .widths
+            .iter()
+            .copied()
+            .filter(|&step| u64::from(step) * Self::TENTHS < u64::from(width) * Self::NEAR)
+            .collect();
         let widest = self.widths.iter().copied().max().unwrap_or(width).min(width);
         if ladder.last() != Some(&widest) {
             ladder.push(widest);
@@ -86,23 +96,26 @@ impl Settings {
     }
 }
 
-/// The key of one image's work: the hash of its bytes, the settings, the pixel limit, and the
-/// version of the work itself, hashed. The same key always gives the same bytes. A setting that
+/// The key of one image's work: the hash of its bytes, its media type (which picks the decoder),
+/// the settings, the pixel limit, and the version of the work itself, hashed. The same key always gives the same bytes. A setting that
 /// changes a byte of output is a field of [`Settings`] and is hashed below; a new one is added
 /// to `of` in the same change, which a test checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Key(Hash);
 
 impl Key {
-    /// What changes with the codecs (their versions, read from `Cargo.lock` by the build script)
-    /// or the way the work is done, so an old key never names new bytes.
+    /// What changes with the codecs (the versions of every registry crate this one reaches, read
+    /// from `Cargo.lock` by the build script) or the way the work is done, so an old key never
+    /// names new bytes.
     const VERSION: &'static [u8] = concat!("uses.ink/image/v1 ", env!("INK_IMAGE_CODECS"), "\0").as_bytes();
 
-    /// The key of the image whose bytes hash to `blob`, under `settings` and `limits`.
-    pub fn of(blob: Hash, settings: &Settings, limits: &Limits) -> Self {
+    /// The key of the image of `media` whose bytes hash to `blob`, under `settings` and `limits`.
+    pub fn of(blob: Hash, media: MediaType, settings: &Settings, limits: &Limits) -> Self {
         let mut hasher = blake3::Hasher::new();
         hasher.update(Self::VERSION);
         hasher.update(blob.to_string().as_bytes());
+        hasher.update(&[0]);
+        hasher.update(media.to_string().as_bytes());
         for width in &settings.widths {
             hasher.update(&width.to_le_bytes());
         }
@@ -130,7 +143,24 @@ mod test {
     use super::*;
 
     fn key(settings: &Settings, limits: &Limits) -> Key {
-        Key::of(Hash::of(b"an image"), settings, limits)
+        Key::of(Hash::of(b"an image"), MediaType::Jpeg, settings, limits)
+    }
+
+    #[test]
+    fn the_media_type_is_in_the_key_since_it_picks_the_decoder() {
+        let (settings, limits) = (Settings::default(), Limits::default());
+        let blob = Hash::of(b"the same bytes");
+        let named = |media| Key::of(blob, media, &settings, &limits);
+        assert_ne!(named(MediaType::Png), named(MediaType::Jpeg));
+        assert_eq!(named(MediaType::Png), named(MediaType::Png));
+    }
+
+    #[test]
+    fn the_key_names_the_crates_a_codec_depends_on() {
+        let version = std::str::from_utf8(Key::VERSION).unwrap();
+        for name in ["ravif ", "rav1e ", "zune-jpeg ", "zune-core ", "png ", "fast_image_resize "] {
+            assert!(version.contains(name), "{name}in {version}");
+        }
     }
 
     #[test]

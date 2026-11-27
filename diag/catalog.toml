@@ -652,7 +652,7 @@ fix = "write a language the highlighter knows after the opening fence, such as `
 
 [notice."image.animation.kept"]
 fields = { path = "path" }
-message = "{path} is animated, so it is served as it is, with no smaller copies"
+message = "{path} is animated, so it is served as it is, metadata included, with no smaller copies"
 
 [notice."image.format.kept"]
 fields = { path = "path" }
