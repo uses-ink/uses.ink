@@ -14,10 +14,10 @@ use std::sync::{Mutex, OnceLock};
 
 use engine::cache::{Cache, Key};
 use engine::image::{Kept, Prepared, Source};
-use engine::{Announcement, Engine, Format, Host, NoPins, Outcome, RenderSettings, Rendered};
+use engine::{Engine, Format, Host, NoPins, Outcome, RenderSettings, Rendered};
 use fixture::corpus::Blog;
 use host_native::{Grammars, Memory};
-use model::{Bytes, ContentPath, Diagnostic, Dimensions, Entry, Hash, Notice, Observed, Read, Snapshot, Version};
+use model::{Announcement, Bytes, ContentPath, Diagnostic, Dimensions, Entry, Hash, Notice, Observed, Read, Snapshot, Version};
 use proptest::prelude::*;
 use theme_quiet::Quiet;
 
@@ -176,7 +176,7 @@ impl Built {
 enum Edit {
     /// A paragraph at the end of the file.
     Append,
-    /// A new first heading, which is the title when the file states none.
+    /// A new title: the one the front matter states, else a new first heading.
     Retitle,
     /// A link to another file.
     Link,
@@ -184,8 +184,6 @@ enum Edit {
     Remove,
     /// A new file beside it, linking to it.
     Add,
-    /// The bytes of another file change: the images of the blog are among them.
-    Bytes,
 }
 
 impl Edit {
@@ -212,8 +210,16 @@ impl Edit {
                 edited.0.insert(file.to_owned(), format!("{text}\n\nAdded paragraph {n}.\n").into_bytes());
             }
             Self::Retitle => {
-                let at = Self::after_front(&text);
-                let retitled = format!("{}\n# Renamed {n}\n\n{}", &text[..at], &text[at..]);
+                let retitled = match text.find("\ntitle: ") {
+                    Some(start) if Self::after_front(&text) > start => {
+                        let end = text[start + 1..].find('\n').map_or(text.len(), |end| start + 1 + end);
+                        format!("{}\ntitle: Renamed {n}{}", &text[..start], &text[end..])
+                    }
+                    _ => {
+                        let at = Self::after_front(&text);
+                        format!("{}\n# Renamed {n}\n\n{}", &text[..at], &text[at..])
+                    }
+                };
                 edited.0.insert(file.to_owned(), retitled.into_bytes());
             }
             Self::Link => {
@@ -222,14 +228,6 @@ impl Edit {
             }
             Self::Remove => {
                 edited.0.remove(file);
-            }
-            Self::Bytes => {
-                let target = tree.0.keys().find(|name| !name.ends_with(".md") && name.as_str() >= other);
-                if let Some(target) = target.or_else(|| tree.0.keys().find(|name| !name.ends_with(".md"))) {
-                    let mut bytes = edited.0[target].clone();
-                    bytes.extend(n.to_le_bytes());
-                    edited.0.insert(target.clone(), bytes);
-                }
             }
             Self::Add => {
                 let dir = file.rsplit_once('/').map_or(String::new(), |(dir, _)| format!("{dir}/"));
@@ -244,7 +242,7 @@ impl Edit {
 
 fn edit() -> impl Strategy<Value = (Edit, usize, usize, u32)> {
     let kind =
-        prop_oneof![Just(Edit::Append), Just(Edit::Retitle), Just(Edit::Link), Just(Edit::Remove), Just(Edit::Add),];
+        prop_oneof![Just(Edit::Append), Just(Edit::Retitle), Just(Edit::Link), Just(Edit::Remove), Just(Edit::Add)];
     (kind, 0..64usize, 0..64usize, 0..1000u32)
 }
 
