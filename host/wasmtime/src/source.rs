@@ -6,14 +6,21 @@
 //! of its own while the plugin runs, and the files are moved into the caller's store once the
 //! plugin has returned a snapshot, so a plugin that fails leaves the caller's store as it was.
 //! A source gets a budget of its own: a fetch takes longer than a page's render, and the time the
-//! host spends in `git.fetch` counts against the plugin's call.
+//! host spends in `git.fetch` counts against the plugin's call: the fetch is cut at the call's
+//! wall-clock deadline, since fuel and epochs do not run while the host does. The terms' tick must
+//! be the runtime's, since the epoch advances on the runtime's ticker.
+//!
+//! The host checks what the plugin returns: a fetch may only be of the want's repository,
+//! revision and grant, a read only of a clone the call fetched, and the snapshot given back must
+//! be of the commit the host read and name only files the host stored.
 
 use std::cell::RefCell;
 use std::fmt;
 
+use engine::Blobs as _;
 use host_native::{Fetch, Read, Store, StoreError};
 use model::git::{History, Refused, Want};
-use model::{Diagnostic, Oid, Problem, Snapshot};
+use model::{Diagnostic, Hash, Oid, Problem, Snapshot, Version};
 use wasmtime::component::Linker;
 
 use crate::bind::source::{Source as Sources, SourcePre, exports::source as served};
@@ -72,6 +79,11 @@ pub enum Unsourced {
         /// The commit fetched.
         fetched: Oid,
     },
+    /// The snapshot names a file whose bytes the host never read.
+    Blob {
+        /// The file's hash.
+        hash: Hash,
+    },
     /// The plugin gave a snapshot the model refuses.
     Value {
         /// Why.
@@ -90,6 +102,7 @@ impl fmt::Display for Unsourced {
             Self::Refused(refused) => write!(out, "{refused}"),
             Self::Malformed => out.write_str("the source plugin and the host disagree on what a want or a snapshot is"),
             Self::Commit { fetched } => write!(out, "the snapshot is not of the fetched commit {}", fetched.as_str()),
+            Self::Blob { hash } => write!(out, "the snapshot names the file {hash}, which the host never read"),
             Self::Value { .. } => out.write_str("the source plugin gave a snapshot the model refuses"),
             Self::Unread => out.write_str("the source plugin gave a snapshot the host never read"),
             Self::Store(_) => out.write_str("the files the host read could not be stored"),
@@ -104,22 +117,22 @@ impl std::error::Error for Unsourced {
             Self::Refused(source) => Some(source),
             Self::Value { source } => Some(source),
             Self::Store(source) => Some(source),
-            Self::Malformed | Self::Commit { .. } | Self::Unread => None,
+            Self::Malformed | Self::Commit { .. } | Self::Blob { .. } | Self::Unread => None,
         }
     }
 }
 
-impl From<&Unsourced> for Diagnostic {
-    /// What a person sees: the host's own refusal as its catalog entry, the rest as the plugin's
-    /// failure.
-    fn from(unsourced: &Unsourced) -> Self {
-        match unsourced {
-            Unsourced::Call(failure) => failure.diagnostic("source"),
-            Unsourced::Refused(refused) => Self::from(refused),
-            Unsourced::Malformed | Unsourced::Commit { .. } | Unsourced::Unread | Unsourced::Value { .. } => {
-                Self::new(Problem::PluginValueMalformed { plugin: "source".to_owned(), reason: unsourced.to_string() })
+impl Unsourced {
+    /// What a person sees: the host's own refusal as its catalog entry, the rest as the failure
+    /// of the plugin `plugin`.
+    pub fn diagnostic(&self, plugin: &str) -> Diagnostic {
+        match self {
+            Self::Call(failure) => failure.diagnostic(plugin),
+            Self::Refused(refused) => Diagnostic::from(refused),
+            Self::Malformed | Self::Commit { .. } | Self::Blob { .. } | Self::Unread | Self::Value { .. } => {
+                Diagnostic::new(Problem::PluginValueMalformed { plugin: plugin.to_owned(), reason: self.to_string() })
             }
-            Unsourced::Store(error) => Self::new(Problem::SourceBlobUnwritable { reason: error.to_string() }),
+            Self::Store(error) => Diagnostic::new(Problem::SourceBlobUnwritable { reason: error.to_string() }),
         }
     }
 }
@@ -127,6 +140,9 @@ impl From<&Unsourced> for Diagnostic {
 impl Runtime {
     /// The source plugin `name` from the component in `bytes`, its calls run on `terms`.
     pub fn source(&self, name: &str, bytes: &[u8], terms: Terms) -> Result<Component<Source>, Error> {
+        if terms.budget.tick != self.shared.budget.tick {
+            return Err(Error::TermsTick { terms: terms.budget.tick, runtime: self.shared.budget.tick });
+        }
         let (compiled, origin) = self.shared.compile(name, bytes)?;
         let mut linker = Linker::new(&self.shared.engine);
         let link = |source| Error::Link { plugin: name.to_owned(), source };
@@ -148,7 +164,11 @@ impl Component<Source> {
     /// `git` capability, its files stored in `store`. What the call says is kept aside.
     pub fn read(&self, want: &Want, store: &mut impl Store) -> Result<Read, Unsourced> {
         let (source, terms) = (&self.world, &self.world.terms);
-        let mut wasm = self.shared.store_in(&self.name, &terms.budget, Sourcing::from(terms.fetch.clone()));
+        let mut wasm = self.shared.store_in(
+            &self.name,
+            &terms.budget,
+            Sourcing::bound(terms.fetch.clone(), want.clone(), terms.budget.time),
+        );
         let wire = served::Want {
             locator: want.locator.to_string(),
             revision: want.revision.as_ref().map(ToString::to_string),
@@ -170,11 +190,17 @@ impl Component<Source> {
         let snapshot = outcome.map_err(Self::unsourced)?;
         let snapshot = Snapshot::try_from(snapshot).map_err(|source| Unsourced::Value { source })?;
         let Sourcing { blobs, read, .. } = state.sourcing;
-        let read = read.ok_or(Unsourced::Unread)?;
+        let mut read = read.ok_or(Unsourced::Unread)?;
+        let Version::GitCommit(fetched) = read.snapshot.version() else { return Err(Unsourced::Unread) };
+        if snapshot.version() != read.snapshot.version() {
+            return Err(Unsourced::Commit { fetched: fetched.clone() });
+        }
+        if let Some(entry) = snapshot.tree().iter().find(|entry| blobs.read(&entry.blob).is_err()) {
+            return Err(Unsourced::Blob { hash: entry.blob });
+        }
         for bytes in blobs {
             store.put(bytes).map_err(Unsourced::Store)?;
         }
-        let mut read = read;
         read.snapshot = snapshot;
         Ok(read)
     }
@@ -190,5 +216,16 @@ impl Component<Source> {
                 Oid::parse(fetched).map_or(Unsourced::Malformed, |fetched| Unsourced::Commit { fetched })
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn a_diagnostic_names_the_plugin_it_is_about() {
+        let diagnostic = Unsourced::Malformed.diagnostic("ink:source-other");
+        assert!(format!("{diagnostic:?}").contains("ink:source-other"), "{diagnostic:?}");
     }
 }

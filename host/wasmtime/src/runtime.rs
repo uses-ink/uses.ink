@@ -89,13 +89,25 @@ impl Shared {
         store: &mut Store<State>,
         call: impl FnOnce(&mut Store<State>) -> wasmtime::Result<T>,
     ) -> Result<T, Failure> {
+        // A refusal belongs to the call that met it: one a plugin handled on an earlier call
+        // (a theme's session lives across pages) must not name a later trap.
+        store.data_mut().limit.refused = None;
         let fueled = store.set_fuel(budget.fuel);
+        // Never zero: a runtime refuses a zero tick, and a source's terms must carry its tick.
         store.set_epoch_deadline(budget.ticks().unwrap_or(1));
         store.epoch_deadline_trap();
         let result = fueled.and_then(|()| call(store));
         result.map_err(|source| {
             let bytes = |wanted| Bytes(u64::try_from(wanted).unwrap_or(u64::MAX));
-            match store.data().limit.refused {
+            // Fuel and time end a call whatever a growth refusal said before them.
+            match source.downcast_ref::<Trap>() {
+                Some(Trap::OutOfFuel) => return Failure::Fuel { limit: budget.fuel },
+                Some(Trap::Interrupt) => {
+                    return Failure::Time { limit: u64::try_from(budget.time.as_millis()).unwrap_or(u64::MAX) };
+                }
+                _ => {}
+            }
+            match store.data_mut().limit.refused.take() {
                 Some(Refusal::Memory { wanted }) => {
                     return Failure::Memory { limit: budget.memory, wanted: bytes(wanted) };
                 }
@@ -104,13 +116,44 @@ impl Shared {
                 }
                 None => {}
             }
-            match source.downcast_ref::<Trap>() {
-                Some(Trap::OutOfFuel) => Failure::Fuel { limit: budget.fuel },
-                Some(Trap::Interrupt) => {
-                    Failure::Time { limit: u64::try_from(budget.time.as_millis()).unwrap_or(u64::MAX) }
-                }
-                _ => Failure::Trapped { source },
-            }
+            Failure::Trapped { source }
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn failure(
+        setup: impl FnOnce(&mut Store<State>),
+        call: impl FnOnce(&mut Store<State>) -> wasmtime::Result<()>,
+    ) -> Failure {
+        let runtime = Runtime::new(Budget::default(), None).map_err(|error| error.to_string());
+        let Ok(runtime) = runtime else { return Failure::Ended };
+        let mut store = runtime.shared.store("test");
+        setup(&mut store);
+        runtime.shared.call(&mut store, call).err().unwrap_or(Failure::Ended)
+    }
+
+    #[test]
+    fn a_refusal_of_an_earlier_call_does_not_name_a_later_trap() {
+        let stale = |store: &mut Store<State>| store.data_mut().limit.refused = Some(Refusal::Memory { wanted: 1 });
+        let failed = failure(stale, |_| Err(Trap::OutOfFuel.into()));
+        assert!(matches!(failed, Failure::Fuel { .. }), "{failed:?}");
+        let failed = failure(stale, |_| Err(Trap::UnreachableCodeReached.into()));
+        assert!(matches!(failed, Failure::Trapped { .. }), "{failed:?}");
+    }
+
+    #[test]
+    fn a_handled_refusal_does_not_hide_the_fuel_that_ended_the_call() {
+        let failed = failure(
+            |_| {},
+            |store| {
+                store.data_mut().limit.refused = Some(Refusal::Table { wanted: 9 });
+                Err(Trap::OutOfFuel.into())
+            },
+        );
+        assert!(matches!(failed, Failure::Fuel { .. }), "{failed:?}");
     }
 }

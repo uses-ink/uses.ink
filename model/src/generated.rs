@@ -514,6 +514,14 @@ pub enum Problem {
         /// The most that is allowed.
         limit: Bytes,
     },
+    /// `plugin.budget.table`: the plugin `{plugin}` asked for a table of more than {limit} elements
+    #[serde(rename = "plugin.budget.table")]
+    PluginBudgetTable {
+        /// The plugin's name.
+        plugin: String,
+        /// The most that is allowed.
+        limit: u64,
+    },
     /// `build.check.mismatch`: the plugins built as components give deploy {component}, natively {native}
     #[serde(rename = "build.check.mismatch")]
     BuildCheckMismatch {
@@ -598,6 +606,7 @@ impl Problem {
         "plugin.budget.fuel",
         "plugin.budget.time",
         "plugin.budget.memory",
+        "plugin.budget.table",
         "build.check.mismatch",
     ];
     /// Its dotted code, `noun.noun.reason`.
@@ -675,6 +684,7 @@ impl Problem {
             Self::PluginBudgetFuel { .. } => "plugin.budget.fuel",
             Self::PluginBudgetTime { .. } => "plugin.budget.time",
             Self::PluginBudgetMemory { .. } => "plugin.budget.memory",
+            Self::PluginBudgetTable { .. } => "plugin.budget.table",
             Self::BuildCheckMismatch { .. } => "build.check.mismatch",
         }
     }
@@ -753,6 +763,7 @@ impl Problem {
             Self::PluginBudgetFuel { .. } => Severity::Error,
             Self::PluginBudgetTime { .. } => Severity::Error,
             Self::PluginBudgetMemory { .. } => Severity::Error,
+            Self::PluginBudgetTable { .. } => Severity::Error,
             Self::BuildCheckMismatch { .. } => Severity::Error,
         }
     }
@@ -831,6 +842,7 @@ impl Problem {
             Self::PluginBudgetFuel { .. } => Fault::Ours,
             Self::PluginBudgetTime { .. } => Fault::Ours,
             Self::PluginBudgetMemory { .. } => Fault::Ours,
+            Self::PluginBudgetTable { .. } => Fault::Ours,
             Self::BuildCheckMismatch { .. } => Fault::Ours,
         }
     }
@@ -1393,6 +1405,9 @@ impl From<&Problem> for Coded {
             Problem::PluginBudgetMemory { plugin, limit, .. } => {
                 Coded::new("plugin.budget.memory", vec![Field::from(plugin.clone()), Field::from(*limit)])
             }
+            Problem::PluginBudgetTable { plugin, limit, .. } => {
+                Coded::new("plugin.budget.table", vec![Field::from(plugin.clone()), Field::from(*limit)])
+            }
             Problem::BuildCheckMismatch { native, component, .. } => {
                 Coded::new("build.check.mismatch", vec![Field::from(native.clone()), Field::from(component.clone())])
             }
@@ -1493,6 +1508,7 @@ impl TryFrom<Coded> for Problem {
             "plugin.budget.fuel" => Self::PluginBudgetFuel { plugin: fields.next()?, limit: fields.next()? },
             "plugin.budget.time" => Self::PluginBudgetTime { plugin: fields.next()?, limit: fields.next()? },
             "plugin.budget.memory" => Self::PluginBudgetMemory { plugin: fields.next()?, limit: fields.next()? },
+            "plugin.budget.table" => Self::PluginBudgetTable { plugin: fields.next()?, limit: fields.next()? },
             "build.check.mismatch" => Self::BuildCheckMismatch { native: fields.next()?, component: fields.next()? },
             _ => return fields.unknown(),
         };

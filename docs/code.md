@@ -298,6 +298,26 @@ component and returns the `Read` the native `Repository::read` returns; the file
 caller's store only once a snapshot came back, and a refusal is `Unsourced::Refused` carrying the
 typed `Refused`.
 
+The host does not trust what the source plugin returns (decision 0055). `git.fetch` is bound to the
+call's `Want`: a request for another locator, revision or grant is refused, so a plugin cannot
+reach a repository the network policy allows but the site never named. `git.read` takes only a
+clone this call fetched. The clone's cache key (`Request::key`) includes the grant. When the
+plugin returns, the host checks that its snapshot has the version the host read (else
+`Unsourced::Commit`) and that every file it names is in the store the host filled (else
+`Unsourced::Blob`), before any file moves to the caller's store. A source's terms must carry the
+runtime's epoch tick (`Error::TermsTick`), because the epoch advances on the runtime's ticker.
+
+Budgets: fuel and epochs run only while wasm runs, so a host call is not metered by them. The
+fetch is cut at the call's wall-clock deadline (`plugin.budget.time` is the call's, `Failed::Late`
+is the fetch's refusal); `highlight` is native CPU the host cannot interrupt and still runs to its
+end. `Budget::ticks` divides in nanoseconds. Each call starts with no growth refusal, and a fuel
+or time trap is reported as such even if the plugin met a refused growth earlier; a refused
+table is `plugin.budget.table`. The `.cwasm` cache entry starts with a seal, the BLAKE3 of the
+source component's digest, the engine's compatibility hash and the compiled bytes. It catches a
+torn or misplaced file. It is not a signature: whoever can write the cache folder can run code in
+the build, so the folder is trusted like the builder's own binaries and is not shared across
+trust boundaries.
+
 A capability a plugin imports and the engine never calls is a trait in `model`, so the plugin
 and the host that implements it meet without going through the engine. Highlighting is the first
 (decision 0039):

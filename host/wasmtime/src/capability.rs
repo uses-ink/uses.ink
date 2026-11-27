@@ -2,11 +2,17 @@
 //! section 6): the pen through `freehand`, text measuring, highlighting through host-native's
 //! [`Grammars`], and the record of what a plugin says. Each call's store holds a [`State`].
 
+use std::fmt;
+use std::time::{Duration, Instant};
+
 use engine::{Record, Said};
 use freehand::mark::{Drawn, Fill, Frame, Line, Patch, Ring, Underline};
 use freehand::{Chance, Hand, Highlighter, Mark, Mulberry, Paths, Pencil, Point, Seed};
 use host_native::{Failed, Fetch, Grammars, Memory, Read};
-use model::git::{Cloned, Refused, Request};
+use model::Hash;
+#[cfg(test)]
+use model::Oid;
+use model::git::{Cloned, Refused, Request, Want};
 use model::highlight::Highlight;
 use model::{Diagnostic, Notice, Problem};
 use wasmtime::ResourceLimiter;
@@ -27,24 +33,90 @@ pub(crate) struct State {
 }
 
 /// What a source's calls to the `git` capability do and leave behind: the host's fetching, the
-/// files of the last snapshot, and the read that made them. A plugin that is not a source holds
-/// the default, whose network is off, so every fetch it asks for is refused.
+/// files of the last snapshot, and the read that made them. A source may fetch only the
+/// repository, revision and grant of its [`Want`], and read only a clone it fetched itself; a
+/// plugin that is not a source holds no want, so every fetch it asks for is refused.
 #[derive(Debug)]
 pub(crate) struct Sourcing {
     pub(crate) fetch: Fetch,
     pub(crate) blobs: Memory,
     pub(crate) read: Option<Read>,
+    want: Option<Want>,
+    deadline: Option<Instant>,
+    fetched: Vec<Cloned>,
 }
 
 impl Default for Sourcing {
     fn default() -> Self {
-        Self::from(Fetch::new(std::path::PathBuf::new()))
+        Self {
+            fetch: Fetch::new(std::path::PathBuf::new()),
+            blobs: Memory::default(),
+            read: None,
+            want: None,
+            deadline: None,
+            fetched: Vec::new(),
+        }
     }
 }
 
-impl From<Fetch> for Sourcing {
-    fn from(fetch: Fetch) -> Self {
-        Self { fetch, blobs: Memory::default(), read: None }
+/// What part of a request the want does not allow.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Field {
+    Locator,
+    Revision,
+    Grant,
+}
+
+/// Why the host refused a `git` call that is not about the source's want.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Unbound {
+    /// The plugin is no source, so it has no want to fetch.
+    NoWant,
+    /// The request differs from the want in this field.
+    Field(Field),
+    /// The clone is not one this call fetched.
+    Clone(Hash),
+}
+
+impl fmt::Display for Unbound {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoWant => out.write_str("the plugin has no want, so it may fetch nothing"),
+            Self::Field(field) => {
+                write!(out, "the request's {field:?} is not the want's: a source fetches only its want")
+            }
+            Self::Clone(clone) => write!(out, "the clone {clone} was not fetched by this call"),
+        }
+    }
+}
+
+impl std::error::Error for Unbound {}
+
+impl Sourcing {
+    /// Fetching as `fetch` says, for `want` only, until `time` from now has passed.
+    pub(crate) fn bound(fetch: Fetch, want: Want, time: Duration) -> Self {
+        Self { fetch, want: Some(want), deadline: Instant::now().checked_add(time), ..Self::default() }
+    }
+
+    /// Whether `request` asks for what the want does.
+    fn allows(&self, request: &Request) -> Result<(), Unbound> {
+        let want = self.want.as_ref().ok_or(Unbound::NoWant)?;
+        if request.locator != want.locator {
+            return Err(Unbound::Field(Field::Locator));
+        }
+        if request.revision != want.revision {
+            return Err(Unbound::Field(Field::Revision));
+        }
+        if request.grant != want.grant {
+            return Err(Unbound::Field(Field::Grant));
+        }
+        Ok(())
+    }
+
+    /// Whether `cloned` is a clone this call fetched, at the commit the fetch named.
+    fn owns(&self, cloned: &Cloned) -> Result<(), Unbound> {
+        let held = self.fetched.iter().any(|held| held.clone == cloned.clone && held.commit == cloned.commit);
+        if held { Ok(()) } else { Err(Unbound::Clone(cloned.clone)) }
     }
 }
 
@@ -182,8 +254,16 @@ impl git::Host for State {
             self.malformed(&refused);
             git::Refusal::Failed
         })?;
-        match self.sourcing.fetch.run(&request) {
-            Ok(cloned) => Ok(git::Cloned::from(&cloned)),
+        if let Err(unbound) = self.sourcing.allows(&request) {
+            self.malformed(&unbound);
+            return Err(git::Refusal::Failed);
+        }
+        match self.sourcing.fetch.run_until(&request, self.sourcing.deadline) {
+            Ok(cloned) => {
+                let wire = git::Cloned::from(&cloned);
+                self.sourcing.fetched.push(cloned);
+                Ok(wire)
+            }
             Err(refused) => Err(self.refuse(&refused)),
         }
     }
@@ -193,6 +273,10 @@ impl git::Host for State {
             self.malformed(&refused);
             git::Refusal::Failed
         })?;
+        if let Err(unbound) = self.sourcing.owns(&cloned) {
+            self.malformed(&unbound);
+            return Err(git::Refusal::Failed);
+        }
         let read = match self.sourcing.fetch.read(&cloned, &mut self.sourcing.blobs) {
             Ok(read) => read,
             Err(refused) => return Err(self.refuse(&refused)),
@@ -228,3 +312,49 @@ impl types::site::Host for State {}
 impl types::read::Host for State {}
 impl types::file::Host for State {}
 impl types::snapshot::Host for State {}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn state(want: &str) -> State {
+        let fetch = Fetch { network: model::git::Network::Local, ..Fetch::new(std::env::temp_dir()) };
+        let sourcing = Sourcing::bound(fetch, Want::new(want.parse().unwrap()), Duration::from_secs(5));
+        State::new("test", Grammars::default(), &Budget::default()).sourcing(sourcing)
+    }
+
+    fn wire(locator: &str) -> git::Request {
+        git::Request::from(&Request::new(locator.parse().unwrap()))
+    }
+
+    #[test]
+    fn a_source_cannot_fetch_a_repository_other_than_its_want() {
+        let mut state = state("file:///srv/wanted");
+        let refused = git::Host::fetch(&mut state, wire("file:///srv/private"));
+        assert!(matches!(refused, Err(git::Refusal::Failed)));
+        assert_eq!(state.said.diagnostics.len(), 1);
+        assert_eq!(state.sourcing.fetched.len(), 0);
+    }
+
+    #[test]
+    fn a_plugin_with_no_want_fetches_nothing() {
+        let mut state = State::new("test", Grammars::default(), &Budget::default());
+        let refused = git::Host::fetch(&mut state, wire("file:///srv/wanted"));
+        assert!(matches!(refused, Err(git::Refusal::Failed)));
+    }
+
+    #[test]
+    fn a_source_cannot_read_a_clone_it_did_not_fetch() {
+        let mut state = state("file:///srv/wanted");
+        let strange = Cloned {
+            clone: Hash::of(b"someone else's clone"),
+            commit: Oid::parse("0".repeat(40)).unwrap(),
+            shallow: false,
+            objects: 1,
+            bytes: model::Bytes(1),
+        };
+        let refused = git::Host::read(&mut state, git::Cloned::from(&strange));
+        assert!(matches!(refused, Err(git::Refusal::Failed)));
+        assert_eq!(state.said.diagnostics.len(), 1);
+    }
+}

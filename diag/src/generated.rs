@@ -240,6 +240,9 @@ impl Message<'_> {
             Problem::PluginBudgetMemory { plugin, limit, .. } => {
                 write!(out, "the plugin `{plugin}` asked for more than its {limit} of memory")
             }
+            Problem::PluginBudgetTable { plugin, limit, .. } => {
+                write!(out, "the plugin `{plugin}` asked for a table of more than {limit} elements")
+            }
             Problem::BuildCheckMismatch { component, native, .. } => {
                 write!(out, "the plugins built as components give deploy {component}, natively {native}")
             }
@@ -482,6 +485,7 @@ impl Fix<'_> {
             Problem::PluginBudgetFuel { .. } => false,
             Problem::PluginBudgetTime { .. } => false,
             Problem::PluginBudgetMemory { .. } => false,
+            Problem::PluginBudgetTable { .. } => false,
             Problem::BuildCheckMismatch { .. } => true,
         }
     }
@@ -728,6 +732,7 @@ impl Fix<'_> {
             Problem::PluginBudgetFuel { .. } => Ok(()),
             Problem::PluginBudgetTime { .. } => Ok(()),
             Problem::PluginBudgetMemory { .. } => Ok(()),
+            Problem::PluginBudgetTable { .. } => Ok(()),
             Problem::BuildCheckMismatch { .. } => {
                 write!(out, "a plugin's component and its native core disagree; `ink build` natively is the reference")
             }

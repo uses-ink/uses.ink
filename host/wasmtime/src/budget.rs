@@ -20,15 +20,17 @@ pub struct Budget {
     pub memory: Bytes,
     /// Elements of one table of an instance (function references, mostly).
     pub table: u32,
-    /// How often the epoch advances: the grain of the time budget. A tick of zero is refused
-    /// when the runtime is made ([`crate::Error::Tick`]).
+    /// How often the epoch advances: the grain of the time budget, counted in nanoseconds. A tick
+    /// of zero is refused when the runtime is made ([`crate::Error::Tick`]), and a source's terms
+    /// must carry the runtime's own tick ([`crate::Error::TermsTick`]).
     pub tick: Duration,
 }
 
 impl Budget {
-    /// The epoch ticks a call may run for, at least one; none when the tick is zero.
+    /// The epoch ticks a call may run for, counted in nanoseconds, at least one; none when the
+    /// tick is zero.
     pub(crate) fn ticks(&self) -> Option<u64> {
-        let ticks = self.time.as_millis().checked_div(self.tick.as_millis())?;
+        let ticks = self.time.as_nanos().checked_div(self.tick.as_nanos())?;
         Some(u64::try_from(ticks).unwrap_or(u64::MAX).max(1))
     }
 
@@ -99,6 +101,14 @@ mod test {
         assert_eq!(short.ticks(), Some(1));
         let still = Budget { tick: Duration::ZERO, ..Budget::default() };
         assert_eq!(still.ticks(), None);
+    }
+
+    #[test]
+    fn a_tick_that_is_not_whole_milliseconds_divides_exactly() {
+        let odd = Budget { time: Duration::from_secs(3), tick: Duration::from_micros(1500), ..Budget::default() };
+        assert_eq!(odd.ticks(), Some(2000));
+        let fine = Budget { tick: Duration::from_micros(500), ..Budget::default() };
+        assert_eq!(fine.ticks(), Some(4000));
     }
 
     #[test]

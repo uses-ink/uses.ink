@@ -44,6 +44,14 @@ pub enum Error {
         /// The tick given.
         tick: Duration,
     },
+    /// A source's terms count time in another tick than the runtime's epoch advances in, so its
+    /// deadline would be wrong: the terms must carry the runtime's tick.
+    TermsTick {
+        /// The tick the terms gave.
+        terms: Duration,
+        /// The tick of the runtime.
+        runtime: Duration,
+    },
     /// The component's first call, asking its name, failed.
     Named {
         /// Why.
@@ -59,6 +67,9 @@ impl fmt::Display for Error {
             Self::Link { plugin, .. } => write!(out, "the plugin `{plugin}` imports what the host does not give"),
             Self::Cache { path, .. } => write!(out, "the compiled plugin cache {} could not be used", path.display()),
             Self::Tick { tick } => write!(out, "the epoch tick of {tick:?} cannot count a time budget"),
+            Self::TermsTick { terms, runtime } => {
+                write!(out, "the source's terms tick {terms:?} is not the runtime's epoch tick {runtime:?}")
+            }
             Self::Named { .. } => out.write_str("the theme did not say its name"),
         }
     }
@@ -69,7 +80,7 @@ impl std::error::Error for Error {
         match self {
             Self::Engine { source } | Self::Compile { source, .. } | Self::Link { source, .. } => Some(source.as_ref()),
             Self::Cache { source, .. } => Some(source),
-            Self::Tick { .. } => None,
+            Self::Tick { .. } | Self::TermsTick { .. } => None,
             Self::Named { failure } => Some(failure),
         }
     }
@@ -133,7 +144,8 @@ impl Failure {
             Self::Trapped { source } => Problem::PluginCallTrapped { plugin, reason: Trace(source).to_string() },
             Self::Malformed { source } => Problem::PluginValueMalformed { plugin, reason: Chain(source).to_string() },
             Self::Unmirrored { source } => Problem::PluginValueUnmirrored { reason: source.to_string() },
-            Self::Table { .. } | Self::Ended => Problem::PluginCallTrapped { plugin, reason: self.to_string() },
+            Self::Table { limit, .. } => Problem::PluginBudgetTable { plugin, limit: u64::from(*limit) },
+            Self::Ended => Problem::PluginCallTrapped { plugin, reason: self.to_string() },
         })
     }
 }

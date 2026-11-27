@@ -246,11 +246,13 @@ pub struct Request {
 }
 
 impl Request {
-    /// The repository's place in the host's cache: the hash of the address and revision as
-    /// written, so two revisions of one repository are two clones.
+    /// The repository's place in the host's cache: the hash of the address, revision and grant as
+    /// written, so two revisions of one repository are two clones, and a clone fetched with one
+    /// credential is never the one a request with another (or none) reads.
     pub fn key(&self) -> Hash {
         let revision = self.revision.as_ref().map_or_else(String::new, ToString::to_string);
-        Hash::of(format!("{}\n{revision}", self.locator))
+        let grant = self.grant.as_ref().map_or_else(String::new, ToString::to_string);
+        Hash::of(format!("{}\n{revision}\n{grant}", self.locator))
     }
 
     /// The whole history of the repository at `locator`, at its `HEAD`, with no credential.
@@ -488,6 +490,14 @@ pub trait Git {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn the_cache_key_names_the_grant() {
+        let locator: Locator = "https://example.org/a.git".parse().unwrap();
+        let open = Request::new(locator.clone());
+        let granted = Request { grant: Some("deploy".parse().unwrap()), ..Request::new(locator) };
+        assert_ne!(open.key(), granted.key());
+    }
 
     #[test]
     fn a_locator_is_a_file_or_https_address_and_nothing_else() {

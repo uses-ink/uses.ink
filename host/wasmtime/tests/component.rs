@@ -187,3 +187,29 @@ fn a_compiled_component_is_cached_and_a_corrupt_one_replaced() {
     assert_eq!(load(), Origin::Cached);
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn a_plugin_that_needs_a_larger_table_than_it_may_have_is_refused() {
+    // Rust cannot grow a table at run time, so the limit is set under the table every instance
+    // starts with: the instance is refused its table.
+    let format = hostile(Budget { table: 0, ..Budget::default() });
+    assert_eq!(refusal(&format, "fine"), "plugin.budget.table");
+}
+
+#[test]
+fn a_cache_entry_written_for_another_plugin_is_replaced() {
+    let dir = root().join(format!("target/plugin/cache-seal-{}", std::process::id()));
+    let files = || -> std::collections::BTreeSet<PathBuf> {
+        std::fs::read_dir(&dir).into_iter().flatten().map(|entry| entry.unwrap().path()).collect()
+    };
+    let runtime = Runtime::new(Budget::default(), Some(Cache::new(&dir))).unwrap();
+    runtime.format("hostile", &plugin("hostile")).unwrap();
+    let hostile = files();
+    runtime.format("markdown", &plugin("format-markdown")).unwrap();
+    let markdown = files();
+    let (own, other) = (hostile.iter().next().unwrap(), markdown.difference(&hostile).next().unwrap());
+    std::fs::copy(other, own).unwrap();
+    assert_eq!(runtime.format("hostile", &plugin("hostile")).unwrap().origin(), Origin::Replaced);
+    assert_eq!(runtime.format("hostile", &plugin("hostile")).unwrap().origin(), Origin::Cached);
+    std::fs::remove_dir_all(&dir).unwrap();
+}

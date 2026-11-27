@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gix::remote::Direction;
 use gix::remote::fetch::Shallow;
@@ -97,6 +97,8 @@ pub enum Failed {
         /// What git said.
         source: gix::Error,
     },
+    /// The fetch ran past the wall-clock deadline of the call that asked for it.
+    Late,
     /// The fetched commit's tree or history could not be read.
     Read(Unread),
 }
@@ -107,6 +109,7 @@ impl std::fmt::Display for Failed {
             Self::Cache { path, .. } => write!(out, "the clone cache {} could not be used", path.display()),
             Self::Fetch { .. } => out.write_str("the repository could not be fetched"),
             Self::Clone { .. } => out.write_str("a clone held in the cache could not be opened"),
+            Self::Late => out.write_str("the fetch ran past the time of the call that asked for it"),
             Self::Read(_) => out.write_str("the fetched commit could not be read"),
         }
     }
@@ -118,6 +121,7 @@ impl std::error::Error for Failed {
             Self::Cache { source, .. } => Some(source),
             Self::Fetch { source } | Self::Clone { source } => Some(source),
             Self::Read(source) => Some(source),
+            Self::Late => None,
         }
     }
 }
@@ -181,6 +185,12 @@ impl Fetch {
     /// Fetches the repository, or brings a clone already held to the depth asked for, and says
     /// which commit the revision names.
     pub fn run(&self, request: &Request) -> Result<Cloned, Refused<Failed>> {
+        self.run_until(request, None)
+    }
+
+    /// Like [`Fetch::run`], cut at `deadline` when one is given: a fetch still running then is
+    /// interrupted, its clone removed, and [`Failed::Late`] is the refusal.
+    pub fn run_until(&self, request: &Request, deadline: Option<Instant>) -> Result<Cloned, Refused<Failed>> {
         self.allow(request)?;
         let key = request.key();
         let folder = self.folder(&key);
@@ -189,7 +199,7 @@ impl Fetch {
             std::fs::create_dir_all(parent)
                 .map_err(|source| Refused::Failed(Failed::Cache { path: parent.to_owned(), source }))?;
         }
-        let watch = Watch { folder: &folder, limit: self.limits.bytes };
+        let watch = Watch { folder: &folder, limit: self.limits.bytes, deadline };
         let repo = watch.over(|interrupt| {
             if held { self.update(request, &folder, interrupt) } else { self.clone(request, &folder, interrupt) }
         })?;
@@ -311,10 +321,12 @@ impl Secret {
     }
 }
 
-/// Watches a clone's folder while gix fills it, and interrupts the fetch past the byte limit.
+/// Watches a clone's folder while gix fills it, and interrupts the fetch past the byte limit or
+/// the deadline.
 struct Watch<'f> {
     folder: &'f Path,
     limit: Bytes,
+    deadline: Option<Instant>,
 }
 
 impl Watch<'_> {
@@ -324,10 +336,14 @@ impl Watch<'_> {
     /// Runs `fetch` with a watcher beside it; a fetch the watcher cut, or that ended past the
     /// limit, removes the clone and is the budget's refusal.
     fn over<T>(&self, fetch: impl FnOnce(&AtomicBool) -> Result<T, gix::Error>) -> Result<T, Refused<Failed>> {
-        let (interrupt, done) = (AtomicBool::new(false), AtomicBool::new(false));
+        let (interrupt, done, late) = (AtomicBool::new(false), AtomicBool::new(false), AtomicBool::new(false));
         let result = std::thread::scope(|scope| {
             scope.spawn(|| {
                 while !done.load(Ordering::Relaxed) {
+                    if self.deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+                        late.store(true, Ordering::Relaxed);
+                        interrupt.store(true, Ordering::Relaxed);
+                    }
                     if Footprint(self.folder).bytes().is_ok_and(|size| size > self.limit) {
                         interrupt.store(true, Ordering::Relaxed);
                     }
@@ -338,6 +354,10 @@ impl Watch<'_> {
             done.store(true, Ordering::Relaxed);
             result
         });
+        if late.load(Ordering::Relaxed) {
+            self.remove()?;
+            return Err(Refused::Failed(Failed::Late));
+        }
         let size = Footprint(self.folder).bytes().unwrap_or(Bytes(0));
         if interrupt.load(Ordering::Relaxed) || (result.is_ok() && size > self.limit) {
             self.remove()?;
@@ -417,5 +437,25 @@ impl<S: Store> Git for Cloning<'_, S> {
         let snapshot = read.snapshot.clone();
         self.read = Some(read);
         Ok(snapshot)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn a_fetch_that_stalls_is_cut_at_the_deadline() {
+        let folder = Path::new("a-clone-that-is-never-made");
+        let watch = Watch { folder, limit: Bytes(1 << 30), deadline: Some(Instant::now() + Duration::from_millis(50)) };
+        let started = Instant::now();
+        let stalled = watch.over::<()>(|interrupt| {
+            while !interrupt.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            Err(gix::url::parse(gix::bstr::BStr::new("")).unwrap_err())
+        });
+        assert!(matches!(stalled, Err(Refused::Failed(Failed::Late))), "{stalled:?}");
+        assert!(started.elapsed() < Duration::from_secs(2));
     }
 }

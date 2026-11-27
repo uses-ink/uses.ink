@@ -10,9 +10,10 @@ extern crate uses_ink_host_wasmtime as host_wasmtime;
 mod origin;
 
 use std::path::Path;
+use std::time::Duration;
 
 use host_native::{Cloning, Memory};
-use host_wasmtime::{Budget, Runtime, Terms, Unsourced};
+use host_wasmtime::{Budget, Error, Runtime, Terms, Unsourced};
 use model::git::{History, Network, Refused, Want};
 use origin::Origin;
 use source_git::Source;
@@ -54,4 +55,15 @@ fn what_the_host_refuses_comes_back_as_the_typed_refusal() {
     let plugin = runtime.source("ink:source-git", &component(), Terms { fetch, budget: Budget::default() }).unwrap();
     let refused = plugin.read(&want(&origin, History::Wanted), &mut Memory::default()).unwrap_err();
     assert!(matches!(refused, Unsourced::Refused(Refused::Network { .. })), "{refused:?}");
+}
+
+#[test]
+fn terms_in_another_tick_than_the_runtime_are_refused() {
+    let origin = Origin::new("wasm-tick");
+    let runtime = Runtime::new(Budget::default(), None).unwrap();
+    for tick in [Duration::from_millis(1), Duration::ZERO] {
+        let terms = Terms { fetch: origin.fetch(), budget: Budget { tick, ..Budget::default() } };
+        let refused = runtime.source("ink:source-git", &component(), terms).unwrap_err();
+        assert!(matches!(refused, Error::TermsTick { terms, .. } if terms == tick), "{refused:?}");
+    }
 }
