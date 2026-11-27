@@ -232,6 +232,18 @@ pub enum Unreadable {
         /// Why.
         source: model::VersionError,
     },
+    /// The column holds bytes that are not the one spelling or size of a key's value.
+    Encoding {
+        /// The column.
+        column: &'static str,
+        /// Why.
+        source: sig::Undecodable,
+    },
+    /// The column holds text that is no longer a valid label, code or date.
+    Text {
+        /// The column.
+        column: &'static str,
+    },
 }
 
 impl fmt::Display for Unreadable {
@@ -257,6 +269,8 @@ impl fmt::Display for Unreadable {
             Self::Address { column, .. } => write!(out, "column `{column}` holds an address that is no longer valid"),
             Self::Digest { column } => write!(out, "column `{column}` holds a digest that is not 32 bytes"),
             Self::Commit { .. } => out.write_str("a stored commit id is bad"),
+            Self::Encoding { column, .. } => write!(out, "column `{column}` holds a key value that is not valid"),
+            Self::Text { column } => write!(out, "column `{column}` holds text that is no longer valid"),
         }
     }
 }
@@ -275,7 +289,8 @@ impl std::error::Error for Unreadable {
             Self::Revision { source, .. } => Some(source),
             Self::Address { source, .. } => Some(source),
             Self::Commit { source } => Some(source),
-            Self::Name { .. } | Self::Locator { .. } | Self::Digest { .. } => None,
+            Self::Encoding { source, .. } => Some(source),
+            Self::Name { .. } | Self::Locator { .. } | Self::Digest { .. } | Self::Text { .. } => None,
         }
     }
 }

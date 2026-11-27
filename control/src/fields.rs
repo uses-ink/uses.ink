@@ -67,6 +67,15 @@ impl Fields<'_> {
         crate::signin::Digest::try_from(bytes.as_slice()).map_err(|_| Unreadable::Digest { column: column.as_str() })
     }
 
+    pub(crate) fn key(self, column: impl IdenStatic) -> Result<sig::KeyId, Unreadable> {
+        self.text(column)?.parse().map_err(|source| Unreadable::Encoding { column: column.as_str(), source })
+    }
+
+    pub(crate) fn maybe_day(self, column: impl IdenStatic) -> Result<Option<jiff::civil::Date>, Unreadable> {
+        let text: Option<String> = self.0.get(column)?;
+        text.map(|text| text.parse().map_err(|_| Unreadable::Text { column: column.as_str() })).transpose()
+    }
+
     pub(crate) fn handle(self, column: impl IdenStatic) -> Result<Handle, Unreadable> {
         self.text(column)?.parse().map_err(|source| Unreadable::Handle { source })
     }

@@ -167,6 +167,60 @@ pub enum Session {
 
 /// `seen`: the commit of a site's source the watch queued a build for last.
 #[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "key"]
+pub enum Key {
+    Table,
+    Id,
+    AccountId,
+    Kind,
+    KeyType,
+    PublicKey,
+    Label,
+    Rights,
+    ScopeKind,
+    SiteId,
+    CreatedAt,
+    ApprovedBy,
+    ExpiresAt,
+    LastUsedOn,
+    RevokedAt,
+    RevokedWhy,
+}
+
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "enrolment"]
+pub enum Enrolment {
+    Table,
+    Id,
+    UserCode,
+    KeyId,
+    KeyType,
+    PublicKey,
+    Label,
+    Purpose,
+    SiteId,
+    Rights,
+    Lifetime,
+    State,
+    CreatedAt,
+    ExpiresAt,
+    ApprovedBy,
+    ApprovedAt,
+}
+
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "auth_event"]
+pub enum AuthEvent {
+    Table,
+    Seq,
+    AccountId,
+    KeyId,
+    At,
+    Name,
+    Body,
+}
+
+#[derive(Clone, Copy, Debug, IdenStatic)]
 #[iden = "seen"]
 pub enum Seen {
     Table,
@@ -194,6 +248,7 @@ pub enum Computed {
     Deploys,
     Builds,
     Credentials,
+    Count,
 }
 
 /// The names of the indexes.
@@ -206,6 +261,9 @@ pub enum Named {
     ChallengeExpires,
     SessionAccount,
     SessionExpires,
+    KeyAccount,
+    EnrolmentExpires,
+    AuthEventAccount,
 }
 
 /// The values a text column may hold, as a `CHECK`: the schema is built from the names the code

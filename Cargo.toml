@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "trace", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp", "https"]
+members = ["cli", "sig", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "trace", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp", "https"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -43,6 +43,7 @@ host-native = { package = "uses-ink-host-native", path = "host/native" }
 host-wasmtime = { package = "uses-ink-host-wasmtime", path = "host/wasmtime" }
 model = { package = "uses-ink-model", path = "model" }
 secret = { package = "uses-ink-secret", path = "secret" }
+sig = { package = "uses-ink-sig", path = "sig" }
 secret-conformance = { package = "uses-ink-secret-conformance", path = "secret/conformance" }
 secret-local = { package = "uses-ink-secret-local", path = "secret/local" }
 mail = { package = "uses-ink-mail", path = "mail" }
@@ -135,6 +136,9 @@ wasmtime = { version = "51.0.0", default-features = false, features = [
     "component-model", "cranelift", "parallel-compilation", "runtime", "std",
 ] }
 zeroize = "1.9.2"
+# Ed25519 for the signed-request profile (decision 0068); no `rand_core` feature: seeds come from the
+# clock's Draw port, and strict verification is the only verify the code calls
+ed25519-dalek = { version = "3.0.0", default-features = false, features = ["zeroize"] }
 wit-bindgen = { version = "0.63.0", default-features = false, features = ["macros", "realloc"] }
 wit-component = { version = "0.263.0", default-features = false }
 # wit-component's error type, named by xtask

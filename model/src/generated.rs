@@ -468,6 +468,107 @@ pub enum Problem {
         /// Why, as the part that refused it says.
         reason: String,
     },
+    /// `auth.signature.malformed`: the {header} header is not an `Ink-Sig-1` value
+    #[serde(rename = "auth.signature.malformed")]
+    AuthSignatureMalformed {
+        /// The header's name.
+        header: String,
+    },
+    /// `auth.target.not-canonical`: the request target `{request_target}` is not in canonical form
+    #[serde(rename = "auth.target.not-canonical")]
+    AuthTargetNotCanonical {
+        /// The request target as it was sent: the path and the query.
+        request_target: String,
+    },
+    /// `auth.signature.skewed`: the request's time is {skew} seconds from the server's ({server_time}), over the allowed {window}
+    #[serde(rename = "auth.signature.skewed")]
+    AuthSignatureSkewed {
+        /// How many seconds the request's time is from the server's.
+        skew: u64,
+        /// How many seconds either side of the server's time a request may be.
+        window: u64,
+        /// What time the server thinks it is, as an RFC 3339 timestamp (UTC).
+        server_time: String,
+    },
+    /// `auth.signature.refused`: the server did not accept the signature
+    #[serde(rename = "auth.signature.refused")]
+    AuthSignatureRefused,
+    /// `auth.key.revoked`: this key was revoked on {since}
+    #[serde(rename = "auth.key.revoked")]
+    AuthKeyRevoked {
+        /// When it happened, as an RFC 3339 timestamp (UTC).
+        since: String,
+    },
+    /// `auth.key.expired`: this key expired on {since}
+    #[serde(rename = "auth.key.expired")]
+    AuthKeyExpired {
+        /// When it happened, as an RFC 3339 timestamp (UTC).
+        since: String,
+    },
+    /// `auth.signature.replayed`: a request with the same nonce was already seen
+    #[serde(rename = "auth.signature.replayed")]
+    AuthSignatureReplayed,
+    /// `auth.signature.flooded`: this key sent more signed requests than the server remembers inside {window} seconds
+    #[serde(rename = "auth.signature.flooded")]
+    AuthSignatureFlooded {
+        /// How many seconds either side of the server's time a request may be.
+        window: u64,
+    },
+    /// `auth.digest.mismatch`: the body is not the one that was signed
+    #[serde(rename = "auth.digest.mismatch")]
+    AuthDigestMismatch,
+    /// `auth.server.restarting`: the server just started and takes signed requests again in {seconds} seconds
+    #[serde(rename = "auth.server.restarting")]
+    AuthServerRestarting {
+        /// How many seconds.
+        seconds: u64,
+    },
+    /// `auth.right.missing`: this key may not do this: it has no `{right}` on the {scope}
+    #[serde(rename = "auth.right.missing")]
+    AuthRightMissing {
+        /// The right the call needs: `read`, `deploy`, `edit`, `destroy`, `keys` or `members`.
+        right: String,
+        /// Where the right was needed: `account`, or `site`.
+        scope: String,
+    },
+    /// `auth.enrolment.expired`: that code is unknown or has expired
+    #[serde(rename = "auth.enrolment.expired")]
+    AuthEnrolmentExpired,
+    /// `auth.enrolment.denied`: the request was not approved
+    #[serde(rename = "auth.enrolment.denied")]
+    AuthEnrolmentDenied,
+    /// `auth.enrolment.limited`: enrolment is closed for {seconds} seconds after too many requests
+    #[serde(rename = "auth.enrolment.limited")]
+    AuthEnrolmentLimited {
+        /// How many seconds.
+        seconds: u64,
+    },
+    /// `auth.enrolment.lifetime`: a key of {asked} days is over this server's ceiling of {limit} days
+    #[serde(rename = "auth.enrolment.lifetime")]
+    AuthEnrolmentLifetime {
+        /// How many were asked for.
+        asked: u64,
+        /// The most that is allowed.
+        limit: u64,
+    },
+    /// `auth.enrolment.site`: a deploy key is for one site of the account that approves it, and this is not one
+    #[serde(rename = "auth.enrolment.site")]
+    AuthEnrolmentSite,
+    /// `auth.enrolment.rights`: a key cannot have more rights than the person who approves it
+    #[serde(rename = "auth.enrolment.rights")]
+    AuthEnrolmentRights,
+    /// `auth.enrolment.mismatch`: the fingerprint is not the one of the request
+    #[serde(rename = "auth.enrolment.mismatch")]
+    AuthEnrolmentMismatch,
+    /// `auth.enrolment.taken`: that key is already enrolled or waiting for approval
+    #[serde(rename = "auth.enrolment.taken")]
+    AuthEnrolmentTaken,
+    /// `auth.key.operator`: that key is a line of the operator-keys file, which the API does not change
+    #[serde(rename = "auth.key.operator")]
+    AuthKeyOperator,
+    /// `auth.key.print-refused`: the private key would be printed to a terminal
+    #[serde(rename = "auth.key.print-refused")]
+    AuthKeyPrintRefused,
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -600,6 +701,27 @@ impl Problem {
         "embed.anchor.missing",
         "embed.budget.count",
         "vault.settings.invalid",
+        "auth.signature.malformed",
+        "auth.target.not-canonical",
+        "auth.signature.skewed",
+        "auth.signature.refused",
+        "auth.key.revoked",
+        "auth.key.expired",
+        "auth.signature.replayed",
+        "auth.signature.flooded",
+        "auth.digest.mismatch",
+        "auth.server.restarting",
+        "auth.right.missing",
+        "auth.enrolment.expired",
+        "auth.enrolment.denied",
+        "auth.enrolment.limited",
+        "auth.enrolment.lifetime",
+        "auth.enrolment.site",
+        "auth.enrolment.rights",
+        "auth.enrolment.mismatch",
+        "auth.enrolment.taken",
+        "auth.key.operator",
+        "auth.key.print-refused",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -678,6 +800,27 @@ impl Problem {
             Self::EmbedAnchorMissing { .. } => "embed.anchor.missing",
             Self::EmbedBudgetCount { .. } => "embed.budget.count",
             Self::VaultSettingsInvalid { .. } => "vault.settings.invalid",
+            Self::AuthSignatureMalformed { .. } => "auth.signature.malformed",
+            Self::AuthTargetNotCanonical { .. } => "auth.target.not-canonical",
+            Self::AuthSignatureSkewed { .. } => "auth.signature.skewed",
+            Self::AuthSignatureRefused => "auth.signature.refused",
+            Self::AuthKeyRevoked { .. } => "auth.key.revoked",
+            Self::AuthKeyExpired { .. } => "auth.key.expired",
+            Self::AuthSignatureReplayed => "auth.signature.replayed",
+            Self::AuthSignatureFlooded { .. } => "auth.signature.flooded",
+            Self::AuthDigestMismatch => "auth.digest.mismatch",
+            Self::AuthServerRestarting { .. } => "auth.server.restarting",
+            Self::AuthRightMissing { .. } => "auth.right.missing",
+            Self::AuthEnrolmentExpired => "auth.enrolment.expired",
+            Self::AuthEnrolmentDenied => "auth.enrolment.denied",
+            Self::AuthEnrolmentLimited { .. } => "auth.enrolment.limited",
+            Self::AuthEnrolmentLifetime { .. } => "auth.enrolment.lifetime",
+            Self::AuthEnrolmentSite => "auth.enrolment.site",
+            Self::AuthEnrolmentRights => "auth.enrolment.rights",
+            Self::AuthEnrolmentMismatch => "auth.enrolment.mismatch",
+            Self::AuthEnrolmentTaken => "auth.enrolment.taken",
+            Self::AuthKeyOperator => "auth.key.operator",
+            Self::AuthKeyPrintRefused => "auth.key.print-refused",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -757,6 +900,27 @@ impl Problem {
             Self::EmbedAnchorMissing { .. } => Severity::Warning,
             Self::EmbedBudgetCount { .. } => Severity::Warning,
             Self::VaultSettingsInvalid { .. } => Severity::Warning,
+            Self::AuthSignatureMalformed { .. } => Severity::Error,
+            Self::AuthTargetNotCanonical { .. } => Severity::Error,
+            Self::AuthSignatureSkewed { .. } => Severity::Error,
+            Self::AuthSignatureRefused => Severity::Error,
+            Self::AuthKeyRevoked { .. } => Severity::Error,
+            Self::AuthKeyExpired { .. } => Severity::Error,
+            Self::AuthSignatureReplayed => Severity::Error,
+            Self::AuthSignatureFlooded { .. } => Severity::Error,
+            Self::AuthDigestMismatch => Severity::Error,
+            Self::AuthServerRestarting { .. } => Severity::Error,
+            Self::AuthRightMissing { .. } => Severity::Error,
+            Self::AuthEnrolmentExpired => Severity::Error,
+            Self::AuthEnrolmentDenied => Severity::Error,
+            Self::AuthEnrolmentLimited { .. } => Severity::Error,
+            Self::AuthEnrolmentLifetime { .. } => Severity::Error,
+            Self::AuthEnrolmentSite => Severity::Error,
+            Self::AuthEnrolmentRights => Severity::Error,
+            Self::AuthEnrolmentMismatch => Severity::Error,
+            Self::AuthEnrolmentTaken => Severity::Error,
+            Self::AuthKeyOperator => Severity::Error,
+            Self::AuthKeyPrintRefused => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -836,6 +1000,27 @@ impl Problem {
             Self::EmbedAnchorMissing { .. } => Fault::Author,
             Self::EmbedBudgetCount { .. } => Fault::Author,
             Self::VaultSettingsInvalid { .. } => Fault::Author,
+            Self::AuthSignatureMalformed { .. } => Fault::Author,
+            Self::AuthTargetNotCanonical { .. } => Fault::Author,
+            Self::AuthSignatureSkewed { .. } => Fault::Source,
+            Self::AuthSignatureRefused => Fault::Source,
+            Self::AuthKeyRevoked { .. } => Fault::Source,
+            Self::AuthKeyExpired { .. } => Fault::Source,
+            Self::AuthSignatureReplayed => Fault::Ours,
+            Self::AuthSignatureFlooded { .. } => Fault::Source,
+            Self::AuthDigestMismatch => Fault::Author,
+            Self::AuthServerRestarting { .. } => Fault::Operator,
+            Self::AuthRightMissing { .. } => Fault::Author,
+            Self::AuthEnrolmentExpired => Fault::Source,
+            Self::AuthEnrolmentDenied => Fault::Source,
+            Self::AuthEnrolmentLimited { .. } => Fault::Source,
+            Self::AuthEnrolmentLifetime { .. } => Fault::Author,
+            Self::AuthEnrolmentSite => Fault::Author,
+            Self::AuthEnrolmentRights => Fault::Author,
+            Self::AuthEnrolmentMismatch => Fault::Source,
+            Self::AuthEnrolmentTaken => Fault::Author,
+            Self::AuthKeyOperator => Fault::Operator,
+            Self::AuthKeyPrintRefused => Fault::Author,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -1104,6 +1289,12 @@ pub enum Announcement {
         /// The most that is allowed.
         limit: Bytes,
     },
+    /// `auth.token.retired`: the owner token in {token_file} no longer works
+    #[serde(rename = "auth.token.retired")]
+    AuthTokenRetired {
+        /// The file that holds the retired owner token.
+        token_file: String,
+    },
 }
 impl Announcement {
     /// Every code, in catalog order.
@@ -1148,6 +1339,7 @@ impl Announcement {
         "cache.entry.corrupt",
         "cache.entry.unwritten",
         "cache.entry.evicted",
+        "auth.token.retired",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -1192,6 +1384,7 @@ impl Announcement {
             Self::CacheEntryCorrupt { .. } => "cache.entry.corrupt",
             Self::CacheEntryUnwritten { .. } => "cache.entry.unwritten",
             Self::CacheEntryEvicted { .. } => "cache.entry.evicted",
+            Self::AuthTokenRetired { .. } => "auth.token.retired",
         }
     }
 }
@@ -1387,6 +1580,44 @@ impl From<&Problem> for Coded {
             Problem::VaultSettingsInvalid { path, reason, .. } => {
                 Coded::new("vault.settings.invalid", vec![Field::from(path.clone()), Field::from(reason.clone())])
             }
+            Problem::AuthSignatureMalformed { header, .. } => {
+                Coded::new("auth.signature.malformed", vec![Field::from(header.clone())])
+            }
+            Problem::AuthTargetNotCanonical { request_target, .. } => {
+                Coded::new("auth.target.not-canonical", vec![Field::from(request_target.clone())])
+            }
+            Problem::AuthSignatureSkewed { skew, window, server_time, .. } => Coded::new(
+                "auth.signature.skewed",
+                vec![Field::from(*skew), Field::from(*window), Field::from(server_time.clone())],
+            ),
+            Problem::AuthSignatureRefused => Coded::new("auth.signature.refused", vec![]),
+            Problem::AuthKeyRevoked { since, .. } => Coded::new("auth.key.revoked", vec![Field::from(since.clone())]),
+            Problem::AuthKeyExpired { since, .. } => Coded::new("auth.key.expired", vec![Field::from(since.clone())]),
+            Problem::AuthSignatureReplayed => Coded::new("auth.signature.replayed", vec![]),
+            Problem::AuthSignatureFlooded { window, .. } => {
+                Coded::new("auth.signature.flooded", vec![Field::from(*window)])
+            }
+            Problem::AuthDigestMismatch => Coded::new("auth.digest.mismatch", vec![]),
+            Problem::AuthServerRestarting { seconds, .. } => {
+                Coded::new("auth.server.restarting", vec![Field::from(*seconds)])
+            }
+            Problem::AuthRightMissing { right, scope, .. } => {
+                Coded::new("auth.right.missing", vec![Field::from(right.clone()), Field::from(scope.clone())])
+            }
+            Problem::AuthEnrolmentExpired => Coded::new("auth.enrolment.expired", vec![]),
+            Problem::AuthEnrolmentDenied => Coded::new("auth.enrolment.denied", vec![]),
+            Problem::AuthEnrolmentLimited { seconds, .. } => {
+                Coded::new("auth.enrolment.limited", vec![Field::from(*seconds)])
+            }
+            Problem::AuthEnrolmentLifetime { asked, limit, .. } => {
+                Coded::new("auth.enrolment.lifetime", vec![Field::from(*asked), Field::from(*limit)])
+            }
+            Problem::AuthEnrolmentSite => Coded::new("auth.enrolment.site", vec![]),
+            Problem::AuthEnrolmentRights => Coded::new("auth.enrolment.rights", vec![]),
+            Problem::AuthEnrolmentMismatch => Coded::new("auth.enrolment.mismatch", vec![]),
+            Problem::AuthEnrolmentTaken => Coded::new("auth.enrolment.taken", vec![]),
+            Problem::AuthKeyOperator => Coded::new("auth.key.operator", vec![]),
+            Problem::AuthKeyPrintRefused => Coded::new("auth.key.print-refused", vec![]),
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -1502,6 +1733,29 @@ impl TryFrom<Coded> for Problem {
             "embed.anchor.missing" => Self::EmbedAnchorMissing { written: fields.next()? },
             "embed.budget.count" => Self::EmbedBudgetCount { written: fields.next()?, limit: fields.next()? },
             "vault.settings.invalid" => Self::VaultSettingsInvalid { path: fields.next()?, reason: fields.next()? },
+            "auth.signature.malformed" => Self::AuthSignatureMalformed { header: fields.next()? },
+            "auth.target.not-canonical" => Self::AuthTargetNotCanonical { request_target: fields.next()? },
+            "auth.signature.skewed" => {
+                Self::AuthSignatureSkewed { skew: fields.next()?, window: fields.next()?, server_time: fields.next()? }
+            }
+            "auth.signature.refused" => Self::AuthSignatureRefused,
+            "auth.key.revoked" => Self::AuthKeyRevoked { since: fields.next()? },
+            "auth.key.expired" => Self::AuthKeyExpired { since: fields.next()? },
+            "auth.signature.replayed" => Self::AuthSignatureReplayed,
+            "auth.signature.flooded" => Self::AuthSignatureFlooded { window: fields.next()? },
+            "auth.digest.mismatch" => Self::AuthDigestMismatch,
+            "auth.server.restarting" => Self::AuthServerRestarting { seconds: fields.next()? },
+            "auth.right.missing" => Self::AuthRightMissing { right: fields.next()?, scope: fields.next()? },
+            "auth.enrolment.expired" => Self::AuthEnrolmentExpired,
+            "auth.enrolment.denied" => Self::AuthEnrolmentDenied,
+            "auth.enrolment.limited" => Self::AuthEnrolmentLimited { seconds: fields.next()? },
+            "auth.enrolment.lifetime" => Self::AuthEnrolmentLifetime { asked: fields.next()?, limit: fields.next()? },
+            "auth.enrolment.site" => Self::AuthEnrolmentSite,
+            "auth.enrolment.rights" => Self::AuthEnrolmentRights,
+            "auth.enrolment.mismatch" => Self::AuthEnrolmentMismatch,
+            "auth.enrolment.taken" => Self::AuthEnrolmentTaken,
+            "auth.key.operator" => Self::AuthKeyOperator,
+            "auth.key.print-refused" => Self::AuthKeyPrintRefused,
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },
@@ -1633,6 +1887,9 @@ impl From<&Announcement> for Coded {
             Announcement::CacheEntryEvicted { count, limit, .. } => {
                 Coded::new("cache.entry.evicted", vec![Field::from(*count), Field::from(*limit)])
             }
+            Announcement::AuthTokenRetired { token_file, .. } => {
+                Coded::new("auth.token.retired", vec![Field::from(token_file.clone())])
+            }
         }
     }
 }
@@ -1687,6 +1944,7 @@ impl TryFrom<Coded> for Announcement {
             "cache.entry.corrupt" => Self::CacheEntryCorrupt { entry: fields.next()? },
             "cache.entry.unwritten" => Self::CacheEntryUnwritten { entry: fields.next()? },
             "cache.entry.evicted" => Self::CacheEntryEvicted { count: fields.next()?, limit: fields.next()? },
+            "auth.token.retired" => Self::AuthTokenRetired { token_file: fields.next()? },
             _ => return fields.unknown(),
         };
         fields.end(made)

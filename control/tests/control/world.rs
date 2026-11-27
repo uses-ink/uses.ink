@@ -66,6 +66,8 @@ impl World {
             .with::<Queued>()
             .unwrap()
             .with::<Entry>()
+            .unwrap()
+            .with::<control::keys::Entry>()
             .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (db.clone(), Directory::open(&root).unwrap(), Queue::new(db), Sealer::ephemeral().unwrap());
@@ -83,6 +85,8 @@ impl World {
             .with::<Queued>()
             .unwrap()
             .with::<Entry>()
+            .unwrap()
+            .with::<control::keys::Entry>()
             .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         Control::new((db.clone(), blob, Queue::new(db), Sealer::ephemeral().unwrap()), Self::origin())

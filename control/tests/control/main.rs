@@ -16,6 +16,7 @@ mod credential;
 mod deploy;
 mod export;
 mod job;
+mod keys;
 mod read;
 mod remove;
 mod signin;

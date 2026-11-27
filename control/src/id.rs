@@ -28,6 +28,9 @@ pub enum Session {}
 /// A way an account signs in.
 #[derive(Clone, Copy, Debug)]
 pub enum Factor {}
+/// An enrolment of a key.
+#[derive(Clone, Copy, Debug)]
+pub enum Enrolment {}
 
 impl Kind for Account {
     const NOUN: &'static str = "account";
@@ -37,6 +40,9 @@ impl Kind for Site {
 }
 impl Kind for Session {
     const NOUN: &'static str = "session";
+}
+impl Kind for Enrolment {
+    const NOUN: &'static str = "enrolment";
 }
 impl Kind for Factor {
     const NOUN: &'static str = "factor";

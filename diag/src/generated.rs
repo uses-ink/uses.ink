@@ -222,6 +222,70 @@ impl Message<'_> {
             Problem::VaultSettingsInvalid { path, reason, .. } => {
                 write!(out, "`{path}` is not Obsidian's settings as uses.ink reads them: {reason}")
             }
+            Problem::AuthSignatureMalformed { header, .. } => {
+                write!(out, "the {header} header is not an `Ink-Sig-1` value")
+            }
+            Problem::AuthTargetNotCanonical { request_target, .. } => {
+                write!(out, "the request target `{request_target}` is not in canonical form")
+            }
+            Problem::AuthSignatureSkewed { skew, server_time, window, .. } => {
+                write!(
+                    out,
+                    "the request's time is {skew} seconds from the server's ({server_time}), over the allowed {window}"
+                )
+            }
+            Problem::AuthSignatureRefused => {
+                write!(out, "the server did not accept the signature")
+            }
+            Problem::AuthKeyRevoked { since, .. } => {
+                write!(out, "this key was revoked on {since}")
+            }
+            Problem::AuthKeyExpired { since, .. } => {
+                write!(out, "this key expired on {since}")
+            }
+            Problem::AuthSignatureReplayed => {
+                write!(out, "a request with the same nonce was already seen")
+            }
+            Problem::AuthSignatureFlooded { window, .. } => {
+                write!(out, "this key sent more signed requests than the server remembers inside {window} seconds")
+            }
+            Problem::AuthDigestMismatch => {
+                write!(out, "the body is not the one that was signed")
+            }
+            Problem::AuthServerRestarting { seconds, .. } => {
+                write!(out, "the server just started and takes signed requests again in {seconds} seconds")
+            }
+            Problem::AuthRightMissing { right, scope, .. } => {
+                write!(out, "this key may not do this: it has no `{right}` on the {scope}")
+            }
+            Problem::AuthEnrolmentExpired => {
+                write!(out, "that code is unknown or has expired")
+            }
+            Problem::AuthEnrolmentDenied => write!(out, "the request was not approved"),
+            Problem::AuthEnrolmentLimited { seconds, .. } => {
+                write!(out, "enrolment is closed for {seconds} seconds after too many requests")
+            }
+            Problem::AuthEnrolmentLifetime { asked, limit, .. } => {
+                write!(out, "a key of {asked} days is over this server's ceiling of {limit} days")
+            }
+            Problem::AuthEnrolmentSite => {
+                write!(out, "a deploy key is for one site of the account that approves it, and this is not one")
+            }
+            Problem::AuthEnrolmentRights => {
+                write!(out, "a key cannot have more rights than the person who approves it")
+            }
+            Problem::AuthEnrolmentMismatch => {
+                write!(out, "the fingerprint is not the one of the request")
+            }
+            Problem::AuthEnrolmentTaken => {
+                write!(out, "that key is already enrolled or waiting for approval")
+            }
+            Problem::AuthKeyOperator => {
+                write!(out, "that key is a line of the operator-keys file, which the API does not change")
+            }
+            Problem::AuthKeyPrintRefused => {
+                write!(out, "the private key would be printed to a terminal")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -407,6 +471,9 @@ impl Message<'_> {
             Announcement::CacheEntryEvicted { count, limit, .. } => {
                 write!(out, "{count} cache entries used longest ago were removed, keeping the cache under {limit}")
             }
+            Announcement::AuthTokenRetired { token_file, .. } => {
+                write!(out, "the owner token in {token_file} no longer works")
+            }
         }
     }
 }
@@ -479,6 +546,27 @@ impl Fix<'_> {
             Problem::EmbedAnchorMissing { .. } => true,
             Problem::EmbedBudgetCount { .. } => true,
             Problem::VaultSettingsInvalid { .. } => true,
+            Problem::AuthSignatureMalformed { .. } => true,
+            Problem::AuthTargetNotCanonical { .. } => true,
+            Problem::AuthSignatureSkewed { .. } => true,
+            Problem::AuthSignatureRefused => true,
+            Problem::AuthKeyRevoked { .. } => true,
+            Problem::AuthKeyExpired { .. } => true,
+            Problem::AuthSignatureReplayed => true,
+            Problem::AuthSignatureFlooded { .. } => true,
+            Problem::AuthDigestMismatch => true,
+            Problem::AuthServerRestarting { .. } => true,
+            Problem::AuthRightMissing { .. } => true,
+            Problem::AuthEnrolmentExpired => true,
+            Problem::AuthEnrolmentDenied => true,
+            Problem::AuthEnrolmentLimited { .. } => true,
+            Problem::AuthEnrolmentLifetime { .. } => true,
+            Problem::AuthEnrolmentSite => true,
+            Problem::AuthEnrolmentRights => true,
+            Problem::AuthEnrolmentMismatch => true,
+            Problem::AuthEnrolmentTaken => true,
+            Problem::AuthKeyOperator => true,
+            Problem::AuthKeyPrintRefused => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -531,6 +619,7 @@ impl Fix<'_> {
             Announcement::CacheEntryCorrupt { .. } => false,
             Announcement::CacheEntryUnwritten { .. } => false,
             Announcement::CacheEntryEvicted { .. } => false,
+            Announcement::AuthTokenRetired { .. } => true,
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.
@@ -720,6 +809,70 @@ impl Fix<'_> {
                     "fix the file, or let Obsidian write it again; until then attachments resolve as if no attachment folder were set"
                 )
             }
+            Problem::AuthSignatureMalformed { .. } => {
+                write!(out, "update `ink`; a script that signs its own requests follows the profile in docs/auth.md")
+            }
+            Problem::AuthTargetNotCanonical { .. } => {
+                write!(out, "escape with upper-case hex, sort the query, drop empty pairs; `ink` does this itself")
+            }
+            Problem::AuthSignatureSkewed { .. } => {
+                write!(out, "set this machine's clock, for example `timedatectl set-ntp true`")
+            }
+            Problem::AuthSignatureRefused => {
+                write!(out, "run `ink login` to sign in again on this machine")
+            }
+            Problem::AuthKeyRevoked { .. } => {
+                write!(out, "run `ink login`; for CI, make a new key with `ink key add`")
+            }
+            Problem::AuthKeyExpired { .. } => {
+                write!(out, "run `ink login`; for CI, make a new key with `ink key add`")
+            }
+            Problem::AuthSignatureReplayed => {
+                write!(out, "send a new request; a client that reuses a nonce has a bug")
+            }
+            Problem::AuthSignatureFlooded { .. } => {
+                write!(out, "slow down, and try again in a few seconds")
+            }
+            Problem::AuthDigestMismatch => {
+                write!(out, "send it again; a proxy that changes bodies must not sit between")
+            }
+            Problem::AuthServerRestarting { .. } => {
+                write!(out, "wait; `ink` retries once")
+            }
+            Problem::AuthRightMissing { .. } => {
+                write!(out, "use a key with the right, or approve one with `ink key add`")
+            }
+            Problem::AuthEnrolmentExpired => write!(out, "run `ink login` again"),
+            Problem::AuthEnrolmentDenied => {
+                write!(out, "run `ink login` again if it was a mistake")
+            }
+            Problem::AuthEnrolmentLimited { .. } => {
+                write!(out, "wait, then run `ink login` again")
+            }
+            Problem::AuthEnrolmentLifetime { limit, .. } => {
+                write!(out, "ask for {limit} days or fewer with `--expires`")
+            }
+            Problem::AuthEnrolmentSite => {
+                write!(out, "name a site of this account with `--site`")
+            }
+            Problem::AuthEnrolmentRights => {
+                write!(out, "ask for fewer rights with `--right`")
+            }
+            Problem::AuthEnrolmentMismatch => {
+                write!(
+                    out,
+                    "compare the fingerprint with the terminal that ran `ink login`, and approve only if they match"
+                )
+            }
+            Problem::AuthEnrolmentTaken => {
+                write!(out, "use the key you have, or run `ink logout` and `ink login` for a new one")
+            }
+            Problem::AuthKeyOperator => {
+                write!(out, "delete its line from `<data>/operator-keys`")
+            }
+            Problem::AuthKeyPrintRefused => {
+                write!(out, "send it to a file with `--out`, or redirect stdout")
+            }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")
             }
@@ -819,6 +972,9 @@ impl Fix<'_> {
             Announcement::CacheEntryCorrupt { .. } => Ok(()),
             Announcement::CacheEntryUnwritten { .. } => Ok(()),
             Announcement::CacheEntryEvicted { .. } => Ok(()),
+            Announcement::AuthTokenRetired { .. } => {
+                write!(out, "sign in with `ink login --data <folder>`, and delete the file")
+            }
         }
     }
 }
