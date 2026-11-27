@@ -72,6 +72,13 @@ impl Key {
     }
 }
 
+impl From<Key> for engine::cache::Key {
+    /// The key a cache keeps the work under.
+    fn from(Key(digest): Key) -> Self {
+        Self::new(engine::cache::Kind::Image, digest)
+    }
+}
+
 impl fmt::Display for Key {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, out)

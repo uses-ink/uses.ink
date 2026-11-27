@@ -152,3 +152,80 @@ fn the_ladder_never_grows_an_image() {
     assert_eq!(settings.ladder(500), [500]);
     assert_eq!(settings.ladder(300), [300]);
 }
+
+/// Every fixture at once, as one build asks.
+fn all(pixels: &Pixels) -> Vec<Result<Prepared, Refused>> {
+    let names = ["animated.gif", "bomb.png", "clear.png", "cmyk.jpg", "gradient.jpg", "orientation.jpg"];
+    let held: Vec<(ContentPath, Vec<u8>)> = names.iter().map(|name| (path(name), bytes(name))).collect();
+    let sources: Vec<Source<'_>> = held
+        .iter()
+        .map(|(file, bytes)| Source::new(file, MediaType::try_from(file).unwrap(), Hash::of(bytes), bytes))
+        .collect();
+    pixels.prepare(&sources)
+}
+
+/// What a result says, refusals by their reason's wording.
+fn said(results: &[Result<Prepared, Refused>]) -> Vec<String> {
+    results
+        .iter()
+        .map(|result| format!("{:?}", result.as_ref().map_err(|refused| refused.reason.to_string())))
+        .collect()
+}
+
+#[test]
+fn the_bytes_do_not_follow_the_number_of_threads_image() {
+    let one = said(&all(&Pixels::default().with_workers(std::num::NonZeroUsize::MIN)));
+    for workers in [2, 3, 8] {
+        let pixels = Pixels::default().with_workers(std::num::NonZeroUsize::new(workers).unwrap());
+        assert_eq!(said(&all(&pixels)), one, "{workers} threads");
+    }
+}
+
+/// A cache in memory, counting what it is asked.
+#[derive(Debug, Default)]
+struct Shelf {
+    kept: std::sync::Mutex<std::collections::BTreeMap<engine::cache::Key, Vec<Vec<u8>>>>,
+    rejected: std::sync::Mutex<Vec<engine::cache::Key>>,
+}
+
+impl engine::Cache for Shelf {
+    fn get(&self, key: &engine::cache::Key) -> Option<Vec<Vec<u8>>> {
+        self.kept.lock().unwrap().get(key).cloned()
+    }
+
+    fn put(&self, key: &engine::cache::Key, values: &[&[u8]]) {
+        self.kept.lock().unwrap().insert(*key, values.iter().map(|value| value.to_vec()).collect());
+    }
+
+    fn reject(&self, key: &engine::cache::Key) {
+        self.kept.lock().unwrap().remove(key);
+        self.rejected.lock().unwrap().push(*key);
+    }
+}
+
+#[test]
+fn a_cache_gives_the_same_bytes_as_making_them_image() {
+    let uncached = said(&all(&Pixels::default()));
+    let shelf = std::sync::Arc::new(Shelf::default());
+    let cold = said(&all(&Pixels::cached(Settings::default(), shelf.clone())));
+    // the varied and the kept images are kept; the refused bomb is not
+    assert_eq!(shelf.kept.lock().unwrap().len(), 5);
+    let warm = said(&all(&Pixels::cached(Settings::default(), shelf.clone())));
+    assert_eq!(cold, uncached);
+    assert_eq!(warm, uncached);
+    assert!(shelf.rejected.lock().unwrap().is_empty());
+}
+
+#[test]
+fn a_record_that_does_not_read_is_rejected_and_made_again_image() {
+    let shelf = std::sync::Arc::new(Shelf::default());
+    let made = said(&all(&Pixels::cached(Settings::default(), shelf.clone())));
+    for values in shelf.kept.lock().unwrap().values_mut() {
+        values[0].push(0);
+    }
+    let again = said(&all(&Pixels::cached(Settings::default(), shelf.clone())));
+    assert_eq!(again, made);
+    assert_eq!(shelf.rejected.lock().unwrap().len(), 5);
+    // made again and kept again
+    assert_eq!(shelf.kept.lock().unwrap().len(), 5);
+}

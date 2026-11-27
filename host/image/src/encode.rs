@@ -5,7 +5,7 @@
 //! count); jpeg-encoder runs without its SIMD feature; PNG has no clock in it.
 
 use engine::image::Encoded;
-use fast_image_resize::images::Image;
+use fast_image_resize::images::{Image, ImageRef};
 use fast_image_resize::{FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer};
 use image::codecs::png::{CompressionType, FilterType as PngFilter, PngEncoder};
 use image::{ExtendedColorType, ImageEncoder};
@@ -38,7 +38,7 @@ impl Pixels {
             Alpha::Opaque => PixelType::U8x3,
             Alpha::Transparent => PixelType::U8x4,
         };
-        let source = Image::from_vec_u8(self.width, self.height, self.bytes.clone(), kind).map_err(Reason::Buffer)?;
+        let source = ImageRef::new(self.width, self.height, &self.bytes, kind).map_err(Reason::Buffer)?;
         let mut target = Image::new(width, height, kind);
         let options = ResizeOptions::new().resize_alg(ResizeAlg::Convolution(FilterType::CatmullRom));
         Resizer::new().resize(&source, &mut target, &options).map_err(Reason::Resize)?;
