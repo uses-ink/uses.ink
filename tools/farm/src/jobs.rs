@@ -248,7 +248,7 @@ mod tests {
         let text = format!("{FILE}\n[workspace]\ndisposable = [\".ink\", \"node_modules\"]\n");
         let jobs = Jobs::parse(&text, PathBuf::new()).unwrap();
         assert_eq!(jobs.disposable().iter().map(Disposable::as_str).collect::<Vec<_>>(), [".ink", "node_modules"]);
-        assert!(Jobs::parse(FILE, PathBuf::new()).unwrap().disposable().is_empty());
+        assert_eq!(Jobs::parse(FILE, PathBuf::new()).unwrap().disposable(), &[] as &[Disposable]);
         for bad in [
             "disposable = [\"a/b\"]",
             "disposable = [\"..\"]",
