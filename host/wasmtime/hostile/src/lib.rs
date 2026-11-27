@@ -59,6 +59,7 @@ impl Hostile {
                 block: None,
             },
             heading: None,
+            inline_tags: Vec::new(),
             diagnostics: Vec::new(),
             notices: Vec::new(),
         }

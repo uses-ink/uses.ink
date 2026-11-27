@@ -1,7 +1,7 @@
-//! Tags in the text (`#tag`, `#a/b`), gathered while the body is read and joined to the
-//! frontmatter's.
+//! Tags in the text (`#tag`, `#a/b`), gathered while the body is read and given as the read's
+//! `inline_tags`, apart from the frontmatter's.
 
-use model::{Front, Span, Spanned, Tag};
+use model::{Read, Span, Spanned, Tag};
 
 /// The tags of one note's text, in the order written, each with where it is.
 #[derive(Debug, Default)]
@@ -40,15 +40,12 @@ impl Tags {
         }
     }
 
-    /// Adds the tags to `front`'s, after the frontmatter's and without one whose slug is already
-    /// there. With no tags in the frontmatter, the first tag in the text is where they are
-    /// written.
-    pub(crate) fn join(self, front: &mut Front) {
-        let Some(first) = self.0.first().map(|tag| tag.span) else { return };
-        let tags = front.tags.get_or_insert_with(|| Spanned::new(Vec::new(), first));
-        for Spanned { value, .. } in self.0 {
-            if !tags.value.iter().any(|tag| tag.slug == value.slug) {
-                tags.value.push(value);
+    /// Gives the tags, in the order written and each slug once, as `read`'s inline tags. The
+    /// frontmatter's are not touched.
+    pub(crate) fn into(self, read: &mut Read) {
+        for tag in self.0 {
+            if !read.inline_tags.iter().any(|held| held.value.slug == tag.value.slug) {
+                read.inline_tags.push(tag);
             }
         }
     }
@@ -56,16 +53,17 @@ impl Tags {
 
 #[cfg(test)]
 mod test {
-    use model::{Front, Span};
+    use model::{Document, Front, Read, Span};
 
     use super::Tags;
 
     fn tags(text: &str) -> Vec<String> {
         let mut tags = Tags::default();
         tags.scan(text, Span::new(10, 10 + text.len()).unwrap());
-        let mut front = Front::default();
-        tags.join(&mut front);
-        front.tags.map_or_else(Vec::new, |tags| tags.value.into_iter().map(|tag| tag.written).collect())
+        let mut read = Read::new(Document::default(), Front::default(), None);
+        tags.into(&mut read);
+        assert!(read.front.tags.is_none());
+        read.inline_tags.into_iter().map(|tag| tag.value.written).collect()
     }
 
     #[test]

@@ -70,6 +70,9 @@ pub struct Read {
     pub front: Front,
     /// The text of the first level-1 heading and where it is: a title when frontmatter has none.
     pub heading: Option<Spanned<String>>,
+    /// The tags written in the text (Obsidian's `#tag`), in the order written, each where it is.
+    /// The frontmatter's are in [`Front::tags`]; the engine joins the two.
+    pub inline_tags: Vec<Spanned<Tag>>,
     /// Every problem the format found, in the order found.
     pub diagnostics: Vec<Diagnostic>,
     /// Everything else the format has to say.
@@ -79,6 +82,6 @@ pub struct Read {
 impl Read {
     /// A file read without a problem or a notice.
     pub fn new(document: Document, front: Front, heading: Option<Spanned<String>>) -> Self {
-        Self { document, front, heading, diagnostics: Vec::new(), notices: Vec::new() }
+        Self { document, front, heading, inline_tags: Vec::new(), diagnostics: Vec::new(), notices: Vec::new() }
     }
 }

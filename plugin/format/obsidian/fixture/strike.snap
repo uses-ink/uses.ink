@@ -159,6 +159,7 @@ input_file: plugin/format/obsidian/fixture/strike.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

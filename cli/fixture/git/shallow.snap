@@ -7,6 +7,7 @@ the source
   lacks              history before commit f4db5af4f772 (shallow), so page.date of a file not changed since is a bound, not after 2024-01-03T00:00:00Z
   lacks              history before commit f4db5af4f772 (shallow), so page.updated of a file not changed since is a bound, not after 2024-01-03T00:00:00Z
 the site
+  site.format        `ink:format-markdown`    by default
   site.root          `notes/`                 because notes is there
   site.layout        flat                     by default
 notes/kettle.md

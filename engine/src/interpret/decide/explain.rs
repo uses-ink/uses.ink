@@ -2,8 +2,8 @@
 //! [`Word`], shared with config and `ink explain`.
 
 use model::code::{
-    Authors, Date, Description, Home, Ignored, Kind, Language, Layout, Nav, Publish, Root, SiteTitle, Slug, Summary,
-    Tags, Title, Updated,
+    Authors, Date, Description, Format, Home, Ignored, Kind, Language, Layout, Nav, Publish, Root, SiteTitle, Slug,
+    Summary, Tags, Title, Updated,
 };
 use model::decision::Decision;
 use model::{Announcement, DefaultReason, Evidence, Word, Worded};
@@ -78,5 +78,17 @@ impl Explain for Home {
     /// A generated home is always said.
     fn announce(_reason: DefaultReason, _value: &Option<model::ContentPath>) -> Option<Announcement> {
         Some(Announcement::SiteHomeGenerated)
+    }
+}
+
+impl Explain for Format {
+    /// A pin is said, and so is a vault's `.obsidian/`; the markdown format is the mundane
+    /// default.
+    fn notice(decision: &Decision<Self>) -> Option<Announcement> {
+        match decision.evidence {
+            Evidence::Config { .. } => Some(Announcement::FormatPinChosen { format: decision.value.to_string() }),
+            Evidence::Marker { .. } => Some(Announcement::FormatObsidianChosen),
+            _ => None,
+        }
     }
 }

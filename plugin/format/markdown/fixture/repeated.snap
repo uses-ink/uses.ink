@@ -147,6 +147,7 @@ input_file: plugin/format/markdown/fixture/repeated.md
       7
     ]
   },
+  "inline_tags": [],
   "diagnostics": [
     {
       "problem": {

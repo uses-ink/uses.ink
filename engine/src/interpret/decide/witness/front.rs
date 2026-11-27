@@ -1,10 +1,10 @@
-//! What a page says of itself: its frontmatter keys ([`Front`]), its `draft` key ([`Draft`]) and
-//! its first level-1 heading ([`Heading`]).
+//! What a page says of itself: its frontmatter keys ([`Front`]), what its text adds to them
+//! ([`Inline`]), its `draft` key ([`Draft`]) and its first level-1 heading ([`Heading`]).
 
 use std::marker::PhantomData;
 
 use model::code::{Code, Date, Kind, Language, Publish, Slug, Summary, Tags, Title, Updated};
-use model::{Evidence, Span};
+use model::{Evidence, Span, Spanned, Tag};
 
 use crate::interpret::decide::Sourced;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
@@ -63,6 +63,45 @@ fronted! {
     Language => language;
 }
 
+/// A code a page's text can add to what its frontmatter says: Obsidian's `#tag`.
+pub(crate) trait Inlined: Code {
+    /// The frontmatter's value with what the text adds to it, and where the first addition is
+    /// written; nothing when the text adds nothing.
+    fn inline(read: &model::Read) -> Option<(Self::Value, Span)>;
+}
+
+impl Inlined for Tags {
+    /// The frontmatter's tags, then the text's that are not among them, each slug once.
+    fn inline(read: &model::Read) -> Option<(Vec<Tag>, Span)> {
+        let mut tags = read.front.tags.as_ref().map_or_default(|written| written.value.clone());
+        let mut first = None;
+        for Spanned { value, span } in &read.inline_tags {
+            if !tags.iter().any(|tag| tag.slug == value.slug) {
+                tags.push(value.clone());
+                first.get_or_insert(*span);
+            }
+        }
+        first.map(|span| (tags, span))
+    }
+}
+
+/// What the page's text adds to its frontmatter: the two joined, since Obsidian shows both. It
+/// testifies only when the text adds something, so it stands before [`Front`]: a page whose
+/// text adds nothing is decided by its frontmatter, and the evidence is the text's whenever the
+/// value holds something only the text said.
+#[derive(Debug, Default)]
+pub(crate) struct Inline<C>(PhantomData<C>);
+
+impl<C: Inlined, G: Sourced + ?Sized> Witness<C, G> for Inline<C> {
+    fn testify(&self, case: &Case<'_, C, G>, testimony: &mut Testimony<C::Value>) {
+        let Some(source) = case.ground.source() else { return };
+        if let Some((value, span)) = C::inline(&source.read) {
+            let evidence = Evidence::Inline { path: source.path.clone(), span };
+            testimony.value(value, evidence);
+        }
+    }
+}
+
 /// `draft: true`, which means not published. It only ever testifies against publishing:
 /// `draft: false` says nothing, so it never selects a page of a vault or a private source
 /// (decision 0017), where only `publish: true` or `include` does.
@@ -94,6 +133,10 @@ impl<G: Sourced + ?Sized> Witness<Title, G> for Heading {
 
 impl<C> Named for Front<C> {
     const NAME: Witnessed = Witnessed::Front;
+}
+
+impl<C> Named for Inline<C> {
+    const NAME: Witnessed = Witnessed::Inline;
 }
 
 impl Named for Draft {

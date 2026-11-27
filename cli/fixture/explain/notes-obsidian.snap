@@ -1,0 +1,42 @@
+---
+source: fixture/src/lib.rs
+---
+the source
+  version            the files on disk
+  has                snapshot
+  lacks              history, so page.date is not taken from it
+the site
+  site.format        `ink:format-obsidian`    pinned in ink.toml, bytes 7..37
+  site.root          the top of the snapshot  by default
+  site.layout        flat                     by default
+index.md
+  file.ignore        kept                     by default
+ink.toml
+  file.ignore        ignored                  from the name of ink.toml
+other.md
+  file.ignore        kept                     by default
+index.md
+  page.publish       published                by default
+  page.kind          a page                   by default
+  page.title         “Index”                  from the name of index.md
+  page.date          undated                  by default
+  page.updated       never updated            by default
+  page.slug          `index`                  from the name of index.md
+  page.tags          todo                     from the inline text of index.md, bytes 95..100
+  page.summary       “A folder with no .obsidian/ whose pin says Obsidian: other links and #todo is a tag.” from the text of index.md
+other.md
+  page.publish       published                by default
+  page.kind          a page                   by default
+  page.title         “Other”                  from the name of other.md
+  page.date          undated                  by default
+  page.updated       never updated            by default
+  page.slug          `other`                  from the name of other.md
+  page.tags          no tags                  by default
+  page.summary       “The linked note.”       from the text of other.md
+the site
+  site.home          index.md                 from the name of index.md
+  site.title         “Index”                  from the name of index.md
+  site.description   “A folder with no .obsidian/ whose pin says Obsidian: other links and #todo is a tag.” from the text of index.md
+  site.authors       no one                   by default
+  site.language      `en`                     by default
+  site.nav           other.md                 by default

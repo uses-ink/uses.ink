@@ -235,9 +235,24 @@ impl Patterns for Pinned {
 /// A stand-in format for `.md` files: `key: value` lines between `---` lines, `# heading`,
 /// `[text](target)` and `![alt](target)` lines, `![[target]]` lines as embeds, `^id` lines as
 /// block ids, `~ text ![[target]] text` as a paragraph with an embed among its text, `#~ text
-/// ![[target]]` as a heading with one, and paragraphs of anything else.
+/// ![[target]]` as a heading with one, `#t a, b` as tags written in the text, and paragraphs of anything else.
 #[derive(Debug)]
 pub struct Lines;
+
+impl Lines {
+    /// The tags of the `#t a, b` lines, each at its line.
+    fn inline_tags(text: &str) -> Vec<Spanned<Tag>> {
+        let mut at = 0;
+        let mut found = Vec::new();
+        for line in text.split_inclusive('\n') {
+            let span = Span::new(at, at + line.len()).unwrap();
+            at += line.len();
+            let tags = line.trim_end().strip_prefix("#t ").into_iter().flat_map(|tags| tags.split(", "));
+            found.extend(tags.map(|tag| Spanned::new(Tag::new(tag).unwrap(), span)));
+        }
+        found
+    }
+}
 
 impl Format for Lines {
     fn handles(&self, path: &ContentPath) -> bool {
@@ -248,10 +263,8 @@ impl Format for Lines {
         let text = std::str::from_utf8(bytes).unwrap();
         let mut front = Front::default();
         let mut heading = None;
-        let mut blocks = Vec::new();
-        let mut problems = Vec::new();
-        let mut in_front = false;
-        let mut at = 0;
+        let (mut blocks, mut problems) = (Vec::new(), Vec::new());
+        let (mut in_front, mut at) = (false, 0);
         for line in text.split_inclusive('\n') {
             let span = Span::new(at, at + line.len()).unwrap();
             at += line.len();
@@ -283,6 +296,7 @@ impl Format for Lines {
             }
         }
         let mut read = Read::new(Document::new(blocks), front, heading);
+        read.inline_tags = Self::inline_tags(text);
         read.diagnostics = problems.into_iter().map(Diagnostic::new).collect();
         read
     }

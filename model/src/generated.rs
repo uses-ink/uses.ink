@@ -853,6 +853,12 @@ pub enum Announcement {
     /// `format.obsidian.chosen`: the folder holds `.obsidian/`, so its markdown is read as Obsidian's
     #[serde(rename = "format.obsidian.chosen")]
     FormatObsidianChosen,
+    /// `format.pin.chosen`: `ink.toml` pins `site.format` to `{format}`, so the markdown is read with it
+    #[serde(rename = "format.pin.chosen")]
+    FormatPinChosen {
+        /// The format plugin's id.
+        format: String,
+    },
     /// `site.home.generated`: no home page was found, so the home page lists every page
     #[serde(rename = "site.home.generated")]
     SiteHomeGenerated,
@@ -1014,6 +1020,7 @@ impl Announcement {
         "embed.footnote.dropped",
         "link.target.attached",
         "format.obsidian.chosen",
+        "format.pin.chosen",
         "site.home.generated",
         "fact.date.bound",
         "feed.post.undated",
@@ -1054,6 +1061,7 @@ impl Announcement {
             Self::EmbedFootnoteDropped { .. } => "embed.footnote.dropped",
             Self::LinkTargetAttached { .. } => "link.target.attached",
             Self::FormatObsidianChosen => "format.obsidian.chosen",
+            Self::FormatPinChosen { .. } => "format.pin.chosen",
             Self::SiteHomeGenerated => "site.home.generated",
             Self::FactDateBound { .. } => "fact.date.bound",
             Self::FeedPostUndated => "feed.post.undated",
@@ -1413,6 +1421,9 @@ impl From<&Announcement> for Coded {
                 vec![Field::from(written.clone()), Field::from(target.clone()), Field::from(candidates.clone())],
             ),
             Announcement::FormatObsidianChosen => Coded::new("format.obsidian.chosen", vec![]),
+            Announcement::FormatPinChosen { format, .. } => {
+                Coded::new("format.pin.chosen", vec![Field::from(format.clone())])
+            }
             Announcement::SiteHomeGenerated => Coded::new("site.home.generated", vec![]),
             Announcement::FactDateBound { decision, bound, .. } => {
                 Coded::new("fact.date.bound", vec![Field::from(*decision), Field::from(bound.clone())])
@@ -1502,6 +1513,7 @@ impl TryFrom<Coded> for Announcement {
                 Self::LinkTargetAttached { written: fields.next()?, target: fields.next()?, candidates: fields.next()? }
             }
             "format.obsidian.chosen" => Self::FormatObsidianChosen,
+            "format.pin.chosen" => Self::FormatPinChosen { format: fields.next()? },
             "site.home.generated" => Self::SiteHomeGenerated,
             "fact.date.bound" => Self::FactDateBound { decision: fields.next()?, bound: fields.next()? },
             "feed.post.undated" => Self::FeedPostUndated,

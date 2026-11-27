@@ -20,18 +20,7 @@ input_file: plugin/format/obsidian/fixture/tags-only.md
     "date": null,
     "updated": null,
     "slug": null,
-    "tags": {
-      "value": [
-        {
-          "slug": "inline",
-          "written": "inline"
-        }
-      ],
-      "span": [
-        30,
-        37
-      ]
-    },
+    "tags": null,
     "publish": null,
     "draft": null,
     "kind": null,
@@ -52,6 +41,18 @@ input_file: plugin/format/obsidian/fixture/tags-only.md
     ]
   },
   "heading": null,
+  "inline_tags": [
+    {
+      "value": {
+        "slug": "inline",
+        "written": "inline"
+      },
+      "span": [
+        30,
+        37
+      ]
+    }
+  ],
   "diagnostics": [],
   "notices": []
 }

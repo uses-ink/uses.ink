@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use config::{Config, Parsed};
-use engine::{BaseUrl, Blobs, Engine, Formats, NoPins, RenderSettings, Theme, Understood};
+use engine::{BaseUrl, Blobs, Chosen, Engine, Formats, NoPins, RenderSettings, Theme, Understood};
 use host_image::Pixels;
 use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
 use model::record::{Build, Inputs};
@@ -101,19 +101,8 @@ impl<'a> Source<'a> {
         Ok((read, notices))
     }
 
-    /// The source interpreted through the native format the folder calls for.
-    pub(crate) fn load(self) -> Result<Loaded, Error> {
-        self.interpret(|native| (native,))
-    }
-
-    /// The source interpreted through the formats `formats` gives for the native format the
-    /// folder calls for.
-    pub(crate) fn interpret<F: Formats>(self, formats: impl FnOnce(Native) -> F) -> Result<Loaded, Error> {
-        let mut store = Memory::default();
-        let (read, mut said) = self.read(&mut store)?;
-        let snapshot = read.snapshot;
-        let native = Native::from(&snapshot);
-        said.extend(native.notice());
+    /// `ink.toml` of the snapshot, parsed; its problems are about the file.
+    fn parse(snapshot: &Snapshot, store: &Memory) -> Parsed {
         let mut parsed = Parsed::default();
         let config_path: Option<ContentPath> = CONFIG.parse().ok();
         let entry = config_path.as_ref().and_then(|path| snapshot.entry(path).map(|entry| (path, entry.blob)));
@@ -136,12 +125,31 @@ impl<'a> Source<'a> {
                 }
             }
         }
-        let Parsed { config, diagnostics } = parsed;
-        let engine = Engine::new(&store, Configured(&config), formats(native), ());
+        parsed
+    }
+
+    /// The source interpreted through the native format the folder calls for.
+    pub(crate) fn load(self) -> Result<Loaded, Error> {
+        self.interpret(|native| (native,))
+    }
+
+    /// The source interpreted through the formats `formats` gives for the native format the
+    /// folder calls for.
+    pub(crate) fn interpret<F: Formats>(self, formats: impl FnOnce(Native) -> F) -> Result<Loaded, Error> {
+        let mut store = Memory::default();
+        let (read, said) = self.read(&mut store)?;
+        let snapshot = read.snapshot;
+        let Parsed { config, diagnostics } = Self::parse(&snapshot, &store);
+        let pins = Configured(&config);
+        let asked = self.asked.as_ref().map(|Asked { code, subject }| (*code, subject.clone()));
+        let chosen = Chosen::new(&snapshot, &pins, asked);
+        let native = Native::try_from(chosen.format())?;
+        let engine = Engine::new(&store, pins, formats(native), ());
         let mut understood = match self.asked {
             Some(Asked { code, subject }) => engine.trace(&snapshot, code, subject),
             None => engine.interpret(&snapshot),
-        };
+        }
+        .with(chosen);
         let stops = diagnostics.iter().any(|d| d.severity() == model::Severity::Error);
         understood.diagnostics.splice(0..0, diagnostics);
         if stops {

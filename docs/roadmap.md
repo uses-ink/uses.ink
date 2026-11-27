@@ -122,8 +122,10 @@ engine, with cycles refused), Obsidian's callouts with folding, block ids, `%%` 
 and frontmatter tags and `aliases`; links resolve by name in any case, by alias and by partial
 path, and the attachment folder of `.obsidian/app.json` settles a shared name. `ink` reads a
 folder holding `.obsidian/` as a vault through it; `cli/fixture/site/vault` builds the same both
-ways. Left: inline tags as their own evidence (waits on 0042), `.obsidian/templates.json`, a
-note's file name as its title, and `![[Note]]` inside a line.
+ways. Inline tags are their own evidence (`Evidence::Inline`, joined with the frontmatter's by
+the `page.tags` ladder), and `site.format` pins the format (`ink pin site.format`, `[site]
+format = "ink:format-obsidian"`), with the pin, the `.obsidian/` marker and the default each
+replayable by `ink explain --why site.format`.
 
 Progress (2026-11-27): the git source's native core is `host_native::Repository` (0036, as
 built): a local repository at a commit, dates from one history walk, shallow bounds and moves

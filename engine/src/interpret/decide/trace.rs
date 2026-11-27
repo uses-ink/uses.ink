@@ -73,6 +73,8 @@ pub enum Witnessed {
     Pin,
     /// The page's frontmatter key for the code.
     Front,
+    /// What the page's text adds to its frontmatter: its inline tags.
+    Inline,
     /// The page's `draft` key.
     Draft,
     /// The page's first level-1 heading.
@@ -158,6 +160,7 @@ impl fmt::Display for Witnessed {
         match self {
             Self::Pin => out.write_str("ink.toml"),
             Self::Front => out.write_str("front matter"),
+            Self::Inline => out.write_str("tags in the text"),
             Self::Draft => out.write_str("draft key"),
             Self::Heading => out.write_str("first heading"),
             Self::Body => out.write_str("first paragraph"),

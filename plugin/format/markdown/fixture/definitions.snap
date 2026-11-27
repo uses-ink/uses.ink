@@ -117,6 +117,7 @@ input_file: plugin/format/markdown/fixture/definitions.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

@@ -113,6 +113,7 @@ code implements:
 |---|---|---|
 | `Pin<C>` | the `ink.toml` value, evidence `Config { span }` | |
 | `Front<C>` | the frontmatter field of `C` | `Fronted` |
+| `Inline<C>` | what the page's text adds to the frontmatter's value of `C` (inline tags), evidence `Inline { path, span }`; says nothing when it adds nothing | `Inlined` |
 | `Draft` | `draft: true` as not published; `draft: false` says nothing | |
 | `Heading` | the first level-1 heading | |
 | `Body` | the first paragraph, cut near a sentence end (a `Visit`) | |
@@ -124,6 +125,11 @@ code implements:
 | `Implied<D, W>` | what witness `W` says of code `D` on the same subject | `Follows<D>` |
 | `Otherwise<W>` | what `W` says, only when nothing before it said a value | |
 | `Fallback<C>` | the default, evidence `Default { reason }` | `Assumed<G>` |
+
+A code decided before the engine runs, `site.format`, is decided by the host through
+`engine::Chosen::new(snapshot, pins, asked)`, which runs the one ladder (`Pin`, `Folder<Obsidian>`,
+`Fallback`) on the snapshot and names the format plugin; the host builds `Engine` over that
+format and joins the decision with `understood.with(chosen)`.
 
 A decision's precedence is a type alias, one per code, in `engine::interpret::decide::precedence`:
 

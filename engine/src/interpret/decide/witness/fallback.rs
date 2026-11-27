@@ -5,8 +5,8 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use model::code::{
-    Authors, Date, Description, Home, Ignored, Kind, Language, Layout, Nav, Publish, Root, SiteTitle, Slug, Summary,
-    Tags, Title, Updated,
+    Authors, Date, Description, Format, Home, Ignored, Kind, Language, Layout, Nav, Publish, Root, SiteTitle, Slug,
+    Summary, Tags, Title, Updated,
 };
 use model::decision::File;
 use model::{DefaultReason, Evidence, PageId, PageKind};
@@ -65,6 +65,7 @@ macro_rules! constant {
 }
 
 constant! {
+    Format => model::record::PluginId::markdown();
     Root => model::Root::Top;
     Layout => model::Layout::Flat;
     Ignored => false;

@@ -39,6 +39,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-false.md
     ]
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [
     {
       "problem": {

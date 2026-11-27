@@ -1,0 +1,3 @@
+# Other
+
+The linked note.

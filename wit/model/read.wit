@@ -29,6 +29,8 @@ interface read {
         front: front,
         /// The first level-1 heading's text and where it is.
         heading: option<tuple<string, span>>,
+        /// The tags written in the text, in the order written, each where it is.
+        inline-tags: list<tuple<tag, span>>,
         diagnostics: list<diagnostic>,
         notices: list<notice>,
     }

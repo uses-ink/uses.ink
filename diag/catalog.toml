@@ -28,6 +28,7 @@ entry = "The cache entry, as its kind and digest: `image/<hash>`."
 expected = "What the key takes, worded for a person."
 file = "The file that also routes there."
 folder = "The folder on disk, as the system names it."
+format = "The format plugin's id."
 files = "Every file involved, in path order."
 given = "The name as the author wrote it."
 header = "The header's name."
@@ -513,6 +514,11 @@ fix = "write the path of the one you mean"
 
 [notice."format.obsidian.chosen"]
 message = "the folder holds `.obsidian/`, so its markdown is read as Obsidian's"
+
+[notice."format.pin.chosen"]
+fields = { format = "text" }
+message = "`ink.toml` pins `site.format` to `{format}`, so the markdown is read with it"
+fix = "remove the pin to read the folder's markdown by what it holds"
 
 [notice."site.home.generated"]
 message = "no home page was found, so the home page lists every page"

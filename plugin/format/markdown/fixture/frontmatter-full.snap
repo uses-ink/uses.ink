@@ -115,6 +115,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-full.md
       244
     ]
   },
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

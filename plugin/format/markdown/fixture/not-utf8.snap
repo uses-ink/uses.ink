@@ -22,6 +22,7 @@ input_file: plugin/format/markdown/fixture/not-utf8.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [
     {
       "problem": {

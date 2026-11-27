@@ -23,6 +23,8 @@ pub(crate) enum Shape<'a> {
     Slug,
     /// A language tag.
     Language,
+    /// The id of a format plugin.
+    Format,
     /// A tag: a string with a letter or digit.
     Tag,
     /// An author's name.
@@ -87,6 +89,7 @@ impl fmt::Display for Shape<'_> {
             Self::Language => out.write_str(
                 "a language tag: two or three letters, then `-` and subtags of one to eight letters or digits, such as \"fr-CH\"",
             ),
+            Self::Format => out.write_str("a format plugin id, such as \"ink:format-obsidian\""),
             Self::Tag => out.write_str("a string with a letter or digit"),
             Self::Author => out.write_str("a name with a character that is not a space, such as \"Ann\""),
             Self::Path => out.write_str("the path of a file"),

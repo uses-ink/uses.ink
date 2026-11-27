@@ -64,6 +64,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-tags-comma.md
     ]
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

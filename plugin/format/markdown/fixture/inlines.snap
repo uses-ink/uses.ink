@@ -92,6 +92,7 @@ input_file: plugin/format/markdown/fixture/inlines.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

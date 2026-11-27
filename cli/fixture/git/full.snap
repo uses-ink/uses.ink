@@ -6,6 +6,7 @@ the source
   has                snapshot, history
   lacks              renames, so page.date of a file that moved (1 here) is when it moved
 the site
+  site.format        `ink:format-markdown`    by default
   site.root          `notes/`                 because notes is there
   site.layout        flat                     by default
 notes/kettle.md

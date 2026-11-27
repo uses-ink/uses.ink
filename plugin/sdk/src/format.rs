@@ -78,6 +78,7 @@ impl<F: Format> Served<F> {
                 block: None,
             },
             heading: None,
+            inline_tags: Vec::new(),
             diagnostics: vec![Host::carried(diagnostic)],
             notices: Vec::new(),
         }

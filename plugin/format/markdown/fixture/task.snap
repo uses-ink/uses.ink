@@ -111,6 +111,7 @@ input_file: plugin/format/markdown/fixture/task.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

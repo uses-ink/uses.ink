@@ -45,6 +45,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-summary.md
     ]
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

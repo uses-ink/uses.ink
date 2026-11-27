@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use jiff::civil;
 use model::code::Code;
 use model::decision::{self, File, Site};
+use model::record::PluginId;
 use model::{
     AnyCode, AnyDecision, Author, ContentPath, DefaultReason, Each, Evidence, Language, Layout, PageKind, Problem,
     Root, Slug, Subject, Tag, Timestamp, When,
@@ -159,6 +160,17 @@ impl Arbitrary for Language {
 
     fn sample() -> Self {
         "fr-CH".parse().unwrap()
+    }
+}
+
+impl Arbitrary for PluginId {
+    /// A scope and a name of a format, in kebab-case.
+    fn any() -> BoxedStrategy<Self> {
+        "[a-z0-9]{1,4}(-[a-z0-9]{1,4}){0,1}:format(-[a-z0-9]{1,4}){1,2}".prop_map(|id| id.parse().unwrap()).boxed()
+    }
+
+    fn sample() -> Self {
+        Self::obsidian()
     }
 }
 

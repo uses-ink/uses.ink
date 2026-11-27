@@ -65,14 +65,6 @@ input_file: plugin/format/obsidian/fixture/tags.md
         {
           "slug": "notes",
           "written": "notes"
-        },
-        {
-          "slug": "wasm-components",
-          "written": "wasm/components"
-        },
-        {
-          "slug": "heading-tag",
-          "written": "heading-tag"
         }
       ],
       "span": [
@@ -101,6 +93,38 @@ input_file: plugin/format/obsidian/fixture/tags.md
     ]
   },
   "heading": null,
+  "inline_tags": [
+    {
+      "value": {
+        "slug": "rust",
+        "written": "rust"
+      },
+      "span": [
+        73,
+        78
+      ]
+    },
+    {
+      "value": {
+        "slug": "wasm-components",
+        "written": "wasm/components"
+      },
+      "span": [
+        83,
+        99
+      ]
+    },
+    {
+      "value": {
+        "slug": "heading-tag",
+        "written": "heading-tag"
+      },
+      "span": [
+        183,
+        195
+      ]
+    }
+  ],
   "diagnostics": [],
   "notices": []
 }

@@ -29,8 +29,9 @@
 //!   `block.id.taken`.
 //! - **Comments**: `%%text%%` and `%%` blocks are removed, as HTML comments are.
 //! - **Tags**: `#tag` and nested `#a/b` in the text, after a space or at the start of a run of
-//!   text and holding something other than digits, join the frontmatter's `tags` in the order
-//!   written, each once by its slug; they stay in the text as written.
+//!   text and holding something other than digits, are the read's `inline_tags` in the order
+//!   written, each with where it is; they stay in the text as written, and the frontmatter's
+//!   `tags` stay the frontmatter's. The engine joins the two.
 //! - **Aliases**: frontmatter `aliases` (or `alias`), a list or one name, are the other names a
 //!   link may use for the note; the engine resolves `[[Alias]]` through them.
 //!
@@ -90,6 +91,6 @@ impl Dialect for Obsidian {
     }
 
     fn finish(self, read: &mut Read) {
-        self.tags.join(&mut read.front);
+        self.tags.into(read);
     }
 }

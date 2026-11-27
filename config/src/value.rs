@@ -5,6 +5,7 @@
 
 mod shape;
 
+use model::record::PluginId;
 use model::{Author, ContentPath, Language, Layout, PageKind, Root, Slug, Tag, Value, When};
 
 pub(crate) use shape::{Cause, Expected, Shape};
@@ -173,6 +174,20 @@ impl Toml for Root {
             Self::Folder(path) => path.write(),
             _ => Err(Unwritable::Unknown),
         }
+    }
+}
+
+impl Toml for PluginId {
+    const SHAPE: Shape<'static> = Shape::Format;
+
+    /// A plugin id that names a format: `ink:format-obsidian`.
+    fn read(node: Node<'_>) -> Result<Self, Refused> {
+        let id: Self = node.text()?.parse().map_err(|_| node.refused())?;
+        if id.is_format() { Ok(id) } else { Err(node.refused()) }
+    }
+
+    fn write(&self) -> Result<Written, Unwritable> {
+        Ok(self.to_string().as_str().into())
     }
 }
 

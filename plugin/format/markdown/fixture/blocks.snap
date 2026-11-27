@@ -392,6 +392,7 @@ input_file: plugin/format/markdown/fixture/blocks.md
       23
     ]
   },
+  "inline_tags": [],
   "diagnostics": [],
   "notices": [
     {

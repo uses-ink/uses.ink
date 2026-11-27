@@ -87,6 +87,7 @@ fn evidence_says_who_said_the_value() {
     assert_eq!(pinned().basis(), Basis::Stated);
     assert_eq!(Evidence::Frontmatter { path: path("a.md"), span: at }.basis(), Basis::Stated);
     assert_eq!(Evidence::Heading { path: path("a.md"), span: at }.basis(), Basis::Inferred);
+    assert_eq!(Evidence::Inline { path: path("a.md"), span: at }.basis(), Basis::Inferred);
     assert_eq!(Evidence::Marker { path: path("posts") }.basis(), Basis::Inferred);
     assert_eq!(Evidence::Default { reason: DefaultReason::NotSelected }.basis(), Basis::Assumed);
 }

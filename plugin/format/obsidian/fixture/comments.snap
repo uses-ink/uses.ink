@@ -37,6 +37,7 @@ input_file: plugin/format/obsidian/fixture/comments.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

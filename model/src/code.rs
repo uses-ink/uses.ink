@@ -362,6 +362,8 @@ macro_rules! codes {
 }
 
 codes! {
+    /// `site.format`: the format plugin the site's markdown is read with.
+    Format => "site.format" on Site: crate::record::PluginId;
     /// `site.root`: where the site's content starts in the snapshot.
     Root => "site.root" on Site: crate::Root;
     /// `site.layout`: how the site's files are arranged.

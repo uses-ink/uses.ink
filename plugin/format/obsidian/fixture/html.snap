@@ -46,6 +46,7 @@ input_file: plugin/format/obsidian/fixture/html.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [
     {
       "problem": {

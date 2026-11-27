@@ -4,8 +4,9 @@
 
 use std::marker::PhantomData;
 
-use model::code::{Code, Ignored, Kind, Layout, Publish, Root, SiteTitle};
-use model::{ContentPath, Evidence, PageKind};
+use model::code::{Code, Format, Ignored, Kind, Layout, Publish, Root, SiteTitle};
+use model::record::PluginId;
+use model::{ContentPath, Evidence, PageKind, Snapshot};
 
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
@@ -159,6 +160,16 @@ impl Witness<Layout, Scope<'_>> for Folder<Obsidian> {
         let found = scope.inside.iter().find(|file| file.relative.segments().next() == Some(Self::NAME));
         if let Some(folder) = found.and_then(|_| ContentPath::parse(Self::NAME).ok()) {
             testimony.value(model::Layout::Vault, Evidence::Marker { path: scope.absolute(&folder) });
+        }
+    }
+}
+
+impl Witness<Format, Snapshot> for Folder<Obsidian> {
+    /// A folder holding `.obsidian/` at its top is a vault, as `.git` makes it a repository.
+    fn testify(&self, case: &Case<'_, Format, Snapshot>, testimony: &mut Testimony<PluginId>) {
+        let vault = case.ground.tree().iter().any(|entry| entry.path.segments().next() == Some(Self::NAME));
+        if let Some(folder) = ContentPath::parse(Self::NAME).ok().filter(|_| vault) {
+            testimony.value(PluginId::obsidian(), Evidence::Marker { path: folder });
         }
     }
 }

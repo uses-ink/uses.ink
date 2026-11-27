@@ -68,6 +68,7 @@ input_file: plugin/format/markdown/fixture/bom-crlf.md
       72
     ]
   },
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

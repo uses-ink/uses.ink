@@ -326,6 +326,96 @@ fn a_build_lists_what_changed_since_the_last_newly_public_first() {
     assert!(lines.last().unwrap().starts_with("1 newly public, 0 no longer public, 0 moved, "), "{stderr}");
 }
 
+/// `site.format` is a pin, then the `.obsidian/` marker, then markdown, each replayed by `--why`,
+/// and a pin is said.
+#[test]
+fn the_format_is_a_pin_then_the_vault_marker_then_markdown() {
+    let why = |name: &str| {
+        let dir = fixtures().join(name);
+        let (exit, why, stderr) = ink(&["explain", "--why", "site.format", "-C", dir.to_str().unwrap(), "-v"]);
+        assert_eq!(exit, Exit::Done, "{stderr}");
+        (why, stderr)
+    };
+    let (why_vault, said) = why("vault");
+    assert_eq!(
+        why_vault,
+        "site.format on the site: `ink:format-obsidian` because .obsidian is there, rung 2 of 3
+   1 ink.toml           nothing
+   2 .obsidian folder   `ink:format-obsidian`    because .obsidian is there, chosen
+   3 default            nothing
+to pin it: ink pin site.format
+"
+    );
+    assert!(said.contains("note[format.obsidian.chosen]"), "{said}");
+    let (plain, said) = why("readme");
+    assert!(plain.starts_with("site.format on the site: `ink:format-markdown` by default, rung 3 of 3"), "{plain}");
+    assert!(!said.contains("format."), "markdown by default is not said: {said}");
+    let (pinned, said) = why("vault-markdown");
+    assert_eq!(
+        pinned,
+        "site.format on the site: `ink:format-markdown` pinned in ink.toml, bytes 7..37, rung 1 of 3
+   1 ink.toml           `ink:format-markdown`    pinned in ink.toml, bytes 7..37, chosen
+   2 .obsidian folder   `ink:format-obsidian`    because .obsidian is there, outranked
+   3 default            nothing
+to pin it: ink pin site.format
+"
+    );
+    assert!(said.contains("note[format.pin.chosen]: `ink.toml` pins `site.format` to `ink:format-markdown`"), "{said}");
+    assert!(!said.contains("format.obsidian.chosen"), "{said}");
+    let (pinned, said) = why("notes-obsidian");
+    assert!(pinned.starts_with("site.format on the site: `ink:format-obsidian` pinned in ink.toml"), "{pinned}");
+    assert!(said.contains("note[format.pin.chosen]: `ink.toml` pins `site.format` to `ink:format-obsidian`"), "{said}");
+}
+
+/// A pinned format reads the files: a vault pinned to markdown leaves `#todo` text and a folder
+/// pinned to Obsidian reads it as a tag; `ink pin site.format` writes what is there.
+#[test]
+fn a_pinned_format_reads_the_markdown_and_ink_pin_writes_it() {
+    let tags = |name: &str| {
+        let dir = fixtures().join(name);
+        let (exit, json, stderr) = ink(&["explain", "-C", dir.to_str().unwrap(), "--json"]);
+        assert_eq!(exit, Exit::Done, "{stderr}");
+        let json: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let tags = json["decisions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|d| d["code"] == "page.tags" && d["subject"]["file"] == "index.md")
+            .cloned();
+        tags.unwrap()
+    };
+    assert_eq!(tags("vault-markdown")["value"], serde_json::json!([]));
+    let obsidian = tags("notes-obsidian");
+    assert_eq!(obsidian["value"][0]["written"], "todo");
+    assert_eq!(obsidian["evidence"]["inline"]["path"], "index.md", "{obsidian}");
+    let dir = scratch("pin-format/site");
+    copy(&fixtures().join("vault"), &dir);
+    let (exit, written, stderr) = ink(&["pin", "site.format", "-C", dir.to_str().unwrap()]);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    assert!(written.starts_with("[site]\nformat = \"ink:format-obsidian\"\n"), "{written}");
+    assert_eq!(std::fs::read_to_string(dir.join("ink.toml")).unwrap(), "[site]\nformat = \"ink:format-obsidian\"\n");
+    let (exit, _, stderr) = ink(&["explain", "--why", "site.format", "-C", dir.to_str().unwrap()]);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+}
+
+#[test]
+fn a_format_this_ink_does_not_hold_stops_the_command() {
+    let dir = scratch("format-unknown/site");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("ink.toml"), "[site]\nformat = \"acme:format-wiki\"\n").unwrap();
+    std::fs::write(dir.join("index.md"), "# Home\n").unwrap();
+    let (exit, _, stderr) = ink(&["check", dir.to_str().unwrap()]);
+    assert_eq!(exit, Exit::Usage, "{stderr}");
+    assert!(
+        stderr.starts_with("error: `site.format` names `acme:format-wiki`, which this ink does not hold"),
+        "{stderr}"
+    );
+    std::fs::write(dir.join("ink.toml"), "[site]\nformat = \"quiet\"\n").unwrap();
+    let (exit, _, stderr) = ink(&["check", dir.to_str().unwrap()]);
+    assert_eq!(exit, Exit::Content, "{stderr}");
+    assert!(stderr.contains("config.value.invalid"), "{stderr}");
+}
+
 #[test]
 fn check_exits_by_what_it_found() {
     let check = |name: &str, strict: &[&str]| {
@@ -335,7 +425,7 @@ fn check_exits_by_what_it_found() {
     };
     let (exit, stdout, _) = check("readme", &[]);
     assert_eq!(exit, Exit::Done);
-    assert_eq!(stdout, "2 pages, 29 decisions, 0 errors, 0 warnings\n");
+    assert_eq!(stdout, "2 pages, 30 decisions, 0 errors, 0 warnings\n");
     let (exit, _, stderr) = check("ambiguous", &[]);
     assert_eq!(exit, Exit::Content);
     assert!(stderr.starts_with("error[link.target.ambiguous]:"), "{stderr}");
@@ -359,7 +449,10 @@ fn explain_shows_decisions_with_evidence() {
     let json: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(json["schema"], "uses.explain/v2");
     assert!(json["decisions"].as_array().unwrap().len() > 10);
-    let root = &json["decisions"][0];
+    let format = &json["decisions"][0];
+    assert_eq!(format["code"], "site.format", "decisions are tagged by their code: {format}");
+    assert_eq!((format["subject"].as_str(), format["value"].as_str()), (Some("site"), Some("ink:format-markdown")));
+    let root = &json["decisions"][1];
     assert_eq!(root["code"], "site.root", "decisions are tagged by their code: {root}");
     assert_eq!(root["subject"], "site");
     assert_eq!(root["value"], "top");

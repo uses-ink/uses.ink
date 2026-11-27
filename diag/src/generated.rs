@@ -278,6 +278,9 @@ impl Message<'_> {
             Announcement::FormatObsidianChosen => {
                 write!(out, "the folder holds `.obsidian/`, so its markdown is read as Obsidian's")
             }
+            Announcement::FormatPinChosen { format, .. } => {
+                write!(out, "`ink.toml` pins `site.format` to `{format}`, so the markdown is read with it")
+            }
             Announcement::SiteHomeGenerated => {
                 write!(out, "no home page was found, so the home page lists every page")
             }
@@ -460,6 +463,7 @@ impl Fix<'_> {
             Announcement::EmbedFootnoteDropped { .. } => false,
             Announcement::LinkTargetAttached { .. } => true,
             Announcement::FormatObsidianChosen => false,
+            Announcement::FormatPinChosen { .. } => true,
             Announcement::SiteHomeGenerated => true,
             Announcement::FactDateBound { .. } => true,
             Announcement::FeedPostUndated => true,
@@ -695,6 +699,9 @@ impl Fix<'_> {
                 write!(out, "write the path of the one you mean")
             }
             Announcement::FormatObsidianChosen => Ok(()),
+            Announcement::FormatPinChosen { .. } => {
+                write!(out, "remove the pin to read the folder's markdown by what it holds")
+            }
             Announcement::SiteHomeGenerated => {
                 write!(out, "add index.md or README.md at the root, or pin `site.home`")
             }

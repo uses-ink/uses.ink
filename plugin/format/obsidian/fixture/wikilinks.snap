@@ -1,6 +1,5 @@
 ---
 source: fixture/src/lib.rs
-assertion_line: 148
 input_file: plugin/format/obsidian/fixture/wikilinks.md
 ---
 {
@@ -227,6 +226,7 @@ input_file: plugin/format/obsidian/fixture/wikilinks.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": []
 }

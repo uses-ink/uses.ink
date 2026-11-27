@@ -7,8 +7,8 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use super::{
-    Authors, Code, Date, Description, Home, Ignored, Kind, Language, Layout, Nav, Publish, Root, SiteTitle, Slug,
-    Summary, Tags, Title, Updated,
+    Authors, Code, Date, Description, Format, Home, Ignored, Kind, Language, Layout, Nav, Publish, Root, SiteTitle,
+    Slug, Summary, Tags, Title, Updated,
 };
 use crate::{ContentPath, Value};
 
@@ -50,6 +50,8 @@ impl<C: Word> fmt::Display for Worded<'_, C> {
         C::word(self.value, out)
     }
 }
+
+impl Word for Format {}
 
 impl Word for Root {}
 

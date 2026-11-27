@@ -66,6 +66,11 @@ pub enum Error {
         /// The path.
         path: model::ContentPath,
     },
+    /// `site.format` names a format plugin this ink does not hold.
+    Format {
+        /// The id.
+        id: model::record::PluginId,
+    },
     /// The output folder is one `ink build` will not clear or write into.
     Output(crate::out::Refusal),
     /// An entry of the deploy has no place in the output folder.
@@ -161,6 +166,7 @@ impl Error {
             Self::Words { .. } => "decision.words.invalid",
             Self::Undecided { .. } => "decision.subject.undecided",
             Self::Pin { .. } => "pin.config.unwritable",
+            Self::Format { .. } => "format.plugin.unknown",
             Self::Output(refusal) => refusal.kind(),
             Self::Placed { .. } => "output.entry.unplaced",
             Self::Blob { .. } => "output.blob.missing",
@@ -198,6 +204,12 @@ impl fmt::Display for Error {
             Self::Undecided { code, subject } => {
                 write!(out, "`{code}` is not decided on {subject}; `ink explain` lists what is")
             }
+            Self::Format { id } => {
+                write!(
+                    out,
+                    "`site.format` names `{id}`, which this ink does not hold: it holds `ink:format-markdown` and `ink:format-obsidian`"
+                )
+            }
             Self::Output(refusal) => write!(out, "{refusal}"),
             Self::Placed { file, .. } => write!(out, "`{file}` is not a file `ink build` can write"),
             Self::Blob { route, .. } => write!(out, "the bytes of {route} are missing"),
@@ -233,6 +245,7 @@ impl std::error::Error for Error {
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),
             Self::Output(_)
+            | Self::Format { .. }
             | Self::Unknown { .. }
             | Self::Unversioned { .. }
             | Self::Scope { .. }

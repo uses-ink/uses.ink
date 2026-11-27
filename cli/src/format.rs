@@ -1,10 +1,13 @@
 //! The formats `ink` reads a site's markdown with, as the engine's [`Format`]: the markdown
-//! format, or Obsidian's in a vault. The folder says which: one holding `.obsidian/` at its top
-//! is a vault, as `.git` makes it a repository, and the choice is said
-//! (`format.obsidian.chosen`).
+//! format, or Obsidian's in a vault. `site.format` says which: a pin in `ink.toml`, else the
+//! `.obsidian/` at the folder's top that makes it a vault, as `.git` makes it a repository, else
+//! markdown. The engine decides it ([`engine::Chosen`]); this is the format it names.
 
 use engine::Format;
-use model::{Announcement, ContentPath, Notice, Read, Snapshot};
+use model::record::PluginId;
+use model::{ContentPath, Read};
+
+use crate::error::Error;
 
 /// The format a site's markdown is read with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -16,9 +19,6 @@ pub(crate) enum Native {
 }
 
 impl Native {
-    /// The folder at the top of a snapshot that makes it a vault.
-    const VAULT: &'static str = ".obsidian";
-
     /// The format's plugin id.
     pub(crate) const fn id(self) -> &'static str {
         match self {
@@ -34,18 +34,17 @@ impl Native {
             Self::Obsidian => "format-obsidian.wasm",
         }
     }
-
-    /// What choosing it says: a vault's format is announced, markdown is the default.
-    pub(crate) fn notice(self) -> Option<Notice> {
-        (self == Self::Obsidian).then(|| Notice::new(Announcement::FormatObsidianChosen))
-    }
 }
 
-impl From<&Snapshot> for Native {
-    /// Obsidian's when the snapshot holds `.obsidian/` at its top, else markdown.
-    fn from(snapshot: &Snapshot) -> Self {
-        let vault = snapshot.tree().iter().any(|entry| entry.path.segments().next() == Some(Self::VAULT));
-        if vault { Self::Obsidian } else { Self::Markdown }
+impl TryFrom<&PluginId> for Native {
+    type Error = Error;
+
+    /// The bundled format the id names; a format this ink does not hold is refused.
+    fn try_from(id: &PluginId) -> Result<Self, Error> {
+        [Self::Markdown, Self::Obsidian]
+            .into_iter()
+            .find(|native| native.id() == id.to_string())
+            .ok_or_else(|| Error::Format { id: id.clone() })
     }
 }
 

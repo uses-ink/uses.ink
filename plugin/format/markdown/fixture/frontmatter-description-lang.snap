@@ -51,6 +51,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-description-lang.md
     ]
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [
     {
       "problem": {

@@ -11,6 +11,7 @@
 
 mod decide;
 mod file;
+mod format;
 mod guard;
 mod journal;
 mod link;
@@ -24,6 +25,7 @@ use model::code::{AnyCode, AnyDecision};
 use model::{Diagnostic, Notice, Snapshot, Subject};
 
 pub use crate::interpret::decide::trace::{Fact, Heard, List, Marker, Reading, Rung, Standing, Trace, Witnessed};
+pub use crate::interpret::format::Chosen;
 
 use crate::interpret::file::read::Split;
 use crate::interpret::file::{Assets, Files, Read};
@@ -54,6 +56,17 @@ pub struct Understood {
 }
 
 impl Understood {
+    /// What was understood, with the decision of the format it was read with: its decision
+    /// first, its notices before the engine's, and its replay when that was asked for.
+    #[must_use]
+    pub fn with(mut self, chosen: Chosen) -> Self {
+        let (decisions, notices, trace) = chosen.into_parts();
+        self.decisions.splice(0..0, decisions);
+        self.notices.splice(0..0, notices);
+        self.trace = trace.or(self.trace);
+        self
+    }
+
     /// The decisions about `subject`, or every decision, in the order they were made: what
     /// `ink explain [path]` shows.
     pub fn explain<'a>(&'a self, subject: Option<&'a Subject>) -> impl Iterator<Item = &'a AnyDecision> {

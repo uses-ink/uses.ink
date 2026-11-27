@@ -7,6 +7,7 @@ use std::fmt;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+use crate::record::PluginId;
 use crate::{Author, ContentPath, Language, Layout, PageKind, Root, Slug, Tag, When};
 
 mod front;
@@ -152,6 +153,13 @@ impl Value for Language {
 
 impl Value for ContentPath {
     /// In backticks: `` `posts/hello.md` ``.
+    fn show(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "`{self}`")
+    }
+}
+
+impl Value for PluginId {
+    /// In backticks: `` `ink:format-obsidian` ``.
     fn show(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(out, "`{self}`")
     }

@@ -1,0 +1,83 @@
+---
+source: cli/tests/site.rs
+---
+# exit 0
+# result
+{"schema":"uses.build/v2","deploy":"c4dd6c7a92915be5f2950bf1d61cc1bd91b27ae4f3b6cbce70c6df9e0210e75f","written":true,"out":"<out>","entries":6,"changes":{"against":"nothing","public":[{"path":"index.md","route":"/"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
+# files
+.ink-manifest.json
+404.html
+code.css
+index.html
+robots.txt
+sitemap.xml
+style.css
+## 404.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found - Pinned vault</title>
+<meta name="description" content="A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.">
+<link rel="canonical" href="https://ink.example/404">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Page not found">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pinned vault">
+<meta property="og:url" content="https://ink.example/404">
+<meta property="og:description" content="A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Pinned vault</a>
+</header>
+<main>
+<article>
+<h1>Page not found</h1>
+<p>There is no page at this address.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Pinned vault</p>
+</footer>
+</div>
+</body>
+</html>
+## index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinned vault</title>
+<meta name="description" content="A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.">
+<link rel="canonical" href="https://ink.example/">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Pinned vault">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pinned vault">
+<meta property="og:url" content="https://ink.example/">
+<meta property="og:description" content="A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Pinned vault</a>
+</header>
+<main>
+<article>
+<h1 id="read-as-markdown">Read as markdown<a class="quiet-anchor" href="#read-as-markdown" aria-label="Link to this section">#</a>
+</h1>
+<p>A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Pinned vault</p>
+</footer>
+</div>
+</body>
+</html>

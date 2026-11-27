@@ -115,6 +115,7 @@ input_file: plugin/format/markdown/fixture/footnote.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": [
     {

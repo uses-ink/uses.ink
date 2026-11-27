@@ -1,0 +1,145 @@
+---
+source: cli/tests/site.rs
+---
+# exit 0
+# result
+{"schema":"uses.build/v2","deploy":"52e35b87add4ca00c4c3d21aeecd350ba639276e9c6738599d7a7514b973ca47","written":true,"out":"<out>","entries":7,"changes":{"against":"nothing","public":[{"path":"index.md","route":"/"},{"path":"other.md","route":"/other"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
+# files
+.ink-manifest.json
+404.html
+code.css
+index.html
+other/index.html
+robots.txt
+sitemap.xml
+style.css
+## 404.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found - Index</title>
+<meta name="description" content="A folder with no .obsidian/ whose pin says Obsidian: other links and #todo is a tag.">
+<link rel="canonical" href="https://ink.example/404">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Page not found">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Index">
+<meta property="og:url" content="https://ink.example/404">
+<meta property="og:description" content="A folder with no .obsidian/ whose pin says Obsidian: other links and #todo is a tag.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Index</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/other">Other</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Page not found</h1>
+<p>There is no page at this address.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Index</p>
+</footer>
+</div>
+</body>
+</html>
+## index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index</title>
+<meta name="description" content="A folder with no .obsidian/ whose pin says Obsidian: other links and #todo is a tag.">
+<link rel="canonical" href="https://ink.example/">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Index">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Index">
+<meta property="og:url" content="https://ink.example/">
+<meta property="og:description" content="A folder with no .obsidian/ whose pin says Obsidian: other links and #todo is a tag.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Index</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/other">Other</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<div class="quiet-meta">
+<ul class="quiet-tags" aria-label="Tags">
+<li>#todo</li>
+</ul>
+</div>
+<h1 id="read-as-obsidian">Read as Obsidian<a class="quiet-anchor" href="#read-as-obsidian" aria-label="Link to this section">#</a>
+</h1>
+<p>A folder with no <code>.obsidian/</code> whose pin says Obsidian: <a href="/other">other</a> links and #todo is a tag.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Index</p>
+</footer>
+</div>
+</body>
+</html>
+## other/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Other - Index</title>
+<meta name="description" content="The linked note.">
+<link rel="canonical" href="https://ink.example/other">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Other">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Index">
+<meta property="og:url" content="https://ink.example/other">
+<meta property="og:description" content="The linked note.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">Index</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/other">Other</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1 id="other">Other<a class="quiet-anchor" href="#other" aria-label="Link to this section">#</a>
+</h1>
+<p>The linked note.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>Index</p>
+</footer>
+</div>
+</body>
+</html>

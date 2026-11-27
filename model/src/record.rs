@@ -152,6 +152,16 @@ impl FromStr for PluginId {
 }
 
 impl PluginId {
+    /// `ink:format-markdown`, the format bundled with ink for markdown.
+    pub fn markdown() -> Self {
+        Self("ink:format-markdown".to_owned())
+    }
+
+    /// `ink:format-obsidian`, the format bundled with ink for an Obsidian vault.
+    pub fn obsidian() -> Self {
+        Self("ink:format-obsidian".to_owned())
+    }
+
     /// Whether it is a format, which reads files into pages: its name starts with `format-`.
     pub fn is_format(&self) -> bool {
         self.0.split_once(':').is_some_and(|(_, name)| name.starts_with("format-"))

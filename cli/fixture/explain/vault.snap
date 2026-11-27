@@ -6,6 +6,7 @@ the source
   has                snapshot
   lacks              history, so page.date is not taken from it
 the site
+  site.format        `ink:format-obsidian`    because .obsidian is there
   site.root          the top of the snapshot  by default
   site.layout        a vault                  because .obsidian is there
 .obsidian/app.json
@@ -73,7 +74,7 @@ index.md
   page.date          undated                  by default
   page.updated       never updated            by default
   page.slug          `index`                  from the name of index.md
-  page.tags          garden, notes/rust       from the frontmatter of index.md, bytes 42..49
+  page.tags          garden, notes/rust       from the inline text of index.md, bytes 300..311
   page.summary       “A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust > Borrowing and to a block Rust > ^borrow-rule.” from the text of index.md
 Archive/ferris.png
   page.publish       not published            by default

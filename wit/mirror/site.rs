@@ -324,6 +324,11 @@ impl TryFrom<&Read> for front::Read {
             document: (&read.document).try_into()?,
             front: (&read.front).try_into()?,
             heading: Spans(read.heading.as_ref()).mirror(|text| Ok(text.clone()))?,
+            inline_tags: read
+                .inline_tags
+                .iter()
+                .map(|tag| (sited::Tag::from(&tag.value), tag.span.into()))
+                .collect(),
             diagnostics: read.diagnostics.iter().map(said::Diagnostic::try_from).collect::<Result<_, _>>()?,
             notices: read.notices.iter().map(said::Notice::try_from).collect::<Result<_, _>>()?,
         })
@@ -336,6 +341,11 @@ impl TryFrom<front::Read> for Read {
     fn try_from(wire: front::Read) -> Result<Self, Malformed> {
         let heading = Spans(wire.heading).read(Ok)?;
         let mut read = Self::new(wire.document.try_into()?, wire.front.try_into()?, heading);
+        read.inline_tags = wire
+            .inline_tags
+            .into_iter()
+            .map(|(tag, span)| Ok(Spanned::new(Tag::try_from(tag)?, span.try_into()?)))
+            .collect::<Result<_, Malformed>>()?;
         read.diagnostics = wire.diagnostics.into_iter().map(Diagnostic::try_from).collect::<Result<_, _>>()?;
         read.notices = wire.notices.into_iter().map(Notice::try_from).collect::<Result<_, _>>()?;
         Ok(read)

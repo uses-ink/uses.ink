@@ -59,6 +59,78 @@ fn a_trace_shows_every_rung_and_the_one_chosen() {
 }
 
 #[test]
+fn tags_join_the_frontmatters_with_the_texts_and_say_which_added() {
+    use engine::{Standing, Witnessed};
+    let tree = Tree::new()
+        .file("both.md", "---\ntags: Ink, pens\n---\n#t pens, Rust\n")
+        .file("same.md", "---\ntags: Ink\n---\n#t ink\n")
+        .file("text.md", "#t Rust, rust\n")
+        .file("front.md", "---\ntags: Ink\n---\ntext\n")
+        .file("none.md", "text\n")
+        .file("pinned.md", "#t Rust\n");
+    let none = tree.understand(&Pinned::none());
+    let tags = |path| {
+        let decision = on::<code::Tags>(&none, path);
+        (decision.value.iter().map(|tag| tag.written.clone()).collect::<Vec<_>>(), decision.evidence)
+    };
+    let (both, evidence) = tags("both.md");
+    assert_eq!(both, ["Ink", "pens", "Rust"]);
+    assert!(matches!(evidence, Evidence::Inline { .. }), "the text added Rust");
+    let (same, evidence) = tags("same.md");
+    assert_eq!(same, ["Ink"]);
+    assert!(matches!(evidence, Evidence::Frontmatter { .. }), "the text added nothing");
+    let (text, evidence) = tags("text.md");
+    assert_eq!(text, ["Rust"]);
+    assert!(matches!(evidence, Evidence::Inline { .. }));
+    assert!(matches!(tags("front.md").1, Evidence::Frontmatter { .. }));
+    assert_eq!(tags("none.md"), (Vec::<String>::new(), Evidence::Default { reason: DefaultReason::NothingMatched }));
+    let pinned = tree.understand(&Pinned::none().file::<code::Tags>("pinned.md", Vec::new()));
+    let pin = on::<code::Tags>(&pinned, "pinned.md");
+    assert!(pin.value.is_empty() && matches!(pin.evidence, Evidence::Config { .. }), "a pin states every tag");
+    let traced = tree.trace(&Pinned::none(), AnyCode::Tags, Subject::File(path("both.md"))).trace.unwrap();
+    let witnesses: Vec<_> = traced.rungs.iter().map(|rung| rung.witness).collect();
+    assert_eq!(witnesses, [Witnessed::Pin, Witnessed::Inline, Witnessed::Front, Witnessed::Default]);
+    assert_eq!(traced.chosen().map(|(at, _)| at), Some(2));
+    let outranked = &traced.rungs[2].heard;
+    assert_eq!((outranked[0].standing, outranked[0].chosen), (Standing::Value, false));
+}
+
+#[test]
+fn the_format_is_a_pin_then_a_vault_then_markdown() {
+    use engine::{Chosen, Witnessed};
+    use model::record::PluginId;
+    let vault = Tree::new().file(".obsidian/app.json", "{}").file("a.md", "text\n");
+    let plain = Tree::new().file("a.md", "text\n").file("notes/.obsidian/x", "x");
+    let chosen = |tree: &Tree, pins: &Pinned| {
+        let (snapshot, _) = tree.snapshot();
+        let asked = Some((AnyCode::Format, Subject::Site));
+        let chosen = Chosen::new(&snapshot, pins, asked);
+        let understood = tree.understand(pins).with(chosen);
+        (site::<code::Format>(&understood), understood.notices, understood.trace.unwrap())
+    };
+    let (decision, notices, trace) = chosen(&vault, &Pinned::none());
+    assert_eq!(decision.value, PluginId::obsidian());
+    assert_eq!(decision.evidence, Evidence::Marker { path: path(".obsidian") });
+    assert_eq!(notices[0].announcement, Announcement::FormatObsidianChosen);
+    let witnesses: Vec<_> = trace.rungs.iter().map(|rung| rung.witness).collect();
+    assert_eq!(witnesses, [Witnessed::Pin, Witnessed::Folder(engine::Marker::Obsidian), Witnessed::Default]);
+    let (decision, notices, _) = chosen(&plain, &Pinned::none());
+    assert_eq!(decision.value, PluginId::markdown());
+    assert_eq!(decision.evidence, Evidence::Default { reason: DefaultReason::NothingMatched });
+    assert!(notices.iter().all(|notice| notice.code() != "format.obsidian.chosen"), "markdown is the mundane default");
+    let pin = |id: PluginId| Pinned::none().site::<code::Format>(id);
+    let (decision, notices, trace) = chosen(&vault, &pin(PluginId::markdown()));
+    assert_eq!(decision.value, PluginId::markdown());
+    assert!(matches!(decision.evidence, Evidence::Config { .. }));
+    assert_eq!(notices[0].announcement, Announcement::FormatPinChosen { format: "ink:format-markdown".to_owned() });
+    assert_eq!(trace.chosen().map(|(at, _)| at), Some(1));
+    assert_eq!(trace.rungs[1].heard.len(), 1, "the vault is heard and outranked");
+    let (decision, notices, _) = chosen(&plain, &pin(PluginId::obsidian()));
+    assert_eq!(decision.value, PluginId::obsidian());
+    assert!(matches!(notices[0].announcement, Announcement::FormatPinChosen { .. }));
+}
+
+#[test]
 fn date_takes_frontmatter_then_file_name_then_exact_history() {
     let commit = Provenance::Filesystem;
     let tree = Tree::new()

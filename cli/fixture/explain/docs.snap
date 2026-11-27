@@ -6,6 +6,7 @@ the source
   has                snapshot
   lacks              history, so page.date is not taken from it
 the site
+  site.format        `ink:format-markdown`    by default
   site.root          `docs/`                  because docs is there
   site.layout        docs                     because docs is there
 docs/guide/install.md

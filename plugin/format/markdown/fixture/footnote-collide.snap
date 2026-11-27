@@ -73,6 +73,7 @@ input_file: plugin/format/markdown/fixture/footnote-collide.md
     "block": null
   },
   "heading": null,
+  "inline_tags": [],
   "diagnostics": [],
   "notices": [
     {

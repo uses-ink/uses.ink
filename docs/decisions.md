@@ -569,6 +569,11 @@ not ink's. The guard is
 the record: they move with ink's release, so `plugin` is given only for components. `rules` is
 typed and waits for `site.rules`.
 
+`site.format` (0043) is the first code decided before the engine runs: it chooses the format the
+engine is built over, so `engine::Chosen` decides it from the snapshot and the pins and
+`Understood::with` adds it. `Evidence::Inline { path, span }` is the evidence of a value found
+in a page's text; it is `Basis::Inferred`.
+
 ## 0043 Obsidian is a dialect of the markdown format; the engine resolves and embeds
 
 Accepted. `ink:format-obsidian` (`plugin/format/obsidian`, its component in `guest/`) reads one
@@ -595,8 +600,9 @@ dialect. Nothing in the dialect sees comrak. What it reads, as built:
   `Inline::Anchor`. Ids share a page's anchors with its headings; one whose slug is taken is
   `block.id.taken` and gets the next free one, so no link meant for the earlier anchor moves.
 - **Comments** `%%x%%` and `%%` blocks are removed, as HTML comments are.
-- **Tags** `#tag` and `#a/b` in the text (not in code or link text) join the frontmatter's
-  `tags` in `Front::tags`, each once by slug.
+- **Tags** `#tag` and `#a/b` in the text (not in code or link text) are `Read::inline_tags`, each
+  once by slug and with its own span, apart from the frontmatter's `Front::tags`. The engine
+  joins them (below).
 - **Aliases**: frontmatter `aliases` or `alias` fill the new `Front::aliases`.
 - **Title**: a note's title is its file name, as Obsidian shows it, after a frontmatter `title`.
   The dialect says so (`Syntax::title`), and the format reports no first heading, so the
@@ -638,12 +644,30 @@ page (embeds inside embeds counted) is `embed.budget.count`; each is shown as a 
 **Selection** follows the source's: `ink` reads a folder holding `.obsidian/` at its top as a
 vault through `ink:format-obsidian`, said as `format.obsidian.chosen`, as a folder holding
 `.git` is read as a repository (`source.git.chosen`). The vault layout (`Folder<Obsidian>`)
-already publishes nothing until it is selected. No pin chooses the format: a format pin is a new
-decision code, which waits on 0042's rework of the codes. `ink build --check` builds a vault
-through `format-obsidian.wasm`, and `cli/fixture/site/vault` proves both builds match.
+already publishes nothing until it is selected. The choice is the decision `site.format`, whose
+value is a format plugin's id (`ink:format-obsidian`, `ink:format-markdown`) and whose ladder is
+`Pin`, then `Folder<Obsidian>` (evidence `Marker { path: ".obsidian" }`), then the markdown
+format. A pin is written `[site] format = "ink:format-obsidian"` and said as `format.pin.chosen`;
+a vault found by its marker is `format.obsidian.chosen`; the default is silent. A pin wins over
+the marker either way, so a vault can be read as plain markdown and a folder without
+`.obsidian/` as a vault. An id naming a format this ink does not hold stops the command
+(`format.plugin.unknown`). The format is read before anything else, so the host decides it
+(`engine::Chosen`) and builds the engine over the format it names; the decision joins the
+engine's with `Understood::with`, so `ink explain`, `--why` and `ink pin` treat it as any other,
+and it is in the build's record. `ink build --check` builds a vault through
+`format-obsidian.wasm`, and `cli/fixture/site/vault` proves both builds match.
 
-Waiting on 0042, not built: inline tags cite `Evidence::Frontmatter` with a span in the body,
-until `page.tags` has a witness for the body; and no pin chooses the format (above).
+**Tags** are the one decision both sources feed, since Obsidian shows a note's frontmatter tags
+and its inline tags together. A ladder takes the first value, so `page.tags` is `Pin`, `Inline`,
+`Front`, default. `Inline` (evidence `Evidence::Inline { path, span }`, the first tag only the
+text said) testifies only when the text adds a tag the frontmatter lacks, and then its value is
+the frontmatter's tags followed by the text's new ones, each slug once. When the text adds
+nothing, `Front` decides as before, with the frontmatter as evidence. So a decision is one
+value with one evidence, and the evidence is the least stated source the value depends on: the
+frontmatter's alone, or the text where the text added to it (`Basis::Inferred`). A pin states
+every tag, and the text does not add to it. `ink explain --why page.tags` shows the `Inline` rung
+first, its joined value, and the `Front` rung beneath it as outranked. The rung stands before
+`Front` because it completes `Front`'s value, not because the text outranks the frontmatter.
 
 **Why:** one parser, one allowlist and one set of node rules for both formats; resolution in the engine, where every page is known, so both formats and both
 builds share it. **Reversal:** a second dialect whose syntax comrak cannot parse, which would

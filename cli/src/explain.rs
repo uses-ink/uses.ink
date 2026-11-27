@@ -214,6 +214,7 @@ impl fmt::Display for Because<'_> {
             Evidence::Frontmatter { path, span } => write!(out, "from the frontmatter of {path}, {span}"),
             Evidence::Filename { path } => write!(out, "from the name of {path}"),
             Evidence::Heading { path, span } => write!(out, "from the heading of {path}, {span}"),
+            Evidence::Inline { path, span } => write!(out, "from the inline text of {path}, {span}"),
             Evidence::History { from: Provenance::Commit { commit } } => write!(out, "from commit {}", Short(commit)),
             Evidence::History { from: Provenance::GitHistory { commit } } => {
                 write!(out, "from the history up to commit {}", Short(commit))

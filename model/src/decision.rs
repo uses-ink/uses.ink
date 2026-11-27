@@ -59,6 +59,13 @@ pub enum Evidence {
         /// The heading's place in the file.
         span: Span,
     },
+    /// A value found in a page's text, where it is written: an inline `#tag`.
+    Inline {
+        /// The file.
+        path: ContentPath,
+        /// The value's place in the file.
+        span: Span,
+    },
     /// A fact from the source's history.
     History {
         /// Where the fact came from.
@@ -121,6 +128,7 @@ impl Evidence {
             Self::Config { .. } | Self::Frontmatter { .. } => Basis::Stated,
             Self::Filename { .. }
             | Self::Heading { .. }
+            | Self::Inline { .. }
             | Self::History { .. }
             | Self::Body { .. }
             | Self::Marker { .. } => Basis::Inferred,
