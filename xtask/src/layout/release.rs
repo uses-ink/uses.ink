@@ -273,10 +273,19 @@ impl Release {
         if entry.as_deref() != Some(binary) {
             found.push(Drift::Entrypoint { expected: binary.to_owned(), found: entry });
         }
+        found.extend(Self::command(&dockerfile, krate));
+        Ok(found)
+    }
+
+    /// The Dockerfile's `CMD` against the commands the binary knows and the ones still pending.
+    fn command(dockerfile: &Dockerfile, krate: &Crate) -> Vec<Drift> {
+        let mut found = Vec::new();
         let words = dockerfile.exec("CMD");
         let command = words.first().cloned();
         let known = Self::commands(krate);
-        let on_all = words.windows(2).any(|pair| pair[0] == "--addr" && pair[1].starts_with("0.0.0.0:"));
+        let on_all = words
+            .windows(2)
+            .any(|pair| matches!(pair, [flag, addr] if flag == "--addr" && addr.starts_with("0.0.0.0:")));
         if command.as_deref() == Some("serve") && !on_all {
             found.push(Drift::Listen { command: words.clone() });
         }
@@ -289,7 +298,7 @@ impl Release {
             Some(name) if Self::PENDING.contains(&name) => {}
             _ => found.push(Drift::Command { found: command, known }),
         }
-        Ok(found)
+        found
     }
 
     fn drift(workspace: &Workspace) -> Result<Vec<Drift>, Drift> {
