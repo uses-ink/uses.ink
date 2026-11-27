@@ -70,8 +70,8 @@ fn copy(from: &Path, to: &Path) {
     }
 }
 
-/// Runs `ink serve <args>` in a thread and returns its port.
-fn serve(args: &[&str]) -> u16 {
+/// Runs `ink serve <args>` in a thread and returns the site it serves.
+fn serve(args: &[&str]) -> Site {
     let mut full = vec!["ink", "serve"];
     full.extend(args);
     full.extend(["--addr", "127.0.0.1:0"]);
@@ -83,7 +83,7 @@ fn serve(args: &[&str]) -> u16 {
         printed
             .push_str(std::str::from_utf8(&received.recv_timeout(std::time::Duration::from_secs(5)).unwrap()).unwrap());
     }
-    printed.trim().strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap()
+    Site(printed.trim().strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap())
 }
 
 /// One response.
@@ -108,49 +108,65 @@ impl Got {
     }
 }
 
-/// Sends `method target` with `Host: host` and these headers, and reads to the end.
-fn fetch(port: u16, method: &str, target: &str, host: &str, headers: &[&str]) -> Got {
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
-    let extra: String = headers.iter().map(|line| format!("{line}\r\n")).collect();
-    write!(stream, "{method} {target} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n{extra}\r\n").unwrap();
-    let mut bytes = Vec::new();
-    stream.read_to_end(&mut bytes).unwrap();
-    Got { text: String::from_utf8_lossy(&bytes).into_owned() }
-}
+/// A running `ink serve`, by its port.
+struct Site(u16);
 
-fn get(port: u16, target: &str, headers: &[&str]) -> Got {
-    fetch(port, "GET", target, "localhost", headers)
+impl Site {
+    /// Sends `method target` with `Host: host` and these headers, and reads to the end.
+    fn fetch(&self, (method, target): (&str, &str), host: &str, headers: &[&str]) -> Got {
+        let mut stream = TcpStream::connect(("127.0.0.1", self.0)).unwrap();
+        let extra: String = headers.iter().map(|line| [*line, "\r\n"].concat()).collect();
+        write!(stream, "{method} {target} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n{extra}\r\n").unwrap();
+        let mut bytes = Vec::new();
+        stream.read_to_end(&mut bytes).unwrap();
+        Got { text: String::from_utf8_lossy(&bytes).into_owned() }
+    }
+
+    fn get(&self, target: &str, headers: &[&str]) -> Got {
+        self.fetch(("GET", target), "localhost", headers)
+    }
 }
 
 #[test]
 fn serves_a_built_deploy_with_the_edge_behaviour() {
     let root = scratch("deploy");
     let out = build(&root);
-    let port = serve(&[out.to_str().unwrap()]);
+    let site = serve(&[out.to_str().unwrap()]);
 
-    let tea = get(port, "/tea", &[]);
+    let tea = site.get("/tea", &[]);
     assert_eq!(tea.status(), "200", "{}", tea.text);
     assert_eq!(tea.header("content-type"), Some("text/html; charset=utf-8"));
     assert!(tea.header("content-security-policy").unwrap().starts_with("default-src 'none'; img-src"));
     assert_eq!(tea.header("x-content-type-options"), Some("nosniff"));
     assert!(tea.body().contains("A pot of tea."));
     let etag = tea.header("etag").unwrap();
-    assert_eq!(get(port, "/tea", &[&format!("If-None-Match: {etag}")]).status(), "304");
+    assert_eq!(site.get("/tea", &[&format!("If-None-Match: {etag}")]).status(), "304");
+}
 
-    let css = get(port, "/style.css", &[]);
+#[test]
+fn answers_conditions_and_ranges_like_the_engine_headers_say() {
+    let root = scratch("ranges");
+    let site = serve(&[build(&root).to_str().unwrap()]);
+    let css = site.get("/style.css", &[]);
     assert_eq!(css.status(), "200");
     let length: usize = css.header("content-length").unwrap().parse().unwrap();
-    let ranged = get(port, "/style.css", &["Range: bytes=0-9"]);
+    let ranged = site.get("/style.css", &["Range: bytes=0-9"]);
     assert_eq!(ranged.status(), "206");
     assert_eq!(ranged.header("content-range"), Some(format!("bytes 0-9/{length}").as_str()));
     assert_eq!(ranged.body(), &css.body()[..10]);
-    assert_eq!(get(port, "/style.css", &[&format!("Range: bytes={length}-")]).status(), "416");
+    assert_eq!(site.get("/style.css", &[&format!("Range: bytes={length}-")]).status(), "416");
     assert_eq!(
-        fetch(port, "HEAD", "/style.css", "localhost", &[]).header("content-length"),
+        site.fetch(("HEAD", "/style.css"), "localhost", &[]).header("content-length"),
         css.header("content-length")
     );
+}
 
-    let missing = get(port, "/no/such/page", &[]);
+#[test]
+fn refuses_hostile_requests_and_serves_the_sites_404() {
+    let root = scratch("hostile");
+    let site = serve(&[build(&root).to_str().unwrap()]);
+    let tea = site.get("/tea", &[]);
+    let missing = site.get("/no/such/page", &[]);
     assert_eq!(missing.status(), "404");
     assert!(missing.body().contains("Page not found"), "{}", missing.text);
     assert_eq!(missing.header("content-security-policy"), tea.header("content-security-policy"));
@@ -163,26 +179,26 @@ fn serves_a_built_deploy_with_the_edge_behaviour() {
         "/%252e%252e/",
         "/a%00b",
     ] {
-        let refused = get(port, target, &[]);
+        let refused = site.get(target, &[]);
         assert_eq!(refused.status(), "400", "{target}: {}", refused.text);
         assert!(!refused.body().contains("root:"));
     }
     for target in ["/.ink-manifest.json", "/%2Eink-manifest.json", "/.ink", "/tea.html"] {
-        let hidden = get(port, target, &[]);
+        let hidden = site.get(target, &[]);
         assert_eq!(hidden.status(), "404", "{target}");
         assert!(!hidden.body().contains("uses.manifest"), "the manifest is never served: {target}");
     }
-    assert_eq!(fetch(port, "POST", "/", "localhost", &["Content-Length: 0"]).status(), "405");
-    assert_eq!(fetch(port, "GET", "/", "evil.example/x", &[]).status(), "400");
+    assert_eq!(site.fetch(("POST", "/"), "localhost", &["Content-Length: 0"]).status(), "405");
+    assert_eq!(site.fetch(("GET", "/"), "evil.example/x", &[]).status(), "400");
 }
 
 #[test]
 fn the_edges_own_headers_match_what_the_engine_writes() {
     let root = scratch("policy");
     let out = build(&root);
-    let port = serve(&[out.to_str().unwrap()]);
-    let manifest = get(port, "/style.css", &[]);
-    let refusal = fetch(port, "POST", "/", "localhost", &["Content-Length: 0"]);
+    let site = serve(&[out.to_str().unwrap()]);
+    let manifest = site.get("/style.css", &[]);
+    let refusal = site.fetch(("POST", "/"), "localhost", &["Content-Length: 0"]);
     for name in ["content-security-policy", "cross-origin-resource-policy", "x-content-type-options"] {
         assert!(manifest.header(name).is_some(), "{name}");
         assert_eq!(
@@ -201,13 +217,13 @@ fn serves_a_folder_of_deploys_by_host() {
     let one = hosts.join("notes.example");
     std::fs::create_dir_all(&one).unwrap();
     copy(&out, &one);
-    let port = serve(&[hosts.to_str().unwrap(), "--host-mode", "folders"]);
-    assert_eq!(fetch(port, "GET", "/tea", "notes.example", &[]).status(), "200");
-    assert_eq!(fetch(port, "GET", "/tea", "NOTES.example:8080", &[]).status(), "200");
-    assert_eq!(fetch(port, "GET", "/tea", "other.example", &[]).status(), "404");
-    assert_eq!(fetch(port, "GET", "/tea", "..", &[]).status(), "400");
-    assert_eq!(fetch(port, "GET", "/tea", "../notes.example", &[]).status(), "400");
-    assert_eq!(fetch(port, "GET", "/healthz", "10.1.2.3", &[]).status(), "200");
+    let site = serve(&[hosts.to_str().unwrap(), "--host-mode", "folders"]);
+    assert_eq!(site.fetch(("GET", "/tea"), "notes.example", &[]).status(), "200");
+    assert_eq!(site.fetch(("GET", "/tea"), "NOTES.example:8080", &[]).status(), "200");
+    assert_eq!(site.fetch(("GET", "/tea"), "other.example", &[]).status(), "404");
+    assert_eq!(site.fetch(("GET", "/tea"), "..", &[]).status(), "400");
+    assert_eq!(site.fetch(("GET", "/tea"), "../notes.example", &[]).status(), "400");
+    assert_eq!(site.fetch(("GET", "/healthz"), "10.1.2.3", &[]).status(), "200");
 }
 
 #[test]

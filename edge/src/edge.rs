@@ -24,7 +24,7 @@ pub struct Hsts {
 impl Default for Hsts {
     /// A year.
     fn default() -> Self {
-        Self { max_age: Duration::from_secs(365 * 24 * 3600) }
+        Self { max_age: Duration::from_hours(365 * 24) }
     }
 }
 

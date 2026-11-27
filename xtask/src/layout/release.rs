@@ -105,9 +105,9 @@ impl Release {
     const DOCKERFILE: &'static str = "Dockerfile";
     const TOOLCHAIN: &'static str = "rust-toolchain.toml";
 
-    /// Commands the image runs that the binary does not have yet. `serve` is M3 (decision 0005);
-    /// the rule fails once it exists and is still listed, so this list only shrinks.
-    const PENDING: &'static [&'static str] = &["serve"];
+    /// Commands the image runs that the binary does not have yet. None now: `serve` was the last
+    /// (M3). The rule fails once a command exists and is still listed, so this list only shrinks.
+    const PENDING: &'static [&'static str] = &[];
 
     fn text(root: &Path, name: &str) -> Result<String, Drift> {
         let path = root.join(name);

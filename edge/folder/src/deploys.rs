@@ -66,7 +66,7 @@ impl Deploys {
         }
         let holds = std::fs::symlink_metadata(root.join(MANIFEST)).is_ok_and(|meta| meta.is_file());
         let mode = match (mode, holds) {
-            (Mode::Auto, true) | (Mode::Single, true) => Mode::Single,
+            (Mode::Auto | Mode::Single, true) => Mode::Single,
             (Mode::Auto, false) | (Mode::Folders, _) => Mode::Folders,
             (Mode::Single, false) => return Err(Error::NotDeploy { root }),
         };

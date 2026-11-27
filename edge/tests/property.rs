@@ -93,10 +93,11 @@ proptest! {
         prop_assert_eq!(got.field("x-content-type-options"), Some("nosniff"));
         prop_assert!(got.field("content-security-policy").is_some());
         prop_assert!(got.field(Name::ContentLength.name()).is_some() || got.status == 304 || got.status == 301);
-        if let Some(length) = got.field("content-length").and_then(|text| text.parse::<usize>().ok()) {
-            if method != "HEAD" && got.status != 304 {
-                prop_assert_eq!(got.body.len(), length);
-            }
+        if let Some(length) = got.field("content-length").and_then(|text| text.parse::<usize>().ok())
+            && method != "HEAD"
+            && got.status != 304
+        {
+            prop_assert_eq!(got.body.len(), length);
         }
         if let Outcome::Refused(refusal) = &outcome {
             prop_assert_eq!(refusal.status().code(), got.status);

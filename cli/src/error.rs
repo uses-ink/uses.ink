@@ -307,10 +307,10 @@ impl std::error::Error for Error {
             | Self::Read { source, .. }
             | Self::Serve { source }
             | Self::Terminal { source }
+            | Self::Listen { source, .. }
             | Self::Component { source, .. } => Some(source),
             Self::Plugin { source } => Some(source),
             Self::Deploys { source } => Some(source),
-            Self::Listen { source, .. } => Some(source),
             Self::Edge { source } => Some(source),
             Self::Server { source } => Some(source),
             Self::Placed { source, .. } => Some(source),

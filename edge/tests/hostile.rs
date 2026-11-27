@@ -54,159 +54,235 @@ impl Row {
     }
 }
 
+impl Row {
+    /// The rows of `traversal`.
+    fn traversal() -> Vec<Self> {
+        vec![
+            // path traversal, every spelling
+            Row::new("dot dot", "/../etc/passwd", TargetError::Dot { index: 0 }, 400),
+            Row::new("dot dot inside", "/a/../../b", TargetError::Dot { index: 1 }, 400),
+            Row::new("single dot", "/a/./b", TargetError::Dot { index: 1 }, 400),
+            Row::new("escaped dots", "/%2e%2e/secret", TargetError::Dot { index: 0 }, 400),
+            Row::new("mixed escaped dots", "/.%2E/secret", TargetError::Dot { index: 0 }, 400),
+            Row::new("dot dot then escaped slash", "/..%2fsecret", TargetError::Separator { at: 3 }, 400),
+            Row::new("escaped dots and slash", "/%2e%2e%2fsecret", TargetError::Separator { at: 7 }, 400),
+            Row::new("escaped backslash", "/a%5Cb", TargetError::Separator { at: 2 }, 400),
+            Row::new("backslash", "/a\\b", TargetError::Byte { at: 2, found: b'\\' }, 400),
+            Row::new("double encoded dots", "/%252e%252e/", TargetError::Double { at: 1 }, 400),
+            Row::new("double encoded slash", "/a%252fb", TargetError::Double { at: 1 }, 400),
+            Row::new("overlong utf-8 dot", "/%C0%AE%C0%AE/", TargetError::Encoding, 400),
+            Row::new("lone continuation byte", "/%80", TargetError::Encoding, 400),
+            Row::new("escaped nul", "/a%00b", TargetError::Control { at: 2 }, 400),
+            Row::new("escaped newline", "/a%0Ab", TargetError::Control { at: 2 }, 400),
+            Row::new("escaped delete", "/a%7f", TargetError::Control { at: 2 }, 400),
+            Row::new("raw nul", "/a\0b", TargetError::Byte { at: 2, found: 0 }, 400),
+            Row::new("raw newline", "/a\nb", TargetError::Byte { at: 2, found: b'\n' }, 400),
+            Row::new("raw space", "/a b", TargetError::Byte { at: 2, found: b' ' }, 400),
+            Row::new("raw tab", "/a\tb", TargetError::Byte { at: 2, found: b'\t' }, 400),
+            Row::new("raw non-ascii", "/thé", TargetError::Byte { at: 3, found: 0xc3 }, 400),
+            Row::new("fragment", "/a#b", TargetError::Byte { at: 2, found: b'#' }, 400),
+            Row::new("truncated escape", "/%", TargetError::Escape { at: 1 }, 400),
+            Row::new("non-hex escape", "/%zz", TargetError::Escape { at: 1 }, 400),
+            Row::new("short escape", "/a%4", TargetError::Escape { at: 2 }, 400),
+        ]
+    }
+
+    /// The rows of `shapes`.
+    fn shapes() -> Vec<Self> {
+        let long_target = format!("/{}", "a".repeat(5000));
+        let deep = "/a".repeat(40);
+        vec![
+            // open redirects and shapes that name no path
+            Row::new("protocol-relative", "//evil.com/", TargetError::Empty { index: 0 }, 400),
+            Row::new("empty segment", "/a//b", TargetError::Empty { index: 1 }, 400),
+            Row::new("only slashes", "///", TargetError::Empty { index: 0 }, 400),
+            Row::new("asterisk", "*", TargetError::Form, 400),
+            Row::new("no leading slash", "a/b", TargetError::Form, 400),
+            Row::new("empty target", "", TargetError::Form, 400),
+            Row::new("other scheme", "ftp://notes.example/", TargetError::Form, 400),
+            Row::new("authority form", "notes.example:443", TargetError::Form, 400),
+            // limits
+            Row::new("overlong target", &long_target, TargetError::TooLong { length: 5001, limit: 4096 }, 414),
+            Row::new("too many segments", &deep, TargetError::Deep { count: 40, limit: 32 }, 400),
+        ]
+    }
+
+    /// The rows of `hosts`.
+    fn hosts() -> Vec<Self> {
+        vec![
+            // host confusion
+            Row::new(
+                "absolute form for another host",
+                "http://evil.example/",
+                Refusal::Authority {
+                    header: "notes.example".parse_hostname(),
+                    target: "evil.example".parse_hostname(),
+                },
+                400,
+            ),
+            Row::new(
+                "userinfo in the target",
+                "http://notes.example@evil.example/",
+                TargetError::Authority(HostnameError::Character { at: 13, found: b'@' }),
+                400,
+            ),
+            Row::new("no host header", "/", HostnameError::Missing, 400).headers(&[]),
+            Row::new("empty host header", "/", HostnameError::Missing, 400).headers(&[("host", b"")]),
+            Row::new("two host headers", "/", HeaderError::Repeated { name: Singular::Host }, 400)
+                .with("host", b"evil.example"),
+            Row::new("host list", "/", HostnameError::Character { at: 13, found: b',' }, 400)
+                .headers(&[("host", b"notes.example,evil.example")]),
+            Row::new("host with path", "/", HostnameError::Character { at: 13, found: b'/' }, 400)
+                .headers(&[("host", b"notes.example/..")]),
+            Row::new("host with userinfo", "/", HostnameError::Character { at: 4, found: b'@' }, 400)
+                .headers(&[("host", b"evil@notes.example")]),
+            Row::new("host with space", "/", HostnameError::Character { at: 5, found: b' ' }, 400)
+                .headers(&[("host", b"notes example")]),
+        ]
+    }
+
+    /// The rows of `ports`.
+    fn ports() -> Vec<Self> {
+        vec![
+            Row::new("host dot dot", "/", HostnameError::Label { index: 0 }, 400).headers(&[("host", b"..")]),
+            Row::new("host with empty label", "/", HostnameError::Label { index: 1 }, 400)
+                .headers(&[("host", b"a..b")]),
+            Row::new("host with unicode", "/", HostnameError::Character { at: 0, found: 0xc3 }, 400)
+                .headers(&[("host", "é.example".as_bytes())]),
+            Row::new("host port too big", "/", HostnameError::Port { at: 14 }, 400)
+                .headers(&[("host", b"notes.example:99999")]),
+            Row::new("host empty port", "/", HostnameError::Port { at: 14 }, 400)
+                .headers(&[("host", b"notes.example:")]),
+            Row::new("host broken literal", "/", HostnameError::Literal, 400).headers(&[("host", b"[::1")]),
+            Row::new("host too long", "/", HostnameError::TooLong { length: 300, limit: 259 }, 400)
+                .headers(&[("host", "a".repeat(300).as_bytes())]),
+            Row::new("host with line break", "/", HeaderError::Byte { index: 0, at: 13 }, 400)
+                .headers(&[("host", b"notes.example\r\nx: y")]),
+            Row::new("host with nul", "/", HeaderError::Byte { index: 0, at: 5 }, 400)
+                .headers(&[("host", b"notes\0.example")]),
+        ]
+    }
+
+    /// The rows of `methods`.
+    fn methods() -> Vec<Self> {
+        vec![
+            // methods
+            Row::new("post", "/", Refusal::Method { method: "POST".to_owned() }, 405).method("POST"),
+            Row::new("lower-case get", "/", Refusal::Method { method: "get".to_owned() }, 405).method("get"),
+            Row::new("options", "/", Refusal::Method { method: "OPTIONS".to_owned() }, 405).method("OPTIONS"),
+            Row::new("connect", "/", Refusal::Method { method: "CONNECT".to_owned() }, 405).method("CONNECT"),
+            Row::new("trace", "/", Refusal::Method { method: "TRACE".to_owned() }, 405).method("TRACE"),
+            Row::new("method with a line break", "/", Refusal::Method { method: "GET\r\nHost: x".to_owned() }, 405)
+                .method("GET\r\nHost: x"),
+            // request smuggling shapes
+            Row::new("body on get", "/", BodyError::Declared { length: 5 }, 400).with("content-length", b"5"),
+            Row::new("two lengths", "/", BodyError::Declared { length: 5 }, 400)
+                .with("content-length", b"0")
+                .with("content-length", b"5"),
+            Row::new("signed length", "/", BodyError::Invalid, 400).with("content-length", b"+5"),
+            Row::new("list of lengths", "/", BodyError::Invalid, 400).with("content-length", b"5, 5"),
+            Row::new("empty length", "/", BodyError::Invalid, 400).with("content-length", b""),
+            Row::new("chunked", "/", BodyError::Chunked, 400).with("transfer-encoding", b"chunked"),
+            Row::new("obfuscated chunked", "/", BodyError::Chunked, 400).with("Transfer-Encoding", b"\tchunked"),
+            Row::new("length and chunked", "/", BodyError::Framing, 400)
+                .with("content-length", b"0")
+                .with("transfer-encoding", b"chunked"),
+        ]
+    }
+
+    /// The rows of `lines`.
+    fn lines() -> Vec<Self> {
+        let big_value = vec![b'a'; 9000];
+        vec![
+            // header limits and line breaks
+            Row::new("header name with a space", "/", HeaderError::Name { index: 1 }, 400).with("x y", b"1"),
+            Row::new("empty header name", "/", HeaderError::Name { index: 1 }, 400).with("", b"1"),
+            Row::new("header name with a colon", "/", HeaderError::Name { index: 1 }, 400).with("x:y", b"1"),
+            Row::new("line break in a value", "/", HeaderError::Byte { index: 1, at: 1 }, 400)
+                .with("x", b"a\r\nhost: evil.example"),
+            Row::new("nul in a value", "/", HeaderError::Byte { index: 1, at: 1 }, 400).with("x", b"a\0b"),
+            Row::new("huge value", "/", HeaderError::Size { index: 1, length: 9000, limit: 8192 }, 431)
+                .with("x", &big_value),
+        ]
+    }
+
+    /// The rows of `conditions`.
+    fn conditions() -> Vec<Self> {
+        vec![
+            // conditions
+            Row::new("junk if-none-match", "/", ConditionError::IfNoneMatch { at: 0 }, 400)
+                .with("if-none-match", b"junk"),
+            Row::new("unterminated tag", "/", ConditionError::IfNoneMatch { at: 3 }, 400)
+                .with("if-none-match", b"\"ab"),
+            Row::new("star in a list", "/", ConditionError::IfNoneMatch { at: 1 }, 400)
+                .with("if-none-match", b"*, \"a\""),
+            Row::new("two if-none-match", "/", HeaderError::Repeated { name: Singular::IfNoneMatch }, 400)
+                .with("if-none-match", b"\"a\"")
+                .with("if-none-match", b"\"b\""),
+            Row::new("range not numbers", "/", ConditionError::Range { at: 6 }, 400).with("range", b"bytes=a-b"),
+            Row::new("range backwards", "/", ConditionError::Range { at: 6 }, 400).with("range", b"bytes=5-1"),
+            Row::new("range past u64", "/", ConditionError::Range { at: 6 }, 400)
+                .with("range", b"bytes=18446744073709551616-"),
+            Row::new("range without equals", "/", ConditionError::Range { at: 0 }, 400).with("range", b"bytes"),
+            Row::new("range with trailing comma", "/", ConditionError::Range { at: 10 }, 400)
+                .with("range", b"bytes=0-1,"),
+            Row::new("two ranges headers", "/", HeaderError::Repeated { name: Singular::Range }, 400)
+                .with("range", b"bytes=0-1")
+                .with("range", b"bytes=2-3"),
+            Row::new("bad if-range", "/", ConditionError::IfRange { at: 0 }, 400).with("if-range", b""),
+            Row::new("bad accept-encoding weight", "/", ConditionError::AcceptEncoding { at: 0 }, 400)
+                .with("accept-encoding", b"gzip;q=9"),
+            Row::new("bad accept-encoding token", "/", ConditionError::AcceptEncoding { at: 5 }, 400)
+                .with("accept-encoding", b"gzip,g zip"),
+        ]
+    }
+
+    /// The rows of `absent`.
+    fn absent() -> Vec<Self> {
+        vec![
+            // a range past the end, and a host that is no site
+            Row::new("range past the end", "/clip.png", Refusal::Unsatisfiable { length: 1000 }, 416)
+                .with("range", b"bytes=1000-"),
+            Row::new("unknown host", "/", Refusal::Unserved { hostname: "other.example".parse_hostname() }, 404)
+                .headers(&[("host", b"Other.Example")]),
+        ]
+    }
+
+    /// The rows that need a header built to size.
+    fn floods() -> Vec<Self> {
+        let mut rows = Vec::new();
+        let many: Vec<_> = (0..64).map(|n| (format!("x{n}"), b"1".to_vec())).collect();
+        let mut flooded = Row::new("too many headers", "/", HeaderError::Count { count: 65, limit: 64 }, 431);
+        flooded.headers.extend(many);
+        rows.push(flooded);
+        let mut heavy =
+            Row::new("headers too large together", "/", HeaderError::Total { length: 35_027, limit: 32_768 }, 431);
+        heavy.headers.extend((0..5).map(|n| (format!("x{n}"), vec![b'a'; 7000])));
+        rows.push(heavy);
+        let tags = (0..17).map(|n| format!("\"{n}\"")).collect::<Vec<_>>().join(",");
+        rows.push(
+            Row::new("too many tags", "/", ConditionError::Tags { count: 17, limit: 16 }, 400)
+                .with("if-none-match", tags.as_bytes()),
+        );
+        rows
+    }
+}
+
 fn table() -> Vec<Row> {
-    let long_target = format!("/{}", "a".repeat(5000));
-    let deep = "/a".repeat(40);
-    let big_value = vec![b'a'; 9000];
-    let mut rows = vec![
-        // path traversal, every spelling
-        Row::new("dot dot", "/../etc/passwd", TargetError::Dot { index: 0 }, 400),
-        Row::new("dot dot inside", "/a/../../b", TargetError::Dot { index: 1 }, 400),
-        Row::new("single dot", "/a/./b", TargetError::Dot { index: 1 }, 400),
-        Row::new("escaped dots", "/%2e%2e/secret", TargetError::Dot { index: 0 }, 400),
-        Row::new("mixed escaped dots", "/.%2E/secret", TargetError::Dot { index: 0 }, 400),
-        Row::new("dot dot then escaped slash", "/..%2fsecret", TargetError::Separator { at: 3 }, 400),
-        Row::new("escaped dots and slash", "/%2e%2e%2fsecret", TargetError::Separator { at: 7 }, 400),
-        Row::new("escaped backslash", "/a%5Cb", TargetError::Separator { at: 2 }, 400),
-        Row::new("backslash", "/a\\b", TargetError::Byte { at: 2, found: b'\\' }, 400),
-        Row::new("double encoded dots", "/%252e%252e/", TargetError::Double { at: 1 }, 400),
-        Row::new("double encoded slash", "/a%252fb", TargetError::Double { at: 1 }, 400),
-        Row::new("overlong utf-8 dot", "/%C0%AE%C0%AE/", TargetError::Encoding, 400),
-        Row::new("lone continuation byte", "/%80", TargetError::Encoding, 400),
-        Row::new("escaped nul", "/a%00b", TargetError::Control { at: 2 }, 400),
-        Row::new("escaped newline", "/a%0Ab", TargetError::Control { at: 2 }, 400),
-        Row::new("escaped delete", "/a%7f", TargetError::Control { at: 2 }, 400),
-        Row::new("raw nul", "/a\0b", TargetError::Byte { at: 2, found: 0 }, 400),
-        Row::new("raw newline", "/a\nb", TargetError::Byte { at: 2, found: b'\n' }, 400),
-        Row::new("raw space", "/a b", TargetError::Byte { at: 2, found: b' ' }, 400),
-        Row::new("raw tab", "/a\tb", TargetError::Byte { at: 2, found: b'\t' }, 400),
-        Row::new("raw non-ascii", "/thé", TargetError::Byte { at: 3, found: 0xc3 }, 400),
-        Row::new("fragment", "/a#b", TargetError::Byte { at: 2, found: b'#' }, 400),
-        Row::new("truncated escape", "/%", TargetError::Escape { at: 1 }, 400),
-        Row::new("non-hex escape", "/%zz", TargetError::Escape { at: 1 }, 400),
-        Row::new("short escape", "/a%4", TargetError::Escape { at: 2 }, 400),
-        // open redirects and shapes that name no path
-        Row::new("protocol-relative", "//evil.com/", TargetError::Empty { index: 0 }, 400),
-        Row::new("empty segment", "/a//b", TargetError::Empty { index: 1 }, 400),
-        Row::new("only slashes", "///", TargetError::Empty { index: 0 }, 400),
-        Row::new("asterisk", "*", TargetError::Form, 400),
-        Row::new("no leading slash", "a/b", TargetError::Form, 400),
-        Row::new("empty target", "", TargetError::Form, 400),
-        Row::new("other scheme", "ftp://notes.example/", TargetError::Form, 400),
-        Row::new("authority form", "notes.example:443", TargetError::Form, 400),
-        // limits
-        Row::new("overlong target", &long_target, TargetError::TooLong { length: 5001, limit: 4096 }, 414),
-        Row::new("too many segments", &deep, TargetError::Deep { count: 40, limit: 32 }, 400),
-        // host confusion
-        Row::new(
-            "absolute form for another host",
-            "http://evil.example/",
-            Refusal::Authority { header: "notes.example".parse_hostname(), target: "evil.example".parse_hostname() },
-            400,
-        ),
-        Row::new(
-            "userinfo in the target",
-            "http://notes.example@evil.example/",
-            TargetError::Authority(HostnameError::Character { at: 13, found: b'@' }),
-            400,
-        ),
-        Row::new("no host header", "/", HostnameError::Missing, 400).headers(&[]),
-        Row::new("empty host header", "/", HostnameError::Missing, 400).headers(&[("host", b"")]),
-        Row::new("two host headers", "/", HeaderError::Repeated { name: Singular::Host }, 400)
-            .with("host", b"evil.example"),
-        Row::new("host list", "/", HostnameError::Character { at: 13, found: b',' }, 400)
-            .headers(&[("host", b"notes.example,evil.example")]),
-        Row::new("host with path", "/", HostnameError::Character { at: 13, found: b'/' }, 400)
-            .headers(&[("host", b"notes.example/..")]),
-        Row::new("host with userinfo", "/", HostnameError::Character { at: 4, found: b'@' }, 400)
-            .headers(&[("host", b"evil@notes.example")]),
-        Row::new("host with space", "/", HostnameError::Character { at: 5, found: b' ' }, 400)
-            .headers(&[("host", b"notes example")]),
-        Row::new("host dot dot", "/", HostnameError::Label { index: 0 }, 400).headers(&[("host", b"..")]),
-        Row::new("host with empty label", "/", HostnameError::Label { index: 1 }, 400).headers(&[("host", b"a..b")]),
-        Row::new("host with unicode", "/", HostnameError::Character { at: 0, found: 0xc3 }, 400)
-            .headers(&[("host", "é.example".as_bytes())]),
-        Row::new("host port too big", "/", HostnameError::Port { at: 14 }, 400)
-            .headers(&[("host", b"notes.example:99999")]),
-        Row::new("host empty port", "/", HostnameError::Port { at: 14 }, 400).headers(&[("host", b"notes.example:")]),
-        Row::new("host broken literal", "/", HostnameError::Literal, 400).headers(&[("host", b"[::1")]),
-        Row::new("host too long", "/", HostnameError::TooLong { length: 300, limit: 259 }, 400)
-            .headers(&[("host", "a".repeat(300).as_bytes())]),
-        Row::new("host with line break", "/", HeaderError::Byte { index: 0, at: 13 }, 400)
-            .headers(&[("host", b"notes.example\r\nx: y")]),
-        Row::new("host with nul", "/", HeaderError::Byte { index: 0, at: 5 }, 400)
-            .headers(&[("host", b"notes\0.example")]),
-        // methods
-        Row::new("post", "/", Refusal::Method { method: "POST".to_owned() }, 405).method("POST"),
-        Row::new("lower-case get", "/", Refusal::Method { method: "get".to_owned() }, 405).method("get"),
-        Row::new("options", "/", Refusal::Method { method: "OPTIONS".to_owned() }, 405).method("OPTIONS"),
-        Row::new("connect", "/", Refusal::Method { method: "CONNECT".to_owned() }, 405).method("CONNECT"),
-        Row::new("trace", "/", Refusal::Method { method: "TRACE".to_owned() }, 405).method("TRACE"),
-        Row::new("method with a line break", "/", Refusal::Method { method: "GET\r\nHost: x".to_owned() }, 405)
-            .method("GET\r\nHost: x"),
-        // request smuggling shapes
-        Row::new("body on get", "/", BodyError::Declared { length: 5 }, 400).with("content-length", b"5"),
-        Row::new("two lengths", "/", BodyError::Declared { length: 5 }, 400)
-            .with("content-length", b"0")
-            .with("content-length", b"5"),
-        Row::new("signed length", "/", BodyError::Invalid, 400).with("content-length", b"+5"),
-        Row::new("list of lengths", "/", BodyError::Invalid, 400).with("content-length", b"5, 5"),
-        Row::new("empty length", "/", BodyError::Invalid, 400).with("content-length", b""),
-        Row::new("chunked", "/", BodyError::Chunked, 400).with("transfer-encoding", b"chunked"),
-        Row::new("obfuscated chunked", "/", BodyError::Chunked, 400).with("Transfer-Encoding", b"\tchunked"),
-        Row::new("length and chunked", "/", BodyError::Framing, 400)
-            .with("content-length", b"0")
-            .with("transfer-encoding", b"chunked"),
-        // header limits and line breaks
-        Row::new("header name with a space", "/", HeaderError::Name { index: 1 }, 400).with("x y", b"1"),
-        Row::new("empty header name", "/", HeaderError::Name { index: 1 }, 400).with("", b"1"),
-        Row::new("header name with a colon", "/", HeaderError::Name { index: 1 }, 400).with("x:y", b"1"),
-        Row::new("line break in a value", "/", HeaderError::Byte { index: 1, at: 1 }, 400)
-            .with("x", b"a\r\nhost: evil.example"),
-        Row::new("nul in a value", "/", HeaderError::Byte { index: 1, at: 1 }, 400).with("x", b"a\0b"),
-        Row::new("huge value", "/", HeaderError::Size { index: 1, length: 9000, limit: 8192 }, 431)
-            .with("x", &big_value),
-        // conditions
-        Row::new("junk if-none-match", "/", ConditionError::IfNoneMatch { at: 0 }, 400).with("if-none-match", b"junk"),
-        Row::new("unterminated tag", "/", ConditionError::IfNoneMatch { at: 3 }, 400).with("if-none-match", b"\"ab"),
-        Row::new("star in a list", "/", ConditionError::IfNoneMatch { at: 1 }, 400).with("if-none-match", b"*, \"a\""),
-        Row::new("two if-none-match", "/", HeaderError::Repeated { name: Singular::IfNoneMatch }, 400)
-            .with("if-none-match", b"\"a\"")
-            .with("if-none-match", b"\"b\""),
-        Row::new("range not numbers", "/", ConditionError::Range { at: 6 }, 400).with("range", b"bytes=a-b"),
-        Row::new("range backwards", "/", ConditionError::Range { at: 6 }, 400).with("range", b"bytes=5-1"),
-        Row::new("range past u64", "/", ConditionError::Range { at: 6 }, 400)
-            .with("range", b"bytes=18446744073709551616-"),
-        Row::new("range without equals", "/", ConditionError::Range { at: 0 }, 400).with("range", b"bytes"),
-        Row::new("range with trailing comma", "/", ConditionError::Range { at: 10 }, 400).with("range", b"bytes=0-1,"),
-        Row::new("two ranges headers", "/", HeaderError::Repeated { name: Singular::Range }, 400)
-            .with("range", b"bytes=0-1")
-            .with("range", b"bytes=2-3"),
-        Row::new("bad if-range", "/", ConditionError::IfRange { at: 0 }, 400).with("if-range", b""),
-        Row::new("bad accept-encoding weight", "/", ConditionError::AcceptEncoding { at: 0 }, 400)
-            .with("accept-encoding", b"gzip;q=9"),
-        Row::new("bad accept-encoding token", "/", ConditionError::AcceptEncoding { at: 5 }, 400)
-            .with("accept-encoding", b"gzip,g zip"),
-        // a range past the end, and a host that is no site
-        Row::new("range past the end", "/clip.png", Refusal::Unsatisfiable { length: 1000 }, 416)
-            .with("range", b"bytes=1000-"),
-        Row::new("unknown host", "/", Refusal::Unserved { hostname: "other.example".parse_hostname() }, 404)
-            .headers(&[("host", b"Other.Example")]),
-    ];
-    let many: Vec<_> = (0..64).map(|n| (format!("x{n}"), b"1".to_vec())).collect();
-    let mut flooded = Row::new("too many headers", "/", HeaderError::Count { count: 65, limit: 64 }, 431);
-    flooded.headers.extend(many);
-    rows.push(flooded);
-    let mut heavy =
-        Row::new("headers too large together", "/", HeaderError::Total { length: 35_027, limit: 32_768 }, 431);
-    heavy.headers.extend((0..5).map(|n| (format!("x{n}"), vec![b'a'; 7000])));
-    rows.push(heavy);
-    let tags = (0..17).map(|n| format!("\"{n}\"")).collect::<Vec<_>>().join(",");
-    rows.push(
-        Row::new("too many tags", "/", ConditionError::Tags { count: 17, limit: 16 }, 400)
-            .with("if-none-match", tags.as_bytes()),
-    );
-    rows
+    [
+        Row::traversal(),
+        Row::shapes(),
+        Row::hosts(),
+        Row::ports(),
+        Row::methods(),
+        Row::lines(),
+        Row::conditions(),
+        Row::absent(),
+        Row::floods(),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 trait ParseHostname {

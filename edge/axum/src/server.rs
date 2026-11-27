@@ -14,7 +14,7 @@ use hyper::server::conn::http1;
 use hyper_util::rt::{TokioIo, TokioTimer};
 use hyper_util::server::graceful::GracefulShutdown;
 use hyper_util::service::TowerToHyperService;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::time::Instant;
 
@@ -69,6 +69,25 @@ where
         Router::new().fallback(Inner::answer).with_state(Arc::clone(&self.inner))
     }
 
+    /// Serves one accepted connection under hyper's head and read budgets, until it ends or the
+    /// shutdown drains it.
+    fn connect(&self, graceful: &GracefulShutdown, router: Router, stream: TcpStream) {
+        let limits = self.inner.edge.limits();
+        let service = TowerToHyperService::new(router);
+        let mut http = http1::Builder::new();
+        http.timer(TokioTimer::new())
+            .header_read_timeout(limits.read)
+            .max_buf_size(usize::try_from(limits.head.count()).unwrap_or(usize::MAX))
+            .max_headers(limits.headers);
+        let connection = graceful.watch(http.serve_connection(TokioIo::new(stream), service));
+        let observe = Arc::clone(&self.inner.observe);
+        tokio::spawn(async move {
+            if let Err(source) = connection.await {
+                observe.event(&Event::Connection { source: Box::new(source) });
+            }
+        });
+    }
+
     /// Accepts connections on `listener` until `shutdown` completes, then stops accepting and
     /// gives open connections [`Limits::drain`] to finish.
     pub async fn run(self, listener: TcpListener, shutdown: impl Future<Output = ()> + Send) -> Result<(), Error> {
@@ -82,21 +101,7 @@ where
         loop {
             tokio::select! {
                 accepted = listener.accept() => match accepted {
-                    Ok((stream, _)) => {
-                        let service = TowerToHyperService::new(router.clone());
-                        let mut http = http1::Builder::new();
-                        http.timer(TokioTimer::new())
-                            .header_read_timeout(limits.read)
-                            .max_buf_size(usize::try_from(limits.head.count()).unwrap_or(usize::MAX))
-                            .max_headers(limits.headers);
-                        let connection = graceful.watch(http.serve_connection(TokioIo::new(stream), service));
-                        let observe = Arc::clone(observe);
-                        tokio::spawn(async move {
-                            if let Err(source) = connection.await {
-                                observe.event(&Event::Connection { source: Box::new(source) });
-                            }
-                        });
-                    }
+                    Ok((stream, _)) => self.connect(&graceful, router.clone(), stream),
                     Err(source) => {
                         observe.event(&Event::Connection { source: Box::new(source) });
                         tokio::time::sleep(REST).await;
@@ -152,22 +157,10 @@ where
         inner.send(reply, &seen, permit)
     }
 
-    /// The edge's reply as a response, and the event that says what happened.
-    fn send(
-        &self,
-        reply: edge::Reply<S, B>,
-        seen: &Seen,
-        permit: Option<tokio::sync::OwnedSemaphorePermit>,
-    ) -> Response<Body> {
+    /// The body of a response: a blob streamed under the idle and send budgets, or its text.
+    fn pump(&self, payload: Payload<B::Blob>, seen: &Seen, permit: Option<tokio::sync::OwnedSemaphorePermit>) -> Body {
         let limits = self.edge.limits();
-        let edge::Answer { response, outcome, hostname } = reply;
-        let mut kind = Kind::from(&outcome);
-        let (refusal, mut fault) = match outcome {
-            Outcome::Refused(refusal) => (Some(refusal), None),
-            Outcome::Failed(fault) => (None, Some(Box::new(fault) as Box<dyn std::error::Error + Send + Sync>)),
-            _ => (None, None),
-        };
-        let body = match response.body {
+        match payload {
             Payload::Blob { blob, span } => Pump {
                 chunks: blob.read(span),
                 idle: limits.idle,
@@ -180,7 +173,24 @@ where
             .body(),
             Payload::Text(text) => Body::from(text),
             _ => Body::empty(),
+        }
+    }
+
+    /// The edge's reply as a response, and the event that says what happened.
+    fn send(
+        &self,
+        reply: edge::Reply<S, B>,
+        seen: &Seen,
+        permit: Option<tokio::sync::OwnedSemaphorePermit>,
+    ) -> Response<Body> {
+        let edge::Answer { response, outcome, hostname } = reply;
+        let mut kind = Kind::from(&outcome);
+        let (refusal, mut fault) = match outcome {
+            Outcome::Refused(refusal) => (Some(refusal), None),
+            Outcome::Failed(fault) => (None, Some(Box::new(fault) as Box<dyn std::error::Error + Send + Sync>)),
+            _ => (None, None),
         };
+        let body = self.pump(response.body, seen, permit);
         let mut built = Response::new(body);
         let mut status = response.status;
         if let Err(malformed) = Fields(&response.fields).put(&mut built) {

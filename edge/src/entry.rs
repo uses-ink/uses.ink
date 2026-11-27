@@ -2,10 +2,12 @@
 
 use std::fmt;
 
-use model::{HeaderName, Route, Served};
+use model::{Hash, HeaderName, Route, Served};
 
 use crate::answer::{Fault, Outcome, Ranging};
+use crate::condition::Conditions;
 use crate::edge::{Call, Edge, Made, Reply};
+use crate::encoding::Encoding;
 use crate::fields::{Fields, Hardening};
 use crate::port::{Blob, Blobs, Sites};
 use crate::range::{Ignored, Pick, Span};
@@ -83,34 +85,26 @@ impl<S: Sites, B: Blobs<Scope = S::Scope>> Edge<S, B> {
 
     /// One entry: conditional, ranged, compressed or whole.
     async fn entry(&self, call: &Call<'_, S::Scope>, entry: &Served, found: Found) -> Reply<S, B> {
-        let (asked, deploy) = (call.asked, &call.resolved.deploy);
-        let status = if found == Found::Page { Status::NotFound } else { Status::from(entry.status()) };
-        let cacheable = status == Status::Ok;
-        let conditions = &asked.conditions;
-        let ranged = cacheable && asked.method == Method::Get && conditions.range.is_some();
-        let variant = if cacheable && !ranged {
-            conditions
-                .accept
-                .choose(deploy.variants.held(entry.blob()))
-                .and_then(|encoding| deploy.variants.of(entry.blob(), encoding).map(|hash| (encoding, hash)))
-        } else {
-            None
-        };
-        let encoding = variant.map(|(encoding, _)| encoding);
-        let tag = Tag::of(entry.blob(), encoding);
+        let chosen = Chosen::new(call, entry, found);
         let mut fields = Fields::default();
-        if deploy.variants.held(entry.blob()).next().is_some() {
+        if call.resolved.deploy.variants.held(entry.blob()).next().is_some() {
             fields.set(Name::Vary, "accept-encoding");
         }
         let route = call.route.clone().unwrap_or_else(Route::root);
-        if cacheable && conditions.none_match.as_ref().is_some_and(|matching| matching.holds(&tag)) {
-            fields.set(Name::ETag, &tag);
+        if chosen.cacheable && call.asked.conditions.none_match.as_ref().is_some_and(|m| m.holds(&chosen.tag)) {
+            fields.set(Name::ETag, &chosen.tag);
             fields.entry(entry.headers());
             fields.set(Name::Entry(HeaderName::CacheControl), Hardening::REVALIDATE);
             let made = Made::new(Status::NotModified, fields, Body::Empty, Outcome::Unchanged { route });
             return self.finish(&call.caller, made);
         }
-        let hash = variant.map_or(entry.blob(), |(_, hash)| hash);
+        self.send(call, chosen, fields).await
+    }
+
+    /// The body of an entry the client does not already hold: the whole file, a span or a
+    /// compressed copy, within the file size budget.
+    async fn send(&self, call: &Call<'_, S::Scope>, chosen: Chosen<'_>, mut fields: Fields) -> Reply<S, B> {
+        let (asked, hash) = (call.asked, chosen.hash);
         let blob = match self.blobs.open(&call.resolved.scope, hash).await {
             Ok(blob) => blob,
             Err(source) => return self.fail(Fault::Blob(source), &call.caller),
@@ -120,23 +114,66 @@ impl<S: Sites, B: Blobs<Scope = S::Scope>> Edge<S, B> {
         if length > limit {
             return self.fail(Fault::Large { hash, length, limit }, &call.caller);
         }
-        let (status, ranging, span) = match conditions.range.as_ref().filter(|_| ranged) {
-            None => (status, Ranging::Whole, Span::whole(length)),
-            Some(ranges) => {
-                let stale = conditions.if_range.as_ref().is_some_and(|validator| !validator.holds(&tag));
-                match if stale { Pick::Whole(Ignored::Validator) } else { ranges.pick(length) } {
-                    Pick::Span(span) => (Status::Partial, Ranging::Span(span), span),
-                    Pick::Whole(why) => (status, Ranging::Ignored(why), Span::whole(length)),
-                    Pick::Unsatisfiable => return self.refuse(Refusal::Unsatisfiable { length }, &call.caller),
-                }
-            }
+        let Some((status, ranging, span)) = chosen.span(&asked.conditions, length) else {
+            return self.refuse(Refusal::Unsatisfiable { length }, &call.caller);
         };
-        fields.set(Name::ContentType, entry.media());
+        chosen.describe(&mut fields, ranging, (span, length));
+        let body = if asked.method == Method::Head { Body::Empty } else { Body::Blob { blob, span } };
+        let outcome = match chosen.found {
+            Found::Route => Outcome::Served {
+                route: call.route.clone().unwrap_or_else(Route::root),
+                ranging,
+                encoding: chosen.encoding,
+            },
+            Found::Page => Outcome::Missing { route: call.route.clone() },
+        };
+        self.finish(&call.caller, Made::new(status, fields, body, outcome))
+    }
+}
+
+/// The copy of an entry one request gets: its status, validator and compression.
+#[derive(Debug)]
+struct Chosen<'a> {
+    entry: &'a Served,
+    found: Found,
+    status: Status,
+    tag: Tag,
+    encoding: Option<Encoding>,
+    hash: Hash,
+    cacheable: bool,
+    partial: bool,
+}
+
+impl<'a> Chosen<'a> {
+    /// The copy `call` asks for: a compressed one when the client accepts one the deploy holds
+    /// and the request is not for a span.
+    fn new<Scope>(call: &Call<'_, Scope>, entry: &'a Served, found: Found) -> Self {
+        let (asked, deploy) = (call.asked, &call.resolved.deploy);
+        let status = if found == Found::Page { Status::NotFound } else { Status::from(entry.status()) };
+        let cacheable = status == Status::Ok;
+        let partial = cacheable && asked.method == Method::Get && asked.conditions.range.is_some();
+        let variant = if cacheable && !partial {
+            asked
+                .conditions
+                .accept
+                .choose(deploy.variants.held(entry.blob()))
+                .and_then(|encoding| deploy.variants.of(entry.blob(), encoding).map(|hash| (encoding, hash)))
+        } else {
+            None
+        };
+        let encoding = variant.map(|(encoding, _)| encoding);
+        let hash = variant.map_or(entry.blob(), |(_, hash)| hash);
+        Self { entry, found, status, tag: Tag::of(entry.blob(), encoding), encoding, hash, cacheable, partial }
+    }
+
+    /// The fields of a response with a body: its type and length, validator, coding and range.
+    fn describe(&self, fields: &mut Fields, ranging: Ranging, (span, length): (Span, u64)) {
+        fields.set(Name::ContentType, self.entry.media());
         fields.set(Name::ContentLength, span.length);
-        if cacheable {
-            fields.set(Name::ETag, &tag);
+        if self.cacheable {
+            fields.set(Name::ETag, &self.tag);
         }
-        match (encoding, cacheable) {
+        match (self.encoding, self.cacheable) {
             (Some(encoding), _) => fields.set(Name::ContentEncoding, encoding),
             (None, true) => fields.set(Name::AcceptRanges, "bytes"),
             (None, false) => {}
@@ -145,13 +182,21 @@ impl<S: Sites, B: Blobs<Scope = S::Scope>> Edge<S, B> {
             let last = span.last().unwrap_or(span.start);
             fields.set(Name::ContentRange, format_args!("bytes {}-{last}/{length}", span.start));
         }
-        fields.entry(entry.headers());
+        fields.entry(self.entry.headers());
         fields.set(Name::Entry(HeaderName::CacheControl), Hardening::REVALIDATE);
-        let body = if asked.method == Method::Head { Body::Empty } else { Body::Blob { blob, span } };
-        let outcome = match found {
-            Found::Route => Outcome::Served { route, ranging, encoding },
-            Found::Page => Outcome::Missing { route: call.route.clone() },
+    }
+
+    /// The status, range outcome and span of a file `length` long, or none when no range of
+    /// the request can be satisfied.
+    fn span(&self, conditions: &Conditions, length: u64) -> Option<(Status, Ranging, Span)> {
+        let Some(ranges) = conditions.range.as_ref().filter(|_| self.partial) else {
+            return Some((self.status, Ranging::Whole, Span::whole(length)));
         };
-        self.finish(&call.caller, Made::new(status, fields, body, outcome))
+        let stale = conditions.if_range.as_ref().is_some_and(|validator| !validator.holds(&self.tag));
+        match if stale { Pick::Whole(Ignored::Validator) } else { ranges.pick(length) } {
+            Pick::Span(span) => Some((Status::Partial, Ranging::Span(span), span)),
+            Pick::Whole(why) => Some((self.status, Ranging::Ignored(why), Span::whole(length))),
+            Pick::Unsatisfiable => None,
+        }
     }
 }

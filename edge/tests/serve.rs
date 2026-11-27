@@ -61,7 +61,7 @@ fn head_says_what_get_would_send() {
     let edge = Site::new().edge();
     let (get_, _) = answer(&edge, &get("GET", "/clip.png", &[HOST]));
     let (head, _) = answer(&edge, &get("HEAD", "/clip.png", &[HOST]));
-    assert!(head.body.is_empty());
+    assert_eq!(head.body, b"");
     assert_eq!(head.status, 200);
     assert_eq!(head.field("content-length"), Some("1000"));
     for name in ["content-length", "content-type", "etag", "accept-ranges", "content-security-policy"] {
@@ -79,7 +79,7 @@ fn answers_304_to_a_matching_tag() {
     for header in [etag.clone(), format!("W/{etag}"), format!("\"x\", {etag}"), "*".to_owned()] {
         let (got, outcome) = answer(&edge, &get("GET", "/tea", &[HOST, ("if-none-match", &header)]));
         assert_eq!(got.status, 304, "{header}");
-        assert!(got.body.is_empty());
+        assert_eq!(got.body, b"");
         assert_eq!(got.field("etag"), Some(etag.as_str()));
         assert_eq!(got.field("x-content-type-options"), Some("nosniff"));
         assert!(matches!(outcome, Outcome::Unchanged { .. }));
@@ -184,7 +184,7 @@ fn redirects_a_moved_route_with_an_ascii_location() {
     let (got, outcome) = answer(&edge, &get("GET", "/old", &[HOST]));
     assert_eq!(got.status, 301);
     assert_eq!(got.field("location"), Some("/th%C3%A9"));
-    assert!(got.body.is_empty());
+    assert_eq!(got.body, b"");
     assert!(matches!(outcome, Outcome::Moved { .. }));
     assert_eq!(answer(&edge, &get("GET", "/old/", &[HOST])).0.status, 301);
     let (got, _) = answer(&edge, &get("GET", "/old", &[("host", "bare.example")]));

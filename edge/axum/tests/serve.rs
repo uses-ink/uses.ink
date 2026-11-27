@@ -268,8 +268,8 @@ impl Blobs for Stalled {
     type Blob = Waiting;
     type Error = Infallible;
 
-    async fn open(&self, (): &(), _: Hash) -> Result<Waiting, BlobError<Infallible>> {
-        Ok(Waiting)
+    fn open(&self, (): &(), _: Hash) -> impl Future<Output = Result<Waiting, BlobError<Infallible>>> + Send {
+        std::future::ready(Ok(Waiting))
     }
 }
 

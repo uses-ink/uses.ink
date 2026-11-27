@@ -1,11 +1,6 @@
 //! The folder adapters read what `ink build` wrote, refuse what it did not, and never follow a link.
 
-#![allow(
-    clippy::unwrap_used,
-    clippy::indexing_slicing,
-    clippy::panic,
-    reason = "tests stop at the first surprise"
-)]
+#![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::panic, reason = "tests stop at the first surprise")]
 
 extern crate uses_ink_edge_folder as edge_folder;
 
@@ -75,8 +70,6 @@ fn serves_a_deploy_as_written() {
     assert_eq!(read(&resolved.scope, hash, None), b"<h1>tea</h1>");
     assert_eq!(read(&resolved.scope, hash, Some(Span { start: 4, length: 3 })), b"tea");
     assert!(matches!(block(Files.open(&resolved.scope, Hash::of(b"other"))), Err(BlobError::Missing { .. })));
-    // the manifest and its record are no blob: nothing a request can name reaches them
-    assert!(resolved.scope.as_ref() as *const _ as usize != 0);
 }
 
 #[test]
@@ -129,8 +122,14 @@ fn refuses_a_manifest_that_lies() {
     assert!(matches!(resolve(&good.replace("uses.manifest/v3", "uses.manifest/v9")), Err(Error::Schema { .. })));
     let other = Manifest::new(vec![]).unwrap().id().to_string();
     assert!(matches!(resolve(&good.replace(&manifest.id().to_string(), &other)), Err(Error::Id { .. })));
-    assert!(matches!(resolve(&good.replace("\"tea.html\"", "\"../tea.html\"")), Err(Error::Escapes { .. } | Error::Path { .. })));
-    assert!(matches!(resolve(&good.replace("\"tea.html\"", "\"/etc/passwd\"")), Err(Error::Escapes { .. } | Error::Path { .. })));
+    assert!(matches!(
+        resolve(&good.replace("\"tea.html\"", "\"../tea.html\"")),
+        Err(Error::Escapes { .. } | Error::Path { .. })
+    ));
+    assert!(matches!(
+        resolve(&good.replace("\"tea.html\"", "\"/etc/passwd\"")),
+        Err(Error::Escapes { .. } | Error::Path { .. })
+    ));
     assert!(matches!(resolve("{ not json"), Err(Error::Manifest { .. })));
     let unplaced = good.replacen(&Hash::of(b"tea").to_string(), &Hash::of(b"no file").to_string(), 1);
     assert!(matches!(resolve(&unplaced), Err(Error::Unplaced { .. } | Error::Id { .. })));
@@ -167,7 +166,7 @@ fn a_file_that_shrank_is_an_error_not_a_short_body() {
     let result = block(async {
         let blob = Files.open(&resolved.scope, hash).await.unwrap();
         std::fs::write(dir.join("tea.html"), b"0123").unwrap();
-        blob.read(Span::whole(10)).next().await.and_then(|_| Ok(())).and_then(|()| Ok(()))
+        blob.read(Span::whole(10)).next().await.map(|_| ())
     });
     assert!(result.is_ok(), "the first chunk is what is left");
     let again = block(async {

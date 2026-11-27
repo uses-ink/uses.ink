@@ -68,7 +68,7 @@ impl Blobs for Store {
     type Blob = Held;
     type Error = Infallible;
 
-    fn open(&self, _: &(), hash: Hash) -> impl Future<Output = Result<Held, BlobError<Infallible>>> + Send {
+    fn open(&self, (): &(), hash: Hash) -> impl Future<Output = Result<Held, BlobError<Infallible>>> + Send {
         let found = self.0.get(&hash).map(|bytes| Bytes::from(bytes.clone()));
         async move { found.map(Held).ok_or(BlobError::Missing { hash }) }
     }
@@ -99,7 +99,7 @@ impl Chunks for Whole {
 
 /// The file a site's media route holds: bytes `0..=255` repeated.
 pub fn media() -> Vec<u8> {
-    (0..1000u32).map(|n| (n % 256) as u8).collect()
+    (0..=255u8).cycle().take(1000).collect()
 }
 
 /// The page policy the engine writes into a page's headers, in miniature.

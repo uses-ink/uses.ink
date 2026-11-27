@@ -88,13 +88,12 @@ impl Chunks for Chunked {
             return Ok(None);
         }
         let read = |source| Error::Read { path: self.path.clone(), source };
-        let file = match self.file.as_mut() {
-            Some(file) => file,
-            None => {
-                let mut file = tokio::fs::File::open(&self.path).await.map_err(read)?;
-                file.seek(SeekFrom::Start(self.next)).await.map_err(read)?;
-                self.file.insert(file)
-            }
+        let file = if let Some(file) = self.file.as_mut() {
+            file
+        } else {
+            let mut file = tokio::fs::File::open(&self.path).await.map_err(read)?;
+            file.seek(SeekFrom::Start(self.next)).await.map_err(read)?;
+            self.file.insert(file)
         };
         let want = usize::try_from(self.owed.min(CHUNK)).unwrap_or(usize::MAX);
         let mut chunk = vec![0; want];

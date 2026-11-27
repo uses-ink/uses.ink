@@ -93,10 +93,10 @@ impl Request<'_> {
         let target = Target::parse(self.target, limits)?;
         let header = head.one(Singular::Host)?.ok_or(HostnameError::Missing)?;
         let Authority { hostname, .. } = Authority::try_from(header)?;
-        if let Some(named) = target.authority() {
-            if named.hostname != hostname {
-                return Err(Refusal::Authority { header: hostname, target: named.hostname.clone() });
-            }
+        if let Some(named) = target.authority()
+            && named.hostname != hostname
+        {
+            return Err(Refusal::Authority { header: hostname, target: named.hostname.clone() });
         }
         let conditions = Conditions {
             none_match: head.one(Singular::IfNoneMatch)?.map(|value| Matching::read(value, limits.tags)).transpose()?,

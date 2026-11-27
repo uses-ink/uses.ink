@@ -169,10 +169,10 @@ impl Observe for Tracing {
     fn event(&self, event: &Event) {
         match event {
             Event::Answered(Answered { kind: Kind::Failed, .. }) | Event::Connection { .. } => {
-                tracing::error!(target: "edge", %event)
+                tracing::error!(target: "edge", %event);
             }
             Event::Answered(Answered { kind: Kind::Refused, .. }) | Event::Cut(_) => {
-                tracing::warn!(target: "edge", %event)
+                tracing::warn!(target: "edge", %event);
             }
             _ => tracing::info!(target: "edge", %event),
         }
