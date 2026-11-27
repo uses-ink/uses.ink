@@ -10,12 +10,15 @@ use crate::docs::Fault;
 use crate::generate::output::Stale;
 use crate::layout::Problem;
 use crate::process::Failure;
+use crate::root::Lost;
 
 /// One failure of a task.
 #[derive(Debug)]
 pub(crate) enum Error {
     /// No task given.
     Missing,
+    /// The workspace could not be found.
+    Root(Lost),
     /// A task that does not exist.
     Unknown {
         given: String,
@@ -128,8 +131,10 @@ pub(crate) enum Flaw {
 }
 
 impl fmt::Display for Error {
+    #[expect(clippy::too_many_lines, reason = "one arm per kind of failure")]
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Root(lost) => write!(out, "{lost}"),
             Self::Missing => write!(out, "no task given; the tasks are {}", Listed(&Task::ALL)),
             Self::Unknown { given } => write!(out, "no task `{given}`; the tasks are {}", Listed(&Task::ALL)),
             Self::Stage { given } => write!(out, "no stage `{given}`; the stages are {}", Listed(&Stage::ALL)),
@@ -194,6 +199,7 @@ impl std::error::Error for Error {
             | Self::Metadata(source)
             | Self::Step { source, .. }
             | Self::Site { source, .. } => Some(source),
+            Self::Root(lost) => lost.source(),
             Self::Wrap { source, .. } => Some(source.as_ref()),
             Self::Bundle { source, .. } => Some(source),
             // Each of these is the whole failure: its data says what is wrong.

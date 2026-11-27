@@ -258,7 +258,7 @@ mod tests {
     use super::*;
 
     /// Every crate the rule list held in code before it became data, sorted.
-    const ENFORCED: [&str; 54] = [
+    const ENFORCED: [&str; 57] = [
         "farm",
         "freehand",
         "freehand-web",
@@ -272,6 +272,9 @@ mod tests {
         "uses-ink-clock",
         "uses-ink-config",
         "uses-ink-control",
+        "uses-ink-control-keys",
+        "uses-ink-control-rows",
+        "uses-ink-control-signin",
         "uses-ink-db",
         "uses-ink-db-conformance",
         "uses-ink-db-sqlite",

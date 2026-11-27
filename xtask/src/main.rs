@@ -22,7 +22,7 @@
 use std::error::Error as _;
 use std::fmt;
 use std::io::Write as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
 use std::str::FromStr;
 
@@ -62,10 +62,12 @@ mod generate;
 mod layout;
 mod process;
 mod report;
+mod root;
 
 use error::Error;
 use generate::output::{Mode, Output};
 use report::Report;
+use root::Root;
 
 /// What `cargo xtask` was asked to do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -161,14 +163,16 @@ impl fmt::Display for Chain<'_> {
 }
 
 fn main() -> ExitCode {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let mut args = std::env::args().skip(1);
-    let report = match (args.next().map(|arg| arg.parse::<Task>()), args.next().map(|arg| arg.parse::<check::Stage>()))
-    {
-        (Some(Ok(task)), None) => task.run(&root, None),
-        (Some(Ok(task)), Some(Ok(stage))) => task.run(&root, Some(stage)),
-        (Some(Err(error)), _) | (Some(Ok(_)), Some(Err(error))) => Report::from(error),
-        (None, _) => Report::from(Error::Missing),
+    let report = match (
+        Root::find(),
+        args.next().map(|arg| arg.parse::<Task>()),
+        args.next().map(|arg| arg.parse::<check::Stage>()),
+    ) {
+        (Ok(root), Some(Ok(task)), None) => task.run(&root, None),
+        (Ok(root), Some(Ok(task)), Some(Ok(stage))) => task.run(&root, Some(stage)),
+        (Err(error), ..) | (Ok(_), Some(Err(error)), _) | (Ok(_), Some(Ok(_)), Some(Err(error))) => Report::from(error),
+        (Ok(_), None, _) => Report::from(Error::Missing),
     };
     let mut err = std::io::stderr();
     // A report that cannot be written fails the task: nothing it did goes unsaid.
