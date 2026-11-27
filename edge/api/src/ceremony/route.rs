@@ -104,7 +104,10 @@ mod test {
         assert_eq!(Step::parse(Method::Post, "/v1/passkeys/challenge").unwrap(), Ok(Step::Challenge));
         assert_eq!(Step::parse(Method::Post, "/v1/passkeys/session").unwrap(), Ok(Step::Assert));
         let id = "0a".repeat(16);
-        assert!(matches!(Step::parse(Method::Delete, &format!("/v1/passkeys/{id}")).unwrap(), Ok(Step::Remove(Some(_)))));
+        assert!(matches!(
+            Step::parse(Method::Delete, &format!("/v1/passkeys/{id}")).unwrap(),
+            Ok(Step::Remove(Some(_)))
+        ));
         assert_eq!(Step::parse(Method::Delete, "/v1/passkeys/nope").unwrap(), Ok(Step::Remove(None)));
     }
 

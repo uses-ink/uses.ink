@@ -6,6 +6,8 @@
     clippy::panic,
     clippy::indexing_slicing,
     clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::duration_suboptimal_units,
     reason = "tests stop at the first surprise and read top to bottom"
 )]
 
@@ -152,12 +154,7 @@ impl Fixture {
     }
 
     fn send(&self, (method, path): (Method, &str), cookie: &str, body: &Value) -> Reply {
-        self.send_with(
-            (method, path),
-            Fetch { origin: Some(ORIGIN), site: None },
-            cookie,
-            body,
-        )
+        self.send_with((method, path), Fetch { origin: Some(ORIGIN), site: None }, cookie, body)
     }
 
     fn send_with(&self, (method, path): (Method, &str), fetch: Fetch<'_>, cookie: &str, body: &Value) -> Reply {
@@ -333,9 +330,15 @@ fn a_wrong_origin_is_refused_by_the_client_data_and_by_the_header() {
     let reply = fixture.send_with((Method::Post, "/v1/passkeys/options"), foreign, &jar, &json!({"label": "x"}));
     assert_eq!((reply.status, code(&reply)), (Status::Forbidden, "auth.origin.refused".to_owned()));
     let neither = Fetch { origin: None, site: None };
-    assert_eq!(fixture.send_with((Method::Post, "/v1/passkeys/challenge"), neither, "", &Value::Null).status, Status::Forbidden);
+    assert_eq!(
+        fixture.send_with((Method::Post, "/v1/passkeys/challenge"), neither, "", &Value::Null).status,
+        Status::Forbidden
+    );
     let cross = Fetch { origin: None, site: Some("cross-site") };
-    assert_eq!(fixture.send_with((Method::Post, "/v1/passkeys/challenge"), cross, "", &Value::Null).status, Status::Forbidden);
+    assert_eq!(
+        fixture.send_with((Method::Post, "/v1/passkeys/challenge"), cross, "", &Value::Null).status,
+        Status::Forbidden
+    );
     let same = Fetch { origin: None, site: Some("same-origin") };
     assert_eq!(fixture.send_with((Method::Post, "/v1/passkeys/challenge"), same, "", &Value::Null).status, Status::Ok);
     // a read needs no origin
@@ -506,7 +509,8 @@ fn one_authenticator_makes_one_passkey() {
     assert_eq!(body(&options)["excludeCredentials"].as_array().unwrap().len(), 1);
     let both = format!("{jar}; {}", pair(options.ceremony.as_ref().unwrap()));
     let credential = phone.create(&body(&options));
-    let reply = fixture.send((Method::Post, "/v1/passkeys"), &both, &json!({"label": "again", "credential": credential}));
+    let reply =
+        fixture.send((Method::Post, "/v1/passkeys"), &both, &json!({"label": "again", "credential": credential}));
     assert_eq!(reply.status, Status::Unprocessable, "{}", text(&reply));
     assert!(matches!(code(&reply).as_str(), "auth.passkey.refused" | "auth.passkey.taken"), "{}", code(&reply));
 }
@@ -538,9 +542,15 @@ fn the_options_are_what_the_design_says() {
     // a label that is no label, and a body that is no JSON object
     let bad = fixture.send((Method::Post, "/v1/passkeys/options"), &jar, &json!({"label": ""}));
     assert_eq!(code(&bad), "auth.passkey.label");
-    assert_eq!(fixture.send((Method::Post, "/v1/passkeys/options"), &jar, &json!({"label": "x", "extra": 1})).status, Status::BadRequest);
+    assert_eq!(
+        fixture.send((Method::Post, "/v1/passkeys/options"), &jar, &json!({"label": "x", "extra": 1})).status,
+        Status::BadRequest
+    );
     // registering needs a session
-    assert_eq!(fixture.send((Method::Post, "/v1/passkeys/options"), "", &json!({"label": "x"})).status, Status::Unauthorized);
+    assert_eq!(
+        fixture.send((Method::Post, "/v1/passkeys/options"), "", &json!({"label": "x"})).status,
+        Status::Unauthorized
+    );
 }
 
 #[test]
@@ -572,7 +582,8 @@ fn removing_a_passkey_ends_the_sessions_it_made() {
     // another account cannot remove it either
     let (_, other) = fixture.person("you@example.org");
     let other = format!("__Host-ink-session={other}");
-    let id = body(&fixture.send((Method::Get, "/v1/passkeys"), &link, &Value::Null))[0]["id"].as_str().unwrap().to_owned();
+    let id =
+        body(&fixture.send((Method::Get, "/v1/passkeys"), &link, &Value::Null))[0]["id"].as_str().unwrap().to_owned();
     let theirs = fixture.send((Method::Delete, &format!("/v1/passkeys/{id}")), &other, &Value::Null);
     assert_eq!(theirs.status, Status::NotFound);
     assert_eq!(fixture.send((Method::Delete, "/v1/passkeys/not-an-id"), &link, &Value::Null).status, Status::NotFound);

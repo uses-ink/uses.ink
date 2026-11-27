@@ -3,8 +3,8 @@
 use std::error::Error;
 
 use super::{
-    Asking, Asserted, Authenticating, Claim, Created, CredentialId, Creation, Enrolled, Person, Refusal,
-    Registering, Stored, Verified,
+    Asking, Asserted, Authenticating, Claim, Created, Creation, CredentialId, Enrolled, Person, Refusal, Registering,
+    Stored, Verified,
 };
 
 /// A WebAuthn verifier (decision 0068, `docs/auth.md` section 4).
@@ -39,10 +39,5 @@ pub trait Passkeys {
     fn who(&self, reply: &Asserted) -> Result<Claim, Refusal>;
 
     /// Verifies an assertion against the stored credential.
-    fn finish_login(
-        &self,
-        state: &Authenticating,
-        reply: &Asserted,
-        stored: &Stored,
-    ) -> Result<Verified, Refusal>;
+    fn finish_login(&self, state: &Authenticating, reply: &Asserted, stored: &Stored) -> Result<Verified, Refusal>;
 }

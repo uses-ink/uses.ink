@@ -30,8 +30,8 @@ mod store;
 pub use audit::Audit;
 pub use bytes::{Bytes, CredentialId};
 pub use ceremony::{
-    Algorithm, Asking, Asserted, Attestation, Authenticating, Claim, Class, Counter, Created, Creation, Enrolled, Holder,
-    Named, Party, Person, Registering, Requirement, Selection, State, Stored, Transport, Verified,
+    Algorithm, Asking, Asserted, Attestation, Authenticating, Claim, Class, Counter, Created, Creation, Enrolled,
+    Holder, Named, Party, Person, Registering, Requirement, Selection, State, Stored, Transport, Verified,
 };
 pub use error::{Error, Refused};
 pub use migration::Entry;

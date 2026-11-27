@@ -613,5 +613,9 @@ fn the_account_screen_lists_passkeys_with_a_remove_button() {
     };
     let account = Account::new(Fixtures::at("2026-11-01T00:00:00Z"), Vec::new()).with_passkeys(vec![kept]);
     let text = Document(&account).write().unwrap();
-    assert!(text.contains("Laptop") && text.contains(r#"data-passkey="remove""#) && text.contains(r#"data-passkey="register""#));
+    assert!(
+        text.contains("Laptop")
+            && text.contains(r#"data-passkey="remove""#)
+            && text.contains(r#"data-passkey="register""#)
+    );
 }

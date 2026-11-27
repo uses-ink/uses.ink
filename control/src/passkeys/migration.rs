@@ -85,7 +85,11 @@ impl Entry {
                 .col(ColumnDef::new(Ceremony::State).blob().not_null())
                 .col(Typed::time(Ceremony::ExpiresAt))
                 .into(),
-            Index::create().name(Named::CeremonyExpires.as_str()).table(Ceremony::Table).col(Ceremony::ExpiresAt).into(),
+            Index::create()
+                .name(Named::CeremonyExpires.as_str())
+                .table(Ceremony::Table)
+                .col(Ceremony::ExpiresAt)
+                .into(),
         ]
     }
 

@@ -525,6 +525,13 @@ and the body digest once the body is read. `Call::needs()` gives the `Right` a c
 The CLI signs through `auth::Identity`; its key is in `auth::Keystore`. Tests that speak raw HTTP
 sign with `cli/tests/keyed`.
 
+Passkeys (0068, slice 2): `control::passkeys` has the `Passkeys` port, the ceremonies as values,
+`Refusal` with a typed `Reason`, `Counter::judge` and `Registry` (passkeys and single-use
+ceremonies). `edge_api::Webauthn` is the adapter over `webauthn-rs-core`; `edge_api::Ceremonies`
+answers `/v1/passkeys` and is mounted beside the Door with `Routed`. `web` shows the list and the
+sign-in page and serves `passkey.js`. Tests use `tests/support/authenticator.rs`, a software
+authenticator.
+
 ## 11. Signing in
 
 `control::signin` is sign-in over the row port alone. `SignIn<D: Db>` has the use cases:

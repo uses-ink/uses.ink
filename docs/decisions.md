@@ -1595,6 +1595,46 @@ are not. What differs from the text above, or was left out:
   has no fuzz infrastructure; the strict parser is covered by property tests with mutation). The
   `ed25519-dalek` and `curve25519-dalek` licence exceptions of this decision are in `deny.toml`.
 
+**Build note (slice 2, passkeys, 2026-11-27).** Passkeys and their dashboard routes are built.
+
+- **Spike: it builds.** `webauthn-rs-core` 0.6.2 compiles and links for `wasm32-unknown-unknown`
+  (`spikes/passkeys`), with `getrandom` 0.4 `wasm_js` and `uuid` `js`, both set in
+  `edge/api/Cargo.toml` for that target. Not run in `workerd`, size not measured, and no browser was
+  involved: the verifier is tested natively. The tree is 167 crates; the workspace pins
+  `=0.6.2` because its constructor is `new_unsafe_experts_only` and its API may move in a minor.
+  `rsa` resolves to 0.10.0, past RUSTSEC-2023-0071.
+- **Licences.** Exactly four crates are MPL-2.0: `webauthn-rs-core`, `webauthn-rs-proto`,
+  `webauthn-attestation-ca`, `crypto-glue` (section 15 of `auth.md` named one more that is not a
+  crate in 0.6.2). **Decision: crate-scoped exceptions in `deny.toml`, accepted.** MPL-2.0 is
+  file-level: it binds changes to its own files, and we link it unmodified. It is compatible with
+  the AGPL of this repository, and scoping the exceptions to the four names makes a fifth MPL crate
+  a new decision. The other new crates are MIT or Apache-2.0.
+- **Where it lives.** The `Passkeys` port, the typed ceremonies (`Creation`, `Asking`, `Created`,
+  `Asserted`), the refusals (`Reason`, `Refusal`), the audit events and the store (`Registry`) are
+  in `control::passkeys`. The `webauthn-rs-core` adapter (`Webauthn`) and the routes
+  (`Ceremonies`) are in `edge/api`; `web` has the Account list, the sign-in page and the one script
+  `passkey.js`, which is static text. The relying party comes from `--rp-id` and `--rp-origin`
+  (default the API host and its origin), and `ink serve` prints it. The store keeps the first
+  passkey's id; a changed id refuses with `auth.relying-party.changed` and names how many would stop.
+- **Ceremonies** are single use: the cookie secret's digest is the row, spent by a conditional
+  delete before anything is verified, five minutes, and bound to the flow (register or sign in) and
+  the account. A passkey session is the same session of 0068 (digest stored, 30 d absolute, 7 d
+  idle) and never signs an API request: the API host reads no cookie.
+- **Counter.** The library is handed counter 0 and `Counter::judge` decides: a hardware passkey
+  whose counter does not rise once it was nonzero is refused, a synced one is flagged and audited.
+  A change of the backup-eligible flag is refused both ways.
+- **Deviations.** Routes are `/v1/passkeys...` in `edge/api` (JSON) rather than `/auth/...` in
+  `web`; the Origin and Fetch Metadata check is on the new routes only, not yet on the older Door
+  routes; the stored key is the JSON of the library's COSE key; the credential link to a session is
+  a `passkey_session` table, because `db` has no ALTER. Operator registration goes through the
+  admin-link session.
+- **Not done.** Step-up approval of enrolments by passkey, recovery codes and the delayed email
+  recovery, a per-source limit on `POST /v1/passkeys/challenge`, a run in `workerd`, and the browser
+  matrix (spike 2) stay open.
+- **Tests.** `edge/api/tests/passkey.rs` drives the real handlers with a software authenticator
+  (`tests/support/authenticator.rs`, p256 ECDSA): the full ceremony, wrong origin, wrong rp id,
+  replayed and expired challenge, counter rollback, unknown credential, user verification missing.
+
 ## 0072 Git over https: one TLS stack, rustls over ring, and one licence exception
 
 Accepted (2026-11-27). The owner took the recommendation to fix what 0067 refused: the watch's

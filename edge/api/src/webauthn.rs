@@ -27,10 +27,10 @@ use url::Url;
 use webauthn_rs_core::WebauthnCore;
 use webauthn_rs_core::error::WebauthnError;
 use webauthn_rs_core::proto::{
-    AttestationConveyancePreference, AttestationFormat, AuthenticationExtensionsClientOutputs, AuthenticationState, AuthenticatorAssertionResponseRaw,
-    AuthenticatorAttestationResponseRaw, AuthenticatorTransport, COSEAlgorithm, COSEKey, Credential, ParsedAttestation,
-    PublicKeyCredential, RegisterPublicKeyCredential, RegisteredExtensions, RegistrationExtensionsClientOutputs,
-    RegistrationState, UserVerificationPolicy,
+    AttestationConveyancePreference, AttestationFormat, AuthenticationExtensionsClientOutputs, AuthenticationState,
+    AuthenticatorAssertionResponseRaw, AuthenticatorAttestationResponseRaw, AuthenticatorTransport, COSEAlgorithm,
+    COSEKey, Credential, ParsedAttestation, PublicKeyCredential, RegisterPublicKeyCredential, RegisteredExtensions,
+    RegistrationExtensionsClientOutputs, RegistrationState, UserVerificationPolicy,
 };
 
 /// What the adapter itself fails with, apart from refusing a reply.
@@ -212,11 +212,7 @@ impl Webauthn {
 impl Passkeys for Webauthn {
     type Error = Failed;
 
-    fn start_registration(
-        &self,
-        who: &Person,
-        existing: &[CredentialId],
-    ) -> Result<(Creation, Registering), Failed> {
+    fn start_registration(&self, who: &Person, existing: &[CredentialId]) -> Result<(Creation, Registering), Failed> {
         let name = who.label.as_str();
         let builder = self
             .core
@@ -299,12 +295,7 @@ impl Passkeys for Webauthn {
         Ok(Claim { credential: reply.id.clone(), account })
     }
 
-    fn finish_login(
-        &self,
-        state: &Authenticating,
-        reply: &Asserted,
-        stored: &Stored,
-    ) -> Result<Verified, Refusal> {
+    fn finish_login(&self, state: &Authenticating, reply: &Asserted, stored: &Stored) -> Result<Verified, Refusal> {
         let state: AuthenticationState = Self::recalled(&state.0)?;
         let known = Self::known(stored)?;
         let received = Self::received(reply);

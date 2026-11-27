@@ -253,6 +253,14 @@ impl args::Serve {
     }
 
     /// Says every sign-in setting it runs with, and the first-run link when this start made it.
+    /// Says who passkeys are made for.
+    fn list_passkeys(relying: &control::passkeys::Relying, record: Record) -> Record {
+        record.field(
+            "passkeys",
+            Line::plain(format!("relying party id {}, origins {}", relying.id(), relying.origins().join(", "))),
+        )
+    }
+
     fn list_signin(&self, mailing: &Mailing, record: Record) -> Result<Record, Error> {
         let flags = &self.signin;
         let settings = &mailing.settings;
@@ -280,6 +288,7 @@ impl args::Serve {
                 if mailing.secure { "Secure" } else { "plain http, not Secure" }
             )),
         );
+        let record = Self::list_passkeys(&mailing.relying, record);
         let admin = match &mailing.admin {
             Some(link) => format!(
                 "{link} (shown once and kept nowhere; valid {}; opening it signs in as the owner)",

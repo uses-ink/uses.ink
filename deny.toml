@@ -57,6 +57,13 @@ exceptions = [
     # with `webpki-roots` and `ring` in the `https` crate, so this is the one more crate that
     # carries the CDLA-Permissive-2.0 of the root certificates, and no second TLS stack
     { crate = "webpki-root-certs", allow = ["CDLA-Permissive-2.0"] },
+    # Passkeys (0068, slice 2): webauthn-rs-core is MPL-2.0, a file-level copyleft that binds only
+    # changes to its own files, and we change none (pinned `=0.6.2`, linked unmodified). Scoped to
+    # the four crates of its tree that carry it, so a fifth MPL crate is a decision
+    { crate = "webauthn-rs-core", allow = ["MPL-2.0"] },
+    { crate = "webauthn-rs-proto", allow = ["MPL-2.0"] },
+    { crate = "webauthn-attestation-ca", allow = ["MPL-2.0"] },
+    { crate = "crypto-glue", allow = ["MPL-2.0"] },
     # JPEG copies (host/image): the IJG notice covers its port of libjpeg's tables
     { crate = "jpeg-encoder", allow = ["IJG"] },
 ]

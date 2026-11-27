@@ -32,8 +32,8 @@ use control::AccountKind;
 use control::Id;
 use control::keys::Label;
 use control::passkeys::{
-    Asserted, Audit, Authenticating, Begin, Created, Flow, Fresh, Passkey, Passkeys, Person, Reason, Refusal, Registering,
-    Registry, Relying,
+    Asserted, Audit, Authenticating, Begin, Created, Flow, Fresh, Passkey, Passkeys, Person, Reason, Refusal,
+    Registering, Registry, Relying,
 };
 use control::signin::{Passed, Proof, Session, SignIn};
 use db::Db;
@@ -266,10 +266,8 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
             return Err(Stop::Challenge);
         }
         let refused = |refusal| Stop::Refused { flow: Flow::Register, refusal };
-        let enrolled = self
-            .passkeys
-            .finish_registration(&Registering(spent.state), &registered.credential)
-            .map_err(refused)?;
+        let enrolled =
+            self.passkeys.finish_registration(&Registering(spent.state), &registered.credential).map_err(refused)?;
         let id = self.drawn()?.factor;
         let fresh = Fresh { id, account: session.account, enrolled: &enrolled, label: &label };
         self.registry.add(fresh, self.config.relying.id(), now).await.map_err(Stop::stored)?;

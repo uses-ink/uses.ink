@@ -72,7 +72,11 @@ impl Audit {
     }
 
     /// The statement that writes this event for `account`.
-    pub(crate) fn statement(&self, account: Id<AccountKind>, now: Timestamp) -> Result<Statement, sea_query::error::Error> {
+    pub(crate) fn statement(
+        &self,
+        account: Id<AccountKind>,
+        now: Timestamp,
+    ) -> Result<Statement, sea_query::error::Error> {
         let insert = Query::insert()
             .into_table(table::AuthEvent::Table)
             .columns([

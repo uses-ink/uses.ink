@@ -65,6 +65,9 @@ right = "The right the call needs: `read`, `deploy`, `edit`, `destroy`, `keys` o
 scope = "Where the right was needed: `account`, or `site`."
 seconds = "How many seconds."
 server_time = "What time the server thinks it is, as an RFC 3339 timestamp (UTC)."
+was = "The relying party id the first passkey was made under."
+now = "The relying party id the server is configured with now."
+passkeys = "How many passkeys are registered."
 since = "When it happened, as an RFC 3339 timestamp (UTC)."
 skew = "How many seconds the request's time is from the server's."
 token_file = "The file that holds the retired owner token."
@@ -896,6 +899,91 @@ message = "the cache entry {entry} could not be written, so the next build makes
 [notice."cache.entry.evicted"]
 fields = { count = "count", limit = "bytes" }
 message = "{count} cache entries used longest ago were removed, keeping the cache under {limit}"
+
+[diagnostic."auth.origin.refused"]
+severity = "error"
+fault = "author"
+message = "the request came from an origin that is not this dashboard"
+fix = "use the dashboard at its own address; a script uses a signed request"
+
+[diagnostic."auth.passkey.refused"]
+severity = "error"
+fault = "author"
+message = "the passkey was refused"
+fix = "try again; if it keeps failing, sign in with an email link and add the passkey again"
+
+[diagnostic."auth.passkey.origin"]
+severity = "error"
+fault = "author"
+message = "the passkey ceremony ran on an origin this server does not serve"
+fix = "open the dashboard at the address the operator configured with `--rp-origin`"
+
+[diagnostic."auth.passkey.relying-party"]
+severity = "error"
+fault = "author"
+message = "the passkey is for a different relying party id"
+fix = "use a passkey made for this server, or add one here"
+
+[diagnostic."auth.passkey.challenge"]
+severity = "error"
+fault = "author"
+message = "the challenge is unknown, already used, or older than five minutes"
+fix = "start the ceremony again"
+
+[diagnostic."auth.passkey.unverified"]
+severity = "error"
+fault = "author"
+message = "the authenticator did not verify you (a PIN, a fingerprint or the like)"
+fix = "use an authenticator that verifies you, and approve the prompt"
+
+[diagnostic."auth.passkey.counter"]
+severity = "error"
+fault = "author"
+message = "the passkey's signature counter went backwards, which a cloned key would cause"
+fix = "remove the passkey and add a new one; sign in with an email link meanwhile"
+
+[diagnostic."auth.passkey.backup"]
+severity = "error"
+fault = "author"
+message = "the passkey changed whether it is synced between devices"
+fix = "remove it and add the passkey again"
+
+[diagnostic."auth.passkey.malformed"]
+severity = "error"
+fault = "author"
+message = "the passkey data could not be read"
+fix = "try again; a browser without passkey support cannot sign in this way"
+
+[diagnostic."auth.passkey.algorithm"]
+severity = "error"
+fault = "author"
+message = "the passkey does not use ES256, the one algorithm this server accepts"
+fix = "use another authenticator or a platform passkey"
+
+[diagnostic."auth.passkey.taken"]
+severity = "error"
+fault = "author"
+message = "that passkey is already registered"
+fix = "sign in with it, or register another authenticator"
+
+[diagnostic."auth.passkey.missing"]
+severity = "error"
+fault = "author"
+message = "no passkey of yours has that id"
+fix = "reload the list"
+
+[diagnostic."auth.passkey.label"]
+severity = "error"
+fault = "author"
+message = "the passkey's name is empty or too long"
+fix = "use a name of 1 to 64 characters"
+
+[diagnostic."auth.relying-party.changed"]
+severity = "error"
+fault = "operator"
+fields = { was = "text", now = "text", passkeys = "count" }
+message = "passkeys were made for `{was}` and the relying party id is now `{now}`; {passkeys} would stop working"
+fix = "set `--rp-id {was}` again, or accept that people sign in with an email link and add passkeys anew"
 
 [notice."auth.token.retired"]
 fields = { token_file = "text" }

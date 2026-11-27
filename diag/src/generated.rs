@@ -316,6 +316,47 @@ impl Message<'_> {
             Problem::BuildCheckMismatch { component, native, .. } => {
                 write!(out, "the plugins built as components give deploy {component}, natively {native}")
             }
+            Problem::AuthOriginRefused => {
+                write!(out, "the request came from an origin that is not this dashboard")
+            }
+            Problem::AuthPasskeyRefused => write!(out, "the passkey was refused"),
+            Problem::AuthPasskeyOrigin => {
+                write!(out, "the passkey ceremony ran on an origin this server does not serve")
+            }
+            Problem::AuthPasskeyRelyingParty => {
+                write!(out, "the passkey is for a different relying party id")
+            }
+            Problem::AuthPasskeyChallenge => {
+                write!(out, "the challenge is unknown, already used, or older than five minutes")
+            }
+            Problem::AuthPasskeyUnverified => {
+                write!(out, "the authenticator did not verify you (a PIN, a fingerprint or the like)")
+            }
+            Problem::AuthPasskeyCounter => {
+                write!(out, "the passkey's signature counter went backwards, which a cloned key would cause")
+            }
+            Problem::AuthPasskeyBackup => {
+                write!(out, "the passkey changed whether it is synced between devices")
+            }
+            Problem::AuthPasskeyMalformed => {
+                write!(out, "the passkey data could not be read")
+            }
+            Problem::AuthPasskeyAlgorithm => {
+                write!(out, "the passkey does not use ES256, the one algorithm this server accepts")
+            }
+            Problem::AuthPasskeyTaken => {
+                write!(out, "that passkey is already registered")
+            }
+            Problem::AuthPasskeyMissing => write!(out, "no passkey of yours has that id"),
+            Problem::AuthPasskeyLabel => {
+                write!(out, "the passkey's name is empty or too long")
+            }
+            Problem::AuthRelyingPartyChanged { was, now, passkeys, .. } => {
+                write!(
+                    out,
+                    "passkeys were made for `{was}` and the relying party id is now `{now}`; {passkeys} would stop working"
+                )
+            }
         }
     }
     pub(crate) fn announcement(announcement: &Announcement, out: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -583,6 +624,20 @@ impl Fix<'_> {
             Problem::PluginBudgetMemory { .. } => false,
             Problem::PluginBudgetTable { .. } => false,
             Problem::BuildCheckMismatch { .. } => true,
+            Problem::AuthOriginRefused => true,
+            Problem::AuthPasskeyRefused => true,
+            Problem::AuthPasskeyOrigin => true,
+            Problem::AuthPasskeyRelyingParty => true,
+            Problem::AuthPasskeyChallenge => true,
+            Problem::AuthPasskeyUnverified => true,
+            Problem::AuthPasskeyCounter => true,
+            Problem::AuthPasskeyBackup => true,
+            Problem::AuthPasskeyMalformed => true,
+            Problem::AuthPasskeyAlgorithm => true,
+            Problem::AuthPasskeyTaken => true,
+            Problem::AuthPasskeyMissing => true,
+            Problem::AuthPasskeyLabel => true,
+            Problem::AuthRelyingPartyChanged { .. } => true,
         }
     }
     pub(crate) const fn announcement_has(announcement: &Announcement) -> bool {
@@ -898,6 +953,45 @@ impl Fix<'_> {
             Problem::PluginBudgetTable { .. } => Ok(()),
             Problem::BuildCheckMismatch { .. } => {
                 write!(out, "a plugin's component and its native core disagree; `ink build` natively is the reference")
+            }
+            Problem::AuthOriginRefused => {
+                write!(out, "use the dashboard at its own address; a script uses a signed request")
+            }
+            Problem::AuthPasskeyRefused => {
+                write!(out, "try again; if it keeps failing, sign in with an email link and add the passkey again")
+            }
+            Problem::AuthPasskeyOrigin => {
+                write!(out, "open the dashboard at the address the operator configured with `--rp-origin`")
+            }
+            Problem::AuthPasskeyRelyingParty => {
+                write!(out, "use a passkey made for this server, or add one here")
+            }
+            Problem::AuthPasskeyChallenge => write!(out, "start the ceremony again"),
+            Problem::AuthPasskeyUnverified => {
+                write!(out, "use an authenticator that verifies you, and approve the prompt")
+            }
+            Problem::AuthPasskeyCounter => {
+                write!(out, "remove the passkey and add a new one; sign in with an email link meanwhile")
+            }
+            Problem::AuthPasskeyBackup => {
+                write!(out, "remove it and add the passkey again")
+            }
+            Problem::AuthPasskeyMalformed => {
+                write!(out, "try again; a browser without passkey support cannot sign in this way")
+            }
+            Problem::AuthPasskeyAlgorithm => {
+                write!(out, "use another authenticator or a platform passkey")
+            }
+            Problem::AuthPasskeyTaken => {
+                write!(out, "sign in with it, or register another authenticator")
+            }
+            Problem::AuthPasskeyMissing => write!(out, "reload the list"),
+            Problem::AuthPasskeyLabel => write!(out, "use a name of 1 to 64 characters"),
+            Problem::AuthRelyingPartyChanged { was, .. } => {
+                write!(
+                    out,
+                    "set `--rp-id {was}` again, or accept that people sign in with an email link and add passkeys anew"
+                )
             }
         }
     }

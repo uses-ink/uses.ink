@@ -18,7 +18,10 @@ use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Refusal, Rem
 use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::door::Config;
-use edge_api::{Api, Courier, Door, Draws, Enrol, Limits, OperatorFile, Outbox, Rates, Routed, Signatures, Signing};
+use edge_api::{
+    Api, Ceremonies, Courier, Door, Draws, Enrol, Limits, OperatorFile, Outbox, Passing, Rates, Routed, Signatures,
+    Signing, Webauthn,
+};
 use edge_control::{Back, Fronts};
 use mail::{Base, Link};
 use queue_local::{Local as Queue, Queued};
@@ -44,7 +47,10 @@ pub(crate) type Store = Arc<Sqlite>;
 pub(crate) type Callers = Signatures<Store, System, OperatorFile>;
 
 /// The API as `ink serve` wires it, with the sign-in routes beside it.
-pub(crate) type Wired = Routed<Api<Ports, Callers, System, System>, Door<Store, System, System>>;
+pub(crate) type Wired = Routed<
+    Routed<Api<Ports, Callers, System, System>, Door<Store, System, System>>,
+    Ceremonies<Store, System, System, Webauthn>,
+>;
 
 /// Why the control plane could not be set up.
 #[derive(Debug)]
@@ -102,6 +108,8 @@ pub(crate) struct Mailing {
     pub(crate) base: Base,
     pub(crate) outbox: usize,
     pub(crate) secure: bool,
+    /// Who passkeys are made for.
+    pub(crate) relying: control::passkeys::Relying,
     /// The first-run link, when this start made it. It is shown once and kept nowhere.
     pub(crate) admin: Option<Link>,
 }
@@ -161,6 +169,15 @@ impl Product {
         let (courier, outbox, capacity) = Self::courier(flags)?;
         let db_for_keys = Arc::clone(&db);
         let entry = SignIn::new(db, sign);
+        let relying = flags.relying(&settings.origin, &settings.api_host)?;
+        let passkeys = Webauthn::new(relying.clone())
+            .map_err(|e| Unready::Setting { flag: "--rp-origin", source: Box::new(e) })?;
+        let gates = Ceremonies::new(
+            (entry.clone(), control::passkeys::Registry::new(Arc::clone(&db_for_keys))),
+            (System, System),
+            passkeys,
+            Passing { session: flags.jar(secure)?, ceremony: Flags::ceremony(secure)?, relying: relying.clone() },
+        );
         let admin = Self::admin(&entry, account, &base)?;
         let (api, enrol) = Self::api(control, &keys, (account, &operators), (db_for_keys, limits));
         let api = api.with_schemes(settings.hosting.schemes());
@@ -168,10 +185,11 @@ impl Product {
         let config =
             Config { jar: flags.jar(secure)?, base: base.clone(), rates, outbox, reveals: flags.login_get_signs_in };
         let door = Door::new(entry, (System, System), enrol, config);
+        let api = Routed::new(api, door);
         let told = Told(std::sync::Mutex::new(std::io::stderr()));
-        let mailing = Mailing { courier, told, settings: sign, rates, base, outbox: capacity, secure, admin };
+        let mailing = Mailing { courier, told, settings: sign, rates, base, outbox: capacity, secure, relying, admin };
         Ok(Self {
-            api: Routed::new(api, door),
+            api: Routed::new(api, gates),
             mailing,
             limits,
             interval: Self::interval(settings)?,
@@ -195,7 +213,8 @@ impl Product {
             .and_then(Steps::with::<Remembered>)
             .and_then(Steps::with::<Queued>)
             .and_then(Steps::with::<Entry>)
-            .and_then(Steps::with::<control::keys::Entry>);
+            .and_then(Steps::with::<control::keys::Entry>)
+            .and_then(Steps::with::<control::passkeys::Entry>);
         let steps = steps.map_err(|e| Self::adapter("migration")(Box::new(e)))?;
         pollster::block_on(steps.apply(&db)).map_err(|e| Self::adapter("migration")(Box::new(e)))?;
         Ok(db)

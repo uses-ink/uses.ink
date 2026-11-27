@@ -83,8 +83,8 @@ impl TryFrom<&db::Row> for Passkey {
         let counter = u32::try_from(fields.count(table::Passkey::SignCount)?)
             .map_err(|_| Unreadable::Text { column: "sign_count" })?;
         let transports = fields.text(table::Passkey::Transports)?;
-        let label = Label::parse(&fields.text(table::Passkey::Label)?)
-            .map_err(|_| Unreadable::Text { column: "label" })?;
+        let label =
+            Label::parse(&fields.text(table::Passkey::Label)?).map_err(|_| Unreadable::Text { column: "label" })?;
         Ok(Self {
             id: fields.id(table::Passkey::Id)?,
             account: fields.id(table::Passkey::AccountId)?,
@@ -260,7 +260,12 @@ impl<D: Db> Registry<D> {
     pub async fn spend(&self, proof: &Proof, flow: Flow, now: Timestamp) -> Result<Option<Spent>, Error<D::Error>> {
         let digest = Digest::of(Context::Ceremony, proof);
         let select = Query::select()
-            .columns([table::Ceremony::Digest, table::Ceremony::Flow, table::Ceremony::AccountId, table::Ceremony::State])
+            .columns([
+                table::Ceremony::Digest,
+                table::Ceremony::Flow,
+                table::Ceremony::AccountId,
+                table::Ceremony::State,
+            ])
             .from(table::Ceremony::Table)
             .and_where(Expr::col(table::Ceremony::Digest).eq(digest.as_bytes().as_slice()))
             .and_where(Expr::col(table::Ceremony::ExpiresAt).gt(now.as_millisecond()))
@@ -359,7 +364,12 @@ impl<D: Db> Registry<D> {
     /// Removes a passkey of `account`, ends the sessions it made, and writes the event, in one
     /// batch. [`Refused::Missing`] when the account has no such passkey, which is the answer for
     /// another account's passkey too.
-    pub async fn remove(&self, account: Id<AccountKind>, id: Id<FactorKind>, now: Timestamp) -> Result<(), Error<D::Error>> {
+    pub async fn remove(
+        &self,
+        account: Id<AccountKind>,
+        id: Id<FactorKind>,
+        now: Timestamp,
+    ) -> Result<(), Error<D::Error>> {
         let found = Query::select()
             .expr(Expr::val(1_i64))
             .from(table::Passkey::Table)

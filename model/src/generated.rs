@@ -637,6 +637,55 @@ pub enum Problem {
         /// The deploy the plugins built as components built.
         component: String,
     },
+    /// `auth.origin.refused`: the request came from an origin that is not this dashboard
+    #[serde(rename = "auth.origin.refused")]
+    AuthOriginRefused,
+    /// `auth.passkey.refused`: the passkey was refused
+    #[serde(rename = "auth.passkey.refused")]
+    AuthPasskeyRefused,
+    /// `auth.passkey.origin`: the passkey ceremony ran on an origin this server does not serve
+    #[serde(rename = "auth.passkey.origin")]
+    AuthPasskeyOrigin,
+    /// `auth.passkey.relying-party`: the passkey is for a different relying party id
+    #[serde(rename = "auth.passkey.relying-party")]
+    AuthPasskeyRelyingParty,
+    /// `auth.passkey.challenge`: the challenge is unknown, already used, or older than five minutes
+    #[serde(rename = "auth.passkey.challenge")]
+    AuthPasskeyChallenge,
+    /// `auth.passkey.unverified`: the authenticator did not verify you (a PIN, a fingerprint or the like)
+    #[serde(rename = "auth.passkey.unverified")]
+    AuthPasskeyUnverified,
+    /// `auth.passkey.counter`: the passkey's signature counter went backwards, which a cloned key would cause
+    #[serde(rename = "auth.passkey.counter")]
+    AuthPasskeyCounter,
+    /// `auth.passkey.backup`: the passkey changed whether it is synced between devices
+    #[serde(rename = "auth.passkey.backup")]
+    AuthPasskeyBackup,
+    /// `auth.passkey.malformed`: the passkey data could not be read
+    #[serde(rename = "auth.passkey.malformed")]
+    AuthPasskeyMalformed,
+    /// `auth.passkey.algorithm`: the passkey does not use ES256, the one algorithm this server accepts
+    #[serde(rename = "auth.passkey.algorithm")]
+    AuthPasskeyAlgorithm,
+    /// `auth.passkey.taken`: that passkey is already registered
+    #[serde(rename = "auth.passkey.taken")]
+    AuthPasskeyTaken,
+    /// `auth.passkey.missing`: no passkey of yours has that id
+    #[serde(rename = "auth.passkey.missing")]
+    AuthPasskeyMissing,
+    /// `auth.passkey.label`: the passkey's name is empty or too long
+    #[serde(rename = "auth.passkey.label")]
+    AuthPasskeyLabel,
+    /// `auth.relying-party.changed`: passkeys were made for `{was}` and the relying party id is now `{now}`; {passkeys} would stop working
+    #[serde(rename = "auth.relying-party.changed")]
+    AuthRelyingPartyChanged {
+        /// The relying party id the first passkey was made under.
+        was: String,
+        /// The relying party id the server is configured with now.
+        now: String,
+        /// How many passkeys are registered.
+        passkeys: u64,
+    },
 }
 impl Problem {
     /// Every code, in catalog order.
@@ -738,6 +787,20 @@ impl Problem {
         "plugin.budget.memory",
         "plugin.budget.table",
         "build.check.mismatch",
+        "auth.origin.refused",
+        "auth.passkey.refused",
+        "auth.passkey.origin",
+        "auth.passkey.relying-party",
+        "auth.passkey.challenge",
+        "auth.passkey.unverified",
+        "auth.passkey.counter",
+        "auth.passkey.backup",
+        "auth.passkey.malformed",
+        "auth.passkey.algorithm",
+        "auth.passkey.taken",
+        "auth.passkey.missing",
+        "auth.passkey.label",
+        "auth.relying-party.changed",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -839,6 +902,20 @@ impl Problem {
             Self::PluginBudgetMemory { .. } => "plugin.budget.memory",
             Self::PluginBudgetTable { .. } => "plugin.budget.table",
             Self::BuildCheckMismatch { .. } => "build.check.mismatch",
+            Self::AuthOriginRefused => "auth.origin.refused",
+            Self::AuthPasskeyRefused => "auth.passkey.refused",
+            Self::AuthPasskeyOrigin => "auth.passkey.origin",
+            Self::AuthPasskeyRelyingParty => "auth.passkey.relying-party",
+            Self::AuthPasskeyChallenge => "auth.passkey.challenge",
+            Self::AuthPasskeyUnverified => "auth.passkey.unverified",
+            Self::AuthPasskeyCounter => "auth.passkey.counter",
+            Self::AuthPasskeyBackup => "auth.passkey.backup",
+            Self::AuthPasskeyMalformed => "auth.passkey.malformed",
+            Self::AuthPasskeyAlgorithm => "auth.passkey.algorithm",
+            Self::AuthPasskeyTaken => "auth.passkey.taken",
+            Self::AuthPasskeyMissing => "auth.passkey.missing",
+            Self::AuthPasskeyLabel => "auth.passkey.label",
+            Self::AuthRelyingPartyChanged { .. } => "auth.relying-party.changed",
         }
     }
     /// How bad it is.
@@ -941,6 +1018,20 @@ impl Problem {
             Self::PluginBudgetMemory { .. } => Severity::Error,
             Self::PluginBudgetTable { .. } => Severity::Error,
             Self::BuildCheckMismatch { .. } => Severity::Error,
+            Self::AuthOriginRefused => Severity::Error,
+            Self::AuthPasskeyRefused => Severity::Error,
+            Self::AuthPasskeyOrigin => Severity::Error,
+            Self::AuthPasskeyRelyingParty => Severity::Error,
+            Self::AuthPasskeyChallenge => Severity::Error,
+            Self::AuthPasskeyUnverified => Severity::Error,
+            Self::AuthPasskeyCounter => Severity::Error,
+            Self::AuthPasskeyBackup => Severity::Error,
+            Self::AuthPasskeyMalformed => Severity::Error,
+            Self::AuthPasskeyAlgorithm => Severity::Error,
+            Self::AuthPasskeyTaken => Severity::Error,
+            Self::AuthPasskeyMissing => Severity::Error,
+            Self::AuthPasskeyLabel => Severity::Error,
+            Self::AuthRelyingPartyChanged { .. } => Severity::Error,
         }
     }
     /// Whose move it is to fix it.
@@ -1043,6 +1134,20 @@ impl Problem {
             Self::PluginBudgetMemory { .. } => Fault::Ours,
             Self::PluginBudgetTable { .. } => Fault::Ours,
             Self::BuildCheckMismatch { .. } => Fault::Ours,
+            Self::AuthOriginRefused => Fault::Author,
+            Self::AuthPasskeyRefused => Fault::Author,
+            Self::AuthPasskeyOrigin => Fault::Author,
+            Self::AuthPasskeyRelyingParty => Fault::Author,
+            Self::AuthPasskeyChallenge => Fault::Author,
+            Self::AuthPasskeyUnverified => Fault::Author,
+            Self::AuthPasskeyCounter => Fault::Author,
+            Self::AuthPasskeyBackup => Fault::Author,
+            Self::AuthPasskeyMalformed => Fault::Author,
+            Self::AuthPasskeyAlgorithm => Fault::Author,
+            Self::AuthPasskeyTaken => Fault::Author,
+            Self::AuthPasskeyMissing => Fault::Author,
+            Self::AuthPasskeyLabel => Fault::Author,
+            Self::AuthRelyingPartyChanged { .. } => Fault::Operator,
         }
     }
 }
@@ -1658,6 +1763,23 @@ impl From<&Problem> for Coded {
             Problem::BuildCheckMismatch { native, component, .. } => {
                 Coded::new("build.check.mismatch", vec![Field::from(native.clone()), Field::from(component.clone())])
             }
+            Problem::AuthOriginRefused => Coded::new("auth.origin.refused", vec![]),
+            Problem::AuthPasskeyRefused => Coded::new("auth.passkey.refused", vec![]),
+            Problem::AuthPasskeyOrigin => Coded::new("auth.passkey.origin", vec![]),
+            Problem::AuthPasskeyRelyingParty => Coded::new("auth.passkey.relying-party", vec![]),
+            Problem::AuthPasskeyChallenge => Coded::new("auth.passkey.challenge", vec![]),
+            Problem::AuthPasskeyUnverified => Coded::new("auth.passkey.unverified", vec![]),
+            Problem::AuthPasskeyCounter => Coded::new("auth.passkey.counter", vec![]),
+            Problem::AuthPasskeyBackup => Coded::new("auth.passkey.backup", vec![]),
+            Problem::AuthPasskeyMalformed => Coded::new("auth.passkey.malformed", vec![]),
+            Problem::AuthPasskeyAlgorithm => Coded::new("auth.passkey.algorithm", vec![]),
+            Problem::AuthPasskeyTaken => Coded::new("auth.passkey.taken", vec![]),
+            Problem::AuthPasskeyMissing => Coded::new("auth.passkey.missing", vec![]),
+            Problem::AuthPasskeyLabel => Coded::new("auth.passkey.label", vec![]),
+            Problem::AuthRelyingPartyChanged { was, now, passkeys, .. } => Coded::new(
+                "auth.relying-party.changed",
+                vec![Field::from(was.clone()), Field::from(now.clone()), Field::from(*passkeys)],
+            ),
         }
     }
 }
@@ -1782,6 +1904,22 @@ impl TryFrom<Coded> for Problem {
             "plugin.budget.memory" => Self::PluginBudgetMemory { plugin: fields.next()?, limit: fields.next()? },
             "plugin.budget.table" => Self::PluginBudgetTable { plugin: fields.next()?, limit: fields.next()? },
             "build.check.mismatch" => Self::BuildCheckMismatch { native: fields.next()?, component: fields.next()? },
+            "auth.origin.refused" => Self::AuthOriginRefused,
+            "auth.passkey.refused" => Self::AuthPasskeyRefused,
+            "auth.passkey.origin" => Self::AuthPasskeyOrigin,
+            "auth.passkey.relying-party" => Self::AuthPasskeyRelyingParty,
+            "auth.passkey.challenge" => Self::AuthPasskeyChallenge,
+            "auth.passkey.unverified" => Self::AuthPasskeyUnverified,
+            "auth.passkey.counter" => Self::AuthPasskeyCounter,
+            "auth.passkey.backup" => Self::AuthPasskeyBackup,
+            "auth.passkey.malformed" => Self::AuthPasskeyMalformed,
+            "auth.passkey.algorithm" => Self::AuthPasskeyAlgorithm,
+            "auth.passkey.taken" => Self::AuthPasskeyTaken,
+            "auth.passkey.missing" => Self::AuthPasskeyMissing,
+            "auth.passkey.label" => Self::AuthPasskeyLabel,
+            "auth.relying-party.changed" => {
+                Self::AuthRelyingPartyChanged { was: fields.next()?, now: fields.next()?, passkeys: fields.next()? }
+            }
             _ => return fields.unknown(),
         };
         fields.end(made)

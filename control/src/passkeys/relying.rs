@@ -52,10 +52,16 @@ impl fmt::Display for RelyingError {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Id { id } => write!(out, "`{id}` is not a relying party id: use a lower-case host name"),
-            Self::Address { id } => write!(out, "`{id}` is an address, and WebAuthn needs a domain name or `localhost`"),
+            Self::Address { id } => {
+                write!(out, "`{id}` is an address, and WebAuthn needs a domain name or `localhost`")
+            }
             Self::NoOrigin => out.write_str("a relying party needs at least one origin"),
-            Self::Origin { origin } => write!(out, "`{origin}` is not an origin: write `https://host` or `https://host:port`"),
-            Self::Insecure { origin } => write!(out, "`{origin}` is plain http, which WebAuthn allows only on localhost"),
+            Self::Origin { origin } => {
+                write!(out, "`{origin}` is not an origin: write `https://host` or `https://host:port`")
+            }
+            Self::Insecure { origin } => {
+                write!(out, "`{origin}` is plain http, which WebAuthn allows only on localhost")
+            }
             Self::Unrelated { origin, id } => write!(out, "the host of `{origin}` is not `{id}` or under it"),
         }
     }
@@ -67,15 +73,17 @@ impl Relying {
     /// The hosted dashboard.
     pub const HOSTED: &'static str = "app.uses.ink";
 
+    /// Whether `text` is a lower-case host name.
+    fn host_name(text: &str) -> bool {
+        !text.is_empty()
+            && !text.starts_with('.')
+            && !text.ends_with('.')
+            && text.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b"-.".contains(&byte))
+    }
+
     /// The relying party `id` named `name`, asked from `origins`.
     pub fn new(id: &str, name: &str, origins: &[&str]) -> Result<Self, RelyingError> {
-        let host_name = |text: &str| {
-            !text.is_empty()
-                && !text.starts_with('.')
-                && !text.ends_with('.')
-                && text.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b"-.".contains(&byte))
-        };
-        if !host_name(id) {
+        if !Self::host_name(id) {
             return Err(RelyingError::Id { id: id.to_owned() });
         }
         if id.bytes().all(|byte| byte.is_ascii_digit() || byte == b'.') {
@@ -94,7 +102,7 @@ impl Relying {
                 None => (rest, None),
             };
             let port_ok = port.is_none_or(|port| !port.is_empty() && port.bytes().all(|byte| byte.is_ascii_digit()));
-            if !host_name(host) || !port_ok {
+            if !Self::host_name(host) || !port_ok {
                 return Err(RelyingError::Origin { origin: (*origin).to_owned() });
             }
             let local = host == "localhost" || host.ends_with(".localhost");
@@ -105,7 +113,11 @@ impl Relying {
                 return Err(RelyingError::Unrelated { origin: (*origin).to_owned(), id: id.to_owned() });
             }
         }
-        Ok(Self { id: id.to_owned(), name: name.to_owned(), origins: origins.iter().map(|origin| (*origin).to_owned()).collect() })
+        Ok(Self {
+            id: id.to_owned(),
+            name: name.to_owned(),
+            origins: origins.iter().map(|origin| (*origin).to_owned()).collect(),
+        })
     }
 
     /// The hosted dashboard's relying party.
@@ -164,8 +176,14 @@ mod test {
         assert_eq!(new("127.0.0.1", &["http://127.0.0.1"]), Err(RelyingError::Address { id: "127.0.0.1".into() }));
         assert_eq!(new("example.com", &[]), Err(RelyingError::NoOrigin));
         assert_eq!(new("example.com", &["example.com"]), Err(RelyingError::Origin { origin: "example.com".into() }));
-        assert_eq!(new("example.com", &["https://example.com/x"]), Err(RelyingError::Origin { origin: "https://example.com/x".into() }));
-        assert_eq!(new("example.com", &["http://example.com"]), Err(RelyingError::Insecure { origin: "http://example.com".into() }));
+        assert_eq!(
+            new("example.com", &["https://example.com/x"]),
+            Err(RelyingError::Origin { origin: "https://example.com/x".into() })
+        );
+        assert_eq!(
+            new("example.com", &["http://example.com"]),
+            Err(RelyingError::Insecure { origin: "http://example.com".into() })
+        );
         assert_eq!(
             new("example.com", &["https://example.org"]),
             Err(RelyingError::Unrelated { origin: "https://example.org".into(), id: "example.com".into() })

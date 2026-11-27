@@ -4,6 +4,8 @@
 //! signs for, the flags it sets and the counter it reports. The key comes from fixed bytes, so no
 //! test draws randomness.
 
+#![allow(clippy::expect_used, reason = "fixed bytes make every expectation hold; a failure is a broken test rig")]
+
 use std::collections::BTreeMap;
 
 use p256::ecdsa::signature::Signer;

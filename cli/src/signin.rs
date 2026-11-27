@@ -124,6 +124,14 @@ pub struct Flags {
     /// The session cookie's path. [default: /]
     #[arg(long, env = "INK_COOKIE_PATH", help_heading = Heading::SIGN_IN)]
     pub cookie_path: Option<String>,
+    /// The relying party id of passkeys: a host name the dashboard is served on or above. A
+    /// passkey made under one id never works under another. [default: the API host]
+    #[arg(long, env = "INK_RP_ID", help_heading = Heading::SIGN_IN)]
+    pub rp_id: Option<String>,
+    /// An origin the dashboard is served from, which passkey ceremonies must come from. Repeat
+    /// for more than one. [default: the origin of the API host]
+    #[arg(long, env = "INK_RP_ORIGIN", value_delimiter = ',', help_heading = Heading::SIGN_IN)]
+    pub rp_origin: Vec<String>,
 }
 
 /// An origin that is plain `http` on a name that is not this machine's: a session cookie would
@@ -205,6 +213,24 @@ impl Flags {
         let host = origin.trim_start_matches("http://").split(['/', ':']).next().unwrap_or_default();
         let local = host == "localhost" || host.ends_with(".localhost") || host == "127.0.0.1" || host == "[::1]";
         if local { Ok(false) } else { Err(Self::setting("--origin")(Exposed { origin: origin.to_owned() })) }
+    }
+
+    /// Who passkeys are made for: the flags, or the API host on the scheme and port of `origin`.
+    pub(crate) fn relying(&self, origin: &str, api_host: &str) -> Result<control::passkeys::Relying, Unready> {
+        let base = Self::api_base(origin, api_host);
+        let site = base.trim_end_matches("/v1/login").to_owned();
+        let host = api_host.rsplit_once(':').map_or(api_host, |(host, _)| host).to_ascii_lowercase();
+        let id = self.rp_id.clone().unwrap_or(host);
+        let origins = if self.rp_origin.is_empty() { vec![site] } else { self.rp_origin.clone() };
+        let origins: Vec<&str> = origins.iter().map(String::as_str).collect();
+        control::passkeys::Relying::new(&id, "uses.ink", &origins).map_err(Self::setting("--rp-id"))
+    }
+
+    /// The ceremony cookie: beside the session cookie, with its own name.
+    pub(crate) fn ceremony(secure: bool) -> Result<edge_api::Jar, Unready> {
+        let name = if secure { "__Host-ink-ceremony" } else { "ink-ceremony" };
+        let name = name.parse::<edge_api::Name>().map_err(Self::setting("--cookie-name"))?;
+        edge_api::Jar::new(Some(name), "/", secure).map_err(Self::setting("--cookie-name"))
     }
 
     /// The cookie.

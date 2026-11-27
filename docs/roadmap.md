@@ -226,7 +226,9 @@ Git over HTTPS followed (0072): the watch's head read and the source fetch go th
   (0066):** the magic-link bootstrap, sessions and the mail port. Its three spikes come first for
   passkeys: `webauthn-rs-core` on `wasm32-unknown-unknown`, the browser matrix, and the licence
   list. **Built (0068, slice 1):** `ink login`, `logout`, `whoami`, `key`, the `Ink-Sig-1` profile and
-  device-code enrolment replace the owner token; passkeys and the dashboard are slice 2.
+  device-code enrolment replace the owner token. **Built (0068, slice 2):** passkeys behind the
+  `Passkeys` port (`webauthn-rs-core`, builds for wasm32), the dashboard sign-in and list; step-up
+  approval, recovery and the browser matrix are open.
 - `ink push` and `ink:source-upload`; `ink status`, `watch`, `deploys`, `rollback`, `resume`,
   `export`.
 - CLI redesign (0061, Accepted; `docs/cli.md`): the typed output grammar and one renderer, then the
