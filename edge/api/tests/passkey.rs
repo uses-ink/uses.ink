@@ -512,7 +512,7 @@ fn one_authenticator_makes_one_passkey() {
     let reply =
         fixture.send((Method::Post, "/v1/passkeys"), &both, &json!({"label": "again", "credential": credential}));
     assert_eq!(reply.status, Status::Unprocessable, "{}", text(&reply));
-    assert!(matches!(code(&reply).as_str(), "auth.passkey.refused" | "auth.passkey.taken"), "{}", code(&reply));
+    assert_eq!(code(&reply), "auth.passkey.refused", "{}", text(&reply));
 }
 
 #[test]

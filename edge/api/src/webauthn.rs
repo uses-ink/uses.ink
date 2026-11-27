@@ -209,6 +209,14 @@ impl Webauthn {
     }
 }
 
+/// A registration ceremony kept between its two halves: the library's state and the credentials the
+/// options told the authenticator to skip.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Pending {
+    library: RegistrationState,
+    excluded: Vec<CredentialId>,
+}
+
 impl Passkeys for Webauthn {
     type Error = Failed;
 
@@ -224,6 +232,7 @@ impl Passkeys for Webauthn {
             .require_resident_key(true)
             .credential_algorithms(vec![COSEAlgorithm::ES256]);
         let (made, state) = self.core.generate_challenge_register(builder).map_err(Failed::Library)?;
+        let state = Pending { library: state, excluded: existing.to_vec() };
         let creation = Creation {
             rp: Party { id: self.relying.id().to_owned(), name: self.relying.name().to_owned() },
             user: Holder {
@@ -245,7 +254,13 @@ impl Passkeys for Webauthn {
     }
 
     fn finish_registration(&self, state: &Registering, reply: &Created) -> Result<Enrolled, Refusal> {
-        let state: RegistrationState = Self::recalled(&state.0)?;
+        let pending: Pending = Self::recalled(&state.0)?;
+        // The library answers an excluded credential with its algorithm error, so the exclusion is
+        // judged here, where the refusal can say what it is.
+        if pending.excluded.contains(&reply.id) {
+            return Err(Reason::Credential.into());
+        }
+        let state = pending.library;
         let received = RegisterPublicKeyCredential {
             id: reply.id.to_string(),
             raw_id: reply.id.as_slice().to_vec(),
