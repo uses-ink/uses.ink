@@ -9,7 +9,8 @@
 //! - Highlighting: the [`highlight::Highlight`] capability a theme asks for a code block's
 //!   classed runs.
 //! - Images: the [`Picture`] the engine prepares from a raster asset, for a theme to show.
-//! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`].
+//! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`], and the
+//!   [`record`] a build keeps of itself, two of which give the changes between them.
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
 //!   `cargo xtask diag` generates from `diag/catalog.toml`, with their [`coded`] form for the
 //!   plugin boundary, and the [`Record`] a plugin says them into.
@@ -31,6 +32,7 @@ mod language;
 mod manifest;
 mod path;
 mod picture;
+pub mod record;
 mod route;
 mod site;
 mod size;
@@ -42,7 +44,7 @@ mod url;
 mod value;
 
 pub use code::{AnyCode, AnyDecision, AnyOf, Code, Each, Family, Keyed, Typed, UnknownDecision, Word, Worded};
-pub use decision::{Alternative, Decision, DefaultReason, Evidence, Rejection};
+pub use decision::{Basis, Decision, DefaultReason, Evidence};
 pub use diagnostic::{Diagnostic, Fault, Notice, Record, Said, Severity};
 pub use document::{
     Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Folding, Footnote, FootnoteName, ImageSource,

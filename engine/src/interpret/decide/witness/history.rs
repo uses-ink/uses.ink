@@ -7,6 +7,7 @@ use model::{Evidence, FileFacts, Known, Timestamp, When};
 
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{self, Named, Witnessed};
 
 /// One fact a history knows about a file.
 pub(crate) trait Fact {
@@ -52,4 +53,12 @@ impl<C: Code<Value = Option<When>>, F: Fact, G: Filed + ?Sized> Witness<C, G> fo
             _ => {}
         }
     }
+}
+
+impl Named for History<Created> {
+    const NAME: Witnessed = Witnessed::History(trace::Fact::Created);
+}
+
+impl Named for History<Changed> {
+    const NAME: Witnessed = Witnessed::History(trace::Fact::Changed);
 }

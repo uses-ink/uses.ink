@@ -554,6 +554,21 @@ replays and keep a published rules changelog with the change set alone. Refines 
 stay facts), 0018 and the M1 exit criteria ("pin reproduces the deploy" is dropped: it tested
 that pins freeze content).
 
+As built (M2, step 1): `Decision<C>` is subject, value and evidence; `Evidence::basis()` says
+`Stated`, `Inferred` or `Assumed`. `ink explain --why [path] <code>` replays one ladder through
+`Engine::trace` (`uses.trace/v1`); `uses.explain/v2` drops `rejected`. `ink pin [path] <code>`
+writes one pin (`uses.pin/v2`, `--dry-run`). `ink build` writes `uses.manifest/v3`, whose
+`record` holds the build's inputs, decisions, files and routes, and prints the change set
+against the previous record on stderr (in `uses.build/v2` with `--json`); a record it cannot read
+is a notice, never a refusal. The cause order adds two steps to `research/inference.md` 7.3: a
+changed `ink.toml` is `config`, and a change to any other file is `content` before `engine`, since
+a file's decision can follow another file (an image a page stops using); and `ability` compares
+what the source lacked as well as what it had, so a deepened shallow clone is the source's change,
+not ink's. The guard is
+`page.publish.unstated`, as diagnostic codes have three words. Bundled plugins are not listed in
+the record: they move with ink's release, so `plugin` is given only for components. `rules` is
+typed and waits for `site.rules`.
+
 ## 0043 Obsidian is a dialect of the markdown format; the engine resolves and embeds
 
 Accepted. `ink:format-obsidian` (`plugin/format/obsidian`, its component in `guest/`) reads one

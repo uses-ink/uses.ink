@@ -15,4 +15,5 @@ extern crate uses_ink_model as model;
 mod code;
 mod coded;
 mod front;
+mod record;
 mod walk;

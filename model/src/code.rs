@@ -342,6 +342,15 @@ macro_rules! codes {
                 }
             }
 
+            /// Whether `other` is of the same code and holds the same value, whatever its
+            /// evidence.
+            pub fn agrees(&self, other: &Self) -> bool {
+                match (self, other) {
+                    $((Self::$name(one), Self::$name(two)) => one.value == two.value,)*
+                    _ => false,
+                }
+            }
+
             /// Writes its value in its code's words ([`Word`]).
             pub fn word(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {

@@ -6,16 +6,19 @@
 //!
 //! [`Engine::interpret`] turns a [`Snapshot`](model::Snapshot) into a [`Site`](model::Site)
 //! through composed stages, each recording into one journal. Every decision is a ladder of
-//! witnesses: the first that testifies wins, every later one is a rejected alternative. The site
+//! witnesses: the first that testifies wins, and only it is recorded, with its evidence. The site
 //! is assembled only from the decisions. [`Engine::render`] turns a site into a
 //! [`Manifest`](model::Manifest) and the bytes behind it, through a list of artifacts: the
 //! site's raster images as the host's [`Images`] prepared them, the theme's pages and files,
 //! the feeds, the sitemap, `robots.txt` and the not-found page. A host keeps expensive work
 //! between builds through a [`Cache`], by keys that name everything the work was made from.
+//! [`Understood::record`] is what a build keeps of itself, and [`Compared`] says what changed
+//! against the previous build's record, and why (decision 0042).
 //!
 //! Pure: nothing here reads a clock, the environment, the filesystem or randomness.
 
 pub mod cache;
+mod change;
 mod error;
 mod host;
 pub mod image;
@@ -23,10 +26,11 @@ mod interpret;
 mod render;
 
 pub use cache::Cache;
+pub use change::{Compared, RELEASE};
 pub use error::Error;
 pub use host::{BlobMissing, Blobs, Format, Formats, Html, NoPins, Patterns, Pin, Pins, Theme};
 pub use image::Images;
-pub use interpret::Understood;
+pub use interpret::{Fact, Heard, List, Marker, Reading, Rung, Standing, Trace, Understood, Witnessed};
 /// What a theme takes and gives that the model holds, named here beside the [`Theme`] that uses
 /// them: the files it serves and where it says what it found.
 pub use model::{File, Record, Said};

@@ -8,6 +8,7 @@ use model::code::{Code, Date, Ignored, Layout, Slug, Title};
 
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{Named, Reading, Witnessed};
 use crate::interpret::tree::Scope;
 
 /// Reads a code's value from a file's name.
@@ -106,4 +107,16 @@ impl Parse<Ignored> for Repository {
     fn parse<G: Filed + ?Sized>(file: &G) -> Option<bool> {
         (Self::names(file.relative()) || file.path().as_str() == Self::CONFIG).then_some(true)
     }
+}
+
+impl Named for FileName<Dated> {
+    const NAME: Witnessed = Witnessed::Name(Reading::Dated);
+}
+
+impl Named for FileName<Stem> {
+    const NAME: Witnessed = Witnessed::Name(Reading::Stem);
+}
+
+impl Named for FileName<Repository> {
+    const NAME: Witnessed = Witnessed::Name(Reading::Repository);
 }

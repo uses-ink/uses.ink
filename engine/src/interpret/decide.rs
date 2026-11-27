@@ -7,6 +7,7 @@ mod explain;
 mod ground;
 pub(crate) mod ladder;
 pub(crate) mod precedence;
+pub(crate) mod trace;
 pub(crate) mod witness;
 
 pub(crate) use explain::Explain;

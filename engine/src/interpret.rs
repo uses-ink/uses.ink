@@ -4,12 +4,14 @@
 //! `site.root`, `site.layout`, the vault's settings, `file.ignore`, reading, then per page `page.publish`,
 //! `page.kind`, `page.title`, `page.date`, `page.updated`, `page.slug`, `page.tags`,
 //! `page.summary`, then link resolution and embeds, `page.publish` for plain files, `site.home`,
-//! `site.title`, `site.description`, `site.authors`, `site.language`, `site.nav`, routes, and
-//! the site. Every stage runs, so every problem is reported; the site is assembled only from a
+//! `site.title`, `site.description`, `site.authors`, `site.language`, `site.nav`, routes, the
+//! site, and the private-source guard. Every stage runs, so every problem is reported; the site
+//! is assembled only from a
 //! journal without an error.
 
 mod decide;
 mod file;
+mod guard;
 mod journal;
 mod link;
 mod page;
@@ -18,11 +20,14 @@ mod stage;
 mod tree;
 mod vault;
 
-use model::code::AnyDecision;
+use model::code::{AnyCode, AnyDecision};
 use model::{Diagnostic, Notice, Snapshot, Subject};
+
+pub use crate::interpret::decide::trace::{Fact, Heard, List, Marker, Reading, Rung, Standing, Trace, Witnessed};
 
 use crate::interpret::file::read::Split;
 use crate::interpret::file::{Assets, Files, Read};
+use crate::interpret::guard::Guard;
 use crate::interpret::journal::Journal;
 use crate::interpret::link::{Aliases, Embeds, Links, Targets};
 use crate::interpret::page::Pages;
@@ -44,6 +49,8 @@ pub struct Understood {
     pub notices: Vec<Notice>,
     /// The site, or `None` when an error stops the build: all or nothing (open.md Q6).
     pub site: Option<model::Site>,
+    /// The ladder asked for by [`Engine::trace`], when its decision was made.
+    pub trace: Option<Trace>,
 }
 
 impl Understood {
@@ -57,7 +64,18 @@ impl Understood {
 impl<B: Blobs, P: Pins, F: Formats, T> Engine<B, P, F, T> {
     /// Interprets `snapshot`: decides everything, then builds the site from the decisions.
     pub fn interpret(&self, snapshot: &Snapshot) -> Understood {
-        let mut journal = Journal::default();
+        self.run(snapshot, Journal::default())
+    }
+
+    /// Interprets `snapshot` as [`Engine::interpret`] does, and replays the ladder of `code` on
+    /// `subject` rung by rung: what `ink explain --why` shows. The trace is `None` when that
+    /// decision is never made, as for a file that is ignored.
+    pub fn trace(&self, snapshot: &Snapshot, code: AnyCode, subject: Subject) -> Understood {
+        self.run(snapshot, Journal::asking(code, subject))
+    }
+
+    /// Every stage in order, recording into `journal`.
+    fn run(&self, snapshot: &Snapshot, mut journal: Journal) -> Understood {
         let pins = &self.pins;
         let scope = Root { formats: &self.formats, pins }.run(snapshot, &mut journal);
         let selection = Layout { pins }.run(&scope, &mut journal);
@@ -79,8 +97,9 @@ impl<B: Blobs, P: Pins, F: Formats, T> Engine<B, P, F, T> {
         let routes = Routing { home: home.as_ref(), assets: &assets }.run(&shown, &mut journal);
         let parts = Parts { scope: &scope, sources, assets: &assets, routes: &routes };
         let site = Assemble.run(parts, &mut journal);
+        Guard { selection }.run((), &mut journal);
         let site = site.filter(|_| !journal.stops());
-        let (decisions, diagnostics, notices) = journal.into_parts();
-        Understood { decisions, diagnostics, notices, site }
+        let (decisions, diagnostics, notices, trace) = journal.into_parts();
+        Understood { decisions, diagnostics, notices, site, trace }
     }
 }

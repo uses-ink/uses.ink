@@ -26,8 +26,7 @@ pub trait Code: Copy + Ord + Hash + Default + fmt::Debug + Send + Sync + 'static
 pub struct Decision<C: Code> {
     pub subject: C::Subject,
     pub value: C::Value,
-    pub evidence: Evidence,
-    pub rejected: Vec<Alternative<C::Value>>,
+    pub evidence: Evidence,      // the winner's alone (0042); `evidence.basis()` is Stated, Inferred or Assumed
 }
 ```
 
@@ -48,7 +47,7 @@ Every consumer is generic over `C: Code`; only storage and the wire see the eras
 its code's type (config pins every decision this way); either compiles only when every code
 meets the impl's bounds.
 
-`Value` is the trait every decided value implements: `Eq` for comparing alternatives, serde for
+`Value` is the trait every decided value implements: `Eq` for comparing two builds' values, serde for
 storage, and `show` for explain (not `Display`: `Option<T>` and `Vec<T>` are values and cannot
 implement it; `Shown(&value)` is the `Display`). Each surface a value appears on is a trait of
 its own, so a value type opts into it:
@@ -76,9 +75,9 @@ once. A new code needs no reader or writer of its own.
 ## 2. Every decision is a ladder of witnesses
 
 All inferrers share one mechanism: an ordered list of witnesses, each able to testify to a value
-with its evidence. The first value testified wins; every later one becomes a rejected
-alternative, outranked; a bound is always rejected as one. This is the precedence table of
-`research/architecture.md` 3.6 as code.
+with its evidence. The first value testified wins and is recorded with its evidence alone; a
+bound is never chosen (0042). This is the precedence table of `research/architecture.md` 3.6 as
+code.
 
 ```rust
 pub trait Witness<C: Code, G: ?Sized> {
@@ -99,9 +98,16 @@ reads a page's frontmatter on a file's ground and the home's on the site's. A wi
 `Testimony` (a value, a bound, or a failure), so one witness can testify several times (`Index`
 for each home candidate) and a later one can see what was said (`Fallback`, `Otherwise`).
 
-A tuple of witnesses is itself a witness (static dispatch, no boxes), and so is
-`Vec<Box<dyn Witness<C, G>>>`, where a plugin adds witnesses at run time. Witnesses are generic
-and reused across codes; what a witness means for a code is a trait the code implements:
+A tuple of witnesses is itself a witness (static dispatch, no boxes); each member is `Named`
+(`const NAME: Witnessed`, worded by `Display`: "front matter", "first heading", "posts
+folder"), and the tuple starts a rung of the `Testimony` before each one. A normal run keeps only
+the decision. When `ink explain --why` asks for one decision, `Engine::trace` interprets with a
+`Journal` that names it, and that ladder alone runs with tracing on: the `Trace` holds every
+rung, what it said (as the decision it would have been, a value or a bound) or nothing, and which
+testimony was chosen. Nothing about a trace reaches the model, WIT or the record. Witnesses a
+plugin adds at run time will be a named list of their own when the first plugin needs one.
+Witnesses are generic and reused across codes; what a witness means for a code is a trait the
+code implements:
 
 | Witness | Testifies | Code trait |
 |---|---|---|
@@ -125,7 +131,8 @@ A decision's precedence is a type alias, one per code, in `engine::interpret::de
 type Title = Ladder<code::Title, (Pin<code::Title>, Front<code::Title>, Heading, Otherwise<FileName<Stem>>)>;
 ```
 
-Reading the precedence of `page.title` is reading that line. What a code's values mean to a
+Reading the precedence of `page.title` is reading that line, and `ink explain --why x.md
+page.title` prints it as it ran. What a code's values mean to a
 person is the code's own, not its value type's: `model::Word` gives each code a `NONE` phrase
 (`undated`, `never updated`, `a generated listing`) and a `word` for its values (`published`,
 `ignored`), and `Worded::<C>` is the `Display`. `ink explain`, the engine's notices and
@@ -141,10 +148,12 @@ pub trait Stage<I> {
 }
 ```
 
-`Journal` is the one sink for decisions (erased as `AnyDecision`, read back typed), diagnostics
-and notices: nothing is returned on the side, nothing is printed. Interpret is a composition of
-stages (`Root`, `Layout`, `Files`, `Read<B, F>`, `Pages`, `Settings<B>`, `Links`, `Embeds`,
-`Assets`, `Site`, `Routing`, `Assemble`), each generic over what it needs from the host (`B: Blobs`, `P: Pins`,
+`Journal` is the one sink for decisions (erased as `AnyDecision`, read back typed), diagnostics,
+notices and the one trace asked for: nothing is returned on the side, nothing is printed.
+Interpret is a composition of stages (`Root`, `Layout`, `Files`, `Read<B, F>`, `Pages`,
+`Settings<B>`, `Links`, `Embeds`, `Assets`, `Site`, `Routing`, `Assemble`, `Guard`; the last
+refuses, as `page.publish.unstated`, a file a vault or private source would publish without a
+stated selection), each generic over what it needs from the host (`B: Blobs`, `P: Pins`,
 `F: Formats`). Every stage runs, so every problem of every stage is reported; `Assemble` builds
 no site from a journal holding an error.
 
@@ -167,6 +176,18 @@ knows its size and copies; `Assets` then serves the copies at hashed routes, `Ca
 `(Pages<T>, NotFound<T>, Assets, Feed<(Atom, Rss)>, Sitemap, Robots, ThemeFiles<T>)` run in
 order; adding an output is adding an artifact to that tuple. An artifact that fails is recorded
 and the next still runs.
+
+A build keeps a record of itself (`model::record::Build`: its `Inputs`, every decision, every
+file's blob, every published file's route), made by `Understood::record` and written by the CLI
+beside the manifest in the output folder. `engine::Compared::of(against, before, after)` diffs
+two records into `record::Changes`: newly public files, withdrawn and moved routes, and every
+decision whose value differs (`AnyDecision::agrees`), each with the first `Cause` that holds:
+`Config` when either side's evidence is a pin or pattern, `Plugin` for a format that is another
+component, `Ability` for a history-based decision when the source's abilities, or what it lacked of them
+(a shallow clone's history), differ,
+`Content` when the subject's own file changed, `Config` when `ink.toml` changed, `Content` when
+any other file did, else `Engine`, which also gives `engine.decision.unstable`. `Rules` is typed
+and given once `site.rules` exists (0042's second step).
 
 ## 4. One walk over a document
 
@@ -322,4 +343,5 @@ new check is a new `Rule` added to `Layout::RULES`.
 - A trait needs two real implementations or a plugin boundary. Generic code with one
   instantiation and no boundary is a concrete type instead.
 - Generic machinery is tested once with a stand-in, and each case is tested as data: a ladder
-  fixture lists inputs and the expected decision with its evidence and rejected alternatives.
+  fixture lists inputs and the expected decision with its evidence, and a trace test lists the
+  rungs it expects.

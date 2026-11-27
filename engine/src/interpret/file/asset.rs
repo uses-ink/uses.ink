@@ -11,6 +11,7 @@ use crate::Pins;
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{About, Case, Testimony, Witness};
 use crate::interpret::decide::precedence;
+use crate::interpret::decide::trace::{Named, Witnessed};
 use crate::interpret::journal::Journal;
 use crate::interpret::stage::Stage;
 use crate::interpret::tree::InRoot;
@@ -75,4 +76,8 @@ impl<'s, P: Pins> Stage<&[InRoot<'s>]> for Assets<'_, P> {
         }
         published
     }
+}
+
+impl Named for Used {
+    const NAME: Witnessed = Witnessed::Used;
 }

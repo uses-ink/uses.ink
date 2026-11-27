@@ -8,6 +8,7 @@ use std::io::{Read as _, Write as _};
 use std::path::{Component, Path, PathBuf};
 
 use engine::Blobs;
+use model::record::{Against, Build};
 use model::{ContentPath, DeployId, Hash, Manifest, MediaType, PathError, Route};
 use serde::{Deserialize, Serialize};
 
@@ -26,17 +27,47 @@ struct Written<'a> {
     /// Every file written, so the next build can remove exactly those.
     files: &'a [Listed],
     manifest: &'a Manifest,
+    /// What the build decided and was made from, so the next build can say what changed.
+    record: &'a Build,
 }
 
 impl Written<'_> {
     /// The schema of what [`Written`] writes and [`Previous`] reads.
-    const SCHEMA: &'static str = "uses.manifest/v2";
+    const SCHEMA: &'static str = "uses.manifest/v3";
 }
 
-/// What the next build reads back from [`Written`].
+/// What the next build reads back from [`Written`] to clear the folder.
 #[derive(Debug, Deserialize)]
 struct Previous {
     files: Vec<Listed>,
+}
+
+/// What the next build reads back from [`Written`] to compare with. The record is read on its
+/// own, so a record this ink cannot read never stops a build from clearing the folder.
+#[derive(Debug, Deserialize)]
+struct Recorded {
+    #[serde(default)]
+    deploy: Option<DeployId>,
+    #[serde(default)]
+    record: Option<serde_json::Value>,
+}
+
+/// A deploy to write: its manifest, the bytes rendered for it and its record.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Deployed<'a> {
+    pub(crate) manifest: &'a Manifest,
+    pub(crate) blobs: &'a BTreeMap<Hash, Vec<u8>>,
+    pub(crate) record: &'a Build,
+}
+
+/// What the previous build in the folder left to compare with.
+#[derive(Debug)]
+pub(crate) struct Baseline {
+    pub(crate) against: Against,
+    /// Its record, when it kept one this ink reads.
+    pub(crate) record: Option<Build>,
+    /// Why a record that was kept could not be read.
+    pub(crate) unread: Option<serde_json::Error>,
 }
 
 /// One file a build wrote: where, and the hash of the bytes it wrote there.
@@ -257,12 +288,8 @@ impl OutFolder {
 
     /// Replaces what the earlier build wrote with `manifest`'s entries, then writes the manifest.
     /// Every check runs before anything is removed: a refusal leaves the folder as it was.
-    pub(crate) fn replace(
-        &self,
-        manifest: &Manifest,
-        blobs: &BTreeMap<Hash, Vec<u8>>,
-        store: &impl Blobs,
-    ) -> Result<(), Error> {
+    pub(crate) fn replace(&self, deployed: Deployed<'_>, store: &impl Blobs) -> Result<(), Error> {
+        let Deployed { manifest, blobs, record } = deployed;
         let files = Files::of(manifest, blobs, store)?;
         let previous = self.previous()?;
         let ours: BTreeSet<&Relative> = previous.iter().map(|listed| &listed.path).collect();
@@ -280,9 +307,37 @@ impl OutFolder {
         for (path, bytes) in &files.0 {
             Under(&self.root).put(path, bytes)?;
         }
-        let written = Written { schema: Written::SCHEMA, deploy: manifest.id(), files: &listed, manifest };
+        let written = Written { schema: Written::SCHEMA, deploy: manifest.id(), files: &listed, manifest, record };
         let json = serde_json::to_vec(&written).map_err(|source| Error::Json { source })?;
         Under(&self.root).put(&self.manifest, &json)
+    }
+
+    /// What the previous build left to compare with: its deploy and record, or nothing when
+    /// the folder holds no build. Call after [`OutFolder::check`], which refuses what is not
+    /// a build's folder.
+    pub(crate) fn baseline(&self) -> Result<Baseline, Error> {
+        let nothing = Baseline { against: Against::Nothing, record: None, unread: None };
+        if !self.root.join(MANIFEST).is_file() {
+            return Ok(nothing);
+        }
+        let bytes = Under(&self.root).bytes(&self.manifest)?;
+        let path = self.root.join(MANIFEST);
+        let recorded: Recorded = serde_json::from_slice(&bytes).map_err(|source| Error::Manifest { path, source })?;
+        let deploy = recorded.deploy;
+        let unrecorded = Against::Unrecorded { deploy };
+        Ok(match recorded.record.map(serde_json::from_value::<Build>) {
+            None => Baseline { against: unrecorded, ..nothing },
+            Some(Ok(record)) => match deploy {
+                Some(deploy) => Baseline { against: Against::Deploy { deploy }, record: Some(record), unread: None },
+                None => Baseline { against: unrecorded, ..nothing },
+            },
+            Some(Err(error)) => Baseline { against: unrecorded, record: None, unread: Some(error) },
+        })
+    }
+
+    /// The folder itself.
+    pub(crate) fn root(&self) -> &Path {
+        &self.root
     }
 
     /// What the earlier build listed, its manifest last; nothing when the folder is new or

@@ -65,7 +65,7 @@ severity = "error"
 fault = "author"
 fields = { key = "text" }
 message = "`{key}` is not a key ink.toml has"
-fix = "remove it, or compare it with what `ink explain --pin` prints"
+fix = "remove it; `ink pin <path> <code>` writes a pin where it belongs"
 
 [diagnostic."config.key.misplaced"]
 severity = "error"
@@ -248,6 +248,20 @@ fault = "ours"
 fields = { decision = "decision" }
 message = "`{decision}` was never decided"
 fix = "report it: this is a bug in uses.ink"
+
+[diagnostic."page.publish.unstated"]
+severity = "error"
+fault = "ours"
+fields = { decision = "decision" }
+message = "this file would be published in a vault or private source by `{decision}`, and nothing the writer stated selects it, so nothing is published"
+fix = "report it: this is a bug in uses.ink; `ink explain --why` shows the rule that published it"
+
+[diagnostic."engine.decision.unstable"]
+severity = "warning"
+fault = "ours"
+fields = { decision = "decision" }
+message = "`{decision}` changed since the previous build, and nothing in the site did: the content, ink.toml, the plugins and the source's abilities are the same"
+fix = "nothing to do in the site; if the new value is wrong, report it with what `ink explain --why` shows"
 
 [diagnostic."engine.header.invalid"]
 severity = "error"
@@ -561,6 +575,11 @@ message = "{path} is a git submodule, whose files live in another repository, so
 fields = { path = "path" }
 message = "{path} is a Git LFS pointer, so the site holds the pointer's text, not the file it stands for"
 fix = "commit the file itself, or fetch it with `git lfs pull` and build with `--source folder`"
+
+[notice."build.record.unread"]
+fields = { reason = "text" }
+message = "the previous build's decision record could not be read, so nothing is compared with it: {reason}"
+fix = "nothing to do: this build writes a record the next one reads"
 
 [notice."build.address.default"]
 fields = { address = "text" }

@@ -1,5 +1,5 @@
-//! Decisions: one recorded inference each, with its subject, its value, the evidence that chose
-//! it and the alternatives it beat. The `Site` is built only from decisions.
+//! Decisions: one recorded inference each, with its subject, its value and the one piece of
+//! evidence that chose it (decision 0042). The `Site` is built only from decisions.
 //!
 //! A [`Decision<C>`] is typed by its code `C` (see [`code`](crate::code)): a `page.title`
 //! decision holds a `String` about a [`File`], and cannot hold a date or be about the site.
@@ -26,40 +26,12 @@ pub struct Decision<C: Code> {
     pub value: C::Value,
     /// Why this value.
     pub evidence: Evidence,
-    /// Every value that also testified and lost, in precedence order.
-    pub rejected: Vec<Alternative<C::Value>>,
 }
 
 impl<C: Code> Decision<C> {
-    /// A decision that rejected nothing.
+    /// `value` about `subject`, chosen because of `evidence`.
     pub fn new(subject: C::Subject, value: C::Value, evidence: Evidence) -> Self {
-        Self { subject, value, evidence, rejected: Vec::new() }
-    }
-
-    /// The same decision, recording `alternative` as rejected after the ones it has.
-    #[must_use]
-    pub fn rejecting(mut self, alternative: Alternative<C::Value>) -> Self {
-        self.rejected.push(alternative);
-        self
-    }
-}
-
-/// A value of type `V` a decision considered and did not take.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct Alternative<V> {
-    /// The value it would have been.
-    pub value: V,
-    /// What testified to it.
-    pub evidence: Evidence,
-    /// Why it lost.
-    pub because: Rejection,
-}
-
-impl<V> Alternative<V> {
-    /// `value`, testified to by `evidence`, lost `because`.
-    pub fn new(value: V, evidence: Evidence, because: Rejection) -> Self {
-        Self { value, evidence, because }
+        Self { subject, value, evidence }
     }
 }
 
@@ -128,13 +100,31 @@ pub enum DefaultReason {
     NotSelected,
 }
 
-/// Why an alternative lost.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Who said a decision's value: the writer, a reading of something else, or no one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
-pub enum Rejection {
-    /// Evidence earlier in the decision's precedence chose.
-    Outranked,
-    /// The value was only a bound.
-    OnlyBound,
+pub enum Basis {
+    /// The writer said it: a pin or pattern in `ink.toml`, a frontmatter key.
+    Stated,
+    /// It was read from something else: a heading, a file name, the text, a folder, the
+    /// history.
+    Inferred,
+    /// Nothing said anything, so the default was taken.
+    Assumed,
+}
+
+impl Evidence {
+    /// Who said the value this evidence chose.
+    pub const fn basis(&self) -> Basis {
+        match self {
+            Self::Config { .. } | Self::Frontmatter { .. } => Basis::Stated,
+            Self::Filename { .. }
+            | Self::Heading { .. }
+            | Self::History { .. }
+            | Self::Body { .. }
+            | Self::Marker { .. } => Basis::Inferred,
+            Self::Default { .. } => Basis::Assumed,
+        }
+    }
 }

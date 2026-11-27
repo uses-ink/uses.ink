@@ -5,6 +5,7 @@ use model::{Block, Evidence, Inline, Visit};
 
 use crate::interpret::decide::Sourced;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{Named, Witnessed};
 
 /// The length a summary is cut near, in characters.
 const NEAR: usize = 160;
@@ -111,6 +112,10 @@ impl Plain {
         cut.push('…');
         cut
     }
+}
+
+impl Named for Body {
+    const NAME: Witnessed = Witnessed::Body;
 }
 
 #[cfg(test)]

@@ -95,6 +95,18 @@ impl Message<'_> {
             Problem::EngineDecisionMissing { decision, .. } => {
                 write!(out, "`{decision}` was never decided")
             }
+            Problem::PagePublishUnstated { decision, .. } => {
+                write!(
+                    out,
+                    "this file would be published in a vault or private source by `{decision}`, and nothing the writer stated selects it, so nothing is published"
+                )
+            }
+            Problem::EngineDecisionUnstable { decision, .. } => {
+                write!(
+                    out,
+                    "`{decision}` changed since the previous build, and nothing in the site did: the content, ink.toml, the plugins and the source's abilities are the same"
+                )
+            }
             Problem::EngineHeaderInvalid { header, .. } => {
                 write!(out, "the engine's own `{header}` header does not parse")
             }
@@ -323,6 +335,12 @@ impl Message<'_> {
                     "{path} is a Git LFS pointer, so the site holds the pointer's text, not the file it stands for"
                 )
             }
+            Announcement::BuildRecordUnread { reason, .. } => {
+                write!(
+                    out,
+                    "the previous build's decision record could not be read, so nothing is compared with it: {reason}"
+                )
+            }
             Announcement::BuildAddressDefault { address, .. } => {
                 write!(out, "no address was given, so feeds, the sitemap and canonical links use {address}")
             }
@@ -388,6 +406,8 @@ impl Fix<'_> {
             Problem::SourceBlobMissing { .. } => true,
             Problem::EngineDecisionRepeated { .. } => true,
             Problem::EngineDecisionMissing { .. } => true,
+            Problem::PagePublishUnstated { .. } => true,
+            Problem::EngineDecisionUnstable { .. } => true,
             Problem::EngineHeaderInvalid { .. } => true,
             Problem::EngineRouteInvalid { .. } => true,
             Problem::EnginePathInvalid { .. } => true,
@@ -454,6 +474,7 @@ impl Fix<'_> {
             Announcement::SourceHistoryMoved { .. } => true,
             Announcement::SourceSubmoduleSkipped { .. } => false,
             Announcement::SourceLfsPointer { .. } => true,
+            Announcement::BuildRecordUnread { .. } => true,
             Announcement::BuildAddressDefault { .. } => true,
             Announcement::CodeLanguageUnknown { .. } => true,
             Announcement::ImageAnimationKept { .. } => false,
@@ -472,7 +493,7 @@ impl Fix<'_> {
                 write!(out, "fix the TOML at the marked place; nothing else in ink.toml is read until it parses")
             }
             Problem::ConfigKeyUnknown { .. } => {
-                write!(out, "remove it, or compare it with what `ink explain --pin` prints")
+                write!(out, "remove it; `ink pin <path> <code>` writes a pin where it belongs")
             }
             Problem::ConfigKeyMisplaced { table, .. } => {
                 write!(out, "move it under the file it pins, such as `[{table}.\"posts/x.md\"]`")
@@ -538,6 +559,18 @@ impl Fix<'_> {
             }
             Problem::EngineDecisionMissing { .. } => {
                 write!(out, "report it: this is a bug in uses.ink")
+            }
+            Problem::PagePublishUnstated { .. } => {
+                write!(
+                    out,
+                    "report it: this is a bug in uses.ink; `ink explain --why` shows the rule that published it"
+                )
+            }
+            Problem::EngineDecisionUnstable { .. } => {
+                write!(
+                    out,
+                    "nothing to do in the site; if the new value is wrong, report it with what `ink explain --why` shows"
+                )
             }
             Problem::EngineHeaderInvalid { .. } => {
                 write!(out, "report it: this is a bug in uses.ink")
@@ -693,6 +726,9 @@ impl Fix<'_> {
             Announcement::SourceSubmoduleSkipped { .. } => Ok(()),
             Announcement::SourceLfsPointer { .. } => {
                 write!(out, "commit the file itself, or fetch it with `git lfs pull` and build with `--source folder`")
+            }
+            Announcement::BuildRecordUnread { .. } => {
+                write!(out, "nothing to do: this build writes a record the next one reads")
             }
             Announcement::BuildAddressDefault { .. } => {
                 write!(out, "pass `--base <url>` with the address the site is served at")

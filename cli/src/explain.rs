@@ -1,13 +1,16 @@
-//! `ink explain [--pin] [path]`: what the source had and lacked, then the decisions behind the
-//! site with their evidence (a file's alone, with a path), or every decision as `ink.toml` pins. With a path, only that file's
-//! decisions, shown or pinned; a path that is no file of the folder is a usage error.
+//! `ink explain [path]`: what the source had and lacked, then the decisions behind the site
+//! with their evidence (a file's alone, with a path); a path that is no file of the folder is a
+//! usage error. `ink explain --why [path] <code>`: one decision's ladder replayed, rung by rung
+//! (decision 0042).
 
 use std::fmt;
 
+use engine::{Heard, Rung, Standing, Trace};
 use model::{Ability, AnyDecision, ContentPath, Evidence, Gap, Lack, Observed, Oid, Provenance, Subject, Version};
 use serde::Serialize;
 
 use crate::args::Explain;
+use crate::asked::Asked;
 use crate::error::Error;
 use crate::exit::Exit;
 use crate::output::{Io, Strict};
@@ -24,15 +27,18 @@ struct Explained<'a> {
     decisions: Vec<&'a AnyDecision>,
 }
 
-/// What `ink explain --pin --json` prints.
+/// What `ink explain --why --json` prints.
 #[derive(Debug, Serialize)]
-struct Pinned {
+struct Traced<'a> {
     schema: &'static str,
-    toml: String,
+    trace: &'a Trace,
 }
 
 impl Explain {
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
+        if let Some(words) = &self.why {
+            return self.why(io, Asked::words(words)?);
+        }
         let subject = self.subject()?;
         let loaded = Source::new(&self.dir, &self.origin).load()?;
         if let Some(Subject::File(path)) = &subject
@@ -43,15 +49,6 @@ impl Explain {
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let understood = &loaded.understood;
         let tally = io.said(&understood.diagnostics, &understood.notices, texts)?;
-        if self.pin {
-            let toml = config::pins(understood.explain(subject.as_ref()));
-            if io.is_json() {
-                io.json(&Pinned { schema: "uses.pin/v1", toml })?;
-            } else {
-                io.raw(&toml)?;
-            }
-            return Ok(tally.exit(Strict::Off));
-        }
         let decisions: Vec<&AnyDecision> = understood.explain(subject.as_ref()).collect();
         let (version, observed) = (loaded.snapshot.version(), loaded.snapshot.observed());
         if subject.is_none() {
@@ -66,8 +63,103 @@ impl Explain {
             }
             io.line(Line(decision))?;
         }
-        io.json(&Explained { schema: "uses.explain/v1", version, observed, decisions })?;
+        io.json(&Explained { schema: "uses.explain/v2", version, observed, decisions })?;
         Ok(tally.exit(Strict::Off))
+    }
+
+    /// `--why`: interprets with `asked`'s ladder traced, and shows it.
+    fn why(&self, io: &mut Io<'_>, asked: Asked) -> Result<Exit, Error> {
+        let mut source = Source::new(&self.dir, &self.origin);
+        source.asked = Some(asked.clone());
+        let loaded = source.load()?;
+        asked.within(&loaded.snapshot)?;
+        let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
+        let understood = &loaded.understood;
+        let tally = io.said(&understood.diagnostics, &understood.notices, texts)?;
+        let Some(trace) = &understood.trace else {
+            return Err(Error::Undecided { code: asked.code, subject: asked.subject });
+        };
+        io.line(Head(trace))?;
+        for (at, rung) in trace.rungs.iter().enumerate() {
+            io.line(Step { at: at + 1, rung })?;
+        }
+        io.line(Hint(&asked))?;
+        io.json(&Traced { schema: "uses.trace/v1", trace })?;
+        Ok(tally.exit(Strict::Off))
+    }
+}
+
+/// A trace's first line: the decision, its evidence and its place on the ladder.
+#[derive(Clone, Copy, Debug)]
+struct Head<'a>(&'a Trace);
+
+impl fmt::Display for Head<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "{} on {}", self.0.code, self.0.subject)?;
+        match self.0.chosen() {
+            Some((at, heard)) => write!(
+                out,
+                ": {} {}, rung {at} of {}",
+                Value(&heard.testimony),
+                Because(heard.testimony.evidence()),
+                self.0.rungs.len()
+            ),
+            None => out.write_str(": no rung said a value"),
+        }
+    }
+}
+
+/// One rung: its place, its witness, and what it said or that it found nothing.
+#[derive(Clone, Copy, Debug)]
+struct Step<'a> {
+    at: usize,
+    rung: &'a Rung,
+}
+
+impl fmt::Display for Step<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let witness = self.rung.witness.to_string();
+        write!(out, "  {:>2} {witness:<18}", self.at)?;
+        if self.rung.heard.is_empty() {
+            return out.write_str(" nothing");
+        }
+        for (at, heard) in self.rung.heard.iter().enumerate() {
+            if at > 0 {
+                write!(out, "\n  {:>2} {:<18}", "", "")?;
+            }
+            write!(out, " {}", Testified(heard))?;
+        }
+        Ok(())
+    }
+}
+
+/// One testimony: its value, its evidence, and how it stood.
+#[derive(Clone, Copy, Debug)]
+struct Testified<'a>(&'a Heard);
+
+impl fmt::Display for Testified<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let heard = self.0;
+        let value = Value(&heard.testimony).to_string();
+        write!(out, "{value:<24} {}, ", Because(heard.testimony.evidence()))?;
+        out.write_str(match (heard.chosen, heard.standing) {
+            (true, _) => "chosen",
+            (false, Standing::Bound) => "a bound, never chosen",
+            (false, _) => "outranked",
+        })
+    }
+}
+
+/// How to fix the value: the command that pins it.
+#[derive(Clone, Copy, Debug)]
+struct Hint<'a>(&'a Asked);
+
+impl fmt::Display for Hint<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0.subject {
+            Subject::File(path) => write!(out, "to pin it: ink pin {path} {}", self.0.code),
+            _ => write!(out, "to pin it: ink pin {}", self.0.code),
+        }
     }
 }
 
@@ -104,7 +196,7 @@ impl fmt::Display for Line<'_> {
 
 /// A decision's value, as its code words it.
 #[derive(Clone, Copy, Debug)]
-struct Value<'a>(&'a AnyDecision);
+pub(crate) struct Value<'a>(pub(crate) &'a AnyDecision);
 
 impl fmt::Display for Value<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -4,4 +4,4 @@ source: cli/tests/site.rs
 # exit 1
 {"schema":"uses.event/v1","code":"link.target.ambiguous","severity":"error","file":"index.md","line":null,"what":"`Note` could be any of one/Note.md and two/Note.md","why":null,"fix":"write the path of the one you mean"}
 # result
-{"schema":"uses.build/v1","deploy":null,"written":false,"out":"<out>","entries":0,"errors":1,"warnings":0}
+{"schema":"uses.build/v2","deploy":null,"written":false,"out":"<out>","entries":0,"changes":null,"errors":1,"warnings":0}

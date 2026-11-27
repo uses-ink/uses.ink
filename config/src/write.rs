@@ -1,4 +1,4 @@
-//! Writing decisions as pins: `ink explain --pin` and the CLI's pin commands. The only module
+//! Writing decisions as pins: `ink pin` and, later, the dashboard. The only module
 //! that sees `toml_edit`. Values are written exactly as [`Config::parse`](crate::Config::parse)
 //! reads them, so the file read back pins every decision it was written from.
 

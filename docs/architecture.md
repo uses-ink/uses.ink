@@ -140,8 +140,12 @@ struct Lack { ability: Ability, consequence: AnyCode, gap: Gap }
 enum Gap { Absent, Shallow { commit: Oid, bound: Instant }, Renames { moved: u64 } }  // how much is missing
 enum Provenance { GitHistory { commit: Oid }, Commit { commit: Oid }, Filesystem }  // bound at a boundary; the commit that changed it
 
-struct Decision<C: Code> { subject: C::Subject, value: C::Value, evidence: Evidence, rejected: Vec<Alternative<C::Value>> }
-// the pin is derived from code + subject, never stored
+struct Decision<C: Code> { subject: C::Subject, value: C::Value, evidence: Evidence }
+// one evidence, the winner's (0042); the pin is derived from code + subject, never stored
+
+struct record::Build { inputs: Inputs, decisions: Vec<AnyDecision>, files: Vec<Kept>, routes: Vec<Routed> }
+struct record::Changes { against: Against, public: Vec<Routed>, withdrawn: Vec<Routed>, moved: Vec<Moved>, decisions: Vec<Change> }
+// a build's record, kept beside its manifest; two records give the change set, each change with a Cause
 
 struct Site { layout: Layout, home: PageId, pages: Vec<Page>, assets: Vec<Asset>, nav: Vec<NavItem>, excluded: Vec<Excluded> }
 struct Page { id: PageId, file: ContentPath, route: Route, kind: PageKind, title: Text, date: Option<Instant>, updated: Option<Instant>, tags: Vec<Tag>, body: Document }
@@ -303,6 +307,14 @@ Rules that hold for every inferrer:
   `writing` are layout markers: a root there would make every post a plain page.
 - A file ignored by inference rather than by a pin or a pattern says so, once per folder or
   file (`file.ignore.inferred`).
+- A decision keeps only the evidence that chose it; `ink explain --why [path] <code>` replays
+  its ladder rung by rung, the outranked and empty rungs included (0042).
+- In a vault or a private source, a file published by anything but what the writer stated is
+  refused (`page.publish.unstated`): the ladders cannot do it, and the check says so.
+- `ink build` compares its decisions with the record the previous build left in the output
+  folder and lists the change set: newly public files first, then withdrawn and moved routes,
+  then each changed decision with its cause (content, config, rules, plugin, ability, engine).
+  A change ink itself caused is `engine.decision.unstable`, a warning.
 
 ## 10. `ink.toml`
 
@@ -340,9 +352,9 @@ key only once, so the theme is a `[theme]` table with `use`, not a `theme = "...
 it. Pattern syntax (`*`, `?`, `**`; a pattern matching a folder matches what is in it) is
 documented in `config/src/pattern.rs`.
 
-`ink explain --pin` prints the whole file that reproduces the current decisions; `--minimal`
-prints only what differs from the defaults. The CLI writes pins with `toml_edit`, preserving the
-author's formatting and comments. A JSON schema for editor completion through Taplo is not
+`ink pin [path] <code>` writes one decision's current value as a pin (0042), with `toml_edit`,
+preserving the author's formatting and comments. Nothing dumps every decision as pins: that
+froze content into config. A JSON schema for editor completion through Taplo is not
 generated yet; it has to come from the decision codes, not from a second set of config types.
 
 ## 11. Build, storage, serving
@@ -440,7 +452,7 @@ colours and sizes from `token/`; the pen as a wasm module.
 **Landing** at `uses.ink`: from `.impeccable/mocks/doodle/index.html`, served by the same web
 crate.
 
-**CLI** (`ink`): `login`, `logout`, `whoami`, `init`, `build`, `check`, `explain`, `preview`,
+**CLI** (`ink`): `login`, `logout`, `whoami`, `init`, `build`, `check`, `explain`, `pin`, `preview`,
 `push`, `watch`, `status`, `deploys`, `rollback`, `resume`, `source`, `domain`, `handle`,
 `theme`, `select`, `export`, `account`, `diag`, `serve`. Output rules, samples and exit codes:
 `research/flow.md` section 7, which moves here when the CLI is built. Every command takes

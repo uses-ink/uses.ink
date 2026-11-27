@@ -133,7 +133,7 @@ pub enum Mismatch {
         /// The scope the subject has.
         found: Scope,
     },
-    /// A decision, or a rejected value, of another code.
+    /// A decision of another code.
     Code {
         /// The code wanted.
         expected: AnyCode,

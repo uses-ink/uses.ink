@@ -16,6 +16,7 @@ pub(crate) use route::Routing;
 
 use crate::Pins;
 use crate::interpret::decide::ladder::{Case, Ladder, Testimony, Witness};
+use crate::interpret::decide::trace::{Named, Witnessed};
 use crate::interpret::decide::{Explain, Filed, Sourced, precedence};
 use crate::interpret::file::read::Source;
 use crate::interpret::journal::Journal;
@@ -114,10 +115,12 @@ impl<P: Pins> Site<'_, P> {
     ) -> Option<C::Value> {
         let Sources { all: sources, home } = pages;
         let pin = self.pins.pin::<C>(&Whole);
-        let decided = {
+        let tracing = journal.tracing(C::CODE, &Whole);
+        let (decided, trace) = {
             let ground = Ground { scope: self.scope, sources, published: self.published, home, journal };
-            ladder.decide(&Case { subject: &Whole, pin, patterns: self.pins, ground: &ground })
+            ladder.hear(&Case { subject: &Whole, pin, patterns: self.pins, ground: &ground }, tracing)
         };
+        journal.traced(trace);
         journal.record(decided)
     }
 
@@ -128,4 +131,8 @@ impl<P: Pins> Site<'_, P> {
             journal.diagnose(Diagnostic::new(problem).on(Subject::Site));
         }
     }
+}
+
+impl Named for Index {
+    const NAME: Witnessed = Witnessed::Index;
 }

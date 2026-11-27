@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"20119c9578729f927049edc15fbca986bf92fe11fcc71e997dfb22d1f5602024","written":true,"out":"<out>","entries":8,"errors":0,"warnings":0}
+{"schema":"uses.build/v2","deploy":"20119c9578729f927049edc15fbca986bf92fe11fcc71e997dfb22d1f5602024","written":true,"out":"<out>","entries":8,"changes":{"against":"nothing","public":[{"path":"notes/kettle.md","route":"/kettle"},{"path":"notes/tea.md","route":"/tea"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html

@@ -1,8 +1,8 @@
 //! `ink` on every folder under `fixture/site/`, in process: each build compared with
 //! `fixture/site/<name>.snap` (the exit code, the diagnostics, the manifest and the HTML of every
 //! page), `ink explain` on each compared with `fixture/explain/<name>.snap`, and the M1 exit
-//! tests: a build twice is the same deploy, `ink explain --pin` written as `ink.toml` builds the
-//! same deploy again, and no reader page runs script.
+//! tests: a build twice is the same deploy, a pin of a decision's current value builds the same
+//! deploy again, and no reader page runs script.
 //!
 //! The blog has code, so tests that build it compile a tree-sitter grammar and carry `highlight`
 //! in their name for its budget (`.config/nextest.toml`).
@@ -174,48 +174,156 @@ fn highlight_a_build_twice_is_the_same_deploy() {
     }
 }
 
-/// `ink explain --pin` of `name`, written as its `ink.toml`, builds the same deploy again. One
-/// test per fixture, so each stays within its budget: ten builds in one process did not.
-fn pins_round_trip(name: &str) {
-    let dir = scratch(&format!("pin/{name}/site"));
-    copy(&fixtures().join(name), &dir);
-    let before = build(&dir, &scratch(&format!("pin/{name}/before")));
-    let (exit, pins, stderr) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap()]);
+/// `ink pin` writes the decision's current value into `ink.toml`, keeping what was there, and
+/// the site builds the same deploy again: a pin of what inference already says changes nothing.
+#[test]
+fn a_pin_of_the_current_value_changes_no_deploy() {
+    let dir = scratch("pin/site");
+    copy(&fixtures().join("readme"), &dir);
+    let mine = "# mine\nexclude = [\"drafts/**\"]\n";
+    std::fs::write(dir.join("ink.toml"), mine).unwrap();
+    let before = build(&dir, &scratch("pin/before"));
+    let dir_text = dir.to_str().unwrap();
+    let (exit, dry, stderr) = ink(&["pin", "usage.md", "page.title", "--dry-run", "-C", dir_text]);
     assert_eq!(exit, Exit::Done, "{stderr}");
-    // Codes config cannot write yet are listed as `# not pinned`; they decide the same again.
-    std::fs::write(dir.join("ink.toml"), &pins).unwrap();
-    let after = build(&dir, &scratch(&format!("pin/{name}/after")));
-    assert_eq!(before, after, "{name}: the pins of\n{pins}");
+    assert_eq!(dry, "[page.\"usage.md\"]\ntitle = \"Usage\"\ndry run: nothing written\n");
+    assert_eq!(std::fs::read_to_string(dir.join("ink.toml")).unwrap(), mine);
+    let (exit, _, stderr) = ink(&["pin", "usage.md", "page.title", "-C", dir_text]);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    let (exit, _, stderr) = ink(&["pin", "site.title", "-C", dir_text]);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    let toml = std::fs::read_to_string(dir.join("ink.toml")).unwrap();
+    assert!(toml.starts_with(mine), "{toml}");
+    assert!(toml.contains("[page.\"usage.md\"]\ntitle = \"Usage\""), "{toml}");
+    assert!(toml.contains("[site]\ntitle = \"My tool\""), "{toml}");
+    let (_, why, _) = ink(&["explain", "--why", "usage.md", "page.title", "-C", dir_text]);
+    assert!(why.starts_with("page.title on usage.md: “Usage” pinned in ink.toml"), "{why}");
+    assert_eq!(build(&dir, &scratch("pin/after")), before);
 }
 
 #[test]
-fn highlight_pins_written_back_build_the_blog_again() {
-    pins_round_trip("blog");
+fn pin_refuses_a_code_of_the_other_scope_or_an_unknown_file() {
+    let dir = fixtures().join("readme");
+    let dir_text = dir.to_str().unwrap();
+    for (args, said) in [
+        (&["pin", "page.title"][..], "error: `page.title` is decided per file: give the file's path before it\n"),
+        (
+            &["pin", "usage.md", "site.title"][..],
+            "error: `site.title` is decided once for the site, not on usage.md: give the code alone\n",
+        ),
+        (&["pin", "nosuch.md", "page.title"][..], "error: nosuch.md is not a file of the folder\n"),
+        (&["pin", "page.nope"][..], "error: no decision has that code\n  caused by: `page.nope` is no decision code\n"),
+    ] {
+        let args: Vec<&str> = args.iter().copied().chain(["--dry-run", "-C", dir_text]).collect();
+        let (exit, stdout, stderr) = ink(&args);
+        assert_eq!((exit, stdout.as_str(), stderr.as_str()), (Exit::Usage, "", said), "{args:?}");
+    }
 }
 
 #[test]
-fn pins_written_back_build_broken_frontmatter_again() {
-    pins_round_trip("broken-frontmatter");
+fn explain_why_replays_one_ladder_rung_by_rung() {
+    let dir = fixtures().join("blog");
+    let (exit, why, stderr) = ink(&["explain", "--why", "posts/later.md", "page.title", "-C", dir.to_str().unwrap()]);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    assert_eq!(
+        why,
+        "page.title on posts/later.md: “Later” from the name of posts/later.md, rung 4 of 4
+   1 ink.toml           nothing
+   2 front matter       nothing
+   3 first heading      nothing
+   4 file name          “Later”                  from the name of posts/later.md, chosen
+to pin it: ink pin posts/later.md page.title
+"
+    );
+    let (_, why, _) = ink(&["explain", "--why", "index.md", "page.summary", "-C", dir.to_str().unwrap()]);
+    assert!(why.contains("   3 first paragraph    “Welcome."), "the outranked rung is shown: {why}");
+    assert!(why.lines().nth(3).unwrap().ends_with(", outranked"), "{why}");
+    let (_, json, _) = ink(&["explain", "--why", "site.layout", "-C", dir.to_str().unwrap(), "--json"]);
+    let json: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(json["schema"], "uses.trace/v1");
+    assert_eq!(json["trace"]["code"], "site.layout");
+    assert_eq!(json["trace"]["rungs"][3]["witness"], serde_json::json!({ "folder": "posts" }));
+    assert_eq!(json["trace"]["rungs"][3]["heard"][0]["chosen"], true);
+}
+
+/// `name` built twice into one output folder: the second build compares with the first's
+/// record, finds no change and no warning, and is the same deploy (the M1 exit check as 0042
+/// restates it). One test per fixture, so each stays within its budget.
+fn rebuilt_unchanged(name: &str) {
+    let dir = fixtures().join(name);
+    let out = scratch(&format!("rebuilt/{name}"));
+    let args =
+        ["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--json", "--cache", &cache()];
+    let (exit, first, stderr) = ink(&args);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    let first: serde_json::Value = serde_json::from_str(&first).unwrap();
+    assert_eq!(first["changes"]["against"], "nothing", "{name}");
+    let (exit, second, stderr) = ink(&args);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    let second: serde_json::Value = serde_json::from_str(&second).unwrap();
+    assert_eq!(second["deploy"], first["deploy"], "{name}");
+    assert_eq!(second["changes"]["against"], serde_json::json!({ "deploy": { "deploy": first["deploy"] } }), "{name}");
+    let changes = &second["changes"];
+    for list in ["public", "withdrawn", "moved", "decisions"] {
+        assert_eq!(changes[list], serde_json::json!([]), "{name}: {list} in {changes}");
+    }
+    assert_eq!(second["warnings"], first["warnings"], "{name}: no engine warning");
 }
 
 #[test]
-fn pins_written_back_build_the_docs_again() {
-    pins_round_trip("docs");
+fn highlight_the_blog_built_again_changes_nothing() {
+    rebuilt_unchanged("blog");
 }
 
 #[test]
-fn pins_written_back_build_the_notes_again() {
-    pins_round_trip("notes");
+fn broken_frontmatter_built_again_changes_nothing() {
+    rebuilt_unchanged("broken-frontmatter");
 }
 
 #[test]
-fn pins_written_back_build_the_readme_again() {
-    pins_round_trip("readme");
+fn the_docs_built_again_change_nothing() {
+    rebuilt_unchanged("docs");
 }
 
 #[test]
-fn every_site_that_builds_has_its_pins_test() {
+fn the_notes_built_again_change_nothing() {
+    rebuilt_unchanged("notes");
+}
+
+#[test]
+fn the_readme_built_again_changes_nothing() {
+    rebuilt_unchanged("readme");
+}
+
+#[test]
+fn every_site_that_builds_is_built_again() {
     assert_eq!(BUILDS, ["blog", "broken-frontmatter", "docs", "notes", "readme"]);
+}
+
+#[test]
+fn a_build_lists_what_changed_since_the_last_newly_public_first() {
+    let dir = scratch("changed/site");
+    copy(&fixtures().join("readme"), &dir);
+    let out = scratch("changed/out");
+    build(&dir, &out);
+    std::fs::write(dir.join("usage.md"), "# How to use it\n\nRun it.\n").unwrap();
+    std::fs::write(dir.join("new.md"), "# New\n\nHello.\n").unwrap();
+    let args = ["build", dir.to_str().unwrap(), "-o", out.to_str().unwrap(), "--base", BASE, "--cache", &cache()];
+    let (exit, stdout, stderr) = ink(&args);
+    assert_eq!(exit, Exit::Done, "{stderr}");
+    assert_eq!(stdout.trim().len(), 64, "stdout is the deploy id alone: {stdout}");
+    let lines: Vec<&str> = stderr.lines().collect();
+    assert!(lines[0].starts_with("against the previous build in "), "{stderr}");
+    assert_eq!(lines[1..3], ["newly public", "  new.md                           /new"], "{stderr}");
+    assert!(
+        stderr.contains(
+            "  usage.md                         page.title “Usage” -> “How to use it”  content: the file was edited"
+        ),
+        "{stderr}"
+    );
+    assert!(stderr.contains("  new.md                           new, content: the file is new"), "{stderr}");
+    assert!(stderr.contains("site.nav"), "the navigation follows the new page: {stderr}");
+    assert!(lines.last().unwrap().starts_with("1 newly public, 0 no longer public, 0 moved, "), "{stderr}");
 }
 
 #[test]
@@ -249,7 +357,7 @@ fn explain_shows_decisions_with_evidence() {
     );
     let (_, json, _) = ink(&["explain", "-C", dir.to_str().unwrap(), "--json"]);
     let json: serde_json::Value = serde_json::from_str(&json).unwrap();
-    assert_eq!(json["schema"], "uses.explain/v1");
+    assert_eq!(json["schema"], "uses.explain/v2");
     assert!(json["decisions"].as_array().unwrap().len() > 10);
     let root = &json["decisions"][0];
     assert_eq!(root["code"], "site.root", "decisions are tagged by their code: {root}");
@@ -333,20 +441,8 @@ fn explain_refuses_a_path_that_is_no_file() {
     assert_eq!(exit, Exit::Usage);
     assert_eq!(stdout, "");
     assert_eq!(stderr, "error: nosuch.md is not a file of the folder\n");
-    let (exit, _, _) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap(), "nosuch.md"]);
+    let (exit, _, _) = ink(&["explain", "--why", "nosuch.md", "page.title", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Usage);
-}
-
-#[test]
-fn explain_pins_only_the_file_it_is_given() {
-    let dir = fixtures().join("readme");
-    let (exit, pins, stderr) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap(), "usage.md"]);
-    assert_eq!(exit, Exit::Done, "{stderr}");
-    let tables: Vec<&str> = pins.lines().filter(|line| line.starts_with('[')).collect();
-    assert!(!tables.is_empty(), "{pins}");
-    assert!(tables.iter().all(|table| table.contains("\"usage.md\"")), "only usage.md is pinned: {pins}");
-    let (_, every, _) = ink(&["explain", "--pin", "-C", dir.to_str().unwrap()]);
-    assert!(every.contains("[site]"), "{every}");
 }
 
 /// A golden whose site folder is gone fails, so no stale golden stays behind.

@@ -8,10 +8,12 @@ use config::{Config, Parsed};
 use engine::{BaseUrl, Blobs, Engine, Formats, NoPins, RenderSettings, Theme, Understood};
 use host_image::Pixels;
 use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
+use model::record::{Build, Inputs};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject, Version};
 use theme_quiet::Quiet;
 
 use crate::args::{Kind, Origin};
+use crate::asked::Asked;
 use crate::error::Error;
 use crate::format::Native;
 use crate::pins::Configured;
@@ -30,6 +32,8 @@ pub(crate) struct Source<'a> {
     pub(crate) output: Vec<ContentPath>,
     /// Whether it is read as a folder or a repository, and at which commit.
     origin: &'a Origin,
+    /// The one decision whose ladder is traced, if one is asked for.
+    pub(crate) asked: Option<Asked>,
 }
 
 /// How a folder is read, once [`Origin`] and the folder itself have said.
@@ -59,7 +63,7 @@ impl<'a> Source<'a> {
     /// read when it exists.
     pub(crate) fn new(dir: &'a Path, origin: &'a Origin) -> Self {
         let output = DEFAULT_OUT.parse().ok().filter(|_| dir.join(DEFAULT_OUT).is_dir()).into_iter().collect();
-        Self { dir, output, origin }
+        Self { dir, output, origin, asked: None }
     }
 
     /// How the folder is read: as `--source` says, else as a repository when it holds `.git`.
@@ -133,7 +137,11 @@ impl<'a> Source<'a> {
             }
         }
         let Parsed { config, diagnostics } = parsed;
-        let mut understood = Engine::new(&store, Configured(&config), formats(native), ()).interpret(&snapshot);
+        let engine = Engine::new(&store, Configured(&config), formats(native), ());
+        let mut understood = match self.asked {
+            Some(Asked { code, subject }) => engine.trace(&snapshot, code, subject),
+            None => engine.interpret(&snapshot),
+        };
         let stops = diagnostics.iter().any(|d| d.severity() == model::Severity::Error);
         understood.diagnostics.splice(0..0, diagnostics);
         if stops {
@@ -177,6 +185,15 @@ pub(crate) struct Rendering {
 }
 
 impl Loaded {
+    /// The record of this build: its inputs, decisions, files and routes. The plugins are the
+    /// ones compiled into ink, so none is listed.
+    pub(crate) fn record(&self) -> Build {
+        let config =
+            CONFIG.parse().ok().and_then(|path: ContentPath| self.snapshot.entry(&path)).map(|entry| entry.blob);
+        let inputs = Inputs::of(&self.snapshot, engine::RELEASE.into(), Vec::new(), config);
+        self.understood.record(&self.snapshot, inputs)
+    }
+
     /// Renders the site through `ink:theme-quiet`, its images through the host's image work, if
     /// interpreting gave one.
     pub(crate) fn render(&self, address: &Address, images: &Pixels) -> Rendering {

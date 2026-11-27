@@ -49,6 +49,21 @@ impl Tree {
         self
     }
 
+    /// A source with history, lacking it before a shallow clone's boundary.
+    pub fn shallow(mut self) -> Self {
+        let bound = "2023-01-01T00:00:00Z".parse().unwrap();
+        let gap = model::Gap::Shallow { commit: model::Oid::try_from("a".repeat(40)).unwrap(), bound };
+        let lack = model::Lack::new(Ability::History, model::AnyCode::Date, gap);
+        self.observed = Observed::new(vec![Ability::Snapshot, Ability::History], vec![lack]);
+        self
+    }
+
+    /// A source with its whole history.
+    pub fn deep(mut self) -> Self {
+        self.observed = Observed::new(vec![Ability::Snapshot, Ability::History], vec![]);
+        self
+    }
+
     pub fn private(mut self) -> Self {
         self.observed = Observed::new(vec![Ability::Snapshot, Ability::Private], vec![]);
         self
@@ -73,6 +88,19 @@ impl Tree {
 
     pub fn understand(&self, pins: &Pinned) -> Understood {
         self.read_with(pins, Lines)
+    }
+
+    /// The record of a build of the tree under `pins`, by this engine with no plugin.
+    pub fn record(&self, pins: &Pinned) -> model::record::Build {
+        let (snapshot, _) = self.snapshot();
+        let inputs = model::record::Inputs::of(&snapshot, engine::RELEASE.into(), Vec::new(), None);
+        self.understand(pins).record(&snapshot, inputs)
+    }
+
+    /// Interprets the tree, tracing the ladder of `code` on `subject`.
+    pub fn trace(&self, pins: &Pinned, code: model::AnyCode, subject: model::Subject) -> Understood {
+        let (snapshot, store) = self.snapshot();
+        Engine::new(&store, pins, (Lines,), ()).trace(&snapshot, code, subject)
     }
 
     /// Interprets the tree through `format`.

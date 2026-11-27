@@ -30,6 +30,8 @@ pub enum Command {
     Check(Check),
     /// Show the decisions behind the site, or one file's.
     Explain(Explain),
+    /// Write one decision's current value into ink.toml as a pin.
+    Pin(Pin),
     /// Build the folder in memory and serve it on 127.0.0.1.
     Preview(Preview),
 }
@@ -103,14 +105,33 @@ pub struct Check {
     pub origin: Origin,
 }
 
-/// `ink explain [--pin] [path]`.
+/// `ink explain [path]` and `ink explain --why [path] <code>`.
 #[derive(Debug, Args)]
 pub struct Explain {
     /// A file of the folder, as a path in it: only its decisions. Without one, every decision.
+    #[arg(conflicts_with = "why")]
     pub path: Option<String>,
-    /// Print the decisions as `ink.toml` pins instead: every one, or the file's with a path.
+    /// Replay one decision's ladder, rung by rung: a file's path and a code (`posts/a.md
+    /// page.title`), or a site code alone (`site.title`).
+    #[arg(long, num_args = 1..=2, value_names = ["PATH", "CODE"])]
+    pub why: Option<Vec<String>>,
+    /// The site's folder.
+    #[arg(short = 'C', long, default_value = ".")]
+    pub dir: PathBuf,
+    /// Where the files are read from.
+    #[command(flatten)]
+    pub origin: Origin,
+}
+
+/// `ink pin [path] <code>`.
+#[derive(Debug, Args)]
+pub struct Pin {
+    /// A file's path and a code (`posts/a.md page.title`), or a site code alone (`site.title`).
+    #[arg(required = true, num_args = 1..=2, value_names = ["PATH", "CODE"])]
+    pub words: Vec<String>,
+    /// Print the pin and write nothing.
     #[arg(long)]
-    pub pin: bool,
+    pub dry_run: bool,
     /// The site's folder.
     #[arg(short = 'C', long, default_value = ".")]
     pub dir: PathBuf,

@@ -10,6 +10,7 @@ use model::{ContentPath, Evidence, Span};
 use crate::Patterns;
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{self, Named, Witnessed};
 
 /// One list of patterns.
 pub(crate) trait List {
@@ -65,4 +66,12 @@ impl<C: Listed<L>, L: List, G: Filed + ?Sized> Witness<C, G> for Pattern<L> {
             testimony.value(C::MATCHED, Evidence::Config { span });
         }
     }
+}
+
+impl Named for Pattern<Include> {
+    const NAME: Witnessed = Witnessed::Pattern(trace::List::Include);
+}
+
+impl Named for Pattern<Exclude> {
+    const NAME: Witnessed = Witnessed::Pattern(trace::List::Exclude);
 }

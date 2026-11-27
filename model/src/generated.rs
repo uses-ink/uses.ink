@@ -217,6 +217,18 @@ pub enum Problem {
         /// The decision code it is about.
         decision: AnyCode,
     },
+    /// `page.publish.unstated`: this file would be published in a vault or private source by `{decision}`, and nothing the writer stated selects it, so nothing is published
+    #[serde(rename = "page.publish.unstated")]
+    PagePublishUnstated {
+        /// The decision code it is about.
+        decision: AnyCode,
+    },
+    /// `engine.decision.unstable`: `{decision}` changed since the previous build, and nothing in the site did: the content, ink.toml, the plugins and the source's abilities are the same
+    #[serde(rename = "engine.decision.unstable")]
+    EngineDecisionUnstable {
+        /// The decision code it is about.
+        decision: AnyCode,
+    },
     /// `engine.header.invalid`: the engine's own `{header}` header does not parse
     #[serde(rename = "engine.header.invalid")]
     EngineHeaderInvalid {
@@ -503,6 +515,8 @@ impl Problem {
         "source.blob.missing",
         "engine.decision.repeated",
         "engine.decision.missing",
+        "page.publish.unstated",
+        "engine.decision.unstable",
         "engine.header.invalid",
         "engine.route.invalid",
         "engine.path.invalid",
@@ -572,6 +586,8 @@ impl Problem {
             Self::SourceBlobMissing { .. } => "source.blob.missing",
             Self::EngineDecisionRepeated { .. } => "engine.decision.repeated",
             Self::EngineDecisionMissing { .. } => "engine.decision.missing",
+            Self::PagePublishUnstated { .. } => "page.publish.unstated",
+            Self::EngineDecisionUnstable { .. } => "engine.decision.unstable",
             Self::EngineHeaderInvalid { .. } => "engine.header.invalid",
             Self::EngineRouteInvalid { .. } => "engine.route.invalid",
             Self::EnginePathInvalid { .. } => "engine.path.invalid",
@@ -642,6 +658,8 @@ impl Problem {
             Self::SourceBlobMissing { .. } => Severity::Error,
             Self::EngineDecisionRepeated { .. } => Severity::Error,
             Self::EngineDecisionMissing { .. } => Severity::Error,
+            Self::PagePublishUnstated { .. } => Severity::Error,
+            Self::EngineDecisionUnstable { .. } => Severity::Warning,
             Self::EngineHeaderInvalid { .. } => Severity::Error,
             Self::EngineRouteInvalid { .. } => Severity::Error,
             Self::EnginePathInvalid { .. } => Severity::Error,
@@ -712,6 +730,8 @@ impl Problem {
             Self::SourceBlobMissing { .. } => Fault::Ours,
             Self::EngineDecisionRepeated { .. } => Fault::Ours,
             Self::EngineDecisionMissing { .. } => Fault::Ours,
+            Self::PagePublishUnstated { .. } => Fault::Ours,
+            Self::EngineDecisionUnstable { .. } => Fault::Ours,
             Self::EngineHeaderInvalid { .. } => Fault::Ours,
             Self::EngineRouteInvalid { .. } => Fault::Ours,
             Self::EnginePathInvalid { .. } => Fault::Ours,
@@ -916,6 +936,12 @@ pub enum Announcement {
         /// The file.
         path: ContentPath,
     },
+    /// `build.record.unread`: the previous build's decision record could not be read, so nothing is compared with it: {reason}
+    #[serde(rename = "build.record.unread")]
+    BuildRecordUnread {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `build.address.default`: no address was given, so feeds, the sitemap and canonical links use {address}
     #[serde(rename = "build.address.default")]
     BuildAddressDefault {
@@ -1002,6 +1028,7 @@ impl Announcement {
         "source.history.moved",
         "source.submodule.skipped",
         "source.lfs.pointer",
+        "build.record.unread",
         "build.address.default",
         "code.language.unknown",
         "image.animation.kept",
@@ -1041,6 +1068,7 @@ impl Announcement {
             Self::SourceHistoryMoved { .. } => "source.history.moved",
             Self::SourceSubmoduleSkipped { .. } => "source.submodule.skipped",
             Self::SourceLfsPointer { .. } => "source.lfs.pointer",
+            Self::BuildRecordUnread { .. } => "build.record.unread",
             Self::BuildAddressDefault { .. } => "build.address.default",
             Self::CodeLanguageUnknown { .. } => "code.language.unknown",
             Self::ImageAnimationKept { .. } => "image.animation.kept",
@@ -1138,6 +1166,12 @@ impl From<&Problem> for Coded {
             }
             Problem::EngineDecisionMissing { decision, .. } => {
                 Coded::new("engine.decision.missing", vec![Field::from(*decision)])
+            }
+            Problem::PagePublishUnstated { decision, .. } => {
+                Coded::new("page.publish.unstated", vec![Field::from(*decision)])
+            }
+            Problem::EngineDecisionUnstable { decision, .. } => {
+                Coded::new("engine.decision.unstable", vec![Field::from(*decision)])
             }
             Problem::EngineHeaderInvalid { header, .. } => {
                 Coded::new("engine.header.invalid", vec![Field::from(header.clone())])
@@ -1291,6 +1325,8 @@ impl TryFrom<Coded> for Problem {
             "source.blob.missing" => Self::SourceBlobMissing { path: fields.next()? },
             "engine.decision.repeated" => Self::EngineDecisionRepeated { decision: fields.next()? },
             "engine.decision.missing" => Self::EngineDecisionMissing { decision: fields.next()? },
+            "page.publish.unstated" => Self::PagePublishUnstated { decision: fields.next()? },
+            "engine.decision.unstable" => Self::EngineDecisionUnstable { decision: fields.next()? },
             "engine.header.invalid" => Self::EngineHeaderInvalid { header: fields.next()? },
             "engine.route.invalid" => Self::EngineRouteInvalid { written: fields.next()? },
             "engine.path.invalid" => Self::EnginePathInvalid { written: fields.next()? },
@@ -1414,6 +1450,9 @@ impl From<&Announcement> for Coded {
             Announcement::SourceLfsPointer { path, .. } => {
                 Coded::new("source.lfs.pointer", vec![Field::from(path.clone())])
             }
+            Announcement::BuildRecordUnread { reason, .. } => {
+                Coded::new("build.record.unread", vec![Field::from(reason.clone())])
+            }
             Announcement::BuildAddressDefault { address, .. } => {
                 Coded::new("build.address.default", vec![Field::from(address.clone())])
             }
@@ -1479,6 +1518,7 @@ impl TryFrom<Coded> for Announcement {
             "source.history.moved" => Self::SourceHistoryMoved { decision: fields.next()?, count: fields.next()? },
             "source.submodule.skipped" => Self::SourceSubmoduleSkipped { path: fields.next()? },
             "source.lfs.pointer" => Self::SourceLfsPointer { path: fields.next()? },
+            "build.record.unread" => Self::BuildRecordUnread { reason: fields.next()? },
             "build.address.default" => Self::BuildAddressDefault { address: fields.next()? },
             "code.language.unknown" => Self::CodeLanguageUnknown { language: fields.next()? },
             "image.animation.kept" => Self::ImageAnimationKept { path: fields.next()? },

@@ -8,6 +8,7 @@ use model::code::{Code, Date, Description, Kind, SiteTitle, Summary, Title};
 use model::decision::File;
 
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{Named, Witnessed};
 use crate::interpret::site;
 
 /// A code whose value can follow from a value of code `D`.
@@ -76,4 +77,12 @@ where
             }
         }
     }
+}
+
+impl<D: Code> Named for Derived<D> {
+    const NAME: Witnessed = Witnessed::Derived(D::CODE);
+}
+
+impl<D, W: Named> Named for Implied<D, W> {
+    const NAME: Witnessed = W::NAME;
 }

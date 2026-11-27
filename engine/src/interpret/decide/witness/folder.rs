@@ -9,6 +9,7 @@ use model::{ContentPath, Evidence, PageKind};
 
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{Marker, Named, Witnessed};
 use crate::interpret::file::ignore;
 use crate::interpret::file::name::Name;
 use crate::interpret::site;
@@ -196,4 +197,32 @@ impl Witness<SiteTitle, site::Ground<'_>> for Folder<Content> {
             testimony.value(folder.file_name().to_owned(), Evidence::Marker { path: folder.clone() });
         }
     }
+}
+
+impl Named for Folder<Posts> {
+    const NAME: Witnessed = Witnessed::Folder(Marker::Posts);
+}
+
+impl Named for Folder<Drafts> {
+    const NAME: Witnessed = Witnessed::Folder(Marker::Drafts);
+}
+
+impl Named for Folder<Hidden> {
+    const NAME: Witnessed = Witnessed::Folder(Marker::Hidden);
+}
+
+impl Named for Folder<Templates> {
+    const NAME: Witnessed = Witnessed::Folder(Marker::Templates);
+}
+
+impl Named for Folder<Obsidian> {
+    const NAME: Witnessed = Witnessed::Folder(Marker::Obsidian);
+}
+
+impl Named for Folder<Docs> {
+    const NAME: Witnessed = Witnessed::Folder(Marker::Docs);
+}
+
+impl Named for Folder<Content> {
+    const NAME: Witnessed = Witnessed::Folder(Marker::Content);
 }

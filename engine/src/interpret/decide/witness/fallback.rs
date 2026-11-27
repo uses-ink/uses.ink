@@ -14,6 +14,7 @@ use model::{DefaultReason, Evidence, PageId, PageKind};
 use crate::error::Error;
 use crate::interpret::decide::Filed;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{Named, Witnessed};
 use crate::interpret::file::asset;
 use crate::interpret::page::{self, Selection};
 use crate::interpret::site;
@@ -142,4 +143,8 @@ impl Assumed<site::Ground<'_>> for Nav {
         listed.sort();
         Ok((listed.into_iter().map(|(_, path)| path.clone()).collect(), DefaultReason::NothingMatched))
     }
+}
+
+impl<C> Named for Fallback<C> {
+    const NAME: Witnessed = Witnessed::Default;
 }

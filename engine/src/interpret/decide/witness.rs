@@ -27,6 +27,7 @@ pub(crate) use name::{Dated, FileName, Repository, Stem};
 pub(crate) use pattern::{Exclude, Include, Pattern};
 
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{Named, Witnessed};
 
 /// What `W` says, only when no witness before it said a value: a last resort that is not a
 /// default, so it is never recorded as outranked.
@@ -51,4 +52,12 @@ impl<C: Code, G: ?Sized> Witness<C, G> for Pin<C> {
             testimony.value(pin.value.clone(), Evidence::Config { span: pin.span });
         }
     }
+}
+
+impl<W: Named> Named for Otherwise<W> {
+    const NAME: Witnessed = W::NAME;
+}
+
+impl<C> Named for Pin<C> {
+    const NAME: Witnessed = Witnessed::Pin;
 }

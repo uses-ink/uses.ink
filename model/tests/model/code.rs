@@ -1,6 +1,6 @@
 use model::code::{self, Code, Keyed};
 use model::decision::{self, File, Mismatch, Scope, Site};
-use model::{AnyCode, AnyDecision, ContentPath, DefaultReason, Evidence, Rejection, Span, Subject, Tag};
+use model::{AnyCode, AnyDecision, Basis, ContentPath, DefaultReason, Evidence, Span, Subject, Tag};
 
 fn path(text: &str) -> ContentPath {
     ContentPath::parse(text).unwrap()
@@ -11,9 +11,7 @@ fn pinned() -> Evidence {
 }
 
 fn title() -> decision::Decision<code::Title> {
-    let front = Evidence::Frontmatter { path: path("posts/a.md"), span: Span::new(10, 15).unwrap() };
     decision::Decision::new(File(path("posts/a.md")), "Pinned".to_owned(), pinned())
-        .rejecting(decision::Alternative::new("Written".to_owned(), front, Rejection::Outranked))
 }
 
 /// What a generic consumer sees of a code: its name and scope, from the type alone.
@@ -61,7 +59,7 @@ fn an_erased_decision_is_written_with_its_code_as_tag() {
     assert_eq!(json["code"], "page.title");
     assert_eq!(json["subject"], serde_json::json!({ "file": "posts/a.md" }));
     assert_eq!(json["value"], "Pinned");
-    assert_eq!(json["rejected"][0]["because"], "outranked");
+    assert_eq!(json.as_object().unwrap().len(), 4, "a code, a subject, a value and one evidence: {json}");
     assert_eq!(serde_json::from_value::<AnyDecision>(json).unwrap(), erased);
 
     let home = AnyDecision::from(decision::Decision::<code::Home>::new(
@@ -78,9 +76,19 @@ fn an_erased_decision_is_written_with_its_code_as_tag() {
 fn an_erased_decision_refuses_a_subject_of_the_other_scope() {
     let json = serde_json::json!({
         "code": "site.home", "subject": { "file": "a.md" }, "value": null,
-        "evidence": { "config": { "span": [0, 1] } }, "rejected": [],
+        "evidence": { "config": { "span": [0, 1] } },
     });
     assert!(serde_json::from_value::<AnyDecision>(json).is_err());
+}
+
+#[test]
+fn evidence_says_who_said_the_value() {
+    let at = Span::new(0, 1).unwrap();
+    assert_eq!(pinned().basis(), Basis::Stated);
+    assert_eq!(Evidence::Frontmatter { path: path("a.md"), span: at }.basis(), Basis::Stated);
+    assert_eq!(Evidence::Heading { path: path("a.md"), span: at }.basis(), Basis::Inferred);
+    assert_eq!(Evidence::Marker { path: path("posts") }.basis(), Basis::Inferred);
+    assert_eq!(Evidence::Default { reason: DefaultReason::NotSelected }.basis(), Basis::Assumed);
 }
 
 #[test]

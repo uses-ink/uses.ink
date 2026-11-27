@@ -72,15 +72,19 @@ impl<'a> Io<'a> {
         Self { out, err, json, level }
     }
 
-    /// Whether results are JSON.
-    pub(crate) fn is_json(&self) -> bool {
-        self.json
-    }
-
     /// The result, as a line of text, or nothing with `--json` (see [`Io::json`]).
     pub(crate) fn line(&mut self, line: impl fmt::Display) -> Result<(), Error> {
         if !self.json {
             writeln!(self.out, "{line}")?;
+        }
+        Ok(())
+    }
+
+    /// A report beside the result, such as a build's change set, as text on stderr, or nothing
+    /// with `--json`, whose result carries it.
+    pub(crate) fn aside(&mut self, report: impl fmt::Display) -> Result<(), Error> {
+        if !self.json {
+            write!(self.err, "{report}")?;
         }
         Ok(())
     }
@@ -92,12 +96,6 @@ impl<'a> Io<'a> {
             serde_json::to_writer(&mut *self.out, result).map_err(|source| Error::Json { source })?;
             writeln!(self.out)?;
         }
-        Ok(())
-    }
-
-    /// Text written to stdout as is, JSON or not: `ink explain --pin` without `--json`.
-    pub(crate) fn raw(&mut self, text: &str) -> Result<(), Error> {
-        self.out.write_all(text.as_bytes())?;
         Ok(())
     }
 

@@ -8,6 +8,7 @@ use model::{Evidence, Span};
 
 use crate::interpret::decide::Sourced;
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
+use crate::interpret::decide::trace::{Named, Witnessed};
 
 /// A code a page's frontmatter can say. The format reads the keys into `model::Front`; each code
 /// takes its own field.
@@ -89,4 +90,16 @@ impl<G: Sourced + ?Sized> Witness<Title, G> for Heading {
             testimony.value(heading.value.clone(), evidence);
         }
     }
+}
+
+impl<C> Named for Front<C> {
+    const NAME: Witnessed = Witnessed::Front;
+}
+
+impl Named for Draft {
+    const NAME: Witnessed = Witnessed::Draft;
+}
+
+impl Named for Heading {
+    const NAME: Witnessed = Witnessed::Heading;
 }

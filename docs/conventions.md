@@ -36,6 +36,12 @@ Each word means one thing everywhere: code, CLI, dashboard copy, docs, diagnosti
 | **attachment** | a vault's file a note embeds, kept in its attachment folder | an asset |
 | **theme** | a plugin that renders pages into files | a format |
 | **decision** | one recorded inference: code, subject, value, evidence, pin | a setting |
+| **evidence** | what chose a decision's value; one per decision | a proof |
+| **trace** | a decision's ladder replayed rung by rung, on request (`ink explain --why`) | a stored history |
+| **record** | what a build keeps of itself: inputs, decisions, files, routes | a log |
+| **baseline** | the build a change set compares with: locally the previous `ink build`, hosted the live deploy | a preview |
+| **change set** | what a build changed against its baseline, newly public files first | a diff of files |
+| **cause** | why one change in a change set happened: content, config, rules, plugin, ability, engine; a diagnostic's cause is its `source()` chain | a decision's evidence |
 | **pin** | an `ink.toml` entry that fixes a decision | a dashboard setting |
 | **build** | one run of the pipeline from a snapshot | a deploy |
 | **deploy** | the hashed manifest a build produced | a build |
@@ -72,7 +78,7 @@ Paths are `noun.noun`, singular, lower case. The same path names a thing on ever
 
 **The decision code is the `ink.toml` path.** Decision `site.home` is pinned by `[site] home = ...`;
 `page.title` on `posts/x.md` is pinned by `[page."posts/x.md"] title = ...`. The dashboard, `ink
-explain --pin` and the diagnostics all derive the pin from the code. Nothing writes one by hand.
+pin` and the diagnostics all derive the pin from the code. Nothing writes one by hand.
 
 Case by medium: kebab-case in TOML keys, WIT, plugin ids, diagnostic and decision codes, CLI
 flags, URLs. snake_case and CamelCase only inside Rust where the language requires them.

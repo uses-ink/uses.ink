@@ -1,17 +1,19 @@
 //! One mechanism for every decision: an ordered list of witnesses, each able to testify to a
-//! value with its evidence. The first value testified wins; every later one becomes a rejected
-//! alternative, outranked; a bound a witness offers is always rejected for being one.
+//! value with its evidence. The first value testified wins and is recorded with its evidence
+//! alone (decision 0042); a bound a witness offers is never chosen.
 
 use std::fmt;
 use std::marker::PhantomData;
 
+use model::AnyDecision;
+use model::Evidence;
 use model::code::Code;
-use model::decision::{Alternative, Decision};
-use model::{Evidence, Rejection};
+use model::decision::Decision;
 
 use crate::error::Error;
 use crate::host::Pin;
 use crate::interpret::decide::Explain;
+use crate::interpret::decide::trace::{Heard, Named, Rung, Standing, Trace, Witnessed};
 use crate::interpret::journal::Journal;
 use crate::{Patterns, Pins};
 
@@ -42,25 +44,18 @@ impl<C: Code, G: ?Sized> fmt::Debug for Case<'_, C, G> {
     }
 }
 
-/// Whether a testified value can be chosen.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Standing {
-    /// It can.
-    Value,
-    /// It is only a bound on the value (`Known::NotAfter`), never chosen.
-    Bound,
-}
-
 /// Everything witnesses said about one decision, in the order they said it.
 #[derive(Debug)]
 pub(crate) struct Testimony<V> {
     said: Vec<(V, Evidence, Standing)>,
     failure: Option<Error>,
+    /// When traced, each rung's witness and where its testimony starts in `said`.
+    rungs: Option<Vec<(Witnessed, usize)>>,
 }
 
 impl<V> Default for Testimony<V> {
     fn default() -> Self {
-        Self { said: Vec::new(), failure: None }
+        Self { said: Vec::new(), failure: None, rungs: None }
     }
 }
 
@@ -70,7 +65,7 @@ impl<V> Testimony<V> {
         self.said.push((value, evidence, Standing::Value));
     }
 
-    /// A bound on the value: recorded as rejected, never chosen.
+    /// A bound on the value: never chosen.
     pub(crate) fn bound(&mut self, value: V, evidence: Evidence) {
         self.said.push((value, evidence, Standing::Bound));
     }
@@ -91,10 +86,66 @@ impl<V> Testimony<V> {
         !self.said.is_empty() && !self.is_decided()
     }
 
+    /// The next rung of a traced ladder starts: what is said from here on is `witness`'s.
+    pub(crate) fn rung(&mut self, witness: Witnessed) {
+        if let Some(rungs) = &mut self.rungs {
+            rungs.push((witness, self.said.len()));
+        }
+    }
+
     /// Every value said, as `C`'s testimony: for a witness that testifies through another.
     pub(crate) fn into_values(self) -> impl Iterator<Item = (V, Evidence)> {
         self.said.into_iter().filter(|(_, _, standing)| *standing == Standing::Value).map(|(v, e, _)| (v, e))
     }
+}
+
+impl<V: model::Value> Testimony<V> {
+    /// The first value said, with its evidence, as `C`'s decision on `subject`; else the
+    /// failure a witness gave, or the engine's bug of nothing said.
+    fn decide<C: Code<Value = V>>(self, subject: &C::Subject) -> Result<Decision<C>, Error> {
+        let chosen = self.said.into_iter().find(|(_, _, standing)| *standing == Standing::Value);
+        let Some((value, evidence, _)) = chosen else {
+            return Err(self.failure.unwrap_or(Error::Missing { code: C::CODE, subject: subject.clone().into() }));
+        };
+        Ok(Decision::new(subject.clone(), value, evidence))
+    }
+
+    /// What each rung said, as `C`'s decisions on `subject`; no rungs when not traced.
+    fn trace<C: Code<Value = V>>(&self, subject: &C::Subject) -> Trace {
+        let chosen = self.said.iter().position(|(_, _, standing)| *standing == Standing::Value);
+        let rungs = self.rungs.as_deref().unwrap_or_default();
+        let ends = rungs.iter().skip(1).map(|(_, start)| *start).chain(std::iter::once(self.said.len()));
+        let rungs = rungs
+            .iter()
+            .zip(ends)
+            .map(|(&(witness, start), end)| Rung {
+                witness,
+                heard: (start..end)
+                    .filter_map(|at| self.said.get(at).map(|said| (at, said)))
+                    .map(|(at, (value, evidence, standing))| Heard {
+                        testimony: AnyDecision::from(Decision::<C>::new(
+                            subject.clone(),
+                            value.clone(),
+                            evidence.clone(),
+                        )),
+                        standing: *standing,
+                        chosen: Some(at) == chosen,
+                    })
+                    .collect(),
+            })
+            .collect();
+        Trace { code: C::CODE, subject: subject.clone().into(), rungs }
+    }
+}
+
+/// Whether a ladder keeps what every rung said: only for the one decision `ink explain --why`
+/// asks about.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Tracing {
+    /// Only the decision is kept.
+    Off,
+    /// Every rung is kept.
+    On,
 }
 
 /// The precedence of one decision code: `W` is its witnesses, usually a tuple, first first.
@@ -116,44 +167,49 @@ impl<C, W: fmt::Debug> fmt::Debug for Ladder<C, W> {
 }
 
 impl<C: Code, W> Ladder<C, W> {
-    /// Hears every witness and decides: the first value wins, the other values are outranked,
-    /// the bounds rejected as bounds, every one in the order its witness stands in the ladder.
-    /// Nothing said is the engine's bug.
+    /// Hears every witness and decides: the first value wins, with its evidence; what the
+    /// others said is dropped. Nothing said is the engine's bug.
     pub(crate) fn decide<G: ?Sized>(&self, case: &Case<'_, C, G>) -> Result<Decision<C>, Error>
     where
         W: Witness<C, G>,
     {
         let mut testimony = Testimony::default();
         self.witnesses.testify(case, &mut testimony);
-        let Testimony { said, failure } = testimony;
-        let chosen = said.iter().position(|(_, _, standing)| *standing == Standing::Value);
-        let Some(chosen) = chosen else {
-            let subject = case.subject.clone().into();
-            return Err(failure.unwrap_or(Error::Missing { code: C::CODE, subject }));
-        };
-        let mut said = said;
-        let (value, evidence, _) = said.remove(chosen);
-        let mut decision = Decision::new(case.subject.clone(), value, evidence);
-        for (value, evidence, standing) in said {
-            let because = match standing {
-                Standing::Value => Rejection::Outranked,
-                Standing::Bound => Rejection::OnlyBound,
-            };
-            decision = decision.rejecting(Alternative::new(value, evidence, because));
+        testimony.decide::<C>(case.subject)
+    }
+
+    /// Decides, keeping what every rung said when `tracing` asks for it.
+    pub(crate) fn hear<G: ?Sized>(
+        &self,
+        case: &Case<'_, C, G>,
+        tracing: Tracing,
+    ) -> (Result<Decision<C>, Error>, Option<Trace>)
+    where
+        W: Witness<C, G>,
+    {
+        match tracing {
+            Tracing::Off => (self.decide(case), None),
+            Tracing::On => {
+                let (decided, trace) = self.trace(case);
+                (decided, Some(trace))
+            }
         }
-        Ok(decision)
+    }
+
+    /// Decides as [`Ladder::decide`] does, and keeps what every rung said.
+    pub(crate) fn trace<G: ?Sized>(&self, case: &Case<'_, C, G>) -> (Result<Decision<C>, Error>, Trace)
+    where
+        W: Witness<C, G>,
+    {
+        let mut testimony = Testimony { rungs: Some(Vec::new()), ..Testimony::default() };
+        self.witnesses.testify(case, &mut testimony);
+        let trace = testimony.trace::<C>(case.subject);
+        (testimony.decide::<C>(case.subject), trace)
     }
 }
 
-impl<C: Code, G: ?Sized> Witness<C, G> for Vec<Box<dyn Witness<C, G>>> {
-    fn testify(&self, case: &Case<'_, C, G>, testimony: &mut Testimony<C::Value>) {
-        for witness in self {
-            witness.testify(case, testimony);
-        }
-    }
-}
-
-/// Implements [`Witness`] for a tuple of witnesses, each testifying in order. The same impl
+/// Implements [`Witness`] for a tuple of named witnesses, each testifying in order on a rung of
+/// its own. The same impl
 /// over tuples of every length up to eight, which a generic cannot write.
 ///
 /// ```text
@@ -162,9 +218,12 @@ impl<C: Code, G: ?Sized> Witness<C, G> for Vec<Box<dyn Witness<C, G>>> {
 /// ```
 macro_rules! witnesses {
     ($($witness:ident $at:tt),+) => {
-        impl<C: Code, G: ?Sized, $($witness: Witness<C, G>),+> Witness<C, G> for ($($witness,)+) {
+        impl<C: Code, G: ?Sized, $($witness: Witness<C, G> + Named),+> Witness<C, G> for ($($witness,)+) {
             fn testify(&self, case: &Case<'_, C, G>, testimony: &mut Testimony<C::Value>) {
-                $(self.$at.testify(case, testimony);)+
+                $(
+                    testimony.rung($witness::NAME);
+                    self.$at.testify(case, testimony);
+                )+
             }
         }
     };
@@ -212,7 +271,9 @@ impl<C: Explain, W> Ladder<C, W> {
         let About { subject, ground } = about;
         let pin = pins.pin::<C>(subject);
         let case = Case { subject, pin, patterns: pins, ground };
-        journal.record(self.decide(&case))
+        let (decided, trace) = self.hear(&case, journal.tracing(C::CODE, subject));
+        journal.traced(trace);
+        journal.record(decided)
     }
 }
 
@@ -239,17 +300,29 @@ mod test {
         }
     }
 
+    impl Named for Says {
+        const NAME: Witnessed = Witnessed::History(crate::interpret::decide::trace::Fact::Created);
+    }
+
     #[test]
-    fn rejected_alternatives_keep_the_ladders_order() {
+    fn the_first_value_wins_past_a_bound() {
         let day = |d| Some(When::Day(jiff::civil::date(2024, 1, d)));
         let ladder: Ladder<Date, (Says, Says, Says)> = Ladder {
-            witnesses: (Says(day(1), Standing::Value), Says(day(2), Standing::Bound), Says(day(3), Standing::Value)),
+            witnesses: (Says(day(2), Standing::Bound), Says(day(1), Standing::Value), Says(day(3), Standing::Value)),
             code: PhantomData,
         };
         let subject = File(ContentPath::parse("a.md").unwrap());
         let case = Case { subject: &subject, pin: None, patterns: &NoPins, ground: &() };
         let decision = ladder.decide(&case).unwrap();
-        let rejected: Vec<_> = decision.rejected.iter().map(|alt| (alt.value, alt.because)).collect();
-        assert_eq!(rejected, [(day(2), Rejection::OnlyBound), (day(3), Rejection::Outranked)]);
+        assert_eq!(decision.value, day(1));
+        let (traced, trace) = ladder.trace(&case);
+        assert_eq!(traced.unwrap(), decision);
+        let heard: Vec<_> = trace
+            .rungs
+            .iter()
+            .map(|rung| rung.heard.iter().map(|h| (h.standing, h.chosen)).collect::<Vec<_>>())
+            .collect();
+        assert_eq!(heard, [[(Standing::Bound, false)], [(Standing::Value, true)], [(Standing::Value, false)]]);
+        assert_eq!(trace.chosen().map(|(at, _)| at), Some(2));
     }
 }

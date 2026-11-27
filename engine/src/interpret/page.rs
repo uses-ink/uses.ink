@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 
 use model::code::{Code, Date};
 use model::decision::Decision;
-use model::{Announcement, ContentPath, Evidence, FileFacts, Notice, PageKind, Rejection};
+use model::{Announcement, ContentPath, DefaultReason, Evidence, FileFacts, Known, Notice, PageKind};
 
 use crate::Pins;
 use crate::interpret::decide::ladder::About;
@@ -83,7 +83,8 @@ impl<P: Pins> Pages<'_, P> {
         let kind = precedence::Kind::default().record(about, self.pins, journal);
         precedence::Title::default().record(about, self.pins, journal);
         precedence::Date::default().record(about, self.pins, journal);
-        let undated = journal.decision::<Date>(&subject).and_then(Undated::announce);
+        let undated =
+            journal.decision::<Date>(&subject).and_then(|date| Undated::announce(date, source.facts.as_ref()));
         if let Some(announcement) = undated.filter(|_| kind == Some(PageKind::Post)) {
             journal.notice(Notice::new(announcement).on(subject.clone().into()));
         }
@@ -100,16 +101,20 @@ impl<P: Pins> Pages<'_, P> {
 struct Undated;
 
 impl Undated {
-    /// `fact.date.bound` when the history only bounds the date, else `notice.default.chosen`;
-    /// nothing when `decision` dates the page or was pinned.
-    fn announce(decision: &Decision<Date>) -> Option<Announcement> {
-        if decision.value.is_some() || !matches!(decision.evidence, Evidence::Default { .. }) {
+    /// `fact.date.bound` when the history only bounds the date, the bound read from the file's
+    /// `facts`, else `notice.default.chosen`; nothing when `decision` dates the page or was
+    /// pinned.
+    fn announce(decision: &Decision<Date>, facts: Option<&FileFacts>) -> Option<Announcement> {
+        let Evidence::Default { reason } = decision.evidence else { return None };
+        if decision.value.is_some() {
             return None;
         }
-        let bound = decision.rejected.iter().find(|lost| lost.because == Rejection::OnlyBound);
-        Some(match bound.and_then(|lost| lost.value) {
-            Some(bound) => Announcement::FactDateBound { decision: Date::CODE, bound: bound.to_string() },
-            None => Date::chosen(&None),
+        let bound = facts.map(|facts| &facts.created).filter(|_| reason == DefaultReason::OnlyBound);
+        Some(match bound {
+            Some(Known::NotAfter { value, .. }) => {
+                Announcement::FactDateBound { decision: Date::CODE, bound: model::When::Instant(*value).to_string() }
+            }
+            _ => Date::chosen(&None),
         })
     }
 }

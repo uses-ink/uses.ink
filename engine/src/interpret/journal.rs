@@ -10,6 +10,8 @@ use model::{Diagnostic, Notice, Severity, Subject};
 
 use crate::error::Error;
 use crate::interpret::decide::Explain;
+use crate::interpret::decide::ladder::Tracing;
+use crate::interpret::decide::trace::Trace;
 
 /// What interpreting has said so far.
 #[derive(Debug, Default)]
@@ -18,9 +20,31 @@ pub(crate) struct Journal {
     index: BTreeMap<(AnyCode, Subject), usize>,
     diagnostics: Vec<Diagnostic>,
     notices: Vec<Notice>,
+    /// The one decision whose ladder is traced, if one is asked for.
+    asked: Option<(AnyCode, Subject)>,
+    trace: Option<Trace>,
 }
 
 impl Journal {
+    /// A journal that traces the ladder of `code` on `subject` when it is decided.
+    pub(crate) fn asking(code: AnyCode, subject: Subject) -> Self {
+        Self { asked: Some((code, subject)), ..Self::default() }
+    }
+
+    /// Whether the ladder of `code` on `subject` is traced.
+    pub(crate) fn tracing<S: Clone + Into<Subject>>(&self, code: AnyCode, subject: &S) -> Tracing {
+        let asked =
+            self.asked.as_ref().is_some_and(|(asked, about)| *asked == code && *about == subject.clone().into());
+        if asked { Tracing::On } else { Tracing::Off }
+    }
+
+    /// Keeps the trace asked for, when there is one.
+    pub(crate) fn traced(&mut self, trace: Option<Trace>) {
+        if trace.is_some() {
+            self.trace = trace;
+        }
+    }
+
     /// Records `decided` and the notice its code says a default calls for, and gives back its
     /// value. A ladder that could not decide, or a second decision of one code on one subject,
     /// is a bug, recorded as one.
@@ -51,6 +75,11 @@ impl Journal {
     pub(crate) fn decision<C: Code>(&self, subject: &C::Subject) -> Option<&Decision<C>> {
         let at = self.index.get(&(C::CODE, subject.clone().into()))?;
         self.decisions.get(*at)?.get::<C>()
+    }
+
+    /// Every decision of `C`, in the order recorded.
+    pub(crate) fn all<C: Code>(&self) -> impl Iterator<Item = &Decision<C>> {
+        self.decisions.iter().filter_map(AnyDecision::get::<C>)
     }
 
     /// The value decided for `C` on `subject`.
@@ -87,8 +116,8 @@ impl Journal {
         self.diagnostics.iter().any(|diagnostic| diagnostic.severity() == Severity::Error)
     }
 
-    /// The decisions, diagnostics and notices, in the order recorded.
-    pub(crate) fn into_parts(self) -> (Vec<AnyDecision>, Vec<Diagnostic>, Vec<Notice>) {
-        (self.decisions, self.diagnostics, self.notices)
+    /// The decisions, diagnostics and notices, in the order recorded, and the trace asked for.
+    pub(crate) fn into_parts(self) -> (Vec<AnyDecision>, Vec<Diagnostic>, Vec<Notice>, Option<Trace>) {
+        (self.decisions, self.diagnostics, self.notices, self.trace)
     }
 }

@@ -31,6 +31,36 @@ pub enum Error {
         /// Why it is no path.
         source: model::PathError,
     },
+    /// A decision code given on the command line is no code.
+    Code {
+        /// Why.
+        source: model::UnknownDecision,
+    },
+    /// A code given with a path is decided on the site, or one given without is decided per
+    /// file.
+    Scope {
+        /// The code.
+        code: model::AnyCode,
+        /// What it was asked about.
+        subject: model::Subject,
+    },
+    /// `--why` was given neither a code nor a path and a code.
+    Words {
+        /// How many words it was given.
+        given: usize,
+    },
+    /// The decision asked about is never made, as for a file that is ignored.
+    Undecided {
+        /// The code.
+        code: model::AnyCode,
+        /// What it was asked about.
+        subject: model::Subject,
+    },
+    /// The pin could not be written into ink.toml.
+    Pin {
+        /// Why.
+        source: config::PinsError,
+    },
     /// The path given to `ink explain` is no file of the folder.
     Unknown {
         /// The path.
@@ -126,6 +156,11 @@ impl Error {
             Self::Base { .. } => "base.address.invalid",
             Self::Path { .. } => "explain.path.invalid",
             Self::Unknown { .. } => "explain.path.unknown",
+            Self::Code { .. } => "decision.code.unknown",
+            Self::Scope { .. } => "decision.code.scope",
+            Self::Words { .. } => "decision.words.invalid",
+            Self::Undecided { .. } => "decision.subject.undecided",
+            Self::Pin { .. } => "pin.config.unwritable",
             Self::Output(refusal) => refusal.kind(),
             Self::Placed { .. } => "output.entry.unplaced",
             Self::Blob { .. } => "output.blob.missing",
@@ -151,6 +186,18 @@ impl fmt::Display for Error {
             Self::Base { written, .. } => write!(out, "`{written}` is not an address a site is served at"),
             Self::Path { written, .. } => write!(out, "`{written}` is not a path in the folder"),
             Self::Unknown { path } => write!(out, "{path} is not a file of the folder"),
+            Self::Code { .. } => write!(out, "no decision has that code"),
+            Self::Scope { code, subject: model::Subject::File(path) } => {
+                write!(out, "`{code}` is decided once for the site, not on {path}: give the code alone")
+            }
+            Self::Scope { code, .. } => write!(out, "`{code}` is decided per file: give the file's path before it"),
+            Self::Words { given } => {
+                write!(out, "a decision is named by a code, or a path and a code, not {given} words")
+            }
+            Self::Pin { .. } => write!(out, "the pin could not be written into ink.toml"),
+            Self::Undecided { code, subject } => {
+                write!(out, "`{code}` is not decided on {subject}; `ink explain` lists what is")
+            }
             Self::Output(refusal) => write!(out, "{refusal}"),
             Self::Placed { file, .. } => write!(out, "`{file}` is not a file `ink build` can write"),
             Self::Blob { route, .. } => write!(out, "the bytes of {route} are missing"),
@@ -174,6 +221,8 @@ impl std::error::Error for Error {
             Self::Refused(source) => Some(source),
             Self::Base { source, .. } => Some(source),
             Self::Path { source, .. } => Some(source),
+            Self::Code { source } => Some(source),
+            Self::Pin { source } => Some(source),
             Self::Write { source, .. }
             | Self::Read { source, .. }
             | Self::Serve { source }
@@ -183,7 +232,12 @@ impl std::error::Error for Error {
             Self::Placed { source, .. } => Some(source),
             Self::Blob { source, .. } => Some(source),
             Self::Manifest { source, .. } | Self::Json { source } => Some(source),
-            Self::Output(_) | Self::Unknown { .. } | Self::Unversioned { .. } => None,
+            Self::Output(_)
+            | Self::Unknown { .. }
+            | Self::Unversioned { .. }
+            | Self::Scope { .. }
+            | Self::Words { .. }
+            | Self::Undecided { .. } => None,
         }
     }
 }

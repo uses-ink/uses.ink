@@ -49,7 +49,7 @@ fn a_build_prints_its_document_written_or_not() {
     let out = scratch("built");
     let (exit, built, _) = ink(&[os("build"), fixture("readme").as_os_str(), os("-o"), out.as_os_str(), os("--json")]);
     assert_eq!(exit, Exit::Done);
-    assert_eq!(built["schema"], "uses.build/v1");
+    assert_eq!(built["schema"], "uses.build/v2");
     assert_eq!(built["written"], true);
     assert_eq!(built["deploy"].as_str().unwrap().len(), 64);
 
@@ -57,7 +57,7 @@ fn a_build_prints_its_document_written_or_not() {
     let (exit, built, events) =
         ink(&[os("build"), fixture("ambiguous").as_os_str(), os("-o"), failed.as_os_str(), os("--json")]);
     assert_eq!(exit, Exit::Content);
-    assert_eq!(built["schema"], "uses.build/v1");
+    assert_eq!(built["schema"], "uses.build/v2");
     assert_eq!(built["written"], false);
     assert_eq!(built["errors"], 1);
     assert_eq!(events[0]["code"], "link.target.ambiguous");

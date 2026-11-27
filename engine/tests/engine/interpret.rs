@@ -4,7 +4,7 @@
 use jiff::civil::date;
 use model::code::{self, AnyCode};
 use model::{
-    DefaultReason, Evidence, Known, Layout, PageKind, Provenance, Rejection, Root, Slug, Subject, Timestamp, When,
+    Announcement, DefaultReason, Evidence, Known, Layout, PageKind, Provenance, Root, Slug, Subject, Timestamp, When,
 };
 
 use crate::support::{Pinned, Tree, codes, on, path, site, subject};
@@ -24,8 +24,6 @@ fn title_pin_beats_frontmatter_beats_heading_beats_file_name() {
     let a = title(&none, "a.md");
     assert_eq!(a.value, "Front");
     assert!(matches!(a.evidence, Evidence::Frontmatter { .. }));
-    assert!(a.rejected.iter().all(|alt| alt.because == Rejection::Outranked));
-    assert!(matches!(a.rejected[0].evidence, Evidence::Heading { .. }));
     assert!(matches!(title(&none, "b.md").evidence, Evidence::Heading { .. }));
     let named = title(&none, "on-shelves.md");
     assert_eq!(
@@ -36,7 +34,28 @@ fn title_pin_beats_frontmatter_beats_heading_beats_file_name() {
     let a = title(&pinned, "a.md");
     assert_eq!(a.value, "Pinned");
     assert!(matches!(a.evidence, Evidence::Config { .. }));
-    assert_eq!(a.rejected.len(), 2);
+}
+
+#[test]
+fn a_trace_shows_every_rung_and_the_one_chosen() {
+    use engine::{Reading, Standing, Witnessed};
+    let tree = Tree::new().file("a.md", "---\ntitle: Front\n---\n# Heading\n").file("b.md", "text\n");
+    let subject = Subject::File(path("a.md"));
+    let u = tree.trace(&Pinned::none(), AnyCode::Title, subject.clone());
+    let trace = u.trace.unwrap();
+    assert_eq!((trace.code, &trace.subject), (AnyCode::Title, &subject));
+    let witnesses: Vec<_> = trace.rungs.iter().map(|rung| rung.witness).collect();
+    assert_eq!(witnesses, [Witnessed::Pin, Witnessed::Front, Witnessed::Heading, Witnessed::Name(Reading::Stem)]);
+    let (at, chosen) = trace.chosen().unwrap();
+    assert_eq!(at, 2);
+    assert!(matches!(chosen.testimony.evidence(), Evidence::Frontmatter { .. }));
+    let heading = &trace.rungs[2].heard;
+    assert_eq!(heading.len(), 1, "the outranked heading is still heard");
+    assert_eq!((heading[0].standing, heading[0].chosen), (Standing::Value, false));
+    assert!(trace.rungs[0].heard.is_empty() && trace.rungs[3].heard.is_empty(), "no pin, and the name is not asked");
+    assert_eq!(u.decisions, tree.understand(&Pinned::none()).decisions, "tracing changes no decision");
+    let ignored = tree.trace(&Pinned::none(), AnyCode::Title, Subject::File(path("nosuch.md")));
+    assert_eq!(ignored.trace, None);
 }
 
 #[test]
@@ -56,7 +75,6 @@ fn date_takes_frontmatter_then_file_name_then_exact_history() {
     let pinned = tree.understand(&Pinned::none().file::<code::Date>("posts/2024-01-02-a.md", None));
     let a = on::<code::Date>(&pinned, "posts/2024-01-02-a.md");
     assert_eq!(a.value, None);
-    assert_eq!(a.rejected.len(), 2);
 }
 
 #[test]
@@ -66,8 +84,8 @@ fn a_bound_is_never_a_date() {
     let c = on::<code::Date>(&u, "posts/c.md");
     assert_eq!(c.value, None);
     assert_eq!(c.evidence, Evidence::Default { reason: DefaultReason::OnlyBound });
-    assert_eq!(c.rejected[0].because, Rejection::OnlyBound);
-    assert!(u.notices.iter().any(|n| n.code() == "fact.date.bound"));
+    let bound = Announcement::FactDateBound { decision: AnyCode::Date, bound: "2023-05-06T07:08:09Z".to_owned() };
+    assert!(u.notices.iter().any(|n| n.announcement == bound), "{:?}", u.notices);
 }
 
 #[test]
@@ -187,7 +205,6 @@ fn home_takes_the_first_named_page_or_generates_a_listing() {
     let u = Tree::new().file("README.md", "x\n").file("index.md", "x\n").understand(&Pinned::none());
     let home = site::<code::Home>(&u);
     assert_eq!(home.value, Some(path("index.md")));
-    assert_eq!(home.rejected.len(), 1);
     let none = Tree::new().file("a.md", "x\n").understand(&Pinned::none());
     assert!(none.site.as_ref().unwrap().home().is_none());
     assert!(none.notices.iter().any(|n| n.code() == "site.home.generated"));

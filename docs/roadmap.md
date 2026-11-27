@@ -58,7 +58,8 @@ The engine, end to end, on the local disk.
 - `ink:format-markdown` (comrak, math through math-core, highlighting) as a component.
 - `ink:theme-quiet` as a component **(owner: its design, theme rounds 4 onward)**.
 - Feeds, sitemap, 404, CSP headers in the manifest.
-- CLI: `ink build <dir> -o <out>`, `ink check`, `ink explain [--pin] [path]`, `ink preview`.
+- CLI: `ink build <dir> -o <out>`, `ink check`, `ink explain [path]`, `ink preview` (`--pin` was
+  replaced by `ink pin` in M2, 0042).
 - Site fixtures: blog, flat README repo, docs folder, broken frontmatter, ambiguous links.
 
 **Exit:** `ink build` on every fixture twice gives identical deploy hashes; no JS in any reader
@@ -70,7 +71,7 @@ Progress (2026-11-26): `model`, `config`, `diag`, the engine and `ink:format-mar
 blobs in memory or a folder and highlights code through arborium; `ink:theme-quiet` renders every
 document node through `unspliced` as one `Visit`, code through the host's highlighting and math as
 MathML, as a placeholder design; the engine serves a generated
-home when a site has none; the CLI has `ink build`, `check`, `explain [--pin]` and `preview` with
+home when a site has none; the CLI has `ink build`, `check`, `explain` and `preview` with
 `--json`. Site fixtures (`cli/fixture/site/`: blog, flat README repo, docs folder, broken
 frontmatter, ambiguous links, a notes folder) pass the three exit tests in `cli/tests/site.rs`.
 Progress (2026-11-27): `wit/` holds `ink:model`, `ink:host` (pen, text, highlight, diagnostic),
@@ -128,6 +129,15 @@ built): a local repository at a commit, dates from one history walk, shallow bou
 as lacks, `ink build`, `check`, `explain` and `preview` reading it when the folder holds `.git`
 (`--source`, `--rev`). Left: `git.fetch` (clone and deepen) as a host capability and
 `ink:source-git` as a component over it, which wait for `host/wasmtime`.
+
+Progress (2026-11-27): 0042's first step is built. A decision is its value and one evidence;
+`ink explain --why [path] <code>` replays its ladder; `ink pin [path] <code>` writes one pin and
+`explain --pin` is gone; `ink build` keeps a record beside its manifest and lists the change set
+against the previous build with typed causes, newly public files first, and warns on a change
+ink caused; `page.publish.unstated` refuses unstated publication in a private source. The M1
+exit check "pins reproduce the deploy" is now "a second build reports no change, same deploy".
+Left: the change set in `ink check`, the two diagnostics of `research/inference.md` 7.2, hiding
+defaults behind `ink explain --all`.
 
 **Exit:** a real Obsidian vault and a real notes repo with history build into sites the owner
 would publish; a one-file change rebuilds only its page, its neighbours and the index.

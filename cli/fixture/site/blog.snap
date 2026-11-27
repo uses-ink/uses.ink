@@ -3,7 +3,7 @@ source: cli/tests/site.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v1","deploy":"6bdbdafc3016d7e7d5fb8c6391c82afe46f64cffe773dd3de797224d7290659e","written":true,"out":"<out>","entries":19,"errors":0,"warnings":0}
+{"schema":"uses.build/v2","deploy":"6bdbdafc3016d7e7d5fb8c6391c82afe46f64cffe773dd3de797224d7290659e","written":true,"out":"<out>","entries":19,"changes":{"against":"nothing","public":[{"path":"about.md","route":"/about"},{"path":"index.md","route":"/"},{"path":"posts/2024-03-01-first-steps.md","route":"/posts/first-steps"},{"path":"posts/blink.gif","route":"/posts/blink.gif"},{"path":"posts/leaf.png","route":"/posts/leaf.png"},{"path":"posts/nib.svg","route":"/posts/nib.svg"},{"path":"posts/pictures.md","route":"/posts/pictures"},{"path":"posts/second.md","route":"/posts/second"},{"path":"posts/turned.jpg","route":"/posts/turned.jpg"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html
