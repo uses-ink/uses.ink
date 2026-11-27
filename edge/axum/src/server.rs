@@ -22,6 +22,7 @@ use crate::body::Pump;
 use crate::bridge::Mount;
 use crate::error::Error;
 use crate::event::{Answered, Called, Event, Kind, Observe, Stopped};
+use crate::linger::Linger;
 use crate::respond::{Code, Fields};
 
 /// What the smallest head hyper reads is.
@@ -82,10 +83,17 @@ where
     }
 
     /// Serves one accepted connection under hyper's head and read budgets, until it ends or the
-    /// shutdown drains it. Its slot is free again when it ends.
+    /// shutdown drains it, then closes it lingering. Its slot is free again when it ends.
     fn connect(&self, graceful: &GracefulShutdown, router: Router, accepted: Accepted) {
         let Accepted { stream, slot } = accepted;
         let limits = self.inner.edge.limits();
+        let (stream, linger) = match Linger::new(stream, limits) {
+            Ok(pair) => pair,
+            Err(source) => {
+                self.inner.observe.event(&Event::Connection { source: Box::new(source) });
+                return;
+            }
+        };
         let service = TowerToHyperService::new(router);
         let mut http = http1::Builder::new();
         http.timer(TokioTimer::new())
@@ -99,6 +107,8 @@ where
             if let Err(source) = connection.await {
                 observe.event(&Event::Connection { source: Box::new(source) });
             }
+            // hyper has dropped its handle: end the reply before the socket can be reset
+            linger.close().await;
         });
     }
 

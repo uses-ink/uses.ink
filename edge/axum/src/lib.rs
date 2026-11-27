@@ -14,6 +14,7 @@ mod body;
 mod bridge;
 mod error;
 mod event;
+mod linger;
 mod respond;
 mod server;
 

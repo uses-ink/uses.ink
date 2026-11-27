@@ -268,6 +268,38 @@ fn connections_over_the_limit_wait_to_be_accepted() {
 }
 
 #[test]
+fn a_refusal_arrives_whole_though_the_rest_of_the_request_was_not_read() {
+    let mut server = Running::site();
+    let long = "x".repeat(40 * 1024);
+    let cases = [
+        // a hostile target, a page that is not there, a body on a read, a head over hyper's buffer
+        ("GET /a/../b HTTP/1.1\r\nHost: notes.example\r\nConnection: close\r\n\r\n".to_owned(), "400"),
+        ("GET /nowhere HTTP/1.1\r\nHost: notes.example\r\nConnection: close\r\n\r\n".to_owned(), "404"),
+        (
+            "GET /tea HTTP/1.1\r\nHost: notes.example\r\nContent-Length: 9000\r\nConnection: close\r\n\r\n".to_owned(),
+            "400",
+        ),
+        (format!("GET /tea HTTP/1.1\r\nHost: notes.example\r\nX-Long: {long}\r\nConnection: close\r\n\r\n"), "4"),
+    ];
+    for round in 0..50 {
+        for (head, expected) in &cases {
+            let mut stream = TcpStream::connect(server.address).unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+            let mut sent = head.clone().into_bytes();
+            sent.extend(std::iter::repeat_n(b'x', 8 * 1024));
+            // a write that fails is a reset before the reply was read: the read says so
+            let _ = stream.write_all(&sent);
+            let mut response = Vec::new();
+            let read = stream.read_to_end(&mut response);
+            let text = String::from_utf8_lossy(&response);
+            assert!(read.is_ok(), "round {round}, {}: {read:?}", head.lines().next().unwrap_or_default());
+            assert!(status(&text).starts_with(expected), "round {round}: {text}");
+        }
+    }
+    assert!(server.stop().is_ok());
+}
+
+#[test]
 fn a_head_limit_hyper_cannot_read_is_refused_at_start() {
     let site = Site::new();
     let limits = Limits { head: model::Bytes(100), ..Limits::default() };
