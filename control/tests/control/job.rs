@@ -15,7 +15,7 @@ use queue::Dedupe;
 use crate::world::{World, at};
 
 #[derive(Debug)]
-struct Broke;
+pub(crate) struct Broke;
 
 impl fmt::Display for Broke {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -26,21 +26,21 @@ impl fmt::Display for Broke {
 impl std::error::Error for Broke {}
 
 /// What a scripted build does.
-enum Step {
+pub(crate) enum Step {
     Build(&'static str),
     Refuse,
     Break,
 }
 
 /// A builder that follows a script, storing its blobs in the world's folder like a real one.
-struct Scripted {
+pub(crate) struct Scripted {
     store: Directory,
     steps: RefCell<VecDeque<Step>>,
     seen: RefCell<Vec<Request>>,
 }
 
 impl Scripted {
-    fn new(world: &World, steps: impl IntoIterator<Item = Step>) -> Self {
+    pub(crate) fn new(world: &World, steps: impl IntoIterator<Item = Step>) -> Self {
         Self {
             store: Directory::open(&world.root).unwrap(),
             steps: RefCell::new(steps.into_iter().collect()),
@@ -76,13 +76,13 @@ impl Build for Scripted {
     }
 }
 
-fn request(site: &control::Site, n: i64, key: Option<&str>) -> (BuildId, NewJob) {
+pub(crate) fn request(site: &control::Site, n: i64, key: Option<&str>) -> (BuildId, NewJob) {
     let id = BuildId::from_bytes([u8::try_from(n).unwrap(); 16]);
     let dedupe = key.map(|key| key.parse::<Dedupe>().unwrap());
     (id, NewJob { id, site: site.id, trigger: Trigger::Push, dedupe, at: at(n) })
 }
 
-const LEASE: Duration = Duration::from_secs(60);
+pub(crate) const LEASE: Duration = Duration::from_secs(60);
 
 #[test]
 fn builds_a_requested_site_publishes_it_and_keeps_the_log_as_ndjson() {

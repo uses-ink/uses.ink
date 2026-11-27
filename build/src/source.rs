@@ -85,6 +85,8 @@ pub enum Kind {
     Folder,
     /// A git repository.
     Git,
+    /// Built output that is sent to the control plane, so nothing is fetched.
+    Upload,
 }
 
 impl fmt::Display for Kind {
@@ -92,6 +94,7 @@ impl fmt::Display for Kind {
         out.write_str(match self {
             Self::Folder => "folder",
             Self::Git => "git",
+            Self::Upload => "upload",
         })
     }
 }
@@ -110,6 +113,9 @@ pub enum Source {
         /// What to build, or the remote's default.
         revision: Option<Revision>,
     },
+    /// Built output sent to the control plane (`PUT` of an archive): no builder reads it, and the
+    /// poll does not look at it.
+    Upload,
 }
 
 impl Source {
@@ -118,6 +124,7 @@ impl Source {
         match self {
             Self::Folder(_) => Kind::Folder,
             Self::Git { .. } => Kind::Git,
+            Self::Upload => Kind::Upload,
         }
     }
 }

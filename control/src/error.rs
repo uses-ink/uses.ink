@@ -87,6 +87,20 @@ pub enum Refusal {
         /// The deploy.
         deploy: DeployId,
     },
+    /// The site has no such build.
+    NoBuild {
+        /// The site.
+        site: Id<Site>,
+        /// The build.
+        build: build::BuildId,
+    },
+    /// A build's log is not in the blob store.
+    MissingLog {
+        /// The build.
+        build: build::BuildId,
+        /// The blob.
+        blob: Hash,
+    },
     /// A source with a path that is not text cannot be stored.
     Unstorable,
     /// A site's id is not a valid tenant. Cannot happen for an id made from 16 bytes.
@@ -111,6 +125,10 @@ impl fmt::Display for Refusal {
             Self::AlreadyLive { site, deploy } => write!(out, "the deploy {deploy} is live on {site} already"),
             Self::NoCredential { credential } => write!(out, "there is no credential {credential}"),
             Self::NoManifest { deploy } => write!(out, "the manifest of deploy {deploy} is not in the blob store"),
+            Self::NoBuild { site, build } => write!(out, "the site {site} has no build {build}"),
+            Self::MissingLog { build, blob } => {
+                write!(out, "the log of build {build} is {blob}, which the store does not hold")
+            }
             Self::Unstorable => out.write_str("a folder path that is not text cannot be stored"),
             Self::Tenant(_) => out.write_str("the site's id is not a valid tenant"),
         }

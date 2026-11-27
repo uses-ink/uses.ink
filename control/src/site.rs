@@ -12,7 +12,8 @@ use crate::table;
 use crate::{Handle, Refusal, Unreadable};
 
 /// Whether a site takes changes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum State {
     /// Serving, building, taking changes.
@@ -75,7 +76,8 @@ pub(crate) struct Stored {
 
 impl Stored {
     /// The kinds the column stores.
-    pub(crate) const KINDS: [(&'static str, Kind); 2] = [("folder", Kind::Folder), ("git", Kind::Git)];
+    pub(crate) const KINDS: [(&'static str, Kind); 3] =
+        [("folder", Kind::Folder), ("git", Kind::Git), ("upload", Kind::Upload)];
 
     /// The text a kind is stored as.
     pub(crate) fn name(kind: Kind) -> &'static str {
@@ -98,6 +100,7 @@ impl TryFrom<&Source> for Stored {
                 locator: url.as_str().to_owned(),
                 revision: revision.as_ref().map(|revision| revision.as_str().to_owned()),
             }),
+            Source::Upload => Ok(Self { kind: Kind::Upload, locator: String::new(), revision: None }),
             _ => Err(Refusal::Unstorable),
         }
     }
@@ -122,6 +125,7 @@ impl TryFrom<Stored> for Source {
     fn try_from(stored: Stored) -> Result<Self, Unreadable> {
         match stored.kind {
             Kind::Folder => Ok(Self::Folder(stored.locator.into())),
+            Kind::Upload => Ok(Self::Upload),
             Kind::Git => {
                 let url = ExternalUrl::parse(stored.locator)
                     .map_err(|_| Unreadable::Locator { column: table::Source::Locator.as_str() })?;

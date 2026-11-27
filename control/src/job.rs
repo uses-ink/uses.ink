@@ -12,7 +12,8 @@ use crate::id::{Id, Site};
 use crate::table;
 
 /// Where a job is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum State {
     /// In the queue.
