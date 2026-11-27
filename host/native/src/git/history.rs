@@ -9,11 +9,12 @@ use gix::ObjectId;
 use gix::diff::tree::State;
 use gix::diff::tree::recorder::Change;
 use gix::objs::TreeRefIter;
+use gix::odb::pack::cache::lru::MemoryCappedHashmap;
 use gix::revision::walk::Sorting;
 use gix::traverse::commit::simple::CommitTimeOrder;
 use model::{Ability, AnyCode, ContentPath, FileFacts, Gap, Known, Lack, Oid, Provenance, Timestamp, UnknownReason};
 
-use super::Id;
+use super::{Id, Repository};
 use crate::error::Refused;
 
 /// Commits handed to a thread at a time.
@@ -129,7 +130,10 @@ impl History<'_> {
                 .map(|_| {
                     let (sync, next) = (&sync, &next);
                     scope.spawn(move || {
-                        let mut differ = Differ { repo: sync.to_thread_local(), state: State::default(), index };
+                        let mut repo = sync.to_thread_local();
+                        // a handle made from the shared one has no delta-base cache of its own
+                        repo.objects.set_pack_cache(|| Box::new(MemoryCappedHashmap::new(Repository::DELTAS)));
+                        let mut differ = Differ { repo, state: State::default(), index };
                         let mut done = Vec::new();
                         loop {
                             let from = next.fetch_add(BLOCK, Ordering::Relaxed);

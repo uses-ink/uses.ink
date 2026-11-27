@@ -23,6 +23,7 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use gix::ObjectId;
+use gix::odb::pack::cache::lru::MemoryCappedHashmap;
 use model::{Ability, ContentPath, Observed, Oid, Snapshot, Version};
 
 use crate::blob::Store;
@@ -60,6 +61,10 @@ impl Repository {
     /// Threads when the machine does not say how many it has: the spike's measured sweet spot.
     const THREADS: NonZeroUsize = NonZeroUsize::MIN.saturating_add(3);
 
+    /// Bytes of delta bases each thread keeps inflated: on tldr, 4 MiB to 32 MiB all take the
+    /// dates from 4.6 s to 2.7 s on 4 threads; 8 MiB costs 55 MiB more at its peak.
+    const DELTAS: usize = 8 << 20;
+
     /// The repository at `root`, read at `HEAD` with the v1 budget on up to four threads.
     pub fn new(root: impl Into<PathBuf>) -> Self {
         let threads = std::thread::available_parallelism().map_or(Self::THREADS, |n| n.min(Self::THREADS));
@@ -85,11 +90,13 @@ impl Repository {
     /// Opens the repository at `root` and no other: no search upwards, and no configuration but
     /// its own, so the user's and the system's settings change nothing.
     fn open(&self) -> Result<gix::Repository, Refused> {
-        // a delta-base cache per thread; the spike's measured best (spikes/gix/README.md)
-        let options = gix::open::Options::isolated().config_overrides(["core.deltaBaseCacheLimit=32m"]);
-        let mut repo = gix::open_opts(&self.root, options)
+        let mut repo = gix::open_opts(&self.root, gix::open::Options::isolated())
             .map_err(|source| Refused::Repository { path: self.root.clone(), source })?;
         repo.object_cache_size(0);
+        // gix sets a delta-base cache from `core.deltaBaseCacheLimit` only with its
+        // `max-performance` feature, which pulls MPL code; so it is set here, and every thread's
+        // handle makes its own (decision 0036, as measured)
+        repo.objects.set_pack_cache(|| Box::new(MemoryCappedHashmap::new(Self::DELTAS)));
         Ok(repo)
     }
 
