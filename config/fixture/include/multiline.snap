@@ -5,8 +5,8 @@ input_file: config/fixture/include/multiline.toml
 Add: Added, listed now: true
 include = [
   "a.md",
-  "b/**",
-  "notes/**", # two
+  "b/**", # two
+  "notes/**",
 ]
 
 Remove: Absent, listed now: false
