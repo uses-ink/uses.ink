@@ -74,3 +74,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0076 | [The farm places a job where it will finish first, by what that job took before](0076-the-farm-places-a-job-where-it-will-finish-first.md) | accepted | 2026-11-26 | farm |
 | 0077 | [`ink push` sends a tree and only the blobs the site lacks; the folder verbs know their site by `.uses/site`](0077-ink-push-sends-a-tree-and-only-the-blobs-the-site.md) | accepted | 2026-11-27 | cli |
 | 0078 | [The farm tests only the crates a change affects, when asked](0078-the-farm-tests-only-the-crates-a-change-affects.md) | accepted | 2026-11-26 | farm |
+| 0080 | [The farm keeps heavy jobs off a handicapped host and tests only on a quiet one](0080-the-farm-keeps-heavy-jobs-off-a-handicapped-host.md) | accepted | 2026-11-28 | farm |

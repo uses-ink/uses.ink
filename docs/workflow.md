@@ -40,6 +40,7 @@ golden = true
 limit = 900                      # optional: this job's hard limit in seconds
 inputs = ["**", "!docs/**"]      # optional: the files the job reads (see The result cache)
 cache = false                    # optional: never reuse a pass of this job
+max_load = 6                     # optional: place it only on a host whose load average is at most this (see Where a job goes)
 affected = true                  # optional: `farm check test --affected` runs it as nextest for the affected crates
 ```
 
@@ -104,6 +105,7 @@ dir = "~/farm"          # optional; default ~/farm; absolute or relative to $HOM
 wake = "aws-wake"       # optional; a command that starts the host (see Hosts that stop themselves)
 wake_timeout = 240      # optional, with wake; seconds to wait for the host to answer; default 240
 wake_cost = 120         # optional, with wake; seconds a start adds to placement's estimate; default 120
+handicap = 0            # optional; seconds added to the host's estimate for every job; default 0 (see Where a job goes)
 
 [[host]]
 name = "box-b"
@@ -447,6 +449,18 @@ wait            = jobs ahead x the host's median / its slots      (0 with a free
   the load per core, so a thrashing host is avoided.
 - **With no timings for the key anywhere** placement is the old rule: a free slot and the fewest
   slots in use, then the lowest load, then the shortest queue.
+- **A handicap** (`handicap = <seconds>` on a host) is added to the host's expected finish, so the
+  host is used only when it finishes earlier than every other candidate by more than that. To keep
+  the machine you work at free, give it `handicap = 120` in the hosts file, under its
+  `[[host]]` with `ssh = "local"`. The estimate shows it, `here (est 90 s, queue 0, of which 60 s
+  handicap)`. A handicapped host is not tried once for lack of history, and with one candidate
+  the handicap changes nothing (decision 0080).
+- **A load ceiling** (`max_load = <load average>` on a job) leaves out every host whose one-minute
+  load average is above it, before any estimate. With every candidate over it the job waits:
+  the farm says so once, looks again every 10 s and fails with exit 3 after 300 s, naming each host
+  and its load. `farm status` shows the same reason on the `next <job>:` line. `--host` ignores the
+  ceiling, and `farm cargo` commands have none. This repo sets `max_load = 6` on `test`, whose
+  100 ms budgets a loaded host breaks.
 - Ties go to the host with fewer slots in use, then to the one listed first. The choice is
   deterministic for the same history and probes.
 
