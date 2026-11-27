@@ -13,7 +13,7 @@ pub(crate) use fastest::Fastest;
 
 use crate::cli::error::Error;
 use crate::cli::name::HostName;
-use crate::host::Snapshot;
+use crate::host::{Load, Snapshot};
 use crate::place::history::{Key, Median};
 
 /// What a host must be for a job.
@@ -53,6 +53,9 @@ pub(crate) struct Ask<'a> {
     pub(crate) key: &'a Key,
     /// The only host allowed, when the user chose one.
     pub(crate) pin: Option<&'a HostName>,
+    /// The most load a host may carry, when the job needs a quiet one: a busier host does not
+    /// run it, and with every host busier it waits.
+    pub(crate) ceiling: Option<Load>,
 }
 
 /// How an estimate came to be.
@@ -75,13 +78,17 @@ pub(crate) struct Estimate {
     pub(crate) basis: Basis,
     /// Seconds of `secs` that are the host starting up; zero for a host that is up.
     pub(crate) wake: u64,
+    /// Seconds of `secs` that are the host's configured handicap.
+    pub(crate) handicap: u64,
 }
 
 impl fmt::Display for Estimate {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         let scaled = if self.basis == Basis::Scaled { ", scaled from other hosts" } else { "" };
         let wake = if self.wake > 0 { format!(", of which {} s to wake it", self.wake) } else { String::new() };
-        write!(out, "{} (est {} s, queue {}{scaled}{wake})", self.host, self.secs, self.queue)
+        let handicap =
+            if self.handicap > 0 { format!(", of which {} s handicap", self.handicap) } else { String::new() };
+        write!(out, "{} (est {} s, queue {}{scaled}{wake}{handicap})", self.host, self.secs, self.queue)
     }
 }
 
@@ -153,8 +160,18 @@ impl Ask<'_> {
         })
     }
 
-    /// The hosts that may run the job, with their places on the board.
-    fn fits(self, board: &[Snapshot]) -> Vec<(usize, &Snapshot)> {
-        board.iter().enumerate().filter(|(_, snap)| self.need.fits(snap)).collect()
+    /// The hosts that may run the job and are quiet enough, with their places on the board; an
+    /// error when hosts fit but every one is over the job's load ceiling.
+    fn fits(self, board: &[Snapshot]) -> Result<Vec<(usize, &Snapshot)>, Error> {
+        let fits: Vec<_> = board.iter().enumerate().filter(|(_, snap)| self.need.fits(snap)).collect();
+        let Some(ceiling) = self.ceiling else { return Ok(fits) };
+        let (calm, over): (Vec<_>, Vec<_>) = fits.into_iter().partition(|(_, snap)| snap.load <= ceiling);
+        if calm.is_empty() && !over.is_empty() {
+            return Err(Error::Loaded {
+                ceiling,
+                over: over.into_iter().map(|(_, snap)| (snap.name.clone(), snap.load)).collect(),
+            });
+        }
+        Ok(calm)
     }
 }

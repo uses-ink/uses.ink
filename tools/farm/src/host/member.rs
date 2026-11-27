@@ -275,6 +275,7 @@ mod tests {
             env: vec![],
             reuse: crate::job::Reuse::Never,
             limit: None,
+            ceiling: None,
             key: crate::place::history::Key::stage("x"),
         };
         let id = JobId::new(member.host.name.clone(), 255, 1);
@@ -387,6 +388,7 @@ mod tests {
             need: Need::Any,
             env: vec![],
             limit: None,
+            ceiling: None,
             key: crate::place::history::Key::stage("x"),
             reuse: crate::job::Reuse::Never,
         };

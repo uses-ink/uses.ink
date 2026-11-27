@@ -112,6 +112,7 @@ pub(super) struct Entry {
     pub(super) run: Run,
     pub(super) golden: bool,
     pub(super) limit: Option<NonZeroU64>,
+    pub(super) max_load: Option<NonZeroU32>,
     pub(super) inputs: Option<Vec<String>>,
     pub(super) cache: Option<bool>,
     pub(super) affected: Option<bool>,

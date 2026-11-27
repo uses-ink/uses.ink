@@ -8,8 +8,8 @@ use crate::cli::Usage;
 use crate::cli::exit::Exit;
 use crate::cli::name::{Fault, HostName, JobId};
 use crate::config::{hosts, jobs, workspace};
-use crate::host::ReadFault;
 use crate::host::transport::process::Failure;
+use crate::host::{Load, ReadFault};
 use crate::job::event;
 use crate::place::Need;
 
@@ -75,6 +75,11 @@ pub(crate) enum Error {
         need: Need,
         up: Vec<HostName>,
     },
+    /// Every host that may run the job carries more load than the job allows.
+    Loaded {
+        ceiling: Load,
+        over: Vec<(HostName, Load)>,
+    },
     /// A golden job pinned to a host that is not golden.
     NotGolden {
         host: HostName,
@@ -133,6 +138,7 @@ impl Error {
             | Self::Said { .. }
             | Self::Silent { .. }
             | Self::NoHost { .. }
+            | Self::Loaded { .. }
             | Self::Lost { .. }
             | Self::NoBody { .. }
             | Self::NoJob { .. }
@@ -186,6 +192,10 @@ impl fmt::Display for Error {
                 )
             }
             Self::NoHost { need, up } => write!(out, "no {need} host to run on; the hosts up are {}", Listed(up)),
+            Self::Loaded { ceiling, over } => {
+                write!(out, "no host is quiet enough: every host that may run the job has a load over {ceiling}:")?;
+                over.iter().try_for_each(|(host, load)| write!(out, " `{host}` {load}"))
+            }
             Self::NotGolden { host } => {
                 write!(out, "`{host}` is not a golden host; this job's output depends on the arch")
             }
@@ -230,6 +240,7 @@ impl std::error::Error for Error {
             | Self::Utf8 { .. }
             | Self::Silent { .. }
             | Self::NoHost { .. }
+            | Self::Loaded { .. }
             | Self::NotGolden { .. }
             | Self::Edited { .. }
             | Self::Lost { .. }

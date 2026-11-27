@@ -24,6 +24,8 @@ pub(crate) struct Snapshot {
     pub(crate) holders: Vec<Holder>,
     /// Seconds a wake is expected to take, when the host does not answer and can be woken.
     pub(crate) asleep: Option<u64>,
+    /// Seconds placement adds to this host's expected finish ([`Host::handicap`]).
+    pub(crate) handicap: u64,
 }
 
 impl Snapshot {
@@ -149,6 +151,7 @@ impl Found {
             jobs: self.jobs,
             holders: self.holders,
             asleep: None,
+            handicap: host.handicap.0,
         })
     }
 }

@@ -10,6 +10,7 @@
 //! run = "cargo xtask check test"
 //! golden = true
 //! limit = 900          # optional: the job's hard limit in seconds
+//! max_load = 6         # optional: place it only on a host whose load average is at most this
 //!
 //! inputs = ["**", "!docs/**"]  # optional: the files the job reads; default the whole tree
 //! cache = false        # optional: never reuse a pass of this job
@@ -51,6 +52,7 @@ use crate::cache::inputs::glob::Selection;
 use crate::cli::Seconds;
 use crate::cli::error::Error;
 use crate::cli::name::{Disposable, Excluded, JobName};
+use crate::host::Load;
 use crate::place::Need;
 use crate::place::history::Memory;
 
@@ -68,6 +70,8 @@ pub(crate) struct Recipe {
     pub(crate) words: Vec<String>,
     pub(crate) need: Need,
     pub(crate) limit: Option<Seconds>,
+    /// The most load a host may carry for the job to be placed on it.
+    pub(crate) ceiling: Option<Load>,
     /// The files the job reads; none means the whole tree.
     pub(crate) inputs: Option<Selection>,
     /// Whether a pass of it may be reused.
@@ -196,6 +200,7 @@ impl Jobs {
                 words: entry.run.0,
                 need: if entry.golden { Need::Golden } else { Need::Any },
                 limit: entry.limit.map(|limit| Seconds(limit.get())),
+                ceiling: entry.max_load.map(|max| Load(max.get().saturating_mul(100))),
                 inputs,
                 cache: entry.cache.unwrap_or(true),
                 narrow: entry.affected.unwrap_or(false),

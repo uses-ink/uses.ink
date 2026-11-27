@@ -75,6 +75,7 @@ pub(super) fn job(label: &str, script: &str) -> job::Job {
         need: place::Need::Any,
         env: vec![],
         limit: None,
+        ceiling: None,
         reuse: job::Reuse::Never,
         key: place::history::Key::stage(label),
     }

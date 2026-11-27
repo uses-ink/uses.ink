@@ -18,6 +18,7 @@ pub(crate) use fleet::{Fleet, Probed};
 pub(crate) use member::{Member, Start};
 pub(crate) use snapshot::{JobReadFault, ReadFault, Snapshot};
 
+use crate::cli::Seconds;
 use crate::cli::name::{Destination, HostName};
 use crate::place::wake::Wake;
 
@@ -92,6 +93,9 @@ pub(crate) struct Host {
     pub(crate) dir: HostDir,
     /// How to start the host when it stops itself, if it does.
     pub(crate) wake: Option<Wake>,
+    /// Seconds added to the host's expected finish for every job, so it is chosen only when it
+    /// beats the others by more than this; none is a host like any other.
+    pub(crate) handicap: Seconds,
 }
 
 impl Host {
@@ -106,6 +110,7 @@ impl Host {
             mold: false,
             dir: HostDir::standard(),
             wake: None,
+            handicap: Seconds(0),
         }
     }
 }

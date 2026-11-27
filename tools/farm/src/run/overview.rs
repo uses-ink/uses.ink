@@ -115,7 +115,7 @@ impl Row {
 
 impl Next {
     fn of(job: &Job, board: &[Snapshot], placement: &impl Placement) -> Self {
-        let asked = Ask { need: job.need, key: &job.key, pin: None };
+        let asked = Ask { need: job.need, key: &job.key, pin: None, ceiling: job.ceiling };
         match placement.choose(asked, board) {
             Ok(choice) => Self { job: job.label.clone(), host: Some(choice.host.to_string()), why: choice.to_string() },
             Err(error) => Self { job: job.label.clone(), host: None, why: Chain(&error).to_string() },

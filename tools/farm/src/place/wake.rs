@@ -185,6 +185,7 @@ impl Snapshot {
             jobs: Vec::new(),
             holders: Vec::new(),
             asleep: Some(cost.0),
+            handicap: host.handicap.0,
         }
     }
 }

@@ -130,6 +130,7 @@ struct Entry {
     wake: Option<String>,
     wake_timeout: Option<NonZeroU32>,
     wake_cost: Option<u32>,
+    handicap: Option<u32>,
 }
 
 impl Entry {
@@ -194,6 +195,7 @@ impl From<Entry> for Host {
             golden: entry.golden,
             mold: entry.mold,
             dir: entry.dir.map_or_else(HostDir::standard, |dir| dir.0),
+            handicap: Seconds(u64::from(entry.handicap.unwrap_or(0))),
             wake: entry.wake.and_then(|command| {
                 Wake::new(
                     &command,
@@ -306,6 +308,15 @@ golden = true
         assert_eq!((wake(1).timeout, wake(1).cost), (Seconds(60), Seconds(30)));
         assert_eq!(wake(0).shown(&"farm-a".parse().unwrap()), "aws-wake farm-a");
         assert!(Config::parse(FILE).unwrap().hosts.iter().all(|host| host.wake.is_none()));
+    }
+
+    #[test]
+    fn a_handicap_is_seconds_added_to_a_host_and_none_by_default() {
+        let text = "[[host]]\nname = \"here\"\nssh = \"local\"\nhandicap = 120\n\n[[host]]\nname = \"petal\"\nssh = \"petal\"\n";
+        let config = Config::parse(text).unwrap();
+        let handicaps: Vec<Seconds> = config.hosts.iter().map(|host| host.handicap).collect();
+        assert_eq!(handicaps, [Seconds(120), Seconds(0)]);
+        assert!(Config::parse("[[host]]\nname = \"a\"\nssh = \"x\"\nhandicap = -1\n").is_err());
     }
 
     #[test]

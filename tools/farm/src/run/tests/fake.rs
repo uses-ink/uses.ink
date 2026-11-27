@@ -115,6 +115,7 @@ pub(super) fn asking(need: Need) -> Job {
         need,
         env: Vec::new(),
         limit: None,
+        ceiling: None,
         reuse: Reuse::Never,
         key: history::Key::stage("x"),
     }

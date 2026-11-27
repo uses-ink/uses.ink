@@ -21,6 +21,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Layout for OnHost<'_, T, P> {
             need: Need::Any,
             env: Vec::new(),
             limit: None,
+            ceiling: None,
             reuse: Reuse::Never,
             key: Key::stage("metadata"),
         };

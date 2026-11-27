@@ -1,6 +1,7 @@
 //! Choosing hosts: the board, waking sleeping hosts, and placing jobs on them.
 use crate::cache::Trouble;
 use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::cli::error::{Chain, Error};
 use crate::cli::name::HostName;
@@ -10,6 +11,20 @@ use crate::host::{Arch, Snapshot};
 use crate::job::Job;
 use crate::place::{Ask, Placement, Why};
 use crate::run::Farm;
+/// How placement waits for a host quiet enough for a job with a load ceiling.
+#[derive(Debug, Clone, Copy)]
+pub(in crate::run) struct Patience {
+    /// Between two looks at the hosts.
+    pub(in crate::run) poll: Duration,
+    /// In all, before the wait is an error.
+    pub(in crate::run) limit: Duration,
+}
+
+impl Patience {
+    /// Ten seconds between looks, five minutes in all.
+    pub(in crate::run) const LOAD: Self = Self { poll: Duration::from_secs(10), limit: Duration::from_secs(300) };
+}
+
 impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     /// The hosts as placement sees them: those up, then the sleeping ones as they were last seen.
     /// A sleeping host never seen is left out unless `--host` names it, so it can be woken once.
@@ -103,7 +118,28 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     /// Places `jobs` on hosts at once: each is reserved a slot or a place in the queue before
     /// the next is placed, so a fan-out spreads over the hosts. A sleeping host that is chosen
     /// is woken; one that cannot be is left out and the jobs are placed again.
+    ///
+    /// A job whose ceiling no host meets waits, looking again every [`Patience::poll`], and fails
+    /// with [`Error::Loaded`] after [`Patience::limit`].
     pub(in crate::run) fn place(&self, jobs: &[&Job]) -> Result<Vec<Snapshot>, Error> {
+        let (start, mut told) = (Instant::now(), false);
+        loop {
+            match self.place_now(jobs) {
+                Err(error @ Error::Loaded { .. }) if start.elapsed() < Patience::LOAD.limit => {
+                    if !told {
+                        let (poll, limit) = (Patience::LOAD.poll.as_secs(), Patience::LOAD.limit.as_secs());
+                        self.console.note(format!("{error}; waiting up to {limit} s, looking every {poll} s"));
+                        told = true;
+                    }
+                    thread::sleep(Patience::LOAD.poll);
+                }
+                placed => return placed,
+            }
+        }
+    }
+
+    /// One placement of `jobs` over the hosts as they are now.
+    fn place_now(&self, jobs: &[&Job]) -> Result<Vec<Snapshot>, Error> {
         let probed = self.fleet.probe(&self.console);
         for (host, error) in &probed.down {
             self.console.note(format!("`{host}` is down and left out: {}", Chain(error)));
@@ -115,7 +151,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             let mut chosen = Vec::new();
             let mut said = Vec::new();
             for job in jobs {
-                let ask = Ask { need: job.need, key: &job.key, pin: self.flags.host.as_ref() };
+                let ask = Ask { need: job.need, key: &job.key, pin: self.flags.host.as_ref(), ceiling: job.ceiling };
                 let choice = self.placement.choose(ask, &board)?;
                 if choice.why != Why::Only {
                     said.push(format!("{}: {choice}", job.label));

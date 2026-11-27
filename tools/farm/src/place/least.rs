@@ -34,9 +34,12 @@ impl Placement for LeastLoaded {
         if let Some(pinned) = ask.pinned(board) {
             return pinned;
         }
-        let fits = ask.fits(board);
-        // a sleeping host costs money: only with no host up that may run the job
+        let fits = ask.fits(board)?;
+        // a sleeping host costs money: only with no host up that may run the job; a handicapped
+        // one is the last resort among those
         let up: Vec<_> = fits.iter().copied().filter(|(_, snap)| snap.asleep.is_none()).collect();
+        let even: Vec<_> = up.iter().copied().filter(|(_, snap)| snap.handicap == 0).collect();
+        let up = if even.is_empty() { up } else { even };
         let among = if up.is_empty() { fits } else { up };
         among
             .into_iter()

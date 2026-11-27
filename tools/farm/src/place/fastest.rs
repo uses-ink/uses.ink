@@ -11,7 +11,9 @@ use crate::place::{Ask, Basis, Choice, Estimate, Placement, Why};
 /// (the jobs ahead times the host's median for the key) plus the median. A key a host has never
 /// run is estimated from the other hosts' medians scaled by core count; a host with no history
 /// at all is tried once while a slot is free; with no timings anywhere it is [`LeastLoaded`].
-/// A sleeping host adds its wake cost to its estimate, and is never tried for exploration.
+/// A job with a load ceiling is never placed on a host over it.
+/// A sleeping host adds its wake cost to its estimate, and is never tried for exploration. A
+/// handicapped host adds its handicap, and is never tried for exploration either.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Fastest {
     table: Table,
@@ -56,7 +58,8 @@ impl Fastest {
         let load = u64::from(snap.load.0);
         let total = if load * 100 > cores * Self::OVERLOAD { total * load / cores } else { total };
         let wake = snap.asleep.unwrap_or(0);
-        Estimate { host: snap.name.clone(), secs: total + wake, queue: ahead, basis, wake }
+        let handicap = snap.handicap;
+        Estimate { host: snap.name.clone(), secs: total + wake + handicap, queue: ahead, basis, wake, handicap }
     }
 }
 
@@ -65,11 +68,13 @@ impl Placement for Fastest {
         if let Some(pinned) = ask.pinned(board) {
             return pinned;
         }
-        let fits = ask.fits(board);
+        let fits = ask.fits(board)?;
         if let [(at, snap)] = fits.as_slice() {
             return Ok(Choice { at: *at, host: snap.name.clone(), why: Why::Only });
         }
-        let cold = |snap: &Snapshot| snap.is_free() && snap.asleep.is_none() && !self.table.knows(snap.name.as_str());
+        let cold = |snap: &Snapshot| {
+            snap.is_free() && snap.asleep.is_none() && snap.handicap == 0 && !self.table.knows(snap.name.as_str())
+        };
         if let Some((at, snap)) = fits.iter().find(|(_, snap)| cold(snap)) {
             return Ok(Choice { at: *at, host: snap.name.clone(), why: Why::Trying });
         }

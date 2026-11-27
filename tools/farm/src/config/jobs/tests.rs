@@ -16,6 +16,15 @@ fn jobs_come_in_file_order_with_their_need_and_limit() {
 }
 
 #[test]
+fn a_job_may_cap_the_load_of_the_host_it_runs_on() {
+    let text = format!("{FILE}max_load = 6\n");
+    let all = Jobs::parse(&text, PathBuf::new()).unwrap().pick(&[]).unwrap();
+    assert_eq!((all[0].ceiling, all[1].ceiling), (None, Some(Load(600))));
+    let zero = format!("{FILE}max_load = 0\n");
+    assert!(Jobs::parse(&zero, PathBuf::new()).is_err(), "a ceiling of zero would never place the job");
+}
+
+#[test]
 fn a_pick_keeps_the_order_asked_and_an_unknown_job_is_usage() {
     let jobs = Jobs::parse(FILE, PathBuf::new()).unwrap();
     let asked: Vec<JobName> = vec!["test".parse().unwrap()];

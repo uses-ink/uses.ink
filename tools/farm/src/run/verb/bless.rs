@@ -25,6 +25,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             need: Need::Golden,
             env,
             limit: None,
+            ceiling: None,
             reuse: Reuse::Never,
             key: history::Key::stage("bless"),
         };
@@ -53,6 +54,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             need: Need::Any,
             env: Vec::new(),
             limit: None,
+            ceiling: None,
             reuse: Reuse::Never,
             key: history::Key::stage("fmt"),
         };

@@ -12,7 +12,7 @@ use crate::cache::Ago;
 use crate::cache::inputs::glob::Selection;
 use crate::cli::Seconds;
 use crate::config::jobs::Recipe;
-use crate::host::Snapshot;
+use crate::host::{Load, Snapshot};
 use crate::place::Need;
 use crate::place::history::Key;
 pub(crate) use document::Document;
@@ -79,6 +79,8 @@ pub(crate) struct Job {
     pub(crate) env: Vec<String>,
     /// Its own hard limit, when the repo declares one.
     pub(crate) limit: Option<Seconds>,
+    /// The most load a host may carry for the job to be placed on it; none is any.
+    pub(crate) ceiling: Option<Load>,
     pub(crate) reuse: Reuse,
     /// What its timings are filed under.
     pub(crate) key: Key,
@@ -93,6 +95,7 @@ impl From<Recipe> for Job {
             need: recipe.need,
             env: Vec::new(),
             limit: recipe.limit,
+            ceiling: recipe.ceiling,
             reuse: match (recipe.cache, recipe.inputs) {
                 (false, _) => Reuse::Never,
                 (true, None) => Reuse::Whole,
@@ -113,6 +116,7 @@ impl Job {
             words,
             env: Vec::new(),
             limit: None,
+            ceiling: None,
             reuse: Reuse::of_cargo(args),
             key: Key::cargo(args),
         }
@@ -172,6 +176,7 @@ mod tests {
             need: Need::Any,
             env: vec!["INSTA_UPDATE=always".to_owned()],
             limit: None,
+            ceiling: None,
             key: crate::place::history::Key::stage("x"),
             reuse: Reuse::Never,
         };

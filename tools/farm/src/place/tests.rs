@@ -21,6 +21,7 @@ fn snap(name: &str, [slots, busy, queued, load]: [u32; 4]) -> Snapshot {
         jobs: Vec::new(),
         holders: Vec::new(),
         asleep: None,
+        handicap: 0,
     }
 }
 
@@ -29,7 +30,7 @@ fn stage() -> Key {
 }
 
 fn ask(need: Need, key: &Key) -> Ask<'_> {
-    Ask { need, key, pin: None }
+    Ask { need, key, pin: None, ceiling: None }
 }
 
 fn pick(need: Need, board: &[Snapshot]) -> Option<&str> {
@@ -112,7 +113,7 @@ fn a_pinned_host_is_the_only_one_and_must_fit() {
     let key = stage();
     let arm_name: HostName = "arm".parse().unwrap();
     let gone: HostName = "gone".parse().unwrap();
-    let pinned = |need, name| Ask { need, key: &key, pin: Some(name) };
+    let pinned = |need, name| Ask { need, key: &key, pin: Some(name), ceiling: None };
     for placement in [&LeastLoaded as &dyn Placement, &Fastest::new(table(&TIMES))] {
         assert_eq!(placement.choose(pinned(Need::Any, &arm_name), &board).unwrap().at, 1);
         let err = placement.choose(pinned(Need::Golden, &arm_name), &board);
@@ -274,4 +275,83 @@ fn a_fan_out_spreads_by_estimate_as_slots_fill() {
         board[choice.at].reserve();
     }
     assert_eq!(hosts, ["petal", "petal", "here"], "the second still beats 64 s at 60 s; the third waits 90 s");
+}
+
+fn handicapped(name: &str, handicap: u64) -> Snapshot {
+    let mut snap = snap(name, [2, 0, 0, 0]);
+    snap.handicap = handicap;
+    snap
+}
+
+#[test]
+fn a_handicapped_host_wins_only_by_more_than_its_handicap() {
+    let times = [("here", "test", 30), ("petal", "test", 50)];
+    let board = [handicapped("here", 60), handicapped("petal", 0)];
+    let choice = fastest(&times, &board, "test");
+    assert_eq!(choice.host.as_str(), "petal", "30 s plus 60 s loses to 50 s");
+    let slow = [("here", "test", 30), ("petal", "test", 100)];
+    let choice = fastest(&slow, &board, "test");
+    assert_eq!(choice.host.as_str(), "here", "30 s plus 60 s beats 100 s");
+    let Why::Estimated { best, .. } = choice.why else { panic!("estimated") };
+    assert_eq!((best.secs, best.handicap), (90, 60));
+    assert!(best.to_string().contains("60 s handicap"), "{best}");
+}
+
+#[test]
+fn a_handicapped_host_is_the_only_one_when_the_others_are_gone() {
+    let board = [handicapped("here", 60)];
+    let choice = fastest(&TIMES, &board, "test");
+    assert_eq!(choice.why, Why::Only);
+}
+
+#[test]
+fn a_handicapped_host_is_not_tried_for_exploration_and_is_the_last_resort_by_load() {
+    let board = [handicapped("here", 60), handicapped("petal", 0)];
+    let known = [("petal", "test", 10)];
+    assert_eq!(fastest(&known, &board, "test").host.as_str(), "petal");
+    let key = stage();
+    let choice = LeastLoaded.choose(ask(Need::Any, &key), &[handicapped("here", 60), snap("petal", [2, 1, 0, 900])]);
+    assert_eq!(choice.unwrap().host.as_str(), "petal", "busier but not handicapped");
+}
+
+fn ceiling(max: u32) -> Ask<'static> {
+    static KEY: std::sync::OnceLock<Key> = std::sync::OnceLock::new();
+    Ask { need: Need::Any, key: KEY.get_or_init(stage), pin: None, ceiling: Some(Load(max * 100)) }
+}
+
+#[test]
+fn a_job_with_a_ceiling_skips_hosts_over_it_even_when_they_would_finish_first() {
+    let board = [snap("fast", [2, 0, 0, 1500]), snap("quiet", [2, 0, 0, 200])];
+    let times = [("fast", "test", 5), ("quiet", "test", 50)];
+    let placement = Fastest::new(table(&times));
+    assert_eq!(placement.choose(ask(Need::Any, &stage()), &board).unwrap().host.as_str(), "fast");
+    assert_eq!(placement.choose(ceiling(6), &board).unwrap().host.as_str(), "quiet");
+    assert_eq!(LeastLoaded.choose(ceiling(6), &board).unwrap().host.as_str(), "quiet");
+}
+
+#[test]
+fn with_every_host_over_the_ceiling_the_job_waits_and_the_error_says_who() {
+    let board = [snap("a", [2, 0, 0, 1500]), snap("b", [2, 0, 0, 700])];
+    for placement in [&LeastLoaded as &dyn Placement, &Fastest::new(table(&TIMES))] {
+        let Err(Error::Loaded { ceiling: max, over }) = placement.choose(ceiling(6), &board) else {
+            panic!("a host over the ceiling ran the job");
+        };
+        assert_eq!(max, Load(600));
+        let named: Vec<_> = over.iter().map(|(host, load)| (host.as_str(), load.to_string())).collect();
+        assert_eq!(named, [("a", "15.00".to_owned()), ("b", "7.00".to_owned())]);
+    }
+    let error = LeastLoaded.choose(ceiling(6), &board).unwrap_err().to_string();
+    assert!(error.contains("`a` 15.00") && error.contains("over 6.00"), "{error}");
+    let exact = [snap("a", [2, 0, 0, 600])];
+    assert!(LeastLoaded.choose(ceiling(6), &exact).is_ok(), "a load equal to the ceiling is allowed");
+}
+
+#[test]
+fn no_host_at_all_is_still_no_host_and_a_pin_ignores_the_ceiling() {
+    assert!(matches!(LeastLoaded.choose(ceiling(6), &[]), Err(Error::NoHost { .. })));
+    let board = [snap("a", [2, 0, 0, 1500])];
+    let name: HostName = "a".parse().unwrap();
+    let key = stage();
+    let pinned = Ask { need: Need::Any, key: &key, pin: Some(&name), ceiling: Some(Load(600)) };
+    assert_eq!(LeastLoaded.choose(pinned, &board).unwrap().why, Why::Pinned);
 }
