@@ -1,13 +1,52 @@
 # Workflow: building and testing on the farm
 
-Agents and people run the gate and the inner loop through `cargo xtask farm`, which sends each
+Agents and people run the gate and the inner loop through `farm`, which sends each
 job to a host with a free slot instead of compiling in the workspace. `cargo xtask check` with no
 farm is unchanged: CI and a lone human still use it. The design is decision 0047; this file is
 how to use it.
 
+`farm` is its own binary (`tools/farm`), not an xtask task, so building xtask or running CI never
+compiles it. It knows no project: what `farm check` runs is declared by the repo, below.
+
+## Install
+
+Once per machine, and again when `farm status` says the installed one is behind:
+
+```sh
+cargo install --path tools/farm --locked
+```
+
+It lands in `~/.cargo/bin/farm`, built in release mode, so every workspace and every agent calls
+the same precompiled binary. `farm --version` prints the version and the hash of the source it
+was built from (`farm 0.0.0 (source 1f3a...)`). `farm status` hashes `tools/farm` of the
+workspace it runs in and warns, with the install command, when the two differ.
+
 Every verb blocks, prints a short report and exits with a typed code. Nothing here needs a
 daemon, and nothing needs `ssh` or `rsync` typed by hand: agents are refused both, and
 `farm` is the only way they reach another host.
+
+## The hosts file
+
+## The jobs file
+
+The repo says what `farm check` runs, in `.config/farm.toml`, committed:
+
+```toml
+[job.lint]
+run = "cargo xtask check lint"   # split on white space and run as a program: no shell reads it
+golden = false                   # required; true for a job whose output depends on the architecture
+
+[job.test]
+run = "cargo xtask check test"
+golden = true
+limit = 900                      # optional: this job's hard limit in seconds
+```
+
+Jobs run in the order of the file. A job name is lowercase letters, digits, `-` and `_`, at most
+32 characters. `farm check` with no names runs every job at once; `farm check lint test` runs
+those, in that order. This repo declares `lint`, `test`, `docs`, `wasm` and `sites`, the stages
+of `cargo xtask check <stage>`; `test` and `sites` are golden. A file that is missing, does not
+parse or names an unknown job is an error (an unknown job is exit 2).
 
 ## The hosts file
 
@@ -55,7 +94,7 @@ ssh = "local"           # this machine, in the workspace itself, with no copy
 
 | Verb | What it does |
 | --- | --- |
-| `farm check [stage...]` | The gate, one job per stage (`lint test docs wasm sites`), all placed at once. |
+| `farm check [job...]` | The repo's jobs from `.config/farm.toml` (here `lint test docs wasm sites`), all placed at once. |
 | `farm cargo <args...>` | Any cargo command on a placed host, in the synced workspace. |
 | `farm bless [nextest args]` | Nextest with `INSTA_UPDATE=always` on a golden host; brings back only changed `*.snap`. |
 | `farm status` | Each host: arch, load, slots used, queue, and its running and queued jobs. |
@@ -70,16 +109,18 @@ word that is not a farm flag belongs to cargo (`--` ends the farm's flags at onc
 | --- | --- |
 | `--detach` | Start the job and print its id; do not wait. |
 | `--timeout N` | How long one call blocks, in seconds. Default 540: a tool call may take 10 minutes. |
-| `--limit N` | The hard limit of the job's command, enforced on the host by `timeout`. Default 1500. |
+| `--limit N` | The hard limit of the job's command, enforced on the host by `timeout`. Default: the job's own `limit`, else 1500. |
 | `--host NAME` | Use only this host. A golden job on a host that is not golden is refused. |
 | `--json` | Print the machine report, schema `uses.farm/v1`. |
 | `--verbose` | Print every command the farm runs, exactly. |
+| `--version` | Print the version and the source hash the binary was built from. |
 | `--tail N` | `log`: only the last N lines. |
 | `--at REV`, `--forget` | `workspace`: start from a revision; remove instead of make. |
 
 `farm cargo` runs on a golden host when the cargo command runs tests (`test`, `nextest`,
 `xtask`); everything else (`check`, `clippy`, `build`, `doc`) runs on any host. `farm check`
-puts `test` and `sites` on golden hosts and `lint`, `docs` and `wasm` anywhere.
+puts the jobs the file marks `golden` (here `test` and `sites`) on golden hosts and the rest
+anywhere.
 
 ### Exit codes
 
@@ -101,9 +142,9 @@ A call that has several jobs (`farm check`) exits with the worst of them: 3 over
 While you work, run the narrowest command that answers the question, scoped to a package:
 
 ```sh
-cargo xtask farm cargo check -p uses-ink-engine
-cargo xtask farm cargo clippy -p uses-ink-engine --all-targets
-cargo xtask farm cargo nextest run -p uses-ink-cli -E 'test(parse)'
+farm cargo check -p uses-ink-engine
+farm cargo clippy -p uses-ink-engine --all-targets
+farm cargo nextest run -p uses-ink-cli -E 'test(parse)'
 ```
 
 On a warm target a package-scoped check or test takes seconds. Never run the whole gate after an
@@ -112,26 +153,26 @@ edit.
 The terminal gets a header (host, slot, time queued and run, the command), then a summary. For
 nextest it is the counts and every `FAIL` or `TIMEOUT` test with its output, at most 60 lines
 each. For cargo it is the number of errors and warnings and the first ten in short form. For a
-gate stage it is the `check:` lines. The full log is streamed to `target/farm/<job>.log`.
+job that prints `check:` lines it is those lines. The full log is streamed to `target/farm/<job>.log`.
 
 ## The finish
 
 When a state is worth a commit, run the gate once:
 
 ```sh
-cargo xtask farm check
+farm check
 ```
 
-The five stages run at the same time on different slots, so the wall time is the slowest stage,
-not the sum. The report names each stage, its host and its time, and gives detail only for the
-failures. Fix what failed, then run `farm check` again with just the stages that failed
-(`farm check lint test`) and, if you want the whole gate green once more, once without arguments.
+The jobs run at the same time on different slots, so the wall time is the slowest job, not the
+sum. The report names each job, its host and its time, and gives detail only for the failures.
+Fix what failed, then run `farm check` again with just the jobs that failed (`farm check lint
+test`) and, if you want the whole gate green once more, once without arguments.
 One whole `farm check` per commit-worthy state.
 
 If a golden file changed on purpose, bless it and read every diff:
 
 ```sh
-cargo xtask farm bless -p uses-ink-cli
+farm bless -p uses-ink-cli
 ```
 
 Only the `*.snap` files that changed come back (never a `.snap.new`, never source), and the
@@ -144,9 +185,9 @@ Do not write `until grep ...` loops and do not call `sleep`. A job that may take
 started with `--detach` and waited for with one blocking call:
 
 ```sh
-cargo xtask farm --detach cargo nextest run --workspace
-# prints: RUNNING as box-a.18c3f9a21; continue with `cargo xtask farm wait box-a.18c3f9a21`
-cargo xtask farm wait box-a.18c3f9a21
+farm --detach cargo nextest run --workspace
+# prints: RUNNING as box-a.18c3f9a21; continue with `farm wait box-a.18c3f9a21`
+farm wait box-a.18c3f9a21
 ```
 
 `wait` blocks on the host until the job ends or `--timeout` passes (default 540 s). A job that
@@ -175,7 +216,7 @@ is over budget on the farm is slow.
 ## Golden hosts
 
 Output-affecting tests and goldens run only on a golden host, which by default means x86_64.
-Other architectures take the stages that do not compare output: `lint`, `docs` and `wasm`. A
+Other architectures take the jobs the file does not mark `golden`: here `lint`, `docs` and `wasm`. A
 golden job that cannot find a golden host fails with exit 3 and says so; one pinned with
 `--host` to a host that is not golden is refused with exit 4.
 
@@ -216,9 +257,9 @@ removes job state older than seven days and says how much.
 Use `farm workspace` instead of `jj workspace add`:
 
 ```sh
-cargo xtask farm workspace parser           # from main
-cargo xtask farm workspace parser --at <rev>
-cargo xtask farm workspace --forget parser
+farm workspace parser           # from main
+farm workspace parser --at <rev>
+farm workspace --forget parser
 ```
 
 It adds `../uses.ink-ws/<name>` and seeds its `target/` with `cp -a --reflink=always` from the
@@ -231,15 +272,15 @@ jj workspace of this repo, is not the one you are in and has no uncommitted chan
 
 Paste this into an agent's prompt:
 
-> Build, lint and test only through `cargo xtask farm`, never with plain `cargo` and never with
-> `ssh` or `rsync`. While working, run package-scoped commands: `cargo xtask farm cargo check -p
-> <crate>`, `cargo xtask farm cargo clippy -p <crate>`, `cargo xtask farm cargo nextest run -p
+> Build, lint and test only through `farm`, never with plain `cargo` and never with
+> `ssh` or `rsync`. While working, run package-scoped commands: `farm cargo check -p
+> <crate>`, `farm cargo clippy -p <crate>`, `farm cargo nextest run -p
 > <crate> -E 'test(<name>)'`. Do not run the whole gate per edit. When a state is ready to
-> commit, run `cargo xtask farm check` once and fix what it reports; if a golden file changed on
-> purpose, run `cargo xtask farm bless` and read every diff it lists. Never poll and never write
-> sleep loops: start long jobs with `--detach` and block with `cargo xtask farm wait <id>`; exit
+> commit, run `farm check` once and fix what it reports; if a golden file changed on
+> purpose, run `farm bless` and read every diff it lists. Never poll and never write
+> sleep loops: start long jobs with `--detach` and block with `farm wait <id>`; exit
 > code 75 means still running, call `wait` again. If the queue says you are waiting, wait: the
 > slots are what keep the 100 ms test budgets honest, so do not widen a budget or retry a test
-> to get past a failure. Make a workspace with `cargo xtask farm workspace <name>`, not `jj
+> to get past a failure. Make a workspace with `farm workspace <name>`, not `jj
 > workspace add`. Exit codes: 0 passed, 1 failed, 2 usage, 3 farm trouble, 4 refused, 75 still
 > running, 124 hit its limit.

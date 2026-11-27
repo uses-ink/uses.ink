@@ -746,11 +746,24 @@ and keeps identity values out of anyone's hands. **Reversal:** a bucket 3 value 
 need per-site variation (the placeholder size, for instance): it moves to bucket 1 with its
 field added to the cache key first.
 
-## 0047 Builds and tests run on a farm of slots, placed by `cargo xtask farm`
+## 0047 Builds and tests run on a farm of slots, placed by the `farm` binary
 
-Accepted, owner. Agents and people run the gate and the inner loop through `cargo xtask farm`
+Accepted, owner. Agents and people run the gate and the inner loop through `farm`
 (docs/workflow.md), which places each job on a host of the user's config and runs it there in a
 slot. `cargo xtask check` is unchanged for CI and humans.
+
+- **A binary of its own, installed once.** `farm` is the crate `farm` at `tools/farm`, not an xtask
+  task. `cargo xtask` is `cargo run -p xtask`, so every workspace and every CI job compiles
+  xtask, and a farm inside it would slow CI and every task call. As a member of its own it depends
+  on std, serde, serde_json and toml only (nothing of xtask or the engine, no async runtime, no
+  clap) and is installed with `cargo install --path tools/farm --locked` into `~/.cargo/bin`:
+  precompiled once, called by every workspace and agent as `farm ...`, which is also the one
+  shape a permission rule `Bash(farm *)` has to match. `farm --version` prints the hash of the
+  source it was built from (`build.rs`), and `farm status` warns when the checkout's `tools/farm`
+  hashes differently, so a stale install is said and not silent.
+- **It knows no project.** The jobs `farm check` runs are the repo's `.config/farm.toml`
+  (`[job.<name>]` with `run`, `golden`, optional `limit`). uses.ink declares `lint`, `test`,
+  `docs`, `wasm` and `sites`, with `test` and `sites` golden; the farm reads no `Stage`.
 
 - **Slots through `flock`, no daemon.** Each host has `slots/<n>.lock` files. A job holds one
   with `flock` for as long as its command runs, so a slot is free exactly when nothing runs in
@@ -767,12 +780,11 @@ slot. `cargo xtask check` is unchanged for CI and humans.
   new workspace compiles its own crates and not the 800 third-party ones. Without reflinks it
   copies in full and says so.
 - **Golden hosts.** Output-affecting tests and goldens run only on a golden host, by default
-  x86_64, the architecture the goldens are blessed on. Other architectures take `lint`, `docs`
-  and `wasm`. `bless` refuses a host that is not golden.
-- **The gate is fanned out by stage.** `farm check` places `lint`, `test`, `docs`, `wasm` and
-  `sites` (the stages CI already runs as parallel jobs) at once, so the wall time is the slowest
-  stage and not the sum. The stages are the existing `check::Stage`; nothing about what a stage
-  runs changed.
+  x86_64, the architecture the goldens are blessed on. Other architectures take the jobs the file
+  does not mark `golden`. `bless` refuses a host that is not golden.
+- **The gate is fanned out by job.** `farm check` places every job of the file at once (here the
+  stages CI already runs as parallel jobs), so the wall time is the slowest job and not the sum.
+  What a stage runs did not change.
 - **`farm wait` replaces polling.** Across 14 agents, 182 minutes went to hand-written `until
   grep` loops and 34% of wall time to calls of 20 s or more. A long job starts with `--detach`
   and one blocking `wait` (or a foreground call that passes its 540 s timeout) returns the

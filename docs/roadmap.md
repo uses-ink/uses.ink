@@ -14,6 +14,9 @@ The workspace, the rules, and the three unknowns answered.
 - CI on GitHub Actions: `cargo xtask check <stage>` in five parallel jobs (`lint`, `test`,
   `docs`, `wasm`, `sites`), with the dependency build cached and the `ci` nextest profile (a
   ceiling instead of the per-test budgets); `cargo xtask check` runs them all.
+- `farm` (`tools/farm`, decision 0047): the build farm client, installed once with `cargo install
+  --path tools/farm --locked`; a repo's jobs are `.config/farm.toml`, hosts are the user's own
+  config. Agents build, lint and test through it (docs/workflow.md).
 - `token/`: one TOML file generating CSS custom properties and the pen palette.
 - `pen`: own perfect-freehand port, strokes, tools, marks; golden fixtures identical on
   native and wasm32; `cargo xtask brand` regenerates the logo, mark and favicon from

@@ -100,6 +100,7 @@ uses.ink/
   brand/                 logo stroke data, fonts and their licences
   fixture/               uses-ink-fixture       the fixture harness: goldens through insta; a dev-dependency only
   xtask/                 cargo xtask token | diag | brand | layout | check (later: wit)
+  tools/farm/            farm: the build farm client, installed once (0047); knows no project
   docs/  spikes/
 ```
 

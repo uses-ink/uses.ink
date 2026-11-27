@@ -153,7 +153,10 @@ The path predicts the name and the name predicts the path.
 - `spikes/` holds throwaway experiments. Nothing depends on a spike.
 - Repo tasks are `cargo xtask <task>` (`token`, `diag`, `brand`, `layout`, `component`, `check`; `wit` when
   it exists). No loose scripts in `scripts/`, no generator files beside the code they generate.
-- Binaries: `ink` only. Its crate is `uses-ink-cli` at `cli/`.
+  The build farm client is its own binary, `farm` at `tools/farm`, so xtask and CI never compile it
+  for a task (docs/workflow.md).
+- Binaries: `ink`, and `farm` (a developer tool, crate `farm` at `tools/farm/`, named as it is run
+  like `xtask`). `ink`'s crate is `uses-ink-cli` at `cli/`.
 - Cut a crate when its second user appears, not before; its tests move with it. A crate useful
   outside uses.ink is cut with a name of its own (above).
 - A third-party crate is wrapped in one module of one crate (gix in `host/native`, comrak in the
