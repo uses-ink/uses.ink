@@ -234,7 +234,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     }
 
     /// Nextest with `INSTA_UPDATE=always` on a golden host, then only the changed `.snap` files
-    /// come back.
+    /// come back. A snapshot edited here after the sync started is never overwritten, as in `fmt`.
     fn bless(&self, args: &[String]) -> Result<Batch, Error> {
         if self.flags.detach {
             return Err(Usage::Extra { verb: Action::Bless, given: "--detach".to_owned() }.into());
@@ -244,9 +244,10 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         let env = ["INSTA_UPDATE=always", "INSTA_FORCE_PASS=1"].map(str::to_owned).to_vec();
         let job = Job { label: "bless".to_owned(), words, need: Need::Golden, env, limit: None };
         let snaps = self.place(&[Need::Golden])?;
+        let started = SystemTime::now();
         let mut batch = self.fan(std::slice::from_ref(&job), &snaps);
         if let Some(done) = batch.done.first().filter(|done| matches!(done.verdict, Verdict::Done { .. })) {
-            match self.fetch(done, Kind::Snap, None) {
+            match self.fetch(done, Kind::Snap, Some(started)) {
                 Ok(snaps) => batch.blessed = snaps.paths().to_vec(),
                 Err(error) => batch.failed.push(error),
             }
@@ -413,13 +414,43 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
 }
 
 impl Need {
-    /// A cargo command needs a golden host when it runs tests: its first word is `test` or `nextest`.
+    /// The cargo flags that take their value as the next word.
+    const VALUED: [&'static str; 18] = [
+        "-p",
+        "--package",
+        "--exclude",
+        "-F",
+        "--features",
+        "--bin",
+        "--test",
+        "--bench",
+        "--example",
+        "--manifest-path",
+        "-E",
+        "--target",
+        "--target-dir",
+        "--profile",
+        "-j",
+        "--jobs",
+        "--color",
+        "--message-format",
+    ];
+
+    /// A cargo command needs a golden host when it runs tests: its verb is `test`, `nextest`,
+    /// `xtask` or `insta`. The verb is the first word that is not a flag or a flag's value.
     pub(crate) fn of_cargo(args: &[String]) -> Self {
-        let first = args.iter().find(|arg| !arg.starts_with('+') && !arg.starts_with('-'));
-        match first.map(String::as_str) {
-            Some("test" | "nextest" | "xtask" | "insta") => Self::Golden,
-            _ => Self::Any,
+        let mut words = args.iter().map(String::as_str);
+        while let Some(word) = words.next() {
+            if Self::VALUED.contains(&word) {
+                words.next();
+            } else if !word.starts_with('+') && !word.starts_with('-') {
+                return match word {
+                    "test" | "nextest" | "xtask" | "insta" => Self::Golden,
+                    _ => Self::Any,
+                };
+            }
         }
+        Self::Any
     }
 }
 
@@ -499,6 +530,16 @@ mod tests {
         assert_eq!(Need::of_cargo(&args("clippy -p engine")), Need::Any);
         assert_eq!(Need::of_cargo(&args("check")), Need::Any);
         assert_eq!(Need::of_cargo(&[]), Need::Any);
+    }
+
+    #[test]
+    fn the_value_of_a_flag_is_never_taken_for_the_cargo_verb() {
+        let words = |list: &[&str]| list.iter().map(|word| (*word).to_owned()).collect::<Vec<_>>();
+        for flag in Need::VALUED {
+            assert_eq!(Need::of_cargo(&words(&[flag, "x", "test"])), Need::Golden, "{flag} x test");
+            assert_eq!(Need::of_cargo(&words(&[flag, "test", "check"])), Need::Any, "{flag} test check");
+            assert_eq!(Need::of_cargo(&words(&["nextest", "run", flag, "x"])), Need::Golden, "{flag} after the verb");
+        }
     }
 
     #[test]
@@ -602,6 +643,27 @@ mod tests {
         let path = farm.tree.root.join(name);
         std::fs::write(&path, "x").unwrap();
         std::fs::File::options().write(true).open(path).unwrap().set_modified(at).unwrap();
+    }
+
+    #[test]
+    fn bless_refuses_to_overwrite_a_snapshot_edited_after_the_sync_started() {
+        let host = Member::new(
+            host("x86"),
+            Fake::saying(vec![
+                probe(12, "x86_64"),
+                Reply::ok(&["@@farm:seed empty"]),
+                Reply::ok(&["@@farm:slot 0 0", "@@farm:done 0 5"]),
+                Reply::ok(&["./a.snap", "./new.snap"]),
+            ]),
+        );
+        let farm = farm(vec![host]);
+        stamped(&farm, "a.snap", SystemTime::now() + Duration::from_secs(3600));
+        let batch = farm.bless(&[]).unwrap();
+        let Some(Error::Edited { paths, .. }) = batch.failed.first() else { panic!("{:?}", batch.failed) };
+        assert_eq!(paths, &["a.snap"], "a snapshot that is not here yet is not an edit");
+        assert!(batch.blessed.is_empty());
+        assert!(farm.fleet.members().first().unwrap().transport().pulled.lock().unwrap().is_empty());
+        std::fs::remove_dir_all(&farm.tree.root).ok();
     }
 
     #[test]

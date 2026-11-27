@@ -25,6 +25,11 @@ impl Kind {
         }
     }
 
+    /// Whether the verb makes files that are not here yet: a bless writes new snapshots.
+    pub(crate) const fn creates(self) -> bool {
+        matches!(self, Self::Snap)
+    }
+
     /// The `find -name` pattern of its files.
     pub(crate) fn pattern(self) -> String {
         format!("*.{}", self.ext())
@@ -34,6 +39,7 @@ impl Kind {
 /// Paths of changed files of one kind, checked, relative to the workspace.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Changes {
+    kind: Kind,
     paths: Vec<String>,
 }
 
@@ -60,7 +66,7 @@ impl Changes {
         }
         paths.sort();
         paths.dedup();
-        Ok(Self { paths })
+        Ok(Self { kind, paths })
     }
 
     pub(crate) fn paths(&self) -> &[String] {
@@ -81,14 +87,19 @@ impl Changes {
     }
 
     /// The listed files under `root` that were edited after `since`, or are gone: bringing the
-    /// host's copy back would overwrite work that the host never saw.
+    /// host's copy back would overwrite work that the host never saw. A file that is not here is
+    /// fine for a kind that creates files.
     pub(crate) fn edited(&self, root: &Path, since: SystemTime) -> Result<Vec<String>, std::io::Error> {
         let mut edited = Vec::new();
         for path in &self.paths {
             match root.join(path).metadata().and_then(|meta| meta.modified()) {
                 Ok(at) if at <= since => {}
                 Ok(_) => edited.push(path.clone()),
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => edited.push(path.clone()),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    if !self.kind.creates() {
+                        edited.push(path.clone());
+                    }
+                }
                 Err(error) => return Err(error),
             }
         }
@@ -182,6 +193,18 @@ mod tests {
         std::fs::File::options().write(true).open(&calm).unwrap().set_modified(before).unwrap();
         let changes = read(Kind::Rust, &["./calm.rs", "./busy.rs", "./gone.rs"]).unwrap();
         assert_eq!(changes.edited(&base, since).unwrap(), ["busy.rs", "gone.rs"]);
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn a_new_snapshot_is_not_gone_but_an_edited_one_is_edited() {
+        let base = std::env::temp_dir().join(format!("farm-snap-{}", std::process::id()));
+        std::fs::remove_dir_all(&base).ok();
+        std::fs::create_dir_all(&base).unwrap();
+        std::fs::write(base.join("busy.snap"), "b").unwrap();
+        let since = SystemTime::now() - Duration::from_secs(60);
+        let changes = read(Kind::Snap, &["./busy.snap", "./new.snap"]).unwrap();
+        assert_eq!(changes.edited(&base, since).unwrap(), ["busy.snap"]);
         std::fs::remove_dir_all(&base).unwrap();
     }
 }
