@@ -242,7 +242,10 @@ echo "$began" > "$job/started"
 cd "$tree" 2>/dev/null || { say nodir; printf '66 0\n' > "$job/done"; exit 66; }
 PATH=$HOME/.cargo/bin:$PATH
 export PATH
-if [ "$mold" = mold ] && [ -z "${RUSTFLAGS-}" ]; then RUSTFLAGS='-C link-arg=-fuse-ld=mold'; export RUSTFLAGS; fi
+if [ "$mold" = mold ] && [ -z "${RUSTFLAGS-}" ]; then
+  triple=$(rustc -vV | sed -n 's/^host: //p' | tr 'a-z-' 'A-Z_')
+  [ -n "$triple" ] && export "CARGO_TARGET_${triple}_RUSTFLAGS=-C link-arg=-fuse-ld=mold"
+fi
 ( timeout -k 15 "$limit" "$@" </dev/null >"$job/log" 2>&1 &
   echo $! > "$job/pid"
   wait $!

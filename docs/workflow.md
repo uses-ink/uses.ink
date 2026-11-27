@@ -229,8 +229,10 @@ Every farm run of a host uses the same environment, so the host's `target/` stay
   local variable inspection in a debugger, which farm runs are not for.
 - `CARGO_TERM_COLOR=never`, `INSTA_UPDATE=no` (`always` for `bless`), `CARGO_BUILD_JOBS` and
   `NEXTEST_TEST_THREADS` set to the cores of one slot.
-- `RUSTFLAGS=-C link-arg=-fuse-ld=mold` only when the host says `mold = true` and `RUSTFLAGS`
-  is not already set there.
+- `CARGO_TARGET_<HOST TRIPLE>_RUSTFLAGS=-C link-arg=-fuse-ld=mold` only when the host says
+  `mold = true` and `RUSTFLAGS` is not already set there. It names the host's own triple: a plain
+  `RUSTFLAGS` would reach `wasm32` too, where the linker is `rust-lld` and the component builds
+  fail to link.
 - `CARGO_TARGET_DIR` is never set: the target is `target/` of the synced workspace.
 - Incremental compilation stays on.
 
