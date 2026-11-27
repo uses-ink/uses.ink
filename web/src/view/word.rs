@@ -18,7 +18,6 @@ impl fmt::Display for Word<JobState> {
             JobState::Succeeded => "published",
             JobState::Refused => "refused: the site does not build",
             JobState::Failed => "failed: the builder gave up",
-            _ => "in a state this version cannot show",
         })
     }
 }

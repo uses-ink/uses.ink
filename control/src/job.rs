@@ -12,9 +12,8 @@ use crate::id::{Id, Site};
 use crate::table;
 
 /// Where a job is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
-#[non_exhaustive]
 pub enum State {
     /// In the queue.
     Queued,
@@ -38,9 +37,20 @@ impl State {
         ("failed", Self::Failed),
     ];
 
-    /// The text this state is stored as.
-    pub(crate) fn name(self) -> &'static str {
+    /// The text this state is stored as, and the API writes.
+    pub fn name(self) -> &'static str {
         Self::NAMES.iter().find(|(_, state)| *state == self).map_or("failed", |(name, _)| name)
+    }
+
+    /// Whether the build has ended.
+    pub const fn ended(self) -> bool {
+        !matches!(self, Self::Queued | Self::Running)
+    }
+}
+
+impl std::fmt::Display for State {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(self.name())
     }
 }
 

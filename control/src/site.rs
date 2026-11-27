@@ -12,7 +12,7 @@ use crate::table;
 use crate::{Handle, Refusal, Unreadable};
 
 /// Whether a site takes changes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum State {
@@ -27,9 +27,15 @@ impl State {
     /// The names the column stores.
     pub(crate) const NAMES: [(&'static str, Self); 2] = [("active", Self::Active), ("removing", Self::Removing)];
 
-    /// The text this state is stored as.
-    pub(crate) fn name(self) -> &'static str {
+    /// The text this state is stored as, and the API writes.
+    pub fn name(self) -> &'static str {
         Self::NAMES.iter().find(|(_, found)| *found == self).map_or("active", |(name, _)| name)
+    }
+}
+
+impl std::fmt::Display for State {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(self.name())
     }
 }
 
