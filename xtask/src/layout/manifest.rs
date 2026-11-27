@@ -61,6 +61,8 @@ impl Order {
         ("uses-ink-token", &[]),
         // A format's native core speaks the model; its guest crate speaks the WIT (0041).
         ("uses-ink-format-markdown", &["uses-ink-model"]),
+        // A dialect of markdown reads through the markdown format's comrak setup.
+        ("uses-ink-format-obsidian", &["uses-ink-model", "uses-ink-format-markdown"]),
         ("uses-ink-host-image", &["uses-ink-model", "uses-ink-engine"]),
         ("uses-ink-host-native", &["uses-ink-model", "uses-ink-engine"]),
         // A theme's native core implements the engine's Theme trait; its guest crate exports it.
@@ -75,6 +77,7 @@ impl Order {
                 "uses-ink-host-image",
                 "uses-ink-host-native",
                 "uses-ink-format-markdown",
+                "uses-ink-format-obsidian",
                 "uses-ink-theme-quiet",
                 "uses-ink-host-wasmtime",
             ],
@@ -90,11 +93,13 @@ impl Order {
                 "uses-ink-host-native",
                 "uses-ink-host-image",
                 "uses-ink-format-markdown",
+                "uses-ink-format-obsidian",
                 "uses-ink-theme-quiet",
             ],
         ),
         ("uses-ink-sdk", &["freehand", "uses-ink-model"]),
         ("uses-ink-format-markdown-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-format-markdown"]),
+        ("uses-ink-format-obsidian-guest", &["uses-ink-model", "uses-ink-sdk", "uses-ink-format-obsidian"]),
         ("uses-ink-theme-quiet-guest", &["uses-ink-model", "uses-ink-engine", "uses-ink-sdk", "uses-ink-theme-quiet"]),
         ("uses-ink-host-wasmtime-hostile", &["uses-ink-sdk"]),
         (TASKS, &["freehand", "uses-ink-token"]),

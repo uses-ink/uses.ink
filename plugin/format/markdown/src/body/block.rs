@@ -1,26 +1,30 @@
 //! Blocks: how a comrak block joins its run, and the blocks that need the walk to build.
 
-use comrak::nodes::{AlertType, AstNode, ListType, NodeAlert, NodeCodeBlock, NodeTaskItem, NodeValue, TableAlignment};
+use comrak::nodes::{
+    AlertType, AstNode, CalloutFold, ListType, NodeAlert, NodeCallout, NodeCodeBlock, NodeTaskItem, NodeValue,
+    TableAlignment,
+};
 use comrak::options::AlertStyleType;
 use model::{
-    Alignment, Anchor, Announcement, Block, CalloutKind, Definition, Footnote, FootnoteName, Inline, Item, Level, Slug,
-    Span, Spanned, Task,
+    Alignment, Anchor, Announcement, Block, CalloutKind, Definition, Folding, Footnote, FootnoteName, Inline, Item,
+    Level, LinkTarget, Slug, Span, Spanned, Task,
 };
 
 use super::html::Fold;
 use super::inline::Plain;
 use super::stack::Stack;
 use super::{Builder, Literal, Node, ToModel};
+use crate::dialect::{Dialect, Extension};
 
 impl Node for Block {
     type Open = Fold;
 
-    fn read<'a>(child: &'a AstNode<'a>, builder: &mut Builder<'_>, run: &mut Stack<Fold>) {
+    fn read<'a, D: Dialect>(child: &'a AstNode<'a>, builder: &mut Builder<'_, D>, run: &mut Stack<Fold>) {
         let data = child.data();
         let span = builder.positions.span(data.sourcepos);
         let block = match &data.value {
             NodeValue::HtmlBlock(html) => return builder.html(&html.literal, span, run),
-            NodeValue::Paragraph => builder.paragraph(child),
+            NodeValue::Paragraph => builder.paragraph(child, span),
             NodeValue::Heading(heading) => Some(builder.heading(child, heading.level, span)),
             NodeValue::List(list) => {
                 let ordered = match list.list_type {
@@ -33,7 +37,10 @@ impl Node for Block {
             NodeValue::CodeBlock(code) => Some(code.to_model()),
             NodeValue::ThematicBreak(_) => Some(Self::Rule),
             NodeValue::Table(table) => Some(builder.table(child, &table.alignments)),
-            NodeValue::Alert(alert) => Some(builder.callout(child, alert, span)),
+            NodeValue::Alert(alert) => Some(builder.alert(child, alert, span)),
+            NodeValue::Callout(callout) => Some(builder.callout(child, callout, span)),
+            // read by the callout it titles
+            NodeValue::CalloutTitle => None,
             NodeValue::DescriptionList => Some(builder.definitions(child)),
             NodeValue::MathBlock(math) => Some(Self::Math(math.literal.trim_end_matches('\n').to_owned())),
             NodeValue::FootnoteDefinition(definition) => {
@@ -68,19 +75,41 @@ impl Node for Block {
     }
 }
 
-impl Builder<'_> {
-    /// A paragraph, or display math when `$$...$$` is all it holds, or nothing when it shows
-    /// nothing.
-    fn paragraph<'a>(&mut self, node: &'a AstNode<'a>) -> Option<Block> {
+impl<D: Dialect> Builder<'_, D> {
+    /// A paragraph, or nothing when it shows nothing. What it holds alone can make it another
+    /// block: display math when `$$...$$`, an embed when a wikilink embeds a page, an anchor of
+    /// the block before it when a block id (`^id`) is all its text.
+    fn paragraph<'a>(&mut self, node: &'a AstNode<'a>, span: Span) -> Option<Block> {
         let mut children = node.children();
-        if let (Some(only), None) = (children.next(), children.next())
-            && let NodeValue::Math(math) = &only.data().value
-            && math.display_math
-        {
-            return Some(Block::Math(math.literal.clone()));
+        if let (Some(only), None) = (children.next(), children.next()) {
+            match &only.data().value {
+                NodeValue::Math(math) if math.display_math => return Some(Block::Math(math.literal.clone())),
+                NodeValue::WikiLink(link) => {
+                    let linked = self.wiki(only, link, span);
+                    return Some(match linked.embed {
+                        Some(written) => {
+                            Block::Embed { target: LinkTarget::Unresolved { written }, blocks: Vec::new() }
+                        }
+                        None => Block::Paragraph(vec![linked.inline]),
+                    });
+                }
+                NodeValue::Text(text) if D::SYNTAX.has(Extension::BlockIds) => {
+                    if let Some(anchor) = text.trim().strip_prefix('^').and_then(|name| self.standalone(name, span)) {
+                        return Some(Block::Paragraph(vec![Inline::Anchor(anchor)]));
+                    }
+                }
+                _ => {}
+            }
         }
         let inlines: Vec<Inline> = self.run(node);
         Inline::shows(&inlines).then_some(Block::Paragraph(inlines))
+    }
+
+    /// The anchor of a block id alone on its line, `name` the text after its `^`, or `None` when
+    /// that text is no block id: Obsidian's ids are ASCII letters, digits and `-`.
+    fn standalone(&mut self, name: &str, span: Span) -> Option<Anchor> {
+        let id = !name.is_empty() && name.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-');
+        id.then(|| self.names.block(name, span, self.report)).flatten()
     }
 
     /// A heading with its anchor; the first level-1 heading with text is also the body's
@@ -126,19 +155,47 @@ impl Builder<'_> {
         Block::Table { alignments, head, rows }
     }
 
-    /// A callout (`> [!note]`). A kind comrak learns later keeps the name comrak gives it; a
-    /// name that is no slug is a note, and says so.
-    fn callout<'a>(&mut self, node: &'a AstNode<'a>, alert: &NodeAlert, span: Span) -> Block {
+    /// A GitHub alert (`> [!note]`), as a callout. A kind comrak learns later keeps the name
+    /// comrak gives it.
+    fn alert<'a>(&mut self, node: &'a AstNode<'a>, alert: &NodeAlert, span: Span) -> Block {
         let kind = alert.alert_type.to_model().unwrap_or_else(|| {
             let name = alert.alert_type.css_class(AlertStyleType::Semantic);
-            if let Ok(slug) = Slug::parse(name) {
-                return CalloutKind::Other(slug);
-            }
-            self.report.announce(Announcement::CalloutKindUnknown { kind: name.to_owned() }, span);
-            CalloutKind::Note
+            self.kind(name, span)
         });
         let title = alert.title.as_ref().map(|title| vec![Inline::Text(title.clone())]);
-        Block::Callout { kind, title, blocks: self.run(node) }
+        Block::Callout { kind, title, blocks: self.run(node), folding: Folding::Fixed }
+    }
+
+    /// An Obsidian callout (`> [!tip]- Title`): its kind as the dialect names it, its title of
+    /// inlines, and whether it folds. The metadata after a `|` styles a callout in Obsidian's
+    /// own stylesheets; nothing here reads it, and that is said.
+    fn callout<'a>(&mut self, node: &'a AstNode<'a>, callout: &NodeCallout, span: Span) -> Block {
+        let written = callout.callout_type.as_str();
+        let kind = self.dialect.callout(written).unwrap_or_else(|| self.kind(written, span));
+        if let Some(metadata) = &callout.metadata {
+            self.report.announce(Announcement::CalloutMetadataIgnored { written: metadata.clone() }, span);
+        }
+        let title = node
+            .first_child()
+            .filter(|first| matches!(first.data().value, NodeValue::CalloutTitle))
+            .map(|first| self.term(first))
+            .filter(|title| Inline::shows(title));
+        let folding = match callout.fold {
+            CalloutFold::None => Folding::Fixed,
+            CalloutFold::Expanded => Folding::Open,
+            CalloutFold::Collapsed => Folding::Closed,
+        };
+        Block::Callout { kind, title, blocks: self.run(node), folding }
+    }
+
+    /// A callout kind no dialect names: its own name as a slug, or a note when the name is no
+    /// slug, which is said.
+    fn kind(&mut self, name: &str, span: Span) -> CalloutKind {
+        if let Ok(slug) = Slug::parse(name) {
+            return CalloutKind::Other(slug);
+        }
+        self.report.announce(Announcement::CalloutKindUnknown { kind: name.to_owned() }, span);
+        CalloutKind::Note
     }
 
     /// A description list. comrak gives a term written once with several `:` details as one

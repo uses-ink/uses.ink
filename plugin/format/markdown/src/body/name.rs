@@ -1,12 +1,13 @@
-//! Names a body gives its parts: heading anchors and footnote names. Both are the slug of what
-//! the author wrote, unique in the body; a text with no letters or digits gets a generated name,
-//! and a footnote whose slug another footnote took gets the next free one, and each says so.
+//! Names a body gives its parts: heading anchors, block ids and footnote names. Each is the slug
+//! of what the author wrote, unique in the body; a text with no letters or digits gets a
+//! generated name, and a footnote or a block id whose slug was taken gets the next free one, and
+//! each says so. Headings and block ids share one set of anchors, since a link names either.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use model::{Anchor, Announcement, FootnoteName, Hash, Slug, Span};
 
-use crate::error::Report;
+use crate::error::{Error, Report};
 
 /// The anchor of a heading with no letters or digits.
 const SECTION: &str = "section";
@@ -130,6 +131,20 @@ impl Names {
             report.announce(announcement, span);
         }
         Some(name)
+    }
+}
+
+impl Names {
+    /// The anchor of the block id `given` (`^given`), at `span`. Its slug taken by a heading or
+    /// another block id before it is refused as `block.id.taken`, and the id is anchored at the
+    /// next free slug, so no link meant for the earlier anchor moves.
+    pub(crate) fn block(&mut self, given: &str, span: Span, report: &mut Report) -> Option<Anchor> {
+        let slug = Slug::from_text(given).ok()?;
+        let claimed = self.anchors.claim(&slug);
+        if claimed != slug {
+            report.refuse(Error::Taken { given: given.to_owned(), anchor: claimed.clone() }, span);
+        }
+        Some(Anchor::new(claimed))
     }
 }
 

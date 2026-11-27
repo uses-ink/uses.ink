@@ -48,11 +48,25 @@ impl engine::Format for Markdown {
     }
 }
 
-#[test]
-fn the_markdown_component_reads_every_fixture_as_its_native_core() {
+/// The native obsidian format, as the engine takes it.
+struct Obsidian;
+
+impl engine::Format for Obsidian {
+    fn handles(&self, path: &ContentPath) -> bool {
+        format_obsidian::handles(path)
+    }
+
+    fn read(&self, path: &ContentPath, bytes: &[u8]) -> Read {
+        format_obsidian::read(path, bytes)
+    }
+}
+
+/// Reads every fixture of the format in `plugin/format/<variant>/fixture` through its component
+/// and through `native`, and compares them.
+fn reads_like(variant: &str, native: &impl engine::Format) {
     let runtime = runtime(Budget::default());
-    let format = runtime.format("ink:format-markdown", &plugin("format-markdown")).unwrap();
-    let dir = root().join("plugin/format/markdown/fixture");
+    let format = runtime.format(&format!("ink:format-{variant}"), &plugin(&format!("format-{variant}"))).unwrap();
+    let dir = root().join("plugin/format").join(variant).join("fixture");
     let mut read = 0;
     for entry in std::fs::read_dir(dir).unwrap() {
         let file = entry.unwrap().path();
@@ -62,11 +76,21 @@ fn the_markdown_component_reads_every_fixture_as_its_native_core() {
         let path: ContentPath = file.file_name().unwrap().to_str().unwrap().parse().unwrap();
         let bytes = std::fs::read(&file).unwrap();
         assert!(format.handles(&path));
-        assert_eq!(format.read(&path, &bytes), Markdown.read(&path, &bytes), "{path}");
+        assert_eq!(format.read(&path, &bytes), native.read(&path, &bytes), "{path}");
         read += 1;
     }
-    assert!(read > 10, "only {read} fixtures");
+    assert!(read > 8, "only {read} fixtures");
     assert_eq!(format.aside().diagnostics, []);
+}
+
+#[test]
+fn the_markdown_component_reads_every_fixture_as_its_native_core() {
+    reads_like("markdown", &Markdown);
+}
+
+#[test]
+fn the_obsidian_component_reads_every_fixture_as_its_native_core() {
+    reads_like("obsidian", &Obsidian);
 }
 
 #[test]

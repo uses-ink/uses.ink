@@ -1,5 +1,5 @@
 ---
-source: plugin/format/markdown/tests/fixture.rs
+source: fixture/src/lib.rs
 input_file: plugin/format/markdown/fixture/frontmatter-description-lang.md
 ---
 {
@@ -44,6 +44,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-description-lang.md
         115
       ]
     },
+    "aliases": null,
     "block": [
       0,
       120

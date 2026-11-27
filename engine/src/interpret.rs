@@ -3,7 +3,7 @@
 //!
 //! `site.root`, `site.layout`, `file.ignore`, reading, then per page `page.publish`,
 //! `page.kind`, `page.title`, `page.date`, `page.updated`, `page.slug`, `page.tags`,
-//! `page.summary`, then link resolution, `page.publish` for plain files, `site.home`,
+//! `page.summary`, then link resolution and embeds, `page.publish` for plain files, `site.home`,
 //! `site.title`, `site.description`, `site.authors`, `site.language`, `site.nav`, routes, and
 //! the site. Every stage runs, so every problem is reported; the site is assembled only from a
 //! journal without an error.
@@ -23,7 +23,7 @@ use model::{Diagnostic, Notice, Snapshot, Subject};
 use crate::interpret::file::read::Split;
 use crate::interpret::file::{Assets, Files, Read};
 use crate::interpret::journal::Journal;
-use crate::interpret::link::{Links, Targets};
+use crate::interpret::link::{Aliases, Embeds, Links, Settings, Targets};
 use crate::interpret::page::Pages;
 use crate::interpret::site::{Assemble, Parts, Routing, Site};
 use crate::interpret::stage::Stage;
@@ -64,8 +64,11 @@ impl<B: Blobs, P: Pins, F: Formats, T> Engine<B, P, F, T> {
         let Split { mut sources, files } = Read { blobs: &self.blobs, formats: &self.formats }.run(kept, &mut journal);
         let published = Pages { pins, selection }.run(&sources, &mut journal);
         let pages = sources.iter().map(|source| source.path.clone()).collect();
-        let targets = Targets { scope: &scope, kept: kept_paths, pages, published };
+        let aliases: Aliases = sources.iter().collect();
+        let attachments = Settings { blobs: &self.blobs }.run(&scope, &mut journal);
+        let targets = Targets { scope: &scope, kept: kept_paths, pages, published, aliases, attachments };
         let used = Links { targets: &targets }.run(&mut sources, &mut journal);
+        Embeds { published: &targets.published }.run(&mut sources, &mut journal);
         let published = targets.published;
         let assets = Assets { pins, used: &used }.run(&files, &mut journal);
         let home = Site { pins, scope: &scope, published: &published }.run(&sources, &mut journal);

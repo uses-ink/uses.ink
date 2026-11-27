@@ -90,7 +90,8 @@ uses.ink/
                                                 MIT OR Apache-2.0, depends on model and freehand only (0041)
     source/     wit/  git/  upload/  archive/  atproto/
     authority/  wit/  github/  forgejo/  gitlab/  dns/  email/  atproto/
-    format/     markdown/ (its component in markdown/guest/)  obsidian/  typst/
+    format/     markdown/ (its component in markdown/guest/)  obsidian/ (a dialect of markdown;
+                its component in obsidian/guest/)  typst/
     theme/      quiet/ (its component in quiet/guest/)  notebook/
   wit/                   model/ host/ format/ theme/: the WIT packages ink:model, ink:host,
                          ink:format, ink:theme; mirror/: their conversions to the model (0041)
@@ -278,8 +279,12 @@ decisions and diagnostics. The `Site` is built only from decisions, so every val
 
 ```
 site.root -> site.layout -> file.ignore -> file.format -> page.kind / page.publish -> page.title,
-page.date, page.updated, page.slug, page.tags -> link.resolve -> site.home, site.nav -> derived (index, tags, feeds, backlinks)
+page.date, page.updated, page.slug, page.tags -> link.resolve -> embeds -> site.home, site.nav -> derived (index, tags, feeds, backlinks)
 ```
+
+Link resolution reads the vault's attachment folder from `.obsidian/app.json` first (the
+`Settings` stage), and embeds (`Block::Embed`) are filled after every link is resolved (the
+`Embeds` stage, decision 0043).
 
 The v1 inference table (inputs in order of precedence, default when none match) is
 `research/architecture.md` section 3.6; it moves into `diag/catalog.toml` and the decision
@@ -289,6 +294,8 @@ Rules that hold for every inferrer:
 
 - A `Known::NotAfter` fact is never treated as `Exact`; using it is its own decision with a note.
 - Ambiguity is a diagnostic listing the candidates (`link.target.ambiguous`), never a guess.
+  The one exception is said: a name several files share settles on the one in a vault's
+  attachment folder, with `link.target.attached` (0043).
 - Vaults and private sources publish nothing until selected; an attachment no published page
   uses is never published (decision 0017).
 - A pinned value turns the decision's evidence into `Config { span }`, shown as "you said so".

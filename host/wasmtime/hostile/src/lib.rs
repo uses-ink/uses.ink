@@ -55,6 +55,7 @@ impl Hostile {
                 kind: None,
                 description: None,
                 language: None,
+                aliases: None,
                 block: None,
             },
             heading: None,

@@ -12,12 +12,15 @@ use serde_saphyr::Spanned as Located;
 
 use crate::error::{Error, Report};
 use crate::file::{Fence, File};
-use field::{Draft, Field, Lang};
+use field::{Aliases, Draft, Field, Lang};
 use node::{Entries, Node};
 
 /// The fields the engine reads, each a [`Field`]. Every other key is the author's own and is
 /// neither kept nor refused.
 pub(crate) type Keys = (Title, Date, Updated, Slug, Tags, Publish, Draft, Kind, Summary, Lang);
+
+/// [`Keys`] and `aliases`, for a dialect that names pages by them.
+pub(crate) type Aliased = (Title, Date, Updated, Slug, Tags, Publish, Draft, Kind, Summary, Lang, Aliases);
 
 /// The YAML of one frontmatter block, in its file.
 #[derive(Clone, Copy, Debug)]

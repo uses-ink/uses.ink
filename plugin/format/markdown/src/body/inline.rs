@@ -1,22 +1,29 @@
 //! Inlines: how a comrak inline joins its run, where links and images point, and the text a
 //! reader sees.
 
-use comrak::nodes::{AstNode, NodeValue};
-use model::{Anchor, ExternalUrl, FootnoteName, ImageSource, Inline, LinkTarget, Slug, Visit};
+use comrak::nodes::{AstNode, NodeValue, NodeWikiLink};
+use model::{Anchor, Announcement, ExternalUrl, FootnoteName, ImageSource, Inline, LinkTarget, Slug, Span, Visit};
 
 use super::html::Open;
 use super::stack::Stack;
 use super::{Builder, Literal, Node};
+use crate::dialect::{Dialect, Linked, Wikilink};
 
 impl Node for Inline {
     type Open = Open;
 
-    fn read<'a>(child: &'a AstNode<'a>, builder: &mut Builder<'_>, run: &mut Stack<Open>) {
+    fn read<'a, D: Dialect>(child: &'a AstNode<'a>, builder: &mut Builder<'_, D>, run: &mut Stack<Open>) {
         let data = child.data();
         let inline = match &data.value {
             NodeValue::HtmlInline(raw) => return builder.tags(raw, builder.positions.span(data.sourcepos), run),
             _ if run.is_opaque() => return,
-            NodeValue::Text(text) => Self::Text(text.to_string()),
+            NodeValue::Text(text) => builder.text(text, builder.positions.span(data.sourcepos)),
+            NodeValue::WikiLink(link) => builder.inline(child, link, builder.positions.span(data.sourcepos)),
+            NodeValue::BlockId(id) => {
+                let span = builder.positions.span(data.sourcepos);
+                let Some(anchor) = builder.names.block(&id.name, span, builder.report) else { return };
+                Self::Anchor(anchor)
+            }
             NodeValue::SoftBreak => Self::SoftBreak,
             NodeValue::LineBreak => Self::Break,
             NodeValue::Code(code) => Self::Code(code.literal.clone()),
@@ -26,7 +33,7 @@ impl Node for Inline {
             NodeValue::Highlight => Self::Highlight(builder.run(child)),
             NodeValue::Superscript => Self::Superscript(builder.run(child)),
             NodeValue::Subscript => Self::Subscript(builder.run(child)),
-            NodeValue::Link(link) => Self::Link { target: Written(&link.url).into(), children: builder.run(child) },
+            NodeValue::Link(link) => Self::Link { target: Written(&link.url).into(), children: builder.label(child) },
             NodeValue::Image(link) => {
                 Self::Image { source: Written(&link.url).into(), alt: Plain::of(&builder.run(child)) }
             }
@@ -74,6 +81,44 @@ impl Node for Inline {
     }
 }
 
+impl<D: Dialect> Builder<'_, D> {
+    /// Text of the body at `span`, which the dialect reads unless it is a link's.
+    fn text(&mut self, text: &str, span: Span) -> Inline {
+        if self.linked == 0 {
+            self.dialect.text(text, span);
+        }
+        Inline::Text(text.to_owned())
+    }
+
+    /// A wikilink among other inlines: an embed of a page is a link here, and that is said.
+    fn inline<'a>(&mut self, node: &'a AstNode<'a>, link: &NodeWikiLink, span: Span) -> Inline {
+        let linked = self.wiki(node, link, span);
+        if let Some(written) = linked.embed {
+            self.report.announce(Announcement::EmbedInlineLinked { written }, span);
+        }
+        linked.inline
+    }
+
+    /// The text of the link `node`, read as inlines.
+    fn label<'a>(&mut self, node: &'a AstNode<'a>) -> Vec<Inline> {
+        self.linked += 1;
+        let label = self.run(node);
+        self.linked -= 1;
+        label
+    }
+
+    /// What the wikilink `node` becomes in the dialect, its children read as its label; what
+    /// the dialect says of it is announced at `span`.
+    pub(super) fn wiki<'a>(&mut self, node: &'a AstNode<'a>, link: &NodeWikiLink, span: Span) -> Linked {
+        let label = self.label(node);
+        let linked = self.dialect.wikilink(Wikilink { target: &link.url, label, embedded: link.embed, span });
+        if let Some(said) = &linked.said {
+            self.report.announce(said.clone(), span);
+        }
+        linked
+    }
+}
+
 /// A link's or an image's destination as written, read as far as one file can tell. Nothing
 /// is resolved: a path stays as written for the engine.
 #[derive(Clone, Copy, Debug)]
@@ -106,11 +151,11 @@ impl From<Written<'_>> for ImageSource {
 /// The text of inlines as a reader sees it: code, math and keys as written, an image as its
 /// alt text, breaks as spaces.
 #[derive(Debug, Default)]
-pub(crate) struct Plain(String);
+pub struct Plain(String);
 
 impl Plain {
     /// The plain text of `inlines`.
-    pub(crate) fn of(inlines: &[Inline]) -> String {
+    pub fn of(inlines: &[Inline]) -> String {
         let mut plain = Self::default();
         plain.inlines(inlines);
         plain.0

@@ -3857,6 +3857,7 @@ dependencies = [
  "uses-ink-engine",
  "uses-ink-fixture",
  "uses-ink-format-markdown",
+ "uses-ink-format-obsidian",
  "uses-ink-host-image",
  "uses-ink-host-native",
  "uses-ink-host-wasmtime",
@@ -3889,6 +3890,7 @@ version = "0.0.0"
 dependencies = [
  "jiff",
  "quick-xml",
+ "serde",
  "serde_json",
  "uses-ink-diag",
  "uses-ink-fixture",
@@ -3922,6 +3924,26 @@ name = "uses-ink-format-markdown-guest"
 version = "0.0.0"
 dependencies = [
  "uses-ink-format-markdown",
+ "uses-ink-model",
+ "uses-ink-sdk",
+ "wit-bindgen 0.63.0",
+]
+
+[[package]]
+name = "uses-ink-format-obsidian"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "uses-ink-fixture",
+ "uses-ink-format-markdown",
+ "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-format-obsidian-guest"
+version = "0.0.0"
+dependencies = [
+ "uses-ink-format-obsidian",
  "uses-ink-model",
  "uses-ink-sdk",
  "wit-bindgen 0.63.0",
@@ -3965,6 +3987,7 @@ dependencies = [
  "freehand",
  "uses-ink-engine",
  "uses-ink-format-markdown",
+ "uses-ink-format-obsidian",
  "uses-ink-host-image",
  "uses-ink-host-native",
  "uses-ink-model",

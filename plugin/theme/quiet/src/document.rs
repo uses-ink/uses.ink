@@ -7,6 +7,9 @@
 //! - Headings get their anchor as `id` and a `#` link to it.
 //! - Task items are `<input type="checkbox" disabled>`: shown, never changed, no script.
 //! - Links to pages go through the site's routes; a link that resolved to nothing is its text.
+//! - A callout a reader can fold is a `<details>`, open at first when written with `+`; a block
+//!   id is an empty `<span>` with its anchor as `id`; an embed is the blocks it shows in a
+//!   `<div>` of the embed class.
 //! - Images of the snapshot are shown as the engine prepared them ([`picture`]): AVIF and a
 //!   fallback at each width, with their size and a placeholder; one that resolved to nothing is
 //!   its alt text.
@@ -27,8 +30,8 @@ use std::fmt;
 use engine::Record;
 use model::highlight::Highlight;
 use model::{
-    Alignment, Block, CalloutKind, Document, Footnote, FootnoteName, ImageSource, Inline, Item, LinkTarget, Page, Site,
-    Subject, Task, Visit,
+    Alignment, Block, CalloutKind, Document, Folding, Footnote, FootnoteName, ImageSource, Inline, Item, LinkTarget,
+    Page, Site, Subject, Task, Visit,
 };
 use unspliced::html::{attr, tag};
 use unspliced::{Class, HERE, Halt, Id, Marks, Render, Sink, Split, Url, html};
@@ -183,7 +186,9 @@ impl<'a, H: Highlight, R: Record + ?Sized> Writer<'a, H, R> {
         });
     }
 
-    fn callout(&mut self, kind: &CalloutKind, title: Option<&[Inline]>, blocks: &[Block]) {
+    /// A callout; one a reader can fold is a `<details>`, open at first for `+`.
+    fn callout(&mut self, callout: &Block) {
+        let Block::Callout { kind, title, blocks, folding } = callout else { return };
         let (class, label) = match kind {
             CalloutKind::Tip => (Some(quiet::TIP), "Tip"),
             CalloutKind::Important => (None, "Important"),
@@ -193,13 +198,24 @@ impl<'a, H: Highlight, R: Record + ?Sized> Writer<'a, H, R> {
             // a note, and kinds this theme does not know yet
             _ => (None, "Note"),
         };
-        self.wrap(html! { aside.quiet::CALLOUT class=(class) { (HERE) } }, |aside| {
-            aside.wrap(html! { p.quiet::LABEL { (HERE) } }, |p| match title {
-                Some(title) => p.inlines(title),
-                None => p.put(label),
-            });
-            aside.blocks(blocks);
-        });
+        let heading = |line: &mut Self| match title {
+            Some(title) => line.inlines(title),
+            None => line.put(label),
+        };
+        match folding {
+            Folding::Open | Folding::Closed => {
+                let open = *folding == Folding::Open;
+                self.wrap(html! { details.quiet::CALLOUT class=(class) open=(open) { (HERE) } }, |details| {
+                    details.wrap(html! { summary.quiet::LABEL { (HERE) } }, heading);
+                    details.blocks(blocks);
+                });
+            }
+            // fixed, and foldings this theme does not know yet
+            _ => self.wrap(html! { aside.quiet::CALLOUT class=(class) { (HERE) } }, |aside| {
+                aside.wrap(html! { p.quiet::LABEL { (HERE) } }, heading);
+                aside.blocks(blocks);
+            }),
+        }
     }
 }
 
@@ -242,13 +258,14 @@ impl<H: Highlight, R: Record + ?Sized> Visit for Writer<'_, H, R> {
             Block::Code { language, text } => self.code(language.as_deref(), text),
             Block::Rule => self.put(html! { hr; }),
             Block::Table { alignments, head, rows } => self.table(alignments, head, rows),
-            Block::Callout { kind, title, blocks } => self.callout(kind, title.as_deref(), blocks),
+            Block::Callout { .. } => self.callout(block),
             Block::Math(tex) => self.wrap(html! { div.quiet::MATH { (HERE) } }, |div| div.math(tex, Placement::Block)),
             Block::Definitions(_) => self.wrap(html! { dl { (HERE) } }, |list| block.walk(list)),
             Block::Details { summary, blocks } => self.wrap(html! { details { (HERE) } }, |details| {
                 details.wrap(html! { summary { (HERE) } }, |line| line.inlines(summary));
                 details.blocks(blocks);
             }),
+            Block::Embed { .. } => self.wrap(html! { div.quiet::EMBED { (HERE) } }, |div| block.walk(div)),
             // kinds this theme does not know yet: their children, as text
             _ => block.walk(self),
         }
@@ -294,6 +311,12 @@ impl<H: Highlight, R: Record + ?Sized> Visit for Writer<'_, H, R> {
             Inline::SoftBreak => self.put("\n"),
             Inline::Math(tex) => self.math(tex, Placement::Inline),
             Inline::Footnote(name) => self.reference(name),
+            // An anchor is a slug: never empty, never holding whitespace, so always an id.
+            Inline::Anchor(anchor) => {
+                if let Ok(id) = Id::checked(anchor.as_str()) {
+                    self.put(html! { span id=(id) {} });
+                }
+            }
             // text, links and images through their own methods; kinds this theme does not know
             // yet through their children
             _ => inline.walk(self),

@@ -11,6 +11,7 @@ use model::{Block, Inline, Span};
 use super::element::{Element, Opening, Wrap};
 use super::stack::{Closing, Frame, Stack};
 use super::{Builder, Node};
+use crate::dialect::Dialect;
 use crate::error::Error;
 use crate::html::{Collapsed, Decoded, Piece, Pieces, Tag};
 
@@ -162,7 +163,7 @@ impl Reading {
     }
 }
 
-impl Builder<'_> {
+impl<D: Dialect> Builder<'_, D> {
     /// One run of inline raw HTML, its tags paired with the siblings around it.
     pub(super) fn tags(&mut self, raw: &str, span: Span, run: &mut Stack<Open>) {
         let placement = self.positions.placement(raw, span);

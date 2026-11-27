@@ -32,6 +32,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-false.md
     "kind": null,
     "description": null,
     "language": null,
+    "aliases": null,
     "block": [
       0,
       52

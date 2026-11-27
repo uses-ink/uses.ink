@@ -40,6 +40,7 @@ interface document {
         math(string),
         definitions(list<definition>),
         details(details),
+        embed(embed),
     }
 
     record heading {
@@ -88,6 +89,14 @@ interface document {
         kind: callout-kind,
         title: option<list<inline-at>>,
         blocks: list<block-at>,
+        folding: folding,
+    }
+
+    /// Whether a reader can fold a callout, and how it starts.
+    enum folding {
+        fixed,
+        open,
+        closed,
     }
 
     variant callout-kind {
@@ -109,6 +118,13 @@ interface document {
         blocks: list<block-at>,
     }
 
+    /// Another page's content shown in place: its target as written until the engine resolves
+    /// it, then the page and the blocks shown.
+    record embed {
+        target: link-target,
+        blocks: list<block-at>,
+    }
+
     variant inline {
         text(string),
         emphasis(list<inline-at>),
@@ -125,6 +141,8 @@ interface document {
         superscript(list<inline-at>),
         subscript(list<inline-at>),
         keyboard(string),
+        /// A block id: a place a link can point at.
+        anchor(slug),
     }
 
     record link {

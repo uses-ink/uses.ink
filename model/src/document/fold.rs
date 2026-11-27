@@ -130,9 +130,9 @@ impl Block {
                     rows.into_iter().map(|row| row.into_iter().map(|cell| fold.inlines(cell)).collect()).collect();
                 Self::Table { alignments, head, rows }
             }
-            Self::Callout { kind, title, blocks } => {
+            Self::Callout { kind, title, blocks, folding } => {
                 let title = title.map(|title| fold.inlines(title));
-                Self::Callout { kind, title, blocks: fold.blocks(blocks) }
+                Self::Callout { kind, title, blocks: fold.blocks(blocks), folding }
             }
             Self::Definitions(definitions) => {
                 Self::Definitions(definitions.into_iter().map(|definition| fold.definition(definition)).collect())
@@ -141,6 +141,7 @@ impl Block {
                 let summary = fold.inlines(summary);
                 Self::Details { summary, blocks: fold.blocks(blocks) }
             }
+            Self::Embed { target, blocks } => Self::Embed { target, blocks: fold.blocks(blocks) },
             leaf @ (Self::Code { .. } | Self::Rule | Self::Math(_)) => leaf,
         }
     }
@@ -166,7 +167,8 @@ impl Inline {
             | Self::Keyboard(_)
             | Self::Break
             | Self::SoftBreak
-            | Self::Footnote(_)) => leaf,
+            | Self::Footnote(_)
+            | Self::Anchor(_)) => leaf,
         }
     }
 }

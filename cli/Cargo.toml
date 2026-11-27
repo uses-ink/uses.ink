@@ -20,6 +20,7 @@ config.workspace = true
 diag.workspace = true
 engine.workspace = true
 format-markdown.workspace = true
+format-obsidian.workspace = true
 host-image.workspace = true
 host-native.workspace = true
 host-wasmtime.workspace = true

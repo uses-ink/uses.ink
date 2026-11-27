@@ -205,7 +205,8 @@ impl Patterns for Pinned {
 }
 
 /// A stand-in format for `.md` files: `key: value` lines between `---` lines, `# heading`,
-/// `[text](target)` and `![alt](target)` lines, and paragraphs of anything else.
+/// `[text](target)` and `![alt](target)` lines, `![[target]]` lines as embeds, `^id` lines as
+/// block ids, and paragraphs of anything else.
 #[derive(Debug)]
 pub struct Lines;
 
@@ -237,6 +238,13 @@ impl Format for Lines {
                 let anchor = model::Anchor::of_heading(text).unwrap();
                 let inlines = vec![Inline::Text(text.to_owned())];
                 blocks.push(Block::Heading { level: Level::new(1).unwrap(), anchor, inlines });
+            } else if let Some(written) = line.strip_prefix("![[").and_then(|rest| rest.strip_suffix("]]")) {
+                blocks.push(Block::Embed {
+                    target: LinkTarget::Unresolved { written: written.to_owned() },
+                    blocks: Vec::new(),
+                });
+            } else if let Some(id) = line.strip_prefix('^') {
+                blocks.push(Block::Paragraph(vec![Inline::Anchor(model::Anchor::of_heading(id).unwrap())]));
             } else if !line.is_empty() {
                 blocks.push(Block::Paragraph(vec![inline(line)]));
             }
@@ -263,6 +271,7 @@ fn key(front: &mut Front, line: &str, span: Span) -> Result<(), String> {
         "draft" => front.draft = at(value == "true", span),
         "description" => front.description = at(value.to_owned(), span),
         "lang" => front.language = at(value.parse().unwrap(), span),
+        "aliases" => front.aliases = at(value.split(", ").map(str::to_owned).collect(), span),
         "type" => front.kind = at(if value == "post" { PageKind::Post } else { PageKind::Page }, span),
         other => return Err(other.to_owned()),
     }

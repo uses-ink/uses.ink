@@ -169,6 +169,8 @@ pub enum Block {
         title: Option<Vec<Inline>>,
         /// Its content.
         blocks: Vec<Block>,
+        /// Whether a reader can fold it, and how it starts.
+        folding: Folding,
     },
     /// Display math, as TeX.
     Math(String),
@@ -181,6 +183,29 @@ pub enum Block {
         /// What shows once it is open.
         blocks: Vec<Block>,
     },
+    /// Another page's content shown in place (`![[Note]]`, `![[Note#Heading]]`). A format gives
+    /// the target as written and no blocks; the engine resolves the target and puts the page's
+    /// blocks, or the part the anchor names, in `blocks`.
+    Embed {
+        /// The page embedded, and the part of it when an anchor names one.
+        target: LinkTarget,
+        /// What is shown: the page's blocks, or the part the anchor names.
+        blocks: Vec<Block>,
+    },
+}
+
+/// Whether a reader can fold a callout, and how it starts (`> [!note]-`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum Folding {
+    /// Always open: no `+` or `-` after the kind.
+    #[default]
+    Fixed,
+    /// Foldable, open at first: `+`.
+    Open,
+    /// Foldable, folded at first: `-`.
+    Closed,
 }
 
 /// One term of a definition list and its details, each a run of blocks.
@@ -245,6 +270,8 @@ pub enum Inline {
     Subscript(Vec<Inline>),
     /// A key or key combination (`<kbd>Ctrl</kbd>`).
     Keyboard(String),
+    /// A place a link can point at, inside a block: a block id (`^intro`). Shows nothing.
+    Anchor(Anchor),
 }
 
 /// Where a link goes.

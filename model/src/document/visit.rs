@@ -116,12 +116,13 @@ impl Definition {
 
 impl Block {
     /// Visits what the block holds, in reading order: a table's head cells, then each row's; a
-    /// callout's or a details' title, then its blocks. Code, math and rules hold no nodes.
+    /// callout's or a details' title, then its blocks; an embed's blocks. Code, math and rules
+    /// hold no nodes.
     pub fn walk<V: Visit + ?Sized>(&self, visit: &mut V) {
         match self {
             Self::Heading { inlines, .. } | Self::Paragraph(inlines) => visit.inlines(inlines),
             Self::List { items, .. } => items.iter().for_each(|item| visit.item(item)),
-            Self::Quote(blocks) => visit.blocks(blocks),
+            Self::Quote(blocks) | Self::Embed { blocks, .. } => visit.blocks(blocks),
             Self::Table { head, rows, .. } => {
                 head.iter().chain(rows.iter().flatten()).for_each(|cell| visit.inlines(cell));
             }
@@ -145,7 +146,7 @@ impl Inline {
     /// Visits what the inline holds: text through [`Visit::text`], a link through
     /// [`Visit::link`], an image through [`Visit::image`], the children of emphasis, strong,
     /// strike, highlight, superscript and subscript through [`Visit::inlines`]. Code, math,
-    /// keys, breaks and footnote references hold no nodes.
+    /// keys, breaks, footnote references and anchors hold no nodes.
     pub fn walk<V: Visit + ?Sized>(&self, visit: &mut V) {
         match self {
             Self::Text(text) => visit.text(text),
@@ -157,7 +158,13 @@ impl Inline {
             | Self::Highlight(children)
             | Self::Superscript(children)
             | Self::Subscript(children) => visit.inlines(children),
-            Self::Code(_) | Self::Math(_) | Self::Keyboard(_) | Self::Break | Self::SoftBreak | Self::Footnote(_) => {}
+            Self::Code(_)
+            | Self::Math(_)
+            | Self::Keyboard(_)
+            | Self::Break
+            | Self::SoftBreak
+            | Self::Footnote(_)
+            | Self::Anchor(_) => {}
         }
     }
 }

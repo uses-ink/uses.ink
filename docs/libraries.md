@@ -28,7 +28,7 @@ Evidence, alternatives and risks: `research/deps-engine.md`, `research/deps-fron
 | CLI | `clap` 4.6, `annotate-snippets` 0.12, `tracing`, `notify` 9, `notify-debouncer-full` 0.8, `indicatif` 0.18 | rustc's diagnostic renderer over our own `Diagnostic` |
 | Preview server | `axum` 0.8 (`http1`, `tokio` only), `tokio` 1 (`rt`, `net`) | `ink preview` serves the manifest with its statuses and headers on a one-thread runtime; the same router stack `ink serve` will use, so no second HTTP crate |
 | Dates | `jiff` 1.0 | chrono is unmaintained (0028) |
-| Serialization | `serde` 1, `serde_json` 1 | typed JSON for `--json`, events and `cargo metadata` |
+| Serialization | `serde` 1, `serde_json` 1 | typed JSON for `--json`, events and `cargo metadata`; the engine reads a vault's `.obsidian/app.json` with them (0043) |
 | Tests | `insta`, `proptest`, `similar`, `scraper`, `cargo-deny` | snapshots, properties, licence and advisory gates |
 | Benchmarks | `divan` 0.1 | `#[divan::bench]` beside the code with no harness to write, args and per-sample setup built in, a third of criterion's dependencies; benches live in `benches/`, are built by the gate's clippy and never run by it (docs/research/performance.md) |
 

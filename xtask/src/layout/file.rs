@@ -52,6 +52,7 @@ impl Unsafe {
         "host/wasmtime/src/cache.rs",
         "host/wasmtime/hostile/src/bind.rs",
         "plugin/format/markdown/guest/src/bind.rs",
+        "plugin/format/obsidian/guest/src/bind.rs",
         "plugin/theme/quiet/guest/src/bind.rs",
     ];
 

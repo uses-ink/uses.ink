@@ -414,6 +414,41 @@ fields = { path = "path", reason = "text" }
 message = "the copies of {path} could not be made: {reason}"
 fix = "report it: this is a bug in uses.ink"
 
+[diagnostic."block.id.taken"]
+severity = "warning"
+fault = "author"
+fields = { given = "text", name = "text" }
+message = "the block id `^{given}` is already an anchor of this page, so it is anchored `{name}` and links to `^{given}` reach the first"
+fix = "give the block an id no heading or other block of the page has"
+
+[diagnostic."embed.target.cycle"]
+severity = "warning"
+fault = "author"
+fields = { written = "text", files = "paths" }
+message = "`{written}` is embedded inside itself, through {files}, so the inner embed is shown as a link"
+fix = "remove one of the embeds"
+
+[diagnostic."embed.anchor.missing"]
+severity = "warning"
+fault = "author"
+fields = { written = "text" }
+message = "`{written}` names no heading or block of the page it embeds, so it is shown as a link"
+fix = "write the text of a heading of that page, or a block id it has"
+
+[diagnostic."embed.budget.count"]
+severity = "warning"
+fault = "author"
+fields = { written = "text", limit = "count" }
+message = "the page embeds more than {limit} pages, embeds inside embeds counted, so `{written}` is shown as a link"
+fix = "embed fewer pages, or link to some of them"
+
+[diagnostic."vault.settings.invalid"]
+severity = "warning"
+fault = "author"
+fields = { path = "path", reason = "text" }
+message = "`{path}` is not Obsidian's settings as uses.ink reads them: {reason}"
+fix = "fix the file, or let Obsidian write it again; until then attachments resolve as if no attachment folder were set"
+
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"
@@ -435,6 +470,35 @@ fix = "give the footnotes names that differ in their letters or digits"
 [notice."callout.kind.unknown"]
 fields = { kind = "text" }
 message = "the callout kind `{kind}` has no name a theme can use, so it is shown as a note"
+
+[notice."callout.metadata.ignored"]
+fields = { written = "text" }
+message = "the callout metadata `{written}` styles a callout in Obsidian's own stylesheets, so it is not kept"
+
+[notice."embed.inline.linked"]
+fields = { written = "text" }
+message = "`{written}` is embedded among other text, so it is shown as a link"
+fix = "put the embed in a paragraph of its own to show the page"
+
+[notice."embed.size.ignored"]
+fields = { written = "text" }
+message = "the size `{written}` of an embedded image is not kept: the theme sizes images"
+
+[notice."embed.file.linked"]
+fields = { written = "text" }
+message = "`{written}` is neither an image nor a note, so it is linked rather than embedded"
+
+[notice."embed.footnote.dropped"]
+fields = { written = "text" }
+message = "the footnotes of the page `{written}` embeds are not carried into this page, so their references are removed"
+
+[notice."link.target.attached"]
+fields = { written = "text", target = "path", candidates = "paths" }
+message = "`{written}` could be any of {candidates}, so it is taken as `{target}`, the one in the vault's attachment folder"
+fix = "write the path of the one you mean"
+
+[notice."format.obsidian.chosen"]
+message = "the folder holds `.obsidian/`, so its markdown is read as Obsidian's"
 
 [notice."site.home.generated"]
 message = "no home page was found, so the home page lists every page"

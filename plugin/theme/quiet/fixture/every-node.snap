@@ -1,6 +1,6 @@
 ---
 source: plugin/theme/quiet/tests/render.rs
-assertion_line: 160
+assertion_line: 178
 ---
 <!doctype html>
 <html lang="en">
@@ -167,6 +167,26 @@ Titled</p>
 <p>
 noted</p>
 </aside>
+<details class="quiet-callout quiet-tip">
+<summary class="quiet-label">
+Folded</summary>
+<p>
+hidden at first</p>
+</details>
+<details class="quiet-callout" open>
+<summary class="quiet-label">
+Note</summary>
+<p>
+open</p>
+</details>
+<p>
+A block with an id.<span id="block">
+</span>
+</p>
+<div class="quiet-embed">
+<p>
+embedded</p>
+</div>
 <div class="quiet-math">
 <math display="block">
 <munder>

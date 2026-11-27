@@ -1,0 +1,82 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/html.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Allowed "
+          },
+          {
+            "keyboard": "Ctrl"
+          },
+          {
+            "text": " and "
+          },
+          {
+            "highlight": [
+              {
+                "text": "marked"
+              }
+            ]
+          },
+          {
+            "text": ", removed span."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "span"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        57,
+        73
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "html.element.stripped": {
+          "element": "script"
+        }
+      },
+      "subject": {
+        "file": "html.md"
+      },
+      "span": [
+        87,
+        95
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

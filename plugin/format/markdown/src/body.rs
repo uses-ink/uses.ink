@@ -16,6 +16,9 @@ use std::fmt;
 use comrak::nodes::{AstNode, NodeValue};
 use model::{Document, Footnote, Spanned};
 
+pub use inline::Plain;
+
+use crate::dialect::{Callouts, Dialect, Extension};
 use crate::error::{DEPTH, Error, Report};
 use crate::file::File;
 use name::Names;
@@ -37,7 +40,7 @@ pub(crate) trait Node: Sized {
     type Open: Frame<Node = Self>;
 
     /// Reads the comrak node `child` into `run`.
-    fn read<'a>(child: &'a AstNode<'a>, builder: &mut Builder<'_>, run: &mut Stack<Self::Open>);
+    fn read<'a, D: Dialect>(child: &'a AstNode<'a>, builder: &mut Builder<'_, D>, run: &mut Stack<Self::Open>);
 
     /// What a run nested too deep keeps of the children of `parent`: their text.
     fn flatten<'a>(parent: &'a AstNode<'a>) -> Option<Self>;
@@ -58,50 +61,61 @@ pub(crate) trait ToModel {
     fn to_model(&self) -> Self::Model;
 }
 
-/// State while building one document from comrak's tree.
+/// State while building one document from comrak's tree, in dialect `D`.
 #[derive(Debug)]
-pub(crate) struct Builder<'a> {
+pub(crate) struct Builder<'a, D> {
     positions: Positions<'a>,
     names: Names,
     report: &'a mut Report,
+    dialect: &'a mut D,
     heading: Option<Spanned<String>>,
     /// Footnote definitions, in the order comrak gives them: by first reference.
     footnotes: Vec<Footnote>,
     depth: usize,
+    /// How many links the walk is inside: a link's text is not the body's own text, so the
+    /// dialect does not read meaning out of it.
+    linked: usize,
 }
 
-impl<'a> Builder<'a> {
-    /// Reads the body of `file`, every problem into `report`.
-    pub(crate) fn read(file: &File<'a>, report: &'a mut Report) -> Body {
+impl<'a, D: Dialect> Builder<'a, D> {
+    /// Reads the body of `file` in `dialect`, every problem into `report`.
+    pub(crate) fn read(file: &File<'a>, report: &'a mut Report, dialect: &'a mut D) -> Body {
         let (Some(text), Some(positions)) = (file.text.get(file.body..), Positions::new(file.text, file.body)) else {
             return Body::default();
         };
         let arena = comrak::Arena::new();
         let root = comrak::parse_document(&arena, text, &Self::options());
+        let names = Names::default();
         let mut builder =
-            Self { positions, names: Names::default(), report, heading: None, footnotes: Vec::new(), depth: 0 };
+            Self { positions, names, report, dialect, heading: None, footnotes: Vec::new(), depth: 0, linked: 0 };
         let blocks = builder.run(root);
         Body { document: Document::new(blocks).with_footnotes(builder.footnotes), heading: builder.heading }
     }
 
-    /// The syntax the format reads: `CommonMark` and the extensions the crate docs list.
+    /// The syntax the dialect reads: `CommonMark`, the extensions every dialect reads, and the
+    /// ones its [`crate::dialect::Syntax`] turns on.
     fn options() -> comrak::Options<'static> {
+        let syntax = D::SYNTAX;
         let mut options = comrak::Options::default();
         let extension = &mut options.extension;
         extension.strikethrough = true;
         extension.table = true;
         extension.autolink = true;
-        extension.alerts = true;
+        extension.alerts = syntax.callouts == Callouts::Alerts;
+        extension.ofm_callouts = syntax.callouts == Callouts::Folding;
         extension.math_dollars = true;
         extension.math_dollars_block = true;
         extension.math_code = true;
         extension.footnotes = true;
         extension.tasklist = true;
         extension.highlight = true;
-        extension.superscript = true;
+        extension.superscript = syntax.has(Extension::Scripts);
         // `~x~` is subscript, so strikethrough is `~~x~~` only
-        extension.subscript = true;
-        extension.description_lists = true;
+        extension.subscript = syntax.has(Extension::Scripts);
+        extension.description_lists = syntax.has(Extension::Definitions);
+        extension.wikilinks_title_after_pipe = syntax.has(Extension::Wikilinks);
+        extension.ofm_block_ids = syntax.has(Extension::BlockIds);
+        extension.ofm_comments = syntax.has(Extension::Comments);
         options
     }
 

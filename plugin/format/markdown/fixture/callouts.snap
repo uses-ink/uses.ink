@@ -1,5 +1,5 @@
 ---
-source: plugin/format/markdown/tests/fixture.rs
+source: fixture/src/lib.rs
 input_file: plugin/format/markdown/fixture/callouts.md
 ---
 {
@@ -17,7 +17,8 @@ input_file: plugin/format/markdown/fixture/callouts.md
                 }
               ]
             }
-          ]
+          ],
+          "folding": "fixed"
         }
       },
       {
@@ -46,7 +47,8 @@ input_file: plugin/format/markdown/fixture/callouts.md
                 }
               ]
             }
-          ]
+          ],
+          "folding": "fixed"
         }
       },
       {
@@ -61,7 +63,8 @@ input_file: plugin/format/markdown/fixture/callouts.md
                 }
               ]
             }
-          ]
+          ],
+          "folding": "fixed"
         }
       },
       {
@@ -89,7 +92,8 @@ input_file: plugin/format/markdown/fixture/callouts.md
                 "tight": true
               }
             }
-          ]
+          ],
+          "folding": "fixed"
         }
       },
       {
@@ -104,7 +108,8 @@ input_file: plugin/format/markdown/fixture/callouts.md
                 }
               ]
             }
-          ]
+          ],
+          "folding": "fixed"
         }
       },
       {
@@ -136,6 +141,7 @@ input_file: plugin/format/markdown/fixture/callouts.md
     "kind": null,
     "description": null,
     "language": null,
+    "aliases": null,
     "block": null
   },
   "heading": null,

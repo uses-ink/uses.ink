@@ -26,15 +26,16 @@ impl Components {
     /// Where the components are written, relative to the root.
     pub(crate) const DIR: &'static str = "target/plugin";
 
-    const GUESTS: [Guest; 3] = [
+    const GUESTS: [Guest; 4] = [
         Guest { package: "uses-ink-format-markdown-guest", name: "format-markdown" },
+        Guest { package: "uses-ink-format-obsidian-guest", name: "format-obsidian" },
         Guest { package: "uses-ink-theme-quiet-guest", name: "theme-quiet" },
         Guest { package: "uses-ink-host-wasmtime-hostile", name: "hostile" },
     ];
 
-    const BUILD: Cargo<[&'static str; 3]> = Cargo {
+    const BUILD: Cargo<[&'static str; 4]> = Cargo {
         command: Command::Build,
-        scope: [Self::GUESTS[0].package, Self::GUESTS[1].package, Self::GUESTS[2].package],
+        scope: [Self::GUESTS[0].package, Self::GUESTS[1].package, Self::GUESTS[2].package, Self::GUESTS[3].package],
         flags: &[Flag::Component],
         target: Target::Browser,
     };

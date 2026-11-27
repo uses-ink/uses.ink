@@ -45,8 +45,8 @@ pub use code::{AnyCode, AnyDecision, AnyOf, Code, Each, Family, Keyed, Typed, Un
 pub use decision::{Alternative, Decision, DefaultReason, Evidence, Rejection};
 pub use diagnostic::{Diagnostic, Fault, Notice, Record, Said, Severity};
 pub use document::{
-    Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Footnote, FootnoteName, ImageSource, Inline,
-    Item, Level, LevelError, LinkTarget, Task, Visit,
+    Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Folding, Footnote, FootnoteName, ImageSource,
+    Inline, Item, Level, LevelError, LinkTarget, Task, Visit,
 };
 pub use format::{Front, Read, Spanned};
 pub use generated::{Announcement, Problem};

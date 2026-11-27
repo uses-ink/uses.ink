@@ -1,0 +1,20 @@
+[package]
+name = "uses-ink-format-obsidian"
+description = "The obsidian format: one note of an Obsidian vault, markdown with wikilinks, embeds, callouts, block ids and tags, into a typed document"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+format-markdown.workspace = true
+model.workspace = true
+
+[dev-dependencies]
+fixture.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

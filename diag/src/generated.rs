@@ -167,6 +167,31 @@ impl Message<'_> {
             Problem::ImageEncodeFailed { path, reason, .. } => {
                 write!(out, "the copies of {path} could not be made: {reason}")
             }
+            Problem::BlockIdTaken { given, name, .. } => {
+                write!(
+                    out,
+                    "the block id `^{given}` is already an anchor of this page, so it is anchored `{name}` and links to `^{given}` reach the first"
+                )
+            }
+            Problem::EmbedTargetCycle { written, files, .. } => {
+                let files = Paths(files);
+                write!(
+                    out,
+                    "`{written}` is embedded inside itself, through {files}, so the inner embed is shown as a link"
+                )
+            }
+            Problem::EmbedAnchorMissing { written, .. } => {
+                write!(out, "`{written}` names no heading or block of the page it embeds, so it is shown as a link")
+            }
+            Problem::EmbedBudgetCount { limit, written, .. } => {
+                write!(
+                    out,
+                    "the page embeds more than {limit} pages, embeds inside embeds counted, so `{written}` is shown as a link"
+                )
+            }
+            Problem::VaultSettingsInvalid { path, reason, .. } => {
+                write!(out, "`{path}` is not Obsidian's settings as uses.ink reads them: {reason}")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -206,6 +231,37 @@ impl Message<'_> {
             }
             Announcement::CalloutKindUnknown { kind, .. } => {
                 write!(out, "the callout kind `{kind}` has no name a theme can use, so it is shown as a note")
+            }
+            Announcement::CalloutMetadataIgnored { written, .. } => {
+                write!(
+                    out,
+                    "the callout metadata `{written}` styles a callout in Obsidian's own stylesheets, so it is not kept"
+                )
+            }
+            Announcement::EmbedInlineLinked { written, .. } => {
+                write!(out, "`{written}` is embedded among other text, so it is shown as a link")
+            }
+            Announcement::EmbedSizeIgnored { written, .. } => {
+                write!(out, "the size `{written}` of an embedded image is not kept: the theme sizes images")
+            }
+            Announcement::EmbedFileLinked { written, .. } => {
+                write!(out, "`{written}` is neither an image nor a note, so it is linked rather than embedded")
+            }
+            Announcement::EmbedFootnoteDropped { written, .. } => {
+                write!(
+                    out,
+                    "the footnotes of the page `{written}` embeds are not carried into this page, so their references are removed"
+                )
+            }
+            Announcement::LinkTargetAttached { written, candidates, target, .. } => {
+                let candidates = Paths(candidates);
+                write!(
+                    out,
+                    "`{written}` could be any of {candidates}, so it is taken as `{target}`, the one in the vault's attachment folder"
+                )
+            }
+            Announcement::FormatObsidianChosen => {
+                write!(out, "the folder holds `.obsidian/`, so its markdown is read as Obsidian's")
             }
             Announcement::SiteHomeGenerated => {
                 write!(out, "no home page was found, so the home page lists every page")
@@ -353,6 +409,11 @@ impl Fix<'_> {
             Problem::ImageBudgetPixels { .. } => true,
             Problem::ImageDecodeFailed { .. } => true,
             Problem::ImageEncodeFailed { .. } => true,
+            Problem::BlockIdTaken { .. } => true,
+            Problem::EmbedTargetCycle { .. } => true,
+            Problem::EmbedAnchorMissing { .. } => true,
+            Problem::EmbedBudgetCount { .. } => true,
+            Problem::VaultSettingsInvalid { .. } => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -369,6 +430,13 @@ impl Fix<'_> {
             Announcement::FootnoteNameGenerated { .. } => false,
             Announcement::FootnoteNameTaken { .. } => true,
             Announcement::CalloutKindUnknown { .. } => false,
+            Announcement::CalloutMetadataIgnored { .. } => false,
+            Announcement::EmbedInlineLinked { .. } => true,
+            Announcement::EmbedSizeIgnored { .. } => false,
+            Announcement::EmbedFileLinked { .. } => false,
+            Announcement::EmbedFootnoteDropped { .. } => false,
+            Announcement::LinkTargetAttached { .. } => true,
+            Announcement::FormatObsidianChosen => false,
             Announcement::SiteHomeGenerated => true,
             Announcement::FactDateBound { .. } => true,
             Announcement::FeedPostUndated => true,
@@ -535,6 +603,22 @@ impl Fix<'_> {
             Problem::ImageEncodeFailed { .. } => {
                 write!(out, "report it: this is a bug in uses.ink")
             }
+            Problem::BlockIdTaken { .. } => {
+                write!(out, "give the block an id no heading or other block of the page has")
+            }
+            Problem::EmbedTargetCycle { .. } => write!(out, "remove one of the embeds"),
+            Problem::EmbedAnchorMissing { .. } => {
+                write!(out, "write the text of a heading of that page, or a block id it has")
+            }
+            Problem::EmbedBudgetCount { .. } => {
+                write!(out, "embed fewer pages, or link to some of them")
+            }
+            Problem::VaultSettingsInvalid { .. } => {
+                write!(
+                    out,
+                    "fix the file, or let Obsidian write it again; until then attachments resolve as if no attachment folder were set"
+                )
+            }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")
             }
@@ -564,6 +648,17 @@ impl Fix<'_> {
                 write!(out, "give the footnotes names that differ in their letters or digits")
             }
             Announcement::CalloutKindUnknown { .. } => Ok(()),
+            Announcement::CalloutMetadataIgnored { .. } => Ok(()),
+            Announcement::EmbedInlineLinked { .. } => {
+                write!(out, "put the embed in a paragraph of its own to show the page")
+            }
+            Announcement::EmbedSizeIgnored { .. } => Ok(()),
+            Announcement::EmbedFileLinked { .. } => Ok(()),
+            Announcement::EmbedFootnoteDropped { .. } => Ok(()),
+            Announcement::LinkTargetAttached { .. } => {
+                write!(out, "write the path of the one you mean")
+            }
+            Announcement::FormatObsidianChosen => Ok(()),
             Announcement::SiteHomeGenerated => {
                 write!(out, "add index.md or README.md at the root, or pin `site.home`")
             }

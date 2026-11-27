@@ -1,14 +1,20 @@
 //! Finding the file a link names: a path relative to the page or, with a leading `/`, to the
-//! root; then the same path with any extension; then a folder's index; then, for a bare name, a
-//! unique file name anywhere under the root. More than one match is ambiguous, never a guess.
+//! root; then the same path with any extension; then a folder's index; then, anywhere under the
+//! root, the files a name or a partial path names (a bare name: a file of that name or stem, or
+//! a page of that alias; a path with a `/`: a file whose path ends with it, with or without its
+//! extension), written case for case first and then in any case. Obsidian resolves wikilinks
+//! this way, by the shortest path that is unique. More than one match is ambiguous, never a
+//! guess, unless exactly one of them is in the vault's attachment folder.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use model::{ContentPath, Entry};
 
 use crate::interpret::decide::Filed;
 use crate::interpret::file::name::Name;
-use crate::interpret::tree::Scope;
+use crate::interpret::file::read::Source;
+use crate::interpret::link::vault::Attachments;
+use crate::interpret::tree::{InRoot, Scope};
 
 /// A link's target as the author wrote it.
 #[derive(Clone, Copy, Debug)]
@@ -75,6 +81,9 @@ pub(crate) enum Found {
     Missing,
     /// Every file it could name, in path order.
     Ambiguous(Vec<ContentPath>),
+    /// What the one of several files in the vault's attachment folder is, and every file it
+    /// could name, in path order: settled, and to be said.
+    Settled(Box<Found>, Vec<ContentPath>),
 }
 
 /// Everything a link can point at.
@@ -86,6 +95,44 @@ pub(crate) struct Targets<'a> {
     /// Files a format read.
     pub(crate) pages: BTreeSet<ContentPath>,
     pub(crate) published: BTreeSet<ContentPath>,
+    pub(crate) aliases: Aliases,
+    /// The vault's attachment folder, which settles a name several files share.
+    pub(crate) attachments: Option<Attachments>,
+}
+
+/// The pages each alias names (frontmatter `aliases`), by the alias in lower case.
+#[derive(Debug, Default)]
+pub(crate) struct Aliases(BTreeMap<String, BTreeSet<ContentPath>>);
+
+impl<'a> FromIterator<&'a Source> for Aliases {
+    fn from_iter<I: IntoIterator<Item = &'a Source>>(sources: I) -> Self {
+        let mut aliases = Self::default();
+        for source in sources {
+            let names = source.read.front.aliases.iter().flat_map(|aliases| &aliases.value);
+            for name in names {
+                aliases.0.entry(name.trim().to_lowercase()).or_default().insert(source.path.clone());
+            }
+        }
+        aliases
+    }
+}
+
+/// How a name is compared with a file's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Case {
+    /// Letter for letter.
+    Kept,
+    /// Without regard to case, as Obsidian compares names.
+    Folded,
+}
+
+impl Case {
+    fn same(self, one: &str, other: &str) -> bool {
+        match self {
+            Self::Kept => one == other,
+            Self::Folded => one.to_lowercase() == other.to_lowercase(),
+        }
+    }
 }
 
 impl Targets<'_> {
@@ -107,14 +154,62 @@ impl Targets<'_> {
             })
             .cloned()
             .collect();
-        if found.is_empty() && !decoded.contains('/') {
-            found = self.named(&decoded);
+        for case in [Case::Kept, Case::Folded] {
+            if found.is_empty() {
+                found = self.anywhere(&decoded, case);
+            }
+        }
+        if found.len() > 1
+            && let Some(attachments) = &self.attachments
+        {
+            let held: Vec<&ContentPath> =
+                found.iter().filter(|path| attachments.holds(self.scope, from, path)).collect();
+            if let [only] = held.as_slice() {
+                let chosen = self.classify((*only).clone());
+                return Found::Settled(Box::new(chosen), found);
+            }
         }
         match found.len() {
             0 => Found::Missing,
             1 => found.pop().map_or(Found::Missing, |path| self.classify(path)),
             _ => Found::Ambiguous(found),
         }
+    }
+
+    /// Files anywhere under the root that `written` names, compared in `case`: by name, stem or
+    /// alias for a bare name, by the end of their path for a path.
+    fn anywhere(&self, written: &str, case: Case) -> Vec<ContentPath> {
+        let written = written.trim_start_matches('/');
+        if !written.contains('/') {
+            let mut found = self.named(written, case);
+            let aliased = self.aliases.0.iter().filter(|(alias, _)| case.same(alias, &written.to_lowercase()));
+            for path in aliased.flat_map(|(_, paths)| paths) {
+                if !found.contains(path) {
+                    found.push(path.clone());
+                }
+            }
+            found.sort();
+            return found;
+        }
+        let ends = |path: &str| {
+            path.len() >= written.len()
+                && path.get(path.len() - written.len()..).is_some_and(|end| case.same(end, written))
+                && (path.len() == written.len()
+                    || path.get(..path.len() - written.len()).is_some_and(|start| start.ends_with('/')))
+        };
+        self.scope
+            .inside
+            .iter()
+            .filter(|file| {
+                let relative = file.relative.as_str();
+                let bare = relative
+                    .strip_suffix(file.relative.extension().unwrap_or_default())
+                    .and_then(|bare| bare.strip_suffix('.'));
+                ends(relative) || bare.is_some_and(ends)
+            })
+            .map(InRoot::path)
+            .cloned()
+            .collect()
     }
 
     fn tree(&self) -> &[Entry] {
@@ -144,13 +239,13 @@ impl Targets<'_> {
         self.tree().binary_search_by(|entry| entry.path.cmp(path)).is_ok()
     }
 
-    /// Files under the root whose name or stem is `name`.
-    fn named(&self, name: &str) -> Vec<ContentPath> {
+    /// Files under the root whose name or stem is `name`, compared in `case`.
+    fn named(&self, name: &str, case: Case) -> Vec<ContentPath> {
         self.scope
             .inside
             .iter()
             .map(Filed::path)
-            .filter(|path| path.file_name() == name || path.stem() == name)
+            .filter(|path| case.same(path.file_name(), name) || case.same(path.stem(), name))
             .cloned()
             .collect()
     }

@@ -19,6 +19,7 @@ wasmtime.workspace = true
 [dev-dependencies]
 host-image.workspace = true
 format-markdown.workspace = true
+format-obsidian.workspace = true
 theme-quiet.workspace = true
 
 [lints]

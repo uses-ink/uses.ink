@@ -69,6 +69,7 @@ input_file: plugin/format/markdown/fixture/footnote-collide.md
     "kind": null,
     "description": null,
     "language": null,
+    "aliases": null,
     "block": null
   },
   "heading": null,

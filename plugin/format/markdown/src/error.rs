@@ -45,6 +45,13 @@ pub(crate) enum Error {
     },
     /// Blocks or inlines nested past [`DEPTH`], kept as their text.
     Nested,
+    /// A block id whose slug a heading or another block id took before it.
+    Taken {
+        /// The id as written, without its `^`.
+        given: String,
+        /// The anchor it got instead.
+        anchor: model::Slug,
+    },
 }
 
 impl fmt::Display for Error {
@@ -62,6 +69,7 @@ impl fmt::Display for Error {
             Self::Conflict { key, other } => write!(out, "`{key}` sets the same thing as `{other}` before it"),
             Self::Stripped { element } => write!(out, "`<{element}>` is not allowed"),
             Self::Nested => write!(out, "nested more than {DEPTH} deep"),
+            Self::Taken { given, anchor } => write!(out, "`^{given}` is taken, so it is anchored `{anchor}`"),
         }
     }
 }
@@ -72,7 +80,7 @@ impl std::error::Error for Error {
             Self::Encoding(encoding) => Some(encoding),
             Self::Yaml { source, .. } => Some(source),
             Self::Value { source, .. } => Some(source),
-            Self::Unclosed | Self::Conflict { .. } | Self::Stripped { .. } | Self::Nested => None,
+            Self::Unclosed | Self::Conflict { .. } | Self::Stripped { .. } | Self::Nested | Self::Taken { .. } => None,
         }
     }
 }
@@ -92,6 +100,7 @@ impl From<Error> for Problem {
             }
             Error::Stripped { element } => Self::HtmlElementStripped { element },
             Error::Nested => Self::PageNestingDeep { limit: DEPTH as u64 },
+            Error::Taken { given, anchor } => Self::BlockIdTaken { given, name: anchor.to_string() },
         }
     }
 }

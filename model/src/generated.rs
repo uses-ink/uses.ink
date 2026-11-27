@@ -378,6 +378,44 @@ pub enum Problem {
         /// Why, as the part that refused it says.
         reason: String,
     },
+    /// `block.id.taken`: the block id `^{given}` is already an anchor of this page, so it is anchored `{name}` and links to `^{given}` reach the first
+    #[serde(rename = "block.id.taken")]
+    BlockIdTaken {
+        /// The name as the author wrote it.
+        given: String,
+        /// The name given instead.
+        name: String,
+    },
+    /// `embed.target.cycle`: `{written}` is embedded inside itself, through {files}, so the inner embed is shown as a link
+    #[serde(rename = "embed.target.cycle")]
+    EmbedTargetCycle {
+        /// The text, as written.
+        written: String,
+        /// Every file involved, in path order.
+        files: Vec<ContentPath>,
+    },
+    /// `embed.anchor.missing`: `{written}` names no heading or block of the page it embeds, so it is shown as a link
+    #[serde(rename = "embed.anchor.missing")]
+    EmbedAnchorMissing {
+        /// The text, as written.
+        written: String,
+    },
+    /// `embed.budget.count`: the page embeds more than {limit} pages, embeds inside embeds counted, so `{written}` is shown as a link
+    #[serde(rename = "embed.budget.count")]
+    EmbedBudgetCount {
+        /// The text, as written.
+        written: String,
+        /// The most that is allowed.
+        limit: u64,
+    },
+    /// `vault.settings.invalid`: `{path}` is not Obsidian's settings as uses.ink reads them: {reason}
+    #[serde(rename = "vault.settings.invalid")]
+    VaultSettingsInvalid {
+        /// The file.
+        path: ContentPath,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -489,6 +527,11 @@ impl Problem {
         "image.budget.pixels",
         "image.decode.failed",
         "image.encode.failed",
+        "block.id.taken",
+        "embed.target.cycle",
+        "embed.anchor.missing",
+        "embed.budget.count",
+        "vault.settings.invalid",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -553,6 +596,11 @@ impl Problem {
             Self::ImageBudgetPixels { .. } => "image.budget.pixels",
             Self::ImageDecodeFailed { .. } => "image.decode.failed",
             Self::ImageEncodeFailed { .. } => "image.encode.failed",
+            Self::BlockIdTaken { .. } => "block.id.taken",
+            Self::EmbedTargetCycle { .. } => "embed.target.cycle",
+            Self::EmbedAnchorMissing { .. } => "embed.anchor.missing",
+            Self::EmbedBudgetCount { .. } => "embed.budget.count",
+            Self::VaultSettingsInvalid { .. } => "vault.settings.invalid",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -618,6 +666,11 @@ impl Problem {
             Self::ImageBudgetPixels { .. } => Severity::Error,
             Self::ImageDecodeFailed { .. } => Severity::Error,
             Self::ImageEncodeFailed { .. } => Severity::Error,
+            Self::BlockIdTaken { .. } => Severity::Warning,
+            Self::EmbedTargetCycle { .. } => Severity::Warning,
+            Self::EmbedAnchorMissing { .. } => Severity::Warning,
+            Self::EmbedBudgetCount { .. } => Severity::Warning,
+            Self::VaultSettingsInvalid { .. } => Severity::Warning,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -683,6 +736,11 @@ impl Problem {
             Self::ImageBudgetPixels { .. } => Fault::Author,
             Self::ImageDecodeFailed { .. } => Fault::Author,
             Self::ImageEncodeFailed { .. } => Fault::Ours,
+            Self::BlockIdTaken { .. } => Fault::Author,
+            Self::EmbedTargetCycle { .. } => Fault::Author,
+            Self::EmbedAnchorMissing { .. } => Fault::Author,
+            Self::EmbedBudgetCount { .. } => Fault::Author,
+            Self::VaultSettingsInvalid { .. } => Fault::Author,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -732,6 +790,49 @@ pub enum Announcement {
         /// The kind, as written.
         kind: String,
     },
+    /// `callout.metadata.ignored`: the callout metadata `{written}` styles a callout in Obsidian's own stylesheets, so it is not kept
+    #[serde(rename = "callout.metadata.ignored")]
+    CalloutMetadataIgnored {
+        /// The text, as written.
+        written: String,
+    },
+    /// `embed.inline.linked`: `{written}` is embedded among other text, so it is shown as a link
+    #[serde(rename = "embed.inline.linked")]
+    EmbedInlineLinked {
+        /// The text, as written.
+        written: String,
+    },
+    /// `embed.size.ignored`: the size `{written}` of an embedded image is not kept: the theme sizes images
+    #[serde(rename = "embed.size.ignored")]
+    EmbedSizeIgnored {
+        /// The text, as written.
+        written: String,
+    },
+    /// `embed.file.linked`: `{written}` is neither an image nor a note, so it is linked rather than embedded
+    #[serde(rename = "embed.file.linked")]
+    EmbedFileLinked {
+        /// The text, as written.
+        written: String,
+    },
+    /// `embed.footnote.dropped`: the footnotes of the page `{written}` embeds are not carried into this page, so their references are removed
+    #[serde(rename = "embed.footnote.dropped")]
+    EmbedFootnoteDropped {
+        /// The text, as written.
+        written: String,
+    },
+    /// `link.target.attached`: `{written}` could be any of {candidates}, so it is taken as `{target}`, the one in the vault's attachment folder
+    #[serde(rename = "link.target.attached")]
+    LinkTargetAttached {
+        /// The text, as written.
+        written: String,
+        /// The file it points at.
+        target: ContentPath,
+        /// Every file it could mean, in path order.
+        candidates: Vec<ContentPath>,
+    },
+    /// `format.obsidian.chosen`: the folder holds `.obsidian/`, so its markdown is read as Obsidian's
+    #[serde(rename = "format.obsidian.chosen")]
+    FormatObsidianChosen,
     /// `site.home.generated`: no home page was found, so the home page lists every page
     #[serde(rename = "site.home.generated")]
     SiteHomeGenerated,
@@ -880,6 +981,13 @@ impl Announcement {
         "footnote.name.generated",
         "footnote.name.taken",
         "callout.kind.unknown",
+        "callout.metadata.ignored",
+        "embed.inline.linked",
+        "embed.size.ignored",
+        "embed.file.linked",
+        "embed.footnote.dropped",
+        "link.target.attached",
+        "format.obsidian.chosen",
         "site.home.generated",
         "fact.date.bound",
         "feed.post.undated",
@@ -912,6 +1020,13 @@ impl Announcement {
             Self::FootnoteNameGenerated { .. } => "footnote.name.generated",
             Self::FootnoteNameTaken { .. } => "footnote.name.taken",
             Self::CalloutKindUnknown { .. } => "callout.kind.unknown",
+            Self::CalloutMetadataIgnored { .. } => "callout.metadata.ignored",
+            Self::EmbedInlineLinked { .. } => "embed.inline.linked",
+            Self::EmbedSizeIgnored { .. } => "embed.size.ignored",
+            Self::EmbedFileLinked { .. } => "embed.file.linked",
+            Self::EmbedFootnoteDropped { .. } => "embed.footnote.dropped",
+            Self::LinkTargetAttached { .. } => "link.target.attached",
+            Self::FormatObsidianChosen => "format.obsidian.chosen",
             Self::SiteHomeGenerated => "site.home.generated",
             Self::FactDateBound { .. } => "fact.date.bound",
             Self::FeedPostUndated => "feed.post.undated",
@@ -1093,6 +1208,21 @@ impl From<&Problem> for Coded {
             Problem::ImageEncodeFailed { path, reason, .. } => {
                 Coded::new("image.encode.failed", vec![Field::from(path.clone()), Field::from(reason.clone())])
             }
+            Problem::BlockIdTaken { given, name, .. } => {
+                Coded::new("block.id.taken", vec![Field::from(given.clone()), Field::from(name.clone())])
+            }
+            Problem::EmbedTargetCycle { written, files, .. } => {
+                Coded::new("embed.target.cycle", vec![Field::from(written.clone()), Field::from(files.clone())])
+            }
+            Problem::EmbedAnchorMissing { written, .. } => {
+                Coded::new("embed.anchor.missing", vec![Field::from(written.clone())])
+            }
+            Problem::EmbedBudgetCount { written, limit, .. } => {
+                Coded::new("embed.budget.count", vec![Field::from(written.clone()), Field::from(*limit)])
+            }
+            Problem::VaultSettingsInvalid { path, reason, .. } => {
+                Coded::new("vault.settings.invalid", vec![Field::from(path.clone()), Field::from(reason.clone())])
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -1192,6 +1322,11 @@ impl TryFrom<Coded> for Problem {
             },
             "image.decode.failed" => Self::ImageDecodeFailed { path: fields.next()?, reason: fields.next()? },
             "image.encode.failed" => Self::ImageEncodeFailed { path: fields.next()?, reason: fields.next()? },
+            "block.id.taken" => Self::BlockIdTaken { given: fields.next()?, name: fields.next()? },
+            "embed.target.cycle" => Self::EmbedTargetCycle { written: fields.next()?, files: fields.next()? },
+            "embed.anchor.missing" => Self::EmbedAnchorMissing { written: fields.next()? },
+            "embed.budget.count" => Self::EmbedBudgetCount { written: fields.next()?, limit: fields.next()? },
+            "vault.settings.invalid" => Self::VaultSettingsInvalid { path: fields.next()?, reason: fields.next()? },
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },
@@ -1222,6 +1357,26 @@ impl From<&Announcement> for Coded {
             Announcement::CalloutKindUnknown { kind, .. } => {
                 Coded::new("callout.kind.unknown", vec![Field::from(kind.clone())])
             }
+            Announcement::CalloutMetadataIgnored { written, .. } => {
+                Coded::new("callout.metadata.ignored", vec![Field::from(written.clone())])
+            }
+            Announcement::EmbedInlineLinked { written, .. } => {
+                Coded::new("embed.inline.linked", vec![Field::from(written.clone())])
+            }
+            Announcement::EmbedSizeIgnored { written, .. } => {
+                Coded::new("embed.size.ignored", vec![Field::from(written.clone())])
+            }
+            Announcement::EmbedFileLinked { written, .. } => {
+                Coded::new("embed.file.linked", vec![Field::from(written.clone())])
+            }
+            Announcement::EmbedFootnoteDropped { written, .. } => {
+                Coded::new("embed.footnote.dropped", vec![Field::from(written.clone())])
+            }
+            Announcement::LinkTargetAttached { written, target, candidates, .. } => Coded::new(
+                "link.target.attached",
+                vec![Field::from(written.clone()), Field::from(target.clone()), Field::from(candidates.clone())],
+            ),
+            Announcement::FormatObsidianChosen => Coded::new("format.obsidian.chosen", vec![]),
             Announcement::SiteHomeGenerated => Coded::new("site.home.generated", vec![]),
             Announcement::FactDateBound { decision, bound, .. } => {
                 Coded::new("fact.date.bound", vec![Field::from(*decision), Field::from(bound.clone())])
@@ -1299,6 +1454,15 @@ impl TryFrom<Coded> for Announcement {
             "footnote.name.generated" => Self::FootnoteNameGenerated { name: fields.next()?, given: fields.next()? },
             "footnote.name.taken" => Self::FootnoteNameTaken { name: fields.next()?, given: fields.next()? },
             "callout.kind.unknown" => Self::CalloutKindUnknown { kind: fields.next()? },
+            "callout.metadata.ignored" => Self::CalloutMetadataIgnored { written: fields.next()? },
+            "embed.inline.linked" => Self::EmbedInlineLinked { written: fields.next()? },
+            "embed.size.ignored" => Self::EmbedSizeIgnored { written: fields.next()? },
+            "embed.file.linked" => Self::EmbedFileLinked { written: fields.next()? },
+            "embed.footnote.dropped" => Self::EmbedFootnoteDropped { written: fields.next()? },
+            "link.target.attached" => {
+                Self::LinkTargetAttached { written: fields.next()?, target: fields.next()?, candidates: fields.next()? }
+            }
+            "format.obsidian.chosen" => Self::FormatObsidianChosen,
             "site.home.generated" => Self::SiteHomeGenerated,
             "fact.date.bound" => Self::FactDateBound { decision: fields.next()?, bound: fields.next()? },
             "feed.post.undated" => Self::FeedPostUndated,

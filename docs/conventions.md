@@ -29,6 +29,11 @@ Each word means one thing everywhere: code, CLI, dashboard copy, docs, diagnosti
 | **page** | one routed document on a site | a file |
 | **post** | a dated page in a collection | any page |
 | **format** | a plugin that reads files into pages (markdown, obsidian, typst) | a theme |
+| **dialect** | a flavour of markdown a format reads through the markdown format's setup (Obsidian's) | a format |
+| **vault** | an Obsidian folder of notes, known by its `.obsidian/` | a site |
+| **embed** | another page's content shown in place (`![[Note]]`) | an image |
+| **alias** | another name a link may use for a page (frontmatter `aliases`) | a slug |
+| **attachment** | a vault's file a note embeds, kept in its attachment folder | an asset |
 | **theme** | a plugin that renders pages into files | a format |
 | **decision** | one recorded inference: code, subject, value, evidence, pin | a setting |
 | **pin** | an `ink.toml` entry that fixes a decision | a dashboard setting |

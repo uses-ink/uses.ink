@@ -50,10 +50,15 @@
 //! and each later one is a `frontmatter.key.conflict` diagnostic. `lang` is a language tag
 //! (`en`, `fr-CH`). A key written twice is a `frontmatter.syntax.invalid` diagnostic.
 //!
+//! **Dialects.** [`read`] reads the markdown above. [`read_as`] reads a file in another dialect
+//! of it, such as Obsidian's, through the same comrak setup: a [`dialect::Dialect`] turns on
+//! the syntax it adds and says what its own nodes mean, so a dialect never sees comrak.
+//!
 //! This crate is the format's native core and speaks `uses-ink-model` directly; `guest/` exports
 //! it as the `ink:format` world of a wasm component (decision 0035).
 
 mod body;
+pub mod dialect;
 mod error;
 mod file;
 mod front;
@@ -62,9 +67,10 @@ mod html;
 use model::{ContentPath, Document, Front, Read, Subject};
 
 use body::Builder;
+use dialect::{Dialect, Extension, Markdown};
 use error::Report;
 use file::File;
-use front::{Keys, Yaml};
+use front::{Aliased, Keys, Yaml};
 
 /// Whether a file is markdown: its extension is `md` or `markdown`, in any case.
 pub fn handles(path: &ContentPath) -> bool {
@@ -73,11 +79,20 @@ pub fn handles(path: &ContentPath) -> bool {
 
 /// Reads one markdown file. Pure: the same bytes give the same [`Read`], and no input panics.
 pub fn read(path: &ContentPath, bytes: &[u8]) -> Read {
+    read_as(Markdown, path, bytes)
+}
+
+/// Reads one file in `dialect`. Pure, as [`read`].
+pub fn read_as<D: Dialect>(mut dialect: D, path: &ContentPath, bytes: &[u8]) -> Read {
     let mut report = Report::new(Subject::File(path.clone()));
     let mut read = match File::try_from(bytes) {
         Ok(file) => {
-            let front = Yaml::read::<Keys>(&file, &mut report);
-            let body = Builder::read(&file, &mut report);
+            let front = if D::SYNTAX.has(Extension::Aliases) {
+                Yaml::read::<Aliased>(&file, &mut report)
+            } else {
+                Yaml::read::<Keys>(&file, &mut report)
+            };
+            let body = Builder::read(&file, &mut report, &mut dialect);
             Read::new(body.document, front, body.heading)
         }
         Err(encoding) => {
@@ -88,5 +103,6 @@ pub fn read(path: &ContentPath, bytes: &[u8]) -> Read {
     };
     read.diagnostics = report.diagnostics;
     read.notices = report.notices;
+    dialect.finish(&mut read);
     read
 }

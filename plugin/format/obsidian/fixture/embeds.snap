@@ -1,0 +1,199 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/embeds.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "embed": {
+          "target": {
+            "unresolved": {
+              "written": "Note"
+            }
+          },
+          "blocks": []
+        }
+      },
+      {
+        "embed": {
+          "target": {
+            "unresolved": {
+              "written": "Note#Section"
+            }
+          },
+          "blocks": []
+        }
+      },
+      {
+        "embed": {
+          "target": {
+            "unresolved": {
+              "written": "Note#^block"
+            }
+          },
+          "blocks": []
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "text": "An embed among text "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note"
+                }
+              },
+              "children": [
+                {
+                  "text": "Note"
+                }
+              ]
+            }
+          },
+          {
+            "text": " is a link."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "image": {
+              "source": {
+                "unresolved": {
+                  "written": "photo.png"
+                }
+              },
+              "alt": "photo.png"
+            }
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "image": {
+              "source": {
+                "unresolved": {
+                  "written": "photo.png"
+                }
+              },
+              "alt": "A photo"
+            }
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "image": {
+              "source": {
+                "unresolved": {
+                  "written": "photo.png"
+                }
+              },
+              "alt": "photo.png"
+            }
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "slides.pdf"
+                }
+              },
+              "children": [
+                {
+                  "text": "slides.pdf"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "image": {
+              "source": {
+                "unresolved": {
+                  "written": "folder/diagram.SVG"
+                }
+              },
+              "alt": "diagram.SVG"
+            }
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": [
+    {
+      "announcement": {
+        "embed.inline.linked": {
+          "written": "Note"
+        }
+      },
+      "subject": {
+        "file": "embeds.md"
+      },
+      "span": [
+        68,
+        77
+      ]
+    },
+    {
+      "announcement": {
+        "embed.size.ignored": {
+          "written": "300"
+        }
+      },
+      "subject": {
+        "file": "embeds.md"
+      },
+      "span": [
+        130,
+        148
+      ]
+    },
+    {
+      "announcement": {
+        "embed.file.linked": {
+          "written": "slides.pdf"
+        }
+      },
+      "subject": {
+        "file": "embeds.md"
+      },
+      "span": [
+        150,
+        165
+      ]
+    }
+  ]
+}

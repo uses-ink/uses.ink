@@ -1,5 +1,5 @@
 ---
-source: plugin/format/markdown/tests/fixture.rs
+source: fixture/src/lib.rs
 input_file: plugin/format/markdown/fixture/inlines.md
 ---
 {
@@ -88,6 +88,7 @@ input_file: plugin/format/markdown/fixture/inlines.md
     "kind": null,
     "description": null,
     "language": null,
+    "aliases": null,
     "block": null
   },
   "heading": null,

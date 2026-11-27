@@ -1,0 +1,57 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/tags-only.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Only #inline tags here, #inline twice."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": {
+      "value": [
+        {
+          "slug": "inline",
+          "written": "inline"
+        }
+      ],
+      "span": [
+        30,
+        37
+      ]
+    },
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": {
+      "value": [
+        "One alias"
+      ],
+      "span": [
+        11,
+        20
+      ]
+    },
+    "block": [
+      0,
+      25
+    ]
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

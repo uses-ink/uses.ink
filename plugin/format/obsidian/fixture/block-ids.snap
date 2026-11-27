@@ -1,0 +1,191 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/block-ids.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "intro",
+          "inlines": [
+            {
+              "text": "Intro"
+            }
+          ]
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "text": "A paragraph with an id. "
+          },
+          {
+            "anchor": "first"
+          }
+        ]
+      },
+      {
+        "list": {
+          "ordered": null,
+          "items": [
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "an item "
+                    },
+                    {
+                      "anchor": "item-1"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "task": null,
+              "blocks": [
+                {
+                  "paragraph": [
+                    {
+                      "text": "another"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "tight": true
+        }
+      },
+      {
+        "table": {
+          "alignments": [
+            "none",
+            "none"
+          ],
+          "head": [
+            [
+              {
+                "text": "a"
+              }
+            ],
+            [
+              {
+                "text": "b"
+              }
+            ]
+          ],
+          "rows": [
+            [
+              [
+                {
+                  "text": "1"
+                }
+              ],
+              [
+                {
+                  "text": "2"
+                }
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "anchor": "table"
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "A paragraph claiming a heading's anchor. "
+          },
+          {
+            "anchor": "intro-1"
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Another with the same id. "
+          },
+          {
+            "anchor": "first-1"
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "text": "Not an id: ^ alone, and a^caret."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": null,
+    "block": null
+  },
+  "heading": {
+    "value": "Intro",
+    "span": [
+      0,
+      7
+    ]
+  },
+  "diagnostics": [
+    {
+      "problem": {
+        "block.id.taken": {
+          "given": "intro",
+          "name": "intro-1"
+        }
+      },
+      "subject": {
+        "file": "block-ids.md"
+      },
+      "span": [
+        150,
+        156
+      ],
+      "cause": null
+    },
+    {
+      "problem": {
+        "block.id.taken": {
+          "given": "first",
+          "name": "first-1"
+        }
+      },
+      "subject": {
+        "file": "block-ids.md"
+      },
+      "span": [
+        184,
+        190
+      ],
+      "cause": null
+    }
+  ],
+  "notices": []
+}

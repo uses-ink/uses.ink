@@ -26,6 +26,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-invalid-values.md
     "kind": null,
     "description": null,
     "language": null,
+    "aliases": null,
     "block": [
       0,
       153

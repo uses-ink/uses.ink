@@ -289,6 +289,7 @@ impl TryFrom<&Front> for front::Front {
             kind: Spans(read.kind.as_ref()).mirror(|kind| sited::PageKind::try_from(*kind))?,
             description: Spans(read.description.as_ref()).mirror(text)?,
             language: Spans(read.language.as_ref()).mirror(|language| Ok(language.to_string()))?,
+            aliases: Spans(read.aliases.as_ref()).mirror(|aliases| Ok(aliases.clone()))?,
             block: read.block.map(said::Span::from),
         })
     }
@@ -309,6 +310,7 @@ impl TryFrom<front::Front> for model::Front {
         read.kind = Spans(wire.kind).read(|kind| Ok(PageKind::from(kind)))?;
         read.description = Spans(wire.description).read(Ok)?;
         read.language = Spans(wire.language).read(Written::read)?;
+        read.aliases = Spans(wire.aliases).read(Ok)?;
         read.block = wire.block.map(Span::try_from).transpose()?;
         Ok(read)
     }

@@ -1,0 +1,112 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/tags.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "A note about #rust and #wasm/components, not #2024, not a#b."
+          }
+        ]
+      },
+      {
+        "paragraph": [
+          {
+            "code": "#code"
+          },
+          {
+            "text": " is not a tag, nor "
+          },
+          {
+            "link": {
+              "target": {
+                "anchor": "anchor"
+              },
+              "children": [
+                {
+                  "text": "a link"
+                }
+              ]
+            }
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      {
+        "heading": {
+          "level": 1,
+          "anchor": "heading-with-heading-tag",
+          "inlines": [
+            {
+              "text": "Heading with #heading-tag"
+            }
+          ]
+        }
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": {
+      "value": [
+        {
+          "slug": "rust",
+          "written": "rust"
+        },
+        {
+          "slug": "notes",
+          "written": "notes"
+        },
+        {
+          "slug": "wasm-components",
+          "written": "wasm/components"
+        },
+        {
+          "slug": "heading-tag",
+          "written": "heading-tag"
+        }
+      ],
+      "span": [
+        10,
+        22
+      ]
+    },
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": {
+      "value": [
+        "Second name",
+        "Third"
+      ],
+      "span": [
+        33,
+        54
+      ]
+    },
+    "block": [
+      0,
+      60
+    ]
+  },
+  "heading": {
+    "value": "Heading with #heading-tag",
+    "span": [
+      168,
+      195
+    ]
+  },
+  "diagnostics": [],
+  "notices": []
+}

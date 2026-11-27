@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/theme/quiet/guest"]
+members = ["cli", "config", "diag", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -19,6 +19,7 @@ fixture = { package = "uses-ink-fixture", path = "fixture" }
 diag = { package = "uses-ink-diag", path = "diag" }
 engine = { package = "uses-ink-engine", path = "engine" }
 format-markdown = { package = "uses-ink-format-markdown", path = "plugin/format/markdown" }
+format-obsidian = { package = "uses-ink-format-obsidian", path = "plugin/format/obsidian" }
 freehand = { path = "freehand" }
 host-image = { package = "uses-ink-host-image", path = "host/image" }
 host-native = { package = "uses-ink-host-native", path = "host/native" }

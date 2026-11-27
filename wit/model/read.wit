@@ -18,6 +18,8 @@ interface read {
         kind: option<tuple<page-kind, span>>,
         description: option<tuple<string, span>>,
         language: option<tuple<language, span>>,
+        /// Other names a link may use for the page.
+        aliases: option<tuple<list<string>, span>>,
         /// Where the frontmatter block is.
         block: option<span>,
     }

@@ -1,0 +1,212 @@
+---
+source: fixture/src/lib.rs
+input_file: plugin/format/obsidian/fixture/callouts.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "callout": {
+          "kind": "note",
+          "title": null,
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Plain."
+                }
+              ]
+            }
+          ],
+          "folding": "fixed"
+        }
+      },
+      {
+        "callout": {
+          "kind": "tip",
+          "title": [
+            {
+              "text": "A "
+            },
+            {
+              "emphasis": [
+                {
+                  "text": "titled"
+                }
+              ]
+            },
+            {
+              "text": " tip"
+            }
+          ],
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Body."
+                }
+              ]
+            }
+          ],
+          "folding": "fixed"
+        }
+      },
+      {
+        "callout": {
+          "kind": "warning",
+          "title": [
+            {
+              "text": "Folded"
+            }
+          ],
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Hidden at first."
+                }
+              ]
+            }
+          ],
+          "folding": "closed"
+        }
+      },
+      {
+        "callout": {
+          "kind": {
+            "other": "question"
+          },
+          "title": [
+            {
+              "text": "Open"
+            }
+          ],
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Shown at first."
+                }
+              ]
+            }
+          ],
+          "folding": "open"
+        }
+      },
+      {
+        "callout": {
+          "kind": {
+            "other": "todo"
+          },
+          "title": null,
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "A kind of Obsidian's own."
+                }
+              ]
+            }
+          ],
+          "folding": "fixed"
+        }
+      },
+      {
+        "callout": {
+          "kind": "tip",
+          "title": [
+            {
+              "text": "With metadata"
+            }
+          ],
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Styled in Obsidian."
+                }
+              ]
+            }
+          ],
+          "folding": "fixed"
+        }
+      },
+      {
+        "callout": {
+          "kind": {
+            "other": "my-kind"
+          },
+          "title": null,
+          "blocks": [
+            {
+              "paragraph": [
+                {
+                  "text": "Custom."
+                }
+              ]
+            }
+          ],
+          "folding": "fixed"
+        }
+      },
+      {
+        "callout": {
+          "kind": "note",
+          "title": null,
+          "blocks": [
+            {
+              "callout": {
+                "kind": "tip",
+                "title": null,
+                "blocks": [
+                  {
+                    "paragraph": [
+                      {
+                        "text": "Nested."
+                      }
+                    ]
+                  }
+                ],
+                "folding": "fixed"
+              }
+            }
+          ],
+          "folding": "fixed"
+        }
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": [
+    {
+      "announcement": {
+        "callout.metadata.ignored": {
+          "written": "wide"
+        }
+      },
+      "subject": {
+        "file": "callouts.md"
+      },
+      "span": [
+        167,
+        217
+      ]
+    }
+  ]
+}

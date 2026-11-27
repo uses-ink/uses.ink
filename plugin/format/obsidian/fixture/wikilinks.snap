@@ -1,0 +1,232 @@
+---
+source: fixture/src/lib.rs
+assertion_line: 148
+input_file: plugin/format/obsidian/fixture/wikilinks.md
+---
+{
+  "document": {
+    "blocks": [
+      {
+        "paragraph": [
+          {
+            "text": "Plain "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note"
+                }
+              },
+              "children": [
+                {
+                  "text": "Note"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", aliased "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note"
+                }
+              },
+              "children": [
+                {
+                  "text": "the note"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", to a heading "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note#Some Heading"
+                }
+              },
+              "children": [
+                {
+                  "text": "Note > Some Heading"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", nested"
+          },
+          "soft-break",
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note#Sub part"
+                }
+              },
+              "children": [
+                {
+                  "text": "Note > Sub part"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", to a block "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note#^intro"
+                }
+              },
+              "children": [
+                {
+                  "text": "Note > ^intro"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", on this page "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "#Wikilinks"
+                }
+              },
+              "children": [
+                {
+                  "text": "Wikilinks"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", with a folder"
+          },
+          "soft-break",
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "notes/Other"
+                }
+              },
+              "children": [
+                {
+                  "text": "notes/Other"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", with its extension "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note.md"
+                }
+              },
+              "children": [
+                {
+                  "text": "Note"
+                }
+              ]
+            }
+          },
+          {
+            "text": ", and padded "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Spaced"
+                }
+              },
+              "children": [
+                {
+                  "text": "Spaced"
+                }
+              ]
+            }
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      {
+        "heading": {
+          "level": 2,
+          "anchor": "wikilinks",
+          "inlines": [
+            {
+              "text": "Wikilinks"
+            }
+          ]
+        }
+      },
+      {
+        "paragraph": [
+          {
+            "text": "A markdown link "
+          },
+          {
+            "link": {
+              "target": {
+                "unresolved": {
+                  "written": "Note.md"
+                }
+              },
+              "children": [
+                {
+                  "text": "still works"
+                }
+              ]
+            }
+          },
+          {
+            "text": " and "
+          },
+          {
+            "code": "[[code]]"
+          },
+          {
+            "text": " stays code."
+          }
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "front": {
+    "title": null,
+    "date": null,
+    "updated": null,
+    "slug": null,
+    "tags": null,
+    "publish": null,
+    "draft": null,
+    "kind": null,
+    "description": null,
+    "language": null,
+    "aliases": null,
+    "block": null
+  },
+  "heading": null,
+  "diagnostics": [],
+  "notices": []
+}

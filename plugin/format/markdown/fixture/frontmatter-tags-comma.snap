@@ -1,5 +1,5 @@
 ---
-source: plugin/format/markdown/tests/fixture.rs
+source: fixture/src/lib.rs
 input_file: plugin/format/markdown/fixture/frontmatter-tags-comma.md
 ---
 {
@@ -57,6 +57,7 @@ input_file: plugin/format/markdown/fixture/frontmatter-tags-comma.md
     },
     "description": null,
     "language": null,
+    "aliases": null,
     "block": [
       0,
       63

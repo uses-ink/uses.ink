@@ -1,6 +1,6 @@
 //! The fields of [`Front`]: for each, the keys that set it, the value type that reads it, and
 //! where in `Front` it is held. A keyed code is a field through its own [`Keyed::KEYS`] and
-//! [`Code::Value`]; `draft` and `lang` are fields no file-scoped code is keyed by.
+//! [`Code::Value`]; `draft`, `lang` and `aliases` are fields no file-scoped code is keyed by.
 
 use model::code::{self, Code, Keyed};
 use model::{FromFront, Front, Language, PageKind, Slug, Spanned, Tag, When};
@@ -29,6 +29,24 @@ pub(crate) struct Draft;
 /// `lang:`, the page's language, which the engine reads off the home page for `site.language`.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Lang;
+
+/// `aliases:` (or `alias:`), other names a link may use for the page.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Aliases;
+
+impl Field for Aliases {
+    const KEYS: &'static [&'static str] = &["aliases", "alias"];
+    type Value = Vec<String>;
+    type Held = Vec<String>;
+
+    fn hold(value: Vec<String>) -> Option<Vec<String>> {
+        Some(value)
+    }
+
+    fn slot(front: &mut Front) -> &mut Option<Spanned<Vec<String>>> {
+        &mut front.aliases
+    }
+}
 
 impl Field for code::Title {
     const KEYS: &'static [&'static str] = <Self as Keyed>::KEYS;

@@ -1,19 +1,25 @@
 //! The stage resolving links. Formats leave links to files as written; once every page is
 //! decided, each published page is folded, its links and images pointed at pages, anchors and
 //! assets. A link that names nothing, an unpublished file, a plain file, or several files stays
-//! as written and says why: nothing from an unpublished file reaches a published page.
+//! as written and says why: nothing from an unpublished file reaches a published page. An embed
+//! is resolved as a link is, then filled by [`Embeds`]; one that names no page it can show is a
+//! link in a paragraph of its own.
 
+mod embed;
 mod target;
+mod vault;
 
 use std::collections::BTreeSet;
 
 use model::{
-    Anchor, Block, ContentPath, Diagnostic, ExternalUrl, Fold, ImageSource, Inline, LinkTarget, MediaType, PageId,
-    Problem, Slug, Visit,
+    Anchor, Announcement, Block, ContentPath, Diagnostic, ExternalUrl, Fold, ImageSource, Inline, LinkTarget,
+    MediaType, Notice, PageId, Problem, Slug, Visit,
 };
 
-pub(crate) use target::Targets;
+pub(crate) use embed::Embeds;
+pub(crate) use target::{Aliases, Targets};
 use target::{Found, Written};
+pub(crate) use vault::Settings;
 
 use crate::interpret::file::asset::Uses;
 use crate::interpret::file::read::Source;
@@ -40,21 +46,25 @@ impl Stage<&mut [Source]> for Links<'_> {
                 targets: self.targets,
                 anchors: headings.0,
                 problems: Vec::new(),
+                notices: Vec::new(),
                 used: &mut used,
             };
             let document = std::mem::take(&mut source.read.document);
             let document = resolve.document(document);
-            let problems = resolve.problems;
+            let (problems, notices) = (resolve.problems, resolve.notices);
             source.read.document = document;
             for problem in problems {
                 journal.diagnose(Diagnostic::new(problem).on(source.subject().into()));
+            }
+            for announcement in notices {
+                journal.notice(Notice::new(announcement).on(source.subject().into()));
             }
         }
         used
     }
 }
 
-/// The anchors of a page's headings, at any depth.
+/// The anchors of a page's headings and block ids, at any depth.
 #[derive(Debug, Default)]
 struct Headings(BTreeSet<Anchor>);
 
@@ -64,6 +74,13 @@ impl Visit for Headings {
             self.0.insert(anchor.clone());
         }
         block.walk(self);
+    }
+
+    fn inline(&mut self, inline: &Inline) {
+        if let Inline::Anchor(anchor) = inline {
+            self.0.insert(anchor.clone());
+        }
+        inline.walk(self);
     }
 }
 
@@ -75,10 +92,25 @@ struct Resolve<'a, 'b> {
     /// The page's own anchors, which a `#` link must name.
     anchors: BTreeSet<Anchor>,
     problems: Vec<Problem>,
+    notices: Vec<Announcement>,
     used: &'a mut Uses,
 }
 
 impl Fold for Resolve<'_, '_> {
+    /// An embed resolved as a link; one that names no page is a link to what it names.
+    fn block(&mut self, block: Block) -> Block {
+        let Block::Embed { target: LinkTarget::Unresolved { written }, blocks } = block else {
+            return block.fold(self);
+        };
+        match self.target(Written(&written)) {
+            Some(target @ (LinkTarget::Page { .. } | LinkTarget::Anchor(_))) => Block::Embed { target, blocks },
+            target => {
+                let target = target.unwrap_or(LinkTarget::Unresolved { written: written.clone() });
+                Block::Paragraph(vec![Inline::Link { target, children: vec![Inline::Text(written)] }])
+            }
+        }
+    }
+
     fn link(&mut self, target: LinkTarget, children: Vec<Inline>) -> Inline {
         let target = match target {
             LinkTarget::Unresolved { written } => {
@@ -116,7 +148,7 @@ impl Resolve<'_, '_> {
         if Written(path).is_external() {
             return self.missing(written, ExternalUrl::parse(written.0).ok().map(LinkTarget::External));
         }
-        match self.targets.find(self.from, Written(path)) {
+        match self.settle(written, self.targets.find(self.from, Written(path))) {
             Found::Page(page) => Some(LinkTarget::Page { id: PageId::of(&page), anchor }),
             Found::File(target) => self.refuse(Problem::LinkTargetAsset { written: written.into(), target }),
             found => self.unfound(written, found),
@@ -130,7 +162,7 @@ impl Resolve<'_, '_> {
             return self.missing(written, ExternalUrl::parse(written.0).ok().map(ImageSource::External));
         }
         let (path, _) = written.split();
-        match self.targets.find(self.from, Written(path)) {
+        match self.settle(written, self.targets.find(self.from, Written(path))) {
             Found::File(file) => match MediaType::try_from(&file) {
                 Ok(_) => {
                     self.used.entry(file.clone()).or_insert_with(|| self.from.clone());
@@ -144,6 +176,16 @@ impl Resolve<'_, '_> {
         }
     }
 
+    /// What `found` is, a choice the attachment folder settled said as `link.target.attached`.
+    fn settle(&mut self, written: Written<'_>, found: Found) -> Found {
+        let Found::Settled(chosen, candidates) = found else { return found };
+        if let Found::Page(target) | Found::File(target) | Found::Unpublished(target) = chosen.as_ref() {
+            let target = target.clone();
+            self.notices.push(Announcement::LinkTargetAttached { written: written.into(), target, candidates });
+        }
+        *chosen
+    }
+
     /// The problem of a link that names no file it can show, or several.
     fn unfound<T>(&mut self, written: Written<'_>, found: Found) -> Option<T> {
         match found {
@@ -153,7 +195,7 @@ impl Resolve<'_, '_> {
             Found::Ambiguous(candidates) => {
                 self.refuse(Problem::LinkTargetAmbiguous { written: written.into(), candidates })
             }
-            Found::Missing | Found::Page(_) | Found::File(_) => self.missing(written, None),
+            Found::Missing | Found::Page(_) | Found::File(_) | Found::Settled(..) => self.missing(written, None),
         }
     }
 

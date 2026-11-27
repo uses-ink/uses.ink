@@ -1,0 +1,302 @@
+---
+source: cli/tests/site.rs
+assertion_line: 162
+---
+# exit 0
+{"schema":"uses.event/v1","code":"embed.target.cycle","severity":"warning","file":"Loop.md","line":null,"what":"`Loop.md` is embedded inside itself, through Loop.md and Notes/Rust.md, so the inner embed is shown as a link","why":null,"fix":"remove one of the embeds"}
+{"schema":"uses.event/v1","code":"embed.target.cycle","severity":"warning","file":"Notes/Rust.md","line":null,"what":"`Loop.md` is embedded inside itself, through Notes/Rust.md, Loop.md and Notes/Rust.md, so the inner embed is shown as a link","why":null,"fix":"remove one of the embeds"}
+# result
+{"schema":"uses.build/v1","deploy":"444d591acf12a5f2767f63e6be34469cc052866168a3f8f62f1ba2577b0db210","written":true,"out":"<out>","entries":11,"errors":0,"warnings":2}
+# files
+.ink-manifest.json
+404.html
+attachments/ferris.48.57c8b5bffee92ff9.avif
+attachments/ferris.48.5b6cb8cacc12719c.png
+code.css
+index.html
+loop/index.html
+notes/ownership/index.html
+notes/rust/index.html
+robots.txt
+sitemap.xml
+style.css
+## 404.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found - The garden</title>
+<meta name="description" content="A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust &gt; Borrowing and to a block Rust &gt; ^borrow-rule.">
+<link rel="canonical" href="https://ink.example/404">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Page not found">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The garden">
+<meta property="og:url" content="https://ink.example/404">
+<meta property="og:description" content="A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust &gt; Borrowing and to a block Rust &gt; ^borrow-rule.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">The garden</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/loop">Loop</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Page not found</h1>
+<p>There is no page at this address.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>The garden</p>
+</footer>
+</div>
+</body>
+</html>
+## index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The garden</title>
+<meta name="description" content="A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust &gt; Borrowing and to a block Rust &gt; ^borrow-rule.">
+<link rel="canonical" href="https://ink.example/">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="The garden">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The garden">
+<meta property="og:url" content="https://ink.example/">
+<meta property="og:description" content="A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust &gt; Borrowing and to a block Rust &gt; ^borrow-rule.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">The garden</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/loop">Loop</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<div class="quiet-meta">
+<ul class="quiet-tags" aria-label="Tags">
+<li>#garden</li>
+<li>#notes/rust</li>
+</ul>
+</div>
+<h1 id="the-garden">The garden<a class="quiet-anchor" href="#the-garden" aria-label="Link to this section">#</a>
+</h1>
+<p>A vault read as Obsidian reads it. Links by name <a href="/notes/rust">Rust</a>, in any case <a href="/notes/rust">rust</a>, through an
+alias <a href="/notes/rust">the language</a>, by a partial path <a href="/notes/ownership">Notes/Ownership</a>, to a heading
+<a href="/notes/rust#borrowing">Rust &gt; Borrowing</a> and to a block <a href="/notes/rust#borrow-rule">Rust &gt; ^borrow-rule</a>. #notes/rust #garden</p>
+<details class="quiet-callout quiet-tip">
+<summary class="quiet-label">Folded at first</summary>
+<p>With <a href="/notes/ownership">Ownership</a> inside.</p>
+</details>
+<aside class="quiet-callout">
+<p class="quiet-label">Questions</p>
+<p>Asked often.</p>
+</aside>
+<p>The borrowing section of another note, embedded:</p>
+<div class="quiet-embed">
+<h2 id="borrowing">Borrowing<a class="quiet-anchor" href="#borrowing" aria-label="Link to this section">#</a>
+</h2>
+<p>One mutable borrow or many shared ones. </p>
+<p>See <a href="/notes/rust#borrowing">Borrowing</a> and the <a href="/notes/ownership">Ownership</a> note.</p>
+</div>
+<p>One block of it:</p>
+<div class="quiet-embed">
+<p>One mutable borrow or many shared ones. </p>
+</div>
+<p>A photo shared by two folders, taken from the attachment folder:</p>
+<p>
+<picture>
+<source type="image/avif" srcset="/attachments/ferris.48.57c8b5bffee92ff9.avif 48w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)">
+<img src="/attachments/ferris.48.5b6cb8cacc12719c.png" srcset="/attachments/ferris.48.5b6cb8cacc12719c.png 48w" sizes="(min-width: 42rem) 40rem, calc(100vw - 2rem)" width="48" height="32" alt="ferris.png" loading="lazy" decoding="async">
+</picture>
+</p>
+<p>A paragraph with its own id. <span id="own">
+</span>
+</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>The garden</p>
+</footer>
+</div>
+</body>
+</html>
+## loop/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop - The garden</title>
+<meta name="description" content="A note embedding the note that embeds it:">
+<link rel="canonical" href="https://ink.example/loop">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Loop">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The garden">
+<meta property="og:url" content="https://ink.example/loop">
+<meta property="og:description" content="A note embedding the note that embeds it:">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">The garden</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/loop">Loop</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Loop</h1>
+<p>A note embedding the note that embeds it:</p>
+<div class="quiet-embed">
+<h2 id="loops">Loops<a class="quiet-anchor" href="#loops" aria-label="Link to this section">#</a>
+</h2>
+<p>
+<a href="/loop">Loop.md</a>
+</p>
+</div>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>The garden</p>
+</footer>
+</div>
+</body>
+</html>
+## notes/ownership/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ownership - The garden</title>
+<meta name="description" content="Every value has one owner.">
+<link rel="canonical" href="https://ink.example/notes/ownership">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Ownership">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The garden">
+<meta property="og:url" content="https://ink.example/notes/ownership">
+<meta property="og:description" content="Every value has one owner.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">The garden</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/loop">Loop</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1>Ownership</h1>
+<p>Every value has one owner.</p>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>The garden</p>
+</footer>
+</div>
+</body>
+</html>
+## notes/rust/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rust - The garden</title>
+<meta name="description" content="A language.">
+<link rel="canonical" href="https://ink.example/notes/rust">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/code.css">
+<meta property="og:title" content="Rust">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The garden">
+<meta property="og:url" content="https://ink.example/notes/rust">
+<meta property="og:description" content="A language.">
+</head>
+<body>
+<div class="quiet-page">
+<header class="quiet-head">
+<a class="quiet-site" href="/">The garden</a>
+<nav aria-label="Site">
+<ul>
+<li>
+<a href="/loop">Loop</a>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+<article>
+<h1 id="rust">Rust<a class="quiet-anchor" href="#rust" aria-label="Link to this section">#</a>
+</h1>
+<p>A language.<sup>
+<a id="ref:note" href="#fn:note">1</a>
+</sup>
+</p>
+<h2 id="borrowing">Borrowing<a class="quiet-anchor" href="#borrowing" aria-label="Link to this section">#</a>
+</h2>
+<p>One mutable borrow or many shared ones. <span id="borrow-rule">
+</span>
+</p>
+<p>See <a href="#borrowing">Borrowing</a> and the <a href="/notes/ownership">Ownership</a> note.</p>
+<h2 id="loops">Loops<a class="quiet-anchor" href="#loops" aria-label="Link to this section">#</a>
+</h2>
+<div class="quiet-embed">
+<p>A note embedding the note that embeds it:</p>
+<div class="quiet-embed">
+<h2 id="loops">Loops<a class="quiet-anchor" href="#loops" aria-label="Link to this section">#</a>
+</h2>
+<p>
+<a href="/loop">Loop.md</a>
+</p>
+</div>
+</div>
+<section class="quiet-notes" aria-label="Footnotes">
+<ol>
+<li id="fn:note">
+<p>A footnote that stays here.</p>
+<a class="quiet-back" href="#ref:note" aria-label="Back to the text">↩</a>
+</li>
+</ol>
+</section>
+</article>
+</main>
+<footer class="quiet-foot">
+<p>The garden</p>
+</footer>
+</div>
+</body>
+</html>

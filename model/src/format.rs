@@ -54,6 +54,8 @@ pub struct Front {
     pub description: Option<Spanned<String>>,
     /// `lang:`.
     pub language: Option<Spanned<Language>>,
+    /// `aliases:`: other names a link may use for the page (`[[Alias]]`).
+    pub aliases: Option<Spanned<Vec<String>>>,
     /// Where the frontmatter block is, if the file has one.
     pub block: Option<Span>,
 }

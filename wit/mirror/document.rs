@@ -1,8 +1,8 @@
 // Documents, flattened into WIT's lists and rebuilt from them. Part of `wit/mirror`.
 
 use model::{
-    Alignment, Block, CalloutKind, Definition, Document, Footnote, Hash, ImageSource, Inline, Item, Level, LinkTarget,
-    PageId, Task,
+    Alignment, Block, CalloutKind, Definition, Document, Folding, Footnote, Hash, ImageSource, Inline, Item, Level,
+    LinkTarget, PageId, Task,
 };
 
 use super::refusal::{Malformed, Unmirrored};
@@ -51,6 +51,7 @@ impl Flat {
             Inline::Superscript(children) => flat::Inline::Superscript(self.inlines(children)?),
             Inline::Subscript(children) => flat::Inline::Subscript(self.inlines(children)?),
             Inline::Keyboard(keys) => flat::Inline::Keyboard(keys.clone()),
+            Inline::Anchor(anchor) => flat::Inline::Anchor(anchor.to_string()),
             _ => return Err(Unmirrored::Inline),
         };
         let at = Self::place(self.inlines.len())?;
@@ -76,10 +77,11 @@ impl Flat {
             }
             Block::Rule => flat::Block::Rule,
             Block::Table { alignments, head, rows } => flat::Block::Table(self.table(alignments, head, rows)?),
-            Block::Callout { kind, title, blocks } => {
+            Block::Callout { kind, title, blocks, folding } => {
                 let title = title.as_deref().map(|title| self.inlines(title)).transpose()?;
                 let blocks = self.blocks(blocks)?;
-                flat::Block::Callout(flat::Callout { kind: kind.try_into()?, title, blocks })
+                let folding = flat::Folding::try_from(*folding)?;
+                flat::Block::Callout(flat::Callout { kind: kind.try_into()?, title, blocks, folding })
             }
             Block::Math(tex) => flat::Block::Math(tex.clone()),
             Block::Definitions(definitions) => {
@@ -89,6 +91,9 @@ impl Flat {
             Block::Details { summary, blocks } => {
                 let summary = self.inlines(summary)?;
                 flat::Block::Details(flat::Details { summary, blocks: self.blocks(blocks)? })
+            }
+            Block::Embed { target, blocks } => {
+                flat::Block::Embed(flat::Embed { target: target.try_into()?, blocks: self.blocks(blocks)? })
             }
             _ => return Err(Unmirrored::Block),
         };
@@ -171,6 +176,19 @@ impl TryFrom<Alignment> for flat::Alignment {
     }
 }
 
+impl TryFrom<Folding> for flat::Folding {
+    type Error = Unmirrored;
+
+    fn try_from(folding: Folding) -> Result<Self, Unmirrored> {
+        Ok(match folding {
+            Folding::Fixed => Self::Fixed,
+            Folding::Open => Self::Open,
+            Folding::Closed => Self::Closed,
+            _ => return Err(Unmirrored::Callout),
+        })
+    }
+}
+
 impl TryFrom<&CalloutKind> for flat::CalloutKind {
     type Error = Unmirrored;
 
@@ -249,6 +267,7 @@ impl Lift {
             flat::Inline::Superscript(children) => Inline::Superscript(self.inlines(children, before)?),
             flat::Inline::Subscript(children) => Inline::Subscript(self.inlines(children, before)?),
             flat::Inline::Keyboard(keys) => Inline::Keyboard(keys),
+            flat::Inline::Anchor(anchor) => Inline::Anchor(Written::read(anchor)?),
         })
     }
 
@@ -272,6 +291,7 @@ impl Lift {
                 kind: callout.kind.try_into()?,
                 title: callout.title.map(|title| self.inlines(title, None)).transpose()?,
                 blocks: self.blocks(callout.blocks, at)?,
+                folding: callout.folding.into(),
             },
             flat::Block::Math(tex) => Block::Math(tex),
             flat::Block::Definitions(definitions) => Block::Definitions(
@@ -281,6 +301,9 @@ impl Lift {
                 summary: self.inlines(details.summary, None)?,
                 blocks: self.blocks(details.blocks, at)?,
             },
+            flat::Block::Embed(embed) => {
+                Block::Embed { target: embed.target.try_into()?, blocks: self.blocks(embed.blocks, at)? }
+            }
         })
     }
 
@@ -354,6 +377,16 @@ impl From<flat::Alignment> for Alignment {
             flat::Alignment::Left => Self::Left,
             flat::Alignment::Center => Self::Center,
             flat::Alignment::Right => Self::Right,
+        }
+    }
+}
+
+impl From<flat::Folding> for Folding {
+    fn from(folding: flat::Folding) -> Self {
+        match folding {
+            flat::Folding::Fixed => Self::Fixed,
+            flat::Folding::Open => Self::Open,
+            flat::Folding::Closed => Self::Closed,
         }
     }
 }

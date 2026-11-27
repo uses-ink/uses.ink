@@ -11,8 +11,8 @@ use std::convert::Infallible;
 use engine::{Said, Theme};
 use model::highlight::{Capture, Highlight, Run, Unhighlighted};
 use model::{
-    Alignment, Anchor, Asset, Block, CalloutKind, Definition, Document, Footnote, FootnoteName, ImageSource, Inline,
-    Item, Level, LinkTarget, Page, PageKind, Route, Site, SiteParts, Slug, Tag, Task, When,
+    Alignment, Anchor, Asset, Block, CalloutKind, Definition, Document, Folding, Footnote, FootnoteName, ImageSource,
+    Inline, Item, Level, LinkTarget, Page, PageKind, Route, Site, SiteParts, Slug, Tag, Task, When,
 };
 use theme_quiet::Quiet;
 
@@ -85,11 +85,34 @@ fn body(other: &Page) -> Document {
             head: vec![vec![text("a")], vec![text("b")]],
             rows: vec![vec![vec![text("1")], vec![text("2")]]],
         },
-        Block::Callout { kind: CalloutKind::Warning, title: None, blocks: vec![para(vec![text("careful")])] },
+        Block::Callout {
+            kind: CalloutKind::Warning,
+            title: None,
+            blocks: vec![para(vec![text("careful")])],
+            folding: Folding::Fixed,
+        },
         Block::Callout {
             kind: CalloutKind::Note,
             title: Some(vec![text("Titled")]),
             blocks: vec![para(vec![text("noted")])],
+            folding: Folding::Fixed,
+        },
+        Block::Callout {
+            kind: CalloutKind::Tip,
+            title: Some(vec![text("Folded")]),
+            blocks: vec![para(vec![text("hidden at first")])],
+            folding: Folding::Closed,
+        },
+        Block::Callout {
+            kind: CalloutKind::Note,
+            title: None,
+            blocks: vec![para(vec![text("open")])],
+            folding: Folding::Open,
+        },
+        para(vec![text("A block with an id."), Inline::Anchor(Anchor::new(Slug::parse("block").unwrap()))]),
+        Block::Embed {
+            target: LinkTarget::Unresolved { written: "Other".to_owned() },
+            blocks: vec![para(vec![text("embedded")])],
         },
         Block::Math("\\sum_i i".to_owned()),
         Block::Definitions(vec![Definition::new(vec![text("term")], vec![vec![para(vec![text("meaning")])]])]),

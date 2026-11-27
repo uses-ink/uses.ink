@@ -13,7 +13,7 @@ use theme_quiet::Quiet;
 
 use crate::args::{Kind, Origin};
 use crate::error::Error;
-use crate::format::Markdown;
+use crate::format::Native;
 use crate::pins::Configured;
 
 /// The output folder when `ink build` is given no `-o`, inside the site's folder.
@@ -50,6 +50,8 @@ pub(crate) struct Loaded {
     /// The engine's decisions and site, `ink.toml`'s problems and the folder's notices among its
     /// diagnostics and notices.
     pub(crate) understood: Understood,
+    /// The format the folder's markdown is read with natively.
+    pub(crate) native: Native,
 }
 
 impl<'a> Source<'a> {
@@ -95,15 +97,19 @@ impl<'a> Source<'a> {
         Ok((read, notices))
     }
 
+    /// The source interpreted through the native format the folder calls for.
     pub(crate) fn load(self) -> Result<Loaded, Error> {
-        self.interpret((Markdown,))
+        self.interpret(|native| (native,))
     }
 
-    /// The source interpreted through `formats`.
-    pub(crate) fn interpret<F: Formats>(self, formats: F) -> Result<Loaded, Error> {
+    /// The source interpreted through the formats `formats` gives for the native format the
+    /// folder calls for.
+    pub(crate) fn interpret<F: Formats>(self, formats: impl FnOnce(Native) -> F) -> Result<Loaded, Error> {
         let mut store = Memory::default();
-        let (read, said) = self.read(&mut store)?;
+        let (read, mut said) = self.read(&mut store)?;
         let snapshot = read.snapshot;
+        let native = Native::from(&snapshot);
+        said.extend(native.notice());
         let mut parsed = Parsed::default();
         let config_path: Option<ContentPath> = CONFIG.parse().ok();
         let entry = config_path.as_ref().and_then(|path| snapshot.entry(path).map(|entry| (path, entry.blob)));
@@ -127,14 +133,14 @@ impl<'a> Source<'a> {
             }
         }
         let Parsed { config, diagnostics } = parsed;
-        let mut understood = Engine::new(&store, Configured(&config), formats, ()).interpret(&snapshot);
+        let mut understood = Engine::new(&store, Configured(&config), formats(native), ()).interpret(&snapshot);
         let stops = diagnostics.iter().any(|d| d.severity() == model::Severity::Error);
         understood.diagnostics.splice(0..0, diagnostics);
         if stops {
             understood.site = None;
         }
         understood.notices.splice(0..0, said);
-        Ok(Loaded { snapshot, store, understood })
+        Ok(Loaded { snapshot, store, understood, native })
     }
 }
 

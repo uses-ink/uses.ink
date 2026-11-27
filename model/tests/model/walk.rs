@@ -1,5 +1,5 @@
 use model::{
-    Alignment, Anchor, Block, CalloutKind, ContentPath, Definition, Document, Fold, Footnote, FootnoteName,
+    Alignment, Anchor, Block, CalloutKind, ContentPath, Definition, Document, Fold, Folding, Footnote, FootnoteName,
     ImageSource, Inline, Item, Level, LinkTarget, PageId, Slug, Task, Visit,
 };
 
@@ -56,6 +56,7 @@ fn every_node() -> Document {
         kind: CalloutKind::Note,
         title: Some(vec![text("M")]),
         blocks: vec![Block::Quote(vec![Block::Paragraph(vec![text("N")])])],
+        folding: Folding::Closed,
     };
     let definitions = Block::Definitions(vec![Definition::new(
         vec![text("O")],

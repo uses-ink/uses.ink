@@ -143,8 +143,8 @@ pub trait Stage<I> {
 
 `Journal` is the one sink for decisions (erased as `AnyDecision`, read back typed), diagnostics
 and notices: nothing is returned on the side, nothing is printed. Interpret is a composition of
-stages (`Root`, `Layout`, `Files`, `Read<B, F>`, `Pages`, `Links`, `Assets`, `Site`, `Routing`,
-`Assemble`), each generic over what it needs from the host (`B: Blobs`, `P: Pins`,
+stages (`Root`, `Layout`, `Files`, `Read<B, F>`, `Pages`, `Settings<B>`, `Links`, `Embeds`,
+`Assets`, `Site`, `Routing`, `Assemble`), each generic over what it needs from the host (`B: Blobs`, `P: Pins`,
 `F: Formats`). Every stage runs, so every problem of every stage is reported; `Assemble` builds
 no site from a journal holding an error.
 
@@ -186,7 +186,9 @@ The default recursion lives on the nodes (`Document`, `Footnote`, `Block`, `Item
 `Inline` each have `walk` and `fold`), not in a module of free functions: a visitor that
 overrides a method calls `node.walk(self)` to keep descending.
 
-Link resolution is a `Fold` (unresolved targets become pages), the summary is a `Visit` that
+Link resolution is a `Fold` (unresolved targets become pages), filling embeds is another (each
+`Block::Embed` gets the blocks of the page or part it names, a `Carried` fold pointing their
+anchors at that page), the summary is a `Visit` that
 collects plain text, a theme's HTML is a `Visit` that writes through `unspliced`, outline and
 reading time are visits. `ink:theme-quiet`'s `Writer` writes an element with children as a shell
 holding `unspliced::HERE`: `Split` writes the shell up to the mark, the walk visits the children,
@@ -218,6 +220,15 @@ code in a language no grammar knows) into the `Record` it is given, the native s
 a `model::Said`. `Record`, `Said` and a theme's `File` live in the model, which is
 permissive, so the SDK implements `Record` and converts `File` without linking the AGPL engine;
 the engine re-exports them.
+
+A dialect of markdown is not a second parser. `format_markdown::dialect::Dialect` says which
+syntax comrak parses (`Syntax`: callouts as alerts or folding, and the `Extension`s it turns on:
+`^x^` and `~x~`, definition lists, wikilinks, block ids, `%%` comments, `aliases`) and what the dialect's own nodes mean
+(`wikilink`, `callout`, `text`, `finish`); `format_markdown::read_as(dialect, path, bytes)` reads
+through the one `Builder`, generic over it, so comrak stays in the markdown crate and the raw
+HTML allowlist holds for every dialect. `ink:format-obsidian` is the dialect `Obsidian` and
+nothing else; the plain format is the dialect `Markdown`. A guest serves a format through
+`sdk::Served<F: sdk::Format>`, so the refusals of the boundary are written once.
 
 The component adapters are the same traits over a loaded component: `host_wasmtime::Component<Format>`
 implements `Format` and `Component<Theme>` implements `Theme`, so `Engine<B, P, F, T>` runs a

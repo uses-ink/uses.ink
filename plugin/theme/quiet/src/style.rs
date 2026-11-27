@@ -63,6 +63,9 @@ unspliced::css! {
     .callout { margin: 1.5rem 0; padding: 0.75rem 1rem; border-left: 3px solid var(--accent); background: var(--tint); }
     .callout > :last-child { margin-bottom: 0; }
     .label { margin-top: 0; font-weight: 700; }
+    summary.label { margin-bottom: 0.5rem; }
+    .embed { margin: 1.5rem 0; padding-left: 1rem; border-left: 3px solid var(--line); }
+    .embed > :last-child { margin-bottom: 0; }
     .warning, .caution { border-left-color: #c2410c; }
     .tip { border-left-color: #15803d; }
     details { margin: 1.5rem 0; }

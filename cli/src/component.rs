@@ -13,6 +13,7 @@ use crate::args::Build;
 use crate::cache::Caching;
 use crate::error::Error;
 use crate::exit::Exit;
+use crate::format::Native;
 use crate::output::{Io, Strict};
 use crate::report::Texts;
 use crate::site::{Address, Source};
@@ -39,14 +40,15 @@ struct Compared {
 /// The components' files in the folder `--components` names.
 #[derive(Clone, Copy, Debug)]
 enum Plugin {
-    Format,
+    /// The component of the native format the folder is read with.
+    Format(Native),
     Theme,
 }
 
 impl Plugin {
     const fn file(self) -> &'static str {
         match self {
-            Self::Format => "format-markdown.wasm",
+            Self::Format(native) => native.file(),
             Self::Theme => "theme-quiet.wasm",
         }
     }
@@ -67,11 +69,12 @@ impl Compare<'_> {
 
         let runtime =
             Runtime::new(Budget::default(), Some(Cache::new(self.components.join("cache")))).map_err(Self::plugin)?;
+        let chosen = loaded.native;
         let format =
-            runtime.format("ink:format-markdown", &Plugin::Format.bytes(self.components)?).map_err(Self::plugin)?;
+            runtime.format(chosen.id(), &Plugin::Format(chosen).bytes(self.components)?).map_err(Self::plugin)?;
         let theme =
             runtime.theme(&Plugin::Theme.bytes(self.components)?, address.base.clone()).map_err(Self::plugin)?;
-        let through = Source::new(&self.build.dir, &self.build.origin).interpret((&format,))?;
+        let through = Source::new(&self.build.dir, &self.build.origin).interpret(|_| (&format,))?;
         let built = through.through(&address, &theme, &images);
 
         // the native build's diagnostics, then what only the components said
