@@ -3866,6 +3866,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
+name = "signal-hook-registry"
+version = "1.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
+dependencies = [
+ "errno",
+ "libc",
+]
+
+[[package]]
 name = "simd-adler32"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4082,9 +4092,11 @@ version = "1.54.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b52fd3255258d26fac7264ab5a76b53c13367136dc011d3d6ad4f8ed070396a3"
 dependencies = [
+ "bytes",
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys",
@@ -4179,6 +4191,25 @@ name = "tower-service"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8df9b6e13f2d32c91b9bd719c00d1958837bc7dec474d94952798cc8e69eeec3"
+
+[[package]]
+name = "tracing"
+version = "0.1.44"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
+dependencies = [
+ "pin-project-lite",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-core"
+version = "0.1.36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
+dependencies = [
+ "once_cell",
+]
 
 [[package]]
 name = "tree-sitter-language"
@@ -4332,12 +4363,16 @@ dependencies = [
  "divan",
  "gix",
  "insta",
+ "jiff",
  "proptest",
  "serde",
  "serde_json",
  "tokio",
  "uses-ink-config",
  "uses-ink-diag",
+ "uses-ink-edge",
+ "uses-ink-edge-axum",
+ "uses-ink-edge-folder",
  "uses-ink-engine",
  "uses-ink-fixture",
  "uses-ink-format-markdown",
@@ -4412,6 +4447,43 @@ dependencies = [
 name = "uses-ink-diag"
 version = "0.0.0"
 dependencies = [
+ "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-edge"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "proptest",
+ "tokio",
+ "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-edge-axum"
+version = "0.0.0"
+dependencies = [
+ "axum",
+ "bytes",
+ "futures-util",
+ "hyper",
+ "hyper-util",
+ "tokio",
+ "tracing",
+ "uses-ink-edge",
+ "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-edge-folder"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uses-ink-edge",
  "uses-ink-model",
 ]
 

@@ -51,7 +51,7 @@ impl Observe for Log {
 impl args::Serve {
     /// Binds, prints the address, and serves until Ctrl-C.
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let deploys = Deploys::new(&self.folder, self.host_mode.into()).map_err(|source| Error::Folder { source })?;
+        let deploys = Deploys::new(&self.folder, self.host_mode.into()).map_err(|source| Error::Deploys { source })?;
         let mode = match deploys.mode() {
             Mode::Single => "single",
             _ => "folders",

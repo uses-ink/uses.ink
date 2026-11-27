@@ -69,7 +69,6 @@ impl Deploys {
             (Mode::Auto, true) | (Mode::Single, true) => Mode::Single,
             (Mode::Auto, false) | (Mode::Folders, _) => Mode::Folders,
             (Mode::Single, false) => return Err(Error::NotDeploy { root }),
-            (mode, _) => mode,
         };
         Ok(Self { root, mode, cache: Mutex::new(BTreeMap::new()) })
     }

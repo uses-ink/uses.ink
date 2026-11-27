@@ -157,7 +157,7 @@ pub enum Error {
         source: host_wasmtime::Error,
     },
     /// The folder `ink serve` was given is no deploy it can serve.
-    Folder {
+    Deploys {
         /// Why.
         source: edge_folder::Error,
     },
@@ -226,7 +226,7 @@ impl Error {
             Self::Write { .. } => "output.file.unwritable",
             Self::Manifest { .. } => "output.manifest.invalid",
             Self::Serve { .. } => "preview.serve.failed",
-            Self::Folder { .. } => "serve.folder.unservable",
+            Self::Deploys { .. } => "serve.folder.unservable",
             Self::Listen { .. } => "serve.address.unusable",
             Self::Edge { .. } => "serve.edge.invalid",
             Self::Server { .. } => "serve.server.invalid",
@@ -280,7 +280,7 @@ impl fmt::Display for Error {
                 write!(out, "the earlier build's manifest {} does not parse", path.display())
             }
             Self::Serve { .. } => write!(out, "the preview could not be served"),
-            Self::Folder { .. } => write!(out, "the folder is not a deploy `ink serve` can serve"),
+            Self::Deploys { .. } => write!(out, "the folder is not a deploy `ink serve` can serve"),
             Self::Listen { address, .. } => write!(out, "`ink serve` could not listen on {address}"),
             Self::Edge { .. } => write!(out, "the edge could not be built"),
             Self::Server { .. } => write!(out, "the server could not be started"),
@@ -309,7 +309,7 @@ impl std::error::Error for Error {
             | Self::Terminal { source }
             | Self::Component { source, .. } => Some(source),
             Self::Plugin { source } => Some(source),
-            Self::Folder { source } => Some(source),
+            Self::Deploys { source } => Some(source),
             Self::Listen { source, .. } => Some(source),
             Self::Edge { source } => Some(source),
             Self::Server { source } => Some(source),
