@@ -15,8 +15,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use crate::hash::{Hash, Hasher};
+use crate::history::{History, Memory};
 use crate::inputs::Inputs;
 use crate::jobs::Limits;
+use crate::wake::Seen;
 
 /// A time as whole seconds since the epoch: what the cache files hold.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -591,12 +593,21 @@ pub(crate) struct Cache {
     pub(crate) store: Store,
     pub(crate) marks: Marks,
     pub(crate) journal: Journal,
+    pub(crate) history: History,
+    pub(crate) seen: Seen,
     pub(crate) inputs: Inputs,
 }
 
 impl Cache {
-    pub(crate) fn at(dir: &Path, limits: Limits, inputs: Inputs) -> Self {
-        Self { store: Store::new(dir, limits), marks: Marks::new(dir), journal: Journal::new(dir), inputs }
+    pub(crate) fn at(dir: &Path, limits: Limits, memory: Memory, inputs: Inputs) -> Self {
+        Self {
+            store: Store::new(dir, limits),
+            marks: Marks::new(dir),
+            journal: Journal::new(dir),
+            history: History::at(dir, memory),
+            seen: Seen::at(dir),
+            inputs,
+        }
     }
 }
 

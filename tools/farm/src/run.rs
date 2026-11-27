@@ -10,6 +10,7 @@ use crate::cache::{
     Cache, Causes, Claim, Claimed, Entry, Facts, Flaky, Key, Kind as Tick, Mark, Marks, Moment, Record, Trouble,
 };
 use crate::hash::Hash;
+use crate::history::{self, Clock, Sample, Wall};
 use crate::inputs::Toolchain;
 
 use crate::changes::{Changes, Kind};
@@ -18,12 +19,13 @@ use crate::console::Console;
 use crate::error::{Chain, Error};
 use crate::event::{Event, Seeded};
 use crate::exit::Exit;
-use crate::fleet::{Fleet, Start};
-use crate::host::Snapshot;
+use crate::fleet::{Fleet, Probed, Start};
+use crate::host::{Arch, Snapshot};
 use crate::job::{Attach, Document, Finished, Flow, Job, LogFile, Reuse, Served, Totals, Verdict};
 use crate::jobs::{Jobs, Settings};
 use crate::name::{HostName, JobId, JobName};
-use crate::place::{Need, Placement};
+use crate::overview::Overview;
+use crate::place::{Ask, Need, Placement, Why};
 use crate::summary::Summary;
 use crate::transport::Transport;
 use crate::tree::Tree;
@@ -121,23 +123,129 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         Ok(exit)
     }
 
-    /// Places `needs` on hosts at once: each is reserved a slot or a place in the queue before
-    /// the next is placed, so a fan-out spreads over the hosts.
-    fn place(&self, needs: &[Need]) -> Result<Vec<Snapshot>, Error> {
+    /// The hosts as placement sees them: those up, then the sleeping ones as they were last seen.
+    /// A sleeping host never seen is left out unless `--host` names it, so it can be woken once.
+    fn board(&self, probed: &Probed) -> Vec<Snapshot> {
+        let mut board = probed.up.clone();
+        if let Some(cache) = &self.cache {
+            for snap in
+                probed.up.iter().filter(|snap| self.fleet.member(&snap.name).is_some_and(|m| m.host.wake.is_some()))
+            {
+                if let Err(fault) = cache.seen.note(snap) {
+                    self.skipped(snap.name.as_str(), &Trouble::Store(fault));
+                }
+            }
+        }
+        for host in &probed.asleep {
+            let Some(wake) = &host.wake else { continue };
+            let seen = self.cache.as_ref().and_then(|cache| {
+                cache
+                    .seen
+                    .recall(host, wake.cost)
+                    .map_err(|fault| self.skipped(host.name.as_str(), &Trouble::Store(fault)))
+                    .ok()?
+            });
+            let pinned = self.flags.host.as_ref() == Some(&host.name);
+            board.extend(seen.or_else(|| pinned.then(|| Snapshot::asleep(host, Arch::REFERENCE, (1, 1), wake.cost))));
+        }
+        board
+    }
+
+    /// Wakes the sleeping hosts among `chosen`, each once and all at once, and says so.
+    fn rouse(&self, chosen: &[Snapshot]) -> Vec<(HostName, Result<Snapshot, Error>)> {
+        let mut names: Vec<HostName> = Vec::new();
+        for snap in chosen.iter().filter(|snap| snap.asleep.is_some()) {
+            if !names.contains(&snap.name) {
+                self.console.note(format!(
+                    "`{}` is asleep: waking it (about {} s)",
+                    snap.name,
+                    snap.asleep.unwrap_or(0)
+                ));
+                names.push(snap.name.clone());
+            }
+        }
+        thread::scope(|scope| {
+            let running: Vec<_> = names
+                .iter()
+                .map(|name| scope.spawn(move || self.fleet.member(name).map(crate::fleet::Member::wake)))
+                .collect();
+            names
+                .iter()
+                .cloned()
+                .zip(running)
+                .map(|(name, handle)| {
+                    let result =
+                        handle.join().ok().flatten().unwrap_or_else(|| Err(Error::Crashed { label: name.to_string() }));
+                    (name, result)
+                })
+                .collect()
+        })
+    }
+
+    /// Wakes the sleeping hosts the jobs were placed on. A host that cannot be woken is said,
+    /// and returned so placement can leave it out; a pinned one is an error.
+    fn waken(&self, jobs: &[&Job], chosen: &mut [Snapshot]) -> Result<Vec<HostName>, Error> {
+        let woken = self.rouse(chosen);
+        let mut failed = Vec::new();
+        for (name, result) in woken {
+            match result {
+                Ok(real) => {
+                    for (snap, job) in chosen.iter_mut().zip(jobs).filter(|(snap, _)| snap.name == name) {
+                        if !job.need.fits(&real) {
+                            return Err(Error::NotGolden { host: name });
+                        }
+                        *snap = real.clone();
+                    }
+                    if let Some(Err(fault)) = self.cache.as_ref().map(|cache| cache.seen.note(&real)) {
+                        self.skipped(name.as_str(), &Trouble::Store(fault));
+                    }
+                }
+                Err(error) if self.flags.host.as_ref() == Some(&name) => return Err(error),
+                Err(error) => {
+                    let cause =
+                        std::error::Error::source(&error).map_or_else(String::new, |source| format!(": {source}"));
+                    self.console.note(format!("{error}{cause}; leaving `{name}` out of this placement"));
+                    failed.push(name);
+                }
+            }
+        }
+        Ok(failed)
+    }
+
+    /// Places `jobs` on hosts at once: each is reserved a slot or a place in the queue before
+    /// the next is placed, so a fan-out spreads over the hosts. A sleeping host that is chosen
+    /// is woken; one that cannot be is left out and the jobs are placed again.
+    fn place(&self, jobs: &[&Job]) -> Result<Vec<Snapshot>, Error> {
         let probed = self.fleet.probe(&self.console);
         for (host, error) in &probed.down {
             self.console.note(format!("`{host}` is down and left out: {}", Chain(error)));
         }
-        let mut board = probed.up;
-        let mut chosen = Vec::new();
-        for need in needs {
-            let at = self.placement.choose(*need, self.flags.host.as_ref(), &board)?;
-            if let Some(snap) = board.get_mut(at) {
-                chosen.push(snap.clone());
-                snap.reserve();
+        let mut left_out: Vec<HostName> = Vec::new();
+        loop {
+            let mut board: Vec<Snapshot> =
+                self.board(&probed).into_iter().filter(|snap| !left_out.contains(&snap.name)).collect();
+            let mut chosen = Vec::new();
+            let mut said = Vec::new();
+            for job in jobs {
+                let ask = Ask { need: job.need, key: &job.key, pin: self.flags.host.as_ref() };
+                let choice = self.placement.choose(ask, &board)?;
+                if choice.why != Why::Only {
+                    said.push(format!("{}: {choice}", job.label));
+                }
+                if let Some(snap) = board.get_mut(choice.at) {
+                    chosen.push(snap.clone());
+                    snap.reserve();
+                }
             }
+            let failed = self.waken(jobs, &mut chosen)?;
+            if failed.is_empty() {
+                for line in &said {
+                    self.console.note(line);
+                }
+                return Ok(chosen);
+            }
+            left_out.extend(failed);
         }
-        Ok(chosen)
     }
 
     /// Probes the hosts and returns those that answered.
@@ -491,28 +599,40 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
                 self.console.note(format!("{}: queued behind {behind}, host `{}` free in {eta}", job.label, snap.name));
             }
         })?;
-        if let Some(source) = flow.fault.take() {
-            return Err(Error::Said { host: snap.name.clone(), source });
+        let verdict = flow.settle(&snap.name, id, &log)?;
+        Ok(self.learn(
+            job,
+            Finished {
+                summary: Summary::of(&flow.log),
+                id: id.clone(),
+                label: job.label.clone(),
+                command: job.shown(),
+                host: snap.name.clone(),
+                slot: flow.slot,
+                queued: flow.queued,
+                verdict,
+                log,
+                served: Served::Ran,
+            },
+        ))
+    }
+
+    /// Files how long a finished job took on its host, for placement; the job's result as it was.
+    fn learn(&self, job: &Job, done: Finished) -> Finished {
+        let (Some(cache), Verdict::Done { code, ran }) = (&self.cache, done.verdict) else {
+            return done;
+        };
+        let sample = Sample {
+            at: Wall.now(),
+            key: job.key.clone(),
+            host: done.host.to_string(),
+            secs: ran.as_secs(),
+            passed: code == 0,
+        };
+        if let Err(fault) = cache.history.append(&sample) {
+            self.skipped(&job.label, &Trouble::Store(fault));
         }
-        if let Some(source) = flow.log_error() {
-            return Err(Error::Io { path: log, source });
-        }
-        let verdict = flow.verdict();
-        if verdict == Verdict::Lost {
-            return Err(flow.lost(id.clone()));
-        }
-        Ok(Finished {
-            summary: Summary::of(&flow.log),
-            id: id.clone(),
-            label: job.label.clone(),
-            command: job.shown(),
-            host: snap.name.clone(),
-            slot: flow.slot,
-            queued: flow.queued,
-            verdict,
-            log,
-            served: Served::Ran,
-        })
+        done
     }
 
     /// Runs the jobs at once, each on its placed host; the results come back in order.
@@ -541,8 +661,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     /// job, not the sum.
     fn check(&self, names: &[JobName]) -> Result<Batch, Error> {
         let jobs: Vec<Job> = Jobs::load(&self.tree.root)?.pick(names)?.into_iter().map(Job::from).collect();
-        let needs: Vec<Need> = jobs.iter().map(|job| job.need).collect();
-        let snaps = self.place(&needs)?;
+        let snaps = self.place(&jobs.iter().collect::<Vec<_>>())?;
         let batch = self.fan(&jobs, &snaps);
         if names.is_empty() {
             self.full(&Totals::of(&batch.done));
@@ -576,12 +695,8 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
 
     /// Any cargo command, on a placed host.
     fn cargo(&self, args: &[String]) -> Result<Batch, Error> {
-        let mut words = vec!["cargo".to_owned()];
-        words.extend(args.iter().cloned());
-        let reuse = Reuse::of_cargo(args);
-        let job =
-            Job { label: words.join(" "), need: Need::of_cargo(args), words, env: Vec::new(), limit: None, reuse };
-        let snaps = self.place(&[job.need])?;
+        let job = Job::cargo(args);
+        let snaps = self.place(&[&job])?;
         Ok(self.fan(&[job], &snaps))
     }
 
@@ -594,8 +709,16 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         let mut words: Vec<String> = ["cargo", "nextest", "run", "--locked"].map(str::to_owned).to_vec();
         words.extend(args.iter().cloned());
         let env = ["INSTA_UPDATE=always", "INSTA_FORCE_PASS=1"].map(str::to_owned).to_vec();
-        let job = Job { label: "bless".to_owned(), words, need: Need::Golden, env, limit: None, reuse: Reuse::Never };
-        let snaps = self.place(&[Need::Golden])?;
+        let job = Job {
+            label: "bless".to_owned(),
+            words,
+            need: Need::Golden,
+            env,
+            limit: None,
+            reuse: Reuse::Never,
+            key: history::Key::stage("bless"),
+        };
+        let snaps = self.place(&[&job])?;
         let started = SystemTime::now();
         let mut batch = self.fan(std::slice::from_ref(&job), &snaps);
         if let Some(done) = batch.done.first().filter(|done| matches!(done.verdict, Verdict::Done { .. })) {
@@ -614,9 +737,16 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             return Err(Usage::Extra { verb: Action::Fmt, given: "--detach".to_owned() }.into());
         }
         let words: Vec<String> = ["cargo", "fmt", "--all"].map(str::to_owned).to_vec();
-        let job =
-            Job { label: "fmt".to_owned(), words, need: Need::Any, env: Vec::new(), limit: None, reuse: Reuse::Never };
-        let snaps = self.place(&[Need::Any])?;
+        let job = Job {
+            label: "fmt".to_owned(),
+            words,
+            need: Need::Any,
+            env: Vec::new(),
+            limit: None,
+            reuse: Reuse::Never,
+            key: history::Key::stage("fmt"),
+        };
+        let snaps = self.place(&[&job])?;
         let started = SystemTime::now();
         let mut batch = self.fan(std::slice::from_ref(&job), &snaps);
         if let Some(done) = batch.done.first().filter(|done| matches!(done.verdict, Verdict::Done { code: 0, .. })) {
@@ -696,11 +826,9 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
         Ok(Exit::Passed)
     }
 
-    /// Every host: arch, load, slots, queue, jobs; and the old job state swept.
+    /// Every host: arch, load, slots, queue, jobs, the timings placement uses; and the old job
+    /// state swept.
     fn status(&self) -> Result<Exit, Error> {
-        if self.flags.json {
-            return Err(Usage::Extra { verb: Action::Status, given: "--json".to_owned() }.into());
-        }
         match Version::current().against(&self.tree.root) {
             Freshness::Current => {}
             other => {
@@ -711,11 +839,36 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             }
         }
         let probed = self.fleet.probe(&self.console);
-        probed.up.iter().for_each(|snap| self.console.out(snap));
-        self.usage();
-        for (host, error) in &probed.down {
-            self.console.out(format!("{host}: down\n  {}", Chain(error).to_string().replace('\n', "\n  ")));
+        let jobs: Vec<Job> = Jobs::load_optional(&self.tree.root)?
+            .map(|jobs| jobs.pick(&[]))
+            .transpose()?
+            .unwrap_or_default()
+            .into_iter()
+            .map(Job::from)
+            .collect();
+        let board = self.board(&probed);
+        let overview = Overview::of(&probed, &board, &self.placement, &jobs);
+        if self.flags.json {
+            match serde_json::to_string_pretty(&overview) {
+                Ok(text) => self.console.out(text),
+                Err(error) => self.console.fail(format!("error: the status is not JSON: {error}")),
+            }
+        } else {
+            probed.up.iter().for_each(|snap| self.console.out(snap));
+            overview.hosts.iter().for_each(|row| self.console.out(row));
+            overview.asleep.iter().for_each(|sleeping| self.console.out(sleeping));
+            overview.next.iter().for_each(|next| self.console.out(next));
+            self.usage();
+            for (host, error) in &probed.down {
+                self.console.out(format!("{host}: down\n  {}", Chain(error).to_string().replace('\n', "\n  ")));
+            }
         }
+        self.sweep(&probed);
+        Ok(if probed.up.is_empty() { Exit::Farm } else { Exit::Passed })
+    }
+
+    /// Removes the state of old jobs on every host that is up, and says how many.
+    fn sweep(&self, probed: &Probed) {
         for snap in &probed.up {
             if let Some(member) = self.fleet.member(&snap.name) {
                 match member.sweep() {
@@ -727,7 +880,6 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
                 }
             }
         }
-        Ok(if probed.up.is_empty() { Exit::Farm } else { Exit::Passed })
     }
 
     /// What each workspace of this repo ran in the last 24 hours, so heavy use is visible.
@@ -851,6 +1003,7 @@ mod tests {
     use crate::fleet::fake::{Fake, Reply};
     use crate::host::{Host, Via};
     use crate::place::LeastLoaded;
+    use crate::wake::Wake;
 
     fn host(name: &str) -> Host {
         Host { name: name.parse().unwrap(), via: Via::Ssh("x".parse().unwrap()), ..Host::local() }
@@ -872,24 +1025,149 @@ mod tests {
     static NEXT: AtomicU32 = AtomicU32::new(0);
 
     fn farm(members: Vec<Member<Fake>>) -> Farm<Fake, LeastLoaded> {
-        let tree = Tree {
-            root: std::env::temp_dir().join(format!(
-                "farm-run-{}-{}",
+        Farm::<Fake, LeastLoaded>::with(members, Flags::default(), None)
+    }
+
+    impl Farm<Fake, LeastLoaded> {
+        /// A farm over fakes, with these flags and, when given, a cache kept in this directory.
+        fn with(members: Vec<Member<Fake>>, flags: Flags, cache: Option<&std::path::Path>) -> Self {
+            let settings = Settings::default();
+            let cache = cache.map(|dir| {
+                let inputs = crate::inputs::Inputs::new(Arc::new(crate::inputs::Walk), &settings.exclude).unwrap();
+                Cache::at(dir, settings.limits, settings.memory, inputs)
+            });
+            Self::built(members, flags, cache)
+        }
+
+        fn built(members: Vec<Member<Fake>>, flags: Flags, cache: Option<Cache>) -> Self {
+            let tree = Tree {
+                root: std::env::temp_dir().join(format!(
+                    "farm-run-{}-{}",
+                    std::process::id(),
+                    NEXT.fetch_add(1, Ordering::Relaxed)
+                )),
+                repo: "r".parse().unwrap(),
+                workspace: "w".parse().unwrap(),
+            };
+            Farm::new(Setup {
+                fleet: Fleet::new(members),
+                placement: LeastLoaded,
+                console: Arc::new(Console::default()),
+                flags,
+                tree,
+                settings: Settings::default(),
+                cache,
+            })
+        }
+    }
+
+    /// A scratch directory and a script in it that records its arguments in `marker` and exits
+    /// with `code`.
+    struct Wakeup {
+        dir: std::path::PathBuf,
+    }
+
+    impl Wakeup {
+        fn new(code: i32) -> Self {
+            use std::os::unix::fs::PermissionsExt as _;
+            let dir = std::env::temp_dir().join(format!(
+                "farm-wake-{}-{}",
                 std::process::id(),
                 NEXT.fetch_add(1, Ordering::Relaxed)
-            )),
-            repo: "r".parse().unwrap(),
-            workspace: "w".parse().unwrap(),
-        };
-        Farm::new(Setup {
-            fleet: Fleet::new(members),
-            placement: LeastLoaded,
-            console: Arc::new(Console::default()),
-            flags: Flags::default(),
-            tree,
-            settings: Settings::default(),
-            cache: None,
-        })
+            ));
+            std::fs::create_dir_all(&dir).unwrap();
+            let script = dir.join("wake.sh");
+            let body = format!("#!/bin/sh\necho \"$@\" >> {}\nexit {code}\n", dir.join("marker").display());
+            std::fs::write(&script, body).unwrap();
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+            Self { dir }
+        }
+
+        fn host(&self, name: &str) -> Host {
+            let command = self.dir.join("wake.sh").display().to_string();
+            Host { wake: Wake::new(&command, Some(Seconds(5)), Some(Seconds(120))), ..host(name) }
+        }
+
+        /// How many times the script ran, and with what.
+        fn woken(&self) -> Vec<String> {
+            std::fs::read_to_string(self.dir.join("marker"))
+                .map_or_else(|_| Vec::new(), |text| text.lines().map(str::to_owned).collect())
+        }
+    }
+
+    impl Drop for Wakeup {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.dir).ok();
+        }
+    }
+
+    fn silent() -> Reply {
+        Reply { lines: vec![], code: 255 }
+    }
+
+    #[test]
+    fn a_pinned_sleeping_host_is_woken_by_the_command_then_probed_and_used() {
+        let wakeup = Wakeup::new(0);
+        let asleep = Member::new(wakeup.host("farm-a"), Fake::saying(vec![silent(), probe(16, "x86_64")]));
+        let flags = Flags { host: Some("farm-a".parse().unwrap()), ..Flags::default() };
+        let chosen = Farm::with(vec![asleep], flags, None).place(&[&asking(Need::Golden)]).unwrap();
+        assert_eq!(wakeup.woken(), ["farm-a"], "the command got the host name as its only argument");
+        let snap = chosen.first().unwrap();
+        assert_eq!((snap.name.as_str(), snap.asleep, snap.cores), ("farm-a", None, 16));
+    }
+
+    #[test]
+    fn a_failed_wake_leaves_the_host_out_and_the_job_is_placed_without_it_not_hung() {
+        let wakeup = Wakeup::new(3);
+        let dir = wakeup.dir.join("cache");
+        let asleep = Member::new(wakeup.host("farm-a"), Fake::saying(vec![silent()]));
+        let arm = Member::new(host("arm"), Fake::saying(vec![probe(8, "aarch64")]));
+        let sleeper = wakeup.host("farm-a");
+        let seen = Snapshot::asleep(&sleeper, crate::host::Arch::X86, (16, 1), Seconds(120));
+        let farm = Farm::with(vec![asleep, arm], Flags::default(), Some(&dir));
+        let mut up = seen.clone();
+        up.asleep = None;
+        farm.cache.as_ref().unwrap().seen.note(&up).unwrap();
+        // a job any host may run goes to the one that is up, and nothing is woken
+        let any = farm.place(&[&asking(Need::Any)]).unwrap();
+        assert_eq!(any.first().map(|snap| snap.name.as_str()), Some("arm"));
+        assert_eq!(wakeup.woken(), Vec::<String>::new());
+        // a golden job can only use the sleeper: it is woken, fails, and then no host fits
+        let farm = Farm::with(
+            vec![
+                Member::new(wakeup.host("farm-a"), Fake::saying(vec![silent()])),
+                Member::new(host("arm"), Fake::saying(vec![probe(8, "aarch64")])),
+            ],
+            Flags::default(),
+            Some(&dir),
+        );
+        let error = farm.place(&[&asking(Need::Golden)]).unwrap_err();
+        assert!(matches!(error, Error::NoHost { need: Need::Golden, .. }), "{error}");
+        assert_eq!(wakeup.woken().len(), 1);
+    }
+
+    #[test]
+    fn a_pinned_host_that_cannot_be_woken_is_the_typed_error_naming_command_and_status() {
+        let wakeup = Wakeup::new(3);
+        let asleep = Member::new(wakeup.host("farm-a"), Fake::saying(vec![silent()]));
+        let flags = Flags { host: Some("farm-a".parse().unwrap()), ..Flags::default() };
+        let error = Farm::with(vec![asleep], flags, None).place(&[&asking(Need::Any)]).unwrap_err();
+        let shown = Chain(&error).to_string();
+        assert!(matches!(error, Error::Wake { .. }), "{shown}");
+        assert!(shown.contains("`farm-a` could not be woken") && shown.contains("wake.sh farm-a"), "{shown}");
+        assert!(shown.contains("exit status: 3"), "{shown}");
+    }
+
+    fn asking(need: Need) -> Job {
+        Job {
+            label: "x".to_owned(),
+            words: vec!["true".to_owned()],
+            need,
+            env: Vec::new(),
+            limit: None,
+            reuse: Reuse::Never,
+            key: history::Key::stage("x"),
+        }
     }
 
     #[test]
@@ -897,8 +1175,8 @@ mod tests {
         let x86 = Member::new(host("x86"), Fake::saying(vec![probe(12, "x86_64")]));
         let arm = Member::new(host("arm"), Fake::saying(vec![probe(12, "aarch64")]));
         let farm = farm(vec![x86, arm]);
-        let needs = [Need::Any, Need::Golden, Need::Any, Need::Any, Need::Golden];
-        let chosen = farm.place(&needs).unwrap();
+        let jobs = [Need::Any, Need::Golden, Need::Any, Need::Any, Need::Golden].map(asking);
+        let chosen = farm.place(&jobs.iter().collect::<Vec<_>>()).unwrap();
         let hosts: Vec<&str> = chosen.iter().map(|snap| snap.name.as_str()).collect();
         // lint takes the one free slot on `arm` or `x86`; both golden stages must be on x86
         assert_eq!(hosts.get(1), Some(&"x86"));
@@ -909,7 +1187,7 @@ mod tests {
     #[test]
     fn a_golden_job_with_only_an_arm_host_is_an_error_naming_the_rule() {
         let arm = Member::new(host("arm"), Fake::saying(vec![probe(12, "aarch64")]));
-        let error = farm(vec![arm]).place(&[Need::Golden]).unwrap_err();
+        let error = farm(vec![arm]).place(&[&asking(Need::Golden)]).unwrap_err();
         assert!(error.to_string().contains("no golden host"), "{error}");
     }
 

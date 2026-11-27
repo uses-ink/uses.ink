@@ -52,6 +52,11 @@ pub(crate) enum Error {
         what: &'static str,
         source: Failure,
     },
+    /// A host that could not be woken.
+    Wake {
+        host: HostName,
+        source: crate::wake::Fault,
+    },
     /// A probe that printed what a probe does not.
     Probe {
         host: HostName,
@@ -122,6 +127,7 @@ impl Error {
             | Self::Utf8 { .. }
             | Self::Name { .. }
             | Self::Call { .. }
+            | Self::Wake { .. }
             | Self::Probe { .. }
             | Self::Said { .. }
             | Self::Silent { .. }
@@ -150,6 +156,7 @@ impl From<workspace::Fault> for Error {
 }
 
 impl fmt::Display for Error {
+    #[expect(clippy::too_many_lines, reason = "one arm per variant")]
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Usage(usage) => write!(out, "{usage}"),
@@ -160,6 +167,7 @@ impl fmt::Display for Error {
             Self::Utf8 { path } => write!(out, "{} is not UTF-8", path.display()),
             Self::Name { path, .. } => write!(out, "{} cannot name a farm directory", path.display()),
             Self::Call { host, what, .. } => write!(out, "{what} on `{host}` failed"),
+            Self::Wake { host, .. } => write!(out, "`{host}` could not be woken"),
             Self::Probe { host, .. } => write!(out, "`{host}` answered its probe with something unreadable"),
             Self::Said { host, .. } => write!(out, "`{host}` said something unreadable"),
             Self::Silent { host, what } => write!(out, "`{host}` did not say {what}"),
@@ -172,7 +180,7 @@ impl fmt::Display for Error {
             }
             Self::NoHost { need, up } => write!(out, "no {need} host to run on; the hosts up are {}", Listed(up)),
             Self::NotGolden { host } => {
-                write!(out, "`{host}` is not a golden host, and this job's output depends on the architecture")
+                write!(out, "`{host}` is not a golden host; this job's output depends on the arch")
             }
             Self::Lost { job } => {
                 write!(out, "the connection for job `{job}` ended before it did, and the host stopped the job")
@@ -203,6 +211,7 @@ impl std::error::Error for Error {
             Self::Io { source, .. } => Some(source),
             Self::Name { source, .. } => Some(source),
             Self::Call { source, .. } => Some(source),
+            Self::Wake { source, .. } => Some(source),
             Self::Probe { source, .. } => Some(source),
             Self::Said { source, .. } => Some(source),
             Self::Workspace(fault) => fault.source(),

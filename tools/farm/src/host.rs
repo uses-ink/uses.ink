@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::name::{Destination, HostName, JobFault, JobId};
+use crate::wake::Wake;
 
 /// A CPU architecture.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -171,6 +172,8 @@ pub(crate) struct Host {
     pub(crate) golden: Option<bool>,
     pub(crate) mold: bool,
     pub(crate) dir: HostDir,
+    /// How to start the host when it stops itself, if it does.
+    pub(crate) wake: Option<Wake>,
 }
 
 impl Host {
@@ -184,6 +187,7 @@ impl Host {
             golden: None,
             mold: false,
             dir: HostDir::standard(),
+            wake: None,
         }
     }
 }
@@ -282,6 +286,8 @@ pub(crate) struct Snapshot {
     pub(crate) now: u64,
     pub(crate) jobs: Vec<JobRow>,
     pub(crate) holders: Vec<Holder>,
+    /// Seconds a wake is expected to take, when the host does not answer and can be woken.
+    pub(crate) asleep: Option<u64>,
 }
 
 impl Snapshot {
@@ -406,6 +412,7 @@ impl Found {
             now: self.now.ok_or_else(|| missing("now"))?,
             jobs: self.jobs,
             holders: self.holders,
+            asleep: None,
         })
     }
 }
@@ -438,6 +445,13 @@ impl JobRow {
 impl fmt::Display for Snapshot {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         let golden = if self.golden { "golden" } else { "not golden" };
+        if let Some(cost) = self.asleep {
+            return write!(
+                out,
+                "{}: asleep ({} {} cores, {} slots, {golden}, as last seen); waking it costs about {cost} s",
+                self.name, self.arch, self.cores, self.slots
+            );
+        }
         write!(
             out,
             "{}: {} {} cores, load {}, slots {}/{} busy, {} queued, {golden}",

@@ -9,7 +9,7 @@
 //! - [`program`]: the shell programs that run on a host (slots, queue, jobs), as fixed text with
 //!   positional parameters.
 //! - [`fleet`]: [`fleet::Member`] and [`fleet::Fleet`], generic over the transport.
-//! - [`place`]: [`place::Placement`], which host gets a job.
+//! - [`place`]: [`place::Placement`], which host gets a job; [`history`], how long jobs took there.
 //! - [`run`]: [`run::Farm`], the verbs. [`summary`], [`job`] and [`event`] read what comes back.
 //! - [`jobs`]: the repo's job file.
 //! - [`version`]: the hash of the source the binary was built from.
@@ -27,11 +27,13 @@ mod exit;
 mod fleet;
 mod glob;
 mod hash;
+mod history;
 mod host;
 mod inputs;
 mod job;
 mod jobs;
 mod name;
+mod overview;
 mod place;
 mod process;
 mod program;
@@ -41,6 +43,7 @@ mod summary;
 mod transport;
 mod tree;
 mod version;
+mod wake;
 mod workspace;
 
 use std::process::ExitCode;
@@ -56,7 +59,7 @@ use fleet::{Fleet, Member};
 use host::{Host, Via};
 use inputs::{Inputs, Jj};
 use jobs::Jobs;
-use place::LeastLoaded;
+use place::Fastest;
 use run::{Farm, Setup};
 use transport::{Exec, Link, Local, Ssh};
 use tree::Tree;
@@ -108,18 +111,23 @@ impl Entry {
         let config = Config::load(&env)?;
         let settings = Jobs::load_optional(&tree.root)?.map_or_default(|jobs| jobs.settings().clone());
         let cache = Self::cache(&env, &tree, &settings)?;
+        let placement = Fastest::new(Self::table(cache.as_ref(), &console));
         let exec = Exec::new(Arc::clone(&console));
         let members = config.hosts.iter().map(|host| Self::member(host, &exec)).collect();
-        let farm = Farm::new(Setup {
-            fleet: Fleet::new(members),
-            placement: LeastLoaded,
-            console,
-            flags,
-            tree,
-            settings,
-            cache,
-        });
+        let farm = Farm::new(Setup { fleet: Fleet::new(members), placement, console, flags, tree, settings, cache });
         farm.go(&verb)
+    }
+
+    /// The timings placement uses; a history that cannot be read is said and placement goes on
+    /// without it.
+    fn table(cache: Option<&Cache>, console: &Console) -> history::Table {
+        let Some(cache) = cache else {
+            return history::Table::default();
+        };
+        cache.history.load(&history::Wall).unwrap_or_else(|fault| {
+            console.note(format!("timing history not used: {}", cache::Causes(&cache::Trouble::Store(fault))));
+            history::Table::default()
+        })
     }
 
     /// What the farm remembers on this machine, unless there is nowhere to keep it.
@@ -129,7 +137,7 @@ impl Entry {
         };
         let inputs =
             Inputs::new(Arc::new(Jj), &settings.exclude).map_err(|fault| Error::Cache(Box::new(fault.into())))?;
-        Ok(Some(Cache::at(&dir, settings.limits, inputs)))
+        Ok(Some(Cache::at(&dir, settings.limits, settings.memory, inputs)))
     }
 
     fn member(host: &Host, exec: &Exec) -> Member<Link> {
@@ -154,6 +162,7 @@ mod tests {
     use crate::exit::Exit;
     use crate::job::Verdict;
     use crate::name::HostName;
+    use crate::place::LeastLoaded;
 
     /// A farm of this machine alone, in a temp dir: the real `sh`, `flock`, `timeout` and `tail`.
     struct Rig {
@@ -181,7 +190,7 @@ mod tests {
             let settings = jobs::Settings::default();
             let cache = cached.then(|| {
                 let inputs = inputs::Inputs::new(Arc::new(inputs::Walk), &settings.exclude).unwrap();
-                Cache::at(&self.root.join("cache"), settings.limits, inputs)
+                Cache::at(&self.root.join("cache"), settings.limits, settings.memory, inputs)
             });
             let host = Host { slots: Some(slots), dir: self.dir(), ..Host::local() };
             let console = Arc::new(Console::default());
@@ -229,6 +238,7 @@ mod tests {
             env: vec![],
             limit: None,
             reuse: job::Reuse::Never,
+            key: history::Key::stage(label),
         }
     }
 

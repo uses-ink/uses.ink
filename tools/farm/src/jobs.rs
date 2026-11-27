@@ -26,6 +26,10 @@
 //!
 //! [budget]              # optional: warn after this many full `farm check` runs a day
 //! full_checks_per_day = 3
+//!
+//! [history]             # optional: how much timing history placement keeps
+//! max_age_hours = 336
+//! max_samples = 2000
 //! ```
 
 use std::fmt;
@@ -38,6 +42,7 @@ use crate::cli::Seconds;
 use crate::error::{Error, Listed};
 use crate::glob::{self, Selection};
 use crate::hash::{Hash, Hasher};
+use crate::history::Memory;
 use crate::name::{Disposable, Excluded, JobName};
 use crate::place::Need;
 
@@ -86,6 +91,8 @@ impl Default for Limits {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Settings {
     pub(crate) limits: Limits,
+    /// How much timing history placement keeps.
+    pub(crate) memory: Memory,
     /// Full checks a day before `farm check` warns; none is off.
     pub(crate) budget: Option<NonZeroU32>,
     /// Names the sync leaves out and a digest does not read, beside the built-in ones.
@@ -103,6 +110,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             limits: Limits::default(),
+            memory: Memory::default(),
             budget: None,
             exclude: Self::EXCLUDE.iter().filter_map(|name| name.parse().ok()).collect(),
             config: Hasher::default().finish(),
@@ -144,9 +152,10 @@ impl Jobs {
 
     /// Reads a job file's text.
     pub(crate) fn parse(text: &str, path: PathBuf) -> Result<Self, Fault> {
-        let raw: Raw = toml::from_str(text).map_err(|source| Fault::Toml(Box::new(source)))?;
+        let mut raw: Raw = toml::from_str(text).map_err(|source| Fault::Toml(Box::new(source)))?;
+        let settings = raw.settings(text);
         let mut recipes = Vec::new();
-        for (key, value) in raw.job {
+        for (key, value) in std::mem::take(&mut raw.job) {
             let name: JobName = key.parse().map_err(Fault::Name)?;
             let entry: Entry =
                 value.try_into().map_err(|source| Fault::Entry { name: name.clone(), source: Box::new(source) })?;
@@ -173,16 +182,6 @@ impl Jobs {
         if recipes.is_empty() {
             return Err(Fault::Empty);
         }
-        let defaults = Settings::default();
-        let settings = Settings {
-            limits: Limits {
-                hours: raw.cache.max_age_hours.unwrap_or(defaults.limits.hours),
-                entries: raw.cache.max_entries.unwrap_or(defaults.limits.entries),
-            },
-            budget: raw.budget.full_checks_per_day,
-            exclude: raw.sync.exclude.unwrap_or(defaults.exclude),
-            config: Hasher::default().field(text.as_bytes()).finish(),
-        };
         Ok(Self { path, all: recipes, disposable: raw.workspace.disposable, settings })
     }
 
@@ -225,6 +224,36 @@ struct Raw {
     budget: Spend,
     #[serde(default)]
     sync: Ship,
+    #[serde(default)]
+    history: Recall,
+}
+
+impl Raw {
+    /// What the tables beyond the jobs say, over the defaults.
+    fn settings(&mut self, text: &str) -> Settings {
+        let (raw, defaults) = (self, Settings::default());
+        Settings {
+            limits: Limits {
+                hours: raw.cache.max_age_hours.unwrap_or(defaults.limits.hours),
+                entries: raw.cache.max_entries.unwrap_or(defaults.limits.entries),
+            },
+            memory: Memory {
+                hours: raw.history.max_age_hours.unwrap_or(defaults.memory.hours),
+                samples: raw.history.max_samples.unwrap_or(defaults.memory.samples),
+            },
+            budget: raw.budget.full_checks_per_day,
+            exclude: raw.sync.exclude.take().unwrap_or(defaults.exclude),
+            config: Hasher::default().field(text.as_bytes()).finish(),
+        }
+    }
+}
+
+/// The `[history]` table.
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Recall {
+    max_age_hours: Option<NonZeroU64>,
+    max_samples: Option<NonZeroU32>,
 }
 
 /// The `[cache]` table.

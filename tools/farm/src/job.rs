@@ -13,6 +13,7 @@ use crate::cli::Seconds;
 use crate::event::{Event, Line};
 use crate::exit::Exit;
 use crate::glob::Selection;
+use crate::history::Key;
 use crate::host::Snapshot;
 use crate::jobs::Recipe;
 use crate::name::{HostName, JobId};
@@ -79,11 +80,14 @@ pub(crate) struct Job {
     /// Its own hard limit, when the repo declares one.
     pub(crate) limit: Option<Seconds>,
     pub(crate) reuse: Reuse,
+    /// What its timings are filed under.
+    pub(crate) key: Key,
 }
 
 impl From<Recipe> for Job {
     fn from(recipe: Recipe) -> Self {
         Self {
+            key: Key::stage(recipe.name.as_str()),
             label: recipe.name.to_string(),
             words: recipe.words,
             need: recipe.need,
@@ -99,6 +103,21 @@ impl From<Recipe> for Job {
 }
 
 impl Job {
+    /// `cargo <args>`, every argument as given, a `--` and what follows it included.
+    pub(crate) fn cargo(args: &[String]) -> Self {
+        let mut words = vec!["cargo".to_owned()];
+        words.extend(args.iter().cloned());
+        Self {
+            label: words.join(" "),
+            need: Need::of_cargo(args),
+            words,
+            env: Vec::new(),
+            limit: None,
+            reuse: Reuse::of_cargo(args),
+            key: Key::cargo(args),
+        }
+    }
+
     /// The command as it is shown.
     pub(crate) fn shown(&self) -> String {
         self.words.join(" ")
@@ -236,6 +255,21 @@ impl Flow {
         match self.body {
             Body::Missing => crate::error::Error::NoBody { job },
             Body::Unsaid | Body::Started => crate::error::Error::Lost { job },
+        }
+    }
+
+    /// How the job ended, or the error that stopped it on the way: a fault the host said, the
+    /// local log file failing, or a connection that ended with no word.
+    pub(crate) fn settle(&mut self, host: &HostName, id: &JobId, log: &Path) -> Result<Verdict, crate::error::Error> {
+        if let Some(source) = self.fault.take() {
+            return Err(crate::error::Error::Said { host: host.clone(), source });
+        }
+        if let Some(source) = self.log_error() {
+            return Err(crate::error::Error::Io { path: log.to_path_buf(), source });
+        }
+        match self.verdict() {
+            Verdict::Lost => Err(self.lost(id.clone())),
+            verdict => Ok(verdict),
         }
     }
 
@@ -495,6 +529,7 @@ mod tests {
             need: Need::Any,
             env: vec!["INSTA_UPDATE=always".to_owned()],
             limit: None,
+            key: crate::history::Key::stage("x"),
             reuse: Reuse::Never,
         };
         let snap = crate::host::Snapshot::read(

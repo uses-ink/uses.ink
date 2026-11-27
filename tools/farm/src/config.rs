@@ -10,9 +10,11 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::cli::Seconds;
 use crate::error::Error;
 use crate::host::{Arch, Host, HostDir, Via};
 use crate::name::HostName;
+use crate::wake::Wake;
 
 /// The variables the config's location depends on.
 #[derive(Debug, Clone, Default)]
@@ -95,6 +97,7 @@ impl Config {
             if !seen.insert(entry.name.clone()) {
                 return Err(Fault::Twice { name: entry.name });
             }
+            entry.check()?;
             hosts.push(entry.into());
         }
         if hosts.is_empty() {
@@ -124,6 +127,24 @@ struct Entry {
     #[serde(default)]
     mold: bool,
     dir: Option<DirText>,
+    wake: Option<String>,
+    wake_timeout: Option<NonZeroU32>,
+    wake_cost: Option<u32>,
+}
+
+impl Entry {
+    /// The wake keys must make sense together: a command, on a host that is not this machine.
+    fn check(&self) -> Result<(), Fault> {
+        let name = &self.name;
+        match &self.wake {
+            None if self.wake_timeout.is_some() || self.wake_cost.is_some() => {
+                Err(Fault::WakeKeys { name: name.clone() })
+            }
+            Some(command) if command.trim().is_empty() => Err(Fault::WakeBlank { name: name.clone() }),
+            Some(_) if self.ssh.0 == Via::Local => Err(Fault::WakeLocal { name: name.clone() }),
+            _ => Ok(()),
+        }
+    }
 }
 
 /// The `ssh` key: `local` or an ssh destination.
@@ -173,6 +194,13 @@ impl From<Entry> for Host {
             golden: entry.golden,
             mold: entry.mold,
             dir: entry.dir.map_or_else(HostDir::standard, |dir| dir.0),
+            wake: entry.wake.and_then(|command| {
+                Wake::new(
+                    &command,
+                    entry.wake_timeout.map(|secs| Seconds(u64::from(secs.get()))),
+                    entry.wake_cost.map(|secs| Seconds(u64::from(secs))),
+                )
+            }),
         }
     }
 }
@@ -188,6 +216,18 @@ pub(crate) enum Fault {
     },
     /// A file with no `[[host]]`.
     Empty,
+    /// `wake_timeout` or `wake_cost` without `wake`.
+    WakeKeys {
+        name: HostName,
+    },
+    /// A `wake` with no command in it.
+    WakeBlank {
+        name: HostName,
+    },
+    /// A `wake` on the host that is this machine.
+    WakeLocal {
+        name: HostName,
+    },
 }
 
 impl fmt::Display for Fault {
@@ -196,6 +236,11 @@ impl fmt::Display for Fault {
             Self::Read(_) => write!(out, "cannot be read"),
             Self::Toml(_) => write!(out, "is not the TOML expected"),
             Self::Twice { name } => write!(out, "names the host `{name}` twice"),
+            Self::WakeKeys { name } => write!(out, "gives `{name}` a `wake_timeout` or `wake_cost` but no `wake`"),
+            Self::WakeBlank { name } => write!(out, "gives `{name}` an empty `wake`"),
+            Self::WakeLocal { name } => {
+                write!(out, "gives `{name}` a `wake`, but it is this machine (`ssh = \"local\"`)")
+            }
             Self::Empty => write!(out, "has no `[[host]]`; delete it to use this machine alone"),
         }
     }
@@ -206,7 +251,11 @@ impl std::error::Error for Fault {
         match self {
             Self::Read(source) => Some(source),
             Self::Toml(source) => Some(source),
-            Self::Twice { .. } | Self::Empty => None,
+            Self::Twice { .. }
+            | Self::Empty
+            | Self::WakeKeys { .. }
+            | Self::WakeBlank { .. }
+            | Self::WakeLocal { .. } => None,
         }
     }
 }
@@ -249,6 +298,17 @@ golden = true
     }
 
     #[test]
+    fn a_wake_command_has_a_timeout_and_a_cost_with_defaults() {
+        let text = "[[host]]\nname = \"farm-a\"\nssh = \"farm-a\"\nwake = \"aws-wake\"\n\n[[host]]\nname = \"farm-b\"\nssh = \"farm-b\"\nwake = \"aws-wake\"\nwake_timeout = 60\nwake_cost = 30\n";
+        let config = Config::parse(text).unwrap();
+        let wake = |at: usize| config.hosts.get(at).unwrap().wake.clone().unwrap();
+        assert_eq!((wake(0).timeout, wake(0).cost), (Seconds(240), Seconds(120)));
+        assert_eq!((wake(1).timeout, wake(1).cost), (Seconds(60), Seconds(30)));
+        assert_eq!(wake(0).shown(&"farm-a".parse().unwrap()), "aws-wake farm-a");
+        assert!(Config::parse(FILE).unwrap().hosts.iter().all(|host| host.wake.is_none()));
+    }
+
+    #[test]
     fn a_bad_file_says_why() {
         let table = [
             ("", "no `[[host]]`"),
@@ -258,6 +318,10 @@ golden = true
             ("[[host]]\nname = \"a\"\nssh = \"x\"\nslots = 0\n", "slots"),
             ("[[host]]\nname = \"a\"\nssh = \"x\"\ndir = \"../x\"\n", "`..`"),
             ("[[host]]\nname = \"a\"\nssh = \"x\"\nwat = 1\n", "wat"),
+            ("[[host]]\nname = \"a\"\nssh = \"x\"\nwake_cost = 5\n", "no `wake`"),
+            ("[[host]]\nname = \"a\"\nssh = \"x\"\nwake = \" \"\n", "empty `wake`"),
+            ("[[host]]\nname = \"a\"\nssh = \"local\"\nwake = \"w\"\n", "this machine"),
+            ("[[host]]\nname = \"a\"\nssh = \"x\"\nwake = \"w\"\nwake_timeout = 0\n", "wake_timeout"),
         ];
         for (text, needle) in table {
             let fault = Config::parse(text).unwrap_err();

@@ -50,7 +50,7 @@ does not track them (see New workspaces):
 disposable = [".ink"]            # file or directory names, matched at any depth
 ```
 
-Four more optional tables (all keys are typed; an unknown key or a zero is an error):
+Five more optional tables (all keys are typed; an unknown key or a zero is an error):
 
 ```toml
 [sync]
@@ -62,6 +62,10 @@ max_entries = 256                # the oldest beyond this many are forgotten; de
 
 [budget]
 full_checks_per_day = 3          # `farm check` warns after this many a day; default off
+
+[history]
+max_age_hours = 336              # timings older than this are forgotten; default 336 (two weeks)
+max_samples = 2000               # the oldest beyond this many are forgotten; default 2000
 ```
 
 `target`, `.env`, `.env.*`, `*.pem` and `*.key` are never synced and are built into the farm.
@@ -92,6 +96,9 @@ arch = "x86_64"         # optional; default is what the host reports (`uname -m`
 golden = true           # optional; default is true only for x86_64
 mold = true             # optional; default false; link with mold
 dir = "~/farm"          # optional; default ~/farm; absolute or relative to $HOME
+wake = "aws-wake"       # optional; a command that starts the host (see Hosts that stop themselves)
+wake_timeout = 240      # optional, with wake; seconds to wait for the host to answer; default 240
+wake_cost = 120         # optional, with wake; seconds a start adds to placement's estimate; default 120
 
 [[host]]
 name = "box-b"
@@ -113,6 +120,9 @@ ssh = "local"           # this machine, in the workspace itself, with no copy
   The reference architecture is x86_64 (decision 0047), so only x86_64 hosts are golden unless
   the file says otherwise.
 - The arch is read on every probe, so there is nothing to cache or to go stale.
+- `wake`, `wake_timeout` and `wake_cost` are for a host that stops itself when idle and costs
+  money while it runs. They are only valid together with `wake`, and not on `ssh = "local"`. See
+  Hosts that stop themselves.
 - Every host needs a POSIX login shell, `flock`, `timeout`, `tail`, `setsid`, `rsync`, `cargo`
   (rustup, in `~/.cargo/bin`) and `cargo-nextest`. The wasm stage needs the `wasm32` targets,
   `wasmtime` and `cargo-deny` as `cargo xtask check` does. A host on a copy-on-write filesystem
@@ -126,13 +136,15 @@ ssh = "local"           # this machine, in the workspace itself, with no copy
 | `farm cargo <args...>` | Any cargo command on a placed host, in the synced workspace. |
 | `farm bless [nextest args]` | Nextest with `INSTA_UPDATE=always` on a golden host; brings back only changed `*.snap`. |
 | `farm fmt` | `cargo fmt --all` on a placed host; brings back only the `.rs` files whose bytes changed. |
-| `farm status` | Each host: arch, load, slots used, queue, and its running and queued jobs. |
+| `farm status` | Each host: arch, load, slots used, queue, its running and queued jobs, the median seconds by job that placement uses, and where each declared job would go now. `--json` prints the same. |
 | `farm workspace <name>` | A new jj workspace with a warm `target/`. `--forget <name>` removes one safely. |
 | `farm wait <id>` | Blocks until a detached job ends, or the timeout passes. |
 | `farm log <id>` | A job's log from its host; `--tail N` for the end. |
 
 Flags go before the verb, or right after it; for `cargo` and `bless` everything after the first
-word that is not a farm flag belongs to cargo (`--` ends the farm's flags at once).
+word that is not a farm flag belongs to cargo, verbatim, a `--` and what follows it included:
+`farm cargo clippy -p x --all-targets -- -D warnings` runs exactly that. A `--` before the first
+cargo word only ends the farm's flags (`farm cargo -- --json nextest`), and is not passed on.
 
 | Flag | Meaning |
 | --- | --- |
@@ -140,7 +152,7 @@ word that is not a farm flag belongs to cargo (`--` ends the farm's flags at onc
 | `--timeout N` | How long one call blocks, in seconds. Default 540: a tool call may take 10 minutes. |
 | `--limit N` | The hard limit of the job's command, enforced on the host by `timeout`. Default: the job's own `limit`, else 1500. |
 | `--host NAME` | Use only this host. A golden job on a host that is not golden is refused. |
-| `--json` | Print the machine report, schema `uses.farm/v1`. |
+| `--json` | Print the machine report, schema `uses.farm/v1`; `status` prints schema `uses.farm/status/v1`. |
 | `--verbose` | Print every command the farm runs, exactly. |
 | `--version` | Print the version and the source hash the binary was built from. |
 | `--fresh` | Run the job although an identical one passed before (the result cache is skipped; the new pass is still recorded). |
@@ -367,6 +379,67 @@ test took 118 ms while four agents shared `here`. So every job runs with `NEXTES
 each job its own cores for as long as it runs, so a test that takes seconds is slow. The farm
 never retries a failed test and never changes the nextest config; the 100 ms budgets are checked
 on a quiet machine.
+
+## Where a job goes
+
+`farm` picks the host that should **finish** the job first, from how long that kind of job took
+on each host before (decision 0076). Only hosts that may run the job are considered (a `golden`
+job needs a golden host), and `--host` forces one. For each candidate:
+
+```
+expected finish = wait for a free slot + the host's median for the job
+wait            = jobs ahead x the host's median / its slots      (0 with a free slot and no queue)
+```
+
+- **The key** is the stage name for `farm check` jobs, `bless` and `fmt`; for `farm cargo` it is
+  the subcommand and how many packages it names (none or `--workspace`, one `-p`, several), so
+  `clippy -p a` and `clippy -p b -- -D warnings` share their history. The median is over the
+  host's latest 15 passes of the key; failures are recorded but not timed, because they stop early.
+- **An unknown key on a host** takes the median of the other hosts' times scaled by core count
+  (a host with half the cores is estimated twice as slow). A host with **no history at all** is
+  tried once, as soon as it has a free slot, so its history fills in.
+- **A host far over its cores** (load above 1.5 times the cores) has its estimate multiplied by
+  the load per core, so a thrashing host is avoided.
+- **With no timings for the key anywhere** placement is the old rule: a free slot and the fewest
+  slots in use, then the lowest load, then the shortest queue.
+- Ties go to the host with fewer slots in use, then to the one listed first. The choice is
+  deterministic for the same history and probes.
+
+The choice is one line on stderr, `farm: test: petal (est 30 s, queue 0) over here (est 64 s)`:
+the estimate is seconds to the end including the wait, `queue` is the jobs ahead of this one.
+`farm status` prints, per host, `median pass seconds by job` with the run count, and `next <job>:`
+with where each declared job would go with the hosts as they are now; `farm status --json` has the
+same under `hosts[].medians` and `next[]`.
+
+The timings are one JSON object per finished job in `history.jsonl` of the repo's cache directory
+(`$XDG_CACHE_HOME/uses-ink/farm/<repo>`, else `~/.cache/...`), shared by every workspace:
+`{"at":..,"key":{"kind":"stage","name":"test"},"host":"petal","secs":30,"passed":true}`. It is
+append-only and bounded: each run drops lines older than `max_age_hours` or beyond the newest
+`max_samples` (the `[history]` table) and rewrites the file when it did. A line cut short by a crash
+is skipped. Deleting the file only resets the estimates. A job that ends under `farm wait` or by
+attaching to an identical running job is not recorded.
+
+### Hosts that stop themselves
+
+A host with `wake = "<command>"` may be asleep: a cloud machine that stops after idle minutes and
+costs money while it runs. When its probe gets no answer it is **asleep**, not down:
+
+- `farm status` lists it as `asleep` with what waking costs, and it is not an error.
+- Placement counts it as a candidate with `wake_cost` seconds (default 120) added to its expected
+  finish, so it is used only when the hosts that are up are queued or slower by more than that. A
+  short job is never worth waking a host for. It is never the host that gets tried once for lack of
+  history, and with no timings anywhere it is used only when nothing else may run the job.
+- Placement needs its size, which a sleeping host cannot say: the farm remembers the arch, cores
+  and slots of the last time it was up in `seen.json` of the cache directory. A host never seen up
+  is placed on only with `--host`, which wakes it once.
+- When it is chosen the farm runs `<command> <host name>` on this machine, no shell, killed after
+  `wake_timeout` seconds (default 240), then probes every five seconds until the host answers or
+  those seconds are over. The host name is the only argument the command gets: with `wake =
+  "aws-wake"` it runs `aws-wake farm-a`, so the script takes the name as `$1`. All hosts chosen for
+  one call are woken at once, and the jobs start after that.
+- A wake that fails (the command exits non-zero, cannot start, hangs, or the host still does not
+  answer) says one line naming the command and its exit status, and the host is left out of this
+  job's placement; the job is placed again on the rest. With `--host` it is the error (exit 3).
 
 ## Golden hosts
 

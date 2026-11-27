@@ -9,8 +9,13 @@ use serde::Serialize;
 
 /// The most lines of one failing test's output that are shown.
 pub(crate) const OUTPUT_LINES: usize = 60;
-/// The most diagnostics that are shown.
+/// The most diagnostics that are shown when nothing failed to compile.
 pub(crate) const DIAGNOSTICS: usize = 10;
+/// The most lines of the first error that are shown: its head, then its code (the `-->` line
+/// is dropped: the head has the place).
+pub(crate) const LEAD: usize = 11;
+/// The other diagnostics shown after the first error; the rest is a count.
+pub(crate) const ALSO: usize = 2;
 
 /// Everything a log says about how it went.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -148,7 +153,8 @@ impl Tests {
         let words: Vec<&str> =
             text.split(|c: char| c.is_whitespace() || c == ',' || c == ':').filter(|w| !w.is_empty()).collect();
         for (at, word) in words.iter().enumerate() {
-            let Some(number) = word.parse::<u32>().ok() else { continue };
+            // a cancelled run says `85/159 tests run`: the first is how many ran
+            let Some(number) = word.split('/').next().and_then(|run| run.parse::<u32>().ok()) else { continue };
             let next = words.get(at + 1).copied();
             let after = words.get(at + 2).copied();
             match (next, after) {
@@ -228,6 +234,8 @@ pub(crate) struct Diagnostics {
     pub(crate) warnings: u32,
     /// The first [`DIAGNOSTICS`], errors first, in short form.
     pub(crate) first: Vec<String>,
+    /// The first error as the compiler printed it, at most [`LEAD`] lines: head, place, code.
+    pub(crate) lead: Vec<String>,
 }
 
 /// One diagnostic.
@@ -235,6 +243,10 @@ pub(crate) struct Diagnostics {
 struct Diagnostic {
     error: bool,
     code: Option<String>,
+    /// The lint that raised it, as the compiler names it in a note: `clippy::too-many-lines`.
+    lint: Option<String>,
+    /// What the compiler printed under the head, up to the blank line.
+    body: Vec<String>,
     at: String,
     message: String,
 }
@@ -275,10 +287,45 @@ impl Diagnostic {
     }
 }
 
+impl Diagnostic {
+    /// Lines that only repeat what the head already says or advertise how to silence it.
+    const NOISE: [&'static str; 3] = ["implied by `-D", "to override `-D", "for further information visit"];
+
+    /// The lint a note under the head names: `` `-D clippy::x` implied by ``, `` `#[warn(x)]` ``
+    /// or `` `cargo::x` is set to ``.
+    fn lint(body: &[String]) -> Option<String> {
+        body.iter().find_map(|line| {
+            let note = line.trim_start().strip_prefix("= note: `")?;
+            let name = if let Some(flag) = note.strip_prefix("-D ") {
+                flag.split_once('`')?.0
+            } else if let Some(attr) = note.strip_prefix("#[") {
+                attr.split_once('(')?.1.split_once(')')?.0
+            } else if note.contains("` is set to `") {
+                note.split_once('`')?.0
+            } else {
+                return None;
+            };
+            Some(name.to_owned())
+        })
+    }
+
+    /// The head, then the code under it: at most [`LEAD`] lines, no blank ones, no noise.
+    fn block(&self) -> Vec<String> {
+        let code = self
+            .body
+            .iter()
+            .filter(|line| !line.trim().is_empty() && !line.trim_start().starts_with("--> "))
+            .filter(|line| !Self::NOISE.iter().any(|noise| line.contains(noise)))
+            .take(LEAD - 1)
+            .map(|line| line.trim_end().to_owned());
+        std::iter::once(self.to_string()).chain(code).collect()
+    }
+}
+
 impl fmt::Display for Diagnostic {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         let level = if self.error { "error" } else { "warning" };
-        match &self.code {
+        match self.code.as_ref().or(self.lint.as_ref()) {
             Some(code) => write!(out, "{level}[{code}] {}: {}", self.at, self.message),
             None => write!(out, "{level} {}: {}", self.at, self.message),
         }
@@ -294,14 +341,24 @@ impl Diagnostics {
             let place = lines.iter().skip(at + 1).take(3).find_map(|next| Diagnostic::place(next));
             let linking = message.starts_with("linking with") || message.starts_with("linker");
             let Some(place) = place.or(linking.then_some("link")) else { continue };
-            let diagnostic = Diagnostic { error, code, at: place.to_owned(), message: message.to_owned() };
-            if !found.contains(&diagnostic) {
+            let body: Vec<String> = lines
+                .iter()
+                .skip(at + 1)
+                .take_while(|next| !next.trim().is_empty() && Diagnostic::head(next).is_none())
+                .map(|next| (*next).to_owned())
+                .collect();
+            let lint = Diagnostic::lint(&body);
+            let diagnostic = Diagnostic { error, code, lint, body, at: place.to_owned(), message: message.to_owned() };
+            // the same diagnostic printed again (a rerun, another target) counts once
+            if !found.iter().any(|known| known.to_string() == diagnostic.to_string()) {
                 found.push(diagnostic);
             }
         }
         let errors = found.iter().filter(|d| d.error).count();
         found.sort_by_key(|d| !d.error);
+        let lead = found.first().filter(|d| d.error).map_or_else(Vec::new, Diagnostic::block);
         Self {
+            lead,
             errors: u32::try_from(errors).unwrap_or(u32::MAX),
             warnings: u32::try_from(found.len() - errors).unwrap_or(u32::MAX),
             first: found.iter().take(DIAGNOSTICS).map(ToString::to_string).collect(),
@@ -317,11 +374,15 @@ impl fmt::Display for Summary {
         if let Some(tests) = &self.tests {
             write!(out, "{tests}")?;
         }
-        let Diagnostics { errors, warnings, first } = &self.diagnostics;
+        let Diagnostics { errors, warnings, first, lead } = &self.diagnostics;
         if *errors + *warnings > 0 {
             writeln!(out, "compiler: {errors} errors, {warnings} warnings")?;
-            first.iter().try_for_each(|line| writeln!(out, "  {line}"))?;
-            let shown = u32::try_from(first.len()).unwrap_or(u32::MAX);
+            // a failure shows its first error whole and two more in short; no more lines than that
+            let head = usize::from(!lead.is_empty());
+            let room = if head == 1 { ALSO } else { DIAGNOSTICS };
+            let rest: Vec<&String> = first.iter().skip(head).take(room).collect();
+            lead.iter().chain(rest.iter().copied()).try_for_each(|line| writeln!(out, "  {line}"))?;
+            let shown = u32::try_from(head + rest.len()).unwrap_or(u32::MAX);
             if errors + warnings > shown {
                 writeln!(out, "  ... {} more in the log", errors + warnings - shown)?;
             }
@@ -515,7 +576,7 @@ error: layout problems:
         assert_eq!((diagnostics.errors, diagnostics.warnings), (0, 3));
         assert_eq!(
             diagnostics.first.first().map(String::as_str),
-            Some("warning src/lib.rs:9:21: unused variable: `unused`")
+            Some("warning[unused_variables] src/lib.rs:9:21: unused variable: `unused`")
         );
         assert!(diagnostics.first.iter().any(|line| line.contains("length comparison to zero")));
     }
@@ -539,6 +600,68 @@ error: layout problems:
         let summary = Summary::of(&log);
         assert_eq!(summary.diagnostics.first.len(), DIAGNOSTICS);
         assert!(summary.to_string().contains("... 4 more in the log"));
+    }
+
+    /// Real output of a clippy failure under `-D warnings`, as the farm's logs hold it.
+    const DENIED: &str = r"warning: unused workspace dependency `web`
+  --> Cargo.toml:110:1
+   |
+   = note: `cargo::unused_workspace_dependencies` is set to `warn` by default
+warning: workspace (manifest) generated 1 warning
+    Checking uses-ink-engine v0.0.0 (/home/cstef/farm/uses.ink/trace/engine)
+error: this function has too many lines (45/40)
+   --> engine/src/interpret.rs:107:5
+    |
+107 |     fn run(&self, snapshot: &Snapshot, mut journal: Journal) -> Understood {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.100.0/index.html#too_many_lines
+    = note: `-D clippy::too-many-lines` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::too_many_lines)]`
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> edge/api/src/api.rs:73:17
+   |
+73 |                 trace::warn!(name: trace::event::API_AUTH)
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here
+   |
+   = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
+
+error: could not compile `uses-ink-engine` (lib) due to 1 previous error
+";
+
+    #[test]
+    fn a_clippy_failure_shows_its_first_error_with_file_line_and_lint_in_a_screen() {
+        let summary = Summary::of(DENIED);
+        let diagnostics = &summary.diagnostics;
+        assert_eq!((diagnostics.errors, diagnostics.warnings), (2, 1));
+        let shown = summary.to_string();
+        let lines: Vec<&str> = shown.lines().collect();
+        assert!(lines.len() <= 15, "{shown}");
+        assert_eq!(
+            lines.get(1).copied(),
+            Some(
+                "  error[clippy::too-many-lines] engine/src/interpret.rs:107:5: this function has too many lines (45/40)"
+            )
+        );
+        assert!(shown.contains("107 |     fn run(&self"), "the code is shown: {shown}");
+        assert!(!shown.contains("to override"), "the lint advice is noise: {shown}");
+        assert!(shown.contains("error[clippy::semicolon-if-nothing-returned] edge/api/src/api.rs:73:17"), "{shown}");
+        assert!(shown.contains("warning[cargo::unused_workspace_dependencies] Cargo.toml:110:1"), "{shown}");
+        assert!(!shown.contains("more in the log"), "all three fit: {shown}");
+    }
+
+    #[test]
+    fn a_diagnostic_printed_twice_with_different_notes_counts_once() {
+        let log = "warning: unused thing\n --> Cargo.toml:1:1\n  |\n  = note: a\nwarning: unused thing\n --> Cargo.toml:1:1\n";
+        assert_eq!(Summary::of(log).diagnostics.warnings, 1);
+    }
+
+    #[test]
+    fn a_cancelled_run_counts_the_tests_that_ran() {
+        let log = "     Summary [   1.068s] 85/159 tests run: 84 passed, 1 failed, 0 skipped\n";
+        let tests = Summary::of(log).tests.unwrap();
+        assert_eq!((tests.run, tests.passed, tests.failed), (85, 84, 1));
     }
 
     #[test]

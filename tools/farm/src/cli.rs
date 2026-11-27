@@ -208,6 +208,10 @@ impl Command {
                 let mut tail = Vec::new();
                 while let Some(arg) = rest.next() {
                     if arg == "--" {
+                        // the first `--` only ends the farm's flags; any later one is cargo's
+                        if !tail.is_empty() {
+                            tail.push(arg);
+                        }
                         tail.extend(rest.by_ref());
                     } else if !(tail.is_empty() && flags.take(&arg, &mut rest)?) {
                         tail.push(arg);
@@ -319,6 +323,21 @@ mod tests {
         Command::parse(line.split_whitespace().map(str::to_owned).collect())
     }
 
+    fn words(line: &str) -> Vec<String> {
+        line.split_whitespace().map(str::to_owned).collect()
+    }
+
+    #[test]
+    fn a_double_dash_after_the_subcommand_and_what_follows_reach_cargo_verbatim() {
+        let line = "clippy -p x --all-targets -- -D warnings";
+        assert_eq!(parse(&format!("cargo {line}")).unwrap().verb, Verb::Cargo(words(line)));
+        let more = "nextest run -p x -- --nocapture --json";
+        assert_eq!(parse(&format!("--detach cargo {more}")).unwrap().verb, Verb::Cargo(words(more)));
+        let flags = parse("cargo clippy -- --json -D warnings").unwrap();
+        assert!(!flags.flags.json, "after the subcommand `--json` is cargo's, `--` or not");
+        assert_eq!(parse("bless -p x -- name").unwrap().verb, Verb::Bless(words("-p x -- name")));
+    }
+
     #[test]
     fn a_check_names_jobs_or_none() {
         assert_eq!(parse("check").unwrap().verb, Verb::Check(vec![]));
@@ -338,6 +357,8 @@ mod tests {
         let command = parse("cargo -- --json nextest").unwrap();
         assert!(!command.flags.json);
         assert_eq!(command.verb, Verb::Cargo(["--json", "nextest"].map(str::to_owned).to_vec()));
+        let command = parse("cargo -- clippy -p x -- -D warnings").unwrap();
+        assert_eq!(command.verb, Verb::Cargo(words("clippy -p x -- -D warnings")), "a leading `--` is the farm's");
         assert!(matches!(parse("cargo"), Err(Usage::Missing { .. })));
         assert!(matches!(parse("cargo --json"), Err(Usage::Missing { .. })));
     }

@@ -4,6 +4,7 @@
 
 use std::sync::Mutex;
 use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::changes::Kind;
 use crate::cli::Seconds;
@@ -17,6 +18,7 @@ use crate::process::Failure;
 use crate::program::{Call, Program};
 use crate::transport::{Done, Pull, Push, Transport};
 use crate::tree::Tree;
+use crate::wake::Fault as WakeFault;
 
 /// What a quick call printed: its events, and every other line.
 #[derive(Debug, Default)]
@@ -45,6 +47,9 @@ pub(crate) struct Member<T> {
 }
 
 impl<T: Transport> Member<T> {
+    /// How often a waking host is probed.
+    const POLL: Duration = Duration::from_secs(5);
+
     pub(crate) fn new(host: Host, transport: T) -> Self {
         Self { host, transport, synced: Mutex::new(false) }
     }
@@ -80,6 +85,28 @@ impl<T: Transport> Member<T> {
         let said = self.say(&call, "the probe")?;
         Snapshot::read(&self.host, &said.output.join("\n"))
             .map_err(|source| Error::Probe { host: self.host.name.clone(), source })
+    }
+
+    /// Starts the sleeping host with its wake command and waits for it to answer a probe, both
+    /// within the host's wake timeout; the snapshot it answers with.
+    pub(crate) fn wake(&self) -> Result<Snapshot, Error> {
+        let (host, wake) = (&self.host.name, self.host.wake.as_ref());
+        let failed = |source| Error::Wake { host: host.clone(), source };
+        let wake = wake.ok_or_else(|| failed(WakeFault::Blank))?;
+        let deadline = Instant::now() + wake.timeout.duration();
+        wake.run(host, deadline).map_err(failed)?;
+        loop {
+            let last = match self.probe() {
+                Ok(snap) => return Ok(snap),
+                Err(last) => last,
+            };
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                let (command, secs) = (wake.shown(host), wake.timeout.0);
+                return Err(failed(WakeFault::Silent { command, secs, last: Box::new(last) }));
+            }
+            thread::sleep(left.min(Self::POLL));
+        }
     }
 
     /// Makes the workspace's tree on the host equal to the workspace here; the first time on a
@@ -203,6 +230,8 @@ pub(crate) struct Fleet<T> {
 #[derive(Debug, Default)]
 pub(crate) struct Probed {
     pub(crate) up: Vec<Snapshot>,
+    /// Hosts with a wake command that did not answer: asleep, not broken.
+    pub(crate) asleep: Vec<Host>,
     pub(crate) down: Vec<(HostName, Error)>,
 }
 
@@ -220,7 +249,8 @@ impl<T: Transport + Sync> Fleet<T> {
         &self.members
     }
 
-    /// Probes every host at once; a host that does not answer is reported down and left out.
+    /// Probes every host at once; a host that does not answer is reported down and left out, or
+    /// asleep when it has a wake command.
     pub(crate) fn probe(&self, console: &Console) -> Probed {
         let results: Vec<_> = thread::scope(|scope| {
             let running: Vec<_> = self.members.iter().map(|member| scope.spawn(move || member.probe())).collect();
@@ -230,6 +260,7 @@ impl<T: Transport + Sync> Fleet<T> {
         for (member, joined) in results {
             match joined {
                 Ok(Ok(snap)) => probed.up.push(snap),
+                Ok(Err(Error::Call { .. })) if member.host.wake.is_some() => probed.asleep.push(member.host.clone()),
                 Ok(Err(error)) => probed.down.push((member.host.name.clone(), error)),
                 Err(_) => console.note(format!("probing `{}` panicked", member.host.name)),
             }
@@ -364,6 +395,7 @@ mod tests {
             env: vec![],
             reuse: crate::job::Reuse::Never,
             limit: None,
+            key: crate::history::Key::stage("x"),
         };
         let id = JobId::new(member.host.name.clone(), 255, 1);
         let call =
@@ -382,6 +414,90 @@ mod tests {
     }
 
     #[test]
+    fn a_double_dash_and_what_follows_are_in_the_argv_the_transport_sends() {
+        let member = Member::new(remote("petal"), Fake::default());
+        let snap = Snapshot::read(&member.host, &PROBE.join("\n")).unwrap();
+        let parsed = crate::cli::Command::parse(
+            "cargo clippy -p x --all-targets -- -D warnings".split(' ').map(str::to_owned).collect(),
+        )
+        .unwrap();
+        let crate::cli::Verb::Cargo(args) = parsed.verb else { panic!("not a cargo verb") };
+        let job = Job::cargo(&args);
+        let id = JobId::new(member.host.name.clone(), 255, 1);
+        let call =
+            member.launch(&Start { tree: &tree(), snap: &snap, job: &job, id: &id }, Attach::Detach, Seconds(1500));
+        let sent = &call.args;
+        let env = sent.iter().position(|arg| arg == "env").unwrap();
+        let after: Vec<&str> = sent.iter().skip(env).map(String::as_str).collect();
+        assert_eq!(
+            &after[after.len() - 8..],
+            ["cargo", "clippy", "-p", "x", "--all-targets", "--", "-D", "warnings"],
+            "every word is its own argument and `--` stays"
+        );
+    }
+
+    /// A member whose wake command is a script that appends its arguments to `marker`.
+    fn sleeper(dir: &std::path::Path, body: &str, replies: Vec<Reply>) -> Member<Fake> {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::create_dir_all(dir).unwrap();
+        let script = dir.join("wake.sh");
+        std::fs::write(&script, format!("#!/bin/sh\necho \"$@\" >> {}/marker\n{body}\n", dir.display())).unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let wake = crate::wake::Wake::new(&script.display().to_string(), Some(Seconds(1)), None);
+        Member::new(Host { wake, ..remote("farm-a") }, Fake::saying(replies))
+    }
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("farm-fleet-{name}-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        dir
+    }
+
+    #[test]
+    fn waking_runs_the_command_with_the_host_name_then_probes_until_it_answers() {
+        let dir = scratch("wake");
+        let member = sleeper(&dir, "true", vec![Reply { lines: vec![], code: 255 }, Reply::ok(PROBE)]);
+        let snap = member.wake().unwrap();
+        assert_eq!(snap.name.as_str(), "farm-a");
+        assert_eq!(std::fs::read_to_string(dir.join("marker")).unwrap().trim(), "farm-a");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn a_wake_that_fails_or_whose_host_stays_silent_is_a_typed_error_not_a_hang() {
+        let dir = scratch("fail");
+        let failing = sleeper(&dir, "exit 7", vec![]);
+        let error = failing.wake().unwrap_err();
+        let text = crate::error::Chain(&error).to_string();
+        assert!(matches!(error, Error::Wake { .. }) && text.contains("exit status: 7"), "{text}");
+        let silent = Reply { lines: vec![], code: 255 };
+        let quiet = sleeper(&dir, "true", vec![silent.clone(), silent.clone(), silent]);
+        let started = std::time::Instant::now();
+        let error = quiet.wake().unwrap_err();
+        let text = crate::error::Chain(&error).to_string();
+        assert!(text.contains("still did not answer within 1 s"), "{text}");
+        assert!(started.elapsed() < std::time::Duration::from_secs(8));
+        let plain = Member::new(remote("petal"), Fake::default());
+        assert!(matches!(plain.wake(), Err(Error::Wake { source: crate::wake::Fault::Blank, .. })));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn a_host_with_a_wake_command_that_does_not_answer_is_asleep_and_one_without_is_down() {
+        let dir = scratch("probe");
+        let silent = Reply { lines: vec![], code: 255 };
+        let asleep = sleeper(&dir, "true", vec![silent.clone()]);
+        let broken = Member::new(remote("broken"), Fake::saying(vec![silent]));
+        let up = Member::new(remote("up"), Fake::saying(vec![Reply::ok(PROBE)]));
+        let probed = Fleet::new(vec![asleep, broken, up]).probe(&Console::default());
+        assert_eq!(probed.asleep.iter().map(|host| host.name.as_str()).collect::<Vec<_>>(), ["farm-a"]);
+        assert_eq!(probed.down.iter().map(|(name, _)| name.as_str()).collect::<Vec<_>>(), ["broken"]);
+        assert_eq!(probed.up.len(), 1);
+        assert!(!dir.join("marker").exists(), "probing never wakes");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn a_held_launch_holds_stdin_for_the_timeout() {
         let member = Member::new(remote("petal"), Fake::default());
         let snap = Snapshot::read(&member.host, &PROBE.join("\n")).unwrap();
@@ -391,6 +507,7 @@ mod tests {
             need: Need::Any,
             env: vec![],
             limit: None,
+            key: crate::history::Key::stage("x"),
             reuse: crate::job::Reuse::Never,
         };
         let id = JobId::new(member.host.name.clone(), 1, 1);
