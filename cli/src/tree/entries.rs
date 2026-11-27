@@ -63,6 +63,11 @@ const PENDING: &[Ending] = &[Ending { exit: Exit::Usage, about: "Not built yet; 
 
 const SOURCE_ENV: &[Variable] = &[];
 
+const SERVE_ENV: &[Variable] = &[Variable {
+    name: "INK_SMTP_PASSWORD",
+    about: "The SMTP password for --mail smtp; never a flag, so it stays out of process lists. Every other sign-in setting is a flag with its own INK_ variable",
+}];
+
 const SITE_ENV: &[Variable] = &[
     Variable { name: "INK_API", about: "The address of the API, as --api" },
     Variable { name: "INK_SITE", about: "The site's id, as --site" },
@@ -171,8 +176,13 @@ const ENTRIES: &[Entry] = &[
         examples: &[
             Example { line: "ink serve", about: "Serve .ink/out of this folder on 127.0.0.1:8080" },
             Example { line: "ink -C garden serve", about: "Serve .ink/out of another folder" },
+            Example {
+                line: "ink serve --data state --mail smtp --mail-from ink@example.org --smtp-host mail.example.org",
+                about: "Turn on the API and send sign-in links by SMTP",
+            },
         ],
         endings: SERVER,
+        env: SERVE_ENV,
         ..Entry::built("serve", Group::Write, "Serve a built deploy the way production does")
     },
     Entry {

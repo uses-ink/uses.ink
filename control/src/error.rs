@@ -215,6 +215,18 @@ pub enum Unreadable {
         /// Why.
         source: build::RevisionError,
     },
+    /// The column holds an email address that is no longer valid.
+    Address {
+        /// The column.
+        column: &'static str,
+        /// Why.
+        source: mail::AddressError,
+    },
+    /// The column holds a digest that is not 32 bytes.
+    Digest {
+        /// The column.
+        column: &'static str,
+    },
 }
 
 impl fmt::Display for Unreadable {
@@ -235,6 +247,8 @@ impl fmt::Display for Unreadable {
             }
             Self::Url { column, .. } => write!(out, "column `{column}` holds a URL that is no longer valid"),
             Self::Revision { column, .. } => write!(out, "column `{column}` holds a revision that is no longer valid"),
+            Self::Address { column, .. } => write!(out, "column `{column}` holds an address that is no longer valid"),
+            Self::Digest { column } => write!(out, "column `{column}` holds a digest that is not 32 bytes"),
         }
     }
 }
@@ -251,7 +265,8 @@ impl std::error::Error for Unreadable {
             Self::Time { source, .. } => Some(source),
             Self::Url { source, .. } => Some(source),
             Self::Revision { source, .. } => Some(source),
-            Self::Name { .. } | Self::Locator { .. } => None,
+            Self::Address { source, .. } => Some(source),
+            Self::Name { .. } | Self::Locator { .. } | Self::Digest { .. } => None,
         }
     }
 }

@@ -1,6 +1,11 @@
 //! The API's requests and replies, as values: no HTTP library is named here.
 
 use std::fmt;
+use std::net::IpAddr;
+use std::time::Duration;
+
+use crate::cookie::Cookie;
+use crate::door::Enter;
 
 /// An HTTP method the API has a route for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -54,8 +59,10 @@ impl std::str::FromStr for Method {
     }
 }
 
-/// A request to the API: what the adapter read, with the body already bounded.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// A request to the API: what the adapter read, with the body already bounded. It never prints
+/// a credential: `Debug` shows the `Authorization` and `Cookie` headers as present or absent
+/// and the token of a sign-in link in the path as `<redacted>`.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Request {
     /// The method.
     pub method: Method,
@@ -63,8 +70,27 @@ pub struct Request {
     pub path: String,
     /// The `Authorization` header's value, if there was one. Never printed.
     pub authorization: Option<Vec<u8>>,
+    /// The `Cookie` header's value, if there was one. Never printed.
+    pub cookie: Option<Vec<u8>>,
+    /// The address the connection came from, as the adapter saw it. Behind a reverse proxy this
+    /// is the proxy's, so a limit per source is then a limit for everyone behind it.
+    pub source: Option<IpAddr>,
     /// The body, or that it went over the limit the adapter was given.
     pub body: Payload,
+}
+
+impl fmt::Debug for Request {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let held = |header: &Option<Vec<u8>>| header.as_ref().map(|_| "<redacted>");
+        out.debug_struct("Request")
+            .field("method", &self.method)
+            .field("path", &Enter::redact(&self.path))
+            .field("authorization", &held(&self.authorization))
+            .field("cookie", &held(&self.cookie))
+            .field("source", &self.source)
+            .field("body", &self.body)
+            .finish()
+    }
 }
 
 /// A request's body.
@@ -88,6 +114,8 @@ pub enum Status {
     Ok,
     /// `201`: something was made.
     Created,
+    /// `202`: the request was taken and its effect, if any, comes later.
+    Accepted,
     /// `400`: the request is malformed.
     BadRequest,
     /// `401`: no valid token.
@@ -102,6 +130,8 @@ pub enum Status {
     Conflict,
     /// `413`: over a limit.
     TooLarge,
+    /// `429`: too many requests; `Retry-After` says when to try again.
+    TooMany,
     /// `422`: well formed, and not something the plane can do with.
     Unprocessable,
     /// `500`.
@@ -114,6 +144,7 @@ impl Status {
         match self {
             Self::Ok => 200,
             Self::Created => 201,
+            Self::Accepted => 202,
             Self::BadRequest => 400,
             Self::Unauthorized => 401,
             Self::NotFound => 404,
@@ -122,6 +153,7 @@ impl Status {
             Self::Conflict => 409,
             Self::TooLarge => 413,
             Self::Unprocessable => 422,
+            Self::TooMany => 429,
             Self::Internal => 500,
         }
     }
@@ -153,8 +185,9 @@ impl Media {
     }
 }
 
-/// The API's answer.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// The API's answer. It can carry one `Set-Cookie`, whose value is a secret and does not print;
+/// its body can hold one too (a new session), so `Debug` shows the body's length and no more.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Reply {
     /// The status.
     pub status: Status,
@@ -166,12 +199,30 @@ pub struct Reply {
     pub allow: Vec<Method>,
     /// Whether the answer asks for a bearer token (`WWW-Authenticate`), for a `401`.
     pub challenge: bool,
+    /// The cookie to set, for a sign-in or a sign-out.
+    pub cookie: Option<Cookie>,
+    /// How long to wait before asking again (`Retry-After`), for a `429`.
+    pub retry: Option<Duration>,
+}
+
+impl fmt::Debug for Reply {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.debug_struct("Reply")
+            .field("status", &self.status)
+            .field("media", &self.media)
+            .field("body", &format_args!("{} bytes", self.body.len()))
+            .field("allow", &self.allow)
+            .field("challenge", &self.challenge)
+            .field("cookie", &self.cookie)
+            .field("retry", &self.retry)
+            .finish()
+    }
 }
 
 impl Reply {
     /// A reply with a body.
     pub const fn new(status: Status, media: Media, body: Vec<u8>) -> Self {
-        Self { status, media, body, allow: Vec::new(), challenge: false }
+        Self { status, media, body, allow: Vec::new(), challenge: false, cookie: None, retry: None }
     }
 
     /// A reply with no body.

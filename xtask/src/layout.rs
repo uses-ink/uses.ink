@@ -94,6 +94,8 @@ pub(crate) const ENFORCED: &[&str] = &[
     "uses-ink-secret-conformance",
     "uses-ink-secret-local",
     "uses-ink-web",
+    "uses-ink-mail",
+    "uses-ink-mail-smtp",
     "xtask",
     "farm",
 ];

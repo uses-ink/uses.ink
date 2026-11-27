@@ -68,6 +68,8 @@ impl Fixture {
             method,
             path: path.to_owned(),
             authorization: authorization.map(|token| format!("Bearer {token}").into_bytes()),
+            cookie: None,
+            source: None,
             body,
         };
         pollster::block_on(self.api.respond(&request))
@@ -138,6 +140,8 @@ fn every_call_needs_the_owner_token() {
         method: Method::Get,
         path: "/v1/sites".into(),
         authorization: Some(b"Basic abc".to_vec()),
+        cookie: None,
+        source: None,
         body: Payload::Whole(vec![]),
     };
     assert_eq!(pollster::block_on(fixture.api.respond(&basic)).status, Status::Unauthorized);

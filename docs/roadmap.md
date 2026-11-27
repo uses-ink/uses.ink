@@ -183,6 +183,15 @@ credentials sealed at rest, export, removal with a tombstone) with tests on the 
 No SQL text exists: statements and migrations are typed values (0049). Not done: `web`,
 sign-in, `ink push` and the CLI verbs.
 
+Progress (2026-11-27, 0066): sign-in is built. `control::signin` (typed `Credential` with the
+email link as its only variant, digests of 256-bit tokens at rest, single-use links, sliding or
+absolute sessions with revocation, the once-only first-run link, the sign-up policy), the `mail`
+port with `Capture`, `Stdout` and the SMTP adapter `mail/smtp`, rate limits, and the API routes
+`POST /v1/login`, `GET` and `POST /v1/login/{token}`, `GET` and `DELETE /v1/session` in
+`edge/api`'s `Door`, beside the owner token. `ink serve --data` prints the first-run link once
+and takes the `--mail`, `--smtp-*`, TTL, policy and rate flags. Not done: the dashboard screens
+(`web`), a route to list and revoke sessions, a forwarded-header source, passkeys.
+
 Progress (2026-11-27, 0052): the API and intake are built (`edge/api`, mounted by `edge/axum` on
 its own host, `ink serve --data`), with the `Credentials` port and a single-owner token adapter,
 bounded tar intake of a built folder, and the polling `watch` and in-process `worker` over `clock`
@@ -200,6 +209,7 @@ ports. Not run by `ink serve`: the watch (no remote adapter for `Heads` yet) and
   goldens and structure checks; the edge mounts it through `Screens`. Open: the edge's mounting,
   previews and the decisions diff, domains and identities, the pen's wasm loader.
 - Sign-in for self-host: email magic link over SMTP, plus a first-run admin link printed once.
+  **Built (0066), gate result in the progress note below;** the dashboard screens are `web`'s.
 - `ink push` and `ink:source-upload`; `ink status`, `watch`, `deploys`, `rollback`, `resume`,
   `export`.
 - CLI redesign (0061, Accepted; `docs/cli.md`): the typed output grammar and one renderer, then the

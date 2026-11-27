@@ -19,7 +19,7 @@ use tokio::sync::Semaphore;
 use tokio::time::Instant;
 
 use crate::body::Pump;
-use crate::bridge::Mount;
+use crate::bridge::{Mount, Peer};
 use crate::error::Error;
 use crate::event::{Answered, Called, Event, Kind, Observe, Stopped};
 use crate::linger::Linger;
@@ -86,6 +86,7 @@ where
     /// shutdown drains it, then closes it lingering. Its slot is free again when it ends.
     fn connect(&self, graceful: &GracefulShutdown, router: Router, accepted: Accepted) {
         let Accepted { stream, slot } = accepted;
+        let router = router.layer(axum::Extension(Peer(stream.peer_addr().ok())));
         let limits = self.inner.edge.limits();
         let (stream, linger) = match Linger::new(stream, limits) {
             Ok(pair) => pair,
@@ -213,7 +214,8 @@ where
     async fn call(&self, mount: &Mount, request: Request) -> Response<Body> {
         let started = Instant::now();
         let method = request.method().as_str().to_owned();
-        let path: String = request.uri().path().chars().take(200).collect();
+        // a sign-in link's token is in its path and never in an event
+        let path: String = edge_api::Enter::redact(request.uri().path()).chars().take(200).collect();
         let response = mount.bridge.call(request).await;
         let status = response.status().as_u16();
         self.observe.event(&Event::Called(Called { method, path, status, took: started.elapsed() }));

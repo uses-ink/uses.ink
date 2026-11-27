@@ -516,3 +516,32 @@ runs on the caller's task. `watch::Watch::step` polls what is due and `run` loop
 `Clock::sleep`; a test uses `clock::Manual` (a sleep moves the time and is recorded, and stops the
 loop after N rounds) and `clock::Counter` (ids count up).
 
+## 12. Signing in
+
+`control::signin` is sign-in over the row port alone. `SignIn<D: Db>` has the use cases:
+`request` (a link for an address, when it has an account or the `Signup` policy makes one),
+`admin` (the first-run link, once), `peek` (look without spending), `redeem` (spend the link and
+make the session, and the account and its `Credential::Link` when new), `resolve` (a session's
+secret to its session, sliding it), `end`, `revoke`, `revoke_all`, `sessions`, `factors` and
+`purge`. It reads no clock and draws nothing: a call takes the time and a `Drawn` (a `Proof` and
+three ids) from the caller, so a test is deterministic.
+
+```rust
+let entry = SignIn::new(db, Settings::default());       // Ttl, Expiry, Signup: all typed
+let Requested::Issued(issued) = entry.request(&address, drawn, now).await? else { return };
+let link = base.link(issued.proof.reveal());            // mail::Link, prints redacted
+let entered = entry.redeem(&proof, None, drawn, now).await?;   // Refused::Unusable for every bad link
+```
+
+A `Proof` is 256 random bits as 64 hex digits and prints as `Proof(<redacted>)`; the database holds
+`Digest::of(Context, &proof)`. The `Entry` migration makes the tables (apply it after `Domain` and
+`Queued`). `mail` is the port: `Address`, `Base`, `Link`, `Template`, `Message` and `Mailer`;
+`mail::Capture` and `mail::Stdout<W>` are the stand-ins and `mail_smtp::Smtp` is the adapter.
+
+In `edge/api`, `Door<D, K, R>` answers `POST /v1/login`, `GET` and `POST /v1/login/{token}`,
+`GET` and `DELETE /v1/session` (its module docs say what each answers); `Routed::new(api, door)`
+is the one `Answers` the server gets. `Door::ask` puts a `mail::Message` in the `Outbox`; a
+`Courier::run(&notes)` sends them through a `Mailer`. `Limiter` and `Rates` limit by address and
+source; `Jar` sets and reads the cookie. `Credentials` has three adapters: `Owner`, `Sessions`
+and `Either<A, B>`, so the API takes `Either(owner, Sessions::new(entry, clock))` and a later
+credential is one more arm. Decision 0066 has the reasons and what is not built.

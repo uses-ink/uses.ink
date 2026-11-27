@@ -80,6 +80,8 @@ uses.ink/
   queue/  queue/cf/  queue/local/                build request port
   build/  build/container/  build/local/         builder port: start a build, stream its events
   secret/                uses-ink-secret        sealing credentials at rest
+  mail/  mail/smtp/      uses-ink-mail          mail port: typed messages and a Mailer; Capture and Stdout stand-ins;
+                                                the SMTP adapter on lettre and rustls (0066)
   edge/api/              uses-ink-edge-api      the API and intake over the control plane (0052)
   clock/                 uses-ink-clock         time and randomness as ports
   watch/                 uses-ink-watch         the polling watch and the in-process worker
@@ -114,7 +116,7 @@ Dependency direction, enforced by `cargo xtask layout` (a step of `cargo xtask c
 
 ```
 model <- config, diag <- engine <- host <- host/{wasmtime,native,image} <- cli
-model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret (traits only)
+model <- control <- edge <- edge/{worker,axum}; control <- db, blob, queue, build, secret, mail (traits only)
 edge <- model only today (the serving half does not need control); edge/{axum,folder} <- edge, model; the
 CLI takes edge, edge/axum and edge/folder for `ink serve`.
 plugin/* <- model, plugin/sdk, wit only, and engine for its plugin traits. Never control, host/* or edge.

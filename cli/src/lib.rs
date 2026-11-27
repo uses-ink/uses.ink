@@ -39,6 +39,7 @@ mod report;
 mod select;
 mod serve;
 mod settings;
+mod signin;
 mod site;
 mod tree;
 

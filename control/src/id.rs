@@ -22,12 +22,24 @@ pub enum Site {}
 /// A stored credential.
 #[derive(Clone, Copy, Debug)]
 pub enum Credential {}
+/// A signed-in session.
+#[derive(Clone, Copy, Debug)]
+pub enum Session {}
+/// A way an account signs in.
+#[derive(Clone, Copy, Debug)]
+pub enum Factor {}
 
 impl Kind for Account {
     const NOUN: &'static str = "account";
 }
 impl Kind for Site {
     const NOUN: &'static str = "site";
+}
+impl Kind for Session {
+    const NOUN: &'static str = "session";
+}
+impl Kind for Factor {
+    const NOUN: &'static str = "factor";
 }
 impl Kind for Credential {
     const NOUN: &'static str = "credential";

@@ -14,16 +14,16 @@ use crate::table::{
 };
 
 /// The two kinds of column most of the schema is made of.
-struct Typed;
+pub(crate) struct Typed;
 
 impl Typed {
     /// A text column that cannot be null.
-    fn text<C: IntoIden>(column: C) -> ColumnDef {
+    pub(crate) fn text<C: IntoIden>(column: C) -> ColumnDef {
         ColumnDef::new(column).text().not_null().to_owned()
     }
 
     /// A column of unix milliseconds that cannot be null.
-    fn time<C: IntoIden>(column: C) -> ColumnDef {
+    pub(crate) fn time<C: IntoIden>(column: C) -> ColumnDef {
         ColumnDef::new(column).big_integer().not_null().to_owned()
     }
 }

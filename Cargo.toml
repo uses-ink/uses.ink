@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "clock", "edge/api", "watch", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web"]
+members = ["cli", "clock", "edge/api", "watch", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -43,6 +43,8 @@ model = { package = "uses-ink-model", path = "model" }
 secret = { package = "uses-ink-secret", path = "secret" }
 secret-conformance = { package = "uses-ink-secret-conformance", path = "secret/conformance" }
 secret-local = { package = "uses-ink-secret-local", path = "secret/local" }
+mail = { package = "uses-ink-mail", path = "mail" }
+mail-smtp = { package = "uses-ink-mail-smtp", path = "mail/smtp" }
 queue = { package = "uses-ink-queue", path = "queue" }
 queue-conformance = { package = "uses-ink-queue-conformance", path = "queue/conformance" }
 queue-local = { package = "uses-ink-queue-local", path = "queue/local" }
@@ -85,6 +87,8 @@ hyper = { version = "1.13.0", default-features = false, features = ["client", "h
 hyper-util = { version = "0.1.21", default-features = false, features = ["http1", "server", "server-graceful", "service", "tokio"] }
 insta = { version = "1.49.0", features = ["glob"] }
 jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"] }
+# the self-host mail adapter (decision 0066): SMTP over rustls with the bundled web PKI roots
+lettre = { version = "0.11.24", default-features = false, features = ["builder", "hostname", "smtp-transport", "tokio1", "tokio1-rustls-tls"] }
 libm = "0.2.16"
 math-core = "0.9.0"
 pollster = "0.4.0"

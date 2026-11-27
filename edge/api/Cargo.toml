@@ -14,15 +14,16 @@ blob.workspace = true
 build.workspace = true
 clock.workspace = true
 control.workspace = true
+db.workspace = true
 edge-folder.workspace = true
 jiff.workspace = true
+mail.workspace = true
 model.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
 blob-dir.workspace = true
-db.workspace = true
 build.workspace = true
 db-sqlite.workspace = true
 pollster.workspace = true

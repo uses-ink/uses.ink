@@ -31,6 +31,7 @@ mod migration;
 mod origin;
 mod ports;
 mod receipt;
+pub mod signin;
 mod site;
 #[allow(missing_docs, reason = "each variant is the table or column of its name")]
 pub mod table;
@@ -43,11 +44,15 @@ pub use deploy::{Deploy, Live, New as NewDeploy, Published, Recorded, Resumed};
 pub use error::{Error, Failed, Refusal, Unreadable};
 pub use event::{Event, Unwritten};
 pub use handle::{Handle, HandleError};
-pub use id::{Account as AccountKind, Credential as CredentialKind, Id, IdError, Kind, Site as SiteKind};
+pub use id::{
+    Account as AccountKind, Credential as CredentialKind, Factor as FactorKind, Id, IdError, Kind,
+    Session as SessionKind, Site as SiteKind,
+};
 pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked};
 pub use listed::{Canonical, Listed};
 pub use migration::Domain;
 pub use origin::{Origin, OriginError};
 pub use ports::Ports;
 pub use receipt::Receipt;
+pub use signin::SignIn;
 pub use site::{New as NewSite, Site, State as SiteState};

@@ -17,7 +17,8 @@ struct Sent(std::sync::mpsc::Sender<Vec<u8>>);
 
 impl Write for Sent {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        self.0.send(bytes.to_vec()).map_err(|_| std::io::ErrorKind::BrokenPipe)?;
+        // The test stops reading after the address line; later lines go nowhere, and the server keeps serving.
+        self.0.send(bytes.to_vec()).ok();
         Ok(bytes.len())
     }
 

@@ -40,6 +40,14 @@ exceptions = [
     { crate = "v_frame", allow = ["BSD-2-Clause"] },
     # rav1e's `fuzzing` feature, which nothing enables; `all-features` above reaches it
     { crate = "libfuzzer-sys", allow = ["NCSA"] },
+    # TLS for the SMTP adapter (mail/smtp, decision 0066): rustls over `ring`, with the bundled web
+    # PKI roots. ISC is the licence of `ring`'s and webpki's own code; CDLA-Permissive-2.0 covers
+    # the root certificates' data.
+    { crate = "quoted_printable", allow = ["0BSD"] },
+    { crate = "ring", allow = ["ISC"] },
+    { crate = "rustls-webpki", allow = ["ISC"] },
+    { crate = "untrusted", allow = ["ISC"] },
+    { crate = "webpki-roots", allow = ["CDLA-Permissive-2.0"] },
     # JPEG copies (host/image): the IJG notice covers its port of libjpeg's tables
     { crate = "jpeg-encoder", allow = ["IJG"] },
 ]

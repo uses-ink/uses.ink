@@ -51,7 +51,7 @@ ttf-parser, so this waits); `pagefind` 1.6 for opt-in search.
 | OAuth, GitHub App | `oauth2` 5, `jsonwebtoken` 12 (`rust_crypto`) | compile to wasm32 |
 | Webhooks | `hmac`, `sha2`, `subtle` | GitHub, Forgejo HMAC; GitLab 19.1 Standard Webhooks signatures |
 | Sessions | opaque cookie, hashed session rows | no signed state to rotate |
-| Email | Cloudflare Email Service hosted, `lettre` self-host | magic links, receipts |
+| Email | Cloudflare Email Service hosted, `lettre` 0.11 self-host (`builder`, `hostname`, `smtp-transport`, `tokio1`, `tokio1-rustls-tls`; no defaults, so no native-tls), in `mail/smtp` only (0066) | magic links, receipts; rustls with the bundled web PKI roots, so no system TLS library; adds `ring`, `webpki-roots` and `rustls-webpki`, whose licences are the exceptions in `deny.toml` |
 | DNS TXT | DoH JSON over the `Http` port, both targets | one implementation |
 | Sealing | `chacha20poly1305` (XChaCha20-Poly1305), AAD = row id | `age` and `hpke` cannot share a build (pre-release `kem` conflict) |
 | R2 uploads | `rusty-s3` for presigned PUTs | `ink push` uploads straight to R2 |

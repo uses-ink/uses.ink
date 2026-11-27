@@ -47,6 +47,26 @@ impl Fields<'_> {
         self.text(column)?.parse().map_err(|source| Unreadable::Id { column: column.as_str(), source })
     }
 
+    pub(crate) fn address(self, column: impl IdenStatic) -> Result<mail::Address, Unreadable> {
+        self.text(column)?.parse().map_err(|source| Unreadable::Address { column: column.as_str(), source })
+    }
+
+    pub(crate) fn maybe_address(self, column: impl IdenStatic) -> Result<Option<mail::Address>, Unreadable> {
+        let text: Option<String> = self.0.get(column)?;
+        text.map(|text| text.parse().map_err(|source| Unreadable::Address { column: column.as_str(), source }))
+            .transpose()
+    }
+
+    pub(crate) fn maybe_id<K>(self, column: impl IdenStatic) -> Result<Option<Id<K>>, Unreadable> {
+        let text: Option<String> = self.0.get(column)?;
+        text.map(|text| text.parse().map_err(|source| Unreadable::Id { column: column.as_str(), source })).transpose()
+    }
+
+    pub(crate) fn digest(self, column: impl IdenStatic) -> Result<crate::signin::Digest, Unreadable> {
+        let bytes: Vec<u8> = self.0.get(column)?;
+        crate::signin::Digest::try_from(bytes.as_slice()).map_err(|_| Unreadable::Digest { column: column.as_str() })
+    }
+
     pub(crate) fn handle(self, column: impl IdenStatic) -> Result<Handle, Unreadable> {
         self.text(column)?.parse().map_err(|source| Unreadable::Handle { source })
     }

@@ -123,6 +123,48 @@ pub enum Event {
     Body,
 }
 
+/// `factor`: how an account proves it is itself. Only the magic link exists today.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "factor"]
+pub enum Factor {
+    Table,
+    Id,
+    AccountId,
+    Kind,
+    Address,
+    CreatedAt,
+}
+
+/// `challenge`: one-time tokens that have been issued, stored as digests.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "challenge"]
+pub enum Challenge {
+    Table,
+    Digest,
+    Purpose,
+    Address,
+    AccountId,
+    Slot,
+    CreatedAt,
+    ExpiresAt,
+    UsedAt,
+}
+
+/// `session`: signed-in sessions, stored as digests of their secret.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "session"]
+pub enum Session {
+    Table,
+    Id,
+    Digest,
+    AccountId,
+    CreatedAt,
+    SeenAt,
+    ExpiresAt,
+    LimitAt,
+    RevokedAt,
+}
+
 /// SQLite's row number, which orders rows that tie on a column.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 pub enum Row {
@@ -151,6 +193,9 @@ pub enum Named {
     JobSite,
     CredentialSite,
     EventSite,
+    ChallengeExpires,
+    SessionAccount,
+    SessionExpires,
 }
 
 /// The values a text column may hold, as a `CHECK`: the schema is built from the names the code

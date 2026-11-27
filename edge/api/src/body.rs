@@ -85,6 +85,23 @@ pub struct Rollback {
     pub deploy: DeployId,
 }
 
+/// `POST /v1/login`.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Ask {
+    /// The address to send a sign-in link to.
+    pub address: Parsed<mail::Address>,
+}
+
+/// `POST /v1/login/{token}`: the body may be empty. The address matters to the first-run link
+/// only, which gives it to the owner's account so the owner can sign in by mail later.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Redeem {
+    /// The address to give the account.
+    pub address: Option<Parsed<mail::Address>>,
+}
+
 /// A body that is not the JSON a route reads.
 #[derive(Debug)]
 pub struct Unreadable {

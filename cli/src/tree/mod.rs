@@ -33,6 +33,10 @@ impl Heading {
     pub(crate) const SERVER: &'static str = "Server";
     /// What a server refuses to take.
     pub(crate) const LIMITS: &'static str = "Limits";
+    /// Where a server's sign-in mail goes and how it is sent.
+    pub(crate) const MAIL: &'static str = "Mail";
+    /// How a person signs in to a server and for how long.
+    pub(crate) const SIGN_IN: &'static str = "Sign-in";
     /// Which site and which account a remote call is made as.
     pub(crate) const ACCOUNT: &'static str = "Account";
     /// The options every command takes.

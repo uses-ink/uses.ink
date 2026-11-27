@@ -18,5 +18,6 @@ mod export;
 mod job;
 mod read;
 mod remove;
+mod signin;
 mod site;
 mod world;

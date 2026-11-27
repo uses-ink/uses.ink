@@ -348,4 +348,7 @@ pub struct Serve {
     /// Seconds a source that does not change is backed off to. [default: 3600]
     #[arg(long, help_heading = Heading::LIMITS)]
     pub poll_max: Option<u64>,
+    /// Sign-in: mail, lifetimes, who may sign up and the limits on asking for a link.
+    #[command(flatten)]
+    pub signin: Box<crate::signin::Flags>,
 }

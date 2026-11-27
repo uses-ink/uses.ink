@@ -14,6 +14,11 @@ use axum::http::{HeaderName, HeaderValue, Request as Incoming, Response};
 use edge_api::{Answers, Limits, Method, Payload, Reply, Request, Status};
 use tokio::sync::{mpsc, oneshot};
 
+/// Where a connection came from, put in the request's extensions by the server so the API can
+/// limit by source.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Peer(pub(crate) Option<std::net::SocketAddr>);
+
 /// How many calls wait for the control plane before more are refused.
 const WAITING: usize = 64;
 
@@ -62,6 +67,8 @@ impl Bridge {
         let path = head.uri.path().to_owned();
         let limit = self.limits.budget(method, &path);
         let authorization = head.headers.get("authorization").map(|value| value.as_bytes().to_vec());
+        let cookie = head.headers.get("cookie").map(|value| value.as_bytes().to_vec());
+        let source = head.extensions.get::<Peer>().and_then(|peer| peer.0).map(|address| address.ip().to_canonical());
         let read = axum::body::to_bytes(body, usize::try_from(limit).unwrap_or(usize::MAX));
         let body = match tokio::time::timeout(std::time::Duration::from_secs(600), read).await {
             Err(_) => return Self::plain(Status::Timeout),
@@ -69,7 +76,7 @@ impl Bridge {
             Ok(Err(_)) => Payload::Over { limit },
         };
         let (reply, answered) = oneshot::channel();
-        let request = Request { method, path, authorization, body };
+        let request = Request { method, path, authorization, cookie, source, body };
         if self.calls.try_send(Call { request, reply }).is_err() {
             return Self::plain(Status::Internal);
         }
@@ -88,6 +95,11 @@ impl Bridge {
         let mut response = Response::new(Body::from(reply.body.clone()));
         *response.status_mut() = axum::http::StatusCode::from_u16(reply.status.code()).unwrap_or_default();
         let headers = response.headers_mut();
+        if let Some(cookie) = &reply.cookie
+            && let Ok(value) = HeaderValue::from_str(&cookie.to_string())
+        {
+            headers.append(HeaderName::from_static("set-cookie"), value);
+        }
         let mut put = |name: &'static str, value: &str| {
             if let Ok(value) = HeaderValue::from_str(value) {
                 headers.insert(HeaderName::from_static(name), value);
@@ -102,6 +114,9 @@ impl Bridge {
         }
         if reply.challenge {
             put("www-authenticate", "Bearer");
+        }
+        if let Some(retry) = reply.retry {
+            put("retry-after", &retry.as_secs().to_string());
         }
         if !reply.allow.is_empty() {
             let allow: Vec<String> = reply.allow.iter().map(ToString::to_string).collect();

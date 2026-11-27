@@ -1,15 +1,19 @@
 //! Who is calling: a bearer token, checked through a port.
 //!
-//! Sign-in is not here. A [`Credentials`] adapter says which account a token belongs to; the
-//! single-owner adapter [`Owner`] knows one token, for a self-host with one person. A hosted
-//! adapter reads sessions and personal tokens and is another crate.
+//! A [`Credentials`] adapter says which account a token belongs to. [`Owner`] knows one token,
+//! the operator's, for a self-host with one person. [`Sessions`] knows the sessions that signing
+//! in makes (decision 0066). [`Either`] asks one adapter and then another, so a new kind of
+//! credential (a passkey's signed request, a device key) is a new adapter put in an `Either`
+//! where the API is built, and no caller changes.
 
 use std::error::Error;
 use std::fmt;
 use std::future::Future;
 
-use clock::Draw;
+use clock::{Clock, Draw};
+use control::signin::{Proof, SignIn};
 use control::{AccountKind, Id};
+use db::Db;
 
 /// The longest token the API reads.
 pub const LONGEST: usize = 256;
@@ -159,6 +163,75 @@ impl Credentials for Owner {
     fn verify(&self, bearer: &Bearer) -> impl Future<Output = Result<Option<Principal>, Self::Error>> {
         let presented = blake3::hash(bearer.as_str().as_bytes());
         std::future::ready(Ok((presented == self.digest).then_some(Principal { account: self.account })))
+    }
+}
+
+/// The sessions signing in makes: a bearer token is a session's secret, and speaks for the
+/// account of that session while it has not ended or been revoked. Only a digest of the secret
+/// is looked up, and a sliding session is moved on by the check.
+#[derive(Clone, Debug)]
+pub struct Sessions<D, K> {
+    entry: SignIn<D>,
+    clock: K,
+}
+
+impl<D: Db, K: Clock> Sessions<D, K> {
+    /// The sessions of `entry`, ending by `clock`.
+    pub const fn new(entry: SignIn<D>, clock: K) -> Self {
+        Self { entry, clock }
+    }
+}
+
+impl<D: Db, K: Clock> Credentials for Sessions<D, K> {
+    type Error = control::signin::Error<D::Error>;
+
+    async fn verify(&self, bearer: &Bearer) -> Result<Option<Principal>, Self::Error> {
+        let Ok(proof) = bearer.as_str().parse::<Proof>() else { return Ok(None) };
+        let session = self.entry.resolve(&proof, self.clock.now()).await?;
+        Ok(session.map(|session| Principal { account: session.account }))
+    }
+}
+
+/// Two adapters, asked in turn: the first that knows the token answers.
+#[derive(Clone, Debug)]
+pub struct Either<A, B>(pub A, pub B);
+
+/// Which adapter of an [`Either`] failed.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Which<A, B> {
+    /// The first.
+    First(A),
+    /// The second.
+    Second(B),
+}
+
+impl<A, B> fmt::Display for Which<A, B> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::First(_) => out.write_str("the first credential check failed"),
+            Self::Second(_) => out.write_str("the second credential check failed"),
+        }
+    }
+}
+
+impl<A: Error + 'static, B: Error + 'static> Error for Which<A, B> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::First(source) => Some(source),
+            Self::Second(source) => Some(source),
+        }
+    }
+}
+
+impl<A: Credentials, B: Credentials> Credentials for Either<A, B> {
+    type Error = Which<A::Error, B::Error>;
+
+    async fn verify(&self, bearer: &Bearer) -> Result<Option<Principal>, Self::Error> {
+        match self.0.verify(bearer).await.map_err(Which::First)? {
+            Some(principal) => Ok(Some(principal)),
+            None => self.1.verify(bearer).await.map_err(Which::Second),
+        }
     }
 }
 

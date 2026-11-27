@@ -18,7 +18,9 @@
 
 mod api;
 pub mod body;
+mod cookie;
 mod credential;
+pub mod door;
 mod export;
 mod fault;
 mod intake;
@@ -29,7 +31,9 @@ pub mod tar;
 pub mod view;
 
 pub use api::{Answers, Api};
-pub use credential::{Bearer, BearerError, Credentials, LONGEST, Owner, Principal, Token};
+pub use cookie::{Cookie, Jar, JarError, Name, NameError};
+pub use credential::{Bearer, BearerError, Credentials, Either, LONGEST, Owner, Principal, Sessions, Token, Which};
+pub use door::{Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Rate, Rates, Routed};
 pub use export::{Exports, Route};
 pub use fault::{Denied, Fault, Intake};
 pub use limits::{Asked, Limit, Limits, Raised};
