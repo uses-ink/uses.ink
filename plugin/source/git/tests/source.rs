@@ -2,25 +2,30 @@
 
 #![allow(clippy::unwrap_used, clippy::panic, reason = "tests stop at the first surprise")]
 
-#[path = "../../../../host/native/tests/support/origin.rs"]
-mod origin;
-
-use host_native::{Cloning, Memory, Repository};
+use fixture::origin::Origin;
+use host_native::{Cloning, Fetch, Memory, Repository};
 use model::git::{Cloned, Git, History, Network, Refused, Request, Want};
 use model::{Bytes, Gap, Hash, Observed, Oid, Snapshot, Version};
-use origin::Origin;
 use uses_ink_source_git::{Source, Unread};
 
+fn origin(name: &str) -> Origin {
+    Origin::new(std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("source-git").join(name))
+}
+
+fn fetch(origin: &Origin) -> Fetch {
+    Fetch { network: Network::Local, ..Fetch::new(&origin.cache) }
+}
+
 fn want(origin: &Origin, history: History) -> Want {
-    let mut want = Want::new(origin.locator());
+    let mut want = Want::new(origin.url().parse().unwrap());
     want.history = history;
     want
 }
 
 #[test]
 fn the_source_reads_the_snapshot_the_repository_itself_reads() {
-    let origin = Origin::new("core-full");
-    let (fetch, mut store) = (origin.fetch(), Memory::default());
+    let origin = origin("core-full");
+    let (fetch, mut store) = (fetch(&origin), Memory::default());
     let snapshot = Source(Cloning::new(&fetch, &mut store)).read(&want(&origin, History::Wanted)).unwrap();
     let direct = Repository::new(&origin.root).read(&mut Memory::default()).unwrap().snapshot;
     assert_eq!(snapshot, direct);
@@ -29,8 +34,8 @@ fn the_source_reads_the_snapshot_the_repository_itself_reads() {
 
 #[test]
 fn a_site_that_needs_no_history_fetches_one_commit_and_its_dates_are_bounds() {
-    let origin = Origin::new("core-snapshot");
-    let (fetch, mut store) = (origin.fetch(), Memory::default());
+    let origin = origin("core-snapshot");
+    let (fetch, mut store) = (fetch(&origin), Memory::default());
     let snapshot = Source(Cloning::new(&fetch, &mut store)).read(&want(&origin, History::Unneeded)).unwrap();
     assert!(snapshot.observed().lacks.iter().any(|lack| matches!(lack.gap, Gap::Shallow { .. })));
     assert!(snapshot.facts().iter().all(|facts| facts.updated.exact().is_none()), "dates beyond the window are bounds");
@@ -38,8 +43,8 @@ fn a_site_that_needs_no_history_fetches_one_commit_and_its_dates_are_bounds() {
 
 #[test]
 fn what_the_host_refuses_comes_back_typed() {
-    let origin = Origin::new("core-off");
-    let (mut fetch, mut store) = (origin.fetch(), Memory::default());
+    let origin = origin("core-off");
+    let (mut fetch, mut store) = (fetch(&origin), Memory::default());
     fetch.network = Network::Off;
     let refused = Source(Cloning::new(&fetch, &mut store)).read(&want(&origin, History::Wanted)).unwrap_err();
     assert!(matches!(refused, Unread::Refused(Refused::Network { .. })), "{refused:?}");
@@ -69,7 +74,7 @@ impl Git for Liar {
 
 #[test]
 fn a_snapshot_of_another_commit_than_the_one_fetched_is_refused() {
-    let origin = Origin::new("core-liar");
+    let origin = origin("core-liar");
     let refused = Source(Liar).read(&want(&origin, History::Wanted)).unwrap_err();
     assert!(matches!(refused, Unread::Version { .. }), "{refused:?}");
 }

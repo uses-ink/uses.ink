@@ -1,6 +1,9 @@
 //! Inputs for benchmarks, generated: the same seed writes the same bytes on every machine, so a
 //! measurement taken today and one taken after a change read the same text.
 //!
+//! This is bench data, not test data: no golden is compared against it, and no test depends on
+//! its exact words.
+//!
 //! - [`Post`] is a post of about 2,000 words using every construct the markdown format reads:
 //!   headings, lists, task lists, tables, footnotes, code in Rust, Python and TypeScript, math,
 //!   callouts, definition lists and the raw HTML the allowlist keeps.

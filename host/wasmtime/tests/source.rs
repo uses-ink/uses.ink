@@ -6,16 +6,13 @@
 
 extern crate uses_ink_host_wasmtime as host_wasmtime;
 
-#[path = "../../native/tests/support/origin.rs"]
-mod origin;
-
 use std::path::Path;
 use std::time::Duration;
 
-use host_native::{Cloning, Memory};
+use fixture::origin::Origin;
+use host_native::{Cloning, Fetch, Memory};
 use host_wasmtime::{Budget, Error, Runtime, Terms, Unsourced};
 use model::git::{History, Network, Refused, Want};
-use origin::Origin;
 use source_git::Source;
 
 fn component() -> Vec<u8> {
@@ -23,8 +20,16 @@ fn component() -> Vec<u8> {
     std::fs::read(&path).unwrap_or_else(|_| panic!("{} is missing: run `cargo xtask component`", path.display()))
 }
 
+fn origin(name: &str) -> Origin {
+    Origin::new(Path::new(env!("CARGO_TARGET_TMPDIR")).join("host-wasmtime-source").join(name))
+}
+
+fn fetch(origin: &Origin) -> Fetch {
+    Fetch { network: Network::Local, ..Fetch::new(&origin.cache) }
+}
+
 fn want(origin: &Origin, history: History) -> Want {
-    let mut want = Want::new(origin.locator());
+    let mut want = Want::new(origin.url().parse().unwrap());
     want.history = history;
     want
 }
@@ -32,14 +37,14 @@ fn want(origin: &Origin, history: History) -> Want {
 #[test]
 fn the_component_reads_the_snapshot_the_native_core_reads() {
     for (name, history) in [("wasm-full", History::Wanted), ("wasm-snapshot", History::Unneeded)] {
-        let origin = Origin::new(name);
+        let origin = origin(name);
         let runtime = Runtime::new(Budget::default(), None).unwrap();
         let plugin = runtime
-            .source("ink:source-git", &component(), Terms { fetch: origin.fetch(), budget: Budget::default() })
+            .source("ink:source-git", &component(), Terms { fetch: fetch(&origin), budget: Budget::default() })
             .unwrap();
         let (mut stored, mut native) = (Memory::default(), Memory::default());
         let read = plugin.read(&want(&origin, history), &mut stored).unwrap();
-        let fetch = origin.fetch();
+        let fetch = fetch(&origin);
         let direct = Source(Cloning::new(&fetch, &mut native)).read(&want(&origin, history)).unwrap();
         assert_eq!(read.snapshot, direct, "{name}");
         assert_eq!(stored.len(), native.len(), "{name}");
@@ -48,8 +53,8 @@ fn the_component_reads_the_snapshot_the_native_core_reads() {
 
 #[test]
 fn what_the_host_refuses_comes_back_as_the_typed_refusal() {
-    let origin = Origin::new("wasm-off");
-    let mut fetch = origin.fetch();
+    let origin = origin("wasm-off");
+    let mut fetch = fetch(&origin);
     fetch.network = Network::Off;
     let runtime = Runtime::new(Budget::default(), None).unwrap();
     let plugin = runtime.source("ink:source-git", &component(), Terms { fetch, budget: Budget::default() }).unwrap();
@@ -59,10 +64,10 @@ fn what_the_host_refuses_comes_back_as_the_typed_refusal() {
 
 #[test]
 fn terms_in_another_tick_than_the_runtime_are_refused() {
-    let origin = Origin::new("wasm-tick");
+    let origin = origin("wasm-tick");
     let runtime = Runtime::new(Budget::default(), None).unwrap();
     for tick in [Duration::from_millis(1), Duration::ZERO] {
-        let terms = Terms { fetch: origin.fetch(), budget: Budget { tick, ..Budget::default() } };
+        let terms = Terms { fetch: fetch(&origin), budget: Budget { tick, ..Budget::default() } };
         let refused = runtime.source("ink:source-git", &component(), terms).unwrap_err();
         assert!(matches!(refused, Error::TermsTick { terms, .. } if terms == tick), "{refused:?}");
     }

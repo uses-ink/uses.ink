@@ -18,7 +18,7 @@ model.workspace = true
 
 [dev-dependencies]
 divan.workspace = true
-fixture.workspace = true
+fixture = { workspace = true, features = ["origin"] }
 # test repositories are written object by object
 gix.workspace = true
 rcgen.workspace = true

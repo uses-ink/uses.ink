@@ -169,7 +169,7 @@ struct Differ<'a> {
 
 impl Differ<'_> {
     /// The paths of interest `job`'s commit touched. A recorder is made per diff: a reused one
-    /// silently reports almost nothing (spikes/gix/README.md, Gotchas).
+    /// silently reports almost nothing (docs/research/gix-spike.md, Gotchas).
     fn touched(&mut self, job: &Job) -> Result<Hits, Refused> {
         let git = |source| Refused::Git { source };
         let new = self.repo.find_object(job.tree).map_err(git)?.detach();

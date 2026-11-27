@@ -16,7 +16,8 @@ use std::fmt::Write;
 use host_native::{Failed, Fetch};
 use https::Https;
 use model::git::{Depth, Network, Refused, Request};
-use origin::Origin;
+use fixture::origin::Origin;
+use origin::Fetching as _;
 use server::{Authority, Mode, Server};
 
 fn over(origin: &Origin, server: &Server, https: Https) -> Result<model::git::Cloned, Refused<Failed>> {
@@ -26,7 +27,7 @@ fn over(origin: &Origin, server: &Server, https: Https) -> Result<model::git::Cl
 
 #[test]
 fn a_clone_over_https_is_the_clone_the_file_transport_makes() {
-    let origin = Origin::new("https-clone");
+    let origin = Origin::named("https-clone");
     let authority = Authority::new();
     let server = Server::start(&authority, &origin.root, Mode::Serve);
     let cloned = over(&origin, &server, Https::default().trusting(authority.root())).unwrap();
@@ -41,7 +42,7 @@ fn a_clone_over_https_is_the_clone_the_file_transport_makes() {
 
 #[test]
 fn a_certificate_no_root_vouches_for_fails_the_fetch_with_its_cause() {
-    let origin = Origin::new("https-untrusted");
+    let origin = Origin::named("https-untrusted");
     let server = Server::start(&Authority::new(), &origin.root, Mode::Serve);
     let refused = over(&origin, &server, Https::default().trusting(Authority::new().root())).unwrap_err();
     assert!(matches!(refused, Refused::Failed(Failed::Fetch { .. })), "{refused:?}");

@@ -17,12 +17,12 @@ use crate::bind::theme::{Theme as Themes, ThemePre};
 use crate::cache::Origin;
 use crate::capability::State;
 use crate::error::{Error, Failure};
-use crate::runtime::{Runtime, Shared};
+use crate::runtime::{Runtime, Machine};
 
 /// A plugin loaded as a component of world `W`.
 #[derive(Debug)]
 pub struct Component<W> {
-    pub(crate) shared: std::sync::Arc<Shared>,
+    pub(crate) machine: std::sync::Arc<Machine>,
     pub(crate) name: String,
     pub(crate) origin: Origin,
     pub(crate) world: W,
@@ -66,14 +66,14 @@ impl std::fmt::Debug for Theme {
 impl Runtime {
     /// The format plugin `name` from the component in `bytes`.
     pub fn format(&self, name: &str, bytes: &[u8]) -> Result<Component<Format>, Error> {
-        let (compiled, origin) = self.shared.compile(name, bytes)?;
-        let mut linker = Linker::new(&self.shared.engine);
+        let (compiled, origin) = self.machine.compile(name, bytes)?;
+        let mut linker = Linker::new(&self.machine.engine);
         let link = |source| Error::Link { plugin: name.to_owned(), source };
         Formats::add_to_linker::<State, wasmtime::component::HasSelf<State>>(&mut linker, |state| state)
             .map_err(link)?;
         let pre = linker.instantiate_pre(&compiled).and_then(FormatPre::new).map_err(link)?;
         Ok(Component {
-            shared: self.shared.clone(),
+            machine: self.machine.clone(),
             name: name.to_owned(),
             origin,
             world: Format { pre },
@@ -83,19 +83,19 @@ impl Runtime {
 
     /// The theme in `bytes`, for a site served at `base`; its name is the one it gives.
     pub fn theme(&self, bytes: &[u8], base: BaseUrl) -> Result<Component<Theme>, Error> {
-        let (compiled, origin) = self.shared.compile("theme", bytes)?;
-        let mut linker = Linker::new(&self.shared.engine);
+        let (compiled, origin) = self.machine.compile("theme", bytes)?;
+        let mut linker = Linker::new(&self.machine.engine);
         let link = |source| Error::Link { plugin: "theme".to_owned(), source };
         Themes::add_to_linker::<State, wasmtime::component::HasSelf<State>>(&mut linker, |state| state)
             .map_err(link)?;
         let pre = linker.instantiate_pre(&compiled).and_then(ThemePre::new).map_err(link)?;
-        let mut store = self.shared.store("theme");
+        let mut store = self.machine.store("theme");
         let name = self
-            .shared
+            .machine
             .call(&mut store, |store| pre.instantiate(&mut *store)?.call_name(store))
             .map_err(|failure| Error::Named { failure })?;
         let world = Theme { pre, base, digest: Hash::of(bytes), session: RefCell::new(None) };
-        Ok(Component { shared: self.shared.clone(), name, origin, world, aside: RefCell::default() })
+        Ok(Component { machine: self.machine.clone(), name, origin, world, aside: RefCell::default() })
     }
 }
 
@@ -127,9 +127,9 @@ impl Component<Format> {
         &self,
         call: impl FnOnce(&Formats, &mut Store<State>) -> wasmtime::Result<T>,
     ) -> (Result<T, Failure>, Said) {
-        let mut store = self.shared.store(&self.name);
+        let mut store = self.machine.store(&self.name);
         let pre = &self.world.pre;
-        let result = self.shared.call(&mut store, |store| {
+        let result = self.machine.call(&mut store, |store| {
             let bindings = pre.instantiate(&mut *store)?;
             call(&bindings, store)
         });
@@ -179,9 +179,9 @@ impl Component<Theme> {
         }
         *slot = None;
         let wire = sited::Site::try_from(site).map_err(|source| Failure::Unmirrored { source })?;
-        let mut store = self.shared.store(&self.name);
+        let mut store = self.machine.store(&self.name);
         let (pre, base) = (&self.world.pre, self.world.base.as_ref());
-        let started = self.shared.call(&mut store, |store| {
+        let started = self.machine.call(&mut store, |store| {
             let bindings = pre.instantiate(&mut *store)?;
             let renderer = bindings.pages().renderer().call_constructor(&mut *store, base, &wire)?;
             Ok((bindings, renderer))
@@ -211,7 +211,7 @@ impl Component<Theme> {
         let wire = sited::Page::try_from(page).map_err(|source| Failure::Unmirrored { source })?;
         let Some(Session { store, bindings, renderer, .. }) = slot.as_mut() else { return Err(Failure::Ended) };
         let rendered =
-            self.shared.call(store, |store| bindings.pages().renderer().call_render(store, *renderer, &wire));
+            self.machine.call(store, |store| bindings.pages().renderer().call_render(store, *renderer, &wire));
         Self::pass(std::mem::take(&mut store.data_mut().said), record);
         if rendered.is_err() {
             *slot = None;
@@ -230,9 +230,9 @@ impl engine::Theme for Component<Theme> {
 
     /// The theme's files; a call that fails, or a file the model refuses, is kept aside.
     fn assets(&self) -> Vec<File> {
-        let mut store = self.shared.store(&self.name);
+        let mut store = self.machine.store(&self.name);
         let pre = &self.world.pre;
-        let result = self.shared.call(&mut store, |store| pre.instantiate(&mut *store)?.call_assets(store));
+        let result = self.machine.call(&mut store, |store| pre.instantiate(&mut *store)?.call_assets(store));
         Self::pass(store.into_data().said, &mut *self.aside.borrow_mut());
         let files = result.unwrap_or_else(|failure| {
             self.fail(&failure);

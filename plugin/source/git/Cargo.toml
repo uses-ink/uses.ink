@@ -12,9 +12,8 @@ publish.workspace = true
 model.workspace = true
 
 [dev-dependencies]
+fixture = { workspace = true, features = ["origin"] }
 host-native.workspace = true
-# test repositories are written object by object
-gix.workspace = true
 
 [lints]
 workspace = true

@@ -8,7 +8,12 @@ repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+# a git repository for the tests that fetch; takes gix, which the wasm gate does not build
+origin = ["dep:gix"]
+
 [dependencies]
+gix = { workspace = true, optional = true }
 insta.workspace = true
 
 [lints]

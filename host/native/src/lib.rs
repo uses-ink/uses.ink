@@ -30,7 +30,7 @@ mod handle;
 mod highlight;
 mod read;
 
-pub use blob::{Directory, Memory, Store, StoreError};
+pub use blob::{Memory, Store, StoreError};
 pub use budget::Budget;
 pub use cache::Disk;
 pub use error::Refused;

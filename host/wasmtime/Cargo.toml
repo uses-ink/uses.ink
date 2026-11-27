@@ -19,8 +19,7 @@ wasmtime.workspace = true
 
 [dev-dependencies]
 trace = { workspace = true, features = ["capture"] }
-# the source's conformance test builds a repository object by object
-gix.workspace = true
+fixture = { workspace = true, features = ["origin"] }
 source-git.workspace = true
 host-image.workspace = true
 format-markdown.workspace = true

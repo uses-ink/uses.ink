@@ -8,7 +8,7 @@ use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 
 use engine::Blobs;
-use host_native::{Budget, Directory, Folder, Memory, Refused, Skip, Store};
+use host_native::{Budget, Folder, Memory, Refused, Skip};
 use model::{Bytes, ContentPath, Diagnostic, Known, Provenance, Version};
 
 /// A fresh folder named for the test, holding `files`.
@@ -213,19 +213,4 @@ fn refuses_a_missing_folder() {
     let refused = Folder::new(&root).read(&mut Memory::default()).unwrap_err();
     assert!(matches!(refused, Refused::Root { .. }));
     assert_eq!(code(&refused), "source.root.unreadable");
-}
-
-#[test]
-fn a_directory_store_keeps_blobs_by_hash() {
-    let root = site("store", &[]);
-    let mut store = Directory::open(root.join("blobs")).unwrap();
-    let hash = store.put(b"ink".to_vec()).unwrap();
-    assert_eq!(store.put(b"ink".to_vec()).unwrap(), hash);
-    assert_eq!(store.read(&hash).unwrap().as_ref(), b"ink");
-    assert!(store.path(&hash).ends_with(hash.to_string()));
-    std::fs::write(store.path(&hash), b"tampered").unwrap();
-    assert!(store.read(&hash).is_err(), "bytes that do not hash to their name are not served");
-    assert!(store.read(&model::Hash::of(b"never stored")).is_err());
-    let read = Folder::new(site("into-store", &[("a.md", "a")])).read(&mut store).unwrap();
-    assert_eq!(store.read(&read.snapshot.tree()[0].blob).unwrap().as_ref(), b"a");
 }

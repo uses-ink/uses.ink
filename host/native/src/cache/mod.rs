@@ -2,7 +2,7 @@
 //! it.
 //!
 //! The folder holds [`Disk::LABEL`], so no read takes it as content wherever it is; `value/`, a
-//! [`Directory`] of values by their hash, so a value two entries share is kept once and a value
+//! folder of values by their hash, so a value two entries share is kept once and a value
 //! that no longer hashes to its name is found out; and `key/<kind>/<digest>`, one small entry
 //! per key listing its values' hashes and ending with the hash of that list. Every file is
 //! written under a name of its own and renamed into place, so a reader in another process sees
@@ -11,6 +11,8 @@
 //!
 //! The cache is bounded: [`Disk::sweep`] drops the entries used longest ago, by their files'
 //! modification time, which a hit moves to now, until the values fit [`Disk::bound`].
+
+mod values;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
@@ -21,13 +23,14 @@ use std::time::SystemTime;
 use engine::cache::{Cache, Key};
 use model::{Announcement, Bytes, Hash, Notice};
 
-use crate::blob::{Directory, Partial, StoreError};
+use crate::blob::StoreError;
+use values::{Partial, Values};
 
 /// A cache in a folder.
 #[derive(Debug)]
 pub struct Disk {
     root: PathBuf,
-    values: Directory,
+    values: Values,
     /// The most bytes of values [`Disk::sweep`] leaves.
     pub bound: Bytes,
     /// What it has to say, until [`Disk::notices`] takes it.
@@ -68,7 +71,7 @@ impl Disk {
     /// nothing to keep leaves no folder; a folder made then says `render.cache.cold`.
     pub fn open(root: impl AsRef<Path>) -> Self {
         let root = root.as_ref().to_path_buf();
-        let values = Directory::at(root.join("value"));
+        let values = Values::at(root.join("value"));
         Self { root, values, bound: Self::BOUND, said: Mutex::default(), made: OnceLock::new() }
     }
 

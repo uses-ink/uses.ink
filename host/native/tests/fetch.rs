@@ -12,7 +12,8 @@ mod origin;
 use host_native::{Cloning, Failed, Fetch, FetchLimits, Memory, Repository};
 use model::git::{Auth, Budget, Depth, Git, Network, Refused, Request, Scheme};
 use model::{Bytes, Diagnostic, Known, Provenance, Version};
-use origin::Origin;
+use fixture::origin::Origin;
+use origin::Fetching as _;
 
 fn code<E: std::error::Error>(refused: &Refused<E>) -> String {
     Diagnostic::from(refused).code().to_string()
@@ -20,7 +21,7 @@ fn code<E: std::error::Error>(refused: &Refused<E>) -> String {
 
 #[test]
 fn the_network_is_off_until_the_operator_says_otherwise() {
-    let origin = Origin::new("off");
+    let origin = Origin::named("off");
     let refused = Fetch::new(&origin.cache).run(&origin.request(Depth::Full)).unwrap_err();
     assert!(matches!(refused, Refused::Network { scheme: Scheme::File, policy: Network::Off }), "{refused:?}");
     assert!(!origin.cache.exists(), "a refused fetch touches no disk");
@@ -29,7 +30,7 @@ fn the_network_is_off_until_the_operator_says_otherwise() {
 
 #[test]
 fn a_local_setting_refuses_https_and_an_open_one_tries_it() {
-    let origin = Origin::new("https");
+    let origin = Origin::named("https");
     let https = Request::new("https://127.0.0.1:1/site.git".parse().unwrap());
     let local = origin.fetch().run(&https).unwrap_err();
     assert!(matches!(local, Refused::Network { scheme: Scheme::Https, policy: Network::Local }), "{local:?}");
@@ -39,7 +40,7 @@ fn a_local_setting_refuses_https_and_an_open_one_tries_it() {
 
 #[test]
 fn a_credential_the_builder_does_not_hold_is_a_typed_refusal_before_any_fetch() {
-    let origin = Origin::new("auth");
+    let origin = Origin::named("auth");
     let grant = "github".parse().unwrap();
     let mut request = origin.request(Depth::Full);
     request.grant = Some(grant);
@@ -55,7 +56,7 @@ fn a_credential_the_builder_does_not_hold_is_a_typed_refusal_before_any_fetch() 
 
 #[test]
 fn a_full_fetch_reads_the_snapshot_the_repository_itself_reads() {
-    let origin = Origin::new("full");
+    let origin = Origin::named("full");
     let fetch = origin.fetch();
     let cloned = fetch.run(&origin.request(Depth::Full)).unwrap();
     assert!(!cloned.shallow);
@@ -75,7 +76,7 @@ fn a_full_fetch_reads_the_snapshot_the_repository_itself_reads() {
 
 #[test]
 fn a_shallow_fetch_lacks_history_and_a_full_one_deepens_it() {
-    let origin = Origin::new("deepen");
+    let origin = Origin::named("deepen");
     let fetch = origin.fetch();
     let one = std::num::NonZeroU32::new(1).unwrap();
     let shallow = fetch.run(&origin.request(Depth::Commits(one))).unwrap();
@@ -97,7 +98,7 @@ fn a_shallow_fetch_lacks_history_and_a_full_one_deepens_it() {
 
 #[test]
 fn a_clone_past_a_budget_is_refused_with_its_numbers_and_removed() {
-    let origin = Origin::new("budget");
+    let origin = Origin::named("budget");
     let bytes = Fetch { limits: FetchLimits { bytes: Bytes(1), ..FetchLimits::default() }, ..origin.fetch() };
     let refused = bytes.run(&origin.request(Depth::Full)).unwrap_err();
     assert!(matches!(refused, Refused::Budget(Budget::Bytes { limit: Bytes(1), .. })), "{refused:?}");
@@ -112,7 +113,7 @@ fn a_clone_past_a_budget_is_refused_with_its_numbers_and_removed() {
 
 #[test]
 fn a_remote_that_is_not_there_is_a_failure_that_keeps_its_cause() {
-    let origin = Origin::new("missing");
+    let origin = Origin::named("missing");
     let gone = Request::new(format!("file://{}/nothing", origin.root.display()).parse().unwrap());
     let refused = origin.fetch().run(&gone).unwrap_err();
     assert!(matches!(refused, Refused::Failed(Failed::Fetch { .. })), "{refused:?}");
@@ -122,7 +123,7 @@ fn a_remote_that_is_not_there_is_a_failure_that_keeps_its_cause() {
 
 #[test]
 fn a_named_branch_is_the_revision_read() {
-    let origin = Origin::new("branch");
+    let origin = Origin::named("branch");
     let mut main = origin.request(Depth::Full);
     main.revision = Some("main".parse().unwrap());
     let cloned = origin.fetch().run(&main).unwrap();

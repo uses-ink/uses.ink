@@ -19,12 +19,12 @@ use crate::error::{Error, Failure};
 /// Loads plugins as components and runs their calls within a [`Budget`].
 #[derive(Clone, Debug)]
 pub struct Runtime {
-    pub(crate) shared: Arc<Shared>,
+    pub(crate) machine: Arc<Machine>,
 }
 
 /// What every component of a runtime shares.
 #[derive(Debug)]
-pub(crate) struct Shared {
+pub(crate) struct Machine {
     pub(crate) engine: wasmtime::Engine,
     pub(crate) budget: Budget,
     cache: Option<Cache>,
@@ -43,17 +43,17 @@ impl Runtime {
             return Err(Error::Tick { tick: budget.tick });
         }
         let ticker = Ticker::start(engine.clone(), budget.tick);
-        let shared = Shared { engine, budget, cache, grammars: Grammars::default(), _ticker: ticker };
-        Ok(Self { shared: Arc::new(shared) })
+        let machine = Machine { engine, budget, cache, grammars: Grammars::default(), _ticker: ticker };
+        Ok(Self { machine: Arc::new(machine) })
     }
 
     /// The budget of each call.
     pub fn budget(&self) -> Budget {
-        self.shared.budget
+        self.machine.budget
     }
 }
 
-impl Shared {
+impl Machine {
     /// The component in `bytes`, compiled or from the cache.
     pub(crate) fn compile(&self, plugin: &str, bytes: &[u8]) -> Result<(Compiled, Origin), Error> {
         let loaded = match &self.cache {
@@ -98,7 +98,7 @@ impl Shared {
         Self::call_in(&self.budget, store, call)
     }
 
-    /// Like [`Shared::call`], with `budget` in place of the runtime's: a source's fetch takes
+    /// Like [`Machine::call`], with `budget` in place of the runtime's: a source's fetch takes
     /// longer than a page's render.
     /// Records on a call's span what it used: fuel, and how long it took.
     fn measured(span: &trace::Span, started: Instant, fuel: u64) {
@@ -168,9 +168,9 @@ mod test {
     ) -> Failure {
         let runtime = Runtime::new(Budget::default(), None).map_err(|error| error.to_string());
         let Ok(runtime) = runtime else { return Failure::Ended };
-        let mut store = runtime.shared.store("test");
+        let mut store = runtime.machine.store("test");
         setup(&mut store);
-        runtime.shared.call(&mut store, call).err().unwrap_or(Failure::Ended)
+        runtime.machine.call(&mut store, call).err().unwrap_or(Failure::Ended)
     }
 
     #[test]

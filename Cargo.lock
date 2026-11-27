@@ -5592,6 +5592,7 @@ dependencies = [
 name = "uses-ink-fixture"
 version = "0.0.0"
 dependencies = [
+ "gix",
  "insta",
 ]
 
@@ -5683,8 +5684,8 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "freehand",
- "gix",
  "uses-ink-engine",
+ "uses-ink-fixture",
  "uses-ink-format-markdown",
  "uses-ink-format-obsidian",
  "uses-ink-host-image",
@@ -5822,7 +5823,7 @@ dependencies = [
 name = "uses-ink-source-git"
 version = "0.0.0"
 dependencies = [
- "gix",
+ "uses-ink-fixture",
  "uses-ink-host-native",
  "uses-ink-model",
 ]

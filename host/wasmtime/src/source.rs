@@ -29,7 +29,7 @@ use crate::capability::{Sourcing, State};
 use crate::component::Component;
 use crate::error::{Error, Failure};
 use crate::mirror::{Malformed, Seen};
-use crate::runtime::{Runtime, Shared};
+use crate::runtime::{Runtime, Machine};
 
 /// What a source's calls run with: the host's fetching and a budget of their own.
 #[derive(Clone, Debug)]
@@ -140,17 +140,17 @@ impl Unsourced {
 impl Runtime {
     /// The source plugin `name` from the component in `bytes`, its calls run on `terms`.
     pub fn source(&self, name: &str, bytes: &[u8], terms: Terms) -> Result<Component<Source>, Error> {
-        if terms.budget.tick != self.shared.budget.tick {
-            return Err(Error::TermsTick { terms: terms.budget.tick, runtime: self.shared.budget.tick });
+        if terms.budget.tick != self.machine.budget.tick {
+            return Err(Error::TermsTick { terms: terms.budget.tick, runtime: self.machine.budget.tick });
         }
-        let (compiled, origin) = self.shared.compile(name, bytes)?;
-        let mut linker = Linker::new(&self.shared.engine);
+        let (compiled, origin) = self.machine.compile(name, bytes)?;
+        let mut linker = Linker::new(&self.machine.engine);
         let link = |source| Error::Link { plugin: name.to_owned(), source };
         Sources::add_to_linker::<State, wasmtime::component::HasSelf<State>>(&mut linker, |state| state)
             .map_err(link)?;
         let pre = linker.instantiate_pre(&compiled).and_then(SourcePre::new).map_err(link)?;
         Ok(Component {
-            shared: self.shared.clone(),
+            machine: self.machine.clone(),
             name: name.to_owned(),
             origin,
             world: Source { pre, terms },
@@ -164,7 +164,7 @@ impl Component<Source> {
     /// `git` capability, its files stored in `store`. What the call says is kept aside.
     pub fn read(&self, want: &Want, store: &mut impl Store) -> Result<Read, Unsourced> {
         let (source, terms) = (&self.world, &self.world.terms);
-        let mut wasm = self.shared.store_in(
+        let mut wasm = self.machine.store_in(
             &self.name,
             &terms.budget,
             Sourcing::bound(terms.fetch.clone(), want.clone(), terms.budget.time),
@@ -175,7 +175,7 @@ impl Component<Source> {
             history: matches!(want.history, History::Wanted),
             grant: want.grant.as_ref().map(ToString::to_string),
         };
-        let called = Shared::call_in(&terms.budget, &mut wasm, |wasm| {
+        let called = Machine::call_in(&terms.budget, &mut wasm, |wasm| {
             source.pre.instantiate(&mut *wasm)?.source().call_read(wasm, &wire)
         });
         let state = wasm.into_data();
