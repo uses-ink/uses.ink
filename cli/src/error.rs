@@ -314,12 +314,7 @@ impl fmt::Display for Error {
             Self::Unselectable { path, why } => write!(out, "{path} cannot be selected: {why}"),
             Self::Folder { written, .. } => write!(out, "`{written}` is not a glob pattern"),
             Self::Include { .. } => write!(out, "the selection could not be written into ink.toml"),
-            Self::Format { id } => {
-                write!(
-                    out,
-                    "`site.format` names `{id}`, which this ink does not hold: it holds `ink:format-markdown` and `ink:format-obsidian`"
-                )
-            }
+            Self::Format { id } => write!(out, "`site.format` names `{id}`, which this ink does not hold"),
             Self::Output(refusal) => write!(out, "{refusal}"),
             Self::Placed { file, .. } => write!(out, "`{file}` is not a file `ink build` can write"),
             Self::Blob { route, .. } => write!(out, "the bytes of {route} are missing"),
@@ -337,10 +332,7 @@ impl fmt::Display for Error {
             Self::Product { .. } => write!(out, "the control plane could not be set up"),
             Self::Terminal { .. } => write!(out, "the terminal could not be written to"),
             Self::Component { path, .. } => write!(out, "the component {} could not be read", path.display()),
-            Self::Unbundled { id } => write!(
-                out,
-                "this ink carries no component `{id}`: it was built without them; run `cargo xtask component`, then build ink again (release builds require it)"
-            ),
+            Self::Unbundled { id } => write!(out, "this ink carries no component `{id}`: it was built without them"),
             Self::Plugin { .. } => write!(out, "a component could not be loaded"),
             Self::Json { .. } => write!(out, "the result could not be written as JSON"),
             Self::Deploy { source } => write!(out, "{source}"),

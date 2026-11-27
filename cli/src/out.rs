@@ -13,6 +13,7 @@ use model::{ContentPath, DeployId, Hash, Manifest, MediaType, PathError, Route};
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
+use crate::failure::Remedy;
 
 /// The manifest's file in the output folder. A dotted name is never a route, so no entry can
 /// take it. The folder walk knows it by this name, so no command reads the folder as content.
@@ -182,15 +183,6 @@ impl fmt::Display for Refusal {
             }
             Self::Changed { path } => write!(out, "{} is not what the earlier `ink build` wrote there", path.display()),
             Self::Occupied { path } => write!(out, "{} is in the way, and no `ink build` wrote it", path.display()),
-        }?;
-        write!(out, "; nothing was changed. ")?;
-        match self {
-            Self::Holds { .. } | Self::Foreign { .. } => {
-                write!(out, "Choose an empty folder outside the site with `-o`")
-            }
-            Self::Linked { .. } | Self::Changed { .. } | Self::Occupied { .. } => {
-                write!(out, "Move it out of the folder")
-            }
         }
     }
 }
@@ -198,6 +190,14 @@ impl fmt::Display for Refusal {
 impl std::error::Error for Refusal {}
 
 impl Refusal {
+    /// What to do about it. Every refusal happens before anything is written.
+    pub(crate) fn remedy(&self) -> Remedy {
+        match self {
+            Self::Holds { .. } | Self::Foreign { .. } => Remedy::ChooseOut,
+            Self::Linked { .. } | Self::Changed { .. } | Self::Occupied { .. } => Remedy::MoveAside,
+        }
+    }
+
     /// Its kind, as `--json` names it.
     pub(crate) fn kind(&self) -> &'static str {
         match self {

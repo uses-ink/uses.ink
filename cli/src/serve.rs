@@ -16,11 +16,12 @@ use serde::Serialize;
 use crate::args::{self, HostMode};
 use crate::error::Error;
 use crate::exit::Exit;
-use crate::output::Io;
+use crate::output::{Io, Say};
 use crate::product::{Mailing, Product};
 use crate::remote::{Fetching, Settings};
 use crate::signin::{Sender, Told, Transport};
 use crate::tasks::{Event as Tasked, Events, Stoppable, Task, Tasks};
+use crate::term::{Answer, Line, Record, Role};
 
 impl From<HostMode> for Mode {
     fn from(mode: HostMode) -> Self {
@@ -87,7 +88,8 @@ impl args::Serve {
         io: &mut Io<'_>,
     ) -> Result<Attached, Error> {
         let (Some(data), Some(product)) = (&self.data, product) else {
-            io.line(format_args!("api: off; give --data <folder> to turn on the control plane and its API"))?;
+            let off = Line::marked(Role::Plain, "off; give `--data <folder>` to turn on the control plane and its API");
+            io.aside(Say::Warnings, &Record::new(0).field("api", off))?;
             return Ok((server, None));
         };
         let (mount, local) = self.start_api(product, data, io)?;
@@ -98,50 +100,50 @@ impl args::Serve {
     /// into the server and the half that answers.
     fn start_api(&self, product: Product, data: &std::path::Path, io: &mut Io<'_>) -> Result<(Mount, Beside), Error> {
         let (limits, interval) = (product.limits, product.interval);
-        io.line(format_args!("api: http://{}/v1/sites (host {})", self.api_host, self.api_host))?;
-        io.line(format_args!("data: {}", data.display()))?;
-        match &product.fresh {
-            Some(token) => io.line(format_args!(
-                "owner token: {} (shown once; kept in {})",
-                token.reveal(),
-                product.token.display()
-            ))?,
-            None => io.line(format_args!("owner token: in {}", product.token.display()))?,
-        }
-        io.line(format_args!(
-            "sites: <handle>.{}",
-            self.origin.trim_start_matches("http://").trim_start_matches("https://")
-        ))?;
-        io.line(format_args!(
-            "limits: json body {} B, upload {} B, {} files, {} B a file, export {} B, lists {} rows",
-            limits.body, limits.archive, limits.files, limits.file, limits.export, limits.rows
-        ))?;
-        self.describe_loops(interval, io)?;
-        self.list_signin(&product.mailing, io)?;
+        let token = match &product.fresh {
+            Some(token) => format!("{} (shown once; kept in {})", token.reveal(), product.token.display()),
+            None => format!("in {}", product.token.display()),
+        };
+        let sites = self.origin.trim_start_matches("http://").trim_start_matches("https://");
+        let record = Record::new(0)
+            .field("api", Line::plain(format!("http://{}/v1/sites (host {})", self.api_host, self.api_host)))
+            .field("data", Line::plain(data.display().to_string()))
+            .field("owner token", Line::plain(token))
+            .field("sites", Line::plain(format!("<handle>.{sites}")))
+            .field(
+                "limits",
+                Line::plain(format!(
+                    "json body {} B, upload {} B, {} files, {} B a file, export {} B, lists {} rows",
+                    limits.body, limits.archive, limits.files, limits.file, limits.export, limits.rows
+                )),
+            );
+        let record = self.describe_loops(interval, record);
+        let record = self.list_signin(&product.mailing, record)?;
+        io.aside(Say::Warnings, &record)?;
         let (bridge, local) = Bridge::new(product.api, limits);
         let Mailing { courier, told, .. } = product.mailing;
         Ok((Mount { host: self.api_host.to_ascii_lowercase().into(), bridge }, (local, courier, told)))
     }
 
-    /// Prints what the watch and the worker run with.
-    fn describe_loops(&self, interval: watch::Interval, io: &mut Io<'_>) -> Result<(), Error> {
+    /// Says what the watch and the worker run with.
+    fn describe_loops(&self, interval: watch::Interval, record: Record) -> Record {
         let schemes: Vec<String> = self.hosting.schemes().iter().map(ToString::to_string).collect();
-        io.line(format_args!(
-            "poll: every {}s, backing off to {}s, a new site within {}s; git over {}",
+        let (restart, (lease, idle)) = (self.hosting.restart(), self.hosting.worker());
+        let poll = format!(
+            "every {}s, backing off to {}s, a new site within {}s; git over {}",
             interval.base().as_secs(),
             interval.max().as_secs(),
             interval.lookout().as_secs(),
             schemes.join(" and ")
-        ))?;
-        let (restart, (lease, idle)) = (self.hosting.restart(), self.hosting.worker());
-        io.line(format_args!(
-            "worker: lease {}s, rests {}s; a loop that crashes restarts after {}s, {} times in a row",
+        );
+        let worker = format!(
+            "lease {}s, rests {}s; a loop that crashes restarts after {}s, {} times in a row",
             lease.as_secs(),
             idle.as_secs(),
             restart.delay.as_secs(),
             restart.limit
-        ))?;
-        Ok(())
+        );
+        record.field("poll", Line::plain(poll)).field("worker", Line::plain(worker))
     }
 
     /// Starts the watch and the worker over `product`'s control plane.
@@ -197,50 +199,59 @@ impl args::Serve {
         });
     }
 
-    /// Prints where mail goes.
-    fn list_mail(&self, io: &mut Io<'_>) -> Result<(), Error> {
+    /// Says where mail goes.
+    fn list_mail(&self, record: Record) -> Record {
         let flags = &self.signin;
-        match flags.mail {
-            Transport::Stdout => io.line(format_args!("mail: stdout (messages and their links are printed here)"))?,
-            Transport::Smtp => io.line(format_args!(
-                "mail: smtp {}:{} {:?} from {} (password {})",
+        let said = match flags.mail {
+            Transport::Stdout => "stdout (messages and their links are printed here)".to_owned(),
+            Transport::Smtp => format!(
+                "smtp {}:{} {:?} from {} (password {})",
                 flags.smtp_host.as_deref().unwrap_or_default(),
                 flags.smtp_port.unwrap_or(0),
                 flags.smtp_security,
                 flags.mail_from.as_deref().unwrap_or_default(),
                 if flags.smtp_user.is_some() { "set, never printed" } else { "none" },
-            ))?,
-        }
-        Ok(())
+            ),
+        };
+        record.field("mail", Line::plain(said))
     }
 
-    /// Prints every sign-in setting it runs with, and the first-run link when this start made it.
-    fn list_signin(&self, mailing: &Mailing, io: &mut Io<'_>) -> Result<(), Error> {
+    /// Says every sign-in setting it runs with, and the first-run link when this start made it.
+    fn list_signin(&self, mailing: &Mailing, record: Record) -> Result<Record, Error> {
         let flags = &self.signin;
         let settings = &mailing.settings;
-        io.line(format_args!(
-            "sign-in: link {}, session {}, sign-up {}, link base {}",
-            settings.login, settings.session, settings.signup, mailing.base
-        ))?;
-        self.list_mail(io)?;
-        io.line(format_args!(
-            "ask limits: {} per address, {} per source, {} tracked, outbox {}",
-            mailing.rates.address, mailing.rates.source, mailing.rates.tracked, mailing.outbox
-        ))?;
-        io.line(format_args!(
-            "cookie: {} path {} ({})",
-            flags.jar(mailing.secure).map_err(|source| Error::Product { source })?.name(),
-            flags.cookie_path.as_deref().unwrap_or("/"),
-            if mailing.secure { "Secure" } else { "plain http, not Secure" }
-        ))?;
-        match &mailing.admin {
-            Some(link) => io.line(format_args!(
-                "admin link: {link} (shown once and kept nowhere; valid {}; opening it signs in as the owner)",
+        let record = record.field(
+            "sign-in",
+            Line::plain(format!(
+                "link {}, session {}, sign-up {}, link base {}",
+                settings.login, settings.session, settings.signup, mailing.base
+            )),
+        );
+        let record = self.list_mail(record).field(
+            "ask limits",
+            Line::plain(format!(
+                "{} per address, {} per source, {} tracked, outbox {}",
+                mailing.rates.address, mailing.rates.source, mailing.rates.tracked, mailing.outbox
+            )),
+        );
+        let jar = flags.jar(mailing.secure).map_err(|source| Error::Product { source })?;
+        let record = record.field(
+            "cookie",
+            Line::plain(format!(
+                "{} path {} ({})",
+                jar.name(),
+                flags.cookie_path.as_deref().unwrap_or("/"),
+                if mailing.secure { "Secure" } else { "plain http, not Secure" }
+            )),
+        );
+        let admin = match &mailing.admin {
+            Some(link) => format!(
+                "{link} (shown once and kept nowhere; valid {}; opening it signs in as the owner)",
                 settings.admin
-            ))?,
-            None => io.line(format_args!("admin link: not made (one was made before, or an account can sign in)"))?,
-        }
-        Ok(())
+            ),
+            None => "not made (one was made before, or an account can sign in)".to_owned(),
+        };
+        Ok(record.field("admin link", Line::plain(admin)))
     }
 
     /// Serves until `stopped`, with the API's half, the mail sender, the edge's lookups and the
@@ -296,7 +307,7 @@ impl args::Serve {
             .map_err(|source| Error::Run { source })?;
         let (listener, address) = self.bind(&runtime)?;
         io.json(&Started { schema: "uses.serve/v1", address: format!("http://{address}"), mode })?;
-        io.line(format_args!("http://{address}"))?;
+        io.result(&Answer::of(format_args!("http://{address}")))?;
         let (events, told) = Events::channel();
         let tasks = product.as_ref().map(|product| self.start_tasks(product, &events));
         drop(events);

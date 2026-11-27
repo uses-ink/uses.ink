@@ -1,0 +1,56 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+\e[1mthe source\e[0m
+\e[2m├─\e[0m \e[2mversion\e[0m  the files on disk
+\e[2m├─\e[0m \e[2mhas\e[0m      snapshot
+\e[2m╰─\e[0m \e[2mlacks\e[0m    history, so page.date is not taken from it
+
+\e[1mthe site\e[0m
+\e[2m├─\e[0m \e[34msite.format\e[0m  `ink:format-markdown`    \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34msite.root\e[0m    the top of the snapshot  \e[2mby default\e[0m
+\e[2m╰─\e[0m \e[34msite.layout\e[0m  flat                     \e[2mby default\e[0m
+
+\e[1mLICENSE\e[0m
+\e[2m╰─\e[0m \e[34mfile.ignore\e[0m  ignored  \e[2mfrom the name of LICENSE\e[0m
+
+\e[1mREADME.md\e[0m
+\e[2m╰─\e[0m \e[34mfile.ignore\e[0m  kept  \e[2mby default\e[0m
+
+\e[1msrc/main.rs\e[0m
+\e[2m╰─\e[0m \e[34mfile.ignore\e[0m  kept  \e[2mby default\e[0m
+
+\e[1musage.md\e[0m
+\e[2m╰─\e[0m \e[34mfile.ignore\e[0m  kept  \e[2mby default\e[0m
+
+\e[1mREADME.md\e[0m
+\e[2m├─\e[0m \e[34mpage.publish\e[0m  published                        \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.kind\e[0m     a page                           \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.title\e[0m    “My tool”                        \e[2mfrom the heading of README.md, bytes 0..9\e[0m
+\e[2m├─\e[0m \e[34mpage.date\e[0m     undated                          \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.updated\e[0m  never updated                    \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.slug\e[0m     `readme`                         \e[2mfrom the name of README.md\e[0m
+\e[2m├─\e[0m \e[34mpage.tags\e[0m     no tags                          \e[2mby default\e[0m
+\e[2m╰─\e[0m \e[34mpage.summary\e[0m  “It does one thing. See usage.”  \e[2mfrom the text of README.md\e[0m
+
+\e[1musage.md\e[0m
+\e[2m├─\e[0m \e[34mpage.publish\e[0m  published              \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.kind\e[0m     a page                 \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.title\e[0m    “Usage”                \e[2mfrom the heading of usage.md, bytes 0..7\e[0m
+\e[2m├─\e[0m \e[34mpage.date\e[0m     undated                \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.updated\e[0m  never updated          \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.slug\e[0m     `usage`                \e[2mfrom the name of usage.md\e[0m
+\e[2m├─\e[0m \e[34mpage.tags\e[0m     no tags                \e[2mby default\e[0m
+\e[2m╰─\e[0m \e[34mpage.summary\e[0m  “Run my-tool --help.”  \e[2mfrom the text of usage.md\e[0m
+
+\e[1msrc/main.rs\e[0m
+\e[2m╰─\e[0m \e[34mpage.publish\e[0m  not published  \e[2mby default\e[0m
+
+\e[1mthe site\e[0m
+\e[2m├─\e[0m \e[34msite.home\e[0m         README.md                        \e[2mfrom the name of README.md\e[0m
+\e[2m├─\e[0m \e[34msite.title\e[0m        “My tool”                        \e[2mfrom the heading of README.md, bytes 0..9\e[0m
+\e[2m├─\e[0m \e[34msite.description\e[0m  “It does one thing. See usage.”  \e[2mfrom the text of README.md\e[0m
+\e[2m├─\e[0m \e[34msite.authors\e[0m      no one                           \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34msite.language\e[0m     `en`                             \e[2mby default\e[0m
+\e[2m╰─\e[0m \e[34msite.nav\e[0m          usage.md                         \e[2mby default\e[0m

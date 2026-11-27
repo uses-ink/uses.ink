@@ -1,0 +1,13 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+\e[1m\e[33mwarning[frontmatter.syntax.invalid]\e[0m\e[1m: the frontmatter does not parse, so the page is built without it: unclosed bracket '[' at line 2, column 8\e[0m
+ \e[34m--> \e[0modd.md:2:1
+  \e[34m|\e[0m
+\e[34m2\e[0m \e[34m|\e[0m \e[1m\e[33m/\e[0m title: [unclosed
+\e[34m3\e[0m \e[34m|\e[0m \e[1m\e[33m|\e[0m ---
+  \e[34m|\e[0m \e[1m\e[33m|_^\e[0m
+  \e[1m\e[36mfix:\e[0m fix the YAML between the `\e[1m\e[36m---\e[0m` lines
+
+     \e[1m\e[33mChecked\e[0m  2 pages, 27 decisions: no errors, 1 warning

@@ -2,88 +2,108 @@
 source: fixture/src/lib.rs
 ---
 the source
-  version            the files on disk
-  has                snapshot
-  lacks              history, so page.date is not taken from it
+├─ version  the files on disk
+├─ has      snapshot
+╰─ lacks    history, so page.date is not taken from it
+
 the site
-  site.format        `ink:format-obsidian`    because .obsidian is there
-  site.root          the top of the snapshot  by default
-  site.layout        a vault                  because .obsidian is there
+├─ site.format  `ink:format-obsidian`    because .obsidian is there
+├─ site.root    the top of the snapshot  by default
+╰─ site.layout  a vault                  because .obsidian is there
+
 .obsidian/app.json
-  file.ignore        ignored                  because .obsidian is there
+╰─ file.ignore  ignored  because .obsidian is there
+
 .obsidian/core-plugins.json
-  file.ignore        ignored                  because .obsidian is there
+╰─ file.ignore  ignored  because .obsidian is there
+
 .obsidian/templates.json
-  file.ignore        ignored                  because .obsidian is there
+╰─ file.ignore  ignored  because .obsidian is there
+
 Archive/ferris.png
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 Loop.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 Meta/Tpl/daily.md
-  file.ignore        ignored                  because Meta/Tpl is there
+╰─ file.ignore  ignored  because Meta/Tpl is there
+
 Notes/Ownership.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 Notes/Rust.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 Private.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 attachments/ferris.png
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 index.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 Loop.md
-  page.publish       published                from the frontmatter of Loop.md, bytes 13..17
-  page.kind          a page                   by default
-  page.title         “Loop”                   from the name of Loop.md
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `loop`                   from the name of Loop.md
-  page.tags          no tags                  by default
-  page.summary       “A note embedding the note that embeds it:” from the text of Loop.md
+├─ page.publish  published                                    from the frontmatter of Loop.md, bytes 13..17
+├─ page.kind     a page                                       by default
+├─ page.title    “Loop”                                       from the name of Loop.md
+├─ page.date     undated                                      by default
+├─ page.updated  never updated                                by default
+├─ page.slug     `loop`                                       from the name of Loop.md
+├─ page.tags     no tags                                      by default
+╰─ page.summary  “A note embedding the note that embeds it:”  from the text of Loop.md
+
 Notes/Ownership.md
-  page.publish       published                from the frontmatter of Notes/Ownership.md, bytes 13..17
-  page.kind          a page                   by default
-  page.title         “Ownership”              from the name of Notes/Ownership.md
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `ownership`              from the name of Notes/Ownership.md
-  page.tags          no tags                  by default
-  page.summary       “Every value has one owner.” from the text of Notes/Ownership.md
+├─ page.publish  published                     from the frontmatter of Notes/Ownership.md, bytes 13..17
+├─ page.kind     a page                        by default
+├─ page.title    “Ownership”                   from the name of Notes/Ownership.md
+├─ page.date     undated                       by default
+├─ page.updated  never updated                 by default
+├─ page.slug     `ownership`                   from the name of Notes/Ownership.md
+├─ page.tags     no tags                       by default
+╰─ page.summary  “Every value has one owner.”  from the text of Notes/Ownership.md
+
 Notes/Rust.md
-  page.publish       published                from the frontmatter of Notes/Rust.md, bytes 13..17
-  page.kind          a page                   by default
-  page.title         “Rust”                   from the name of Notes/Rust.md
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `rust`                   from the name of Notes/Rust.md
-  page.tags          no tags                  by default
-  page.summary       “A language.”            from the text of Notes/Rust.md
+├─ page.publish  published      from the frontmatter of Notes/Rust.md, bytes 13..17
+├─ page.kind     a page         by default
+├─ page.title    “Rust”         from the name of Notes/Rust.md
+├─ page.date     undated        by default
+├─ page.updated  never updated  by default
+├─ page.slug     `rust`         from the name of Notes/Rust.md
+├─ page.tags     no tags        by default
+╰─ page.summary  “A language.”  from the text of Notes/Rust.md
+
 Private.md
-  page.publish       not published            by default
-  page.kind          a page                   by default
-  page.title         “Private”                from the frontmatter of Private.md, bytes 11..18
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `private`                from the name of Private.md
-  page.tags          no tags                  by default
-  page.summary       “Not published: no publish: true.” from the text of Private.md
+├─ page.publish  not published                       by default
+├─ page.kind     a page                              by default
+├─ page.title    “Private”                           from the frontmatter of Private.md, bytes 11..18
+├─ page.date     undated                             by default
+├─ page.updated  never updated                       by default
+├─ page.slug     `private`                           from the name of Private.md
+├─ page.tags     no tags                             by default
+╰─ page.summary  “Not published: no publish: true.”  from the text of Private.md
+
 index.md
-  page.publish       published                from the frontmatter of index.md, bytes 13..17
-  page.kind          a page                   by default
-  page.title         “The garden”             from the frontmatter of index.md, bytes 25..35
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `index`                  from the name of index.md
-  page.tags          garden, notes/rust       from the inline text of index.md, bytes 300..311
-  page.summary       “A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust > Borrowing and to a block Rust > ^borrow-rule.” from the text of index.md
+├─ page.publish  published                                                                                                                                                                                                       from the frontmatter of index.md, bytes 13..17
+├─ page.kind     a page                                                                                                                                                                                                          by default
+├─ page.title    “The garden”                                                                                                                                                                                                    from the frontmatter of index.md, bytes 25..35
+├─ page.date     undated                                                                                                                                                                                                         by default
+├─ page.updated  never updated                                                                                                                                                                                                   by default
+├─ page.slug     `index`                                                                                                                                                                                                         from the name of index.md
+├─ page.tags     garden, notes/rust                                                                                                                                                                                              from the inline text of index.md, bytes 300..311
+╰─ page.summary  “A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust > Borrowing and to a block Rust > ^borrow-rule.”  from the text of index.md
+
 Archive/ferris.png
-  page.publish       not published            by default
+╰─ page.publish  not published  by default
+
 attachments/ferris.png
-  page.publish       published                because index.md is there
+╰─ page.publish  published  because index.md is there
+
 the site
-  site.home          index.md                 from the name of index.md
-  site.title         “The garden”             from the frontmatter of index.md, bytes 25..35
-  site.description   “A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust > Borrowing and to a block Rust > ^borrow-rule.” from the text of index.md
-  site.authors       no one                   by default
-  site.language      `en`                     by default
-  site.nav           Loop.md                  by default
+├─ site.home         index.md                                                                                                                                                                                                        from the name of index.md
+├─ site.title        “The garden”                                                                                                                                                                                                    from the frontmatter of index.md, bytes 25..35
+├─ site.description  “A vault read as Obsidian reads it. Links by name Rust, in any case rust, through an alias the language, by a partial path Notes/Ownership, to a heading Rust > Borrowing and to a block Rust > ^borrow-rule.”  from the text of index.md
+├─ site.authors      no one                                                                                                                                                                                                          by default
+├─ site.language     `en`                                                                                                                                                                                                            by default
+╰─ site.nav          Loop.md                                                                                                                                                                                                         by default

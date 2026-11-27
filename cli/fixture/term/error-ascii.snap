@@ -1,0 +1,25 @@
+---
+source: fixture/src/lib.rs
+---
+error[output.manifest.invalid]: the earlier build's manifest .ink/out/.ink-manifest.json does not parse
+  caused by
+  `- invalid type: map, expected unit at line 1 column 0
+  fix: build into an empty folder with `-o`, or remove .ink/out/.ink-manifest.json yourself
+  nothing was changed
+error[output.file.unwritable]: .ink/out/index.html could not be written
+  caused by
+  `- no space left
+  fix: check that the folder is writable and has room, then run the command again
+  `.ink/out/index.html` may be partly written
+error[decision.code.unknown]: no decision has that code
+  caused by
+  `- `page.titel` is no decision code
+  fix: `ink explain` lists every decision of the site with its code
+  nothing was changed
+error[cli.usage]: unexpected argument `--wy` found
+  fix: to pass `--wy` as a value, use `-- --wy`
+  nothing was changed
+
+Usage: ink explain [OPTIONS] [PATH]
+
+For more information, try '--help'.

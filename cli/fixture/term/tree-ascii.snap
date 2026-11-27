@@ -1,0 +1,11 @@
+---
+source: fixture/src/lib.rs
+---
+the source
+|- version  the files on disk
+`- lacks    history, so page.date is not taken from it
+
+posts/a.md
+|- page.publish  published             by default
+|- page.title    “A walk in the rain”  from the heading of posts/a.md, bytes 0..22
+`- page.slug     `walk`                pinned in ink.toml, bytes 40..46

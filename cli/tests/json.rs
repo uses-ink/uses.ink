@@ -28,6 +28,12 @@ fn scratch(name: &str) -> PathBuf {
 /// `ink <args>`: the exit, the one document on stdout, and the events on stderr. Fails unless
 /// stdout is exactly one JSON document and every stderr line is one.
 fn ink(args: &[&OsStr]) -> (Exit, serde_json::Value, Vec<serde_json::Value>) {
+    let (exit, document, events) = ink_all(args);
+    (exit, document, events.into_iter().filter(|event| event["schema"] != "uses.progress/v1").collect())
+}
+
+/// As [`ink`], with the progress events too.
+fn ink_all(args: &[&OsStr]) -> (Exit, serde_json::Value, Vec<serde_json::Value>) {
     let args = std::iter::once(OsStr::new("ink")).chain(args.iter().copied());
     let (mut out, mut err) = (Vec::new(), Vec::new());
     let exit = Cli::start(args, &mut out, &mut err).unwrap();
@@ -93,6 +99,35 @@ fn an_error_is_one_document_on_stdout_and_nothing_on_stderr() {
     let (exit, failed, _) = ink(&[os("--json"), os("pin")]);
     assert_eq!(exit, Exit::Usage);
     assert_eq!(failed["error"], "cli.usage");
+}
+
+#[test]
+fn every_finished_stage_of_a_build_is_a_progress_event() {
+    let out = scratch("progress");
+    let (exit, _, events) =
+        ink_all(&[os("build"), os("-C"), fixture("readme").as_os_str(), os("-o"), out.as_os_str(), os("--json")]);
+    assert_eq!(exit, Exit::Done);
+    let stages: Vec<(&str, &str)> = events
+        .iter()
+        .filter(|event| event["schema"] == "uses.progress/v1")
+        .map(|event| (event["stage"].as_str().unwrap(), event["state"].as_str().unwrap()))
+        .collect();
+    let finished = |stage| (stage, "finished");
+    assert_eq!(
+        stages,
+        [finished("reading"), finished("understanding"), finished("rendering"), finished("writing")],
+        "{events:?}"
+    );
+    let (_, _, events) = ink_all(&[
+        os("-qq"),
+        os("build"),
+        os("-C"),
+        fixture("readme").as_os_str(),
+        os("-o"),
+        out.as_os_str(),
+        os("--json"),
+    ]);
+    assert!(events.is_empty(), "-qq leaves only errors: {events:?}");
 }
 
 #[test]

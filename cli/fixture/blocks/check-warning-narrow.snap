@@ -1,0 +1,13 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+warning[frontmatter.syntax.invalid]: the frontmatter does not parse, so the page is built without it: unclosed bracket '[' at line 2, column 8
+ --> odd.md:2:1
+  |
+2 | / title: [unclosed
+3 | | ---
+  | |_^
+  fix: fix the YAML between the `---` lines
+
+     Checked  2 pages, 27 decisions: no errors, 1 warning

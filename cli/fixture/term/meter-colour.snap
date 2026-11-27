@@ -1,0 +1,5 @@
+---
+source: fixture/src/lib.rs
+---
+   \e[36mRendering\e[0m  \e[36m━━━━━━━━\e[0m\e[36m╸\e[0m\e[36m───────────────\e[0m  41/118 images  \e[2mphotos/2026/trip-04.jpg\e[0m
+   \e[36mRendering\e[0m  118 images, 41 done, 6.0 s

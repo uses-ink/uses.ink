@@ -16,6 +16,7 @@ use crate::exit::Exit;
 use crate::output::{Io, Strict};
 use crate::report::Texts;
 use crate::site::{Address, Source};
+use crate::term::Answer;
 
 /// A build compared with its components' build.
 #[derive(Debug)]
@@ -72,7 +73,7 @@ impl Compare<'_> {
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let tally = io.said(&diagnostics, &notices, texts)?;
         if let Some(deploy) = ours {
-            io.line(deploy)?;
+            io.result(&Answer::of(deploy))?;
         }
         io.json(&Compared {
             schema: "uses.build-check/v1",

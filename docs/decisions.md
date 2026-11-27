@@ -1307,6 +1307,21 @@ costs more than it clarifies, or a grammar the M3 verbs do not fit: keep the typ
 colour roles, and go back to clap's help and the per-command folder. The open choices are the
 last section of `docs/cli.md`.
 
+**Amendment, slice 1 and 3 (the output layer).** `cli/src/term` is built on `anstyle` and `anstream`
+(already in the tree through clap) with `unicode-width` and `terminal_size`; the live line is a small
+typed meter (`Meter`, driven by the `clock` port) instead of `indicatif`, which is not in the tree
+and cannot target the CLI's `&mut dyn Write` streams. Nothing in `term` reads the process:
+`Surroundings` is what the caller says the process is (`main` passes the real one, a capture passes
+none), so goldens do not change with the machine. Fixes of errors are the CLI's own typed `Remedy`,
+not the diag catalog's `Fix`, which words problems of a folder, not of a command. `State` is typed
+(`unchanged`, `partial` with the path, `unknown`) and an error that wrote part of a file says so.
+Progress is stage lines and, for image work, a count between batches the size of the machine's
+parallelism (`images.rs`); the engine's one-call `Images::prepare` has no finer hook, so a page
+count, bytes of a fetch and the per-image `Made`/`Reused` lines of `-vv` need an engine port and are
+left. The `[ui]` table of `~/.config/ink/config.toml` (slice 2's `Settings`) feeds the same decision, below the environment variables of `term` only when it says `always` or `never`. Not done in this slice: `INK_TIMES`, prose wrapping, `... and N
+more` cuts, hiding default decisions, and the table header (all need a flag or a verb of the
+command tree).
+
 Build note (slice 2, the command tree): `cli/src/tree` declares every command once as typed values
 (group, aliases, wording, examples, exit codes, environment). It decorates the clap command the
 argument types derive, and `help`, `completions` (bash, zsh, fish, elvish, nushell, powershell) and

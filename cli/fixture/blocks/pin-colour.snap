@@ -1,0 +1,8 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+   \e[32mWould pin\e[0m  page.title of usage.md; ink.toml is unchanged
+  \e[34m@@ ink.toml\e[0m
+   [page."usage.md"]
+  \e[32m+\e[0mtitle = "Usage"

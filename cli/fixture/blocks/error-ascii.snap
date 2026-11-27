@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+error[explain.path.unknown]: nosuch.md is not a file of the folder
+  fix: `ink explain` lists every file of the folder and what is decided on it
+  nothing was changed

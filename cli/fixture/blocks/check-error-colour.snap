@@ -1,0 +1,9 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+\e[1m\e[31merror[link.target.ambiguous]\e[0m: \e[1m`\e[0m\e[1m\e[36mNote\e[0m\e[1m`\e[0m\e[1m could be any of one/Note.md and two/Note.md\e[0m
+  \e[34m--> index.md\e[0m
+  \e[1m\e[36mfix:\e[0m write the path of the one you mean
+
+     \e[1m\e[31mChecked\e[0m  0 pages, 36 decisions: 1 error, no warnings

@@ -1,0 +1,20 @@
+---
+source: fixture/src/lib.rs
+---
+Branch ├─ |- Quiet
+Last ╰─ `- Quiet
+Rail │ | Quiet
+Top ╭─ .- Quiet
+Live ● * Good
+Done ✓ ok Good
+Gone · . Quiet
+Private ○ o Quiet
+Outranked – - Quiet
+Added + + Good
+Removed - - Bad
+Changed ~ ~ Warn
+To → -> Plain
+Truncation … ... Quiet
+BarFull ━ # Work
+BarHead ╸ > Work
+BarRest ─ - Work

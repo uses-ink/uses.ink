@@ -1,0 +1,9 @@
+---
+source: fixture/src/lib.rs
+---
+╭─ A walk in the rain, from the heading of posts/a.md: rung 3 of 5
+│
+│ · 1  pin       nothing
+│ ✓ 3  heading   A walk in the rain  chosen
+│ – 4  filename  walk                outranked
+╰─ to pin it: ink pin posts/a.md page.title

@@ -1,0 +1,11 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+error[cli.usage]: unexpected argument `--wy` found
+  fix: to pass `--wy` as a value, use `-- --wy`
+  nothing was changed
+
+Usage: ink explain [OPTIONS] [PATH]
+
+For more information, try '--help'.

@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+\e[1m\e[31merror[explain.path.unknown]\e[0m: \e[1mnosuch.md is not a file of the folder\e[0m
+  \e[1m\e[36mfix:\e[0m `\e[1m\e[36mink explain\e[0m` lists every file of the folder and what is decided on it
+  \e[2mnothing was changed\e[0m

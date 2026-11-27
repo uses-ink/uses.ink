@@ -2,50 +2,58 @@
 source: fixture/src/lib.rs
 ---
 the source
-  version            the files on disk
-  has                snapshot
-  lacks              history, so page.date is not taken from it
+├─ version  the files on disk
+├─ has      snapshot
+╰─ lacks    history, so page.date is not taken from it
+
 the site
-  site.format        `ink:format-markdown`    by default
-  site.root          the top of the snapshot  by default
-  site.layout        flat                     by default
+├─ site.format  `ink:format-markdown`    by default
+├─ site.root    the top of the snapshot  by default
+╰─ site.layout  flat                     by default
+
 index.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 one/Note.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 two/Note.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 index.md
-  page.publish       published                by default
-  page.kind          a page                   by default
-  page.title         “Two notes”              from the heading of index.md, bytes 0..11
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `index`                  from the name of index.md
-  page.tags          no tags                  by default
-  page.summary       “Which note is meant?”   from the text of index.md
+├─ page.publish  published               by default
+├─ page.kind     a page                  by default
+├─ page.title    “Two notes”             from the heading of index.md, bytes 0..11
+├─ page.date     undated                 by default
+├─ page.updated  never updated           by default
+├─ page.slug     `index`                 from the name of index.md
+├─ page.tags     no tags                 by default
+╰─ page.summary  “Which note is meant?”  from the text of index.md
+
 one/Note.md
-  page.publish       published                by default
-  page.kind          a page                   by default
-  page.title         “Note one”               from the heading of one/Note.md, bytes 0..10
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `note`                   from the name of one/Note.md
-  page.tags          no tags                  by default
-  page.summary       none                     by default
+├─ page.publish  published      by default
+├─ page.kind     a page         by default
+├─ page.title    “Note one”     from the heading of one/Note.md, bytes 0..10
+├─ page.date     undated        by default
+├─ page.updated  never updated  by default
+├─ page.slug     `note`         from the name of one/Note.md
+├─ page.tags     no tags        by default
+╰─ page.summary  none           by default
+
 two/Note.md
-  page.publish       published                by default
-  page.kind          a page                   by default
-  page.title         “Note two”               from the heading of two/Note.md, bytes 0..10
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `note`                   from the name of two/Note.md
-  page.tags          no tags                  by default
-  page.summary       none                     by default
+├─ page.publish  published      by default
+├─ page.kind     a page         by default
+├─ page.title    “Note two”     from the heading of two/Note.md, bytes 0..10
+├─ page.date     undated        by default
+├─ page.updated  never updated  by default
+├─ page.slug     `note`         from the name of two/Note.md
+├─ page.tags     no tags        by default
+╰─ page.summary  none           by default
+
 the site
-  site.home          index.md                 from the name of index.md
-  site.title         “Two notes”              from the heading of index.md, bytes 0..11
-  site.description   “Which note is meant?”   from the text of index.md
-  site.authors       no one                   by default
-  site.language      `en`                     by default
-  site.nav           empty                    by default
+├─ site.home         index.md                from the name of index.md
+├─ site.title        “Two notes”             from the heading of index.md, bytes 0..11
+├─ site.description  “Which note is meant?”  from the text of index.md
+├─ site.authors      no one                  by default
+├─ site.language     `en`                    by default
+╰─ site.nav          empty                   by default

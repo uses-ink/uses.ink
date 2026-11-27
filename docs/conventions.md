@@ -341,9 +341,11 @@ a doc comment.
 
 - Results go to stdout; everything else (progress, notices, diagnostics) to stderr. `--json`
   puts the result on stdout as JSON and streams NDJSON events with a `schema` field.
-- A diagnostic is one block: `error[code]: wording` from the catalog, then each context field
-  once as `key: value`, the span with its source line where there is one, then `fix:`, then the
-  `caused by` chain. A notice is one line: `note[code]: wording`.
+- A diagnostic is one block: `error[code]: wording` from the catalog, then where it is, the span
+  with its source line where there is one, then `fix:`, then the `caused by` rail. A notice is
+  `note[code]: wording` and its `fix:`. An error that stops a command ends with a state line
+  (`nothing was changed`). Each is a typed value rendered once through `cli/src/term` (decision
+  0061); no command builds output with `format!`.
 - One-shot commands log at warn with no timestamps; `ink serve` logs at info with timestamps.
   `-v`/`-q` move one level and win over `INK_LOG`, which wins over `RUST_LOG`.
 - Exit codes are a closed, documented set (`research/flow.md` section 7).

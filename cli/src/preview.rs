@@ -16,9 +16,11 @@ use crate::args;
 use crate::cache::Caching;
 use crate::error::Error;
 use crate::exit::Exit;
+use crate::images::Watched;
 use crate::output::{Io, Strict};
 use crate::report::Texts;
 use crate::site::{Address, Loaded, Rendering, Source};
+use crate::term::Answer;
 
 /// What `ink preview --json` prints before it serves: the address, or none when the site has
 /// errors and nothing is served.
@@ -47,10 +49,13 @@ impl args::Preview {
         let address = format!("http://127.0.0.1:{port}");
         let address = Address { chosen: None, ..Address::from_flag(Some(&address))? };
         let loaded = Source::new(&self.dir, &self.origin).load()?;
+        loaded.staged(io)?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let caching = Caching::new(&self.dir, self.cache.as_deref());
         let images = caching.pixels();
-        let mut rendered = loaded.render(&address, Host::new(&images).cached(caching.disk()));
+        let watched = Watched::new(&images, io);
+        let mut rendered = loaded.render(&address, Host::new(&watched).cached(caching.disk()));
+        watched.finish()?;
         rendered.notices.extend(caching.finish());
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
         let preview = Preview::assemble(loaded, rendered);
@@ -61,7 +66,7 @@ impl args::Preview {
             warnings: tally.warnings,
         })?;
         let Some(preview) = preview else { return Ok(Exit::Content) };
-        io.line(&address.base)?;
+        io.result(&Answer::of(&address.base))?;
         preview.serve(listener)?;
         Ok(tally.exit(Strict::Off))
     }

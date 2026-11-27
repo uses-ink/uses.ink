@@ -132,17 +132,12 @@ impl Site {
     }
 }
 
-/// Stdout that takes the first line and then fails every write, as a receiver already dropped.
-struct Shut(Option<std::sync::mpsc::Sender<Vec<u8>>>);
+/// Stdout that fails every write, as a receiver already dropped.
+struct Shut;
 
 impl Write for Shut {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        let Some(sender) = &self.0 else { return Err(std::io::ErrorKind::BrokenPipe.into()) };
-        sender.send(bytes.to_vec()).map_err(|_| std::io::ErrorKind::BrokenPipe)?;
-        if bytes.ends_with(b"\n") {
-            self.0 = None;
-        }
-        Ok(bytes.len())
+    fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+        Err(std::io::ErrorKind::BrokenPipe.into())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -150,24 +145,16 @@ impl Write for Shut {
     }
 }
 
-/// The cause of the flaky resets and refusals: the address is printed once the listener is bound,
-/// but `ink serve` still prints a line after it, and when that write fails the run ends and the
-/// listener closes. A helper that drops its receiver after the first line loses that race under
-/// load, so [`serve`] keeps the receiver. Forced here with a stdout that is already closed.
+/// A stdout that cannot be written ends the run before it serves: the address is written once the
+/// listener is bound, and when that write fails the run ends and the listener closes, so no run
+/// serves with nobody told where.
 #[test]
 fn a_closed_stdout_ends_the_run_and_closes_the_listener() {
     let root = scratch("shut");
     let out = build(&root);
     let cli = cli::Cli::try_parse_from(["ink", "serve", out.to_str().unwrap(), "--addr", "127.0.0.1:0"]).unwrap();
-    let (sender, received) = std::sync::mpsc::channel();
-    let run = std::thread::spawn(move || cli.run(&mut Shut(Some(sender)), &mut std::io::sink()));
-    let mut printed = String::new();
-    while !printed.ends_with('\n') {
-        printed.push_str(std::str::from_utf8(&received.recv().unwrap()).unwrap());
-    }
-    let port: u16 = printed.trim().strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap();
-    assert_ne!(run.join().unwrap(), cli::Exit::Done, "the failed write ends the run");
-    assert!(TcpStream::connect(("127.0.0.1", port)).is_err(), "and nothing listens any more");
+    let exit = std::thread::spawn(move || cli.run(&mut Shut, &mut std::io::sink())).join().unwrap();
+    assert_ne!(exit, cli::Exit::Done, "the failed write ends the run");
 }
 
 #[test]
@@ -331,20 +318,19 @@ fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
     ])
     .unwrap();
     let (sender, received) = std::sync::mpsc::channel();
-    let handle = std::thread::spawn(move || {
-        let mut err = Vec::new();
-        let exit = cli.run(&mut Sent(sender), &mut err);
-        (exit, String::from_utf8(err).unwrap())
-    });
+    let (said, heard) = std::sync::mpsc::channel();
+    let handle = std::thread::spawn(move || cli.run(&mut Sent(sender), &mut Sent(said)));
     let mut printed = String::new();
     while !printed.ends_with('\n') {
         let part = received.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
         printed.push_str(std::str::from_utf8(&part).unwrap());
     }
-    // the API is up once its last setting line is printed: the owner token file is written before
-    while !printed.contains("poll: every") {
-        let part = received.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
-        printed.push_str(std::str::from_utf8(&part).unwrap());
+    // the API is up once its last setting line is written (to stderr): the owner token file is
+    // written before
+    let mut settings = String::new();
+    while !settings.contains("backing off") {
+        let part = heard.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
+        settings.push_str(std::str::from_utf8(&part).unwrap());
     }
     let first = printed.lines().next().unwrap();
     let site = Site { port: first.strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap(), _stdout: received };

@@ -1,0 +1,9 @@
+---
+source: fixture/src/lib.rs
+---
+\e[2m╭─\e[0m A walk in the rain, from the heading of posts/a.md: rung 3 of 5
+\e[2m│\e[0m
+\e[2m│\e[0m \e[2m·\e[0m 1  pin       \e[2mnothing\e[0m
+\e[2m│\e[0m \e[32m✓\e[0m 3  heading   A walk in the rain  \e[32mchosen\e[0m
+\e[2m│\e[0m \e[2m–\e[0m 4  filename  walk                \e[2moutranked\e[0m
+\e[2m╰─\e[0m \e[2mto pin it: \e[0m\e[1m\e[36mink pin posts/a.md page.title\e[0m

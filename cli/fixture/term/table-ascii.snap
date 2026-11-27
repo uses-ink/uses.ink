@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+---
+published (2 of 4)
+  *  notes/trip.md          publish: true in the frontmatter, line 2
+  *  notes/trip/day-1.md    matched by `notes/trip/**` in ink.toml
+  o  journal/2026-01-04.md  nothing selected it

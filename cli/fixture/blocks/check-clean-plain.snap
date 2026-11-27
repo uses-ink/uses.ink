@@ -1,0 +1,5 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+     Checked  2 pages, 30 decisions: no errors, no warnings

@@ -119,7 +119,9 @@ fn report(name: &str) -> String {
     ]);
     let mut report = String::new();
     let _infallible = writeln!(report, "# exit {}", exit.code());
-    for line in stderr.lines().filter(|line| !line.contains(r#""severity":"notice""#)) {
+    for line in
+        stderr.lines().filter(|line| !line.contains(r#""severity":"notice""#) && !line.contains("uses.progress/v1"))
+    {
         let _infallible = writeln!(report, "{line}");
     }
     let _infallible = writeln!(report, "# result\n{}", stdout.replace(out.to_str().unwrap(), "<out>").trim());
@@ -187,7 +189,8 @@ fn a_pin_of_the_current_value_changes_no_deploy() {
     let dir_text = dir.to_str().unwrap();
     let (exit, dry, stderr) = ink(&["pin", "usage.md", "page.title", "--dry-run", "-C", dir_text]);
     assert_eq!(exit, Exit::Done, "{stderr}");
-    assert_eq!(dry, "[page.\"usage.md\"]\ntitle = \"Usage\"\ndry run: nothing written\n");
+    assert!(dry.contains("Would pin  page.title of usage.md; ink.toml is unchanged\n"), "{dry}");
+    assert!(dry.contains("  @@ ink.toml\n   [page.\"usage.md\"]\n  +title = \"Usage\"\n"), "{dry}");
     assert_eq!(std::fs::read_to_string(dir.join("ink.toml")).unwrap(), mine);
     let (exit, _, stderr) = ink(&["pin", "usage.md", "page.title", "-C", dir_text]);
     assert_eq!(exit, Exit::Done, "{stderr}");
@@ -198,7 +201,7 @@ fn a_pin_of_the_current_value_changes_no_deploy() {
     assert!(toml.contains("[page.\"usage.md\"]\ntitle = \"Usage\""), "{toml}");
     assert!(toml.contains("[site]\ntitle = \"My tool\""), "{toml}");
     let (_, why, _) = ink(&["explain", "usage.md", "--why", "page.title", "-C", dir_text]);
-    assert!(why.starts_with("page.title on usage.md: “Usage” pinned in ink.toml"), "{why}");
+    assert!(why.starts_with("page.title on usage.md\n╭─ “Usage”, pinned in ink.toml"), "{why}");
     assert_eq!(build(&dir, &scratch("pin/after")), before);
 }
 
@@ -207,13 +210,22 @@ fn pin_refuses_a_code_of_the_other_scope_or_an_unknown_file() {
     let dir = fixtures().join("readme");
     let dir_text = dir.to_str().unwrap();
     for (args, said) in [
-        (&["pin", "page.title"][..], "error: `page.title` is decided per file: give the file's path before it\n"),
+        (
+            &["pin", "page.title"][..],
+            "error[decision.code.scope]: `page.title` is decided per file: give the file's path before it\n  fix: give the file's path before the code\n  nothing was changed\n",
+        ),
         (
             &["pin", "usage.md", "site.title"][..],
-            "error: `site.title` is decided once for the site, not on usage.md: give the code alone\n",
+            "error[decision.code.scope]: `site.title` is decided once for the site, not on usage.md: give the code alone\n  fix: give the code alone, without a path\n  nothing was changed\n",
         ),
-        (&["pin", "nosuch.md", "page.title"][..], "error: nosuch.md is not a file of the folder\n"),
-        (&["pin", "page.nope"][..], "error: no decision has that code\n  caused by: `page.nope` is no decision code\n"),
+        (
+            &["pin", "nosuch.md", "page.title"][..],
+            "error[explain.path.unknown]: nosuch.md is not a file of the folder\n  fix: `ink explain` lists every file of the folder and what is decided on it\n  nothing was changed\n",
+        ),
+        (
+            &["pin", "page.nope"][..],
+            "error[decision.code.unknown]: no decision has that code\n  caused by\n  ╰─ `page.nope` is no decision code\n  fix: `ink explain` lists every decision of the site with its code\n  nothing was changed\n",
+        ),
     ] {
         let args: Vec<&str> = args.iter().copied().chain(["--dry-run", "-C", dir_text]).collect();
         let (exit, stdout, stderr) = ink(&args);
@@ -226,19 +238,17 @@ fn explain_why_replays_one_ladder_rung_by_rung() {
     let dir = fixtures().join("blog");
     let (exit, why, stderr) = ink(&["explain", "posts/later.md", "--why", "page.title", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Done, "{stderr}");
-    assert_eq!(
-        why,
-        "page.title on posts/later.md: “Later” from the name of posts/later.md, rung 4 of 4
-   1 ink.toml           nothing
-   2 front matter       nothing
-   3 first heading      nothing
-   4 file name          “Later”                  from the name of posts/later.md, chosen
-to pin it: ink pin posts/later.md page.title
-"
+    assert!(
+        why.starts_with("page.title on posts/later.md\n╭─ “Later”, from the name of posts/later.md: rung 4 of 4\n│\n"),
+        "{why}"
     );
+    for rung in ["│ · 1  ink.toml", "│ · 2  front matter", "│ · 3  first heading", "│ ✓ 4  file name"] {
+        assert!(why.contains(rung), "{rung} in {why}");
+    }
+    assert!(why.ends_with("╰─ to pin it: ink pin posts/later.md page.title\n"), "{why}");
     let (_, why, _) = ink(&["explain", "index.md", "--why", "page.summary", "-C", dir.to_str().unwrap()]);
-    assert!(why.contains("   3 first paragraph    “Welcome."), "the outranked rung is shown: {why}");
-    assert!(why.lines().nth(3).unwrap().ends_with(", outranked"), "{why}");
+    assert!(why.contains("– 3  first paragraph"), "the outranked rung is shown: {why}");
+    assert!(why.lines().any(|line| line.starts_with("│ – 3") && line.contains("outranked")), "{why}");
     let (_, json, _) = ink(&["explain", "--why", "site.layout", "-C", dir.to_str().unwrap(), "--json"]);
     let json: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(json["schema"], "uses.trace/v1");
@@ -323,18 +333,15 @@ fn a_build_lists_what_changed_since_the_last_newly_public_first() {
     let (exit, stdout, stderr) = ink(&args);
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert_eq!(stdout.trim().len(), 64, "stdout is the deploy id alone: {stdout}");
-    let lines: Vec<&str> = stderr.lines().collect();
-    assert!(lines[0].starts_with("against the previous build in "), "{stderr}");
-    assert_eq!(lines[1..3], ["newly public", "  new.md                           /new"], "{stderr}");
-    assert!(
-        stderr.contains(
-            "  usage.md                         page.title “Usage” -> “How to use it”  content: the file was edited"
-        ),
-        "{stderr}"
-    );
-    assert!(stderr.contains("  new.md                           new, content: the file is new"), "{stderr}");
+    assert!(stderr.contains("Changes  1 newly public, 0 no longer public, 0 moved, "), "{stderr}");
+    assert!(stderr.contains(" decisions changed, against deploy "), "{stderr}");
+    assert!(stderr.contains("newly public (1)\n  +  new.md  /new\n"), "{stderr}");
+    assert!(stderr.contains("page.title"), "{stderr}");
+    assert!(stderr.contains("“Usage” → “How to use it”"), "{stderr}");
+    assert!(stderr.contains("content: the file was edited"), "{stderr}");
+    assert!(stderr.contains("content: the file is new"), "{stderr}");
     assert!(stderr.contains("site.nav"), "the navigation follows the new page: {stderr}");
-    assert!(lines.last().unwrap().starts_with("1 newly public, 0 no longer public, 0 moved, "), "{stderr}");
+    assert!(stderr.lines().any(|line| line.trim_start().starts_with("Built  ")), "{stderr}");
 }
 
 /// `site.format` is a pin, then the `.obsidian/` marker, then markdown, each replayed by `--why`,
@@ -348,33 +355,33 @@ fn the_format_is_a_pin_then_the_vault_marker_then_markdown() {
         (why, stderr)
     };
     let (why_vault, said) = why("vault");
-    assert_eq!(
-        why_vault,
-        "site.format on the site: `ink:format-obsidian` because .obsidian is there, rung 2 of 3
-   1 ink.toml           nothing
-   2 .obsidian folder   `ink:format-obsidian`    because .obsidian is there, chosen
-   3 default            nothing
-to pin it: ink pin site.format
-"
+    assert!(
+        why_vault.starts_with(
+            "site.format on the site\n╭─ `ink:format-obsidian`, because .obsidian is there: rung 2 of 3\n│\n"
+        ),
+        "{why_vault}"
     );
+    for rung in ["│ · 1  ink.toml", "│ ✓ 2  .obsidian folder", "│ · 3  default"] {
+        assert!(why_vault.contains(rung), "{rung} in {why_vault}");
+    }
+    assert!(why_vault.ends_with("╰─ to pin it: ink pin site.format\n"), "{why_vault}");
     assert!(said.contains("note[format.obsidian.chosen]"), "{said}");
     let (plain, said) = why("readme");
-    assert!(plain.starts_with("site.format on the site: `ink:format-markdown` by default, rung 3 of 3"), "{plain}");
+    assert!(plain.starts_with("site.format on the site\n╭─ `ink:format-markdown`, by default: rung 3 of 3"), "{plain}");
     assert!(!said.contains("format."), "markdown by default is not said: {said}");
     let (pinned, said) = why("vault-markdown");
-    assert_eq!(
-        pinned,
-        "site.format on the site: `ink:format-markdown` pinned in ink.toml, bytes 7..37, rung 1 of 3
-   1 ink.toml           `ink:format-markdown`    pinned in ink.toml, bytes 7..37, chosen
-   2 .obsidian folder   `ink:format-obsidian`    because .obsidian is there, outranked
-   3 default            nothing
-to pin it: ink pin site.format
-"
+    assert!(
+        pinned.starts_with(
+            "site.format on the site\n╭─ `ink:format-markdown`, pinned in ink.toml, bytes 7..37: rung 1 of 3\n│\n"
+        ),
+        "{pinned}"
     );
+    assert!(pinned.contains("│ – 2  .obsidian folder"), "{pinned}");
+    assert!(pinned.contains("outranked"), "{pinned}");
     assert!(said.contains("note[format.pin.chosen]: `ink.toml` pins `site.format` to `ink:format-markdown`"), "{said}");
     assert!(!said.contains("format.obsidian.chosen"), "{said}");
     let (pinned, said) = why("notes-obsidian");
-    assert!(pinned.starts_with("site.format on the site: `ink:format-obsidian` pinned in ink.toml"), "{pinned}");
+    assert!(pinned.starts_with("site.format on the site\n╭─ `ink:format-obsidian`, pinned in ink.toml"), "{pinned}");
     assert!(said.contains("note[format.pin.chosen]: `ink.toml` pins `site.format` to `ink:format-obsidian`"), "{said}");
 }
 
@@ -403,7 +410,7 @@ fn a_pinned_format_reads_the_markdown_and_ink_pin_writes_it() {
     copy(&fixtures().join("vault"), &dir);
     let (exit, written, stderr) = ink(&["pin", "site.format", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Done, "{stderr}");
-    assert!(written.starts_with("[site]\nformat = \"ink:format-obsidian\"\n"), "{written}");
+    assert!(written.contains("  +format = \"ink:format-obsidian\"\n"), "{written}");
     assert_eq!(std::fs::read_to_string(dir.join("ink.toml")).unwrap(), "[site]\nformat = \"ink:format-obsidian\"\n");
     let (exit, _, stderr) = ink(&["explain", "--why", "site.format", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Done, "{stderr}");
@@ -418,7 +425,9 @@ fn a_format_this_ink_does_not_hold_stops_the_command() {
     let (exit, _, stderr) = ink(&["check", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Usage, "{stderr}");
     assert!(
-        stderr.starts_with("error: `site.format` names `acme:format-wiki`, which this ink does not hold"),
+        stderr.starts_with(
+            "error[format.plugin.unknown]: `site.format` names `acme:format-wiki`, which this ink does not hold"
+        ),
         "{stderr}"
     );
     std::fs::write(dir.join("ink.toml"), "[site]\nformat = \"quiet\"\n").unwrap();
@@ -435,9 +444,10 @@ fn check_exits_by_what_it_found() {
             ["check", "-C", dir.to_str().unwrap()].into_iter().chain(strict.iter().copied()).collect();
         ink(&args)
     };
-    let (exit, stdout, _) = check("readme", &[]);
+    let (exit, stdout, stderr) = check("readme", &[]);
     assert_eq!(exit, Exit::Done);
-    assert_eq!(stdout, "2 pages, 30 decisions, 0 errors, 0 warnings\n");
+    assert_eq!(stdout, "");
+    assert_eq!(stderr, "     Checked  2 pages, 30 decisions: no errors, no warnings\n");
     let (exit, _, stderr) = check("ambiguous", &[]);
     assert_eq!(exit, Exit::Content);
     assert!(stderr.starts_with("error[link.target.ambiguous]:"), "{stderr}");
@@ -453,10 +463,8 @@ fn explain_shows_decisions_with_evidence() {
     let (exit, stdout, _) = ink(&["explain", "-C", dir.to_str().unwrap(), "usage.md"]);
     assert_eq!(exit, Exit::Done);
     assert!(stdout.starts_with("usage.md\n"), "{stdout}");
-    assert!(
-        stdout.contains("page.title         “Usage”                  from the heading of usage.md, bytes 0..7"),
-        "{stdout}"
-    );
+    let title = stdout.lines().find(|line| line.contains("page.title")).unwrap();
+    assert!(title.contains("“Usage”") && title.contains("from the heading of usage.md, bytes 0..7"), "{stdout}");
     let (_, json, _) = ink(&["explain", "-C", dir.to_str().unwrap(), "--json"]);
     let json: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(json["schema"], "uses.explain/v2");
@@ -489,7 +497,8 @@ fn a_build_refuses_a_folder_it_did_not_write() {
     let dir = fixtures().join("readme");
     let (exit, _, stderr) = ink(&["build", "-C", dir.to_str().unwrap(), "-o", out.to_str().unwrap()]);
     assert_eq!(exit, Exit::Usage);
-    assert!(stderr.starts_with("error: "), "{stderr}");
+    assert!(stderr.starts_with("error[output.folder.foreign]: "), "{stderr}");
+    assert!(stderr.ends_with("  nothing was changed\n"), "{stderr}");
     assert_eq!(std::fs::read_to_string(out.join("keep.txt")).unwrap(), "mine");
     let (exit, _, stderr) = ink(&["build", "-C", dir.to_str().unwrap(), "--base", "ftp://x"]);
     assert_eq!(exit, Exit::Usage, "{stderr}");
@@ -510,10 +519,10 @@ fn no_command_reads_a_custom_output_folder_as_content() {
     let dir = scratch("custom-out/site");
     copy(&fixtures().join("readme"), &dir);
     let dir_text = dir.to_str().unwrap();
-    let (_, before, _) = ink(&["check", "-C", dir_text]);
+    let (_, _, before) = ink(&["check", "-C", dir_text]);
     let (_, explained, _) = ink(&["explain", "-C", dir_text]);
     build(&dir, &dir.join("public"));
-    let (exit, after, _) = ink(&["check", "-C", dir_text]);
+    let (exit, _, after) = ink(&["check", "-C", dir_text]);
     assert_eq!(exit, Exit::Done);
     assert_eq!(after, before);
     assert_eq!(ink(&["explain", "-C", dir_text]).1, explained);
@@ -545,7 +554,10 @@ fn explain_refuses_a_path_that_is_no_file() {
     let (exit, stdout, stderr) = ink(&["explain", "-C", dir.to_str().unwrap(), "nosuch.md"]);
     assert_eq!(exit, Exit::Usage);
     assert_eq!(stdout, "");
-    assert_eq!(stderr, "error: nosuch.md is not a file of the folder\n");
+    assert_eq!(
+        stderr,
+        "error[explain.path.unknown]: nosuch.md is not a file of the folder\n  fix: `ink explain` lists every file of the folder and what is decided on it\n  nothing was changed\n"
+    );
     let (exit, _, _) = ink(&["explain", "nosuch.md", "--why", "page.title", "-C", dir.to_str().unwrap()]);
     assert_eq!(exit, Exit::Usage);
 }

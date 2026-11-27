@@ -19,8 +19,9 @@ pub(crate) use failure::Failure;
 
 use crate::error::Error;
 use crate::exit::Exit;
-use crate::output::Io;
+use crate::output::{Io, Say};
 use crate::settings::{Environment, Preferences, Process};
+use crate::term::Verbatim;
 use crate::tree::Heading;
 use client::{Api, Endpoint, Token};
 use view::{Listing, Pointer, Record, Short};
@@ -148,7 +149,7 @@ impl List {
         let calls = self.remote.calls()?;
         let all = calls.block(calls.api.deploys()).map_err(|source| Error::Deploy { source })?;
         let rows = all.get(..self.limit.min(all.len())).unwrap_or_default();
-        io.line(Listing { rows, total: all.len() })?;
+        io.result(&Listing { rows, total: all.len() })?;
         io.json(&Listed {
             schema: "uses.deploys/v1",
             site: calls.api.site.to_string(),
@@ -177,7 +178,7 @@ impl Show {
             })
             .map_err(|source| Error::Deploy { source })?;
         let (deploy, build, log) = &found;
-        io.line(Record { deploy, build: build.as_ref(), log })?;
+        io.result(&Record { deploy, build: build.as_ref(), log })?;
         io.json(&Shown { schema: "uses.deploy/v1", deploy, build: build.as_ref(), log })?;
         Ok(Exit::Done)
     }
@@ -194,11 +195,14 @@ impl Rollback {
                 calls.api.rollback(deploy.id).await
             })
             .map_err(|source| Error::Deploy { source })?;
-        io.line(Pointer(&moved))?;
-        io.aside(format_args!(
-            "deploys are paused: `ink deploy resume` deploys new pushes again (rolled back to {})\n",
-            moved.live.as_ref().map_or_else(String::new, |live| Short(live.deploy).to_string())
-        ))?;
+        io.result(&Pointer(&moved))?;
+        let live = moved.live.as_ref().map_or_else(String::new, |live| Short(live.deploy).to_string());
+        io.aside(
+            Say::Warnings,
+            &Verbatim(format!(
+                "deploys are paused: `ink deploy resume` deploys new pushes again (rolled back to {live})"
+            )),
+        )?;
         io.json(&Moved { schema: "uses.deploy-pointer/v1", site: calls.api.site.to_string(), moved: &moved })?;
         Ok(Exit::Done)
     }
@@ -209,7 +213,7 @@ impl Remote {
     pub(crate) fn resume(self, io: &mut Io<'_>) -> Result<Exit, Error> {
         let calls = self.calls()?;
         let moved = calls.block(calls.api.resume()).map_err(|source| Error::Deploy { source })?;
-        io.line(Pointer(&moved))?;
+        io.result(&Pointer(&moved))?;
         io.json(&Moved { schema: "uses.deploy-pointer/v1", site: calls.api.site.to_string(), moved: &moved })?;
         Ok(Exit::Done)
     }

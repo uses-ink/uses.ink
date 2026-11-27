@@ -1,0 +1,10 @@
+---
+source: fixture/src/lib.rs
+---
+        \e[32mRead\e[0m  214 files from git 9f3c2a1b4d7e
+  \e[32mUnderstood\e[0m  61 pages, 312 decisions
+    \e[32mRendered\e[0m  61 pages\e[2m, 1.4 s\e[0m
+     \e[32mChanges\e[0m  2 newly public, 1 moved, against deploy 4mq8c1d0wz5e
+       \e[1m\e[33mBuilt\e[0m  187 files in .ink/out, 1 warning\e[2m, 1.4 s\e[0m
+     \e[1m\e[31mChecked\e[0m  61 pages, 312 decisions: 1 error, 2 warnings
+   \e[32mWould pin\e[0m  page.slug of posts/a.md; ink.toml is unchanged

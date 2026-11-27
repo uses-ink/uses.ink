@@ -1,0 +1,281 @@
+//! The error block: what stopped a command, its causes, a typed fix and the state it left behind
+//! (decision 0061). As text it is `error[code]: what`, a `caused by` rail, `fix:` and a state
+//! line; as JSON it is `uses.error/v1`, which gained `fix` and `state` beside `what` and `causes`.
+
+use std::fmt;
+use std::path::{Path, PathBuf};
+
+use model::Diagnostic;
+use serde::Serialize;
+
+use crate::error::Error;
+use crate::exit::Exit;
+use crate::report::{Advice, Event, Label, Texts};
+use crate::select::Unselectable;
+use crate::term::{Doc, Line, Render, Role, Tree};
+
+/// What a command left behind when it stopped.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub(crate) enum State {
+    /// Nothing was written: the command stopped before it changed anything.
+    Unchanged,
+    /// A file or folder may be half written.
+    Partial {
+        /// Where.
+        path: String,
+    },
+    /// The command could not say what it had done before it stopped.
+    Unknown,
+}
+
+impl fmt::Display for State {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unchanged => write!(out, "nothing was changed"),
+            Self::Partial { path } => write!(out, "`{path}` may be partly written"),
+            Self::Unknown => write!(out, "what the command had written is not known: run it again"),
+        }
+    }
+}
+
+/// What to do about an error, as an instruction. A command inside backticks is the command to type.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Remedy {
+    ChooseOut,
+    MoveAside,
+    RemoveFile(PathBuf),
+    DropRev,
+    GiveAddress,
+    GivePath,
+    ListFiles,
+    ListCodes,
+    CodeAlone,
+    PathFirst,
+    NameDecision,
+    FixCause,
+    Unselect(Unselectable),
+    GiveGlob,
+    HoldFormat,
+    Report,
+    Access,
+    Room,
+    FreePort,
+    FreeAddress,
+    GiveDeploy,
+    GiveData,
+    Retry,
+    Bundle,
+    FixConfig,
+    ListVerbs,
+    ListTopics,
+}
+
+impl fmt::Display for Remedy {
+    #[allow(clippy::too_many_lines, reason = "one arm for each remedy")]
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ChooseOut => write!(out, "choose an empty folder outside the site with `-o`"),
+            Self::MoveAside => write!(out, "move it out of the folder"),
+            Self::RemoveFile(path) => {
+                write!(out, "build into an empty folder with `-o`, or remove {} yourself", path.display())
+            }
+            Self::DropRev => write!(out, "drop `--rev`, or pass `--source git`"),
+            Self::GiveAddress => {
+                write!(
+                    out,
+                    "give the address the site is served at, with its scheme, as in `--base https://example.org`"
+                )
+            }
+            Self::GivePath => {
+                write!(out, "write the path as it is in the folder, relative to it, with `/` between its parts")
+            }
+            Self::ListFiles => write!(out, "`ink explain` lists every file of the folder and what is decided on it"),
+            Self::ListCodes => write!(out, "`ink explain` lists every decision of the site with its code"),
+            Self::CodeAlone => write!(out, "give the code alone, without a path"),
+            Self::PathFirst => write!(out, "give the file's path before the code"),
+            Self::NameDecision => write!(out, "name a decision as `CODE`, or as `PATH CODE`"),
+            Self::FixCause => write!(out, "fix the cause above, then run the command again"),
+            Self::Unselect(Unselectable::Ignored) => {
+                write!(out, "remove what ignores it from `ink.toml`, or select another file")
+            }
+            Self::Unselect(Unselectable::Plain) => write!(out, "select the page that uses it"),
+            Self::Unselect(_) => write!(out, "`--folder` selects any file by pattern"),
+            Self::GiveGlob => write!(out, "write the pattern as a glob, such as `notes/**`"),
+            Self::HoldFormat => {
+                write!(out, "pin `site.format` to `ink:format-markdown` or `ink:format-obsidian`, or remove the pin")
+            }
+            Self::Report => write!(out, "this is a fault in ink: report it with the text above"),
+            Self::Access => write!(out, "check that you may read it, then run the command again"),
+            Self::Room => write!(out, "check that the folder is writable and has room, then run the command again"),
+            Self::FreePort => write!(out, "free the port, or give another with `--port`"),
+            Self::FreeAddress => write!(out, "give a free address with `--addr`"),
+            Self::GiveDeploy => {
+                write!(out, "give the folder `ink build` wrote into, or with `--host-mode folders` a folder of them")
+            }
+            Self::GiveData => write!(out, "give an empty folder, or the one `--data` used before"),
+            Self::Retry => write!(out, "run the command again"),
+            Self::FixConfig => write!(out, "fix the file, or remove the key it names"),
+            Self::ListVerbs => write!(out, "`ink help` lists the verbs that are built"),
+            Self::ListTopics => write!(out, "`ink help` lists the topics"),
+            Self::Bundle => {
+                write!(out, "run `cargo xtask component`, then build ink again (release builds require it)")
+            }
+        }
+    }
+}
+
+impl Error {
+    /// What to do about it, when there is something to say.
+    #[allow(clippy::too_many_lines, reason = "one arm for each variant of the error")]
+    pub(crate) fn remedy(&self) -> Option<Remedy> {
+        Some(match self {
+            Self::Refused(_) | Self::Deploy { .. } => return None,
+            Self::Unversioned { .. } => Remedy::DropRev,
+            Self::Base { .. } => Remedy::GiveAddress,
+            Self::Path { .. } => Remedy::GivePath,
+            Self::Unknown { .. } => Remedy::ListFiles,
+            Self::Code { .. } | Self::Undecided { .. } => Remedy::ListCodes,
+            Self::Scope { subject: model::Subject::File(_), .. } => Remedy::CodeAlone,
+            Self::Scope { .. } => Remedy::PathFirst,
+            Self::Words { .. } => Remedy::NameDecision,
+            Self::Pin { .. } | Self::Front { .. } | Self::Include { .. } => Remedy::FixCause,
+            Self::Unselectable { why, .. } => Remedy::Unselect(*why),
+            Self::Folder { .. } => Remedy::GiveGlob,
+            Self::Format { .. } => Remedy::HoldFormat,
+            Self::Output(refusal) => refusal.remedy(),
+            Self::Placed { .. }
+            | Self::Blob { .. }
+            | Self::Edge { .. }
+            | Self::Server { .. }
+            | Self::Plugin { .. }
+            | Self::Json { .. }
+            | Self::Manual { .. } => Remedy::Report,
+            Self::Read { .. } | Self::Component { .. } => Remedy::Access,
+            Self::Write { .. } => Remedy::Room,
+            Self::Manifest { path, .. } => Remedy::RemoveFile(path.clone()),
+            Self::Serve { .. } => Remedy::FreePort,
+            Self::Listen { .. } => Remedy::FreeAddress,
+            Self::Deploys { .. } => Remedy::GiveDeploy,
+            Self::Product { .. } => Remedy::GiveData,
+            Self::Run { .. } | Self::Terminal { .. } => Remedy::Retry,
+            Self::Unbundled { .. } => Remedy::Bundle,
+            Self::Preferences { .. } => Remedy::FixConfig,
+            Self::Pending { .. } => Remedy::ListVerbs,
+            Self::Help { .. } => Remedy::ListTopics,
+        })
+    }
+
+    /// What it left behind. Only a write that failed or a report that could not be written leaves
+    /// anything that is not known to be untouched.
+    pub(crate) fn state(&self) -> State {
+        match self {
+            Self::Write { path, .. } => State::Partial { path: Self::shown(path) },
+            Self::Terminal { .. } | Self::Json { .. } => State::Unknown,
+            _ => State::Unchanged,
+        }
+    }
+
+    fn shown(path: &Path) -> String {
+        path.to_string_lossy().into_owned()
+    }
+}
+
+/// An error as a block: `uses.error/v1`.
+#[derive(Debug, Serialize)]
+pub(crate) struct Failure {
+    schema: &'static str,
+    exit: u8,
+    /// The error's kind: a diagnostic code for a refused folder, `output.foreign` and the like
+    /// for the rest.
+    error: &'static str,
+    what: String,
+    /// Each cause, outermost first.
+    causes: Vec<String>,
+    /// What to do about it.
+    fix: Option<String>,
+    /// What it left behind.
+    state: State,
+    /// The refused folder's diagnostic, when it is one.
+    diagnostic: Option<Event>,
+    /// Lines that follow the block as they are, such as a usage line; text only.
+    #[serde(skip)]
+    trailer: Vec<String>,
+}
+
+impl Failure {
+    const SCHEMA: &'static str = "uses.error/v1";
+
+    /// The block for `error`, which ended the command with `exit`.
+    pub(crate) fn of(error: &Error, exit: Exit) -> Self {
+        let mut causes = Vec::new();
+        let mut cause = std::error::Error::source(error);
+        while let Some(next) = cause {
+            causes.push(next.to_string());
+            cause = next.source();
+        }
+        let diagnostic = match error {
+            Error::Refused(refused) => Some(Event::diagnostic(&Diagnostic::from(refused), Texts::NONE)),
+            _ => None,
+        };
+        Self {
+            schema: Self::SCHEMA,
+            exit: exit.code(),
+            error: error.kind(),
+            what: error.to_string(),
+            causes,
+            fix: error.remedy().map(|remedy| remedy.to_string()),
+            state: error.state(),
+            diagnostic,
+            trailer: Vec::new(),
+        }
+    }
+
+    /// A command line clap refused: its first line is what, its `tip` the fix, and what follows
+    /// the usage line is kept as it is.
+    pub(crate) fn usage(error: &clap::Error) -> Self {
+        let text = error.to_string();
+        let mut lines = text.lines();
+        let what = lines.next().unwrap_or_default();
+        let what = what.strip_prefix("error: ").unwrap_or(what).replace('\'', "`");
+        let rest: Vec<&str> = lines.collect();
+        let fix =
+            rest.iter().find_map(|line| line.trim_start().strip_prefix("tip: ")).map(|tip| tip.replace('\'', "`"));
+        let trailer =
+            rest.iter().skip_while(|line| !line.starts_with("Usage:")).map(|line| (*line).to_owned()).collect();
+        Self {
+            schema: Self::SCHEMA,
+            exit: Exit::Usage.code(),
+            error: "cli.usage",
+            what,
+            causes: Vec::new(),
+            fix,
+            state: State::Unchanged,
+            diagnostic: None,
+            trailer,
+        }
+    }
+}
+
+impl Render for Failure {
+    fn render(&self, into: &mut Doc) {
+        into.push(Label::error(self.error, &self.what).line());
+        let mut causes = Tree::new(Line::plain("caused by")).indent(2);
+        for cause in &self.causes {
+            causes = causes.row(vec![Line::marked(Role::Plain, cause)]);
+        }
+        if !causes.is_empty() {
+            causes.render(into);
+        }
+        if let Some(fix) = &self.fix {
+            into.push(Advice(fix).line());
+        }
+        into.push(Line::new().pad(2).with(Role::Quiet, self.state.to_string()));
+        if !self.trailer.is_empty() {
+            into.blank();
+            for line in &self.trailer {
+                into.push(Line::plain(line));
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+---
+source: fixture/src/lib.rs
+---
+\e[1mthe source\e[0m
+\e[2m├─\e[0m \e[2mversion\e[0m  the files on disk
+\e[2m╰─\e[0m \e[2mlacks\e[0m    history, so page.date is not taken from it
+
+\e[1mposts/a.md\e[0m
+\e[2m├─\e[0m \e[34mpage.publish\e[0m  published             \e[2mby default\e[0m
+\e[2m├─\e[0m \e[34mpage.title\e[0m    “A walk in the rain”  \e[2mfrom the heading of posts/a.md, bytes 0..22\e[0m
+\e[2m╰─\e[0m \e[34mpage.slug\e[0m     `walk`                \e[35mpinned in ink.toml, bytes 40..46\e[0m

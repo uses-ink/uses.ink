@@ -1,0 +1,84 @@
+---
+source: fixture/src/lib.rs
+---
+{
+  "schema": "uses.error/v1",
+  "exit": 2,
+  "error": "output.manifest.invalid",
+  "what": "the earlier build's manifest .ink/out/.ink-manifest.json does not parse",
+  "causes": [
+    "invalid type: map, expected unit at line 1 column 0"
+  ],
+  "fix": "build into an empty folder with `-o`, or remove .ink/out/.ink-manifest.json yourself",
+  "state": {
+    "kind": "unchanged"
+  },
+  "diagnostic": null
+}
+{
+  "schema": "uses.error/v1",
+  "exit": 2,
+  "error": "output.file.unwritable",
+  "what": ".ink/out/index.html could not be written",
+  "causes": [
+    "no space left"
+  ],
+  "fix": "check that the folder is writable and has room, then run the command again",
+  "state": {
+    "kind": "partial",
+    "path": ".ink/out/index.html"
+  },
+  "diagnostic": null
+}
+{
+  "schema": "uses.error/v1",
+  "exit": 2,
+  "error": "decision.code.unknown",
+  "what": "no decision has that code",
+  "causes": [
+    "`page.titel` is no decision code"
+  ],
+  "fix": "`ink explain` lists every decision of the site with its code",
+  "state": {
+    "kind": "unchanged"
+  },
+  "diagnostic": null
+}
+{
+  "schema": "uses.error/v1",
+  "exit": 2,
+  "error": "cli.usage",
+  "what": "unexpected argument `--wy` found",
+  "causes": [],
+  "fix": "to pass `--wy` as a value, use `-- --wy`",
+  "state": {
+    "kind": "unchanged"
+  },
+  "diagnostic": null
+}
+{
+  "schema": "uses.event/v1",
+  "code": "source.file.unreadable",
+  "severity": "error",
+  "file": "usage.md",
+  "line": 1,
+  "what": "b/Note.md could not be read: denied",
+  "why": null,
+  "fix": null
+}
+{
+  "schema": "uses.event/v1",
+  "code": "site.home.generated",
+  "severity": "notice",
+  "file": null,
+  "line": null,
+  "what": "no home page was found, so the home page lists every page",
+  "why": null,
+  "fix": "add index.md or README.md at the root, or pin `site.home`"
+}
+{
+  "schema": "uses.progress/v1",
+  "stage": "reading",
+  "state": "finished",
+  "detail": "214 files from git 9f3c2a1b4d7e"
+}

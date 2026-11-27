@@ -1,0 +1,5 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+{"schema":"uses.error/v1","exit":2,"error":"decision.code.unknown","what":"no decision has that code","causes":["`page.nope` is no decision code"],"fix":"`ink explain` lists every decision of the site with its code","state":{"kind":"unchanged"},"diagnostic":null}

@@ -1,0 +1,12 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+\e[1mpage.title on usage.md\e[0m
+\e[2m╭─\e[0m “Usage”, from the heading of usage.md, bytes 0..7: rung 3 of 4
+\e[2m│\e[0m
+\e[2m│\e[0m \e[2m·\e[0m 1  ink.toml       \e[2mnothing\e[0m
+\e[2m│\e[0m \e[2m·\e[0m 2  front matter   \e[2mnothing\e[0m
+\e[2m│\e[0m \e[32m✓\e[0m 3  first heading  “Usage”  \e[32mchosen\e[0m  \e[2mfrom the heading of usage.md, bytes 0..7\e[0m
+\e[2m│\e[0m \e[2m·\e[0m 4  file name      \e[2mnothing\e[0m
+\e[2m╰─\e[0m \e[2mto pin it: \e[0m\e[1m\e[36mink pin usage.md page.title\e[0m

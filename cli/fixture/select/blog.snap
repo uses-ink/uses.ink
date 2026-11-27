@@ -2,11 +2,13 @@
 source: fixture/src/lib.rs
 ---
 selection: implicit, a public source: a page is published unless it says otherwise
-published (5)
-  about.md by default: a public source publishes its pages
-  index.md by default: a public source publishes its pages
-  posts/2024-03-01-first-steps.md by default: a public source publishes its pages
-  posts/pictures.md by default: a public source publishes its pages
-  posts/second.md by default: a public source publishes its pages
-not published (1)
-  posts/later.md the frontmatter of posts/later.md says so, bytes 11..15
+
+published (5 of 6)
+  ●  about.md                         by default: a public source publishes its pages
+  ●  index.md                         by default: a public source publishes its pages
+  ●  posts/2024-03-01-first-steps.md  by default: a public source publishes its pages
+  ●  posts/pictures.md                by default: a public source publishes its pages
+  ●  posts/second.md                  by default: a public source publishes its pages
+
+private (1)
+  ○  posts/later.md  the frontmatter of posts/later.md says so, bytes 11..15

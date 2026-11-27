@@ -14,7 +14,7 @@ use clap::{Arg, Command};
 
 pub(crate) use catalog::Refusal;
 use page::{Page, Row};
-pub(crate) use paint::{Detect, Face, Paint, Painter, Stream};
+pub(crate) use paint::{Face, Paint};
 
 use crate::tree::{Group, Heading, Located, Status, Tree, Variable};
 

@@ -5,8 +5,8 @@
 
 use std::fmt;
 
-use engine::{Heard, Rung, Standing, Trace};
-use model::{Ability, AnyDecision, ContentPath, Gap, Lack, Observed, Subject, Version};
+use engine::{Rung, Standing, Trace};
+use model::{Ability, AnyDecision, ContentPath, Evidence, Gap, Lack, Observed, Subject, Version};
 use serde::Serialize;
 
 use diag::{Because, Pin, Short, Value};
@@ -18,6 +18,7 @@ use crate::exit::Exit;
 use crate::output::{Io, Strict};
 use crate::report::Texts;
 use crate::site::Source;
+use crate::term::{Cut, Doc, Flex, Glyph, Line, Rail, Render, Role, Tree, Trees};
 
 /// What `ink explain --json` prints: the version read and what the source had and lacked, then
 /// each decision as storage holds it, tagged by its code.
@@ -53,18 +54,12 @@ impl Explain {
         let tally = io.said(&understood.diagnostics, &understood.notices, texts)?;
         let decisions: Vec<&AnyDecision> = understood.explain(subject.as_ref()).collect();
         let (version, observed) = (loaded.snapshot.version(), loaded.snapshot.observed());
+        let mut trees = Vec::new();
         if subject.is_none() {
-            Self::source(io, version, observed)?;
+            trees.push(Self::source(version, observed));
         }
-        let mut current: Option<Subject> = None;
-        for decision in &decisions {
-            let about = decision.subject();
-            if current.as_ref() != Some(&about) {
-                io.line(&about)?;
-                current = Some(about);
-            }
-            io.line(Line(decision))?;
-        }
+        trees.extend(Self::decided(&decisions));
+        io.result(&Trees(trees))?;
         io.json(&Explained { schema: "uses.explain/v2", version, observed, decisions })?;
         Ok(tally.exit(Strict::Off))
     }
@@ -81,84 +76,83 @@ impl Explain {
         let Some(trace) = &understood.trace else {
             return Err(Error::Undecided { code: asked.code, subject: asked.subject });
         };
-        io.line(Head(trace))?;
-        for (at, rung) in trace.rungs.iter().enumerate() {
-            io.line(Step { at: at + 1, rung })?;
-        }
-        io.line(Hint(&asked))?;
+        io.result(&Ladder { trace, asked: &asked })?;
         io.json(&Traced { schema: "uses.trace/v1", trace })?;
         Ok(tally.exit(Strict::Off))
     }
 }
 
-/// A trace's first line: the decision, its evidence and its place on the ladder.
+/// One decision's ladder: a rail down the rungs in order of authority, a mark for what each did,
+/// and the command that writes the value down.
 #[derive(Clone, Copy, Debug)]
-struct Head<'a>(&'a Trace);
+struct Ladder<'a> {
+    trace: &'a Trace,
+    asked: &'a Asked,
+}
 
-impl fmt::Display for Head<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "{} on {}", self.0.code, self.0.subject)?;
-        match self.0.chosen() {
-            Some((at, heard)) => write!(
-                out,
-                ": {} {}, rung {at} of {}",
+impl Ladder<'_> {
+    /// The sentence at the top of the rail: what was chosen, from what, and where on the ladder.
+    fn sentence(&self) -> Line {
+        let text = match self.trace.chosen() {
+            Some((at, heard)) => format!(
+                "{}, {}: rung {at} of {}",
                 Value(&heard.testimony),
                 Because(heard.testimony.evidence()),
-                self.0.rungs.len()
+                self.trace.rungs.len()
             ),
-            None => out.write_str(": no rung said a value"),
+            None => "no rung said a value".to_owned(),
+        };
+        Line::plain(text)
+    }
+
+    /// The rows of one rung: its mark and place, its witness, and what each testimony said.
+    fn rows(at: usize, rung: &Rung, into: &Doc) -> Vec<Vec<Line>> {
+        let witness = Line::plain(rung.witness.to_string());
+        let chosen = rung.heard.iter().any(|heard| heard.chosen);
+        let mark = |glyph| into.glyph(glyph).pad(1).with(Role::Plain, at.to_string());
+        if rung.heard.is_empty() {
+            return vec![vec![mark(Glyph::Gone), witness, Line::new().with(Role::Quiet, "nothing")]];
         }
+        rung.heard
+            .iter()
+            .enumerate()
+            .map(|(row, heard)| {
+                let (verdict, role) = match (heard.chosen, heard.standing) {
+                    (true, _) => ("chosen", Role::Good),
+                    (false, Standing::Bound) => ("bound", Role::Quiet),
+                    (false, _) => ("outranked", Role::Quiet),
+                };
+                let (first, second) = if row == 0 {
+                    (mark(if chosen { Glyph::Done } else { Glyph::Outranked }), witness.clone())
+                } else {
+                    (Line::new(), Line::new())
+                };
+                let evidence = Because(heard.testimony.evidence()).to_string();
+                vec![
+                    first,
+                    second,
+                    Line::plain(Value(&heard.testimony).to_string()),
+                    Line::new().with(role, verdict),
+                    Line::new().with(Role::Quiet, evidence),
+                ]
+            })
+            .collect()
+    }
+
+    /// The last line: how to pin the value.
+    fn foot(&self) -> Line {
+        let command = Pin(&self.asked.code, &self.asked.subject).to_string();
+        Line::new().with(Role::Quiet, "to pin it: ").with(Role::Literal, command)
     }
 }
 
-/// One rung: its place, its witness, and what it said or that it found nothing.
-#[derive(Clone, Copy, Debug)]
-struct Step<'a> {
-    at: usize,
-    rung: &'a Rung,
-}
-
-impl fmt::Display for Step<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let witness = self.rung.witness.to_string();
-        write!(out, "  {:>2} {witness:<18}", self.at)?;
-        if self.rung.heard.is_empty() {
-            return out.write_str(" nothing");
-        }
-        for (at, heard) in self.rung.heard.iter().enumerate() {
-            if at > 0 {
-                write!(out, "\n  {:>2} {:<18}", "", "")?;
-            }
-            write!(out, " {}", Testified(heard))?;
-        }
-        Ok(())
-    }
-}
-
-/// One testimony: its value, its evidence, and how it stood.
-#[derive(Clone, Copy, Debug)]
-struct Testified<'a>(&'a Heard);
-
-impl fmt::Display for Testified<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let heard = self.0;
-        let value = Value(&heard.testimony).to_string();
-        write!(out, "{value:<24} {}, ", Because(heard.testimony.evidence()))?;
-        out.write_str(match (heard.chosen, heard.standing) {
-            (true, _) => "chosen",
-            (false, Standing::Bound) => "a bound, never chosen",
-            (false, _) => "outranked",
-        })
-    }
-}
-
-/// How to fix the value: the command that pins it.
-#[derive(Clone, Copy, Debug)]
-struct Hint<'a>(&'a Asked);
-
-impl fmt::Display for Hint<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "to pin it: {}", Pin(&self.0.code, &self.0.subject))
+impl Render for Ladder<'_> {
+    fn render(&self, into: &mut Doc) {
+        let trace = self.trace;
+        into.push(Line::new().with(Role::Heading, format!("{} on {}", trace.code, trace.subject)));
+        let rows = trace.rungs.iter().enumerate().flat_map(|(at, rung)| Self::rows(at + 1, rung, into)).collect();
+        Rail { top: self.sentence(), rows, foot: self.foot(), flex: Some(Flex { column: 4, cut: Cut::End }) }
+            .render(into);
     }
 }
 
@@ -171,25 +165,40 @@ impl Explain {
     }
 
     /// What the source was read at, what it had and what it lacked.
-    fn source(io: &mut Io<'_>, version: &Version, observed: &Observed) -> Result<(), Error> {
-        io.line("the source")?;
-        io.line(format_args!("  {:<18} {}", "version", Read(version)))?;
-        io.line(format_args!("  {:<18} {}", "has", Has(&observed.has)))?;
+    fn source(version: &Version, observed: &Observed) -> Tree {
+        let key = |key: &str, value: String| vec![Line::new().with(Role::Quiet, key), Line::plain(value)];
+        let mut tree = Tree::new(Line::new().with(Role::Heading, "the source"))
+            .row(key("version", Read(version).to_string()))
+            .row(key("has", Has(&observed.has).to_string()));
         for lack in &observed.lacks {
-            io.line(format_args!("  {:<18} {}", "lacks", Lacking(lack)))?;
+            tree = tree.row(key("lacks", Lacking(lack).to_string()));
         }
-        Ok(())
+        tree.flex(1, Cut::End)
     }
-}
 
-/// One decision: `  code  value  from evidence`, its value in its code's words.
-#[derive(Clone, Copy, Debug)]
-struct Line<'a>(&'a AnyDecision);
-
-impl fmt::Display for Line<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let value = Value(self.0).to_string();
-        write!(out, "  {:<18} {value:<24} {}", self.0.code().name(), Because(self.0.evidence()))
+    /// One tree for each subject, in the order the decisions come: a row for each decision with
+    /// its code, its value in that code's words and its evidence, which is dim unless the site's
+    /// own pin chose the value.
+    fn decided(decisions: &[&AnyDecision]) -> Vec<Tree> {
+        let mut trees: Vec<Tree> = Vec::new();
+        let mut current: Option<Subject> = None;
+        for decision in decisions {
+            let about = decision.subject();
+            if current.as_ref() != Some(&about) {
+                trees.push(Tree::new(Line::new().with(Role::Heading, about.to_string())).flex(2, Cut::End));
+                current = Some(about);
+            }
+            let role = if matches!(decision.evidence(), Evidence::Config { .. }) { Role::Id } else { Role::Quiet };
+            let row = vec![
+                Line::new().with(Role::Code, decision.code().name()),
+                Line::plain(Value(decision).to_string()),
+                Line::new().with(role, Because(decision.evidence()).to_string()),
+            ];
+            if let Some(tree) = trees.pop() {
+                trees.push(tree.row(row));
+            }
+        }
+        trees
     }
 }
 

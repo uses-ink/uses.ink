@@ -1,0 +1,18 @@
+---
+source: fixture/src/lib.rs
+---
+error[link.target.ambiguous]: `[[Note]]` could be any of a/Note.md and b/Note.md
+ --> usage.md:1:1
+  |
+1 | # Usage
+  | ^^^^^^^
+  fix: write the path of the one you mean
+  caused by
+  ╰─ error[source.file.unreadable]: b/Note.md could not be read: denied
+
+error[link.target.ambiguous]: `[[Note]]` could be any of a/Note.md and b/Note.md
+  --> usage.md
+  fix: write the path of the one you mean
+
+note[site.home.generated]: no home page was found, so the home page lists every page
+  fix: add index.md or README.md at the root, or pin `site.home`

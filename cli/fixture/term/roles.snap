@@ -1,0 +1,14 @@
+---
+source: fixture/src/lib.rs
+---
+\e[1mHeading\e[0m \e[1mHeading\e[0m
+\e[1m\e[36mLiteral\e[0m \e[1m\e[36mLiteral\e[0m
+\e[32mGood\e[0m \e[1m\e[32mGood\e[0m
+\e[33mWarn\e[0m \e[1m\e[33mWarn\e[0m
+\e[31mBad\e[0m \e[1m\e[31mBad\e[0m
+\e[36mWork\e[0m \e[1m\e[36mWork\e[0m
+\e[35mId\e[0m \e[1m\e[35mId\e[0m
+\e[34mPlace\e[0m \e[1m\e[34mPlace\e[0m
+\e[34mCode\e[0m \e[1m\e[34mCode\e[0m
+\e[2mQuiet\e[0m \e[1m\e[2mQuiet\e[0m
+Plain \e[1mPlain\e[0m

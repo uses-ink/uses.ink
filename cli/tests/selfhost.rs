@@ -157,8 +157,8 @@ impl Running {
         let lines = Lines(received);
         let address = lines.until("http://127.0.0.1:");
         let port = address.trim().strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap();
-        let token = lines.until("owner token: ");
-        let token = token.split_once("owner token: ").unwrap().1.split(' ').next().unwrap().to_owned();
+        let token = lines.until("owner token");
+        let token = token.split_once("owner token").unwrap().1.split_whitespace().next().unwrap().to_owned();
         Self { child, lines, port, token }
     }
 

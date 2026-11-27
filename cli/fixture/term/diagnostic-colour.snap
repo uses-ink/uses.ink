@@ -1,0 +1,18 @@
+---
+source: fixture/src/lib.rs
+---
+\e[1m\e[31merror[link.target.ambiguous]\e[0m\e[1m: `[[Note]]` could be any of a/Note.md and b/Note.md\e[0m
+ \e[34m--> \e[0musage.md:1:1
+  \e[34m|\e[0m
+\e[34m1\e[0m \e[34m|\e[0m # Usage
+  \e[34m|\e[0m \e[1m\e[31m^^^^^^^\e[0m
+  \e[1m\e[36mfix:\e[0m write the path of the one you mean
+  caused by
+  \e[2m╰─\e[0m \e[1m\e[31merror[source.file.unreadable]\e[0m: \e[1mb/Note.md could not be read: denied\e[0m
+
+\e[1m\e[31merror[link.target.ambiguous]\e[0m: \e[1m`\e[0m\e[1m\e[36m[[Note]]\e[0m\e[1m`\e[0m\e[1m could be any of a/Note.md and b/Note.md\e[0m
+  \e[34m--> usage.md\e[0m
+  \e[1m\e[36mfix:\e[0m write the path of the one you mean
+
+\e[1m\e[2mnote[site.home.generated]\e[0m: \e[1mno home page was found, so the home page lists every page\e[0m
+  \e[1m\e[36mfix:\e[0m add index.md or README.md at the root, or pin `\e[1m\e[36msite.home\e[0m`

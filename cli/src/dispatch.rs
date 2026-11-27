@@ -9,7 +9,7 @@ use serde::Serialize;
 use crate::args::{Command, Completions, Deployment, Explain, Serve, Topic};
 use crate::error::Error;
 use crate::exit::Exit;
-use crate::help::{Help, Painter};
+use crate::help::Help;
 use crate::man::Manual;
 use crate::output::Io;
 use crate::settings::{Process, Settings};
@@ -66,14 +66,10 @@ impl Completions {
 
 impl Topic {
     /// Prints the help of a topic.
-    fn run(self, settings: Settings, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let help = Help::new(
-            Tree::ink(),
-            Painter::of(settings.color, &crate::help::Detect::new(&Process, crate::help::Stream::Out.is_terminal())),
-            crate::help::Columns::of(&Process),
-        );
+    fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
+        let help = Help::new(Tree::ink(), io.prose(), crate::help::Columns::of(&Process));
         let text = help.topic(&self.words).map_err(|source| Error::Help { source })?;
-        io.line(text.trim_end())?;
+        io.painted(text.trim_end())?;
         io.json(&Said { schema: "uses.help/v1", text: &text })?;
         Ok(Exit::Done)
     }
@@ -82,7 +78,7 @@ impl Topic {
 impl Command {
     /// Runs the command in the site's folder `site`.
     #[expect(clippy::too_many_lines, reason = "one arm for each command")]
-    pub(crate) fn run(self, site: PathBuf, settings: Settings, io: &mut Io<'_>) -> Result<Exit, Error> {
+    pub(crate) fn run(self, site: PathBuf, io: &mut Io<'_>) -> Result<Exit, Error> {
         match self {
             Self::Check(mut check) => {
                 check.dir = site;
@@ -120,7 +116,7 @@ impl Command {
                 io.json(&Script { schema: "uses.script/v1", name: "man", content: &page })?;
                 Ok(Exit::Done)
             }
-            Self::Help(topic) => topic.run(settings, io),
+            Self::Help(topic) => topic.run(io),
             Self::Init => Err(Error::Pending { verb: "init" }),
             Self::Login => Err(Error::Pending { verb: "login" }),
             Self::Logout => Err(Error::Pending { verb: "logout" }),

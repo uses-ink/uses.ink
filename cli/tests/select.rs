@@ -51,7 +51,8 @@ fn select(dir: &Path, args: &[&str]) -> (Exit, String, String) {
 
 /// The listing's line for `path`.
 fn row<'a>(listing: &'a str, path: &str) -> &'a str {
-    listing.lines().find(|line| line.trim_start().starts_with(path)).unwrap_or_else(|| panic!("{path} in {listing}"))
+    let marked = |line: &&str| line.trim_start().trim_start_matches(['●', '○']).trim_start().starts_with(path);
+    listing.lines().find(marked).unwrap_or_else(|| panic!("{path} in {listing}"))
 }
 
 /// The names of the sites, sorted.
@@ -88,14 +89,15 @@ fn a_new_note_in_a_vault_is_private_until_it_is_selected() {
     let (exit, said, stderr) = select(&dir, &["Notes/New.md"]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert!(said.contains("added `publish: true` to the frontmatter"), "{said}");
-    assert!(said.ends_with("wrote 1 file\n"), "{said}");
+    assert!(said.contains("Selected  1 file\n"), "{said}");
+    assert!(said.contains("Nothing is public until you build and push"), "{said}");
     let text = std::fs::read_to_string(dir.join("Notes/New.md")).unwrap();
     assert_eq!(text, "---\ntitle: New\npublish: true\n---\nHello.\n");
 
     let (exit, listing, stderr) = select(&dir, &[]);
     assert_eq!(exit, Exit::Done, "the guard is quiet: {stderr}");
     assert!(row(&listing, "Notes/New.md").contains("the frontmatter of Notes/New.md says so"), "{listing}");
-    let published = listing.split("not published").next().unwrap();
+    let published = listing.split("private (").next().unwrap();
     assert!(published.contains("Notes/New.md"), "{listing}");
 }
 
@@ -106,14 +108,14 @@ fn a_public_source_keeps_publishing_by_default_and_selecting_only_states_it() {
     assert_eq!(exit, Exit::Done);
     assert!(listing.starts_with("selection: implicit"), "{listing}");
     assert!(row(&listing, "usage.md").contains("by default: a public source publishes its pages"), "{listing}");
-    assert!(listing.contains("not published (0)"), "{listing}");
+    assert!(listing.contains("private (0)"), "{listing}");
 
     std::fs::write(dir.join("usage.md"), "---\ntitle: Usage\n---\n# Usage\n\nRun it.\n").unwrap();
     let (exit, _, stderr) = select(&dir, &["usage.md"]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     let (_, listing, _) = select(&dir, &[]);
     assert!(row(&listing, "usage.md").contains("the frontmatter of usage.md says so"), "{listing}");
-    assert!(listing.contains("not published (0)"), "{listing}");
+    assert!(listing.contains("private (0)"), "{listing}");
 }
 
 #[test]
@@ -137,7 +139,7 @@ fn a_folder_is_an_include_entry_and_comments_stay() {
 
     let (_, again, _) = select(&dir, &["--folder", "Notes/**"]);
     assert!(again.contains("`include` in ink.toml already lists it"), "{again}");
-    assert!(again.ends_with("nothing to write\n"), "{again}");
+    assert!(again.contains("Unchanged  nothing to write\n"), "{again}");
 
     let (exit, gone, stderr) = select(&dir, &["--folder", "Notes/**", "--remove"]);
     assert_eq!(exit, Exit::Done, "{stderr}");
@@ -172,10 +174,10 @@ fn a_dry_run_says_what_it_would_write_and_writes_nothing() {
     let (exit, said, stderr) = select(&dir, &["Private.md", "--dry-run"]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert!(said.contains("added `publish: true` to the frontmatter"), "{said}");
-    assert!(said.ends_with("dry run: nothing written\n"), "{said}");
+    assert!(said.contains("Would select  1 file\n"), "{said}");
     assert_eq!(std::fs::read_to_string(&private).unwrap(), before);
     let (_, said, _) = select(&dir, &["--folder", "Notes/**", "--dry-run"]);
-    assert!(said.ends_with("dry run: nothing written\n"), "{said}");
+    assert!(said.contains("Would select  1 file\n"), "{said}");
     assert!(!dir.join("ink.toml").exists());
 }
 
@@ -189,7 +191,7 @@ fn nothing_is_written_when_one_file_is_refused() {
     assert_eq!(exit, Exit::Usage);
     assert_eq!(said, "");
     assert!(stderr.contains("`publish` cannot be written into the frontmatter of Notes/Bare.md"), "{stderr}");
-    assert!(stderr.contains("caused by: the file has no frontmatter block"), "{stderr}");
+    assert!(stderr.contains("  caused by\n  ╰─ the file has no frontmatter block"), "{stderr}");
     assert_eq!(std::fs::read_to_string(&private).unwrap(), before, "the file before it was not written either");
 }
 
@@ -229,7 +231,7 @@ fn a_file_that_cannot_be_selected_is_a_typed_refusal() {
     let (exit, _, stderr) = select(&dir, &["--folder", "Notes/**"]);
     assert_eq!(exit, Exit::Usage, "{stderr}");
     assert!(stderr.contains("the selection could not be written into ink.toml"), "{stderr}");
-    assert!(stderr.contains("caused by: `include` in ink.toml is not an array of strings"), "{stderr}");
+    assert!(stderr.contains("  ╰─ `include` in ink.toml is not an array of strings"), "{stderr}");
 }
 
 #[test]
@@ -239,7 +241,7 @@ fn a_pin_of_publish_outranks_the_frontmatter_and_is_said() {
     let (exit, said, stderr) = select(&dir, &["Private.md"]);
     assert_eq!(exit, Exit::Done, "{stderr}");
     assert!(said.contains("`page.publish` is pinned in ink.toml, which outranks the frontmatter"), "{said}");
-    assert!(said.ends_with("nothing to write\n"), "{said}");
+    assert!(said.contains("Unchanged  nothing to write\n"), "{said}");
 }
 
 #[test]

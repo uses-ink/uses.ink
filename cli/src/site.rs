@@ -5,8 +5,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use config::{Config, Parsed};
-use engine::{BaseUrl, Blobs, Cache, Chosen, Engine, Formats, Host, NoPins, RenderSettings, Theme, Understood};
-use host_image::Pixels;
+use engine::{BaseUrl, Blobs, Cache, Chosen, Engine, Formats, Host, Images, NoPins, RenderSettings, Theme, Understood};
 use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
 use model::record::{Build, Inputs};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject, Version};
@@ -16,7 +15,9 @@ use crate::args::{Kind, Origin};
 use crate::asked::Asked;
 use crate::error::Error;
 use crate::format::Native;
+use crate::output::Io;
 use crate::pins::Configured;
+use crate::stage::{Plural, Sourced, StageLine, Verb};
 
 /// The output folder when `ink build` is given no `-o`, inside the site's folder.
 pub(crate) const DEFAULT_OUT: &str = ".ink/out";
@@ -195,6 +196,26 @@ pub(crate) struct Rendering {
 }
 
 impl Loaded {
+    /// Says what was read and what was understood of it, as two stage lines.
+    pub(crate) fn staged(&self, io: &mut Io<'_>) -> Result<(), Error> {
+        let files = self.snapshot.tree().iter().count();
+        let read = format!("{} from {}", Plural(files, "file"), Sourced(self.snapshot.version()));
+        io.stage(&StageLine::new(Verb::Read, read))?;
+        let understood = &self.understood;
+        let pages = understood.site.as_ref().map_or(0, |site| site.pages().len());
+        let said = format!("{}, {}", Plural(pages, "page"), Plural(understood.decisions.len(), "decision"));
+        io.stage(&StageLine::new(Verb::Understood, said))?;
+        io.lap();
+        Ok(())
+    }
+
+    /// Says the pages are rendered, and how long that took.
+    pub(crate) fn rendered(&self, io: &mut Io<'_>) -> Result<(), Error> {
+        let pages = self.understood.site.as_ref().map_or(0, |site| site.pages().len());
+        let took = io.lap();
+        io.stage(&StageLine::new(Verb::Rendered, Plural(pages, "page")).took(took))
+    }
+
     /// The record of this build: its inputs, decisions, files and routes. The plugins are the
     /// ones compiled into ink, so none is listed.
     pub(crate) fn record(&self) -> Build {
@@ -206,16 +227,16 @@ impl Loaded {
 
     /// Renders the site through `ink:theme-quiet`, its images through the host's image work, if
     /// interpreting gave one.
-    pub(crate) fn render<C: Cache>(&self, address: &Address, host: Host<'_, Pixels, C>) -> Rendering {
+    pub(crate) fn render<I: Images, C: Cache>(&self, address: &Address, host: Host<'_, I, C>) -> Rendering {
         self.through(address, &Quiet::new(address.base.clone(), Grammars::default()), host)
     }
 
     /// Renders the site through `theme`, its images through `images`, if interpreting gave one.
-    pub(crate) fn through<T: Theme, C: Cache>(
+    pub(crate) fn through<I: Images, T: Theme, C: Cache>(
         &self,
         address: &Address,
         theme: &T,
-        host: Host<'_, Pixels, C>,
+        host: Host<'_, I, C>,
     ) -> Rendering {
         let understood = &self.understood;
         let mut diagnostics = understood.diagnostics.clone();

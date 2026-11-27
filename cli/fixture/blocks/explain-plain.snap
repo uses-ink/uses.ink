@@ -1,0 +1,56 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+the source
+├─ version  the files on disk
+├─ has      snapshot
+╰─ lacks    history, so page.date is not taken from it
+
+the site
+├─ site.format  `ink:format-markdown`    by default
+├─ site.root    the top of the snapshot  by default
+╰─ site.layout  flat                     by default
+
+LICENSE
+╰─ file.ignore  ignored  from the name of LICENSE
+
+README.md
+╰─ file.ignore  kept  by default
+
+src/main.rs
+╰─ file.ignore  kept  by default
+
+usage.md
+╰─ file.ignore  kept  by default
+
+README.md
+├─ page.publish  published                        by default
+├─ page.kind     a page                           by default
+├─ page.title    “My tool”                        from the heading of README.md, bytes 0..9
+├─ page.date     undated                          by default
+├─ page.updated  never updated                    by default
+├─ page.slug     `readme`                         from the name of README.md
+├─ page.tags     no tags                          by default
+╰─ page.summary  “It does one thing. See usage.”  from the text of README.md
+
+usage.md
+├─ page.publish  published              by default
+├─ page.kind     a page                 by default
+├─ page.title    “Usage”                from the heading of usage.md, bytes 0..7
+├─ page.date     undated                by default
+├─ page.updated  never updated          by default
+├─ page.slug     `usage`                from the name of usage.md
+├─ page.tags     no tags                by default
+╰─ page.summary  “Run my-tool --help.”  from the text of usage.md
+
+src/main.rs
+╰─ page.publish  not published  by default
+
+the site
+├─ site.home         README.md                        from the name of README.md
+├─ site.title        “My tool”                        from the heading of README.md, bytes 0..9
+├─ site.description  “It does one thing. See usage.”  from the text of README.md
+├─ site.authors      no one                           by default
+├─ site.language     `en`                             by default
+╰─ site.nav          usage.md                         by default

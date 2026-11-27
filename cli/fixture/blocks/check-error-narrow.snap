@@ -1,0 +1,9 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+error[link.target.ambiguous]: `Note` could be any of one/Note.md and two/Note.md
+  --> index.md
+  fix: write the path of the one you mean
+
+     Checked  0 pages, 36 decisions: 1 error, no warnings

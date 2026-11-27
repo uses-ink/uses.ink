@@ -20,16 +20,18 @@ pub struct Cli {
     /// One JSON document on stdout, diagnostics as NDJSON on stderr.
     #[arg(long, global = true)]
     pub json: bool,
-    /// Say less: -q drops progress, -qq leaves only errors.
+    /// Say less: `-q` drops stage lines and notices and keeps warnings, the result and what a build
+    /// makes public; `-qq` leaves only errors.
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub quiet: u8,
     /// Say more: -v adds notices, -vv adds every file.
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
-    /// auto, always or never [default: auto]
+    /// When to colour output, decided for each stream: `auto` follows `NO_COLOR`, `CLICOLOR`,
+    /// `CLICOLOR_FORCE`, `TERM` and whether the stream is a terminal [default: auto].
     #[arg(long, global = true, value_enum, value_name = "WHEN", env = "INK_COLOR")]
     pub color: Option<When>,
-    /// Print log lines only, no live redraw.
+    /// Print log lines only, with no live redraw of progress.
     #[arg(long, global = true, env = "INK_NO_PROGRESS")]
     pub no_progress: bool,
     /// Log to stderr as `ink=debug,edge=trace` says: areas (ink, engine, build, edge, control, db,

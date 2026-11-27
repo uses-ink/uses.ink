@@ -1,0 +1,5 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+{"schema":"uses.error/v1","exit":2,"error":"cli.usage","what":"unexpected argument `--wy` found","causes":[],"fix":"to pass `--wy` as a value, use `-- --wy`","state":{"kind":"unchanged"},"diagnostic":null}

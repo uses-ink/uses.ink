@@ -27,6 +27,8 @@ use crate::output::{Io, Strict};
 use crate::replace::Replacing;
 use crate::report::Texts;
 use crate::site::{Loaded, Source};
+use crate::stage::{Plural, StageLine, Verb as Stage};
+use crate::term::{Cut, Doc, Glyph, Line, Render, Role, Table};
 
 /// Why a file cannot be selected.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -98,6 +100,17 @@ impl fmt::Display for Outcome {
     }
 }
 
+impl Outcome {
+    /// The mark of what came of the step: added, removed, or nothing.
+    const fn glyph(self) -> Glyph {
+        match self {
+            Self::Added | Self::Replaced | Self::Listed => Glyph::Added,
+            Self::Removed | Self::Delisted => Glyph::Removed,
+            _ => Glyph::Gone,
+        }
+    }
+}
+
 impl From<Listed> for Outcome {
     fn from(listed: Listed) -> Self {
         match listed {
@@ -138,14 +151,14 @@ struct Step {
     text: Option<String>,
 }
 
-impl fmt::Display for Step {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "{:<32} {}", self.place.to_string(), self.outcome)?;
-        match &self.place {
-            Place::Folder { matches: 1, .. } => out.write_str(", matches 1 file"),
-            Place::Folder { matches, .. } => write!(out, ", matches {matches} files"),
-            Place::File { .. } => Ok(()),
-        }
+impl Step {
+    /// The row of this step: its mark, its place, and what came of it.
+    fn row(&self, into: &Doc) -> Vec<Line> {
+        let said = match &self.place {
+            Place::Folder { matches, .. } => format!("{}, matches {}", self.outcome, Plural(*matches, "file")),
+            Place::File { .. } => self.outcome.to_string(),
+        };
+        vec![into.glyph(self.outcome.glyph()), Line::plain(self.place.to_string()), Line::new().with(Role::Quiet, said)]
     }
 }
 
@@ -155,17 +168,6 @@ enum Ended {
     Wrote(usize),
     Dry,
     Nothing,
-}
-
-impl fmt::Display for Ended {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Wrote(1) => out.write_str("wrote 1 file"),
-            Self::Wrote(count) => write!(out, "wrote {count} files"),
-            Self::Dry => out.write_str("dry run: nothing written"),
-            Self::Nothing => out.write_str("nothing to write"),
-        }
-    }
 }
 
 /// What `ink select --json` prints: how pages are selected, each page's `page.publish` as it
@@ -219,16 +221,6 @@ impl fmt::Display for Standing<'_> {
     }
 }
 
-/// One listed page: `  path   why`.
-#[derive(Clone, Copy, Debug)]
-struct Row<'a>(Standing<'a>);
-
-impl fmt::Display for Row<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "  {:<32} {}", self.0.decision.subject.0, self.0)
-    }
-}
-
 /// Every page and its decision `page.publish`, in path order.
 #[derive(Clone, Copy, Debug)]
 struct Pages<'a>(&'a Loaded);
@@ -278,6 +270,71 @@ enum Verb {
     Remove,
 }
 
+/// What `ink select` lists: how pages are selected, then the pages that are published and those
+/// that are private, each with why.
+#[derive(Clone, Copy, Debug)]
+struct Overview<'a> {
+    selecting: Selecting,
+    pages: &'a [Page<'a>],
+    config: &'a Config,
+}
+
+impl Render for Overview<'_> {
+    fn render(&self, into: &mut Doc) {
+        into.push(Line::new().with(Role::Quiet, self.selecting.to_string()));
+        for (heading, published) in [("published", true), ("private", false)] {
+            let rows: Vec<&Page<'_>> = self.pages.iter().filter(|page| page.decision.value == published).collect();
+            let title = if published {
+                format!("{heading} ({} of {})", rows.len(), self.pages.len())
+            } else {
+                format!("{heading} ({})", rows.len())
+            };
+            let glyph = if published { Glyph::Live } else { Glyph::Private };
+            let mut table = Table::new(Line::new().with(Role::Heading, title)).indent(2).flex(2, Cut::End);
+            for page in rows {
+                let why = Standing { decision: page.decision, config: self.config }.to_string();
+                let path = page.decision.subject.0.to_string();
+                table = table.row(vec![into.glyph(glyph), Line::plain(path), Line::new().with(Role::Quiet, why)]);
+            }
+            into.blank();
+            table.render(into);
+        }
+    }
+}
+
+/// What a selection did: the stage line, then each step.
+#[derive(Clone, Copy, Debug)]
+struct Applied<'a> {
+    steps: &'a [Step],
+    ended: Ended,
+    removing: bool,
+}
+
+impl Render for Applied<'_> {
+    fn render(&self, into: &mut Doc) {
+        let changed = self.steps.iter().filter(|step| step.text.is_some()).count();
+        let files = Plural(changed, "file");
+        let line = match (self.ended, self.removing) {
+            (Ended::Wrote(count), false) => StageLine::new(Stage::Selected, Plural(count, "file")),
+            (Ended::Wrote(count), true) => StageLine::new(Stage::Deselected, Plural(count, "file")),
+            (Ended::Dry, false) => StageLine::new(Stage::WouldSelect, files),
+            (Ended::Dry, true) => StageLine::new(Stage::WouldDeselect, files),
+            (Ended::Nothing, _) => StageLine::new(Stage::Unchanged, "nothing to write"),
+        };
+        line.render(into);
+        let mut table = Table::default().indent(2).flex(2, Cut::End);
+        for step in self.steps {
+            table = table.row(step.row(into));
+        }
+        table.render(into);
+        if matches!(self.ended, Ended::Wrote(_)) && !self.removing {
+            into.blank();
+            let note = "Nothing is public until you build and push: `ink build` shows it as newly public.";
+            into.push(Line::marked(Role::Plain, note));
+        }
+    }
+}
+
 impl Select {
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
         let origin = Origin { source: Some(Reading::Folder), rev: None };
@@ -289,14 +346,9 @@ impl Select {
         let steps = self.plan(&loaded)?;
         let ended = self.write(&steps)?;
         if steps.is_empty() {
-            io.line(Selecting(understood.selection))?;
-            Self::list(io, &pages, &loaded.config)?;
-        }
-        for step in &steps {
-            io.line(step)?;
-        }
-        if !steps.is_empty() {
-            io.line(ended)?;
+            io.result(&Overview { selecting: Selecting(understood.selection), pages: &pages, config: &loaded.config })?;
+        } else {
+            io.result(&Applied { steps: &steps, ended, removing: self.remove })?;
         }
         let written = if let Ended::Wrote(count) = ended { count } else { 0 };
         io.json(&Selected {
@@ -307,18 +359,6 @@ impl Select {
             written,
         })?;
         Ok(tally.exit(Strict::Off))
-    }
-
-    /// The pages that are published, then those that are not, each with why.
-    fn list(io: &mut Io<'_>, pages: &[Page<'_>], config: &Config) -> Result<(), Error> {
-        for (heading, published) in [("published", true), ("not published", false)] {
-            let rows: Vec<&Page<'_>> = pages.iter().filter(|page| page.decision.value == published).collect();
-            io.line(format_args!("{heading} ({})", rows.len()))?;
-            for page in rows {
-                io.line(Row(Standing { decision: page.decision, config }))?;
-            }
-        }
-        Ok(())
     }
 
     /// Every edit, planned and checked, before any is written.

@@ -145,18 +145,18 @@ impl Wrap {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::help::paint::Plain;
+    use crate::term::Look;
 
     #[test]
     fn the_second_column_starts_two_past_the_longest_first() {
-        let mut page = Page::new(&Plain, 80);
+        let mut page = Page::new(&Look::PLAIN, 80);
         page.rows(&[Row::typed("a", "one"), Row::typed("long-name", "two")]);
         assert_eq!(page.finish(), "  a          one\n  long-name  two\n");
     }
 
     #[test]
     fn a_long_description_hangs_under_itself() {
-        let mut page = Page::new(&Plain, 30);
+        let mut page = Page::new(&Look::PLAIN, 30);
         page.rows(&[Row::keyed("x", "aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn")]);
         let text = page.finish();
         assert!(text.lines().count() > 1, "{text}");
@@ -165,7 +165,7 @@ mod test {
 
     #[test]
     fn styled_text_does_not_skew_the_columns() {
-        let mut page = Page::new(&crate::help::paint::Ansi, 80);
+        let mut page = Page::new(&Look { colour: true, ..Look::PLAIN }, 80);
         page.rows(&[Row::typed("ab", "x"), Row::typed("abcd", "y")]);
         let text = page.finish();
         let plain: String = {

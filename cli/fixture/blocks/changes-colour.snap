@@ -1,0 +1,16 @@
+---
+source: fixture/src/lib.rs
+---
+     \e[32mChanges\e[0m  1 newly public, 0 no longer public, 0 moved, 12 decisions changed, against deploy <id>
+
+\e[1mnewly public (1)\e[0m
+  \e[32m+\e[0m  new.md  /new
+
+\e[1mdecisions changed (12)\e[0m
+\e[1mnew.md\e[0m
+\e[2m╰─\e[0m \e[32mnew\e[0m  \e[2mcontent: the file is new\e[0m
+\e[1musage.md\e[0m
+\e[2m├─\e[0m \e[34mpage.title\e[0m    “Usage” → “How to use it”          \e[2mcontent: the file was edited\e[0m
+\e[2m╰─\e[0m \e[34mpage.summary\e[0m  “Run my-tool --help.” → “Run it.”  \e[2mcontent: the file was edited\e[0m
+\e[1mthe site\e[0m
+\e[2m╰─\e[0m \e[34msite.nav\e[0m  usage.md → usage.md, new.md  \e[2mcontent: another file changed\e[0m

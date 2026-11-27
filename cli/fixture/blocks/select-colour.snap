@@ -1,0 +1,22 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+\e[2mselection: explicit, a vault or private source: a page is private until it is selected\e[0m
+
+\e[1mpublished (4 of 5)\e[0m
+  \e[32m●\e[0m  Loop.md             \e[2mthe frontmatter of Loop.md says so, bytes 13..17\e[0m
+  \e[32m●\e[0m  Notes/Ownership.md  \e[2mthe frontmatter of Notes/Ownership.md says so, bytes 13..17\e[0m
+  \e[32m●\e[0m  Notes/Rust.md       \e[2mthe frontmatter of Notes/Rust.md says so, bytes 13..17\e[0m
+  \e[32m●\e[0m  index.md            \e[2mthe frontmatter of index.md says so, bytes 13..17\e[0m
+
+\e[1mprivate (1)\e[0m
+  \e[2m○\e[0m  Private.md  \e[2mnot selected: a vault or private source keeps a page private until it is selected\e[0m
+# stderr
+\e[1m\e[33mwarning[embed.target.cycle]\e[0m: \e[1m`\e[0m\e[1m\e[36mLoop.md\e[0m\e[1m`\e[0m\e[1m is embedded inside itself, through Loop.md and Notes/Rust.md, so the inner embed is shown as a link\e[0m
+  \e[34m--> Loop.md\e[0m
+  \e[1m\e[36mfix:\e[0m remove one of the embeds
+
+\e[1m\e[33mwarning[embed.target.cycle]\e[0m: \e[1m`\e[0m\e[1m\e[36mLoop.md\e[0m\e[1m`\e[0m\e[1m is embedded inside itself, through Notes/Rust.md, Loop.md and Notes/Rust.md, so the inner embed is shown as a link\e[0m
+  \e[34m--> Notes/Rust.md\e[0m
+  \e[1m\e[36mfix:\e[0m remove one of the embeds

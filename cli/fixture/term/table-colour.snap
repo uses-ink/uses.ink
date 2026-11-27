@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+---
+\e[1mpublished (2 of 4)\e[0m
+  \e[32m●\e[0m  notes/trip.md          \e[2mpublish: true in the frontmatter, line 2\e[0m
+  \e[32m●\e[0m  notes/trip/day-1.md    \e[2mmatched by `notes/trip/**` in ink.toml\e[0m
+  \e[2m○\e[0m  journal/2026-01-04.md  \e[2mnothing selected it\e[0m

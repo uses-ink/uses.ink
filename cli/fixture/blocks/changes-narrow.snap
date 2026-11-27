@@ -1,0 +1,16 @@
+---
+source: fixture/src/lib.rs
+---
+     Changes  1 newly public, 0 no longer public, 0 moved, 12 decisions changed, against deploy <id>
+
+newly public (1)
+  +  new.md  /new
+
+decisions changed (12)
+new.md
+╰─ new  content: the file is new
+usage.md
+├─ page.title    “…  content: the file was edited
+╰─ page.summary  “…  content: the file was edited
+the site
+╰─ site.nav  u…  content: another file changed

@@ -1,32 +1,68 @@
-//! Where a command writes: its result to stdout, everything else to stderr.
+//! Where a command writes: its result to stdout, everything else to stderr, as text through the
+//! renderer or, with `--json`, as the one document on stdout and NDJSON events on stderr.
 
 use std::fmt;
 use std::io::Write;
 use std::path::Path;
 
-use diag::Plain;
+use clock::System;
 use model::{Diagnostic, Notice, Severity};
 use serde::Serialize;
 
 use crate::error::Error;
 use crate::exit::Exit;
+use crate::failure::Failure;
 use crate::report::{Event, Noted, Shown, Texts};
+use crate::stage::StageLine;
+use crate::term::{
+    Answer, Draw, Elapsed, Line, Look, Meter, Pacing, Phase, Render, Show, Styled, Terminal, Verbatim, Writer,
+};
 
-/// A command's two streams and whether it speaks JSON.
-pub(crate) struct Io<'a> {
-    out: &'a mut dyn Write,
-    err: &'a mut dyn Write,
-    json: bool,
-    level: Level,
+/// How much a command says, from `-qq` to `-vv`. Each level adds to the one before.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Say {
+    /// Errors and the exit code.
+    Errors,
+    /// Warnings, the result, and the newly public list of a change set.
+    Warnings,
+    /// Stage lines, the summary, the whole change set and live progress.
+    Stages,
+    /// Notices.
+    Notices,
+    /// One line for each file read and page rendered, and timings.
+    Files,
 }
 
-/// What reaches stderr besides errors.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Level {
-    /// Warnings and errors: the default of a one-shot command.
-    Warning,
-    /// Notices too (`-v`).
-    Notice,
+impl Say {
+    /// The level `-q` and `-v` counts give; `-q` wins.
+    pub(crate) const fn of(quiet: u8, verbose: u8) -> Self {
+        match (quiet, verbose) {
+            (2.., _) => Self::Errors,
+            (1, _) => Self::Warnings,
+            (0, 0) => Self::Stages,
+            (0, 1) => Self::Notices,
+            (0, 2..) => Self::Files,
+        }
+    }
+}
+
+/// How a run reports: as JSON or text, how much, and how each stream looks.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Mode {
+    pub(crate) json: bool,
+    pub(crate) say: Say,
+    pub(crate) terminal: Terminal,
+}
+
+/// A command's two streams and how it speaks on them.
+pub(crate) struct Io<'a> {
+    out: Writer<&'a mut dyn Write>,
+    err: Writer<&'a mut dyn Write>,
+    json: bool,
+    say: Say,
+    meter: Meter<System>,
+    /// The last thing on stderr was a stage line, so a diagnostic starts after a blank line.
+    gap: bool,
 }
 
 impl fmt::Debug for Io<'_> {
@@ -69,24 +105,113 @@ impl From<bool> for Strict {
 }
 
 impl<'a> Io<'a> {
-    pub(crate) fn new(out: &'a mut dyn Write, err: &'a mut dyn Write, json: bool, level: Level) -> Self {
-        Self { out, err, json, level }
+    pub(crate) fn new(out: &'a mut dyn Write, err: &'a mut dyn Write, mode: Mode) -> Self {
+        let show = match (mode.say, mode.json, mode.terminal.live) {
+            (say, ..) if say < Say::Stages => Show::Off,
+            (_, true, _) => Show::Events,
+            (_, false, true) => Show::Live,
+            (_, false, false) => Show::Log,
+        };
+        Self {
+            out: Writer::new(out, mode.terminal.out),
+            err: Writer::new(err, mode.terminal.err),
+            json: mode.json,
+            say: mode.say,
+            meter: Meter::new(System, Pacing::default(), show),
+            gap: false,
+        }
     }
 
-    /// The result, as a line of text, or nothing with `--json` (see [`Io::json`]).
-    pub(crate) fn line(&mut self, line: impl fmt::Display) -> Result<(), Error> {
+    /// Whether the run says at least `at`.
+    pub(crate) fn says(&self, at: Say) -> bool {
+        self.say >= at
+    }
+
+    /// The result as text on stdout, or nothing with `--json` (see [`Io::json`]).
+    pub(crate) fn result(&mut self, block: &impl Render) -> Result<(), Error> {
         if !self.json {
-            writeln!(self.out, "{}", Plain::text(line))?;
+            self.out.emit(block)?;
         }
         Ok(())
     }
 
-    /// A report beside the result, such as a build's change set, as text on stderr, or nothing
-    /// with `--json`, whose result carries it.
-    pub(crate) fn aside(&mut self, report: impl fmt::Display) -> Result<(), Error> {
-        if !self.json {
-            write!(self.err, "{}", Plain::text(report))?;
+    /// The result as lines of text on stdout, or nothing with `--json`: for a command whose result
+    /// is a script, a page or a listing that its own `Display` writes.
+    pub(crate) fn line(&mut self, text: impl fmt::Display) -> Result<(), Error> {
+        self.result(&Verbatim(text.to_string()))
+    }
+
+    /// How the result is written for a person: stdout's look, except that a run that writes JSON
+    /// has no colour in the text it carries.
+    pub(crate) const fn prose(&self) -> Look {
+        Look { colour: self.out.look().colour && !self.json, ..self.out.look() }
+    }
+
+    /// The result as text that was painted for this stream's look (see [`Styled`]), or nothing
+    /// with `--json`.
+    pub(crate) fn painted(&mut self, text: &str) -> Result<(), Error> {
+        self.result(&Styled(text.to_owned()))
+    }
+
+    /// A block beside the result, such as a build's change set, as text on stderr when the run
+    /// says at least `at`, or nothing with `--json`, whose result carries it.
+    pub(crate) fn aside(&mut self, at: Say, block: &impl Render) -> Result<(), Error> {
+        if !self.json && self.say >= at {
+            self.err.emit(block)?;
+            self.gap = false;
         }
+        Ok(())
+    }
+
+    /// A stage line on stderr, or with `--json` the event of a stage that finished.
+    pub(crate) fn stage(&mut self, line: &StageLine) -> Result<(), Error> {
+        if self.say < Say::Stages {
+            return Ok(());
+        }
+        if self.json {
+            if let Some(beat) = line.beat() {
+                self.event(&beat)?;
+            }
+        } else {
+            self.err.emit(line)?;
+            self.gap = true;
+        }
+        Ok(())
+    }
+
+    /// A stage of `total` units begins.
+    pub(crate) fn begin(&mut self, phase: Phase, total: u64, unit: &'static str) {
+        self.meter.begin(phase, total, unit);
+    }
+
+    /// `done` units are finished, `item` the latest started.
+    pub(crate) fn tick(&mut self, done: u64, item: Option<&str>) -> Result<(), Error> {
+        match self.meter.tick(done, item) {
+            Draw::Redraw(tick) => self.err.redraw(&tick.live())?,
+            Draw::Heartbeat(tick) => self.err.emit(&tick.heartbeat())?,
+            Draw::Event(beat) => self.event(&beat)?,
+            Draw::Nothing => {}
+        }
+        Ok(())
+    }
+
+    /// The stage ends: a live line is taken back, so the finished line takes its place.
+    pub(crate) fn end(&mut self) -> Result<(), Error> {
+        if self.meter.end() {
+            self.err.erase()?;
+        }
+        Ok(())
+    }
+
+    /// Time since the last call, or since the run began.
+    pub(crate) fn lap(&mut self) -> Elapsed {
+        Elapsed(self.meter.lap())
+    }
+
+    /// One NDJSON line on stderr.
+    fn event(&mut self, event: &impl Serialize) -> Result<(), Error> {
+        serde_json::to_writer(&mut *self.err.sink(), event).map_err(|source| Error::Json { source })?;
+        writeln!(self.err.sink())?;
         Ok(())
     }
 
@@ -94,13 +219,26 @@ impl<'a> Io<'a> {
     /// success and on failure alike; [`Io::fail`] prints the document of a command that stopped.
     pub(crate) fn json(&mut self, result: &impl Serialize) -> Result<(), Error> {
         if self.json {
-            serde_json::to_writer(&mut *self.out, result).map_err(|source| Error::Json { source })?;
-            writeln!(self.out)?;
+            serde_json::to_writer(&mut *self.out.sink(), result).map_err(|source| Error::Json { source })?;
+            writeln!(self.out.sink())?;
         }
         Ok(())
     }
 
+    /// A block with an event of its own: text on stderr, or the event with `--json`.
+    fn block(&mut self, block: &impl Render, event: &Event) -> Result<(), Error> {
+        if self.json {
+            return self.event(event);
+        }
+        if std::mem::take(&mut self.gap) {
+            self.err.emit(&Answer(Line::new()))?;
+        }
+        self.err.emit(block)?;
+        Ok(())
+    }
+
     /// Every diagnostic, then every notice, to stderr; returns how many errors and warnings.
+    /// Errors are always shown; the rest by what the run says.
     pub(crate) fn said(
         &mut self,
         diagnostics: &[Diagnostic],
@@ -109,30 +247,33 @@ impl<'a> Io<'a> {
     ) -> Result<Tally, Error> {
         let mut tally = Tally::default();
         for diagnostic in diagnostics {
-            match diagnostic.severity() {
+            let severity = diagnostic.severity();
+            match severity {
                 Severity::Error => tally.errors += 1,
                 Severity::Warning => tally.warnings += 1,
                 _ => {}
             }
-            if self.json {
-                serde_json::to_writer(&mut *self.err, &Event::diagnostic(diagnostic, texts))
-                    .map_err(|source| Error::Json { source })?;
-                writeln!(self.err)?;
-            } else {
-                writeln!(self.err, "{}", Plain::text(Shown { diagnostic, texts }))?;
+            if severity == Severity::Error || self.say >= Say::Warnings {
+                self.block(&Shown { diagnostic, texts }, &Event::diagnostic(diagnostic, texts))?;
             }
         }
-        let notices = if self.level == Level::Notice { notices } else { &[] };
-        for notice in notices {
-            if self.json {
-                serde_json::to_writer(&mut *self.err, &Event::notice(notice))
-                    .map_err(|source| Error::Json { source })?;
-                writeln!(self.err)?;
-            } else {
-                writeln!(self.err, "{}", Plain::text(Noted(notice)))?;
+        if self.say >= Say::Notices {
+            for notice in notices {
+                self.block(&Noted(notice), &Event::notice(notice))?;
             }
         }
         Ok(tally)
+    }
+
+    /// Writes the block of an error that stopped a command: text on stderr, or the one document
+    /// on stdout with `--json`.
+    pub(crate) fn failed(&mut self, failure: &Failure) -> Result<(), Error> {
+        self.end()?;
+        if self.json {
+            return self.json(failure);
+        }
+        self.err.emit(failure)?;
+        Ok(())
     }
 
     /// Reports `error` and its causes and returns its exit code: on stderr, a refused folder as
@@ -140,9 +281,10 @@ impl<'a> Io<'a> {
     pub(crate) fn fail(&mut self, error: &Error) -> Exit {
         let exit = error.exit();
         let written = match error {
-            _ if self.json => self.json(&Failed::of(error, exit)),
-            Error::Refused(refused) => self.said(&[Diagnostic::from(refused)], &[], Texts::NONE).map(|_| ()),
-            other => Chain(other).write(self.err),
+            Error::Refused(refused) if !self.json => {
+                self.said(&[Diagnostic::from(refused)], &[], Texts::NONE).map(|_| ())
+            }
+            _ => self.failed(&Failure::of(error, exit)),
         };
         // Nothing is left to report a failed report to.
         match written {
@@ -160,76 +302,5 @@ pub(crate) struct Lossy<'a>(pub(crate) &'a Path);
 impl Serialize for Lossy<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.0.to_string_lossy())
-    }
-}
-
-/// What every command prints on stdout with `--json` when it stops on an error.
-#[derive(Debug, Serialize)]
-pub(crate) struct Failed {
-    schema: &'static str,
-    exit: u8,
-    /// The error's kind: a diagnostic code for a refused folder, `output.foreign` and the like
-    /// for the rest.
-    error: &'static str,
-    what: String,
-    /// Each cause, outermost first.
-    causes: Vec<String>,
-    /// The refused folder's diagnostic, when it is one.
-    diagnostic: Option<Event>,
-}
-
-impl Failed {
-    const SCHEMA: &'static str = "uses.error/v1";
-
-    pub(crate) fn of(error: &Error, exit: Exit) -> Self {
-        let mut causes = Vec::new();
-        let mut cause = std::error::Error::source(error);
-        while let Some(next) = cause {
-            causes.push(next.to_string());
-            cause = next.source();
-        }
-        let diagnostic = match error {
-            Error::Refused(refused) => Some(Event::diagnostic(&Diagnostic::from(refused), Texts::NONE)),
-            _ => None,
-        };
-        Self {
-            schema: Self::SCHEMA,
-            exit: exit.code(),
-            error: error.kind(),
-            what: error.to_string(),
-            causes,
-            diagnostic,
-        }
-    }
-
-    /// A command line clap refused, under `--json`.
-    pub(crate) fn usage(error: &clap::Error) -> Self {
-        let text = error.to_string();
-        let what = text.lines().next().unwrap_or_default();
-        let what = what.strip_prefix("error: ").unwrap_or(what).to_owned();
-        Self {
-            schema: Self::SCHEMA,
-            exit: Exit::Usage.code(),
-            error: "cli.usage",
-            what,
-            causes: Vec::new(),
-            diagnostic: None,
-        }
-    }
-}
-
-/// An error and its `source()` chain, one `caused by` line each.
-#[derive(Clone, Copy, Debug)]
-struct Chain<'a>(&'a Error);
-
-impl Chain<'_> {
-    fn write(self, err: &mut dyn Write) -> Result<(), Error> {
-        writeln!(err, "error: {}", Plain::text(self.0))?;
-        let mut cause = std::error::Error::source(self.0);
-        while let Some(error) = cause {
-            writeln!(err, "  caused by: {}", Plain::text(error))?;
-            cause = error.source();
-        }
-        Ok(())
     }
 }

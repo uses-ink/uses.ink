@@ -1,8 +1,7 @@
-//! The text of the deploy commands' results.
+//! The deploy commands' results as typed blocks of the terminal layer.
 //!
-//! These are small typed values that print, so a command builds no output with `format!`. The
-//! terminal layer's table and record blocks replace them when it lands; the columns and the words
-//! here are the ones `docs/cli.md` section 7 shows.
+//! Each is a value that renders into a table or a record, so a command builds no output with
+//! `format!`; the columns and the words are the ones `docs/cli.md` section 7 shows.
 
 use std::fmt;
 
@@ -10,6 +9,7 @@ use jiff::Timestamp;
 use model::DeployId;
 
 use super::wire::{Built, Live, Moved, Row};
+use crate::term::{Doc, Line, Record as Fields, Render, Role, Table};
 
 /// How many characters of a deploy id are shown.
 pub(crate) const SHORT: usize = 12;
@@ -63,27 +63,26 @@ pub(crate) struct Listing<'a> {
     pub(crate) total: usize,
 }
 
-impl fmt::Display for Listing<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let size = |row: &Row| Size(row.bytes).to_string();
-        let files = self.rows.iter().map(|row| row.files.to_string().len()).max().unwrap_or(0).max("files".len());
-        let bytes = self.rows.iter().map(|row| size(row).len()).max().unwrap_or(0).max("size".len());
-        writeln!(out, "  {:<SHORT$}  {:<17}  {:>files$}  {:>bytes$}  state", "deploy", "when", "files", "size")?;
+impl Render for Listing<'_> {
+    fn render(&self, into: &mut Doc) {
+        let quiet = |text: &str| Line::new().with(Role::Quiet, text);
+        let mut table =
+            Table::default().indent(2).row(["deploy", "when", "files", "size", "state"].map(quiet).to_vec());
         for row in self.rows {
-            let state = if row.live { "live" } else { "earlier" };
-            writeln!(
-                out,
-                "  {:<SHORT$}  {:<17}  {:>files$}  {:>bytes$}  {state}",
-                Short(row.id).to_string(),
-                Moment(row.created).to_string(),
-                row.files,
-                size(row),
-            )?;
+            let (role, state) = if row.live { (Role::Good, "live") } else { (Role::Quiet, "earlier") };
+            table = table.row(vec![
+                Line::new().with(Role::Id, Short(row.id).to_string()),
+                Line::plain(Moment(row.created).to_string()),
+                Line::plain(row.files.to_string()),
+                Line::plain(Size(row.bytes).to_string()),
+                Line::new().with(role, state),
+            ]);
         }
+        table.render(into);
         if self.rows.len() < self.total {
-            write!(out, "\n{} of {} deploys; --limit shows more", self.rows.len(), self.total)?;
+            into.blank();
+            into.push(quiet(&format!("{} of {} deploys; --limit shows more", self.rows.len(), self.total)));
         }
-        Ok(())
     }
 }
 
@@ -95,23 +94,25 @@ pub(crate) struct Record<'a> {
     pub(crate) log: &'a [String],
 }
 
-impl fmt::Display for Record<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Render for Record<'_> {
+    fn render(&self, into: &mut Doc) {
         let row = self.deploy;
-        writeln!(out, "deploy  {}", row.id)?;
-        writeln!(out, "when    {}", Moment(row.created))?;
-        writeln!(out, "state   {}", if row.live { "live" } else { "earlier" })?;
-        write!(out, "files   {}, {}", row.files, Size(row.bytes))?;
+        let (role, state) = if row.live { (Role::Good, "live") } else { (Role::Quiet, "earlier") };
+        let mut fields = Fields::new(0)
+            .field("deploy", Line::new().with(Role::Id, row.id.to_string()))
+            .field("when", Line::plain(Moment(row.created).to_string()))
+            .field("state", Line::new().with(role, state))
+            .field("files", Line::plain(format!("{}, {}", row.files, Size(row.bytes))));
         if let Some(build) = self.build {
-            write!(out, "\nbuild   {} ({}, {})", build.id, build.state, build.trigger)?;
+            fields = fields.field("build", Line::plain(format!("{} ({}, {})", build.id, build.state, build.trigger)));
         }
+        fields.render(into);
         if !self.log.is_empty() {
-            write!(out, "\nlog")?;
+            into.push(Line::new().with(Role::Quiet, "log"));
             for line in self.log {
-                write!(out, "\n  {line}")?;
+                into.push(Line::new().pad(2).then(Line::plain(line)));
             }
         }
-        Ok(())
     }
 }
 
@@ -119,13 +120,15 @@ impl fmt::Display for Record<'_> {
 #[derive(Debug)]
 pub(crate) struct Pointer<'a>(pub(crate) &'a Moved);
 
-impl fmt::Display for Pointer<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0.live {
+impl Render for Pointer<'_> {
+    fn render(&self, into: &mut Doc) {
+        let live = match &self.0.live {
             Some(Live { deploy, paused, .. }) => {
-                write!(out, "live    {}{}", deploy, if *paused { " (new deploys are paused)" } else { "" })
+                let line = Line::new().with(Role::Id, deploy.to_string());
+                if *paused { line.with(Role::Warn, " (new deploys are paused)") } else { line }
             }
-            None => write!(out, "live    nothing"),
-        }
+            None => Line::plain("nothing"),
+        };
+        Fields::new(0).field("live", live).render(into);
     }
 }

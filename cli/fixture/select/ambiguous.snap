@@ -2,8 +2,10 @@
 source: fixture/src/lib.rs
 ---
 selection: implicit, a public source: a page is published unless it says otherwise
-published (3)
-  index.md by default: a public source publishes its pages
-  one/Note.md by default: a public source publishes its pages
-  two/Note.md by default: a public source publishes its pages
-not published (0)
+
+published (3 of 3)
+  ●  index.md     by default: a public source publishes its pages
+  ●  one/Note.md  by default: a public source publishes its pages
+  ●  two/Note.md  by default: a public source publishes its pages
+
+private (0)

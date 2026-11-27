@@ -7,13 +7,16 @@ use serde::Serialize;
 
 use crate::args::{Build, Check};
 use crate::cache::Caching;
-use crate::change::Listed;
+use crate::change::{Listed, Scope};
 use crate::error::Error;
 use crate::exit::Exit;
+use crate::images::Watched;
 use crate::out::{Baseline, Deployed, OutFolder};
-use crate::output::{Io, Lossy, Strict};
+use crate::output::{Io, Lossy, Say, Strict};
 use crate::report::Texts;
 use crate::site::{Address, DEFAULT_OUT, Loaded, Rendering, Source};
+use crate::stage::{Counted, Plural, StageLine, Verb};
+use crate::term::Answer;
 
 /// What `ink build --json` prints, whether or not the build was written.
 #[derive(Debug, Serialize)]
@@ -42,38 +45,56 @@ struct Checked {
     warnings: usize,
 }
 
+/// What a finished build says: how many files went where, and how many warnings it had.
+#[derive(Clone, Copy, Debug)]
+struct Summary<'a> {
+    files: usize,
+    root: &'a std::path::Path,
+    warnings: usize,
+}
+
+impl std::fmt::Display for Summary<'_> {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(out, "{} in {}", Plural(self.files, "file"), self.root.display())?;
+        match self.warnings {
+            0 => Ok(()),
+            count => write!(out, ", {}", Plural(count, "warning")),
+        }
+    }
+}
+
 impl Build {
     /// Refuses an output folder it will not clear before reading anything, then reads,
     /// interprets and renders the whole site; only a build that ends with [`Exit::Done`] touches
     /// the output folder.
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
         if self.check {
-            let components = crate::bundle::Components::new(self.components.as_deref());
-            return crate::component::Compare { build: &self, components }.run(io);
+            return self.compare(io);
         }
         let address = Address::from_flag(self.base.as_deref())?;
         let out = self.out.clone().unwrap_or_else(|| self.dir.join(DEFAULT_OUT));
-        let folder = OutFolder::new(&out, &self.dir)?;
-        folder.check()?;
-        let baseline = folder.baseline()?;
-        let mut source = Source::new(&self.dir, &self.origin);
-        source.output.extend(folder.inside(&self.dir).filter(|inside| !source.output.contains(inside)));
-        let loaded = source.load()?;
+        let (folder, baseline) = self.folder(&out)?;
+        let loaded = self.loaded(&folder)?;
+        loaded.staged(io)?;
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
-        let mut rendered = self.render(&loaded, &address);
+        let mut rendered = self.render(&loaded, &address, io)?;
+        if rendered.deploy.is_some() {
+            loaded.rendered(io)?;
+        }
         let record = loaded.record();
         let compared = baseline.compare(&loaded, &record, &mut rendered);
         let tally = io.said(&rendered.diagnostics, &rendered.notices, texts)?;
         let changes = compared.as_ref().map(|compared| &compared.changes);
-        if let Some(changes) = changes {
-            io.aside(Listed { changes, out: folder.root() })?;
-        }
+        changes.map_or(Ok(()), |changes| Self::listed(io, changes, folder.root()))?;
         let exit = tally.exit(Strict::from(self.strict));
         let deploy = rendered.deploy.as_ref();
         let written = deploy.filter(|_| exit == Exit::Done);
         if let Some(deploy) = written {
             folder.replace(Deployed { manifest: deploy, blobs: &rendered.blobs, record: &record }, &loaded.store)?;
-            io.line(deploy.id())?;
+            let said = Summary { files: deploy.entries().len(), root: folder.root(), warnings: tally.warnings };
+            let took = io.lap();
+            io.stage(&StageLine::new(Verb::Built, said).closing(tally).took(took))?;
+            io.result(&Answer::of(deploy.id()))?;
         }
         io.json(&Built {
             schema: "uses.build/v2",
@@ -90,13 +111,43 @@ impl Build {
 }
 
 impl Build {
-    /// The site rendered through the image and page caches, which say what they did.
-    fn render(&self, loaded: &Loaded, address: &Address) -> Rendering {
+    /// `--check`: the build compared with the build of the components it carries.
+    fn compare(self, io: &mut Io<'_>) -> Result<Exit, Error> {
+        let components = crate::bundle::Components::new(self.components.as_deref());
+        crate::component::Compare { build: &self, components }.run(io)
+    }
+
+    /// The output folder `out`, once it is known to be one the build may clear, and what it holds.
+    fn folder(&self, out: &std::path::Path) -> Result<(OutFolder, Baseline), Error> {
+        let folder = OutFolder::new(out, &self.dir)?;
+        folder.check()?;
+        let baseline = folder.baseline()?;
+        Ok((folder, baseline))
+    }
+
+    /// The site read, with the output folder left out of it.
+    fn loaded(&self, folder: &OutFolder) -> Result<crate::site::Loaded, Error> {
+        let mut source = Source::new(&self.dir, &self.origin);
+        source.output.extend(folder.inside(&self.dir).filter(|inside| !source.output.contains(inside)));
+        source.load()
+    }
+
+    /// The change set, all of it when the run says stages and the newly public part otherwise.
+    fn listed(io: &mut Io<'_>, changes: &model::record::Changes, out: &std::path::Path) -> Result<(), Error> {
+        let scope = if io.says(Say::Stages) { Scope::Whole } else { Scope::Public };
+        io.aside(Say::Warnings, &Listed { changes, out, scope })
+    }
+
+    /// The site rendered through the image and page caches, which say what they did, and the
+    /// image work, which says how far it has got.
+    fn render(&self, loaded: &Loaded, address: &Address, io: &mut Io<'_>) -> Result<Rendering, Error> {
         let caching = Caching::new(&self.dir, self.cache.as_deref());
         let images = caching.pixels();
-        let mut rendered = loaded.render(address, Host::new(&images).cached(caching.disk()));
+        let watched = Watched::new(&images, io);
+        let mut rendered = loaded.render(address, Host::new(&watched).cached(caching.disk()));
+        watched.finish()?;
         rendered.notices.extend(caching.finish());
-        rendered
+        Ok(rendered)
     }
 }
 
@@ -124,10 +175,8 @@ impl Check {
         let tally = io.said(&understood.diagnostics, &understood.notices, texts)?;
         let pages = understood.site.as_ref().map_or(0, |site| site.pages().len());
         let decisions = understood.decisions.len();
-        io.line(format_args!(
-            "{pages} pages, {decisions} decisions, {} errors, {} warnings",
-            tally.errors, tally.warnings
-        ))?;
+        let said = format!("{}, {}: {}", Plural(pages, "page"), Plural(decisions, "decision"), Counted(tally));
+        io.stage(&StageLine::new(Verb::Checked, said).closing(tally))?;
         io.json(&Checked {
             schema: "uses.check/v1",
             pages,

@@ -2,10 +2,16 @@
 
 use std::process::ExitCode;
 
-use uses_ink_cli::Cli;
+use uses_ink_cli::{Cli, Surroundings};
 
 fn main() -> ExitCode {
-    match Cli::start(std::env::args_os(), &mut std::io::stdout().lock(), &mut std::io::stderr().lock()) {
+    let surroundings = Surroundings::process();
+    match Cli::start_in(
+        &surroundings,
+        std::env::args_os(),
+        &mut std::io::stdout().lock(),
+        &mut std::io::stderr().lock(),
+    ) {
         Ok(exit) => ExitCode::from(exit.code()),
         Err(error) => error.exit(),
     }

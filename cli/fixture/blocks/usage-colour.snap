@@ -1,0 +1,11 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+\e[1m\e[31merror[cli.usage]\e[0m: \e[1munexpected argument \e[0m\e[1m`\e[0m\e[1m\e[36m--wy\e[0m\e[1m`\e[0m\e[1m found\e[0m
+  \e[1m\e[36mfix:\e[0m to pass `\e[1m\e[36m--wy\e[0m` as a value, use `\e[1m\e[36m-- --wy\e[0m`
+  \e[2mnothing was changed\e[0m
+
+Usage: ink explain [OPTIONS] [PATH]
+
+For more information, try '--help'.

@@ -1,0 +1,12 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+page.title on usage.md
+╭─ “Usage”, from the heading of usage.md, bytes 0..7: rung 3 of 4
+│
+│ · 1  ink.toml       nothing
+│ · 2  front matter   nothing
+│ ✓ 3  first heading  “Usage”  chosen  f…
+│ · 4  file name      nothing
+╰─ to pin it: ink pin usage.md page.title

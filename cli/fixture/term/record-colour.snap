@@ -1,0 +1,7 @@
+---
+source: fixture/src/lib.rs
+---
+  \e[2mapi\e[0m          http://api.localhost/v1/sites (host api.localhost)
+  \e[2mowner token\e[0m  in .data/owner-token
+  \e[2mlimits\e[0m       json body 65536 B, upload 268435456 B
+5kq3v9m2tj7r

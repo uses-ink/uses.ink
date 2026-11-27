@@ -2,99 +2,121 @@
 source: fixture/src/lib.rs
 ---
 the source
-  version            the files on disk
-  has                snapshot
-  lacks              history, so page.date is not taken from it
+├─ version  the files on disk
+├─ has      snapshot
+╰─ lacks    history, so page.date is not taken from it
+
 the site
-  site.format        `ink:format-markdown`    by default
-  site.root          the top of the snapshot  by default
-  site.layout        a blog                   because posts is there
+├─ site.format  `ink:format-markdown`    by default
+├─ site.root    the top of the snapshot  by default
+╰─ site.layout  a blog                   because posts is there
+
 about.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 index.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 posts/2024-03-01-first-steps.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 posts/blink.gif
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 posts/later.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 posts/leaf.png
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 posts/nib.svg
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 posts/pictures.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 posts/second.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 posts/turned.jpg
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 about.md
-  page.publish       published                by default
-  page.kind          a page                   by default
-  page.title         “About”                  from the heading of about.md, bytes 0..7
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `about`                  from the name of about.md
-  page.tags          no tags                  by default
-  page.summary       “Who writes here, and why it is all about ink.” from the text of about.md
+├─ page.publish  published                                        by default
+├─ page.kind     a page                                           by default
+├─ page.title    “About”                                          from the heading of about.md, bytes 0..7
+├─ page.date     undated                                          by default
+├─ page.updated  never updated                                    by default
+├─ page.slug     `about`                                          from the name of about.md
+├─ page.tags     no tags                                          by default
+╰─ page.summary  “Who writes here, and why it is all about ink.”  from the text of about.md
+
 index.md
-  page.publish       published                by default
-  page.kind          a page                   by default
-  page.title         “Ink and paper”          from the frontmatter of index.md, bytes 11..24
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `index`                  from the name of index.md
-  page.tags          no tags                  by default
-  page.summary       “Notes on pens, nibs and the paper that takes them.” from the frontmatter of index.md, bytes 38..88
+├─ page.publish  published                                             by default
+├─ page.kind     a page                                                by default
+├─ page.title    “Ink and paper”                                       from the frontmatter of index.md, bytes 11..24
+├─ page.date     undated                                               by default
+├─ page.updated  never updated                                         by default
+├─ page.slug     `index`                                               from the name of index.md
+├─ page.tags     no tags                                               by default
+╰─ page.summary  “Notes on pens, nibs and the paper that takes them.”  from the frontmatter of index.md, bytes 38..88
+
 posts/2024-03-01-first-steps.md
-  page.publish       published                by default
-  page.kind          a post                   because posts is there
-  page.title         “First steps”            from the heading of posts/2024-03-01-first-steps.md, bytes 26..39
-  page.date          2024-03-01               from the name of posts/2024-03-01-first-steps.md
-  page.updated       never updated            by default
-  page.slug          `first-steps`            from the name of posts/2024-03-01-first-steps.md
-  page.tags          pens, ink                from the frontmatter of posts/2024-03-01-first-steps.md, bytes 10..20
-  page.summary       “A fountain pen needs ink, patience and luck practice.” from the text of posts/2024-03-01-first-steps.md
+├─ page.publish  published                                                by default
+├─ page.kind     a post                                                   because posts is there
+├─ page.title    “First steps”                                            from the heading of posts/2024-03-01-first-steps.md, bytes 26..39
+├─ page.date     2024-03-01                                               from the name of posts/2024-03-01-first-steps.md
+├─ page.updated  never updated                                            by default
+├─ page.slug     `first-steps`                                            from the name of posts/2024-03-01-first-steps.md
+├─ page.tags     pens, ink                                                from the frontmatter of posts/2024-03-01-first-steps.md, bytes 10..20
+╰─ page.summary  “A fountain pen needs ink, patience and luck practice.”  from the text of posts/2024-03-01-first-steps.md
+
 posts/later.md
-  page.publish       not published            from the frontmatter of posts/later.md, bytes 11..15
-  page.kind          a post                   because posts is there
-  page.title         “Later”                  from the name of posts/later.md
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `later`                  from the name of posts/later.md
-  page.tags          no tags                  by default
-  page.summary       “Not yet.”               from the text of posts/later.md
+├─ page.publish  not published  from the frontmatter of posts/later.md, bytes 11..15
+├─ page.kind     a post         because posts is there
+├─ page.title    “Later”        from the name of posts/later.md
+├─ page.date     undated        by default
+├─ page.updated  never updated  by default
+├─ page.slug     `later`        from the name of posts/later.md
+├─ page.tags     no tags        by default
+╰─ page.summary  “Not yet.”     from the text of posts/later.md
+
 posts/pictures.md
-  page.publish       published                by default
-  page.kind          a post                   because posts is there
-  page.title         “Pictures”               from the frontmatter of posts/pictures.md, bytes 11..19
-  page.date          2024-05-01               from the frontmatter of posts/pictures.md, bytes 26..36
-  page.updated       never updated            by default
-  page.slug          `pictures`               from the name of posts/pictures.md
-  page.tags          no tags                  by default
-  page.summary       “A photo the camera held sideways, turned upright and without its GPS position:” from the text of posts/pictures.md
+├─ page.publish  published                                                                         by default
+├─ page.kind     a post                                                                            because posts is there
+├─ page.title    “Pictures”                                                                        from the frontmatter of posts/pictures.md, bytes 11..19
+├─ page.date     2024-05-01                                                                        from the frontmatter of posts/pictures.md, bytes 26..36
+├─ page.updated  never updated                                                                     by default
+├─ page.slug     `pictures`                                                                        from the name of posts/pictures.md
+├─ page.tags     no tags                                                                           by default
+╰─ page.summary  “A photo the camera held sideways, turned upright and without its GPS position:”  from the text of posts/pictures.md
+
 posts/second.md
-  page.publish       published                by default
-  page.kind          a post                   because posts is there
-  page.title         “Paper weight”           from the heading of posts/second.md, bytes 39..53
-  page.date          2024-04-02               from the frontmatter of posts/second.md, bytes 10..20
-  page.updated       never updated            by default
-  page.slug          `second`                 from the name of posts/second.md
-  page.tags          paper                    from the frontmatter of posts/second.md, bytes 27..33
-  page.summary       “Heavier paper takes wetter nibs. See the first post.” from the text of posts/second.md
+├─ page.publish  published                                               by default
+├─ page.kind     a post                                                  because posts is there
+├─ page.title    “Paper weight”                                          from the heading of posts/second.md, bytes 39..53
+├─ page.date     2024-04-02                                              from the frontmatter of posts/second.md, bytes 10..20
+├─ page.updated  never updated                                           by default
+├─ page.slug     `second`                                                from the name of posts/second.md
+├─ page.tags     paper                                                   from the frontmatter of posts/second.md, bytes 27..33
+╰─ page.summary  “Heavier paper takes wetter nibs. See the first post.”  from the text of posts/second.md
+
 posts/blink.gif
-  page.publish       published                because posts/pictures.md is there
+╰─ page.publish  published  because posts/pictures.md is there
+
 posts/leaf.png
-  page.publish       published                because posts/pictures.md is there
+╰─ page.publish  published  because posts/pictures.md is there
+
 posts/nib.svg
-  page.publish       published                because posts/2024-03-01-first-steps.md is there
+╰─ page.publish  published  because posts/2024-03-01-first-steps.md is there
+
 posts/turned.jpg
-  page.publish       published                because posts/pictures.md is there
+╰─ page.publish  published  because posts/pictures.md is there
+
 the site
-  site.home          index.md                 from the name of index.md
-  site.title         “Ink and paper”          from the frontmatter of index.md, bytes 11..24
-  site.description   “Notes on pens, nibs and the paper that takes them.” from the frontmatter of index.md, bytes 38..88
-  site.authors       no one                   by default
-  site.language      `en`                     by default
-  site.nav           about.md                 by default
+├─ site.home         index.md                                              from the name of index.md
+├─ site.title        “Ink and paper”                                       from the frontmatter of index.md, bytes 11..24
+├─ site.description  “Notes on pens, nibs and the paper that takes them.”  from the frontmatter of index.md, bytes 38..88
+├─ site.authors      no one                                                by default
+├─ site.language     `en`                                                  by default
+╰─ site.nav          about.md                                              by default

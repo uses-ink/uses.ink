@@ -1,0 +1,10 @@
+---
+source: fixture/src/lib.rs
+---
+        Read  214 files from git 9f3c2a1b4d7e
+  Understood  61 pages, 312 decisions
+    Rendered  61 pages, 1.4 s
+     Changes  2 newly public, 1 moved, against deploy 4mq8c1d0wz5e
+       Built  187 files in .ink/out, 1 warning, 1.4 s
+     Checked  61 pages, 312 decisions: 1 error, 2 warnings
+   Would pin  page.slug of posts/a.md; ink.toml is unchanged

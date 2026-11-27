@@ -1,0 +1,8 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+{"schema":"uses.check/v1","pages":0,"decisions":36,"errors":1,"warnings":0}
+# stderr
+{"schema":"uses.event/v1","code":"link.target.ambiguous","severity":"error","file":"index.md","line":null,"what":"`Note` could be any of one/Note.md and two/Note.md","why":null,"fix":"write the path of the one you mean"}
+{"schema":"uses.progress/v1","stage":"checking","state":"finished","detail":"0 pages, 36 decisions: 1 error, no warnings"}

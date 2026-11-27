@@ -2,7 +2,6 @@
 //! keeping everything else in the file (decision 0042). The pin is printed; `--dry-run` writes
 //! nothing.
 
-use std::fmt;
 use std::path::PathBuf;
 
 use serde::Serialize;
@@ -15,6 +14,8 @@ use crate::output::{Io, Strict};
 use crate::replace::Replacing;
 use crate::report::Texts;
 use crate::site::Source;
+use crate::stage::{StageLine, Verb as Stage};
+use crate::term::{Doc, Line, Render, Role};
 
 /// What `ink pin --json` prints.
 #[derive(Debug, Serialize)]
@@ -26,23 +27,33 @@ struct Pinned<'a> {
     written: bool,
 }
 
-/// What happened to `ink.toml`.
-#[derive(Clone, Copy, Debug)]
-enum Outcome<'a> {
-    Written(&'a std::path::Path),
-    Dry,
+/// A pin as a person reads it: the stage line, then the lines it adds to `ink.toml`.
+#[derive(Clone, Debug)]
+struct Patch<'a> {
+    stage: StageLine,
+    file: &'a str,
+    toml: &'a str,
 }
 
-impl fmt::Display for Outcome<'_> {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Written(path) => write!(out, "wrote the pin into {}", path.display()),
-            Self::Dry => out.write_str("dry run: nothing written"),
+impl Render for Patch<'_> {
+    fn render(&self, into: &mut Doc) {
+        self.stage.render(into);
+        into.push(Line::new().pad(2).with(Role::Place, format!("@@ {}", self.file)));
+        for line in self.toml.trim_end().lines() {
+            // a table header is what the pin is added under; every other line is added
+            if line.starts_with('[') {
+                into.push(Line::new().pad(3).with(Role::Plain, line));
+            } else {
+                into.push(Line::new().pad(2).with(Role::Good, "+").with(Role::Plain, line));
+            }
         }
     }
 }
 
 impl Pin {
+    /// The config file a pin is written into, in the site's folder.
+    const FILE: &'static str = "ink.toml";
+
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
         let asked = Asked::words(&self.words)?;
         let loaded = Source::new(&self.dir, &self.origin).load()?;
@@ -56,10 +67,8 @@ impl Pin {
             .find(|decision| decision.code() == asked.code && decision.subject() == asked.subject)
             .ok_or_else(|| Error::Undecided { code: asked.code, subject: asked.subject.clone() })?;
         let pin = config::pins_into("", [decision]).map_err(|source| Error::Pin { source })?;
-        let path: PathBuf = self.dir.join("ink.toml");
-        let outcome = if self.dry_run {
-            Outcome::Dry
-        } else {
+        let path: PathBuf = self.dir.join(Self::FILE);
+        if !self.dry_run {
             let existing = match std::fs::read_to_string(&path) {
                 Ok(text) => text,
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
@@ -69,11 +78,15 @@ impl Pin {
             let mut replacing = Replacing::default();
             replacing.push(path.clone(), text);
             replacing.commit()?;
-            Outcome::Written(&path)
+        }
+        let what = format!("{} of {}", asked.code, asked.subject);
+        let stage = if self.dry_run {
+            StageLine::new(Stage::WouldPin, format!("{what}; {} is unchanged", Self::FILE))
+        } else {
+            StageLine::new(Stage::Pinned, format!("{what} in {}", Self::FILE))
         };
-        io.line(pin.trim_end())?;
-        io.line(outcome)?;
-        io.json(&Pinned { schema: "uses.pin/v2", toml: &pin, written: matches!(outcome, Outcome::Written(_)) })?;
+        io.result(&Patch { stage, file: Self::FILE, toml: &pin })?;
+        io.json(&Pinned { schema: "uses.pin/v2", toml: &pin, written: !self.dry_run })?;
         Ok(tally.exit(Strict::Off))
     }
 }

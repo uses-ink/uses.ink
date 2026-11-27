@@ -1,0 +1,22 @@
+---
+source: fixture/src/lib.rs
+---
+# stdout
+selection: explicit, a vault or private source: a page is private until it is selected
+
+published (4 of 5)
+  *  Loop.md             the frontmatter of Loop.md says so, bytes 13..17
+  *  Notes/Ownership.md  the frontmatter of Notes/Ownership.md says so, bytes 13..17
+  *  Notes/Rust.md       the frontmatter of Notes/Rust.md says so, bytes 13..17
+  *  index.md            the frontmatter of index.md says so, bytes 13..17
+
+private (1)
+  o  Private.md  not selected: a vault or private source keeps a page private until it is selected
+# stderr
+warning[embed.target.cycle]: `Loop.md` is embedded inside itself, through Loop.md and Notes/Rust.md, so the inner embed is shown as a link
+  --> Loop.md
+  fix: remove one of the embeds
+
+warning[embed.target.cycle]: `Loop.md` is embedded inside itself, through Notes/Rust.md, Loop.md and Notes/Rust.md, so the inner embed is shown as a link
+  --> Notes/Rust.md
+  fix: remove one of the embeds

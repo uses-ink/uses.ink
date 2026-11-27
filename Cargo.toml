@@ -59,6 +59,11 @@ trace = { package = "uses-ink-trace", path = "trace", default-features = false }
 watch = { package = "uses-ink-watch", path = "watch" }
 watch-git = { package = "uses-ink-watch-git", path = "watch/git" }
 annotate-snippets = "0.12.18"
+# colour and width for the terminal layer of the `ink` command (cli/src/term); clap already pulls both
+anstream = "1.0.0"
+anstyle = "1.0.14"
+terminal_size = "0.4.4"
+unicode-width = "0.2.3"
 # tree-sitter grammars, only the languages enabled here (decision 0039)
 arborium = { version = "2.18.2", features = [
     "lang-bash", "lang-c", "lang-css", "lang-diff", "lang-go", "lang-html", "lang-javascript", "lang-json",

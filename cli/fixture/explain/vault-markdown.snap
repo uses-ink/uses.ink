@@ -2,32 +2,38 @@
 source: fixture/src/lib.rs
 ---
 the source
-  version            the files on disk
-  has                snapshot
-  lacks              history, so page.date is not taken from it
+├─ version  the files on disk
+├─ has      snapshot
+╰─ lacks    history, so page.date is not taken from it
+
 the site
-  site.format        `ink:format-markdown`    pinned in ink.toml, bytes 7..37
-  site.root          the top of the snapshot  by default
-  site.layout        a vault                  because .obsidian is there
+├─ site.format  `ink:format-markdown`    pinned in ink.toml, bytes 7..37
+├─ site.root    the top of the snapshot  by default
+╰─ site.layout  a vault                  because .obsidian is there
+
 .obsidian/app.json
-  file.ignore        ignored                  because .obsidian is there
+╰─ file.ignore  ignored  because .obsidian is there
+
 index.md
-  file.ignore        kept                     by default
+╰─ file.ignore  kept  by default
+
 ink.toml
-  file.ignore        ignored                  from the name of ink.toml
+╰─ file.ignore  ignored  from the name of ink.toml
+
 index.md
-  page.publish       published                from the frontmatter of index.md, bytes 13..17
-  page.kind          a page                   by default
-  page.title         “Pinned vault”           from the frontmatter of index.md, bytes 25..37
-  page.date          undated                  by default
-  page.updated       never updated            by default
-  page.slug          `index`                  from the name of index.md
-  page.tags          no tags                  by default
-  page.summary       “A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.” from the text of index.md
+├─ page.publish  published                                                                     from the frontmatter of index.md, bytes 13..17
+├─ page.kind     a page                                                                        by default
+├─ page.title    “Pinned vault”                                                                from the frontmatter of index.md, bytes 25..37
+├─ page.date     undated                                                                       by default
+├─ page.updated  never updated                                                                 by default
+├─ page.slug     `index`                                                                       from the name of index.md
+├─ page.tags     no tags                                                                       by default
+╰─ page.summary  “A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.”  from the text of index.md
+
 the site
-  site.home          index.md                 from the name of index.md
-  site.title         “Pinned vault”           from the frontmatter of index.md, bytes 25..37
-  site.description   “A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.” from the text of index.md
-  site.authors       no one                   by default
-  site.language      `en`                     by default
-  site.nav           empty                    by default
+├─ site.home         index.md                                                                      from the name of index.md
+├─ site.title        “Pinned vault”                                                                from the frontmatter of index.md, bytes 25..37
+├─ site.description  “A vault whose pin says markdown: [[Other]] stays text and #todo is no tag.”  from the text of index.md
+├─ site.authors      no one                                                                        by default
+├─ site.language     `en`                                                                          by default
+╰─ site.nav          empty                                                                         by default

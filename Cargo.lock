@@ -5236,6 +5236,8 @@ name = "uses-ink-cli"
 version = "0.0.0"
 dependencies = [
  "annotate-snippets",
+ "anstream",
+ "anstyle",
  "axum",
  "blake3",
  "clap",
@@ -5253,8 +5255,10 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "terminal_size",
  "tokio",
  "toml",
+ "unicode-width",
  "uses-ink-blob",
  "uses-ink-blob-dir",
  "uses-ink-build",

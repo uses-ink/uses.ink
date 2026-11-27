@@ -1,0 +1,5 @@
+---
+source: fixture/src/lib.rs
+---
+# stderr
+     \e[1m\e[32mChecked\e[0m  2 pages, 30 decisions: no errors, no warnings
