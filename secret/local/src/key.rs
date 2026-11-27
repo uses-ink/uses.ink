@@ -70,10 +70,18 @@ impl Key {
     #[cfg(not(unix))]
     fn private(_options: &mut OpenOptions) {}
 
+    /// The permission bits of the group and of everyone else: none may be set.
+    #[cfg(unix)]
+    const GROUP_AND_OTHER: u32 = 0o077;
+
     #[cfg(unix)]
     fn check(path: &Path, meta: &fs::Metadata) -> Result<(), Error> {
         let mode = std::os::unix::fs::PermissionsExt::mode(&meta.permissions()) & 0o777;
-        if mode.trailing_zeros() >= 6 { Ok(()) } else { Err(Error::Permissions { path: path.to_path_buf(), mode }) }
+        if mode & Self::GROUP_AND_OTHER == 0 {
+            Ok(())
+        } else {
+            Err(Error::Permissions { path: path.to_path_buf(), mode })
+        }
     }
 
     #[cfg(not(unix))]

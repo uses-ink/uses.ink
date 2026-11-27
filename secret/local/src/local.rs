@@ -62,8 +62,12 @@ impl Secret for Local {
         let mut nonce = [0_u8; Self::NONCE];
         OsRng.try_fill_bytes(&mut nonce).map_err(|source| Failure::Backend { source: Error::Random { source } })?;
         let payload = Payload { msg: plain.expose(), aad: binding.as_ref() };
-        // the cipher only fails on a message of 256 GiB: a credential is never that
-        let sealed = self.cipher().encrypt(XNonce::from_slice(&nonce), payload).map_err(|_| Failure::Refused)?;
+        // the cipher only fails on a message far past any credential's size; that is a backend
+        // failure, not a value that will not open
+        let sealed = self
+            .cipher()
+            .encrypt(XNonce::from_slice(&nonce), payload)
+            .map_err(|_| Failure::Backend { source: Error::Seal })?;
         let mut bytes = Vec::with_capacity(1 + Self::NONCE + sealed.len());
         bytes.push(Self::VERSION);
         bytes.extend_from_slice(&nonce);

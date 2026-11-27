@@ -38,6 +38,8 @@ pub enum Error {
         /// What it said.
         source: rand_core::Error,
     },
+    /// The cipher refused to seal the credential. It gives no reason, so none is kept.
+    Seal,
 }
 
 impl fmt::Display for Error {
@@ -50,6 +52,7 @@ impl fmt::Display for Error {
             }
             Self::Length { path, found } => write!(out, "the key file {} is {found} bytes, not 32", path.display()),
             Self::Random { .. } => out.write_str("the operating system gave no randomness"),
+            Self::Seal => out.write_str("the credential could not be sealed"),
         }
     }
 }
@@ -59,7 +62,7 @@ impl std::error::Error for Error {
         match self {
             Self::Key { source, .. } => Some(source),
             Self::Random { source } => Some(source),
-            Self::NotFile { .. } | Self::Permissions { .. } | Self::Length { .. } => None,
+            Self::NotFile { .. } | Self::Permissions { .. } | Self::Length { .. } | Self::Seal => None,
         }
     }
 }
