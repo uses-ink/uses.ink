@@ -43,6 +43,14 @@ filter = "package(farm) & test(/^tests::/)"
 test-group = "farm"
 slow-timeout = { period = "1s", terminate-after = 1 }
 
+# Fetching starts the machine's `git upload-pack` for every clone and polls the clone's folder
+# while it fills: tens of milliseconds a fetch, and a test fetches up to three times. The binaries
+# that fetch (host-native's `fetch`, and the `source` ones that read through it) have this
+# budget instead.
+[[profile.default.overrides]]
+filter = "binary(fetch)"
+slow-timeout = { period = "2s", terminate-after = 1 }
+
 # A component's tests pay a Cranelift compile on a cold cache (tens of milliseconds for the
 # hostile component, about a second for the markdown format) and the spinning plugin's 50 ms
 # deadline; the components themselves are built once per run by `cargo xtask component`.

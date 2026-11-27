@@ -2,12 +2,13 @@
 
 use std::fmt;
 
+use model::git::{Cloned, Git, Refused, Request};
 use model::highlight::{Highlight, Run, Unhighlighted};
-use model::{Diagnostic, Notice, Problem, Record};
+use model::{Diagnostic, Notice, Problem, Record, Snapshot};
 
-use crate::bind::ink::host::{diagnostic, highlight};
+use crate::bind::ink::host::{diagnostic, git, highlight};
 use crate::bind::ink::model::diagnostic as said;
-use crate::mirror::{Covered, Malformed};
+use crate::mirror::{Covered, Malformed, Seen};
 
 /// The host this component runs in: it highlights code through `ink:host/highlight` and records
 /// what the plugin says through `ink:host/diagnostic`.
@@ -25,6 +26,28 @@ impl Highlight for Host {
             Err(highlight::Unhighlighted::Unknown) => Err(Unhighlighted::Unknown),
             Err(highlight::Unhighlighted::Failed) => Err(Unhighlighted::Failed(Failure::Grammar)),
         }
+    }
+}
+
+impl Git for Host {
+    type Error = Unfetched;
+
+    fn fetch(&mut self, request: &Request) -> Result<Cloned, Refused<Unfetched>> {
+        let cloned = git::fetch(&git::Request::from(request)).map_err(Self::refused)?;
+        Cloned::try_from(cloned).map_err(|source| Refused::Failed(Unfetched::Malformed { source }))
+    }
+
+    fn snapshot(&mut self, cloned: &Cloned) -> Result<Snapshot, Refused<Unfetched>> {
+        let snapshot = git::read(&git::Cloned::from(cloned)).map_err(Self::refused)?;
+        Snapshot::try_from(snapshot).map_err(|source| Refused::Failed(Unfetched::Malformed { source }))
+    }
+}
+
+impl Host {
+    /// The host's refusal as the model's; a case the model refuses is a failure.
+    fn refused(refusal: git::Refusal) -> Refused<Unfetched> {
+        Refused::try_from(Seen(refusal, Unfetched::Said))
+            .unwrap_or_else(|source| Refused::Failed(Unfetched::Malformed { source }))
     }
 }
 
@@ -58,6 +81,37 @@ impl Host {
                 span: None,
             }],
         })
+    }
+}
+
+/// A fetch or a read that failed with no case of its own, as the plugin sees it.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Unfetched {
+    /// The host failed and has said why through `ink:host/diagnostic`.
+    Said,
+    /// The host sent a value the model refuses.
+    Malformed {
+        /// Why.
+        source: Malformed,
+    },
+}
+
+impl fmt::Display for Unfetched {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(match self {
+            Self::Said => "the host failed, and has said why",
+            Self::Malformed { .. } => "the host sent a value the model refuses",
+        })
+    }
+}
+
+impl std::error::Error for Unfetched {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Said => None,
+            Self::Malformed { source } => Some(source),
+        }
     }
 }
 

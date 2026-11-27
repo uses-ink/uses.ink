@@ -31,6 +31,7 @@ folder = "The folder on disk, as the system names it."
 format = "The format plugin's id."
 files = "Every file involved, in path order."
 given = "The name as the author wrote it."
+grant = "The name of the credential, never its value."
 header = "The header's name."
 height = "Its height in pixels."
 key = "The key, as written."
@@ -39,6 +40,7 @@ language = "The language, as written after the opening fence."
 limit = "The most that is allowed."
 name = "The name given instead."
 other = "The key written before it that sets the same thing."
+policy = "What the builder allows, as its setting is named."
 native = "The deploy the native plugins built."
 plugin = "The plugin's name."
 path = "The file."
@@ -46,6 +48,7 @@ reason = "Why, as the part that refused it says."
 reused = "How many were taken from the cache."
 rendered = "How many were made again."
 route = "The route."
+scheme = "The kind of address, as written before `://`."
 segment = "The segment of the path, as written."
 size = "How large it is."
 table = "The table, as written."
@@ -395,6 +398,41 @@ fault = "source"
 fields = { reason = "text" }
 message = "the git repository could not be read: {reason}"
 fix = "check the repository with `git fsck`, or build the files as a folder with `--source folder`"
+
+[diagnostic."source.git.network"]
+severity = "error"
+fault = "operator"
+fields = { scheme = "text", policy = "text" }
+message = "this builder does not fetch {scheme} repositories: its network access is {policy}"
+fix = "the operator of the builder allows it, or the site is built from a folder"
+
+[diagnostic."source.git.auth"]
+severity = "error"
+fault = "source"
+fields = { grant = "text" }
+message = "the repository is fetched with the credential `{grant}`, which this builder does not hold"
+fix = "give the builder a credential of that name, or make the repository public"
+
+[diagnostic."source.git.transport"]
+severity = "error"
+fault = "ours"
+fields = { scheme = "text" }
+message = "this builder has no way to fetch {scheme} repositories yet"
+fix = "build the site from a folder or a local repository"
+
+[diagnostic."source.git.revision"]
+severity = "error"
+fault = "author"
+fields = { written = "text" }
+message = "`{written}` names no branch, tag or commit of the fetched repository"
+fix = "name a branch, tag or commit that the repository holds"
+
+[diagnostic."source.budget.objects"]
+severity = "error"
+fault = "author"
+fields = { count = "count", limit = "count" }
+message = "the source holds {count} git objects; a site may hold {limit}"
+fix = "fetch a shorter history, or move large generated files out of the repository"
 
 [diagnostic."source.revision.unknown"]
 severity = "error"

@@ -26,6 +26,7 @@ mod document;
 mod format;
 #[allow(clippy::too_many_lines, clippy::match_same_arms, reason = "generated: one match arm per catalog entry")]
 mod generated;
+pub mod git;
 mod hash;
 pub mod highlight;
 mod language;

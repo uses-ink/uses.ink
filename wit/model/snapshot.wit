@@ -1,0 +1,102 @@
+package ink:model@0.1.0;
+
+/// What a source hands the engine (`model::Snapshot`): an immutable tree at one version, facts
+/// about its files, and what the fetch could and could not do. The files' bytes never cross:
+/// the host keeps them and a snapshot names them by hash.
+interface snapshot {
+    /// The 32 bytes of a BLAKE3 hash.
+    type hash = list<u8>;
+    /// A git object id, as git writes it: 40 or 64 lower-case hex digits.
+    type oid = string;
+
+    /// An exact instant: whole seconds since the Unix epoch and the nanoseconds past them.
+    record instant {
+        seconds: s64,
+        nanos: u32,
+    }
+
+    /// Where a fact came from (`model::Provenance`).
+    variant provenance {
+        /// Git history, read up to this commit: a bound at a shallow clone's boundary.
+        git-history(oid),
+        /// The git commit that made the change.
+        commit(oid),
+        filesystem,
+    }
+
+    /// Why a fact is unknown (`model::UnknownReason`).
+    variant unknown {
+        no-history,
+        /// The history was cut at this many commits before the file's start.
+        beyond-depth(u32),
+        not-reported,
+        merged,
+    }
+
+    record stamped {
+        at: instant,
+        provenance: provenance,
+    }
+
+    /// A fact with how sure the source is of it (`model::Known<Timestamp>`).
+    variant known {
+        exact(stamped),
+        not-after(stamped),
+        unknown(unknown),
+    }
+
+    variant version {
+        git-commit(oid),
+        upload(string),
+        folder(hash),
+    }
+
+    record entry {
+        path: string,
+        blob: hash,
+        size: u64,
+    }
+
+    record facts {
+        path: string,
+        created: known,
+        updated: known,
+    }
+
+    enum ability {
+        snapshot,
+        history,
+        watch,
+        private,
+    }
+
+    record shallowed {
+        commit: oid,
+        bound: instant,
+    }
+
+    variant gap {
+        absent,
+        shallow(shallowed),
+        renames(u64),
+    }
+
+    record lack {
+        ability: ability,
+        /// The decision that suffers for it, as its code is written.
+        consequence: string,
+        gap: gap,
+    }
+
+    record observed {
+        has: list<ability>,
+        lacks: list<lack>,
+    }
+
+    record snapshot {
+        version: version,
+        tree: list<entry>,
+        facts: list<facts>,
+        observed: observed,
+    }
+}

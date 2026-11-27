@@ -164,6 +164,21 @@ impl Message<'_> {
             Problem::SourceRepositoryUnreadable { reason, .. } => {
                 write!(out, "the git repository could not be read: {reason}")
             }
+            Problem::SourceGitNetwork { scheme, policy, .. } => {
+                write!(out, "this builder does not fetch {scheme} repositories: its network access is {policy}")
+            }
+            Problem::SourceGitAuth { grant, .. } => {
+                write!(out, "the repository is fetched with the credential `{grant}`, which this builder does not hold")
+            }
+            Problem::SourceGitTransport { scheme, .. } => {
+                write!(out, "this builder has no way to fetch {scheme} repositories yet")
+            }
+            Problem::SourceGitRevision { written, .. } => {
+                write!(out, "`{written}` names no branch, tag or commit of the fetched repository")
+            }
+            Problem::SourceBudgetObjects { count, limit, .. } => {
+                write!(out, "the source holds {count} git objects; a site may hold {limit}")
+            }
             Problem::SourceRevisionUnknown { written, reason, .. } => {
                 write!(out, "`{written}` names no commit of the repository: {reason}")
             }
@@ -442,6 +457,11 @@ impl Fix<'_> {
             Problem::SourceBlobUnwritable { .. } => false,
             Problem::SourceBudgetFolders { .. } => true,
             Problem::SourceRepositoryUnreadable { .. } => true,
+            Problem::SourceGitNetwork { .. } => true,
+            Problem::SourceGitAuth { .. } => true,
+            Problem::SourceGitTransport { .. } => true,
+            Problem::SourceGitRevision { .. } => true,
+            Problem::SourceBudgetObjects { .. } => true,
             Problem::SourceRevisionUnknown { .. } => true,
             Problem::SourceLinkBroken { .. } => true,
             Problem::MathSyntaxInvalid { .. } => true,
@@ -642,6 +662,21 @@ impl Fix<'_> {
                     out,
                     "check the repository with `git fsck`, or build the files as a folder with `--source folder`"
                 )
+            }
+            Problem::SourceGitNetwork { .. } => {
+                write!(out, "the operator of the builder allows it, or the site is built from a folder")
+            }
+            Problem::SourceGitAuth { .. } => {
+                write!(out, "give the builder a credential of that name, or make the repository public")
+            }
+            Problem::SourceGitTransport { .. } => {
+                write!(out, "build the site from a folder or a local repository")
+            }
+            Problem::SourceGitRevision { .. } => {
+                write!(out, "name a branch, tag or commit that the repository holds")
+            }
+            Problem::SourceBudgetObjects { .. } => {
+                write!(out, "fetch a shorter history, or move large generated files out of the repository")
             }
             Problem::SourceRevisionUnknown { .. } => {
                 write!(out, "pass a branch, tag or commit id that exists, or leave out `--rev` to read HEAD")

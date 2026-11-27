@@ -33,6 +33,18 @@ pub enum Unmirrored {
     Capture,
     /// A document of more nodes than a `u32` counts.
     Large,
+    /// A snapshot's version.
+    Version,
+    /// Where a fact came from.
+    Provenance,
+    /// How sure a fact is.
+    Known,
+    /// An ability of a source.
+    Ability,
+    /// How much of an ability was lacking.
+    Gap,
+    /// A refusal of the `git` capability.
+    Fetch,
 }
 
 impl std::fmt::Display for Unmirrored {
@@ -157,6 +169,33 @@ pub enum Malformed {
         /// Why.
         source: Box<Malformed>,
     },
+    /// A git object id or upload id that is no id.
+    Version {
+        /// Why.
+        source: model::VersionError,
+    },
+    /// An instant outside what the model counts.
+    Instant {
+        /// Whole seconds since the epoch, as given.
+        seconds: i64,
+        /// The nanoseconds past them, as given.
+        nanos: u32,
+    },
+    /// Entries and facts that make no snapshot.
+    Snapshot {
+        /// Why.
+        source: model::SnapshotError,
+    },
+    /// An address that is no locator.
+    Locator {
+        /// Why.
+        source: model::git::LocatorError,
+    },
+    /// A revision or credential name that is none.
+    Name {
+        /// Why.
+        source: model::git::NameError,
+    },
 }
 
 impl std::fmt::Display for Malformed {
@@ -182,6 +221,11 @@ impl std::fmt::Display for Malformed {
             Self::Site { .. } => out.write_str("the parts make no site"),
             Self::Runs => out.write_str("the runs do not cover the code"),
             Self::File { .. } => out.write_str("a theme's file is not one the model accepts"),
+            Self::Version { .. } => out.write_str("a version holds an id that is no id"),
+            Self::Instant { seconds, nanos } => write!(out, "{seconds} s and {nanos} ns is no instant"),
+            Self::Snapshot { .. } => out.write_str("the entries and facts make no snapshot"),
+            Self::Locator { .. } => out.write_str("the address is no repository locator"),
+            Self::Name { .. } => out.write_str("a revision or credential name is not one the model accepts"),
         }
     }
 }
@@ -201,7 +245,12 @@ impl std::error::Error for Malformed {
             Self::Coded { source } => Some(source),
             Self::Site { source } => Some(source),
             Self::File { source } => Some(source.as_ref()),
-            Self::Hash { .. }
+            Self::Version { source } => Some(source),
+            Self::Snapshot { source } => Some(source),
+            Self::Locator { source } => Some(source),
+            Self::Name { source } => Some(source),
+            Self::Instant { .. }
+            | Self::Hash { .. }
             | Self::Span { .. }
             | Self::Chain
             | Self::Child { .. }

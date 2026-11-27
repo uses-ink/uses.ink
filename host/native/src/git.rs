@@ -111,6 +111,13 @@ impl Repository {
         Ok(Read { snapshot, skipped: walked.skipped, pointers: walked.pointers })
     }
 
+    /// The commit the revision names, without reading its tree or history.
+    pub(crate) fn tip(&self) -> Result<Oid, Refused> {
+        let repo = self.open()?;
+        let commit = self.commit(&repo)?;
+        Id(commit.id).try_into()
+    }
+
     /// Opens the repository at `root` and no other: no search upwards, and no configuration but
     /// its own, so the user's and the system's settings change nothing.
     fn open(&self) -> Result<gix::Repository, Refused> {

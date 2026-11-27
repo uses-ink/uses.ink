@@ -344,6 +344,40 @@ pub enum Problem {
         /// Why, as the part that refused it says.
         reason: String,
     },
+    /// `source.git.network`: this builder does not fetch {scheme} repositories: its network access is {policy}
+    #[serde(rename = "source.git.network")]
+    SourceGitNetwork {
+        /// The kind of address, as written before `://`.
+        scheme: String,
+        /// What the builder allows, as its setting is named.
+        policy: String,
+    },
+    /// `source.git.auth`: the repository is fetched with the credential `{grant}`, which this builder does not hold
+    #[serde(rename = "source.git.auth")]
+    SourceGitAuth {
+        /// The name of the credential, never its value.
+        grant: String,
+    },
+    /// `source.git.transport`: this builder has no way to fetch {scheme} repositories yet
+    #[serde(rename = "source.git.transport")]
+    SourceGitTransport {
+        /// The kind of address, as written before `://`.
+        scheme: String,
+    },
+    /// `source.git.revision`: `{written}` names no branch, tag or commit of the fetched repository
+    #[serde(rename = "source.git.revision")]
+    SourceGitRevision {
+        /// The text, as written.
+        written: String,
+    },
+    /// `source.budget.objects`: the source holds {count} git objects; a site may hold {limit}
+    #[serde(rename = "source.budget.objects")]
+    SourceBudgetObjects {
+        /// How many there are.
+        count: u64,
+        /// The most that is allowed.
+        limit: u64,
+    },
     /// `source.revision.unknown`: `{written}` names no commit of the repository: {reason}
     #[serde(rename = "source.revision.unknown")]
     SourceRevisionUnknown {
@@ -542,6 +576,11 @@ impl Problem {
         "source.blob.unwritable",
         "source.budget.folders",
         "source.repository.unreadable",
+        "source.git.network",
+        "source.git.auth",
+        "source.git.transport",
+        "source.git.revision",
+        "source.budget.objects",
         "source.revision.unknown",
         "source.link.broken",
         "math.syntax.invalid",
@@ -614,6 +653,11 @@ impl Problem {
             Self::SourceBlobUnwritable { .. } => "source.blob.unwritable",
             Self::SourceBudgetFolders { .. } => "source.budget.folders",
             Self::SourceRepositoryUnreadable { .. } => "source.repository.unreadable",
+            Self::SourceGitNetwork { .. } => "source.git.network",
+            Self::SourceGitAuth { .. } => "source.git.auth",
+            Self::SourceGitTransport { .. } => "source.git.transport",
+            Self::SourceGitRevision { .. } => "source.git.revision",
+            Self::SourceBudgetObjects { .. } => "source.budget.objects",
             Self::SourceRevisionUnknown { .. } => "source.revision.unknown",
             Self::SourceLinkBroken { .. } => "source.link.broken",
             Self::MathSyntaxInvalid { .. } => "math.syntax.invalid",
@@ -687,6 +731,11 @@ impl Problem {
             Self::SourceBlobUnwritable { .. } => Severity::Error,
             Self::SourceBudgetFolders { .. } => Severity::Error,
             Self::SourceRepositoryUnreadable { .. } => Severity::Error,
+            Self::SourceGitNetwork { .. } => Severity::Error,
+            Self::SourceGitAuth { .. } => Severity::Error,
+            Self::SourceGitTransport { .. } => Severity::Error,
+            Self::SourceGitRevision { .. } => Severity::Error,
+            Self::SourceBudgetObjects { .. } => Severity::Error,
             Self::SourceRevisionUnknown { .. } => Severity::Error,
             Self::SourceLinkBroken { .. } => Severity::Error,
             Self::MathSyntaxInvalid { .. } => Severity::Warning,
@@ -760,6 +809,11 @@ impl Problem {
             Self::SourceBlobUnwritable { .. } => Fault::Operator,
             Self::SourceBudgetFolders { .. } => Fault::Author,
             Self::SourceRepositoryUnreadable { .. } => Fault::Source,
+            Self::SourceGitNetwork { .. } => Fault::Operator,
+            Self::SourceGitAuth { .. } => Fault::Source,
+            Self::SourceGitTransport { .. } => Fault::Ours,
+            Self::SourceGitRevision { .. } => Fault::Author,
+            Self::SourceBudgetObjects { .. } => Fault::Author,
             Self::SourceRevisionUnknown { .. } => Fault::Author,
             Self::SourceLinkBroken { .. } => Fault::Author,
             Self::MathSyntaxInvalid { .. } => Fault::Author,
@@ -1262,6 +1316,19 @@ impl From<&Problem> for Coded {
             Problem::SourceRepositoryUnreadable { reason, .. } => {
                 Coded::new("source.repository.unreadable", vec![Field::from(reason.clone())])
             }
+            Problem::SourceGitNetwork { scheme, policy, .. } => {
+                Coded::new("source.git.network", vec![Field::from(scheme.clone()), Field::from(policy.clone())])
+            }
+            Problem::SourceGitAuth { grant, .. } => Coded::new("source.git.auth", vec![Field::from(grant.clone())]),
+            Problem::SourceGitTransport { scheme, .. } => {
+                Coded::new("source.git.transport", vec![Field::from(scheme.clone())])
+            }
+            Problem::SourceGitRevision { written, .. } => {
+                Coded::new("source.git.revision", vec![Field::from(written.clone())])
+            }
+            Problem::SourceBudgetObjects { count, limit, .. } => {
+                Coded::new("source.budget.objects", vec![Field::from(*count), Field::from(*limit)])
+            }
             Problem::SourceRevisionUnknown { written, reason, .. } => {
                 Coded::new("source.revision.unknown", vec![Field::from(written.clone()), Field::from(reason.clone())])
             }
@@ -1385,6 +1452,11 @@ impl TryFrom<Coded> for Problem {
             "source.blob.unwritable" => Self::SourceBlobUnwritable { reason: fields.next()? },
             "source.budget.folders" => Self::SourceBudgetFolders { limit: fields.next()? },
             "source.repository.unreadable" => Self::SourceRepositoryUnreadable { reason: fields.next()? },
+            "source.git.network" => Self::SourceGitNetwork { scheme: fields.next()?, policy: fields.next()? },
+            "source.git.auth" => Self::SourceGitAuth { grant: fields.next()? },
+            "source.git.transport" => Self::SourceGitTransport { scheme: fields.next()? },
+            "source.git.revision" => Self::SourceGitRevision { written: fields.next()? },
+            "source.budget.objects" => Self::SourceBudgetObjects { count: fields.next()?, limit: fields.next()? },
             "source.revision.unknown" => {
                 Self::SourceRevisionUnknown { written: fields.next()?, reason: fields.next()? }
             }

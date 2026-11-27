@@ -1,6 +1,6 @@
 // Text and bytes from the WIT, read as the model's validated types. Part of `wit/mirror`.
 
-use model::{Anchor, AnyCode, ContentPath, ExternalUrl, FootnoteName, Hash, Language, Route, Slug, Tag, When};
+use model::{Anchor, AnyCode, ContentPath, ExternalUrl, FootnoteName, Hash, Language, Oid, Route, Slug, Tag, When};
 
 use super::refusal::Malformed;
 
@@ -60,6 +60,14 @@ impl TryFrom<Written> for AnyCode {
 
     fn try_from(Written(written): Written) -> Result<Self, Malformed> {
         written.parse().map_err(|source| Malformed::Decision { source })
+    }
+}
+
+impl TryFrom<Written> for Oid {
+    type Error = Malformed;
+
+    fn try_from(Written(written): Written) -> Result<Self, Malformed> {
+        Self::parse(written).map_err(|source| Malformed::Version { source })
     }
 }
 

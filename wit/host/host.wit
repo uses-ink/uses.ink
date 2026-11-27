@@ -138,6 +138,101 @@ interface highlight {
     highlight: func(language: string, code: string) -> result<list<run>, unhighlighted>;
 }
 
+/// Repositories fetched and read by the host (decisions 0036 and 0046). A plugin names a
+/// repository, a revision, a depth and, for a private one, a credential by name; the host holds
+/// the secret, the clone and the network, and a plugin never sees any of them.
+interface git {
+    use ink:model/snapshot@0.1.0.{snapshot, oid, hash};
+
+    /// How much history to fetch.
+    variant depth {
+        /// Every commit; a shallow clone already held is deepened to it.
+        full,
+        /// This many commits from the tip.
+        commits(u32),
+    }
+
+    record request {
+        /// `file:///path` or `https://host/path` (`model::git::Locator`).
+        locator: string,
+        /// A branch, tag or commit; the repository's `HEAD` when none.
+        revision: option<string>,
+        depth: depth,
+        /// The name of a credential the host holds; never its value.
+        grant: option<string>,
+    }
+
+    /// What the host holds after a fetch.
+    record cloned {
+        /// The clone's place in the host's cache.
+        clone: hash,
+        /// The commit the revision names.
+        commit: oid,
+        /// Whether the history is cut short of the root commit.
+        shallow: bool,
+        objects: u64,
+        bytes: u64,
+    }
+
+    enum scheme {
+        file,
+        https,
+    }
+
+    /// What the builder lets a plugin fetch.
+    enum network {
+        off,
+        local,
+        on,
+    }
+
+    variant budget {
+        bytes(limited),
+        objects(counted),
+    }
+
+    record limited {
+        size: u64,
+        limit: u64,
+    }
+
+    record counted {
+        count: u64,
+        limit: u64,
+    }
+
+    variant auth {
+        /// The host holds no credential of that name.
+        absent,
+    }
+
+    record forbidden {
+        scheme: scheme,
+        policy: network,
+    }
+
+    record unauthorised {
+        grant: string,
+        outcome: auth,
+    }
+
+    variant refusal {
+        network(forbidden),
+        auth(unauthorised),
+        budget(budget),
+        /// The revision names nothing the clone holds.
+        revision(string),
+        transport(scheme),
+        /// Anything else; the host has said why through `diagnostic`.
+        failed,
+    }
+
+    /// Fetches the repository into the host's cache, or brings a clone already there to the depth.
+    fetch: func(request: request) -> result<cloned, refusal>;
+    /// The snapshot of a fetched commit, its files stored for the build to read.
+    read: func(cloned: cloned) -> result<snapshot, refusal>;
+}
+
 /// What a plugin finds worth saying while it works; plugins never print.
 interface diagnostic {
     use ink:model/diagnostic@0.1.0.{diagnostic, notice};
@@ -155,7 +250,9 @@ world plugin {
     import text;
     import highlight;
     import diagnostic;
+    import git;
     import ink:model/read@0.1.0;
     import ink:model/site@0.1.0;
     import ink:model/file@0.1.0;
+    import ink:model/snapshot@0.1.0;
 }

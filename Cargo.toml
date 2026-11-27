@@ -42,8 +42,9 @@ clap = { version = "4.6.9", features = ["derive"] }
 # benchmarks only: a dev-dependency of any crate, a normal dependency of none
 divan = "0.1.21"
 comrak = { version = "1.2.0", default-features = false }
-# git sources: rev parse, rev walk, tree diff, threads; no network until `git.fetch` (0036)
-gix = { version = "0.91.0", default-features = false, features = ["pack-cache-lru-dynamic", "parallel", "revision", "sha1"] }
+# git sources: rev parse, rev walk, tree diff, threads; the clients that fetch (`git.fetch`, 0046)
+# are the file transport, which runs the machine's `git upload-pack`: no HTTP transport yet
+gix = { version = "0.91.0", default-features = false, features = ["blocking-network-client", "pack-cache-lru-dynamic", "parallel", "revision", "sha1"] }
 insta = { version = "1.49.0", features = ["glob"] }
 jiff = { version = "1.0.3", default-features = false, features = ["std", "serde"] }
 libm = "0.2.16"
