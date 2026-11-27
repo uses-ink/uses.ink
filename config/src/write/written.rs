@@ -7,7 +7,7 @@ use jiff::{civil, tz};
 use model::When;
 use toml_edit::{Array, Date, Datetime, Offset, Time, Value};
 
-use super::Unwritable;
+use super::{LAST_YEAR, Unwritable};
 
 /// A TOML value.
 #[derive(Clone, Debug)]
@@ -35,12 +35,13 @@ impl FromIterator<Written> for Written {
 impl TryFrom<When> for Written {
     type Error = Unwritable;
 
-    /// A day as a local date, an instant as a date and time in UTC. TOML writes years 0 to 9999.
+    /// A day as a local date, an instant as a date and time in UTC. TOML writes years 0 to
+    /// [`LAST_YEAR`].
     fn try_from(at: When) -> Result<Self, Self::Error> {
         let year = || Unwritable::Year(at);
         let date = |day: civil::Date| {
             Some(Date {
-                year: u16::try_from(day.year()).ok().filter(|year| *year <= 9999)?,
+                year: u16::try_from(day.year()).ok().filter(|year| *year <= LAST_YEAR)?,
                 month: u8::try_from(day.month()).ok()?,
                 day: u8::try_from(day.day()).ok()?,
             })

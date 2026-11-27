@@ -20,6 +20,9 @@ use crate::Offsets;
 use crate::pin::{KeyPath, Place};
 use crate::value::Toml;
 
+/// The last year a TOML date can be written with: the years 0 to 9999 have four digits.
+const LAST_YEAR: u16 = 9999;
+
 impl fmt::Display for KeyPath<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (index, segment) in self.0.iter().enumerate() {
@@ -229,7 +232,7 @@ pub enum Unwritable {
 impl fmt::Display for Unwritable {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Year(at) => write!(out, "{at} is outside the years TOML writes, 0 to 9999"),
+            Self::Year(at) => write!(out, "{at} is outside the years TOML writes, 0 to {LAST_YEAR}"),
             Self::Unknown => write!(out, "this version of uses.ink has no spelling for the value"),
         }
     }
