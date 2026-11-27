@@ -216,6 +216,20 @@ impl Order {
                 "uses-ink-secret-local",
             ],
         ),
+        // The dashboard (decision 0053): typed views of the control plane's values, rendered with
+        // `unspliced`; it knows no HTTP server and no adapter, the edge mounts it.
+        (
+            "uses-ink-web",
+            &[
+                "freehand",
+                "uses-ink-build",
+                "uses-ink-control",
+                "uses-ink-diag",
+                "uses-ink-engine",
+                "uses-ink-model",
+                "uses-ink-token",
+            ],
+        ),
         (TASKS, &["freehand", "uses-ink-token"]),
         (FARM, &[]),
         (Self::FIXTURE, &[]),

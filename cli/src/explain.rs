@@ -9,7 +9,7 @@ use engine::{Heard, Rung, Standing, Trace};
 use model::{Ability, AnyDecision, ContentPath, Gap, Lack, Observed, Subject, Version};
 use serde::Serialize;
 
-use diag::{Because, Short, Value};
+use diag::{Because, Pin, Short, Value};
 
 use crate::args::Explain;
 use crate::asked::Asked;
@@ -158,10 +158,7 @@ struct Hint<'a>(&'a Asked);
 
 impl fmt::Display for Hint<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0.subject {
-            Subject::File(path) => write!(out, "to pin it: ink pin {path} {}", self.0.code),
-            _ => write!(out, "to pin it: ink pin {}", self.0.code),
-        }
+        write!(out, "to pin it: {}", Pin(&self.0.code, &self.0.subject))
     }
 }
 

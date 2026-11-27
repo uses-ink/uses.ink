@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use model::{AnyDecision, Evidence, Oid, Provenance};
+use model::{AnyCode, AnyDecision, Evidence, Oid, Provenance, Subject};
 
 /// A decision's value, as its code words it.
 #[derive(Clone, Copy, Debug)]
@@ -48,5 +48,19 @@ pub struct Short<'a>(pub &'a Oid);
 impl fmt::Display for Short<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         out.write_str(self.0.as_str().get(..12).unwrap_or(self.0.as_str()))
+    }
+}
+
+/// The command that pins a decision: `ink pin posts/x.md page.title`, or `ink pin site.home` for
+/// the site's own.
+#[derive(Clone, Copy, Debug)]
+pub struct Pin<'a>(pub &'a AnyCode, pub &'a Subject);
+
+impl fmt::Display for Pin<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.1 {
+            Subject::File(path) => write!(out, "ink pin {path} {}", self.0),
+            _ => write!(out, "ink pin {}", self.0),
+        }
     }
 }

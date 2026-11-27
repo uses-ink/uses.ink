@@ -15,7 +15,7 @@ mod generated;
 mod plain;
 mod terminal;
 
-pub use evidence::{Because, Short, Value};
+pub use evidence::{Because, Pin, Short, Value};
 pub use plain::Plain;
 pub use terminal::Terminal;
 

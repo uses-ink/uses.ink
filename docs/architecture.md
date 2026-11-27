@@ -465,10 +465,13 @@ infrastructure and route names, tombstones on rename and delete.
 8: Site, What we understood, Deploys, Settings, Account. It writes nothing to the author's source
 and holds no interpretation settings; those live in `ink.toml`. Live build logs are a streamed
 page: the dashboard writes the page head, then each log line as the build's Durable Object (or
-the local builder) emits it, then the tail (`unspliced::Split`). Stack (0032): an axum router served by workers-rs hosted and by `ink serve`;
-HTML, SVG and CSS from `unspliced`; behaviour is native HTML, forms and view transitions, so
-there is no hand-written or generated JS except the pen's loader (`freehand-web/freehand.js`, 0034);
-colours and sizes from `token/`; the pen as a wasm module.
+the local builder) emits it, then the tail (`unspliced::Split`). Stack (0032, 0053): the `web` crate renders typed view models with `unspliced` and knows no
+HTTP server; the edge (an axum router served by workers-rs hosted and by `ink serve`) mounts it
+through the `Screens` trait. Behaviour is native HTML: forms answered by a redirect, `<details>`,
+`<meta http-equiv="refresh">` while a build runs, and a streamed page for the live log, so there
+is no hand-written or generated JS (the landing's pen loader, `freehand-web/freehand.js`, 0034,
+is the one exception); colours and sizes from `token/`; the dashboard's marks are drawn at render
+time by `freehand`, the landing's by the pen as a wasm module.
 
 **Landing** at `uses.ink`: from `.impeccable/mocks/doodle/index.html`, served by the same web
 crate.

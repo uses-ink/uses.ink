@@ -1,0 +1,27 @@
+[package]
+name = "uses-ink-web"
+description = "The dashboard: typed view models and pure rendering to HTML, SVG and CSS with unspliced, and the trait the edge mounts it through"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+build.workspace = true
+control.workspace = true
+diag.workspace = true
+engine.workspace = true
+freehand.workspace = true
+jiff.workspace = true
+model.workspace = true
+token.workspace = true
+unspliced.workspace = true
+
+[dev-dependencies]
+fixture.workspace = true
+pollster.workspace = true
+
+[lints]
+workspace = true

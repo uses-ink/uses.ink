@@ -195,7 +195,10 @@ ports. Not run by `ink serve`: the watch (no remote adapter for `Heads` yet) and
   redirect and variant entries in the manifest.
 - `web`: dashboard (Site, What we understood, Deploys, Settings, Account) on the chosen stack,
   pen through wasm, live build log as a streamed page **(owner: dashboard stack, after the frontend
-  research)**.
+  research)**. **Built (0053):** `web` renders the five screens, the replay of one decision, the
+  build log (streamed while it runs) and every failure from typed view models with `unspliced`,
+  goldens and structure checks; the edge mounts it through `Screens`. Open: the edge's mounting,
+  previews and the decisions diff, domains and identities, the pen's wasm loader.
 - Sign-in for self-host: email magic link over SMTP, plus a first-run admin link printed once.
 - `ink push` and `ink:source-upload`; `ink status`, `watch`, `deploys`, `rollback`, `resume`,
   `export`.

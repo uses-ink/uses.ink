@@ -21,7 +21,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ContentPath, Hash, Route};
+use crate::{ContentPath, Hash, HashError, Route};
 
 mod header;
 
@@ -39,6 +39,15 @@ impl DeployId {
     /// The hash of the manifest's canonical bytes.
     pub const fn hash(self) -> Hash {
         self.0
+    }
+}
+
+impl std::str::FromStr for DeployId {
+    type Err = HashError;
+
+    /// A deploy id as it is written: its manifest's hash in 64 lower-case hex digits.
+    fn from_str(text: &str) -> Result<Self, HashError> {
+        text.parse().map(Self)
     }
 }
 
