@@ -650,7 +650,7 @@ Kept as is: `Code`, `codes!`, `AnyDecision`, `AnyOf`, `Family`, `Each`, `Typed`,
 
 > ## 0042 Decisions carry one evidence; changes carry a cause; inference rules are versioned
 >
-> Proposed. A decision is its value and the evidence that chose it; rejected alternatives leave
+> Accepted as 0042 (see decisions.md for the owner's answers). A decision is its value and the evidence that chose it; rejected alternatives leave
 > the model, and `ink explain --why` replays a ladder on request, rung by rung. Every build is
 > compared with a baseline (the live deploy hosted, the previous `ink build` locally) and reports
 > a change set in which each change has a typed cause (content, config, rules, plugin, ability,
@@ -669,6 +669,8 @@ Kept as is: `Code`, `codes!`, `AnyDecision`, `AnyOf`, `Family`, `Each`, `Typed`,
 > source states none) and the M1 exit criteria.
 
 ## 9. Questions for the owner
+
+Answered in 0042; the defaults below were the proposal's.
 
 | # | Question | Default |
 |---|---|---|

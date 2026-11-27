@@ -367,3 +367,33 @@ reuses it across builds when it lands. **Why:** layout stability and small pages
 no metadata leaks, no C. **Reversal:** encode time on hosted builders (a 4000 by 3000 photo
 costs about 2 s of one core) pushes builds past their budget: a slower AVIF speed only behind
 the cache, or fewer widths.
+
+## 0042 Decisions carry one evidence; changes carry a cause; inference rules are versioned
+
+Accepted, owner (`research/inference.md`). A decision is its value and the evidence that chose
+it; rejected alternatives leave the model, and `ink explain --why <path> <code>` replays one
+ladder on request, rung by rung, including the rungs that found nothing. Every build is compared
+with a baseline (the live deploy hosted; locally the previous `ink build`, whose output folder
+keeps a decision record beside the manifest so causes can be told apart) and reports a change
+set in which each change has a typed cause: content, config, rules, plugin, ability or engine.
+Newly public routes head every change set, and a private source refuses any publication that no
+stated selection made. Inference rules have a version, decided as `site.rules`: a pin, else the
+baseline's, else the latest. A newer ink never changes a site's decisions on its own: what its
+rules would change is shown as pending until `ink update` or a dashboard action accepts it.
+`ink explain --pin` is removed; `ink pin <path> <code>` writes one pin. The owner's answers:
+a deploy may hold the rules version when the source states none, labelled as held outside the
+source (E1, refines 0018); old rules are kept for two rule versions or twelve months, whichever
+is longer (E2); bundled theme updates go live without acceptance and are listed in the change
+set (E3); the first hosted deploy suggests committing `rules = n` as a notice and never writes
+it (E4); a change attributed to the engine is a warning locally and holds a hosted deploy (E5).
+Built in two steps: one evidence, `--why`, the change set, the newly public guard and `ink pin`
+in M2; versioned rules and amendments before hosting, in M4. **Why:** the jobs that cannot be
+undone (a page made public, a site moved by our upgrade) are questions about change between
+builds, which per-value evidence cannot answer; locking rules instead of values keeps content
+free and needs no commit, so vaults and uploads are covered; the baseline is state already kept
+for rollback. **Reversal:** amendments are needed more than about once a quarter, or replaying
+interpret under two rules costs more than 10% of build time on the largest fixture: drop pending
+replays and keep a published rules changelog with the change set alone. Refines 0011 (bounds
+stay facts), 0018 and the M1 exit criteria ("pin reproduces the deploy" is dropped: it tested
+that pins freeze content).
+

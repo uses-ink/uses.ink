@@ -61,8 +61,9 @@ The engine, end to end, on the local disk.
 - CLI: `ink build <dir> -o <out>`, `ink check`, `ink explain [--pin] [path]`, `ink preview`.
 - Site fixtures: blog, flat README repo, docs folder, broken frontmatter, ambiguous links.
 
-**Exit:** `ink build` on every fixture twice gives identical deploy hashes; `ink explain --pin`
-output, put back as `ink.toml`, reproduces the same deploy; no JS in any reader page.
+**Exit:** `ink build` on every fixture twice gives identical deploy hashes; no JS in any reader
+page. ("`ink explain --pin` output reproduces the deploy" was dropped by 0042: it tested that
+pins freeze content.)
 
 Progress (2026-11-26): `model`, `config`, `diag`, the engine and `ink:format-markdown` run natively;
 `host/native` reads a folder into a snapshot (budgets, link refusals, mtimes as bounds), stores
@@ -95,6 +96,10 @@ words, `cargo xtask check` enforcing both, and the M1 exit criteria still green.
 ## M2: Vaults, git, images
 
 The two real audiences, locally.
+
+- Decisions per 0042, first step: one evidence per decision, `ink explain --why`, a change set
+  against the previous build with typed causes, newly public routes first, the private-source
+  guard, `ink pin`.
 
 - `ink:format-obsidian`: wikilinks, embeds, transclusion, callouts, block ids, aliases, tags,
   attachment folder from `.obsidian/`.
@@ -132,6 +137,8 @@ The whole product on one machine.
 the update, roll back, export, delete: every step with no flags and every default printed.
 
 ## M4: Hosted
+
+- Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`.
 
 The same product on Cloudflare.
 
