@@ -11,11 +11,11 @@ use sig::{Fingerprint, KeyId, KeyType, PublicKey};
 
 use super::key::{Kind, Label};
 use super::right::Rights;
-use control_rows::unreadable::Unreadable;
 use control_rows::fields::Fields;
 use control_rows::id::{Enrolment as EnrolmentKind, Id, Site as SiteKind};
-use control_signin::Ttl;
 use control_rows::table;
+use control_rows::unreadable::Unreadable;
+use control_signin::Ttl;
 
 /// The short code a person types on the approving screen: 8 letters from a 20-letter alphabet
 /// without vowels or lookalikes, about 34 bits, shown `HRKM-QWPD`. It is not secret-grade and is

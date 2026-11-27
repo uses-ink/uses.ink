@@ -6,13 +6,13 @@ use db::{Migration, Statement};
 use sea_query::{ColumnDef, Expr, ExprTrait, ForeignKey, IdenStatic, Index, Table};
 
 use crate::credential::Use;
-use crate::typed::Typed;
 use crate::deploy::Cause;
 use crate::job::{State as JobState, Stored as Trigger};
 use crate::site::{State as SiteState, Stored as SourceKind};
 use crate::table::{
     Account, Allowed, Bundle, Credential, Deploy, Event, Job, Live, Named, Publication, Seen, Site, Source, Tombstone,
 };
+use crate::typed::Typed;
 
 /// The migration that makes the control plane's tables.
 #[derive(Clone, Copy, Debug)]

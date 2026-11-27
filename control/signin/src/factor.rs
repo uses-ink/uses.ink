@@ -4,10 +4,10 @@ use db::Row;
 use jiff::Timestamp;
 use mail::Address;
 
-use control_rows::unreadable::Unreadable;
 use control_rows::fields::Fields;
 use control_rows::id::{Account as AccountKind, Factor as Kind, Id, Site as SiteKind};
 use control_rows::table;
+use control_rows::unreadable::Unreadable;
 
 /// A way to sign in, as the account has it (decision 0068, `docs/auth.md` section 2). Nothing
 /// that matches on a credential should assume the list is closed, and nothing here holds a

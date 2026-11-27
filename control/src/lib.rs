@@ -34,8 +34,8 @@ mod site;
 
 pub use control_keys as keys;
 pub use control_rows::table;
-pub use control_signin as signin;
 pub(crate) use control_rows::{fields, id, typed, unreadable};
+pub use control_signin as signin;
 
 pub use account::{Account, New as NewAccount};
 pub use case::export::{Exported, Sink, Summary};

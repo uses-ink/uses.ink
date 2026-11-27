@@ -10,12 +10,12 @@ use jiff::tz::Offset;
 use sea_query::{Expr, ExprTrait, OnConflict, Order, Query};
 
 use super::{Audit, CredentialId, Enrolled, Error, Refused, State, Transport, Verified};
-use crate::unreadable::Unreadable;
 use crate::fields::Fields;
 use crate::id::{Account as AccountKind, Factor as FactorKind, Id};
 use crate::keys::Label;
 use crate::signin::{Context, Proof};
 use crate::table;
+use crate::unreadable::Unreadable;
 
 /// What a ceremony is for. A registration's reply cannot complete a sign-in, and the reverse.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

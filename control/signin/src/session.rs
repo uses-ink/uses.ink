@@ -4,10 +4,10 @@ use db::Row;
 use jiff::Timestamp;
 
 use super::Ends;
-use control_rows::unreadable::Unreadable;
 use control_rows::fields::Fields;
 use control_rows::id::{Account as AccountKind, Id, Session as Kind};
 use control_rows::table;
+use control_rows::unreadable::Unreadable;
 
 /// A signed-in session. Its secret is not here: only the person who was given it has the
 /// secret, and the database has a digest of it.

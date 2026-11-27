@@ -12,8 +12,8 @@ use super::error::{Error, Refused};
 use super::key::{Key, Kind, Why};
 use super::right::{Rights, Scope};
 use control_rows::id::{Account as AccountKind, Enrolment as EnrolmentKind, Id};
-use control_signin::Ttl;
 use control_rows::table;
+use control_signin::Ttl;
 
 /// What the operator decides about keys: how long each lives, the ceiling for a request, how
 /// long an ask waits for a person, and how long a finished ask is kept for its poll.

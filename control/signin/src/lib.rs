@@ -27,10 +27,10 @@ mod ttl;
 
 pub use audit::Audit;
 pub use challenge::{Entered, Issued, Pending, Presented, Purpose, Requested};
+pub use control_rows::{Digest, NotDigest};
 pub use error::{Error, Refused};
 pub use factor::{Credential, Factor, Sort};
 pub use migration::Entry;
-pub use control_rows::{Digest, NotDigest};
 pub use proof::{Context, Drawn, Proof, ProofError};
 pub use session::{Passed, Session};
 pub use settings::{Ends, Expiry, Settings, Signup, UnknownSignup};

@@ -6430,7 +6430,6 @@ dependencies = [
 name = "uses-ink-control"
 version = "0.0.0"
 dependencies = [
- "blake3",
  "jiff 1.0.3",
  "pollster",
  "sea-query",

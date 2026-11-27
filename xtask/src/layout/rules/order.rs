@@ -231,10 +231,7 @@ impl Order {
         ("uses-ink-secret-local", &["uses-ink-secret", "uses-ink-secret-conformance", "uses-ink-trace"]),
         // The floor the control plane's tables share (decision 0074): the database port, the model,
         // and the address and key types a stored column reads back as.
-        (
-            "uses-ink-control-rows",
-            &["uses-ink-blob", "uses-ink-db", "uses-ink-mail", "uses-ink-model", "uses-ink-sig"],
-        ),
+        ("uses-ink-control-rows", &["uses-ink-blob", "uses-ink-db", "uses-ink-mail", "uses-ink-model", "uses-ink-sig"]),
         // Signing in (decision 0066) over the row port alone: the rows' floor, the mail port for
         // links, the secret type a proof is held as, and the key type a credential names.
         (
@@ -243,10 +240,7 @@ impl Order {
         ),
         // Keys for machines (decision 0068): the rows' floor, the sign-in's lifetimes and credentials, and
         // the signed-request profile's key types.
-        (
-            "uses-ink-control-keys",
-            &["uses-ink-control-rows", "uses-ink-control-signin", "uses-ink-db", "uses-ink-sig"],
-        ),
+        ("uses-ink-control-keys", &["uses-ink-control-rows", "uses-ink-control-signin", "uses-ink-db", "uses-ink-sig"]),
         // The use cases know the ports; the adapters are what its tests run against.
         (
             "uses-ink-control",
