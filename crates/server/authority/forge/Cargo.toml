@@ -1,0 +1,22 @@
+[package]
+name = "uses-ink-authority-forge"
+description = "What the git-forge authorities share: typed repositories and pushes, webhook intake with a replay window, redacted secrets, and the Transport port with a fake"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+build.workspace = true
+jiff.workspace = true
+ring.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+subtle.workspace = true
+url.workspace = true
+zeroize.workspace = true
+
+[lints]
+workspace = true

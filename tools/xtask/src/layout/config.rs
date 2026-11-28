@@ -275,12 +275,16 @@ mod tests {
     use super::*;
 
     /// Every crate the rule list held in code before it became data, sorted.
-    const ENFORCED: [&str; 60] = [
+    const ENFORCED: [&str; 64] = [
         "farm",
         "freehand",
         "freehand-web",
         "uses-ink-authority-dns",
         "uses-ink-authority-email",
+        "uses-ink-authority-forge",
+        "uses-ink-authority-forgejo",
+        "uses-ink-authority-github",
+        "uses-ink-authority-gitlab",
         "uses-ink-blob",
         "uses-ink-blob-conformance",
         "uses-ink-blob-dir",
@@ -398,7 +402,7 @@ mod tests {
         assert_eq!(config.decisions.home, "../history/review-fixes.md");
         let reserved: Vec<u16> = config.decisions.reserved.iter().map(|r| r.number.get()).collect();
         assert_eq!(reserved, [58, 60]);
-        assert_eq!(config.decisions.gap.len(), 7);
+        assert_eq!(config.decisions.gap.len(), 9);
         assert!(config.docs.planned.iter().any(|word| word == "planned"));
         assert!(config.docs.future.iter().any(|entry| entry.path == "docs/layout.md"), "the layout plan is waived");
         assert_eq!(config.docs.quoted.len(), 1);

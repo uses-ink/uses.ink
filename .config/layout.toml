@@ -11,6 +11,10 @@ crates = [
     "freehand-web",
     "uses-ink-authority-dns",
     "uses-ink-authority-email",
+    "uses-ink-authority-forge",
+    "uses-ink-authority-forgejo",
+    "uses-ink-authority-github",
+    "uses-ink-authority-gitlab",
     "uses-ink-blob",
     "uses-ink-blob-conformance",
     "uses-ink-blob-dir",
@@ -302,9 +306,19 @@ last = "0073"
 reason = "never written: absent from decisions.md when it was split"
 
 [[decisions.gap]]
-first = "0096"
+first = "0099"
 last = "0099"
 reason = "kept for the hosted work that runs beside the control-plane wiring"
+
+[[decisions.gap]]
+first = "0106"
+last = "0109"
+reason = "kept for decisions in flight on other branches when the forge authorities took 0110"
+
+[[decisions.gap]]
+first = "0114"
+last = "0119"
+reason = "kept for decisions in flight on other branches; the docs site took 0120"
 
 # The docs checks. A block of prose with a word of `planned` (any case) names what is not built,
 # so the paths in it need not exist.

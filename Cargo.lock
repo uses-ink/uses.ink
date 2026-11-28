@@ -6374,6 +6374,59 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-authority-forge"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "ring",
+ "serde",
+ "serde_json",
+ "subtle",
+ "url",
+ "uses-ink-build",
+ "zeroize",
+]
+
+[[package]]
+name = "uses-ink-authority-forgejo"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "pollster",
+ "serde",
+ "serde_json",
+ "toml",
+ "uses-ink-authority-forge",
+]
+
+[[package]]
+name = "uses-ink-authority-github"
+version = "0.0.0"
+dependencies = [
+ "base64 0.23.1",
+ "jiff 1.0.3",
+ "pollster",
+ "ring",
+ "serde",
+ "serde_json",
+ "uses-ink-authority-forge",
+ "uses-ink-build",
+ "zeroize",
+]
+
+[[package]]
+name = "uses-ink-authority-gitlab"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "pollster",
+ "serde",
+ "serde_json",
+ "url",
+ "uses-ink-authority-forge",
+]
+
+[[package]]
 name = "uses-ink-blob"
 version = "0.0.0"
 dependencies = [

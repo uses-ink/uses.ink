@@ -246,6 +246,13 @@ impl Order {
         // Keys for machines (decision 0068): the rows' floor, the sign-in's lifetimes and credentials, and
         // the signed-request profile's key types.
         ("uses-ink-control-keys", &["uses-ink-control-rows", "uses-ink-control-signin", "uses-ink-db", "uses-ink-sig"]),
+        // The git-forge authorities (decisions 0110 to 0113): what they share is its own crate, over the
+        // build port's branch and revision types alone; each forge's crate adds the forge's spelling.
+        // None knows the control plane: they return typed facts and the edge binds them.
+        ("uses-ink-authority-forge", &["uses-ink-build"]),
+        ("uses-ink-authority-github", &["uses-ink-authority-forge", "uses-ink-build"]),
+        ("uses-ink-authority-forgejo", &["uses-ink-authority-forge"]),
+        ("uses-ink-authority-gitlab", &["uses-ink-authority-forge"]),
         // The DNS authority (decision 0093): the control plane's use cases and the adapters its
         // tests run them on; the resolver port is its own.
         (

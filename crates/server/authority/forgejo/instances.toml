@@ -1,0 +1,12 @@
+# The Forgejo instances this server talks to, read once at start (`Instances::bundled`).
+#
+# An instance is here because an operator listed it, never because a stranger named it: a call to a
+# host a user types would be a request the server sends for them. Codeberg is the one that ships.
+# `preregistered` says the project's OAuth application is registered there; its client id is a
+# deployment secret, not this file's.
+
+[[instance]]
+name = "Codeberg"
+host = "codeberg.org"
+primary = true
+preregistered = true
