@@ -205,7 +205,9 @@ impl Server {
         let started = Instant::now();
         loop {
             let got = self.once((method, target), headers, body);
-            if !got.text.contains("auth.server.restarting") || started.elapsed() > Self::PATIENCE {
+            // a read that gets no bytes at all (a connection a busy host dropped) is asked again
+            let dropped = got.text.is_empty() && method.eq_ignore_ascii_case("get");
+            if !(dropped || got.text.contains("auth.server.restarting")) || started.elapsed() > Self::PATIENCE {
                 return got;
             }
             std::thread::sleep(Duration::from_millis(250));
