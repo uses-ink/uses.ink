@@ -36,6 +36,8 @@ pub(crate) struct Page<'p, P> {
 impl<'p, P: Paint> Page<'p, P> {
     /// How far a row is indented.
     const INDENT: usize = 2;
+    /// How far a wide row's second column hangs under its first.
+    const HANG: usize = 4;
 
     /// An empty page that wraps at `width` columns.
     pub(crate) const fn new(paint: &'p P, width: usize) -> Self {
@@ -85,16 +87,30 @@ impl<'p, P: Paint> Page<'p, P> {
         self.rows(rows);
     }
 
-    /// `rows` in two columns, under whatever came before.
+    /// `rows` in two columns, under whatever came before. A row whose first column is wider than
+    /// half the page does not set the column: its second is written below it, indented, so one
+    /// long example does not squeeze every other row's text into a sliver.
     pub(crate) fn rows(&mut self, rows: &[Row]) {
-        let column = rows.iter().map(|row| row.left.chars().count()).max().unwrap_or(0) + 2;
+        let half = self.width / 2;
+        let wide = |row: &Row| row.left.chars().count() + 2 > half;
+        let column = rows.iter().filter(|row| !wide(row)).map(|row| row.left.chars().count()).max().unwrap_or(0) + 2;
         let room = self.width.saturating_sub(Self::INDENT + column).max(20);
         for row in rows {
             let left = if row.typed { self.paint.paint(Face::Literal, &row.left) } else { row.left.clone() };
-            let pad = column.saturating_sub(row.left.chars().count());
-            let mut lines = Wrap::new(room).lines(&row.right).into_iter();
             self.text.push_str(&" ".repeat(Self::INDENT));
             self.text.push_str(&left);
+            if wide(row) {
+                self.text.push('\n');
+                let below = Self::INDENT + Self::HANG;
+                for line in Wrap::new(self.width.saturating_sub(below).max(20)).lines(&row.right) {
+                    self.text.push_str(&" ".repeat(below));
+                    self.text.push_str(&line);
+                    self.text.push('\n');
+                }
+                continue;
+            }
+            let pad = column.saturating_sub(row.left.chars().count());
+            let mut lines = Wrap::new(room).lines(&row.right).into_iter();
             if let Some(first) = lines.next() {
                 self.text.push_str(&" ".repeat(pad));
                 self.text.push_str(&first);

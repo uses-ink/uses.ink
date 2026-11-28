@@ -215,7 +215,7 @@ const ENTRIES: &[Entry] = &[
         ..Entry::built("preview", Group::Write, "Build in memory and serve it on 127.0.0.1 while you write")
     },
     Entry {
-        detail: "Unlike preview, this serves what `ink build` already wrote, through the edge crate the product uses: conditional and range requests, the host and path refusals, the request and response budgets, and the manifest's headers as they are in production.",
+        detail: "Unlike preview, this serves what `ink build` already wrote, through the same edge code production runs: conditional and range requests, the host and path refusals, the request and response budgets, and the manifest's headers as they are in production.",
         examples: &[
             Example { line: "ink serve", about: "Serve .ink/out of this folder on 127.0.0.1:8080" },
             Example { line: "ink -C garden serve", about: "Serve .ink/out of another folder" },
@@ -289,7 +289,7 @@ const ENTRIES: &[Entry] = &[
         ..Entry::built("key", Group::Publish, "List, make and end keys")
     },
     Entry {
-        detail: "Sends only the files the site does not hold, so an interrupted push is resumed by running it again. Waits for the build and prints the deploy id; --no-wait prints the build id. A deploy that is recorded and not live exits 5.",
+        detail: "Sends only the files the site does not hold, so an interrupted push is resumed by running it again. Waits for the build and prints the deploy id; --no-wait prints the build id. A key that may deploy and not read (a CI deploy key made with no `--right`) can only push with --no-wait. A deploy that is recorded and not live exits 5.",
         examples: &[
             Example { line: "ink push", about: "Send the folder and wait for the deploy" },
             Example { line: "ink push --no-wait", about: "Queue the build and print its id" },

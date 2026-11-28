@@ -328,14 +328,15 @@ pub struct Serve {
     /// How a request's host picks a deploy.
     #[arg(long, value_enum, default_value_t, help_heading = Heading::SERVER)]
     pub host_mode: HostMode,
-    /// Turns on the control plane and its API. Its database, blobs, sealing key and owner token
-    /// live in this folder. Without it only the folder is served.
+    /// Turns on the control plane and its API. Its database, blobs, sealing key and the
+    /// operator's public keys live in this folder. Without it only the folder is served.
     #[arg(long, help_heading = Heading::SERVER)]
     pub data: Option<PathBuf>,
-    /// The host name whose requests are API calls (`Authorization: Bearer <owner token>`).
+    /// The host name whose requests are API calls, signed with a key (`ink login`).
     #[arg(long, default_value = "api.localhost", help_heading = Heading::SERVER)]
     pub api_host: String,
-    /// Where sites are served, for the addresses the API reports: `<handle>.<host>`.
+    /// Where sites are served, for the addresses the API reports (`<handle>.<host>`) and the
+    /// origin passkeys are made for: give the address a browser uses to reach this server.
     #[arg(long, default_value = "http://localhost:8080", help_heading = Heading::SERVER)]
     pub origin: String,
     /// The largest JSON request body, in bytes. [default: 65536]
