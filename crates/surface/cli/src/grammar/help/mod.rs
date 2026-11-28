@@ -328,7 +328,7 @@ impl<'a> Help<'a> {
                 }
                 defs = defs.row(label("See also"), line);
             }
-            defs = defs.row(label("Docs"), Line::new().atom(Role::Place, Tree::DOCS));
+            defs = defs.row(label("Docs"), Line::new().atom(Role::Link, Tree::DOCS));
         }
         let names: Vec<String> = self
             .command

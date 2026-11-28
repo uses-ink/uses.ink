@@ -35,6 +35,6 @@ Build in memory and serve it on 127.0.0.1 while you write.
   2  The folder is no deploy, or the address cannot be used
 
 \e[2mSee also\e[0m  \e[1m\e[36mink build\e[0m, \e[1m\e[36mink serve\e[0m
-\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mDocs\e[0m      \e[4m\e[36mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
 \e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
           \e[2m(see `ink --help`)\e[0m

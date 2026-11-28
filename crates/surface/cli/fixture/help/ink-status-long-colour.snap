@@ -41,6 +41,6 @@ Show what is live and what is building.
   \e[1m\e[36mINK_KEY_FILE\e[0m  A file that holds that key, in place of INK_KEY
 
 \e[2mSee also\e[0m  \e[1m\e[36mink push\e[0m, \e[1m\e[36mink deploy list\e[0m
-\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mDocs\e[0m      \e[4m\e[36mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
 \e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
           \e[2m(see `ink --help`)\e[0m

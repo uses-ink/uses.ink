@@ -26,6 +26,25 @@ Server
                                passkeys are made for: give the address a browser
                                uses to reach this server [default:
                                `http://localhost:` and the listening port]
+      --print-config           Prints every setting a start would run with, each
+                               with its default or the flag that changed it, and
+                               exits. With `--json` it is the document `ink
+                               serve --json` prints when it starts. Nothing is
+                               bound, made or written: the data folder and the
+                               first-run link are left as they are
+
+Diagnostics
+      --log-format <LOG_FORMAT>  How the log of what the server does is written:
+                                 lines for a person, or one JSON object a line
+                                 with stable field names and no colour. `--json`
+                                 makes it JSON [default: human]
+      --log-level <LOG_LEVEL>    The least severe event the log shows. Ordinary
+                                 request lines are shown only with `-v`; `-q`
+                                 lowers this to `warn` and `-qq` to `error`
+                                 [default: info]
+      --log-time <LOG_TIME>      The zone the log's times are written in: UTC
+                                 with a `Z`, or this machine's own with its
+                                 offset [default: utc]
 
 Limits
       --api-body <API_BODY>            The largest JSON request body, in bytes.

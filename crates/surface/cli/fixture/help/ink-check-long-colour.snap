@@ -31,6 +31,6 @@ Read the folder and report what is wrong; writes nothing.
   6  --strict was given and there were warnings
 
 \e[2mSee also\e[0m  \e[1m\e[36mink build\e[0m, \e[1m\e[36mink explain\e[0m
-\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mDocs\e[0m      \e[4m\e[36mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
 \e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
           \e[2m(see `ink --help`)\e[0m

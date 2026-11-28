@@ -33,8 +33,11 @@ Sign-in
   passkey id       api.localhost                    default
   passkey origins  http://api.localhost:8080        default
   client address   the connection                   default
-  ~ cookie secure: plain http: the session cookie is not Secure
-    fix: end TLS in a proxy and give `--origin https://<your name>`; plain http is for this machine only
+  ~ cookie secure: plain http: the session cookie is not
+    Secure
+    fix: end TLS in a proxy and give `--origin
+         https://<your name>`; plain http is for this
+         machine only
 
 Data
   data           /srv/ink/state                   --data

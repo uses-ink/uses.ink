@@ -93,6 +93,21 @@ impl Section {
     }
 }
 
+impl Startup {
+    /// `text` after `lead`, wrapped to the line with later lines indented by `rest` columns.
+    fn hang(into: &mut Doc, lead: Line, rest: usize, text: Line) {
+        let room = into.room().saturating_sub(rest);
+        if lead.width() + text.width() <= into.room() {
+            into.push(lead.then(text));
+            return;
+        }
+        for (at, line) in text.wrap(room, room).into_iter().enumerate() {
+            let start = if at == 0 { lead.clone() } else { Line::new().pad(rest) };
+            into.push(start.then(line));
+        }
+    }
+}
+
 impl Render for Startup {
     fn render(&self, into: &mut Doc) {
         into.push(self.header());
@@ -107,20 +122,10 @@ impl Render for Startup {
             section.table().render(into);
             for (row, caution) in section.cautions() {
                 let mark = into.glyph(Glyph::Changed);
-                into.push(
-                    Line::new()
-                        .pad(2)
-                        .then(mark)
-                        .pad(1)
-                        .with(Role::Warn, format!("{}: {}", row.label(), caution.message())),
-                );
-                into.push(
-                    Line::new()
-                        .pad(4)
-                        .with(Role::Literal, "fix:")
-                        .pad(1)
-                        .then(Line::marked(Role::Warn, &caution.fix())),
-                );
+                let said = Line::new().with(Role::Warn, format!("{}: {}", row.label(), caution.message()));
+                Self::hang(into, Line::new().pad(2).then(mark).pad(1), 4, said);
+                let fix = Line::new().with(Role::Literal, "fix:").pad(1).then(Line::marked(Role::Warn, &caution.fix()));
+                Self::hang(into, Line::new().pad(4), 9, fix);
             }
         }
         into.blank();

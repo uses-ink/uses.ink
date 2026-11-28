@@ -40,6 +40,25 @@ Serve a built deploy the way production does.
                                passkeys are made for: give the address a browser
                                uses to reach this server \e[2m[default:\e[0m
                                \e[2m`http://localhost:`\e[0m \e[2mand\e[0m \e[2mthe\e[0m \e[2mlistening\e[0m \e[2mport]\e[0m
+  \e[1m\e[36m    --print-config\e[0m           Prints every setting a start would run with, each
+                               with its default or the flag that changed it, and
+                               exits. With `\e[1m\e[36m--json\e[0m` it is the document `\e[1m\e[36mink\e[0m
+                               \e[1m\e[36mserve\e[0m \e[1m\e[36m--json\e[0m` prints when it starts. Nothing is
+                               bound, made or written: the data folder and the
+                               first-run link are left as they are
+
+\e[1mDiagnostics\e[0m
+  \e[1m\e[36m    --log-format\e[0m \e[36m<LOG_FORMAT>\e[0m  How the log of what the server does is written:
+                                 lines for a person, or one JSON object a line
+                                 with stable field names and no colour. `\e[1m\e[36m--json\e[0m`
+                                 makes it JSON \e[2m[default: human]\e[0m
+  \e[1m\e[36m    --log-level\e[0m \e[36m<LOG_LEVEL>\e[0m    The least severe event the log shows. Ordinary
+                                 request lines are shown only with `\e[1m\e[36m-v\e[0m`; `\e[1m\e[36m-q\e[0m`
+                                 lowers this to `\e[1m\e[36mwarn\e[0m` and `\e[1m\e[36m-qq\e[0m` to `\e[1m\e[36merror\e[0m`
+                                 \e[2m[default: info]\e[0m
+  \e[1m\e[36m    --log-time\e[0m \e[36m<LOG_TIME>\e[0m      The zone the log's times are written in: UTC
+                                 with a `\e[1m\e[36mZ\e[0m`, or this machine's own with its
+                                 offset \e[2m[default: utc]\e[0m
 
 \e[1mLimits\e[0m
   \e[1m\e[36m    --api-body\e[0m \e[36m<API_BODY>\e[0m            The largest JSON request body, in bytes.
@@ -403,6 +422,6 @@ Serve a built deploy the way production does.
                      a flag with its own INK_ variable
 
 \e[2mSee also\e[0m  \e[1m\e[36mink build\e[0m, \e[1m\e[36mink login\e[0m
-\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mDocs\e[0m      \e[4m\e[36mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
 \e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
           \e[2m(see `ink --help`)\e[0m
