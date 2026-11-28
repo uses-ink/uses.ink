@@ -1017,7 +1017,7 @@ CLI in the same commit.
 
 ## 16. The renderer
 
-One module, `cli/src/term`, owns every byte written to a terminal. It is built; the table is the design's sketch, and the code may name things differently (`cli/src/term/mod.rs` is the source):
+One module, `cli/src/output/term`, owns every byte written to a terminal. It is built; the table is the design's sketch, and the code may name things differently (`cli/src/output/term/mod.rs` is the source):
 
 | Type | Is |
 |---|---|

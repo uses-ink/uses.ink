@@ -77,7 +77,7 @@ document node through `unspliced` as one `Visit`, code through the host's highli
 MathML, as a placeholder design; the engine serves a generated
 home when a site has none; the CLI has `ink build`, `check`, `explain` and `preview` with
 `--json`. Site fixtures (`cli/fixture/site/`: blog, flat README repo, docs folder, broken
-frontmatter, ambiguous links, a notes folder) pass the three exit tests in `cli/tests/site.rs`.
+frontmatter, ambiguous links, a notes folder) pass the three exit tests in `cli/tests/site`.
 Progress (2026-11-27): `wit/` holds `ink:model`, `ink:host` (pen, text, highlight, diagnostic),
 `ink:format` and `ink:theme`; `host/wasmtime` runs `ink:format-markdown` and `ink:theme-quiet` as
 components through the engine's own `Format` and `Theme` traits, with fuel, time and memory

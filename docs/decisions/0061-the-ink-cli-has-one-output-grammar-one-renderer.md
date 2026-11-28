@@ -45,7 +45,7 @@ costs more than it clarifies, or a grammar the M3 verbs do not fit: keep the typ
 colour roles, and go back to clap's help and the per-command folder. The open choices are the
 last section of `docs/cli.md`.
 
-**Amendment, slice 1 and 3 (the output layer).** `cli/src/term` is built on `anstyle` and `anstream`
+**Amendment, slice 1 and 3 (the output layer).** `cli/src/output/term` is built on `anstyle` and `anstream`
 (already in the tree through clap) with `unicode-width` and `terminal_size`; the live line is a small
 typed meter (`Meter`, driven by the `clock` port) instead of `indicatif`, which is not in the tree
 and cannot target the CLI's `&mut dyn Write` streams. Nothing in `term` reads the process:

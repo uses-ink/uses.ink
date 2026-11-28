@@ -260,7 +260,7 @@ command[build]            1     38.1ms      0.2ms     38.1ms
 The CLI builds a `trace::Logging` from the environment (`Logging::env`), then from `-v`, `--json`,
 `--log` and `--log-file`, and installs it once at the top of `run`; the guard it returns prints the
 timing table when the command ends and holds the `command` span. That is the whole seam
-(`cli/src/logging.rs`, two flags in `cli/src/args.rs`, one line in `Cli::run`). A failure to set
+(`cli/src/logging.rs`, two flags in `cli/src/grammar/args.rs`, one line in `Cli::run`). A failure to set
 logging up is said on stderr as text and the run goes on without it; under `--json` stderr is a
 machine channel, so it is not said there, and a log asked for with no file is withheld
 (`Guard::withheld`).
@@ -287,7 +287,7 @@ loop inside `capture.run`.
 The instrumentation is asserted on the key paths: an edge refusal is one `request.refused` event
 with its status and cause chain, and the query of a request never reaches the log
 (`edge/axum/tests/serve.rs`); a failed job logs its attempt and the chain of its error
-(`control/tests/control/job.rs`); the supervisor's crash, restart and give-up sequence is asserted in `cli/src/tasks.rs`. The crate's own tests cover redaction, the filter language, the
+(`control/tests/control/job.rs`); the supervisor's crash, restart and give-up sequence is asserted in `cli/src/selfhost/tasks.rs`. The crate's own tests cover redaction, the filter language, the
 precedence of flags, laziness and the timing table.
 
 ## Not done, and why

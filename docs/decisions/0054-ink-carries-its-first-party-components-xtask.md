@@ -18,7 +18,7 @@ that reads components from a folder.
   `ink:format-markdown`, `ink:format-obsidian`, `ink:theme-quiet` and `ink:source-git` are carried;
   the test guest `hostile` is not. `cli/build.rs` reads `bundle.json`, checks every file against
   its hash and writes the registry (`Bundled`, a const slice of `Entry`: id, version, hash,
-  `include_bytes!`) that `cli/src/bundle.rs` includes. No component is named in `cli/`: a guest
+  `include_bytes!`) that `cli/src/command/bundle.rs` includes. No component is named in `cli/`: a guest
   added to xtask's list with an id is carried with no other edit.
 - **The prerequisite is typed, and depends on the profile.** A release-profile build (`cargo
   install --path cli`, `dist`, the image) with no `bundle.json` fails with the command to run

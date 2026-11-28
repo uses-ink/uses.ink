@@ -347,7 +347,7 @@ a doc comment.
 - A diagnostic is one block: `error[code]: wording` from the catalog, then where it is, the span
   with its source line where there is one, then `fix:`, then the `caused by` rail. A notice is
   `note[code]: wording` and its `fix:`. An error that stops a command ends with a state line
-  (`nothing was changed`). Each is a typed value rendered once through `cli/src/term` (decision
+  (`nothing was changed`). Each is a typed value rendered once through `cli/src/output/term` (decision
   0061); no command builds output with `format!`.
 - The log is a channel of its own (`docs/tracing.md`, decision 0065): off by default, never
   stdout, never inside `--json`. `-v` count, then `INK_LOG`, then `--log` set its filter, each

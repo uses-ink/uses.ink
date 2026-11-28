@@ -572,7 +572,7 @@ credential is one more arm. Decision 0066 has the reasons and what is not built.
 locate, settings)` gives `Fronts` (a `Clone`, `Send` `Sites` that sends a host down a channel) and
 the `Back` that answers on the caller's task, so `back.run()` is joined with the server. A host is
 `Origin::handle`, a site `Control::serving`, a deploy `Control::manifest`; `Fallback` puts another
-`Sites` behind it. `ink serve --data` also runs `cli/src/tasks.rs`: `Tasks::start(task, restart,
+`Sites` behind it. `ink serve --data` also runs `cli/src/selfhost/tasks.rs`: `Tasks::start(task, restart,
 events, body)` puts a loop on a thread and runtime of its own under a supervisor, and `Event` is
 everything it says. A git source is built by `build_local::Local::with_remote(Fetching)` and its
 head read by `watch_git::Remotes`, both with the site's `watch::Access`.
