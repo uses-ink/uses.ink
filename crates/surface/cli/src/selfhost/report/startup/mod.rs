@@ -521,7 +521,7 @@ impl Rows<'_> {
                 Source::Computed,
             )),
             Transport::Smtp => {
-                let port = flags.smtp_port.map_or(0, u64::from);
+                let port = u64::from(flags.port());
                 section
                     .row(Row::new(
                         "smtp_host",
