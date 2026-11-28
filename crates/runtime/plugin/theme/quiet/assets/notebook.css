@@ -87,7 +87,10 @@ kbd { border: 2px solid var(--ink); border-radius: 4px; }
 .quiet-callout { margin-block: 1.6em; padding: 12px 16px; border: 12px solid transparent; border-image: url(/marks/frame.svg) 18 stretch; background: none; }
 .quiet-label { color: var(--ink); }
 
-/* a table: rows ruled in pencil */
+/* a table: rows ruled in pencil; a wide one scrolls inside the page, which never does */
+article { min-width: 0; }
+article table { display: block; max-width: 100%; overflow-x: auto; }
+article :not(pre) > code { overflow-wrap: anywhere; }
 th, td { border-bottom: 0; background: url(/marks/rule.svg) 0 100% / 100% 6px no-repeat; }
 hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0 0 / 100% 10px no-repeat; }
 .quiet-embed { border-left: 0; padding-left: 0; }
