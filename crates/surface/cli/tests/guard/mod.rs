@@ -25,6 +25,16 @@ impl Guard {
         Self { child }
     }
 
+    /// A child spawned by the caller, which wants its own output handling.
+    pub fn adopt(child: Child) -> Self {
+        Self { child }
+    }
+
+    /// Whether the child has already ended.
+    pub fn ended(&mut self) -> bool {
+        !matches!(self.child.try_wait(), Ok(None))
+    }
+
     /// The child's stdout, once.
     pub fn stdout(&mut self) -> ChildStdout {
         self.child.stdout.take().unwrap()

@@ -9,12 +9,13 @@
     reason = "tests stop at the first surprise"
 )]
 
+mod guard;
 mod keyed;
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::time::Duration;
 
 use edge_api::tar::Writer;
@@ -41,7 +42,7 @@ impl Ran {
 
 /// A running `ink serve` with a data folder, a signed-in home and a folder to publish.
 struct Rig {
-    child: Option<Child>,
+    child: Option<guard::Guard>,
     root: PathBuf,
     data: PathBuf,
     home: PathBuf,
@@ -69,25 +70,37 @@ impl Rig {
             std::fs::create_dir_all(dir).unwrap();
         }
         std::fs::write(served.join("index.html"), "served").unwrap();
-        let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
-        let (addr, audience, api) =
-            (format!("127.0.0.1:{port}"), format!("api.localhost:{port}"), format!("http://api.localhost:{port}"));
         let log = root.join("serve.log");
-        let sink = std::fs::File::create(&log).unwrap();
-        let child = Command::new(env!("CARGO_BIN_EXE_ink"))
-            .args(["serve", served.to_str().unwrap(), "--addr", &addr, "--data", data.to_str().unwrap()])
-            .args(["--audience", &audience, "--auth-skew", "1"])
-            .args(extra)
-            .stdin(Stdio::null())
-            .stdout(sink.try_clone().unwrap())
-            .stderr(sink)
-            .spawn()
-            .unwrap();
-        let started = std::time::Instant::now();
-        while !std::fs::read_to_string(&log).unwrap_or_default().contains("backing off") {
-            assert!(started.elapsed() < Duration::from_secs(60), "the server did not start");
-            std::thread::sleep(Duration::from_millis(100));
-        }
+        // the audience names the port, so the port is chosen first; a port that another process took
+        // in between ends the server at once, and another one is tried
+        let (child, port) = (0..5)
+            .find_map(|_| {
+                let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+                let (addr, audience) = (format!("127.0.0.1:{port}"), format!("api.localhost:{port}"));
+                let sink = std::fs::File::create(&log).unwrap();
+                let mut child = guard::Guard::adopt(
+                    Command::new(env!("CARGO_BIN_EXE_ink"))
+                        .args(["serve", served.to_str().unwrap(), "--addr", &addr, "--data", data.to_str().unwrap()])
+                        .args(["--audience", &audience, "--auth-skew", "5"])
+                        .args(extra)
+                        .stdin(Stdio::null())
+                        .stdout(sink.try_clone().unwrap())
+                        .stderr(sink)
+                        .spawn()
+                        .unwrap(),
+                );
+                let started = std::time::Instant::now();
+                while !std::fs::read_to_string(&log).unwrap_or_default().contains("backing off") {
+                    assert!(started.elapsed() < Duration::from_secs(60), "the server did not start");
+                    if child.ended() {
+                        return None;
+                    }
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+                Some((child, port))
+            })
+            .unwrap_or_else(|| panic!("the server ended five times before it started"));
+        let (audience, api) = (format!("api.localhost:{port}"), format!("http://api.localhost:{port}"));
         let rig = Self { child: Some(child), root, data, home, site, port, api, audience, log };
         let signed =
             rig.ink_in(&rig.home, &rig.root, &["login", "--data", rig.data.to_str().unwrap(), "--label", "e2e"]);
@@ -102,17 +115,15 @@ impl Rig {
 
     /// Stops the server.
     fn stop(&mut self) {
-        if let Some(mut child) = self.child.take() {
-            child.kill().ok();
-            child.wait().ok();
-        }
+        // the guard kills and reaps the child when it is dropped
+        self.child.take();
     }
 
     /// `ink <args>` in `dir`, as the user of `home`, retried while the server has just restarted.
     fn ink_in(&self, home: &Path, dir: &Path, args: &[&str]) -> Ran {
         let mut ran = self.once(home, dir, args);
-        for _ in 0..30 {
-            if !ran.err.contains("restarting") && !ran.err.contains("api.slow") {
+        for _ in 0..80 {
+            if !ran.err.contains("auth.server.restarting") && !ran.err.contains("deploy.api.slow") {
                 break;
             }
             std::thread::sleep(Duration::from_millis(250));

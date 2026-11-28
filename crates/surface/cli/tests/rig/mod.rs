@@ -347,8 +347,8 @@ impl Machine<'_> {
     /// Runs `ink <args>` to its end, again while the server is still booting.
     pub fn ink(&self, args: &[&str]) -> Ran {
         let mut ran = self.run(args);
-        for _ in 0..30 {
-            if !ran.err.contains("restarting") && !ran.err.contains("api.slow") {
+        for _ in 0..80 {
+            if !ran.err.contains("auth.server.restarting") && !ran.err.contains("deploy.api.slow") {
                 break;
             }
             std::thread::sleep(Duration::from_millis(250));

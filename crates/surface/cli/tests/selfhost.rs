@@ -137,8 +137,8 @@ impl Running {
             Command::new(env!("CARGO_BIN_EXE_ink"))
                 .args(["serve", folder.to_str().unwrap(), "--addr", "127.0.0.1:0", "--data", data.to_str().unwrap()])
                 // a file address is the only kind a test with no network can add
-                // the boot barrier is the skew: a short one keeps the test quick
-                .args(["--audience", "api.localhost", "--auth-skew", "1"])
+                // the boot barrier is twice the skew and a second: the requests wait for it, by its code
+                .args(["--audience", "api.localhost", "--auth-skew", "5"])
                 .args(["--git-scheme", "file", "--site-ttl", "0", "--poll-lookout", "1", "--worker-idle", "1"])
                 .args(more),
         );
@@ -220,11 +220,12 @@ fn a_git_site_is_added_served_updated_rolled_back_exported_and_deleted() {
             break line;
         }
     };
-    if built.contains("worker: failed") {
-        // a binary built without its components cannot read a git source; it says so
-        assert!(built.contains("not available"), "{built}");
-        return;
-    }
+    // a binary built without its components cannot read a git source: that is a missing
+    // precondition (`cargo xtask component` first), not a pass
+    assert!(
+        !built.contains("worker: failed"),
+        "this test needs the binary built with its components (run `cargo xtask component`): {built}"
+    );
     assert!(built.contains("(live)"), "{built}");
     let page = ink.page("diary", "/");
     assert_eq!(page.status(), "200", "{}", page.text);
