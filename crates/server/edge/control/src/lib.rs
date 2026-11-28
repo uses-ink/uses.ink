@@ -14,15 +14,21 @@
 //! through the port: a deploy's files are the blob store's own files, so [`edge_folder::Files`]
 //! serves them with its link refusal, swap check and range reads, unchanged.
 //!
-//! [`Fallback`] puts a folder's deploys behind the control plane's, so one server answers both.
+//! Without the `files` feature the crate is the lookup alone ([`Found`]): no channel, no files, so a
+//! Worker, which has neither, builds it (decision 0200). [`Fallback`] puts a folder's deploys behind the control plane's, so one server answers both.
 
 mod fallback;
+#[cfg(feature = "files")]
 mod locate;
 mod lookup;
 
 pub use fallback::{Either, Fallback};
+#[cfg(feature = "files")]
 pub use locate::Locate;
 pub use lookup::cache::Settings;
+#[cfg(feature = "files")]
 pub use lookup::caller::Fronts;
 pub use lookup::error::{Chain, Failure};
+pub use lookup::found::{Found, Loaded};
+#[cfg(feature = "files")]
 pub use lookup::owner::Back;

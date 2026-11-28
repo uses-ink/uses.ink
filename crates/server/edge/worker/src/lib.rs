@@ -1,4 +1,8 @@
-//! The Worker shell of the edge (decision 0135).
+//! The Worker shell of the edge (decisions 0135 and 0200).
+//!
+//! The serve path is [`Sited`] and [`Stored`], the edge's two ports over the control plane and a
+//! blob store, and [`Serve`], which turns a Worker's request into the edge's and its answer into a
+//! Worker's response. The nonce store as a Durable Object has three parts, below.
 //!
 //! The nonce store as a Durable Object has three parts. The state machine is
 //! `uses-ink-edge-object-nonce`'s `Ledger`. [`Serving`] puts it behind the wire: it takes a claim as
@@ -12,15 +16,26 @@
 //! [`Serving::handle`]. [`Remote`] is `wasm32` only; the rest builds natively.
 
 mod error;
+mod harness;
+mod serve;
 mod serving;
 mod wire;
+
+#[cfg(target_arch = "wasm32")]
+mod platform;
 
 #[cfg(target_arch = "wasm32")]
 mod remote;
 
 pub use error::Malformed;
+pub use harness::Hosted;
+pub use serve::{Cut, Opened, Reading, Sited, Stored};
 pub use serving::Serving;
 pub use wire::{Answer, Wire};
 
 #[cfg(target_arch = "wasm32")]
+pub use platform::Platform;
+#[cfg(target_arch = "wasm32")]
 pub use remote::{Remote, Unreached};
+#[cfg(target_arch = "wasm32")]
+pub use serve::{Answered, Serve};

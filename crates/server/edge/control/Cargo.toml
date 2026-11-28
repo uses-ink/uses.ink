@@ -10,15 +10,21 @@ publish.workspace = true
 
 [dependencies]
 blob.workspace = true
-blob-dir.workspace = true
+blob-dir = { workspace = true, optional = true }
 clock.workspace = true
 control.workspace = true
 edge.workspace = true
-edge-folder = { workspace = true, features = ["files"] }
+edge-folder = { workspace = true, optional = true, features = ["files"] }
 jiff.workspace = true
 model.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, optional = true }
 logging.workspace = true
+
+[features]
+default = ["files"]
+# the lookup that serves files of the blob store and answers across a channel (what `ink serve` runs);
+# a Worker has neither files nor a second task, so it builds the crate without it
+files = ["dep:blob-dir", "dep:edge-folder", "dep:tokio"]
 
 [dev-dependencies]
 db.workspace = true

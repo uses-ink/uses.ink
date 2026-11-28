@@ -38,6 +38,7 @@ crates = [
     "uses-ink-edge",
     "uses-ink-edge-api",
     "uses-ink-edge-axum",
+    "uses-ink-edge-conformance",
     "uses-ink-edge-control",
     "uses-ink-edge-folder",
     "uses-ink-edge-object-nonce",
@@ -143,6 +144,10 @@ reason = "the root's directories: each belongs to the tool that reads it (`.carg
 [[fanout.waive]]
 path = "spikes/hosted/vendor/webauthn-rs-core/src"
 reason = "a copy of a published crate with one patch (decision 0096), kept as published"
+
+[[fanout.waive]]
+path = "spikes/hosted/workers/rig/src/suites"
+reason = "one file per port suite of the rig (db, blob, queue, secret, mail, nonce, edge), each driven by the same runner"
 
 [[fanout.waive]]
 path = "crates/server/edge"
@@ -379,6 +384,11 @@ reason = "kept for decisions in flight on other branches; the dashboard look too
 
 [[decisions.gap]]
 first = "0191"
+last = "0199"
+reason = "kept for decisions in flight on other branches; the Worker's serve path took 0200"
+
+[[decisions.gap]]
+first = "0201"
 last = "0209"
 reason = "kept for decisions in flight on other branches; the start report and log of `ink serve` took 0210"
 

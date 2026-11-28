@@ -32,7 +32,7 @@ db-sqlite.workspace = true
 edge-api.workspace = true
 web.workspace = true
 sig.workspace = true
-edge-control.workspace = true
+edge-control = { workspace = true, features = ["files"] }
 clap.workspace = true
 clap_complete.workspace = true
 clap_complete_nushell.workspace = true

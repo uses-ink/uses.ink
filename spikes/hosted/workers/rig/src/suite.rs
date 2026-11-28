@@ -2,7 +2,7 @@
 
 use worker::{Env, Response, Result};
 
-use crate::suites::{Blobs, Jobs, Ledgers, Post, Rows, Tips, Vault};
+use crate::suites::{Blobs, Jobs, Ledgers, Post, Rows, Sites, Tips, Vault};
 
 /// One conformance suite, by the port it tests.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,12 +21,14 @@ pub(crate) enum Suite {
     Nonce,
     /// The watch's head reader over recorded forge advertisements.
     Watch,
+    /// The edge's host and blob ports over D1 and R2.
+    Edge,
 }
 
 impl Suite {
     /// Every suite, in the order they are listed.
-    const ALL: [Self; 7] =
-        [Self::Db, Self::Blob, Self::Queue, Self::Secret, Self::Mail, Self::Nonce, Self::Watch];
+    const ALL: [Self; 8] =
+        [Self::Db, Self::Blob, Self::Queue, Self::Secret, Self::Mail, Self::Nonce, Self::Watch, Self::Edge];
 
     /// Its name in the paths.
     const fn name(self) -> &'static str {
@@ -38,6 +40,7 @@ impl Suite {
             Self::Mail => "mail",
             Self::Nonce => "nonce",
             Self::Watch => "watch",
+            Self::Edge => "edge",
         }
     }
 
@@ -56,6 +59,7 @@ impl Suite {
             Self::Mail => Post::names(),
             Self::Nonce => Ledgers::names(),
             Self::Watch => Tips::names(),
+            Self::Edge => Sites::names(),
         }
     }
 
@@ -72,6 +76,15 @@ impl Suite {
 
     /// Runs the case `case` of this suite on a fresh store.
     pub(crate) async fn run(self, env: &Env, case: &str) -> Result<Response> {
+        if self == Self::Edge {
+            return match (Sites { env }).run(case).await? {
+                Some(edge_conformance::Outcome::NotOffered(why)) => {
+                    Response::ok(format!("not offered {}/{case}: {why}\n", self.name()))
+                }
+                Some(_) => Response::ok(format!("ok {}/{case}\n", self.name())),
+                None => Response::error(format!("no case {case}"), 404),
+            };
+        }
         let ran = match self {
             Self::Db => Rows { env }.run(case).await?,
             Self::Blob => Blobs { env }.run(case).await?,
@@ -80,6 +93,7 @@ impl Suite {
             Self::Mail => Post.run(case).await?,
             Self::Nonce => Ledgers { env }.run(case).await?,
             Self::Watch => Tips { env }.run(case).await?,
+            Self::Edge => false,
         };
         if ran { Response::ok(format!("ok {}/{case}\n", self.name())) } else { Response::error(format!("no case {case}"), 404) }
     }

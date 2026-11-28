@@ -19,7 +19,7 @@ impl Blobs<'_> {
     }
 
     /// Deletes every object of the bucket.
-    async fn clear(bucket: &Bucket) -> Result<()> {
+    pub(crate) async fn clear(bucket: &Bucket) -> Result<()> {
         loop {
             let page = bucket.list().limit(1000).execute().await?;
             let keys: Vec<String> = page.objects().iter().map(worker::Object::key).collect();

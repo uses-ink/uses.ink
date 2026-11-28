@@ -37,6 +37,8 @@ pub(crate) enum Case {
     Nonce,
     /// The watch's head reader's suite over recorded forge advertisements, in workerd.
     Watch,
+    /// The edge's suite for the host and blob ports, through the Worker's adapters over D1 and R2 in workerd.
+    Edge,
     /// Every conformance suite of the rig, in one Worker: what the gate runs.
     Rig,
     /// H1b: the generated migrations applied by wrangler, compared with SQLite's schema.
@@ -45,7 +47,7 @@ pub(crate) enum Case {
 
 impl Case {
     /// Every case, in the order they are listed.
-    pub(crate) const ALL: [Self; 13] = [
+    pub(crate) const ALL: [Self; 14] = [
         Self::Probe,
         Self::Lock,
         Self::Api,
@@ -57,6 +59,7 @@ impl Case {
         Self::Mail,
         Self::Nonce,
         Self::Watch,
+        Self::Edge,
         Self::Rig,
         Self::Migrate,
     ];
@@ -78,6 +81,7 @@ impl Case {
             Self::Mail => "mail",
             Self::Nonce => "nonce",
             Self::Watch => "watch",
+            Self::Edge => "edge",
             Self::Rig => "rig",
             Self::Migrate => "migrate",
         }
@@ -90,9 +94,15 @@ impl Case {
             Self::Migrate => "spikes/hosted/workers/migrate",
             Self::Api => "spikes/hosted/workers/api",
             Self::Store => "spikes/hosted/workers/store",
-            Self::Db | Self::Blob | Self::Queue | Self::Secret | Self::Mail | Self::Nonce | Self::Watch | Self::Rig => {
-                "spikes/hosted/workers/rig"
-            }
+            Self::Db
+            | Self::Blob
+            | Self::Queue
+            | Self::Secret
+            | Self::Mail
+            | Self::Nonce
+            | Self::Watch
+            | Self::Edge
+            | Self::Rig => "spikes/hosted/workers/rig",
         }
     }
 
@@ -102,9 +112,15 @@ impl Case {
             Self::Probe | Self::Lock | Self::Migrate => 0,
             Self::Api => 8731,
             Self::Store => 8732,
-            Self::Db | Self::Blob | Self::Queue | Self::Secret | Self::Mail | Self::Nonce | Self::Watch | Self::Rig => {
-                8733
-            }
+            Self::Db
+            | Self::Blob
+            | Self::Queue
+            | Self::Secret
+            | Self::Mail
+            | Self::Nonce
+            | Self::Watch
+            | Self::Edge
+            | Self::Rig => 8733,
         }
     }
 
@@ -118,6 +134,7 @@ impl Case {
             Self::Mail => Some("mail"),
             Self::Nonce => Some("nonce"),
             Self::Watch => Some("watch"),
+            Self::Edge => Some("edge"),
             Self::Probe | Self::Lock | Self::Api | Self::Store | Self::Rig | Self::Migrate => None,
         }
     }
@@ -140,6 +157,7 @@ impl Case {
             | Self::Mail
             | Self::Nonce
             | Self::Watch
+            | Self::Edge
             | Self::Rig => Served { case: self, shell }.run(report),
         }
     }

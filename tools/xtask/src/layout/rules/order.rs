@@ -26,10 +26,34 @@ impl Order {
         // runtime (axum) or a folder of deploys, never each other.
         ("uses-ink-edge", &["uses-ink-model", "uses-ink-logging"]),
         ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge", "uses-ink-edge-api", "uses-ink-logging"]),
-        ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge", "uses-ink-logging"]),
+        ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge", "uses-ink-edge-conformance", "uses-ink-logging"]),
+        // the suite every adapter of the edge's two ports runs (decision 0200): the ports and the model, nothing under them
+        ("uses-ink-edge-conformance", &["uses-ink-edge", "uses-ink-model"]),
         // the nonce store: a pure state machine, and the Worker shell that puts it behind the wire (decision 0135)
         ("uses-ink-edge-object-nonce", &[]),
-        ("uses-ink-edge-worker", &["uses-ink-edge-api", "uses-ink-edge-object-nonce", "uses-ink-sig"]),
+        // the Worker's serve path reads the control plane through the edge's lookup and its tests run the
+        // conformance suite on the native adapters (decision 0200)
+        (
+            "uses-ink-edge-worker",
+            &[
+                "uses-ink-blob",
+                "uses-ink-blob-dir",
+                "uses-ink-build",
+                "uses-ink-clock",
+                "uses-ink-control",
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-edge",
+                "uses-ink-edge-api",
+                "uses-ink-edge-conformance",
+                "uses-ink-edge-control",
+                "uses-ink-edge-object-nonce",
+                "uses-ink-model",
+                "uses-ink-queue-rows",
+                "uses-ink-secret-local",
+                "uses-ink-sig",
+            ],
+        ),
         ("uses-ink-token", &[]),
         // The signed-request profile (decision 0068): the CLI signs and the server verifies with the
         // same code; it knows no crate of ours.

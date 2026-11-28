@@ -2,17 +2,15 @@
 
 use std::sync::Arc;
 
-use edge::{Hostname, Notice, Resolved, Sites};
+use edge::{Hostname, Resolved, Sites};
 use edge_folder::Placed;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::Failure;
+use crate::lookup::found::Noticed;
 
 /// What a lookup answers.
 pub(crate) type Answer = Result<Option<Resolved<Arc<Placed>>>, Failure>;
-
-/// What a lookup of a suspension answers.
-pub(crate) type Noticed = Result<Option<Notice>, Failure>;
 
 /// What a lookup asks, and where its answer goes.
 #[derive(Debug)]

@@ -85,9 +85,15 @@ impl Served<'_> {
         let outcome = match self.case {
             Case::Api => Self::api(&mut exchange),
             Case::Store => Self::store(&mut exchange),
-            Case::Db | Case::Blob | Case::Queue | Case::Secret | Case::Mail | Case::Nonce | Case::Watch | Case::Rig => {
-                Self::cases(&mut exchange, self.case.suite())
-            }
+            Case::Db
+            | Case::Blob
+            | Case::Queue
+            | Case::Secret
+            | Case::Mail
+            | Case::Nonce
+            | Case::Watch
+            | Case::Edge
+            | Case::Rig => Self::cases(&mut exchange, self.case.suite()),
             Case::Probe | Case::Lock | Case::Migrate => Ok(()),
         };
         if outcome.is_err() {
@@ -163,13 +169,19 @@ impl Served<'_> {
             .map(str::to_owned)
             .collect();
         let mut failed = Vec::new();
+        let mut absent = 0_usize;
         for name in &names {
-            if let Err(fault) = exchange.call(&Call::post(format!("/__conformance/{name}"))) {
-                exchange.say(format!("FAILED {name}"));
-                failed.push(fault);
+            match exchange.call(&Call::post(format!("/__conformance/{name}"))) {
+                // a case the adapter cannot offer is said so and is not a pass
+                Ok(reply) if reply.text().starts_with("not offered") => absent += 1,
+                Ok(_) => {}
+                Err(fault) => {
+                    exchange.say(format!("FAILED {name}"));
+                    failed.push(fault);
+                }
             }
         }
-        exchange.say(format!("{} cases, {} failed", names.len(), failed.len()));
+        exchange.say(format!("{} cases, {} failed, {absent} not offered", names.len(), failed.len()));
         match failed.into_iter().next() {
             Some(first) => Err(first),
             None => Ok(()),

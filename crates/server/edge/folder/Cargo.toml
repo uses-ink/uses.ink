@@ -18,6 +18,10 @@ files = ["dep:bytes", "dep:edge", "dep:tokio", "tokio/fs"]
 name = "folder"
 required-features = ["files"]
 
+[[test]]
+name = "conformance"
+required-features = ["files"]
+
 [dependencies]
 bytes = { workspace = true, optional = true }
 edge = { workspace = true, optional = true }
@@ -28,7 +32,9 @@ tokio = { workspace = true, optional = true }
 logging.workspace = true
 
 [dev-dependencies]
+edge-conformance.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true
 tokio = { workspace = true, features = ["fs"] }
 
 [lints]

@@ -1,6 +1,6 @@
 [package]
 name = "uses-ink-edge-worker"
-description = "The Worker shell of the edge: the nonce store as a Durable Object's logic and the client that reaches it"
+description = "The Worker shell of the edge: the serve path over the control plane and a blob store, the nonce store as a Durable Object's logic and the client that reaches it"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,18 +9,35 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+blob.workspace = true
+build.workspace = true
+bytes.workspace = true
+clock.workspace = true
+control.workspace = true
+edge.workspace = true
 edge-api.workspace = true
+edge-conformance.workspace = true
+edge-control.workspace = true
 edge-object-nonce.workspace = true
+jiff.workspace = true
+model.workspace = true
+send_wrapper.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sig.workspace = true
 
-# a Durable Object stub exists only inside a Worker
+# a Durable Object stub, a clock and a request exist only inside a Worker
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+futures-util.workspace = true
 worker.workspace = true
 
 [dev-dependencies]
+blob-dir.workspace = true
+db.workspace = true
+db-sqlite.workspace = true
 pollster.workspace = true
+queue-rows.workspace = true
+secret-local.workspace = true
 
 [lints]
 workspace = true

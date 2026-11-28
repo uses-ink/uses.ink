@@ -5,6 +5,7 @@ mod jobs;
 mod ledger;
 mod post;
 mod rows;
+mod sites;
 mod tips;
 mod vault;
 
@@ -14,5 +15,6 @@ pub use ledger::NonceObject;
 pub(crate) use ledger::Ledgers;
 pub(crate) use post::Post;
 pub(crate) use rows::Rows;
+pub(crate) use sites::Sites;
 pub(crate) use tips::Tips;
 pub(crate) use vault::Vault;
