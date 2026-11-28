@@ -1,0 +1,11 @@
+{
+  "name": "uses-ink-shoot",
+  "private": true,
+  "type": "module",
+  "description": "The browser side of `cargo xtask shoot` (docs/workflow.md): pinned exactly, installed with `npm ci` under target/shoot/node.",
+  "dependencies": {
+    "@sparticuz/chromium": "152.0.0",
+    "playwright-core": "1.65.1",
+    "upng-js": "2.1.0"
+  }
+}

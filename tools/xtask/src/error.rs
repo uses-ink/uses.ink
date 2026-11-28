@@ -131,6 +131,15 @@ pub(crate) enum Error {
         first: Option<String>,
         second: Option<String>,
     },
+    /// A target of `shoot` that does not exist.
+    Target {
+        given: String,
+    },
+    /// A run of `shoot` that failed.
+    Shot {
+        target: crate::shoot::Target,
+        fault: crate::shoot::Fault,
+    },
     /// A step of `release` that does not exist.
     Release {
         given: String,
@@ -176,6 +185,13 @@ impl fmt::Display for Error {
                 write!(out, "no case `{given}`; the cases are {}", Listed(&crate::worker::Case::ALL))
             }
             Self::Worker { case, .. } => write!(out, "worker {case} failed"),
+            Self::Target { given } if given.is_empty() => {
+                write!(out, "no target given; the targets are {}", Listed(&crate::shoot::Target::ALL))
+            }
+            Self::Target { given } => {
+                write!(out, "no target `{given}`; the targets are {}", Listed(&crate::shoot::Target::ALL))
+            }
+            Self::Shot { target, .. } => write!(out, "shoot {target} failed"),
             Self::Release { given } if given.is_empty() => {
                 write!(out, "no step given; the steps are {}", Listed(&crate::release::Release::ALL))
             }
@@ -260,6 +276,7 @@ impl std::error::Error for Error {
             Self::Root(lost) => lost.source(),
             Self::Worker { fault, .. } => Some(fault),
             Self::Released { fault, .. } => Some(fault),
+            Self::Shot { fault, .. } => Some(fault),
             Self::Wrap { source, .. } => Some(source.as_ref()),
             Self::Bundle { source, .. } => Some(source),
             // Each of these is the whole failure: its data says what is wrong.
@@ -269,6 +286,7 @@ impl std::error::Error for Error {
             | Self::Stageless { .. }
             | Self::Case { .. }
             | Self::Release { .. }
+            | Self::Target { .. }
             | Self::Source { .. }
             | Self::Module { .. }
             | Self::Layout(_)

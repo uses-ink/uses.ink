@@ -13,6 +13,8 @@
 //!   into a component under `target/plugin/`.
 //! - `worker <case>`: a Worker run in `workerd` through `wrangler dev --local`, with no Cloudflare
 //!   account: the hosted spikes and the conformance suites (`probe`, `lock`, `api`, `store`, `db`, `blob`, `rig`).
+//! - `shoot <target> [--width 1440,390]`: the built pages drawn by a headless browser, as PNGs under
+//!   `target/shots/` and as base64 in the log (`site`, `dashboard`, `mock`; decision 0240).
 //! - `release <step>`: the release steps that need no account and publish nothing (`plan`, `build`,
 //!   `image`; decision 0170).
 //! - `check [stage]`: the whole gate, or one of its stages (`lint`, `test`, `docs`, `wasm`,
@@ -70,6 +72,7 @@ mod process;
 mod release;
 mod report;
 mod root;
+mod shoot;
 mod worker;
 
 use error::Error;
@@ -88,12 +91,13 @@ pub(crate) enum Task {
     Component,
     Worker,
     Release,
+    Shoot,
     Check,
 }
 
 impl Task {
     /// Every task, in the order they are listed.
-    pub(crate) const ALL: [Self; 9] = [
+    pub(crate) const ALL: [Self; 10] = [
         Self::Token,
         Self::Diag,
         Self::Brand,
@@ -102,6 +106,7 @@ impl Task {
         Self::Component,
         Self::Worker,
         Self::Release,
+        Self::Shoot,
         Self::Check,
     ];
 
@@ -116,13 +121,25 @@ impl Task {
             Self::Component => "component",
             Self::Worker => "worker",
             Self::Release => "release",
+            Self::Shoot => "shoot",
             Self::Check => "check",
         }
     }
 
     /// What the tasks that take an argument, or that refuse one, report; none for the rest.
-    fn argued(self, root: &Path, argument: Option<&str>) -> Option<Report> {
+    fn argued(self, root: &Path, argument: Option<&str>, flags: &[String]) -> Option<Report> {
         Some(match (self, argument) {
+            (Self::Shoot, Some(given)) => match (given.parse::<shoot::Target>(), shoot::Flags::parse(flags)) {
+                (Ok(target), Ok(flags)) => {
+                    let mut report = Report::default();
+                    check::Step::run(&shoot::Shoot { target, flags }, root, &mut report);
+                    report
+                }
+                (Err(error), _) => Report::from(error),
+                (Ok(target), Err(fault)) => Report::from(Error::Shot { target, fault }),
+            },
+            (Self::Shoot, None) => Report::from(Error::Target { given: String::new() }),
+            (_, _) if !flags.is_empty() => Report::from(Error::Stageless { task: self }),
             (Self::Check, given) => match given.map(str::parse::<check::Stage>).transpose() {
                 Ok(stage) => check::Gate::new(root).run(stage),
                 Err(error) => Report::from(error),
@@ -151,8 +168,8 @@ impl Task {
 
     /// Runs it from the workspace at `root`, with the argument after its name: a stage of `check`,
     /// a case of `worker`; the report holds every line and every failure.
-    fn run(self, root: &Path, argument: Option<&str>) -> Report {
-        if let Some(done) = self.argued(root, argument) {
+    fn run(self, root: &Path, argument: Option<&str>, flags: &[String]) -> Report {
+        if let Some(done) = self.argued(root, argument, flags) {
             return done;
         }
         let mut report = Report::default();
@@ -173,7 +190,7 @@ impl Task {
                 check::Step::run(&build::component::Components, root, &mut report);
                 return report;
             }
-            Self::Worker | Self::Release | Self::Check => return report,
+            Self::Worker | Self::Release | Self::Shoot | Self::Check => return report,
         };
         report.take(generated);
         output.settle(&mut report);
@@ -216,7 +233,7 @@ impl fmt::Display for Chain<'_> {
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
     let report = match (Root::find(), args.next().map(|arg| arg.parse::<Task>()), args.next()) {
-        (Ok(root), Some(Ok(task)), argument) => task.run(&root, argument.as_deref()),
+        (Ok(root), Some(Ok(task)), argument) => task.run(&root, argument.as_deref(), &args.collect::<Vec<_>>()),
         (Err(error), ..) | (Ok(_), Some(Err(error)), _) => Report::from(error),
         (Ok(_), None, _) => Report::from(Error::Missing),
     };
