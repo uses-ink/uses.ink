@@ -307,7 +307,7 @@ freeze.
   `ink:authority-dns`. Built against fakes and recorded fixtures: the GitHub authority (the App's installation
   proves a repo, installation tokens made per call and never stored, signed webhooks with a replay window,
   commit statuses; 0110) on a shared `uses-ink-authority-forge`. Left: registering the App **(owner)**, the user
-  OAuth step, a real `Transport`, and the `POST /v1/hooks/{forge}` route with its repo claims (0113).
+  OAuth step. The real `Transport`, the `POST /v1/hooks/{forge}` route, the repo claims and `ink repo` are built (0113, 0160 to 0162).
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`
   (engine work, native, no hosted dependency).
 - OIDC trusted publishing for CI after launch (open choice 6).
@@ -332,7 +332,7 @@ push is live within the measured time; a custom domain goes live with a valid ce
   `crates/core/token/token.toml` (0142). Left: deploying the site once `uses.ink` is live.
 - `ink:authority-forgejo` with Codeberg pre-registered; `ink:authority-gitlab`. Built against fakes and recorded
   fixtures, with the repo challenge as the proof and Codeberg as the listed primary instance (0111, 0112). Left:
-  OAuth per instance and the applications to register **(owner)**, and the webhook route of 0113.
+  OAuth per instance and the applications to register **(owner)**; the webhook route of 0113 is built (0160 to 0162).
 - Obsidian plugin and browser upload **(owner: Q18)**.
 - `uses-ink/.github` profile and org description in the new brand.
 - `cargo dist` releases of `ink` for Linux, macOS, Windows; container image for self-host. Built and run

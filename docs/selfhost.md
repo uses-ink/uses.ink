@@ -254,6 +254,11 @@ there; the rest are flags only.
 | `--git-ca <PEM>` | none | An extra authority to trust, for a private forge |
 | `--resolver` (`INK_RESOLVER`) | `system` | How custom-domain proof records are read; `offline` asks none |
 | `--resolver-server`, `--resolver-confirm` | system | Nameservers to ask, and a second set that must agree |
+| `--forge-hooks` (`INK_FORGE_HOOKS`) | off | Takes `POST /v1/hooks/{github,forgejo,gitlab}` and lets `ink repo` claim a site's repository (decisions 0160 to 0162) |
+| `--forge-instances <FILE>`, `--forge-gitlab <HOST>` | bundled list, `gitlab.com` | The Forgejo and GitLab hosts the server may call; any other host is refused before a request is sent |
+| `--forge-route HOST=ADDR` | none | Send calls for a forge name to an address, for a mirror; the certificate is still checked for the name |
+| `--forge-timeout`, `--forge-reply` | 10 s, 1 MiB | Time for one call to a forge, and the most bytes read of a reply |
+| `--forge-body`, `--forge-window`, `--forge-remembered` | 5 MiB, 600 s, 10000 | The largest webhook body, how long a delivery id is remembered, and how many are kept for one repository |
 | `--restart-limit` | 5 | Crashes in a row before the watch or worker is left stopped |
 | `--restart-delay`, `--restart-healthy` | 2 s, 60 s | Wait before a restart, and the run that forgets earlier crashes |
 | `--worker-lease`, `--worker-idle` | 900 s, 2 s | How long a worker holds a request, and rests when the queue is empty |

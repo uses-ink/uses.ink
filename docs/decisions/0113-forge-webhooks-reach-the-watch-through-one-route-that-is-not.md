@@ -1,7 +1,7 @@
 ---
 number: "0113"
 title: "Forge webhooks reach the watch through one route that is not wired yet, and the proofs bind in the control plane"
-status: accepted
+status: built
 date: 2026-11-28
 area: control
 supersedes: []
@@ -34,3 +34,6 @@ it is more than a day of work and not small: it needs four things that do not ex
   configuration of `uses-ink-https` with the timeout and reply limit of the request; the Worker's is `fetch`. Neither follows redirects.
 - **Owner steps.** Registering the GitHub App, a Codeberg application and any GitLab application, and storing their secrets
   through `secrets_request`. None was done.
+
+Built (2026-11-28): the claim table and its secrets are 0160, the route and `Watch::pushed` are 0161, and the real transport with the
+`ink repo` verbs and the Settings forms are 0162. Owner steps, the registered GitHub App and the OAuth applications, are still undone.
