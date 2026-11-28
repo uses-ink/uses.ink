@@ -1,5 +1,5 @@
 //! The tokens `ink:theme-quiet` declares, set in a site's `[theme]` table: which [`Look`] it
-//! wears and which [`Navigation`] it draws. Each token is a word out of a closed set, so a
+//! wears, which [`Navigation`] it draws and which [`Flow`] its page takes. Each token is a word out of a closed set, so a
 //! value the theme does not know is refused with the words it does, never ignored.
 //!
 //! ```toml
@@ -7,6 +7,7 @@
 //! use = "ink:theme-quiet"
 //! look = "uses-ink"        # the palette, faces and sizes of `crates/core/token/token.toml`
 //! navigation = "docs"      # a sidebar, previous and next links, an outline of the page
+//! layout = "panels"        # a page of panels, each cut from the last by a rule
 //! ```
 
 use std::fmt;
@@ -47,7 +48,8 @@ pub enum Look {
     /// The theme's own: system faces, a warm paper, a blue link.
     #[default]
     Quiet,
-    /// The uses.ink look of `crates/core/token/token.toml`: the documentation palette and type.
+    /// The uses.ink look of `crates/core/token/token.toml`: the doodle design pass, drawn in
+    /// pencil on white paper with the marks, faces and stylesheet of decision 0180.
     UsesInk,
 }
 
@@ -72,6 +74,23 @@ impl Word for Navigation {
     const WORDS: &'static [(&'static str, Self)] = &[("header", Self::Header), ("docs", Self::Docs)];
 }
 
+/// How a page's blocks are arranged.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Flow {
+    /// One column of blocks: an article, a post, a page of the docs.
+    #[default]
+    Page,
+    /// Panels: the blocks between two rules are a section of their own, the first is the hero and
+    /// the last is the foot (decision 0181).
+    Panels,
+}
+
+impl Word for Flow {
+    const TOKEN: &'static str = "layout";
+    const WORDS: &'static [(&'static str, Self)] = &[("page", Self::Page), ("panels", Self::Panels)];
+}
+
 /// What a site set for the theme: every token, each at its default until it says otherwise.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -80,6 +99,8 @@ pub struct Tokens {
     pub look: Look,
     /// What is drawn around a page.
     pub navigation: Navigation,
+    /// How a page's blocks are arranged.
+    pub layout: Flow,
 }
 
 /// One token the theme declares: its name, the words it takes and the one it has by default.
@@ -125,6 +146,7 @@ impl Tokens {
         vec![
             Declared { name: Look::TOKEN, accepts: Look::words(), default: Look::default().word() },
             Declared { name: Navigation::TOKEN, accepts: Navigation::words(), default: Navigation::default().word() },
+            Declared { name: Flow::TOKEN, accepts: Flow::words(), default: Flow::default().word() },
         ]
     }
 
@@ -137,7 +159,11 @@ impl Tokens {
         match name {
             Look::TOKEN => Ok(Self { look: Look::parse(value)?, ..self }),
             Navigation::TOKEN => Ok(Self { navigation: Navigation::parse(value)?, ..self }),
-            _ => Err(Refused::Unknown { token: name.to_owned(), known: vec![Look::TOKEN, Navigation::TOKEN] }),
+            Flow::TOKEN => Ok(Self { layout: Flow::parse(value)?, ..self }),
+            _ => Err(Refused::Unknown {
+                token: name.to_owned(),
+                known: vec![Look::TOKEN, Navigation::TOKEN, Flow::TOKEN],
+            }),
         }
     }
 
@@ -175,8 +201,12 @@ impl Tokens {
 
     /// Each token with the word that sets it, in declaration order: what a theme's identity and
     /// a cache key are made from.
-    pub fn words(self) -> [(&'static str, &'static str); 2] {
-        [(Look::TOKEN, self.look.word()), (Navigation::TOKEN, self.navigation.word())]
+    pub fn words(self) -> [(&'static str, &'static str); 3] {
+        [
+            (Look::TOKEN, self.look.word()),
+            (Navigation::TOKEN, self.navigation.word()),
+            (Flow::TOKEN, self.layout.word()),
+        ]
     }
 }
 

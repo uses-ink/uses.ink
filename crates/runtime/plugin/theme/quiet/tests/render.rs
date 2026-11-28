@@ -446,9 +446,9 @@ fn a_look_adds_its_stylesheet_and_changes_the_identity() {
     let plain = quiet();
     let worn = quiet().tokened(tokens(&[("look", "uses-ink")]));
     let routes: Vec<String> = worn.assets().iter().map(|file| file.route.to_string()).collect();
-    assert_eq!(routes, ["/style.css", "/code.css", "/look.css"]);
+    assert_eq!(routes[..3], ["/style.css", "/code.css", "/look.css"]);
     let look = String::from_utf8(worn.assets()[2].bytes.clone()).unwrap();
-    assert!(look.contains("--paper: #fffdf8") && look.contains("prefers-color-scheme: dark"), "{look}");
+    assert!(look.contains("--paper: #ffffff") && !look.contains("prefers-color-scheme"), "{look}");
     let site = docs();
     let html = worn.render(page(&site, "/a"), &site, &mut Said::default()).unwrap();
     assert!(html.as_ref().contains(r#"<link rel="stylesheet" href="/look.css">"#));
@@ -460,7 +460,7 @@ fn a_look_adds_its_stylesheet_and_changes_the_identity() {
 fn a_token_the_theme_does_not_declare_or_a_word_it_does_not_take_is_refused_with_the_words_it_has() {
     use theme_quiet::{Refused, Tokens};
     let unknown = Tokens::read([("colour", "red")]).unwrap_err();
-    assert_eq!(unknown, Refused::Unknown { token: "colour".to_owned(), known: vec!["look", "navigation"] });
+    assert_eq!(unknown, Refused::Unknown { token: "colour".to_owned(), known: vec!["look", "navigation", "layout"] });
     assert_eq!(unknown.problem().code(), "theme.token.unknown");
     let invalid = Tokens::read([("look", "loud")]).unwrap_err();
     assert_eq!(
@@ -469,7 +469,7 @@ fn a_token_the_theme_does_not_declare_or_a_word_it_does_not_take_is_refused_with
     );
     assert_eq!(invalid.problem().code(), "theme.token.invalid");
     let declared: Vec<_> = Tokens::declared().iter().map(|token| (token.name, token.default)).collect();
-    assert_eq!(declared, [("look", "quiet"), ("navigation", "header")]);
+    assert_eq!(declared, [("look", "quiet"), ("navigation", "header"), ("layout", "page")]);
 }
 
 #[test]
@@ -488,4 +488,87 @@ fn a_generated_home_lists_the_pages_as_the_folders_do() {
         order.windows(2).all(|pair| pair[0] < pair[1]),
         "the navigation's page first, then the rest, then the folders: {html}"
     );
+}
+
+/// A page of panels: a hero with the action and the pen's note, a rule, a panel, a rule and a foot.
+fn panels() -> Site {
+    let words = |level, words: &str| Block::Heading {
+        level: Level::new(level).unwrap(),
+        anchor: Anchor::of_heading(words).unwrap(),
+        inlines: vec![text(words)],
+    };
+    let blocks = vec![
+        words(1, "your notes"),
+        para(vec![text("a lede")]),
+        para(vec![
+            Inline::Code("github.com/you/notes".to_owned()),
+            text(" "),
+            Inline::Link {
+                target: LinkTarget::External("https://uses.ink/start".parse().unwrap()),
+                children: vec![text("publish it")],
+            },
+        ]),
+        para(vec![Inline::Emphasis(vec![text("no config file")])]),
+        Block::Rule,
+        words(2, "second"),
+        para(vec![text("an ordinary paragraph with "), Inline::Emphasis(vec![text("some")]), text(" emphasis")]),
+        Block::Rule,
+        para(vec![text("the foot")]),
+    ];
+    let home =
+        Page::new("index.md".parse().unwrap(), Route::root(), PageKind::Home, "Landing").holding(Document::new(blocks));
+    let mut parts =
+        SiteParts::new(model::Identity::new("Landing", "en".parse().unwrap()), model::Root::Top, model::Layout::Flat);
+    parts.home = Some(home.id);
+    parts.pages = vec![home];
+    Site::new(parts).unwrap()
+}
+
+fn drawn(layout: &'static str) -> Quiet<Stand> {
+    quiet().tokened(theme_quiet::Tokens::read([("look", "uses-ink"), ("layout", layout)]).unwrap())
+}
+
+#[test]
+fn a_page_of_panels_is_cut_at_its_rules_and_speaks_in_the_pen_and_the_one_action() {
+    let site = panels();
+    let html = drawn("panels").render(page(&site, "/"), &site, &mut Said::default()).unwrap();
+    let html = html.as_ref();
+    assert_eq!(html.matches("<section").count(), 2, "{html}");
+    assert!(html.contains("hand-hero"), "the first panel is the hero: {html}");
+    assert!(html.contains(r#"<footer class="hand-end"><p>the foot</p></footer>"#), "the last is the foot: {html}");
+    assert!(!html.contains("<hr"), "a rule cuts a panel and is not drawn: {html}");
+    assert!(html.contains(r#"<form class="hand-ask" action="https://uses.ink/start" method="get">"#), "{html}");
+    assert!(html.contains(r#"placeholder="github.com/you/notes""#) && html.contains("publish it</button>"), "{html}");
+    assert!(html.contains(r#"<p class="hand-say">no config file</p>"#), "{html}");
+    assert!(html.contains("an ordinary paragraph with <em>some</em> emphasis"), "{html}");
+    assert!(html.contains(r#"<img class="hand-logo" src="/marks/logo-open.svg""#), "{html}");
+    assert!(!html.contains("quiet-foot"), "a page of panels has no footer of the theme's: {html}");
+}
+
+#[test]
+fn without_panels_the_same_blocks_are_text_and_a_rule() {
+    let site = panels();
+    let html = drawn("page").render(page(&site, "/"), &site, &mut Said::default()).unwrap();
+    let html = html.as_ref();
+    for panel in ["<section", "hand-ask", "hand-say", "hand-end", "hand-logo"] {
+        assert!(!html.contains(panel), "{panel} in {html}");
+    }
+    assert!(html.contains("<hr>"), "{html}");
+    assert!(html.contains("made with uses.ink"), "the drawn look signs the page: {html}");
+}
+
+#[test]
+fn the_drawn_look_serves_its_sheet_marks_and_faces_and_the_default_look_serves_none() {
+    let routes = |tokens: &theme_quiet::Tokens| -> Vec<String> {
+        Quiet::<Stand>::files(tokens).iter().map(|file| file.route.to_string()).collect()
+    };
+    let plain = routes(&theme_quiet::Tokens::default());
+    assert_eq!(plain, ["/style.css", "/code.css"]);
+    let hand = routes(&theme_quiet::Tokens::read([("look", "uses-ink")]).unwrap());
+    for served in ["/look.css", "/notebook.css", "/marks/frame.svg", "/marks/rule.svg", "/fonts/gaegu-bold.woff2"] {
+        assert!(hand.iter().any(|route| route == served), "{served} in {hand:?}");
+    }
+    let site = panels();
+    let html = drawn("page").render(page(&site, "/"), &site, &mut Said::default()).unwrap();
+    assert!(html.as_ref().contains(r#"<link rel="stylesheet" href="/notebook.css">"#), "{}", html.as_ref());
 }

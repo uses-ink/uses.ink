@@ -11,6 +11,10 @@
 //! faces and sizes come from `crates/core/token/token.toml`, and the [`Navigation`] it draws, a
 //! header alone or a sidebar, an outline and previous and next links for documentation.
 //!
+//! The `uses-ink` look wears the doodle design pass: its stylesheet, faces and drawn marks are
+//! files of the theme (`notebook`), and `layout = "panels"` arranges a page of panels, which is
+//! how the landing page is made (decisions 0180 and 0181).
+//!
 //! It implements [`engine::Theme`] directly: this crate is the theme's native core, and `guest/`
 //! exports it as the `ink:theme` world of a wasm component (decision 0041).
 //!
@@ -18,17 +22,19 @@
 //! it.
 
 mod document;
+mod notebook;
 mod page;
 mod style;
 mod tokens;
 
-pub use tokens::{Declared, Look, Navigation, Refused, Tokens};
+pub use tokens::{Declared, Flow, Look, Navigation, Refused, Tokens};
 
 use engine::{BaseUrl, File, Html, Reads, Sink, Theme};
 use model::highlight::Highlight;
 use model::{Diagnostic, Hash, MediaType, Page, PageKind, Problem, Route, Site, Subject};
 
 use document::Source;
+use notebook::Notebook;
 use page::Layout;
 
 /// The theme, highlighting code through `H`, the host's capability.
@@ -70,6 +76,7 @@ impl<H> Quiet<H> {
             && let Ok(route) = page::LOOK.parse::<Route>()
         {
             files.push(File { route, media: MediaType::Css, bytes: token::Look::UsesInk.css().as_bytes().to_vec() });
+            files.extend(Notebook::files());
         }
         files
     }
@@ -92,6 +99,8 @@ impl Code {
         include_bytes!("document/math/allow.rs"),
         include_bytes!("document/note.rs"),
         include_bytes!("document/picture.rs"),
+        include_bytes!("document/voice.rs"),
+        include_bytes!("notebook.rs"),
     ];
 
     /// The versions of everything the workspace builds with.

@@ -23,6 +23,7 @@ mod code;
 mod math;
 mod note;
 mod picture;
+mod voice;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -38,7 +39,9 @@ use unspliced::{Class, HERE, Halt, Id, Marks, Render, Sink, Split, Url, html};
 use math::Placement;
 use picture::Shown;
 
+use crate::notebook::hand;
 use crate::style::quiet;
+use crate::tokens::Flow;
 
 /// Why a page was not written whole. Either is a bug in the theme, never in the page.
 #[derive(Debug)]
@@ -94,6 +97,8 @@ pub(crate) struct Writer<'a, H, R: ?Sized> {
     failed: Option<Unwritten>,
     /// The list being written, for its items.
     spacing: Spacing,
+    /// How the blocks of the page are arranged.
+    flow: Flow,
     /// How many references to each footnote are written so far.
     references: BTreeMap<FootnoteName, usize>,
     /// Each footnote's number, from 1 in the order listed: looked up once per reference, so
@@ -119,7 +124,13 @@ impl<'a, H: Highlight, R: engine::Sink + ?Sized> Writer<'a, H, R> {
             // the first of a name, as `Document::footnote_number` has it
             numbers.entry(&footnote.name).or_insert(at + 1);
         }
-        Self { source, out, record, failed: None, spacing: Spacing::Loose, references, numbers }
+        Self { source, out, record, failed: None, spacing: Spacing::Loose, flow: Flow::Page, references, numbers }
+    }
+
+    /// The same writer, arranging the page's blocks as `flow` says.
+    #[must_use]
+    pub(crate) fn arranged(self, flow: Flow) -> Self {
+        Self { flow, ..self }
     }
 
     /// The page's document, written whole, or why it was not.
@@ -185,6 +196,34 @@ impl<'a, H: Highlight, R: engine::Sink + ?Sized> Writer<'a, H, R> {
         });
     }
 
+    /// Where a link goes as a reader page writes it, or `None` when it goes nowhere: a page the
+    /// site does not hold, or a kind of target this theme does not know.
+    fn href(&self, target: &LinkTarget) -> Option<String> {
+        match target {
+            LinkTarget::Page { id, anchor } => self.source.site.page(*id).map(|page| match anchor {
+                Some(anchor) => format!("{}#{anchor}", page.route),
+                None => page.route.to_string(),
+            }),
+            LinkTarget::Anchor(anchor) => Some(format!("#{anchor}")),
+            LinkTarget::External(url) => Some(url.to_string()),
+            _ => None,
+        }
+    }
+
+    /// A page of panels: the blocks between two rules are a section, the first the hero; the
+    /// blocks after the last rule are the foot, when a rule is there.
+    fn panels(&mut self, blocks: &[Block]) {
+        let mut parts: Vec<&[Block]> = blocks.split(|block| matches!(block, Block::Rule)).collect();
+        let foot = if parts.len() > 1 { parts.pop() } else { None };
+        for (at, part) in parts.into_iter().enumerate() {
+            let hero = (at == 0).then_some(hand::HERO);
+            self.wrap(html! { section.hand::PANEL class=(hero) { (HERE) } }, |section| section.blocks(part));
+        }
+        if let Some(foot) = foot {
+            self.wrap(html! { footer.hand::END { (HERE) } }, |end| end.blocks(foot));
+        }
+    }
+
     /// A callout; one a reader can fold is a `<details>`, open at first for `+`.
     fn callout(&mut self, callout: &Block) {
         let Block::Callout { kind, title, blocks, folding } = callout else { return };
@@ -221,7 +260,10 @@ impl<'a, H: Highlight, R: engine::Sink + ?Sized> Writer<'a, H, R> {
 impl<H: Highlight, R: engine::Sink + ?Sized> Visit for Writer<'_, H, R> {
     /// The blocks, then the footnotes in a section of their own.
     fn document(&mut self, document: &Document) {
-        self.blocks(&document.blocks);
+        match self.flow {
+            Flow::Page => self.blocks(&document.blocks),
+            Flow::Panels => self.panels(&document.blocks),
+        }
         if !document.footnotes.is_empty() {
             let notes = html! { section.quiet::NOTES aria-label="Footnotes" { ol { (HERE) } } };
             self.wrap(notes, |notes| document.footnotes.iter().for_each(|footnote| notes.footnote(footnote)));
@@ -243,7 +285,7 @@ impl<H: Highlight, R: engine::Sink + ?Sized> Visit for Writer<'_, H, R> {
                     Err(_) => self.wrap(level.tag().with(content), |h| block.walk(h)),
                 }
             }
-            Block::Paragraph(_) => self.wrap(html! { p { (HERE) } }, |p| block.walk(p)),
+            Block::Paragraph(inlines) => self.paragraph(inlines),
             Block::List { ordered, tight, .. } => {
                 let outer = std::mem::replace(&mut self.spacing, if *tight { Spacing::Tight } else { Spacing::Loose });
                 match *ordered {
@@ -323,16 +365,7 @@ impl<H: Highlight, R: engine::Sink + ?Sized> Visit for Writer<'_, H, R> {
     }
 
     fn link(&mut self, target: &LinkTarget, children: &[Inline]) {
-        let href = match target {
-            LinkTarget::Page { id, anchor } => self.source.site.page(*id).map(|page| match anchor {
-                Some(anchor) => format!("{}#{anchor}", page.route),
-                None => page.route.to_string(),
-            }),
-            LinkTarget::Anchor(anchor) => Some(format!("#{anchor}")),
-            LinkTarget::External(url) => Some(url.to_string()),
-            _ => None,
-        };
-        match href.as_deref().map(Url::checked) {
+        match self.href(target).as_deref().map(Url::checked) {
             Some(Ok(url)) => self.wrap(html! { a href=(url) { (HERE) } }, |a| a.inlines(children)),
             // Unresolved, or a scheme no reader page links to: the text alone.
             _ => self.inlines(children),

@@ -12,14 +12,19 @@ use unspliced::keyword::AriaCurrent;
 use unspliced::{Class, HERE, Halt, Id, Lazy, Render, Sink, Split, Url, html};
 
 use crate::document::{Source, Unwritten, Writer};
+use crate::notebook::{Notebook, hand};
 use crate::style::quiet;
-use crate::tokens::{Look, Navigation, Tokens};
+use crate::tokens::{Flow, Look, Navigation, Tokens};
 
 /// The routes the theme links from every page's head.
 pub(crate) const STYLE: &str = "/style.css";
 pub(crate) const CODE: &str = "/code.css";
 /// The stylesheet of a look other than the theme's own.
 pub(crate) const LOOK: &str = "/look.css";
+/// The mark the look draws before the site's name on a page of panels.
+const LOGO: &str = "/marks/logo-open.svg";
+/// The small mark of the signature.
+const MARK: &str = "/marks/mark.svg";
 const ATOM: &str = "/feed.xml";
 const RSS: &str = "/rss.xml";
 
@@ -57,6 +62,16 @@ impl<H: Highlight> Layout<'_, H> {
         self.tokens.navigation == Navigation::Docs
     }
 
+    /// Whether the page wears the hand-drawn look.
+    fn is_drawn(&self) -> bool {
+        self.tokens.look == Look::UsesInk
+    }
+
+    /// Whether the page is a page of panels, which has no footer of the theme's: its last panel is one.
+    fn is_panels(&self) -> bool {
+        self.tokens.layout == Flow::Panels
+    }
+
     /// Whether the engine writes feeds: when a post is dated.
     fn has_feeds(&self) -> bool {
         self.source.site.pages().iter().any(|page| page.kind == PageKind::Post && page.date.is_some())
@@ -67,14 +82,18 @@ impl<H: Highlight> Layout<'_, H> {
     pub(crate) fn write<R: engine::Sink + ?Sized>(&self, out: &mut dyn Sink, record: &mut R) -> Result<(), Unwritten> {
         let (page, identity) = (self.source.page, self.source.site.identity());
         let docs = self.is_docs();
+        let panels = self.is_panels();
         let shell = html! {
             doctype
             html lang=(identity.language.as_ref()) {
                 (Lazy(|out: &mut dyn Sink| self.head(out)))
-                body {
+                body class=(panels.then_some(hand::SHOW)) {
                     div.quiet::PAGE class=(docs.then_some(quiet::WIDE)) {
                         header.quiet::HEAD {
-                            a.quiet::SITE href=(Url::new("/")) { (&identity.title) }
+                            a.quiet::SITE href=(Url::new("/")) {
+                                @if panels { img.hand::LOGO src=(Url::new(LOGO)) alt="" width=(44) height=(44); }
+                                (&identity.title)
+                            }
                             (Lazy(|out: &mut dyn Sink| self.nav(out)))
                         }
                         @if docs {
@@ -92,15 +111,39 @@ impl<H: Highlight> Layout<'_, H> {
                             @if docs { (Lazy(|out: &mut dyn Sink| self.pager(out))) }
                             @if page.kind == PageKind::Home { (Lazy(|out: &mut dyn Sink| self.listing(out))) }
                         }
-                        footer.quiet::FOOT { p { (&identity.title) } }
+                        (Lazy(|out: &mut dyn Sink| self.foot(out)))
                     }
                 }
             }
         };
         let split = Split::new(&shell).map_err(Unwritten::Marks)?;
         split.head(out).map_err(Unwritten::Halt)?;
-        Writer::new(self.source, out, record).write()?;
+        Writer::new(self.source, out, record).arranged(self.tokens.layout).write()?;
         split.tail(out).map_err(Unwritten::Halt)
+    }
+
+    /// The footer of the page: the site's name, or in the drawn look the signature; a page of
+    /// panels has none, since its last panel is one.
+    fn foot(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        if self.is_panels() {
+            Ok(())
+        } else if self.is_drawn() {
+            html! { footer.quiet::FOOT { (Lazy(|out: &mut dyn Sink| self.signature(out))) } }.render(out)
+        } else {
+            html! { footer.quiet::FOOT { p { (&self.source.site.identity().title) } } }.render(out)
+        }
+    }
+
+    /// The footer of the drawn look: the feed when there is one, and the one line uses.ink signs.
+    fn signature(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        let feeds = self.has_feeds();
+        html! {
+            @if feeds { a href=(Url::new(ATOM)) { "feed" } }
+            @if let Ok(home) = Url::checked("https://uses.ink") {
+                a.hand::MADE href=(home) { img src=(Url::new(MARK)) alt="" width=(22) height=(22); "made with uses.ink" }
+            }
+        }
+        .render(out)
     }
 
     fn head(&self, out: &mut dyn Sink) -> Result<(), Halt> {
@@ -120,7 +163,7 @@ impl<H: Highlight> Layout<'_, H> {
             @if let Ok(url) = Url::checked(&canonical) { link rel="canonical" href=(url); }
             link rel="stylesheet" href=(Url::new(STYLE));
             link rel="stylesheet" href=(Url::new(CODE));
-            @if look { link rel="stylesheet" href=(Url::new(LOOK)); }
+            @if look { link rel="stylesheet" href=(Url::new(LOOK)); link rel="stylesheet" href=(Url::new(Notebook::SHEET)); }
             @if feeds {
                 link rel="alternate" type="application/atom+xml" title=(&identity.title) href=(Url::new(ATOM));
                 link rel="alternate" type="application/rss+xml" title=(&identity.title) href=(Url::new(RSS));
