@@ -58,7 +58,7 @@ pub use fault::{Denied, Fault, Intake};
 pub use limits::{Asked, Limit, Limits, Raised};
 pub use nonce::Case as NonceCase;
 pub use nonce::{Claimed, Claiming, Nonces, Remembered};
-pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Unreadable as OperatorError};
+pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Roll, Unreadable as OperatorError};
 pub use port::{Port, Unnamed};
 pub use reply::{Header, Media, Method, Payload, Reply, Request, Status, UnknownMethod};
 pub use route::{Call, RouteError};

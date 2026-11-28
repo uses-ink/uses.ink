@@ -186,6 +186,21 @@ fn a_request_is_a_replay_through_the_last_second_the_skew_check_admits_it() {
 }
 
 #[test]
+fn one_bad_line_in_the_operator_keys_does_not_fail_every_signed_request() {
+    let rig = rig();
+    let device = signer(1);
+    rig.enrolled(&device, &json!({}));
+    let path = rig.folder.path().join("operator-keys");
+    let mut text = std::fs::read_to_string(&path).unwrap();
+    text.push_str("this is not a key\n");
+    std::fs::write(&path, text).unwrap();
+    let (reply, who) = rig.call(Method::Get, "/v1/whoami", b"");
+    assert_eq!((reply.status, who["kind"].as_str()), (Status::Ok, Some("operator")));
+    let (reply, _) = rig.call_as(&device, Method::Get, "/v1/whoami", b"");
+    assert_eq!(reply.status, Status::Ok);
+}
+
+#[test]
 fn a_restart_does_not_take_what_was_signed_before_it() {
     let rig = rig();
     let route = (Method::Get, "/v1/whoami");

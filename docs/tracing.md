@@ -155,7 +155,7 @@ Events have constant names. The main ones, by area:
 | image | `cache.lookup` (`kind=image`, `outcome` memory/disk/miss/rejected, key), `image.decoded`, `image.resized`, `image.encoded`, `image.refused` (error chain) |
 | plugins | `plugin.loaded` (compiled, cached, replaced), `plugin.refused` (fuel, time, memory, table, trap, with the failure chain) |
 | edge | `edge.listening`, `edge.accepted`, `request.answered`, `request.refused`, `request.failed`, `response.cut`, `connection.failed`, `connection.lingered`, `edge.stopping`, `edge.stopped` |
-| api | `api.auth` (outcome only), `api.answered`, `api.unlinked`, `signin.unsent`, `request.unread`, `reply.dropped` |
+| api | `api.auth` (outcome only), `api.answered`, `api.unlinked`, `signin.unsent`, `operator.skipped`, `request.unread`, `reply.dropped` |
 | control | `job.claimed`, `job.dropped`, `job.settled`, `job.failed` (retry or last), `deploy.published`, `deploy.rolled` |
 | db | `db.migrated`, `db.statement`, `db.batch` |
 | blob | `blob.io` |

@@ -91,6 +91,8 @@ pub mod event {
     pub const API_UNLINKED: &str = "api.unlinked";
     /// A sign-in message was not queued for the courier.
     pub const SIGNIN_UNSENT: &str = "signin.unsent";
+    /// A line of the operator's key file is not a key, and is skipped.
+    pub const OPERATOR_SKIPPED: &str = "operator.skipped";
     /// A caller left before its answer was ready, so the answer was dropped.
     pub const REPLY_DROPPED: &str = "reply.dropped";
     /// The body of an API request could not be read to its end.
