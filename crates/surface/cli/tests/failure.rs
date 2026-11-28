@@ -46,6 +46,7 @@ fn ink(args: &[&str], env: &[(&str, &str)]) -> Ran {
 
 /// What the user can type wrong and what `ink` answers. `@name` in an argument is the fixture
 /// site of that name.
+#[allow(clippy::too_many_lines, reason = "a table of rows, one line each")]
 fn rows() -> Vec<Row> {
     let down: &[(&str, &str)] = &[("INK_API", "http://127.0.0.1:1")];
     vec![
@@ -121,7 +122,8 @@ fn every_error_a_user_reaches_has_a_code_a_fix_and_a_state() {
 
 #[test]
 fn an_error_in_json_is_one_document_with_its_code_fix_and_state() {
-    let documented: &[(&[&str], &[(&str, &str)], &str)] = &[
+    type Case = (&'static [&'static str], &'static [(&'static str, &'static str)], &'static str);
+    let documented: &[Case] = &[
         (&["push"], &[], "link.file.missing"),
         (&["whoami"], &[], "deploy.setting.missing"),
         (&["key", "add"], &[("INK_API", "http://127.0.0.1:1")], "deploy.api.unreachable"),

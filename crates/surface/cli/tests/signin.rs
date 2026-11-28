@@ -180,7 +180,7 @@ fn a_stranger_signs_in_enrols_a_machine_publishes_and_logs_out() {
     let sessions = ann.send(("GET", "/v1/sessions"), "").json();
     assert_eq!(sessions.as_array().unwrap().len(), 1, "{sessions}");
     // and ends it: the cookie no longer opens anything
-    let ended = ann.send(("DELETE", "/v1/session"), "");
+    let ended = ann.send(("delete", "/v1/session"), "");
     assert_eq!(ended.status(), "200", "{}", ended.text);
     assert_eq!(ann.send(("GET", "/v1/session"), "").status(), "401");
 
@@ -253,7 +253,7 @@ fn a_key_nobody_approves_or_a_person_denies_is_a_sign_in_error_that_says_so() {
     let asked = waiting.until("/v1/approve/");
     let code = asked.split("/v1/approve/").nth(1).unwrap().split(',').next().unwrap().to_owned();
     let path = format!("/v1/approve/{code}");
-    let denied = owner.send(("DELETE", &path), "");
+    let denied = owner.send(("delete", &path), "");
     assert_eq!(denied.status(), "200", "{}", denied.text);
     let (exit, said) = waiting.finish();
     assert_eq!(exit, 3, "{said}");

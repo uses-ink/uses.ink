@@ -116,11 +116,11 @@ fn passkeys_register_sign_in_step_up_and_recover_on_the_real_server() {
     let current = rows.iter().filter(|row| row["current"] == json!(true)).count();
     assert_eq!(current, 1, "{sessions}");
     let theirs = rows.iter().find(|row| row["current"] == json!(false)).unwrap()["id"].as_str().unwrap().to_owned();
-    let ended = fresh.send(("DELETE", &format!("/v1/sessions/{theirs}")), "");
+    let ended = fresh.send(("delete", &format!("/v1/sessions/{theirs}")), "");
     assert_eq!(ended.status(), "200", "{}", ended.text);
     assert_eq!(link.send(("GET", "/v1/session"), "").status(), "401", "the ended session no longer opens anything");
     assert_eq!(fresh.send(("GET", "/v1/session"), "").status(), "200");
-    let missing = fresh.send(("DELETE", &format!("/v1/sessions/{theirs}")), "");
+    let missing = fresh.send(("delete", &format!("/v1/sessions/{theirs}")), "");
     assert_eq!((missing.status(), missing.problem().as_str()), ("404", "auth.session.missing"));
 
     // recovery codes: ten, shown once, and a new set voids the old

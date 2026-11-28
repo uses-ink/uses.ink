@@ -215,7 +215,11 @@ impl Server {
     fn once(&self, (method, target): (&str, &str), headers: &[(&str, &str)], body: &str) -> Got {
         let mut stream = TcpStream::connect(("127.0.0.1", self.port)).unwrap();
         stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
-        let mut head = format!("{method} {target} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n", self.audience);
+        let mut head = format!(
+            "{} {target} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
+            method.to_ascii_uppercase(),
+            self.audience
+        );
         for (name, value) in headers {
             write!(head, "{name}: {value}\r\n").unwrap();
         }

@@ -32,10 +32,8 @@ fn listed(help: &str, headings: &[&str]) -> Vec<String> {
             inside = true;
         } else if line.trim().is_empty() || !line.starts_with(' ') {
             inside = false;
-        } else if inside {
-            if let Some(word) = line.split_whitespace().next() {
-                names.push(word.trim_end_matches(',').to_owned());
-            }
+        } else if let (true, Some(word)) = (inside, line.split_whitespace().next()) {
+            names.push(word.trim_end_matches(',').to_owned());
         }
     }
     names
@@ -116,6 +114,6 @@ fn the_manual_and_every_shell_know_every_command() {
     }
     for path in commands() {
         let name = path.join(" ");
-        assert!(manual.out.contains(&path.last().unwrap().to_string()), "the manual lacks `{name}`");
+        assert!(manual.out.contains(&path.last().unwrap().clone()), "the manual lacks `{name}`");
     }
 }
