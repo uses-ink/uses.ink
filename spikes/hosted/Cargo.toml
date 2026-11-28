@@ -1,0 +1,18 @@
+# H0b spikes of M4 (docs/hosted.md section 5.0): Worker crates built for wasm32-unknown-unknown and
+# run in workerd by `cargo xtask worker <case>`. Excluded from the root workspace (`exclude =
+# ["spikes"]`); its own lockfile, its own `target/`.
+[workspace]
+resolver = "3"
+members = ["api", "store"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "AGPL-3.0-or-later"
+
+# What a deployed Worker would be built with: small, one codegen unit, whole-program optimisation.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1

@@ -1,0 +1,9 @@
+{
+  "name": "uses-ink-hosted-spikes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The npm side of the hosted spikes: wrangler, which brings miniflare and workerd. Pinned exactly; installed by cargo xtask worker under target/hosted/node.",
+  "devDependencies": {
+    "wrangler": "4.168.0"
+  }
+}

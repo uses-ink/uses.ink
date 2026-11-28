@@ -57,6 +57,15 @@ golden = true
 # builds `ink` and every site fixture natively and through the components: nearly every crate.
 inputs = ["**", "!docs/**", "!PRODUCT.md"]
 
+[job.worker]
+run = "cargo xtask check worker"
+golden = true
+# The Worker tests in workerd (`cargo xtask worker <case>`, decision 0096): needs node, npm and
+# network on the host, which only the x86_64 build hosts have, so a host without them (`here`) must be
+# left out with `--host`. The spikes under `spikes/hosted/` path-depend on the server crates, so the
+# whole tree but prose counts.
+inputs = ["**", "!docs/**", "!PRODUCT.md"]
+
 # `farm test` measures the change from `base` (default: where the workspace left `main`). A changed
 # path inside a crate affects that crate and its dependents; `Cargo.toml`, `Cargo.lock`,
 # `rust-toolchain.toml`, `deny.toml`, `.config/**` and `.cargo/**` affect all; so does a path in no

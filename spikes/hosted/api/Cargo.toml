@@ -1,0 +1,20 @@
+[package]
+name = "spike-hosted-api"
+description = "H0b spike (a): the API crates with webauthn-rs-core as a Worker, and a passkey ceremony run in workerd"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = "=0.9.0"
+edge-api = { package = "uses-ink-edge-api", path = "../../../crates/server/edge/api" }
+control = { package = "uses-ink-control", path = "../../../crates/server/control" }
+sig = { package = "uses-ink-sig", path = "../../../crates/core/sig" }
+serde_json = "1"
+p256 = { version = "0.14", default-features = false, features = ["ecdsa"] }
+serde_cbor_2 = "0.13.0"
+sha2 = "0.11"

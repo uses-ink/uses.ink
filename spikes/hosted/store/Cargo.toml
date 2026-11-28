@@ -1,0 +1,16 @@
+[package]
+name = "spike-hosted-store"
+description = "H0b spikes (b) and (c): D1 value fidelity and a streamed R2 put of unknown length, in workerd"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = { version = "=0.9.0", features = ["d1"] }
+blake3 = { version = "1", default-features = false }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+serde_json = "1"

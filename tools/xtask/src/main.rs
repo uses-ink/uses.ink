@@ -11,8 +11,10 @@
 //!   decision files, and the crate index, `docs/crates.md`, from the manifests.
 //! - `component`: build the plugins' guest crates for `wasm32-unknown-unknown` and wrap each
 //!   into a component under `target/plugin/`.
+//! - `worker <case>`: a Worker run in `workerd` through `wrangler dev --local`, with no Cloudflare
+//!   account: the hosted spikes and the conformance suites (`probe`, `lock`, `api`, `store`, `db`).
 //! - `check [stage]`: the whole gate, or one of its stages (`lint`, `test`, `docs`, `wasm`,
-//!   `sites`), which CI runs as parallel jobs: fmt, clippy (native and wasm32), `cargo deny` and
+//!   `sites`, `worker`), which CI runs as parallel jobs: fmt, clippy (native and wasm32), `cargo deny` and
 //!   `layout`; the components and nextest; the docs checks (links, citations, crate paths and decisions)
 //!   and doc tests; the pen on wasm32-wasip2 and in the browser;
 //!   `ink build --check` on every CLI site fixture. Runs every step and fails with every failed
@@ -65,6 +67,7 @@ mod layout;
 mod process;
 mod report;
 mod root;
+mod worker;
 
 use error::Error;
 use generate::output::{Mode, Output};
@@ -80,13 +83,14 @@ pub(crate) enum Task {
     Layout,
     Docs,
     Component,
+    Worker,
     Check,
 }
 
 impl Task {
     /// Every task, in the order they are listed.
-    pub(crate) const ALL: [Self; 7] =
-        [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Docs, Self::Component, Self::Check];
+    pub(crate) const ALL: [Self; 8] =
+        [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Docs, Self::Component, Self::Worker, Self::Check];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -97,14 +101,34 @@ impl Task {
             Self::Layout => "layout",
             Self::Docs => "docs",
             Self::Component => "component",
+            Self::Worker => "worker",
             Self::Check => "check",
         }
     }
 
-    /// Runs it from the workspace at `root`; the report holds every line and every failure.
-    fn run(self, root: &Path, stage: Option<check::Stage>) -> Report {
-        if let (Some(_), false) = (stage, self == Self::Check) {
-            return Report::from(Error::Stageless { task: self });
+    /// Runs it from the workspace at `root`, with the argument after its name: a stage of `check`,
+    /// a case of `worker`; the report holds every line and every failure.
+    fn run(self, root: &Path, argument: Option<&str>) -> Report {
+        match (self, argument) {
+            (Self::Check, given) => {
+                return match given.map(str::parse::<check::Stage>).transpose() {
+                    Ok(stage) => check::Gate::new(root).run(stage),
+                    Err(error) => Report::from(error),
+                };
+            }
+            (Self::Worker, Some(given)) => {
+                return match given.parse::<worker::Case>() {
+                    Ok(case) => {
+                        let mut report = Report::default();
+                        check::Step::run(&worker::Worker(case), root, &mut report);
+                        report
+                    }
+                    Err(error) => Report::from(error),
+                };
+            }
+            (Self::Worker, None) => return Report::from(Error::Case { given: String::new() }),
+            (_, Some(_)) => return Report::from(Error::Stageless { task: self }),
+            (_, None) => {}
         }
         let mut report = Report::default();
         let mut output = Output::new(root, Mode::Write);
@@ -124,7 +148,7 @@ impl Task {
                 check::Step::run(&build::component::Components, root, &mut report);
                 return report;
             }
-            Self::Check => return check::Gate::new(root).run(stage),
+            Self::Worker | Self::Check => return report,
         };
         report.take(generated);
         output.settle(&mut report);
@@ -166,14 +190,9 @@ impl fmt::Display for Chain<'_> {
 
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
-    let report = match (
-        Root::find(),
-        args.next().map(|arg| arg.parse::<Task>()),
-        args.next().map(|arg| arg.parse::<check::Stage>()),
-    ) {
-        (Ok(root), Some(Ok(task)), None) => task.run(&root, None),
-        (Ok(root), Some(Ok(task)), Some(Ok(stage))) => task.run(&root, Some(stage)),
-        (Err(error), ..) | (Ok(_), Some(Err(error)), _) | (Ok(_), Some(Ok(_)), Some(Err(error))) => Report::from(error),
+    let report = match (Root::find(), args.next().map(|arg| arg.parse::<Task>()), args.next()) {
+        (Ok(root), Some(Ok(task)), argument) => task.run(&root, argument.as_deref()),
+        (Err(error), ..) | (Ok(_), Some(Err(error)), _) => Report::from(error),
         (Ok(_), None, _) => Report::from(Error::Missing),
     };
     let mut err = std::io::stderr();

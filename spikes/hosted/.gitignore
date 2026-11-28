@@ -1,0 +1,4 @@
+# built by `cargo xtask worker`, on the host that runs it
+build/
+.wrangler/
+node_modules/

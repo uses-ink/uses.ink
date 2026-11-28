@@ -1,0 +1,13 @@
+# Local only: `cargo xtask worker store`. Never deployed.
+name = "spike-hosted-store"
+main = "build/index.js"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "spike"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[r2_buckets]]
+binding = "BLOBS"
+bucket_name = "spike-blobs"

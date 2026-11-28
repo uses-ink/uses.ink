@@ -64,6 +64,8 @@ pub(crate) enum Line {
     Prose,
     /// A site fixture built the same deploy natively and through the components.
     Matched(PathBuf),
+    /// A line a Worker run says: what it measured, what the Worker answered.
+    Worker { case: crate::worker::Case, text: String },
     /// Every step of the gate passed.
     Passed,
 }
@@ -93,6 +95,7 @@ impl fmt::Display for Line {
             Self::Checked => write!(out, "layout fine, generated files fresh"),
             Self::Prose => write!(out, "docs fine: links, citations, crate paths and decisions checked"),
             Self::Matched(path) => write!(out, "{}: same deploy natively and as components", path.display()),
+            Self::Worker { case, text } => write!(out, "worker {case}: {text}"),
             Self::Passed => write!(out, "check: every step passed"),
         }
     }

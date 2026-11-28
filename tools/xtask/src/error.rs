@@ -27,9 +27,18 @@ pub(crate) enum Error {
     Stage {
         given: String,
     },
-    /// A stage given to a task that has none.
+    /// An argument given to a task that takes none.
     Stageless {
         task: Task,
+    },
+    /// A case of `worker` that does not exist.
+    Case {
+        given: String,
+    },
+    /// A Worker run that failed.
+    Worker {
+        case: crate::worker::Case,
+        fault: crate::worker::Fault,
     },
     Read {
         path: PathBuf,
@@ -138,7 +147,14 @@ impl fmt::Display for Error {
             Self::Missing => write!(out, "no task given; the tasks are {}", Listed(&Task::ALL)),
             Self::Unknown { given } => write!(out, "no task `{given}`; the tasks are {}", Listed(&Task::ALL)),
             Self::Stage { given } => write!(out, "no stage `{given}`; the stages are {}", Listed(&Stage::ALL)),
-            Self::Stageless { task } => write!(out, "`{task}` has no stages; only `check` does"),
+            Self::Stageless { task } => write!(out, "`{task}` takes no argument"),
+            Self::Case { given } if given.is_empty() => {
+                write!(out, "no case given; the cases are {}", Listed(&crate::worker::Case::ALL))
+            }
+            Self::Case { given } => {
+                write!(out, "no case `{given}`; the cases are {}", Listed(&crate::worker::Case::ALL))
+            }
+            Self::Worker { case, .. } => write!(out, "worker {case} failed"),
             Self::Read { path, .. } => write!(out, "cannot read {}", path.display()),
             Self::Write { path, .. } => write!(out, "cannot write {}", path.display()),
             Self::Source { path, flaw } => write!(out, "{path}: {flaw}"),
@@ -200,6 +216,7 @@ impl std::error::Error for Error {
             | Self::Step { source, .. }
             | Self::Site { source, .. } => Some(source),
             Self::Root(lost) => lost.source(),
+            Self::Worker { fault, .. } => Some(fault),
             Self::Wrap { source, .. } => Some(source.as_ref()),
             Self::Bundle { source, .. } => Some(source),
             // Each of these is the whole failure: its data says what is wrong.
@@ -207,6 +224,7 @@ impl std::error::Error for Error {
             | Self::Unknown { .. }
             | Self::Stage { .. }
             | Self::Stageless { .. }
+            | Self::Case { .. }
             | Self::Source { .. }
             | Self::Module { .. }
             | Self::Layout(_)

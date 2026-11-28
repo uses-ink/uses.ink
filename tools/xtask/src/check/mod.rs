@@ -15,6 +15,7 @@ use crate::docs::Prose;
 use crate::error::Error;
 use crate::layout::Layout;
 use crate::report::{Line, Report};
+use crate::worker::{Case, Worker};
 
 pub(crate) use cargo::{Cargo, Command, Every, Flag, Invocation, Target, Tool};
 pub(crate) use steps::{Step, Steps};
@@ -91,6 +92,11 @@ impl Gate {
         (Components, Sites)
     }
 
+    /// The Worker tests: what runs in `workerd` with no account.
+    fn worker() -> impl Steps {
+        (Worker(Case::GATE[0]),)
+    }
+
     /// Runs the stage, or every stage in order, and reports every failure, then whether all passed.
     pub(crate) fn run(mut self, stage: Option<Stage>) -> Report {
         match stage {
@@ -121,11 +127,12 @@ pub(crate) enum Stage {
     Docs,
     Wasm,
     Sites,
+    Worker,
 }
 
 impl Stage {
     /// Every stage, in the order the whole gate runs them.
-    pub(crate) const ALL: [Self; 5] = [Self::Lint, Self::Test, Self::Docs, Self::Wasm, Self::Sites];
+    pub(crate) const ALL: [Self; 6] = [Self::Lint, Self::Test, Self::Docs, Self::Wasm, Self::Sites, Self::Worker];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -135,6 +142,7 @@ impl Stage {
             Self::Docs => "docs",
             Self::Wasm => "wasm",
             Self::Sites => "sites",
+            Self::Worker => "worker",
         }
     }
 
@@ -146,6 +154,7 @@ impl Stage {
             Self::Docs => Gate::docs().run(gate),
             Self::Wasm => Gate::wasm().run(gate),
             Self::Sites => Gate::sites().run(gate),
+            Self::Worker => Gate::worker().run(gate),
         }
     }
 }

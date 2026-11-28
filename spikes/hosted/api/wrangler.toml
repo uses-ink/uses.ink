@@ -1,0 +1,4 @@
+# Local only: `cargo xtask worker api`. Never deployed.
+name = "spike-hosted-api"
+main = "build/index.js"
+compatibility_date = "2026-11-01"
