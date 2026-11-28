@@ -236,6 +236,16 @@ fn refuses_links_out_of_the_tree_and_links_to_nothing() {
     assert_eq!(code(&refused), "source.link.broken");
 }
 
+/// Slow by construction, and slower on a busy host, which is not a lock to fix. A tree 6,000 folders
+/// deep is 6,000 loose objects: the fixture writes each as a temporary file renamed into a
+/// fan-out folder, and the read opens each one again. Measured on an idle host this takes 1.1 s of
+/// CPU in 1.1 s of wall time, of which 0.82 s is kernel time (0.31 s user): nothing in the read
+/// waits on a lock, a cache or a process, and the walk is one thread. Beside builds that write to
+/// the same filesystem those small file operations are what slows down, the likely source of the
+/// 14 to 30 s seen on a loaded farm host (not reproduced on petal beside the crate's own tests,
+/// where it takes 1.3 s). The depth is the point of the test
+/// (it must pass the stack a recursive walk has), so it is not lowered; the CI profile gives this
+/// binary its own budget (`.config/nextest.toml`).
 #[test]
 fn a_tree_nested_far_past_the_stack_is_read() {
     let repo = Repo::new("deep");
