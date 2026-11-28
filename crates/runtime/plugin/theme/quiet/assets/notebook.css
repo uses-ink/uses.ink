@@ -273,5 +273,6 @@ hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0
   .hand-panel li > p:first-child { grid-row: auto; }
   .hand-panel li > p:not(:first-child), .hand-panel li > pre { grid-column: 1; }
   .hand-panel li > p > img { width: 120px; }
+  .hand-panel li > pre { display: block; max-width: 100%; box-sizing: border-box; white-space: pre-wrap; overflow-wrap: anywhere; }
   .hand-end p + p { gap: 18px; }
 }
