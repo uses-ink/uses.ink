@@ -110,6 +110,8 @@ pub(crate) struct Mailing {
     pub(crate) secure: bool,
     /// Who passkeys are made for.
     pub(crate) relying: control::passkeys::Relying,
+    /// How the client's address is found.
+    pub(crate) forwarded: edge_axum::Forwarded,
     /// The first-run link, when this start made it. It is shown once and kept nowhere.
     pub(crate) admin: Option<Link>,
 }
@@ -168,7 +170,7 @@ impl Product {
         let (sign, rates) = (flags.settings(), flags.rates());
         let (courier, outbox, capacity) = Self::courier(flags)?;
         let db_for_keys = Arc::clone(&db);
-        let entry = SignIn::new(db, sign);
+        let entry = flags.step_up_window.into_iter().fold(SignIn::new(db, sign), SignIn::with_window);
         let relying = flags.relying(&settings.origin, &settings.api_host)?;
         let passkeys = Webauthn::new(relying.clone())
             .map_err(|e| Unready::Setting { flag: "--rp-origin", source: Box::new(e) })?;
@@ -178,16 +180,32 @@ impl Product {
             passkeys,
             Passing { session: flags.jar(secure)?, ceremony: Flags::ceremony(secure)?, relying: relying.clone() },
         );
+        let gates = flags.challenge_limit.into_iter().fold(gates, Ceremonies::with_challenges);
+        let gates = flags.recovery_limit.into_iter().fold(gates, Ceremonies::with_recoveries);
         let admin = Self::admin(&entry, account, &base)?;
         let (api, enrol) = Self::api(control, &keys, (account, &operators), (db_for_keys, limits));
         let api = api.with_schemes(settings.hosting.schemes());
         let (fronts, back) = Self::lookups(&ports, &origin, data, settings)?;
         let config =
             Config { jar: flags.jar(secure)?, base: base.clone(), rates, outbox, reveals: flags.login_get_signs_in };
-        let door = Door::new(entry, (System, System), enrol, config);
+        let door = flags
+            .allow_origin
+            .iter()
+            .fold(Door::new(entry, (System, System), enrol, config), |door, origin| door.with_origin(origin.as_str()));
         let api = Routed::new(api, door);
         let told = Told(std::sync::Mutex::new(std::io::stderr()));
-        let mailing = Mailing { courier, told, settings: sign, rates, base, outbox: capacity, secure, relying, admin };
+        let mailing = Mailing {
+            courier,
+            told,
+            settings: sign,
+            rates,
+            base,
+            outbox: capacity,
+            secure,
+            relying,
+            forwarded: flags.forwarded(),
+            admin,
+        };
         Ok(Self {
             api: Routed::new(api, gates),
             mailing,
@@ -215,7 +233,8 @@ impl Product {
             .and_then(Steps::with::<Queued>)
             .and_then(Steps::with::<Entry>)
             .and_then(Steps::with::<control::keys::Entry>)
-            .and_then(Steps::with::<control::passkeys::Entry>);
+            .and_then(Steps::with::<control::passkeys::Entry>)
+            .and_then(Steps::with::<control::recovery::Entry>);
         let steps = steps.map_err(|e| Self::adapter("migration")(Box::new(e)))?;
         pollster::block_on(steps.apply(&db)).map_err(|e| Self::adapter("migration")(Box::new(e)))?;
         Ok(db)

@@ -26,6 +26,9 @@ counts the address of the connection, which behind a reverse proxy is the proxy'
   setting) and does not reach the API. It is not served as if it came from the proxy, and it does not fall
   back to the connection, because either would let a misplaced proxy quietly turn every limit into one
   shared bucket or into a spoofable one. The reply holds no part of the header.
-- **Not built:** the `Forwarded` (RFC 7239) header and vendor headers, a list of proxy addresses to
-  trust instead of a count, and a flag to set it. The CLI owes `--forwarded-hops <N>` (absent means off),
-  which builds `Mount` with `bridge.forwarded(Forwarded::Hops(n))`.
+- **CLI:** `ink serve --data --forwarded-hops <N>` (or `INK_FORWARDED_HOPS`); absent means off, and the
+  start-up listing says which. `cli/tests/selfhost.rs` runs it over the real binary: a request with no
+  header is a 400, two challenges are allowed per forwarded client, the third is a 429, and another client
+  has its own count.
+- **Not built:** the `Forwarded` (RFC 7239) header and vendor headers, and a list of proxy addresses to trust
+  instead of a count.

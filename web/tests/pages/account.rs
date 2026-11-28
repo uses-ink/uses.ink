@@ -66,3 +66,14 @@ fn the_account_screen_lists_sessions_and_ends_all_but_this_one_by_a_form() {
     assert!(!text.contains(&format!("/account/sessions/{this}")), "the asking session has no end button");
     assert!(!text.contains("<script>"), "no script beyond the passkey one");
 }
+
+#[test]
+fn the_account_screen_offers_recovery_codes_and_shows_none() {
+    let account = Account::new(Fixtures::at("2026-11-01T00:00:00Z"), Vec::new()).with_recovery(7);
+    let text = Document(&account).write().unwrap();
+    assert!(text.contains("You have 7 unspent recovery codes."), "{text}");
+    assert!(text.contains(r#"data-passkey="mint""#) && text.contains("data-recovery-codes"), "{text}");
+    assert!(!text.contains("<script>"), "no script beyond the passkey one");
+    let none = Account::new(Fixtures::at("2026-11-01T00:00:00Z"), Vec::new());
+    assert!(!Document(&none).write().unwrap().contains("Recovery codes"), "an instance without them says nothing");
+}

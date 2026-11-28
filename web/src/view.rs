@@ -6,6 +6,7 @@ pub(crate) mod build;
 pub(crate) mod deploys;
 pub(crate) mod failed;
 pub(crate) mod passkeys;
+pub(crate) mod recovery;
 pub(crate) mod sessions;
 pub(crate) mod settings;
 pub(crate) mod site;

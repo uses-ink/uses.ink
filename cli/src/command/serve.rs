@@ -140,7 +140,8 @@ impl args::Serve {
         let record = self.list_signin(&product.mailing, record)?;
         io.aside(Say::Warnings, &record)?;
         let (bridge, local) = Bridge::new(product.api, limits);
-        let Mailing { courier, told, .. } = product.mailing;
+        let Mailing { courier, told, forwarded, .. } = product.mailing;
+        let bridge = bridge.forwarded(forwarded);
         Ok((Mount { host: self.api_host.to_ascii_lowercase().into(), bridge }, (local, courier, told)))
     }
 
@@ -261,6 +262,17 @@ impl args::Serve {
         )
     }
 
+    /// Says where the client's address is read from.
+    fn list_client(forwarded: edge_axum::Forwarded, record: Record) -> Record {
+        record.field(
+            "client address",
+            Line::plain(match forwarded {
+                edge_axum::Forwarded::Hops(hops) => format!("X-Forwarded-For, {hops} trusted proxies"),
+                _ => "the connection's address (--forwarded-hops is off)".to_owned(),
+            }),
+        )
+    }
+
     fn list_signin(&self, mailing: &Mailing, record: Record) -> Result<Record, Error> {
         let flags = &self.signin;
         let settings = &mailing.settings;
@@ -289,6 +301,7 @@ impl args::Serve {
             )),
         );
         let record = Self::list_passkeys(&mailing.relying, record);
+        let record = Self::list_client(mailing.forwarded, record);
         let admin = match &mailing.admin {
             Some(link) => format!(
                 "{link} (shown once and kept nowhere; valid {}; opening it signs in as the owner)",

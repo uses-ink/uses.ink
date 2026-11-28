@@ -128,13 +128,19 @@ impl Got {
 
 impl Running {
     fn start(data: &Path, folder: &Path) -> Self {
+        Self::start_with(data, folder, &[])
+    }
+
+    /// `start` with more flags.
+    fn start_with(data: &Path, folder: &Path, more: &[&str]) -> Self {
         let mut child = guard::Guard::spawn(
             Command::new(env!("CARGO_BIN_EXE_ink"))
                 .args(["serve", folder.to_str().unwrap(), "--addr", "127.0.0.1:0", "--data", data.to_str().unwrap()])
                 // a file address is the only kind a test with no network can add
                 // the boot barrier is the skew: a short one keeps the test quick
                 .args(["--audience", "api.localhost", "--auth-skew", "1"])
-                .args(["--git-scheme", "file", "--site-ttl", "0", "--poll-lookout", "1", "--worker-idle", "1"]),
+                .args(["--git-scheme", "file", "--site-ttl", "0", "--poll-lookout", "1", "--worker-idle", "1"])
+                .args(more),
         );
         let lines = Lines(child.lines());
         let address = lines.until("http://127.0.0.1:");
@@ -249,4 +255,43 @@ fn a_git_site_is_added_served_updated_rolled_back_exported_and_deleted() {
     let gone = ink.page("diary", "/");
     assert_ne!(gone.status(), "200", "{}", gone.text);
     assert!(!gone.body().contains(one));
+}
+
+#[test]
+fn behind_a_proxy_the_client_is_the_forwarded_address_and_passkey_challenges_are_limited_per_client() {
+    let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-forwarded");
+    let _ = std::fs::remove_dir_all(&root);
+    let (data, folder) = (root.join("data"), root.join("folder"));
+    std::fs::create_dir_all(&folder).unwrap();
+    let running = Running::start_with(&data, &folder, &["--forwarded-hops", "1", "--challenge-limit", "2/1h"]);
+    let challenge = |client: Option<&str>| {
+        let mut headers = vec![("Sec-Fetch-Site", "same-origin".to_owned())];
+        headers.extend(client.map(|client| ("X-Forwarded-For", client.to_owned())));
+        loop {
+            let got = running.fetch((Verb::Post, "/v1/passkeys/challenge", "api.localhost"), &headers, "");
+            if !got.text.contains("auth.server.restarting") {
+                return got;
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+    };
+    // a proxy that sent nothing is the operator's mistake, said so, and not served
+    let bare = challenge(None);
+    assert_eq!(bare.status(), "400", "{}", bare.text);
+    assert!(bare.body().contains("auth.forwarded.refused"), "{}", bare.text);
+    // two tries a client, and a client is the address the proxy wrote, not the connection
+    for _ in 0..2 {
+        assert_eq!(challenge(Some("203.0.113.5")).status(), "200");
+    }
+    let limited = challenge(Some("203.0.113.5"));
+    assert_eq!(limited.status(), "429", "{}", limited.text);
+    assert!(limited.body().contains("auth.rate.limited"), "{}", limited.text);
+    assert_eq!(challenge(Some("198.51.100.9")).status(), "200", "another client has its own count");
+    // the recovery routes exist (migration 203 ran) and need a session
+    let codes = running.fetch(
+        (Verb::Get, "/v1/recovery/codes", "api.localhost"),
+        &[("X-Forwarded-For", "203.0.113.5".to_owned())],
+        "",
+    );
+    assert_eq!(codes.status(), "401", "{}", codes.text);
 }

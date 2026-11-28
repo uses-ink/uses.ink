@@ -67,7 +67,16 @@ async function remove(id) {
   location.reload();
 }
 
-const actions = { register, login, remove: (button) => remove(button.dataset.passkeyId) };
+// New recovery codes: shown here once, never in the server-rendered page.
+async function mint() {
+  const made = await call("POST", "/v1/recovery/codes");
+  const out = document.querySelector("[data-recovery-codes]");
+  out.textContent = made.codes.join("\n");
+  out.hidden = false;
+  say("Save these codes now. They are not shown again.");
+}
+
+const actions = { register, login, mint, remove: (button) => remove(button.dataset.passkeyId) };
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-passkey]");
   if (!button) return;

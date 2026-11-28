@@ -132,6 +132,25 @@ pub struct Flags {
     /// for more than one. [default: the origin of the API host]
     #[arg(long, env = "INK_RP_ORIGIN", value_delimiter = ',', help_heading = Heading::SIGN_IN)]
     pub rp_origin: Vec<String>,
+    /// An origin besides the API's own that may post state-changing requests with a session
+    /// cookie, such as a dashboard served on another host. Repeat for more than one.
+    #[arg(long, env = "INK_ALLOW_ORIGIN", value_delimiter = ',', help_heading = Heading::SIGN_IN)]
+    pub allow_origin: Vec<String>,
+    /// Passkey sign-ins that may start per source, as `<count>/<window>`. [default: 60/1h]
+    #[arg(long, env = "INK_CHALLENGE_LIMIT", help_heading = Heading::SIGN_IN)]
+    pub challenge_limit: Option<Rate>,
+    /// Recovery codes that may be tried per source, as `<count>/<window>`. [default: 10/1h]
+    #[arg(long, env = "INK_RECOVERY_LIMIT", help_heading = Heading::SIGN_IN)]
+    pub recovery_limit: Option<Rate>,
+    /// How recent a passkey sign-in must be to add or remove a passkey, approve a key or make
+    /// recovery codes. [default: 5m]
+    #[arg(long, env = "INK_STEP_UP_WINDOW", help_heading = Heading::SIGN_IN)]
+    pub step_up_window: Option<Ttl>,
+    /// How many reverse proxies of yours sit in front of the server. With it, the client's address
+    /// is read from `X-Forwarded-For`, that many entries from the end, and a request without it is
+    /// refused. [default: off, the connection's address is used]
+    #[arg(long, env = "INK_FORWARDED_HOPS", help_heading = Heading::SIGN_IN)]
+    pub forwarded_hops: Option<std::num::NonZeroU8>,
 }
 
 /// An origin that is plain `http` on a name that is not this machine's: a session cookie would
@@ -193,6 +212,11 @@ impl Flags {
             session,
             signup: self.signup.unwrap_or(defaults.signup),
         }
+    }
+
+    /// How the client's address is found: the connection's, or behind this many proxies.
+    pub(crate) fn forwarded(&self) -> edge_axum::Forwarded {
+        self.forwarded_hops.map_or(edge_axum::Forwarded::Off, edge_axum::Forwarded::Hops)
     }
 
     /// The limits on asking for links.

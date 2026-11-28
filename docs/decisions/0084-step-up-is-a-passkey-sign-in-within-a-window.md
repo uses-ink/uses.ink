@@ -41,3 +41,4 @@ replaces the session id.
 session cookie, a leftover browser tab or a link read by a mail scanner must not be enough to give an
 attacker a credential of their own. **Reversal:** the window is one setting; the exemption is one test
 in `SignIn::stepped`.
+- **CLI.** `--step-up-window <ttl>` (`SignIn::with_window`) sets the window.

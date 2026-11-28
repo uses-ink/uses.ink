@@ -36,3 +36,4 @@ Built (2026-11-28). It closes two "not done" items of 0068 (slice 2): the Origin
 the defaults above apply. **Why:** a cookie is sent by a browser on a cross-site form post, and `Lax` is
 the first line of defence, not the only one. **Reversal:** a deployment that fronts the API with a page on
 another host adds that origin with `Door::with_origin`; the check cannot be turned off.
+- **CLI.** `ink serve --data` takes `--allow-origin` (repeatable, `Door::with_origin`) and `--challenge-limit` (`<count>/<window>`, `Ceremonies::with_challenges`).

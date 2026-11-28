@@ -32,7 +32,10 @@ Built (2026-11-28). It follows `docs/auth.md` section 9 (recovery codes) and clo
   because only a spent code starts a ceremony with no session. Unknown, spent and replaced codes give one
   answer (`auth.recovery.refused`, 401).
 - **No delay,** as section 9 says: the codes were made while signed in and kept offline.
+- **Dashboard:** the Account screen shows how many codes are unspent and a button that makes a new set.
+  The button runs in `/passkey.js` (a step-up and a JSON call), and the codes are written into the page
+  once; the server-rendered page never holds them.
+- **CLI:** `ink serve --data` applies `control::recovery::Entry` (203) after the passkeys' migration and takes
+  `--recovery-limit` (default 10/1h) and `--step-up-window` (default 5m).
 - **Not built:** the mail notice on every use (the mail crate is outside this work; the audit event is
-  written), the dashboard screen for codes, and a CLI flag for the recovery limit.
-- **Wiring owed by the CLI:** apply `control::recovery::Entry` after `control::passkeys::Entry`. Until
-  it does, the recovery routes answer with an internal error and a diag code, and nothing else changes.
+  written).

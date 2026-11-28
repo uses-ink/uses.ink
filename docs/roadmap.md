@@ -197,8 +197,11 @@ and takes the `--mail`, `--smtp-*`, TTL, policy and rate flags. Not done then: t
 (`web`), a route to list and revoke sessions, a forwarded-header source, passkeys. Built since
 (2026-11-28): sessions are listed and ended by id with an Account screen (0082), the Origin check and
 the challenge limit (0083), step-up (0084), recovery codes (0085) and the forwarded-header source
-(0086). Open: the CLI flags and migration line for those, the email recovery with a delay, the mail
-notice on a recovery code's use, and a dashboard screen for recovery codes.
+(0086), with their `ink serve` flags (`--allow-origin`, `--challenge-limit`, `--recovery-limit`,
+`--step-up-window`, `--forwarded-hops`), migration 203 and a recovery codes section on the Account
+screen. Open: the email recovery with a delay, the mail notice on a recovery code's use, a label on a
+session, and the edge's mounting of `Screens` (nothing implements it yet, so `end_session` has no
+implementation to write).
 
 Progress (2026-11-27, 0052): the API and intake are built (`edge/api`, mounted by `edge/axum` on
 its own host, `ink serve --data`), with the `Credentials` port and a single-owner token adapter,

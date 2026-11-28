@@ -14,6 +14,7 @@ use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Empty, Link, Post, Stamp};
 use crate::view::passkeys::{Kept, Section};
+use crate::view::recovery::Section as Recovery;
 use crate::view::sessions::{Section as Sessions, Seen};
 use crate::view::word::Word;
 
@@ -41,18 +42,26 @@ pub struct Account {
     pub passkeys: Vec<Kept>,
     /// The person's signed-in sessions.
     pub sessions: Vec<Seen>,
+    /// How many recovery codes are unspent, when the instance has them.
+    pub recovery: Option<u64>,
 }
 
 impl Account {
     /// An Account screen.
     pub fn new(created: Timestamp, sites: Vec<Owned>) -> Self {
-        Self { frame: Frame::account(), created, sites, passkeys: Vec::new(), sessions: Vec::new() }
+        Self { frame: Frame::account(), created, sites, passkeys: Vec::new(), sessions: Vec::new(), recovery: None }
     }
 
     /// The same screen listing `passkeys`.
     #[must_use]
     pub fn with_passkeys(self, passkeys: Vec<Kept>) -> Self {
         Self { passkeys, ..self }
+    }
+
+    /// The same screen saying `left` recovery codes are unspent.
+    #[must_use]
+    pub fn with_recovery(self, left: u64) -> Self {
+        Self { recovery: Some(left), ..self }
     }
 
     /// The same screen listing `sessions`.
@@ -83,6 +92,7 @@ impl View for Account {
             h2 { "Sign-in" }
             p { "You can sign in with an email link or with a passkey." }
             (Section(&self.passkeys))
+            @if let Some(left) = self.recovery { (Recovery(left)) }
             (Sessions(&self.sessions))
             h2 { "Notifications" }
             p { "Failure notices are sent by email: the first failure and its fix only." }
