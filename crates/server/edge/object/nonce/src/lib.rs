@@ -19,7 +19,8 @@ pub struct Ask {
     pub key: Bytes,
     /// The request's nonce.
     pub nonce: Bytes,
-    /// When the claim ends (unix seconds): the request's `created` plus the window.
+    /// The last second the claim is kept (unix seconds): the request's `created` plus the window,
+    /// the last second the skew check admits it.
     pub until: u64,
     /// When it is claimed (unix seconds).
     pub now: u64,
@@ -73,14 +74,15 @@ impl Ledger {
     }
 
     /// Remembers the nonce of `ask` until its end, or says why not. What ended before `ask.now` is
-    /// forgotten first.
+    /// forgotten first: a nonce is kept through the second it ends at, because a request created a
+    /// whole window ago is still inside the skew check then.
     pub fn claim(&mut self, ask: Ask) -> Verdict {
         let created = ask.until.saturating_sub(self.window);
         if created < self.quiet_until {
             return Verdict::Quiet { seconds: self.quiet_until.saturating_sub(ask.now).max(1) };
         }
         self.seen.retain(|_, nonces| {
-            nonces.retain(|_, end| *end > ask.now);
+            nonces.retain(|_, end| *end >= ask.now);
             !nonces.is_empty()
         });
         let nonces = self.seen.entry(ask.key).or_default();
@@ -112,7 +114,8 @@ mod test {
         assert_eq!(ledger.claim(ask(2, 1_100, 1_101)), Verdict::Fresh);
         assert_eq!(ledger.claim(ask(3, 1_100, 1_102)), Verdict::Full);
         assert_eq!(ledger.len(), 2);
-        assert_eq!(ledger.claim(ask(1, 1_200, 1_160)), Verdict::Fresh);
+        assert_eq!(ledger.claim(ask(1, 1_200, 1_160)), Verdict::Replay);
+        assert_eq!(ledger.claim(ask(1, 1_200, 1_161)), Verdict::Fresh);
         assert_eq!(ledger.len(), 1);
     }
 

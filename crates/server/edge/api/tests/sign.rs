@@ -174,6 +174,18 @@ fn skew_is_a_window_either_side_and_says_what_the_server_thinks() {
 }
 
 #[test]
+fn a_request_is_a_replay_through_the_last_second_the_skew_check_admits_it() {
+    let rig = rig();
+    let request = rig.request(&rig.operator, (Method::Get, "/v1/whoami"), b"");
+    assert_eq!(rig.answer(&request).status, Status::Ok);
+    rig.clock.advance(Duration::from_secs(SKEW));
+    let replay = rig.answer(&request);
+    assert_eq!(code(&replay), "auth.signature.replayed", "the nonce must outlive the window by its last second");
+    rig.clock.advance(Duration::from_secs(1));
+    assert_eq!(code(&rig.answer(&request)), "auth.signature.skewed");
+}
+
+#[test]
 fn a_restart_does_not_take_what_was_signed_before_it() {
     let rig = rig();
     let route = (Method::Get, "/v1/whoami");

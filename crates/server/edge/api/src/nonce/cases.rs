@@ -21,7 +21,7 @@ pub enum Case {
     Replays,
     /// Another key may use the same nonce.
     Splits,
-    /// A claim ends at its `until`.
+    /// A claim is kept through its `until` and ends the second after.
     Ends,
     /// A key holds at most `most` nonces, and room comes back as they end.
     Bounds,
@@ -85,15 +85,18 @@ impl Case {
                 assert_eq!(nonces.claim(self.claiming((0, 1), base, 4)).await.unwrap(), Claimed::Fresh);
                 let last = base + Self::WINDOW - 1;
                 assert_eq!(nonces.claim(self.claiming((0, 1), last, 4)).await.unwrap(), Claimed::Replay);
-                let ended = base + Self::WINDOW;
+                // a request created a whole window ago still passes the skew check at `until`
+                let until = base + Self::WINDOW;
+                assert_eq!(nonces.claim(self.claiming((0, 1), until, 4)).await.unwrap(), Claimed::Replay);
+                let ended = until + 1;
                 assert_eq!(nonces.claim(self.claiming((0, 1), ended, 4)).await.unwrap(), Claimed::Fresh);
             }
             Self::Bounds => {
                 assert_eq!(nonces.claim(self.claiming((0, 1), base, 2)).await.unwrap(), Claimed::Fresh);
                 assert_eq!(nonces.claim(self.claiming((0, 2), base + 1, 2)).await.unwrap(), Claimed::Fresh);
                 assert_eq!(nonces.claim(self.claiming((0, 3), base + 2, 2)).await.unwrap(), Claimed::Full);
-                // the first ends at base + WINDOW: its room is free, the second's is not yet
-                let freed = base + Self::WINDOW;
+                // the first ends after base + WINDOW: its room is free then, the second's is not yet
+                let freed = base + Self::WINDOW + 1;
                 assert_eq!(nonces.claim(self.claiming((0, 3), freed, 2)).await.unwrap(), Claimed::Fresh);
                 assert_eq!(nonces.claim(self.claiming((0, 4), freed, 2)).await.unwrap(), Claimed::Full);
                 assert_eq!(nonces.claim(self.claiming((1, 1), freed, 2)).await.unwrap(), Claimed::Fresh);

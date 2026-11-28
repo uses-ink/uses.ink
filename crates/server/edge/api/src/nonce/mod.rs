@@ -39,7 +39,8 @@ pub struct Claiming {
     pub key: KeyId,
     /// The request's nonce.
     pub nonce: Nonce,
-    /// When the claim ends (unix seconds): the request's `created` plus the window.
+    /// The last second the claim is kept (unix seconds): the request's `created` plus the window,
+    /// the last second the skew check admits it.
     pub until: u64,
     /// When it is claimed (unix seconds): what ended before it is forgotten first.
     pub now: u64,
@@ -74,7 +75,7 @@ impl Remembered {
         let Claiming { key, nonce, until, now, most } = claiming;
         let mut seen = self.seen.lock().unwrap_or_else(PoisonError::into_inner);
         seen.retain(|_, nonces| {
-            nonces.retain(|_, end| *end > now);
+            nonces.retain(|_, end| *end >= now);
             !nonces.is_empty()
         });
         let nonces = seen.entry(key).or_default();
