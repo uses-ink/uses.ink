@@ -50,6 +50,11 @@ fn a_stranger_signs_in_enrols_a_machine_publishes_and_logs_out() {
     let links = server.links();
     assert_eq!(links.len(), 1, "one first-run link: {}", server.said());
     assert!(server.said().contains("shown once"), "the start says the link is shown once");
+    assert!(
+        server.said().contains(&format!("{}/v1/sites", server.api)),
+        "the start gives the API address a client types, port included: {}",
+        server.said()
+    );
     let first = target(&links[0]).to_owned();
     let mut owner = server.browser();
     assert_eq!(owner.send(("GET", "/v1/session"), "").status(), "401", "no session before the link");

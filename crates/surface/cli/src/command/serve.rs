@@ -104,7 +104,14 @@ impl args::Serve {
         let (limits, interval) = (product.limits, product.interval);
         let sites = self.origin.trim_start_matches("http://").trim_start_matches("https://");
         let record = Record::new(0)
-            .field("api", Line::plain(format!("http://{}/v1/sites (host {})", self.api_host, self.api_host)))
+            .field(
+                "api",
+                Line::plain(format!(
+                    "{}/v1/sites (host {})",
+                    crate::selfhost::signin::Flags::api_address(&self.origin, &self.api_host),
+                    self.api_host
+                )),
+            )
             .field("data", Line::plain(data.display().to_string()))
             .field(
                 "operator keys",

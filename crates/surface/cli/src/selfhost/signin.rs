@@ -263,12 +263,17 @@ impl Flags {
         edge_api::Jar::new(self.cookie_name.clone(), path, secure).map_err(Self::setting("--cookie-name"))
     }
 
-    /// The API's own login address on the origin's scheme and port.
-    fn api_base(origin: &str, api_host: &str) -> String {
+    /// The API's address as a client writes it: the API host on the origin's scheme and port.
+    pub(crate) fn api_address(origin: &str, api_host: &str) -> String {
         let (scheme, rest) = origin.split_once("://").unwrap_or(("http", origin));
         let authority = rest.split('/').next().unwrap_or_default();
         let port = authority.rsplit_once(':').map_or_else(String::new, |(_, port)| format!(":{port}"));
-        format!("{scheme}://{api_host}{port}/v1/login")
+        format!("{scheme}://{api_host}{port}")
+    }
+
+    /// The API's own login address on the origin's scheme and port.
+    fn api_base(origin: &str, api_host: &str) -> String {
+        format!("{}/v1/login", Self::api_address(origin, api_host))
     }
 
     /// Where links point: the flag, or the API's own `/v1/login`.
