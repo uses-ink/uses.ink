@@ -34,3 +34,7 @@ In short:
 jobs each, and several facts are written down twice.
 **Reversal:** none of the packages before the move depends on it; the move itself is reverted by
 the inverse commit.
+
+**Status note (2026-11-28):** every work package has landed, the last being S7. The fan-out check, which this
+decision says only reports, is enforced, with its waivers in `.config/layout.toml`. `docs/crates.md` is the
+generated crate index.

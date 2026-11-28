@@ -64,6 +64,13 @@ M4 in `roadmap.md`; its crates are marked planned in section 4. Both shapes run 
 Crates marked "planned" do not exist yet; `docs/roadmap.md` M4 lists them. Everything else is a
 member of the root `Cargo.toml` workspace. A path predicts a crate name (`conventions.md`).
 
+The tree below is the shape. The list of every crate, with its layer, path, package name, purpose
+and the crates it may use, is generated: see [crates.md](crates.md) (`cargo xtask docs` writes it
+from the manifests and the dependency order, and the docs stage fails when it is stale). Six
+crates whose rule is not visible from their code also have a `README.md`: `crates/core/engine`,
+`crates/server/control`, `crates/server/edge`, `crates/runtime/host/wasmtime`,
+`crates/runtime/plugin/sdk` and `tools/farm`.
+
 ```
 uses.ink/
   Cargo.toml  Cargo.lock  rust-toolchain.toml  rustfmt.toml  clippy.toml  deny.toml
