@@ -331,25 +331,16 @@ impl Site {
     }
 }
 
-#[test]
-fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
-    let root = scratch("api");
+/// Starts `ink serve` over a built folder and a data folder with `more` flags, and returns the
+/// running site, the data folder and the built folder once the API's settings are listed.
+fn start_api(name: &str, more: &[&str]) -> (Site, PathBuf, PathBuf) {
+    let root = scratch(name);
     let out = build(&root);
     let data = root.join("data");
-    let cli = cli::Cli::try_parse_from([
-        "ink",
-        "serve",
-        out.to_str().unwrap(),
-        "--data",
-        data.to_str().unwrap(),
-        "--addr",
-        "127.0.0.1:0",
-        "--audience",
-        "api.localhost:8080",
-        "--auth-skew",
-        "1",
-    ])
-    .unwrap();
+    let mut args = vec!["ink", "serve", out.to_str().unwrap(), "--data", data.to_str().unwrap()];
+    args.extend(["--addr", "127.0.0.1:0"]);
+    args.extend(more);
+    let cli = cli::Cli::try_parse_from(args).unwrap();
     let (sender, received) = std::sync::mpsc::channel();
     let (said, heard) = std::sync::mpsc::channel();
     let handle = std::thread::spawn(move || cli.run(&mut Sent(sender), &mut Sent(said)));
@@ -373,6 +364,13 @@ fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
     let site = Site { port: first.strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap(), _stdout: received };
     guard::Guard::ready(site.port);
     assert!(!handle.is_finished(), "ink serve ended before the API was used");
+    (site, data, out)
+}
+
+#[test]
+fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
+    let more = ["--audience", "api.localhost:8080", "--auth-skew", "1"];
+    let (site, data, out) = start_api("api", &more);
     let key = keyed::Keyed::operator(&data, "api.localhost:8080");
     let denied = site.call(("GET", "/v1/sites"), "Bearer wrong", b"");
     assert_eq!(denied.status(), "400", "{}", denied.text);
@@ -458,4 +456,13 @@ fn the_start_is_one_json_document_with_the_addresses_and_the_first_run_link() {
     assert_eq!(document["admin"]["state"], "issued");
     assert!(document["admin"]["link"].as_str().unwrap().contains("/login/"), "{document}");
     assert_eq!(document["admin"]["valid"], 86_400);
+}
+
+#[test]
+fn requests_signed_for_the_origins_port_are_taken_whatever_port_is_listened_on() {
+    // behind a proxy the listening port is not the one a client names: no `--audience` is given
+    let (site, data, _) = start_api("audience", &["--origin", "http://localhost:8080", "--auth-skew", "1"]);
+    let key = keyed::Keyed::operator(&data, "api.localhost:8080");
+    let listed = site.signed(("GET", "/v1/sites"), &key, b"");
+    assert_eq!(listed.status(), "200", "{}", listed.text);
 }

@@ -1,8 +1,6 @@
 //! The server's settings for keys and signatures: flags and environment variables, each with a
 //! default `ink serve --data` prints when it starts (decision 0068).
 
-use std::net::SocketAddr;
-
 use clap::Args;
 use control::keys::Settings;
 use control::signin::Ttl;
@@ -62,9 +60,9 @@ pub(crate) struct Resolved {
 }
 
 impl Flags {
-    /// The settings, over the defaults. `api_host` and `address` give the audience when none is
-    /// set: the port is left out when it is the one `http` has.
-    pub(crate) fn resolve(&self, api_host: &str, address: SocketAddr) -> Result<Resolved, Unready> {
+    /// The settings, over the defaults. `authority` is the API's as a client writes it, which is the
+    /// audience when none is set.
+    pub(crate) fn resolve(&self, authority: &str) -> Result<Resolved, Unready> {
         let setting = |flag: &'static str| {
             move |source: Box<dyn std::error::Error + Send + Sync>| Unready::Setting { flag, source }
         };
@@ -84,10 +82,7 @@ impl Flags {
         };
         let window = Window::new(self.auth_skew.unwrap_or(Window::DEFAULT.seconds()))
             .map_err(|e| setting("--auth-skew")(Box::new(e)))?;
-        let written = self.audience.clone().unwrap_or_else(|| match address.port() {
-            80 => api_host.to_owned(),
-            port => format!("{api_host}:{port}"),
-        });
+        let written = self.audience.clone().unwrap_or_else(|| authority.to_owned());
         let audience = Audience::parse(&written).map_err(|e| setting("--audience")(Box::new(e)))?;
         Ok(Resolved { keys, closing, window, nonces: self.auth_nonces.unwrap_or(Signing::NONCES), audience })
     }

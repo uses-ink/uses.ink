@@ -287,6 +287,24 @@ impl Flags {
         format!("{scheme}://{api_host}{port}")
     }
 
+    /// The API's authority as a client signs it, the audience of its requests: the API host, and
+    /// the origin's port unless it is the one its scheme has. The port the server listens on does
+    /// not enter: behind a proxy it is not the one a client names.
+    pub(crate) fn api_authority(origin: &str, api_host: &str) -> String {
+        let (scheme, rest) = origin.split_once("://").unwrap_or(("http", origin));
+        let authority = rest.split('/').next().unwrap_or_default();
+        let own = if scheme == "https" { "443" } else { "80" };
+        match authority.rsplit_once(':') {
+            Some((_, port)) if port != own => format!("{api_host}:{port}"),
+            _ => api_host.to_owned(),
+        }
+    }
+
+    /// The SMTP port: the one given, or the one the security has.
+    pub(crate) fn port(&self) -> u16 {
+        self.smtp_port.unwrap_or(if self.smtp_security == Secured::Implicit { 465 } else { 587 })
+    }
+
     /// The dashboard's login address on the origin's scheme and port.
     fn api_base(origin: &str, api_host: &str) -> String {
         format!("{}/login", Self::api_address(origin, api_host))
@@ -311,7 +329,7 @@ impl Flags {
                     .ok_or_else(|| need("--mail-from"))?
                     .parse()
                     .map_err(Self::setting("--mail-from"))?;
-                let port = self.smtp_port.unwrap_or(if self.smtp_security == Secured::Implicit { 465 } else { 587 });
+                let port = self.port();
                 let login = self.login()?;
                 let security = match self.smtp_security {
                     Secured::Starttls => Security::Starttls,
@@ -401,6 +419,15 @@ mod test {
         assert!(!Flags::secure("http://localhost:8080").unwrap());
         assert!(!Flags::secure("http://site.localhost").unwrap());
         assert!(Flags::secure("http://ink.example").is_err());
+    }
+
+    #[test]
+    fn the_audience_is_the_api_host_on_the_origins_port_not_the_listening_one() {
+        assert_eq!(Flags::api_authority("http://localhost:8080", "api.localhost"), "api.localhost:8080");
+        assert_eq!(Flags::api_authority("http://localhost:80", "api.localhost"), "api.localhost");
+        assert_eq!(Flags::api_authority("https://ink.example", "api.ink.example"), "api.ink.example");
+        assert_eq!(Flags::api_authority("https://ink.example:443", "api.ink.example"), "api.ink.example");
+        assert_eq!(Flags::api_authority("https://ink.example:8443", "api.ink.example"), "api.ink.example:8443");
     }
 
     #[test]

@@ -175,7 +175,7 @@ impl Product {
         let ports: Ports = Arc::new((db.clone(), blobs, Queue::new(db.clone()), sealer));
         let control = Control::new(Arc::clone(&ports), origin.clone()).with_policy(settings.hosting.policy());
         let account = Self::owner(&control)?;
-        let (operators, retired, keys) = Self::credentials(settings, data)?;
+        let (operators, retired, keys) = Self::credentials(settings, (data, site))?;
         let limits = Self::limits(settings)?;
         let flags = &settings.signin;
         let secure = Flags::secure(site)?;
@@ -329,11 +329,11 @@ impl Product {
     /// what signatures run with.
     fn credentials(
         settings: &args::Serve,
-        data: &Path,
+        (data, site): (&Path, &str),
     ) -> Result<(PathBuf, Option<PathBuf>, crate::command::auth::Resolved), Unready> {
         let operators = Self::operators(&data.join("operator-keys"))?;
         let old = data.join("owner-token");
-        let keys = settings.auth.resolve(&settings.api_host, settings.address)?;
+        let keys = settings.auth.resolve(&Flags::api_authority(site, &settings.api_host))?;
         Ok((operators, old.exists().then_some(old), keys))
     }
 

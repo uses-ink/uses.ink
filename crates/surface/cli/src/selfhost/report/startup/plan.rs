@@ -34,7 +34,7 @@ impl Plan {
         Ok(Self {
             limits: Product::limits(serve)?,
             interval: Product::interval(serve)?,
-            keys: serve.auth.resolve(&serve.api_host, serve.address)?,
+            keys: serve.auth.resolve(&Flags::api_authority(site, &serve.api_host))?,
             sign: flags.settings(),
             rates: flags.rates(),
             base: flags.base(site, &serve.api_host)?.to_string(),
