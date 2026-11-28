@@ -2,12 +2,12 @@
 
 #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
 
-extern crate uses_ink_build_local as build_local;
+extern crate uses_ink_build_process as build_process;
 
 use blob::{Blob, Tenant};
 use blob_dir::Directory;
 use build::{Build, BuildId, Event, Leaf, Outcome, Request, Source, Tree, Trigger};
-use build_local::Local;
+use build_process::Local;
 use model::{Bytes, ContentPath, ExternalUrl, Hash};
 
 const TENANT: &str = "0123456789abcdef0123456789abcdef";

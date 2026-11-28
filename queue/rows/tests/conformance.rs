@@ -2,11 +2,11 @@
 
 #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
 
-extern crate uses_ink_queue_local as queue_local;
+extern crate uses_ink_queue_rows as queue_rows;
 
 use db::Steps;
 use db_sqlite::Sqlite;
-use queue_local::{Local, Queued};
+use queue_rows::{Local, Queued};
 
 /// A queue in a new database with its table made.
 fn fresh() -> (Local<Sqlite>, ()) {

@@ -7,7 +7,7 @@
 //! source that cannot be read) is not a failure of the builder: the stream says why, and the
 //! [`Outcome`] is [`Outcome::Refused`]. A failure of the builder itself is an [`Error`].
 //!
-//! The adapters are `build/local`, which runs the engine in this process, and, hosted,
+//! The adapters are `build/process`, which runs the engine in this process, and, hosted,
 //! `build/container`; the suite every adapter runs is `build/conformance`.
 
 mod error;

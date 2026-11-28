@@ -23,7 +23,7 @@ logging = { workspace = true, features = ["capture"] }
 blob-dir.workspace = true
 db-sqlite.workspace = true
 pollster.workspace = true
-queue-local.workspace = true
+queue-rows.workspace = true
 secret-local.workspace = true
 tempfile.workspace = true
 db.workspace = true

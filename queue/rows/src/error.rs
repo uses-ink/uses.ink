@@ -1,8 +1,8 @@
-//! What the local queue fails with.
+//! What the row queue fails with.
 
 use std::fmt;
 
-/// A failure of the local queue. `E` is the database adapter's error.
+/// A failure of the row queue. `E` is the database adapter's error.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error<E> {

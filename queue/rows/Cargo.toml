@@ -1,5 +1,5 @@
 [package]
-name = "uses-ink-queue-local"
+name = "uses-ink-queue-rows"
 description = "The queue port in rows of the database port, with the claim as one statement"
 version.workspace = true
 edition.workspace = true

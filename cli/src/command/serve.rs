@@ -230,7 +230,7 @@ impl args::Serve {
                     }
                 };
                 let control = control::Control::new(ports, origin);
-                let builder = build_local::Local::new(stored).with_remote(remote);
+                let builder = build_process::Local::new(stored).with_remote(remote);
                 watch::Worker::new(&control, builder, clock, times).run(&events).await;
             })
         });

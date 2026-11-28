@@ -26,7 +26,7 @@ use db_sqlite::Sqlite;
 use jiff::Timestamp;
 use model::ExternalUrl;
 use model::git::Locator;
-use queue_local::{Local as Queue, Queued};
+use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 use watch::{Head, Heads, Interval, IntervalError, Outcome, Report, Round, Watch};
 

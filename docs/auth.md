@@ -450,7 +450,7 @@ scrollback: `auth.key.print-refused`, new). The private key never reaches the se
 container that has no binding to the control database and holds no deploy key; the source plugin
 is handed a grant by name and the host holds the bytes. A deploy key lives in the author's CI, and
 the hosted builder fetches by the sealed git token of the `secret` port, not by anything in this
-document. The self-host `build/local` runs plugins as wasm components with no file or environment
+document. The self-host `build/process` runs plugins as wasm components with no file or environment
 capability, so a plugin cannot read `<data>`.
 
 **Better than a long-lived secret: trusted publishing.** A CI job that proves its own identity needs

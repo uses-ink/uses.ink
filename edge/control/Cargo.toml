@@ -26,7 +26,7 @@ db-sqlite.workspace = true
 build.workspace = true
 clock.workspace = true
 pollster.workspace = true
-queue-local.workspace = true
+queue-rows.workspace = true
 secret-local.workspace = true
 tempfile.workspace = true
 

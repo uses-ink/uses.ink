@@ -24,7 +24,7 @@ use edge_api::{
 };
 use edge_control::{Back, Fronts};
 use mail::{Base, Link};
-use queue_local::{Local as Queue, Queued};
+use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 
 use crate::grammar::args;

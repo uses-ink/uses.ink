@@ -34,7 +34,7 @@ use edge_api::{
 };
 use jiff::Timestamp;
 use mail::{Address, Base};
-use queue_local::{Local as Queue, Queued};
+use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 use serde_json::{Value, json};
 

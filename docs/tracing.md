@@ -122,8 +122,8 @@ area filter then governs the structure and the events together).
 | Span | Macro | Level | Fields | Opened by |
 |---|---|---|---|---|
 | `command` | `command!` | info | `kind` (the verb) | the CLI |
-| `build` | `build!` | info | `build` (id), `kind` (trigger) | `build/local` |
-| `stage` | `stage!` | info | `kind` (a `Stage`), `step` | engine, `build/local` |
+| `build` | `build!` | info | `build` (id), `kind` (trigger) | `build/process` |
+| `stage` | `stage!` | info | `kind` (a `Stage`), `step` | engine, `build/process` |
 | `unit` | `unit!` | debug | `kind` (`file`, `page`, `generated`, `image`), `unit` | engine, image host |
 | `plugin` | `plugin!` | debug | `kind` (the plugin), `fuel`, `took_us` | wasm host |
 | `request` | `request!` | info | `request` (a counter), `method`, `path`, `host`, `status`, `took_us` | `edge/axum` |
@@ -236,7 +236,7 @@ layers do the timing, so the engine, the API and the watch read no clock for it.
 numbers, an error keeps its causes:
 
 ```json
-{"t":0.041,"level":"INFO","target":"uses_ink_build_local::local","name":"build.end",
+{"t":0.041,"level":"INFO","target":"uses_ink_build_process::local","name":"build.end",
  "fields":{"status":"succeeded","took_us":38000},"spans":[{"name":"command","fields":{"kind":"build"}}]}
 ```
 

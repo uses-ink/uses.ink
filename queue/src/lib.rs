@@ -9,7 +9,7 @@
 //!   cannot remove another worker's message.
 //!
 //! The clock is an argument, never read: the caller says what time it is, so a lease is tested
-//! without sleeping. The adapters are `queue/local` and, hosted, `queue/cf`; the suite every
+//! without sleeping. The adapters are `queue/rows` and, hosted, `queue/cf`; the suite every
 //! adapter runs is `queue/conformance`.
 
 mod error;

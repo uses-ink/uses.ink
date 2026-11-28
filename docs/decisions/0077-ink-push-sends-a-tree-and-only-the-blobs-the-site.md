@@ -27,7 +27,7 @@ the verbs that exited 2 as pending; they are built.
 - **A tree rides on the job.** A new `bundle` table maps a build job to its tree hash (migration
   `Treed`, number 3; the `db` port has no ALTER, so a table, not a column). Two pushes in a row
   cannot build each other's tree. The source of a site stays `Source::Upload`; a build request
-  carries `Source::Bundle(hash)`, and `build/local` reads the tree and its blobs from the tenant
+  carries `Source::Bundle(hash)`, and `build/process` reads the tree and its blobs from the tenant
   into a snapshot of version `Upload`. `GET /v1/sites/{site}/source` returns the latest tree's
   files as a tar archive, which is what `ink export --source` downloads.
 - **Bounded memory is the streaming answer.** Intake is not streamed. Every request is read whole,

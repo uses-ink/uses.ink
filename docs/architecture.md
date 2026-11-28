@@ -88,8 +88,8 @@ uses.ink/
   control/               uses-ink-control       accounts, handles, identities, sources, builds, deploys, domains
   db/  db/sqlite/  db/conformance/              row port and its adapter; planned: db/d1
   blob/  blob/dir/  blob/conformance/           blob port and its adapter; planned: blob/r2
-  queue/  queue/local/  queue/conformance/      build request port and its adapter; planned: queue/cf
-  build/  build/local/  build/conformance/      builder port: start a build, stream its events; planned: build/container
+  queue/  queue/rows/  queue/conformance/      build request port and its adapter; planned: queue/cf
+  build/  build/process/  build/conformance/      builder port: start a build, stream its events; planned: build/container
   secret/  secret/local/  secret/conformance/   sealing credentials at rest
   mail/  mail/smtp/      uses-ink-mail          mail port: typed messages and a Mailer; Capture and Stdout stand-ins;
                                                 the SMTP adapter on lettre and rustls (0066)
@@ -117,7 +117,7 @@ uses.ink/
     (authority/          planned: github, forgejo, gitlab, dns, email)
   wit/                   model/ host/ format/ theme/ source/: the WIT packages ink:model, ink:host,
                          ink:format, ink:theme, ink:source; mirror/: their conversions to the model (0041)
-  (migrations are Rust values, `control::Domain` and `queue_local::Queued`: 0049; no .sql files)
+  (migrations are Rust values, `control::Domain` and `queue_rows::Queued`: 0049; no .sql files)
   token/                 design tokens (one TOML file) to CSS custom properties and pen palette
   brand/                 logo and mark SVGs and figure.toml, read by `cargo xtask brand`
   fixture/               uses-ink-fixture       the fixture harness: goldens through insta; a dev-dependency only

@@ -17,7 +17,7 @@ use crate::remote::{Offline, Remote};
 
 type Failure<E> = build::Error<Error<E>>;
 
-/// The local builder, storing deploys in `B`.
+/// The in-process builder, storing deploys in `B`.
 #[derive(Debug)]
 pub struct Local<B, R = Offline> {
     blobs: B,

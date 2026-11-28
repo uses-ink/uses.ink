@@ -1,4 +1,4 @@
-//! What the local builder fails with.
+//! What the in-process builder fails with.
 
 use std::fmt;
 
@@ -6,7 +6,7 @@ use engine::BaseUrlError;
 use model::Hash;
 use model::record::PluginId;
 
-/// A failure of the local builder, as opposed to a site that does not build. `E` is the blob
+/// A failure of the in-process builder, as opposed to a site that does not build. `E` is the blob
 /// adapter's error.
 #[derive(Debug)]
 #[non_exhaustive]

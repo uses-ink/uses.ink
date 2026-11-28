@@ -35,8 +35,8 @@ All facts below were read on `main` (commit `dad76cc2`).
 | Every port future is allowed to be `!Send`, with a comment naming D1, R2, Queues, Durable Objects or a Workers secret binding as the reason. | `db/src/port.rs`, `blob/src/port.rs`, `queue/src/port.rs`, `build/src/port.rs`, `secret/src/port.rs`, `mail/src/mailer.rs` |
 | `Db` is `run` and an atomic `batch` of typed statements; no interactive transaction; foreign keys enforced; a bound-parameter limit; a migration ledger. The conformance cases pin D1 behaviour. | `db/src/port.rs`, `db/conformance/src/lib.rs`, 0030, 0049 |
 | `blob::Blob` is `put` (hashed as taken, `Mismatch` stores nothing), `get` (chunked), `stat`, `list`, `delete`, per `Tenant`. | `blob/src/port.rs`, 0009 |
-| The queue adapter `queue/local` is written over any `db::Db` and "runs on D1" by design: one claiming `UPDATE ... RETURNING`, leases, a dedupe key. | `queue/local/src/lib.rs` |
-| `Build::run` takes a `Request` (build id, tenant, trigger, source, base) and an `Events` sink and returns `Built` or `Refused`; the same source gives the same deploy id. `build/local` is the whole pipeline over any `Blob`. | `build/src/port.rs`, `build/local/src/lib.rs` |
+| The queue adapter `queue/rows` is written over any `db::Db` and "runs on D1" by design: one claiming `UPDATE ... RETURNING`, leases, a dedupe key. | `queue/rows/src/lib.rs` |
+| `Build::run` takes a `Request` (build id, tenant, trigger, source, base) and an `Events` sink and returns `Built` or `Refused`; the same source gives the same deploy id. `build/process` is the whole pipeline over any `Blob`. | `build/src/port.rs`, `build/process/src/lib.rs` |
 | `Secret` is `seal` and `open` bound to a row id (XChaCha20-Poly1305, 0031); the key lives in the adapter. | `secret/src/port.rs`, `secret/local/src/lib.rs` |
 | `control::Control<P>` takes four ports, `(db, blob, queue, secret)`; the build port is passed only to the use case that runs builds. | `control/src/ports.rs` |
 | The edge's `Sites`, `Blobs`, `Blob` and `Chunks` traits are `Send + Sync`; 0051 says `edge/worker` "wraps these traits in its own twin" and gives the reversal (a `Send` and a local flavour behind one blanket impl). | `edge/src/serve/port.rs`, 0051 |
@@ -56,7 +56,7 @@ Three consequences shape the plan.
 delay, and has no dedupe key. A pull consumer has a visibility timeout, but it is the HTTP API, not
 something a Worker calls. The port needs `send` that answers `Duplicate` for a repeated key, and a
 `receive` that takes a lease from inside the Worker (read against the Queues docs of 2026-04-21).
-`queue/local` already implements both in rows of any `Db`, and runs on D1.
+`queue/rows` already implements both in rows of any `Db`, and runs on D1.
 So hosted uses it as it is, over `db/d1`, and `queue/cf` is only a wake-up: after a `send` it
 posts one message to a Cloudflare Queue so that a consumer Worker runs `receive` at once instead
 of at the next Cron tick. The rows stay the truth. This is decision 0079's first choice.
@@ -66,7 +66,7 @@ bindings. Following 0037, the container's builder writes each blob with an HTTP 
 the egress handler owns (`blobs.internal`), and the handler, which is the Worker and holds the R2
 binding, verifies the hash and puts the object under the tenant in the handler's props. The
 container never holds a credential or a bucket name. The builder in the container is
-`build/local`'s pipeline over a `Blob` adapter that speaks that `PUT`.
+`build/process`'s pipeline over a `Blob` adapter that speaks that `PUT`.
 
 **The edge twin comes first.** The Worker cannot implement the `Send + Sync` edge traits. The
 split of 0051's reversal is the first edit of `edge/worker`, in `edge`, and changes no logic.
@@ -126,7 +126,7 @@ members of the native workspace: `worker` types are `wasm32` only in part, and t
 |---|---|---|---|
 | `uses-ink-db-d1` | `crates/port/db/d1` (new) | `db::Db` on a D1 binding, with the `Ledger` | workers-rs `D1Database` |
 | `uses-ink-blob-r2` | `crates/port/blob/r2` (new) | `blob::Blob` on an R2 bucket | `Bucket` binding |
-| `uses-ink-queue-cf` | `crates/port/queue/cf` (new) | `queue::Queue`: `queue/rows` (today `queue/local`) over `db/d1`, plus a Queues wake-up | `Queue` binding |
+| `uses-ink-queue-cf` | `crates/port/queue/cf` (new) | `queue::Queue`: `queue/rows` over `db/d1`, plus a Queues wake-up | `Queue` binding |
 | `uses-ink-secret-worker` | `crates/port/secret/worker` (new) | `secret::Secret` with the key from a Workers secret | secret binding |
 | `uses-ink-mail-cf` | `crates/port/mail/cf` (new, name set by owner question HQ9) | `mail::Mailer` over the provider's HTTP API | provider |
 | `uses-ink-build-container` | `crates/port/build/container` (new) | `build::Build` as the per-handle Durable Object client, the egress handler's blob gateway, and `image/` (the builder entry in the container) | Containers |
@@ -201,7 +201,7 @@ merged by hand), `.config/layout.toml` rows and the `worker` stage's driver list
 | W1 | Edge twin and `edge/worker` serving | `crates/server/edge/src/serve/port.rs` (the `Send` and local flavours, no logic change), `crates/server/edge/worker` (serve path: host to site, manifest blob, entry blob, streaming, range) | H1, A1 (can start on in-memory fakes); edge twin first | a new `edge-conformance` crate for `Sites` and `Blobs` adapters (0051 lists the absence); the existing edge tests run through the Worker via `Miniflare` | Cache API timing only | L, medium. The host lookup is cached per colo for at most 10 s, and the manifest is fetched per deploy, not per request: both through the Cache API keyed by deploy id. |
 | W2 | API, dashboard, sign-in on the Worker | `crates/server/edge/worker` (`api`, `dashboard`, `signin` modules), `crates/surface/web` (the `Screens` implementation if it lives there) | W1, A3, A4, A5, M3's dashboard mount (0053 "not done") | the API tests of `edge/api` and the dashboard goldens, run on workerd | Passkeys in a real browser on a real origin | L, high. Passkeys unrun in workerd until H0b, size of the bundle. |
 | B1 | The per-handle build Durable Object and the coordinator logic | `crates/server/edge/object/build` (state machine: one build at a time, lease, attempt count, the live log), the class in `edge/worker` | H1, A2 | pure state machine under native property tests (never two builds at once, a crash leaves a diagnosable row, the log is the typed `build::Event` stream, 0023) | Real alarms timing | M, medium |
-| B2 | `build/container` and the container image | `crates/port/build/container` (DO-side `Build`, the egress handler's blob gateway and credential attachment), `crates/port/build/container/image` (the builder entry and `Dockerfile`), `crates/port/build/conformance` (async list) | B1, A1; the builder pipeline of `build/process` (today `build/local`) with an HTTP `Blob` adapter | `build-conformance` (builds and stores what it names; same site same deploy; refuses a bad site and says why; leaves nothing under another tenant) against a harness; plus a test that the gateway refuses a put whose hash differs and a tenant that is not in the props | **Yes**, to start the container, measure cold start (0004's reversal threshold is about 15 s push-to-live) and enforce egress | XL, high. Split: B2a the gateway and handler (workerd), B2b the image, B2c the real start. #15394 blocks local runs here. |
+| B2 | `build/container` and the container image | `crates/port/build/container` (DO-side `Build`, the egress handler's blob gateway and credential attachment), `crates/port/build/container/image` (the builder entry and `Dockerfile`), `crates/port/build/conformance` (async list) | B1, A1; the builder pipeline of `build/process` with an HTTP `Blob` adapter | `build-conformance` (builds and stores what it names; same site same deploy; refuses a bad site and says why; leaves nothing under another tenant) against a harness; plus a test that the gateway refuses a put whose hash differs and a tenant that is not in the props | **Yes**, to start the container, measure cold start (0004's reversal threshold is about 15 s push-to-live) and enforce egress | XL, high. Split: B2a the gateway and handler (workerd), B2b the image, B2c the real start. #15394 blocks local runs here. |
 | B3 | Hosted watch, webhooks, Cron | `crates/server/edge/worker` (`scheduled`, webhook routes), `crates/server/authority/github` (signature check, installation token per build, never stored, commit status) | B1, A6, W2 | recorded GitHub webhook fixtures; the `Heads` suite | A registered GitHub App | L, medium |
 
 ### 5.4 Control-plane features (native-testable, parallel)

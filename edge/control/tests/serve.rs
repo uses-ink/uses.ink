@@ -23,7 +23,7 @@ use edge_control::{Back, Fallback, Fronts, Settings};
 use edge_folder::Files;
 use jiff::Timestamp;
 use model::{Hash, Header, HeaderName, HeaderValue, Manifest, MediaType, Route, Served};
-use queue_local::{Local as Queue, Queued};
+use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 
 type Wired = Arc<(Arc<Sqlite>, Directory, Queue<Arc<Sqlite>>, Sealer)>;

@@ -6319,7 +6319,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "uses-ink-build-local"
+name = "uses-ink-build-process"
 version = "0.0.0"
 dependencies = [
  "pollster",
@@ -6371,7 +6371,7 @@ dependencies = [
  "uses-ink-blob",
  "uses-ink-blob-dir",
  "uses-ink-build",
- "uses-ink-build-local",
+ "uses-ink-build-process",
  "uses-ink-clock",
  "uses-ink-config",
  "uses-ink-control",
@@ -6395,7 +6395,7 @@ dependencies = [
  "uses-ink-mail",
  "uses-ink-mail-smtp",
  "uses-ink-model",
- "uses-ink-queue-local",
+ "uses-ink-queue-rows",
  "uses-ink-secret",
  "uses-ink-secret-local",
  "uses-ink-sig",
@@ -6448,7 +6448,7 @@ dependencies = [
  "uses-ink-mail",
  "uses-ink-model",
  "uses-ink-queue",
- "uses-ink-queue-local",
+ "uses-ink-queue-rows",
  "uses-ink-secret",
  "uses-ink-secret-local",
  "uses-ink-sig",
@@ -6569,7 +6569,7 @@ dependencies = [
  "uses-ink-logging",
  "uses-ink-mail",
  "uses-ink-model",
- "uses-ink-queue-local",
+ "uses-ink-queue-rows",
  "uses-ink-secret-local",
  "uses-ink-sig",
  "uuid",
@@ -6611,7 +6611,7 @@ dependencies = [
  "uses-ink-edge-folder",
  "uses-ink-logging",
  "uses-ink-model",
- "uses-ink-queue-local",
+ "uses-ink-queue-rows",
  "uses-ink-secret-local",
 ]
 
@@ -6825,7 +6825,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "uses-ink-queue-local"
+name = "uses-ink-queue-rows"
 version = "0.0.0"
 dependencies = [
  "jiff 1.0.3",
@@ -6948,7 +6948,7 @@ dependencies = [
  "uses-ink-logging",
  "uses-ink-model",
  "uses-ink-queue",
- "uses-ink-queue-local",
+ "uses-ink-queue-rows",
  "uses-ink-secret",
  "uses-ink-secret-local",
 ]

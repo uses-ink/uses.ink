@@ -2,12 +2,12 @@
 
 #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
 
-extern crate uses_ink_build_local as build_local;
+extern crate uses_ink_build_process as build_process;
 
 use blob_dir::Directory;
 use build::Source;
 use build_conformance::Harness;
-use build_local::Local;
+use build_process::Local;
 
 /// A site of one page, a site whose `ink.toml` has a key nothing reads, and the store the
 /// builder writes to, with a second handle on it.

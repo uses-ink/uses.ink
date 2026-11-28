@@ -112,7 +112,7 @@ The layers follow `MAY_USE`, not taste. Each depends only on layers above it in 
 The brief's example put `watch` with the ports and `build` with core. Both differ here, on
 evidence. `watch` depends on `control` (`MAY_USE` row for `uses-ink-watch`), so it is a use case,
 not a port; its `Heads` port is a trait inside it, and `watch/git` is that port's adapter, which
-stays beside it. `build` is the builder port (`build/local` is its adapter), and its
+stays beside it. `build` is the builder port (`build/process` is its adapter), and its
 `MAY_USE` row is `blob`, `model`, `logging`, so it sits with the ports.
 
 `layout` can check the table: a crate in layer X may not depend on a crate in a later layer. That
@@ -121,7 +121,7 @@ is part of S6.
 
 Whether ports stay with their adapters or the adapters move to their own layer: **keep them
 together.** `blob/dir` next to `blob` is why the port pattern is easy to read; an `adapter/` layer
-would put `queue/local` far from `queue`, and an adapter's conformance suite is a test of the port.
+would put `queue/rows` far from `queue`, and an adapter's conformance suite is a test of the port.
 
 ### 3.3 What stays at the root, and why
 
@@ -166,11 +166,11 @@ with everything under it. The two columns are the same crate; a change of name i
 | `sig` | `crates/core/sig` |
 | `https` | `crates/core/https` |
 | `blob`, `blob/dir`, `blob/conformance` | `crates/port/blob`, `.../blob/dir`, `.../blob/conformance` |
-| `build`, `build/local`, `build/conformance` | `crates/port/build/...` |
+| `build`, `build/process`, `build/conformance` | `crates/port/build/...` |
 | `clock` | `crates/port/clock` |
 | `db`, `db/sqlite`, `db/conformance` | `crates/port/db/...` |
 | `mail`, `mail/smtp` | `crates/port/mail/...` |
-| `queue`, `queue/local`, `queue/conformance` | `crates/port/queue/...` |
+| `queue`, `queue/rows`, `queue/conformance` | `crates/port/queue/...` |
 | `secret`, `secret/local`, `secret/conformance` | `crates/port/secret/...` |
 | `control` | `crates/server/control` |
 | `watch`, `watch/git` | `crates/server/watch`, `crates/server/watch/git` |
@@ -433,7 +433,7 @@ The blob vocabulary is declared in `engine/src/host.rs:16`, `edge/src/port.rs:13
 proposal to delete the `host/native` store is half right. `Directory` (`blob.rs:125` on) duplicates
 `blob/dir` and only `host/native/tests/folder.rs:11` uses it, so it goes and that test takes
 `blob_dir` as a dev-dependency (`MAY_USE` row for `host-native` gains it, dev only). But `Store`
-and `Memory` are used by 20 files (`cli`, `build/local`, `host/wasmtime`); they stay. The narrow
+and `Memory` are used by 20 files (`cli`, `build/process`, `host/wasmtime`); they stay. The narrow
 per-consumer traits stay as designed (the edge speaks the model alone); the name collision is left as it is.
 
 ### 6.5 `wit/mirror`

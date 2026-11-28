@@ -19,7 +19,7 @@ use edge_api::{
     Window,
 };
 use jiff::Timestamp;
-use queue_local::{Local as Queue, Queued};
+use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 use serde_json::Value;
 use sig::{Audience, Created, KeyType, Nonce, Parts, Seed, Signer};

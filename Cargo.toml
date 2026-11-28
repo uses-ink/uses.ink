@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "sig", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "logging", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "control/keys", "control/rows", "control/signin", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp", "https"]
+members = ["cli", "sig", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "logging", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/process", "control", "control/keys", "control/rows", "control/signin", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/rows", "web", "mail", "mail/smtp", "https"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -18,7 +18,7 @@ blob-conformance = { package = "uses-ink-blob-conformance", path = "blob/conform
 blob-dir = { package = "uses-ink-blob-dir", path = "blob/dir" }
 build = { package = "uses-ink-build", path = "build" }
 build-conformance = { package = "uses-ink-build-conformance", path = "build/conformance" }
-build-local = { package = "uses-ink-build-local", path = "build/local" }
+build-process = { package = "uses-ink-build-process", path = "build/process" }
 clock = { package = "uses-ink-clock", path = "clock" }
 config = { package = "uses-ink-config", path = "config" }
 control = { package = "uses-ink-control", path = "control" }
@@ -53,7 +53,7 @@ mail = { package = "uses-ink-mail", path = "mail" }
 mail-smtp = { package = "uses-ink-mail-smtp", path = "mail/smtp" }
 queue = { package = "uses-ink-queue", path = "queue" }
 queue-conformance = { package = "uses-ink-queue-conformance", path = "queue/conformance" }
-queue-local = { package = "uses-ink-queue-local", path = "queue/local" }
+queue-rows = { package = "uses-ink-queue-rows", path = "queue/rows" }
 sdk = { package = "uses-ink-sdk", path = "plugin/sdk" }
 source-git = { package = "uses-ink-source-git", path = "plugin/source/git" }
 theme-quiet = { package = "uses-ink-theme-quiet", path = "plugin/theme/quiet" }

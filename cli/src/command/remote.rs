@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 
 use build::Request;
-use build_local::Remote;
+use build_process::Remote;
 use control::{Control, Id, Ports, SiteKind};
 use host_native::{Fetch, Memory, Read};
 use host_wasmtime::{Budget, Cache, Component, Runtime, Source, Terms};

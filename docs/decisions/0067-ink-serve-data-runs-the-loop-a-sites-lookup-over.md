@@ -49,7 +49,7 @@ closes them.
   nothing. `Heads::head` now takes the site's `Access`, which `Access::of` opens from the site's
   `git-token` credential: `user:password`, or a token alone sent as the user `git`. It redacts
   itself, is zeroed on drop and appears in no event.
-- **Git builds.** `build/local` takes a `Remote` for a git source (`Offline` by default, which
+- **Git builds.** `build/process` takes a `Remote` for a git source (`Offline` by default, which
   keeps `Unsupported`). `ink` implements it in `cli/src/command/remote.rs` over the bundled
   `ink:source-git` component (0046): a `Fetch` with the operator's network, cache and a time
   budget (`--git-time`), the site's credential held under one grant name for the call. Every

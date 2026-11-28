@@ -1,5 +1,5 @@
 [package]
-name = "uses-ink-build-local"
+name = "uses-ink-build-process"
 description = "The build port in this process: the engine, the native host and the bundled plugins"
 version.workspace = true
 edition.workspace = true

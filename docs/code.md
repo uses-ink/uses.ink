@@ -442,7 +442,7 @@ real nextest and cargo output.
 `control` is generic over five ports (`db`, `blob`, `queue`, `build`, `secret`) through one
 `Ports` trait that a tuple of four adapters implements, so a use case is a method of
 `Control<P>` and knows no adapter. Each port is a crate with its own error that keeps the
-adapter's as its source, an adapter crate (`db/sqlite`, `blob/dir`, `queue/local`, `build/local`,
+adapter's as its source, an adapter crate (`db/sqlite`, `blob/dir`, `queue/rows`, `build/process`,
 `secret/local`), and a conformance crate whose cases are types with a `check` over any adapter;
 `suite!` turns them into tests, so a new adapter runs the same ones.
 
@@ -574,7 +574,7 @@ the `Back` that answers on the caller's task, so `back.run()` is joined with the
 `Origin::handle`, a site `Control::serving`, a deploy `Control::manifest`; `Fallback` puts another
 `Sites` behind it. `ink serve --data` also runs `cli/src/selfhost/tasks.rs`: `Tasks::start(task, restart,
 events, body)` puts a loop on a thread and runtime of its own under a supervisor, and `Event` is
-everything it says. A git source is built by `build_local::Local::with_remote(Fetching)` and its
+everything it says. A git source is built by `build_process::Local::with_remote(Fetching)` and its
 head read by `watch_git::Remotes`, both with the site's `watch::Access`.
 
 Both reach an `https` remote through the `https` crate (decision 0072): `Https` is a plain struct

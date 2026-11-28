@@ -180,8 +180,8 @@ The whole product on one machine.
   adapters, conformance suites.
 
 Progress (2026-11-27): the control plane is built and its crate gates pass. The ports `db`, `blob`,
-`queue`, `build` and `secret` have their adapters (`db/sqlite`, `blob/dir`, `queue/local`,
-`build/local`, `secret/local`) and conformance suites; `control` holds the use cases (accounts,
+`queue`, `build` and `secret` have their adapters (`db/sqlite`, `blob/dir`, `queue/rows`,
+`build/process`, `secret/local`) and conformance suites; `control` holds the use cases (accounts,
 sites and handles, deploys with rollback and resume, build jobs worked off the queue,
 credentials sealed at rest, export, removal with a tombstone) with tests on the real adapters.
 No SQL text exists: statements and migrations are typed values (0049). Not done: `web`,
@@ -260,7 +260,7 @@ named for the layout after `docs/layout.md` S6; no M4 crate is added to the work
 freeze.
 
 - Planned, test rig first (H1): the conformance suites run inside `workerd`, then `db/d1` on it.
-- Planned adapters, in parallel after H1: `blob/r2`, `queue/cf` (the rows of `queue/local` over D1 plus a
+- Planned adapters, in parallel after H1: `blob/r2`, `queue/cf` (the rows of `queue/rows` over D1 plus a
   wake-up, since Cloudflare Queues has no lease or dedupe key), `secret/worker`, `mail/cf`,
   `watch/worker`, the nonce store as a per-account Durable Object (`auth.md` section 5).
 - Planned: `edge/worker` (serve, API, dashboard, sign-in) over the `Send` twin of the edge traits (0051);
