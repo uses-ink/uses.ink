@@ -214,7 +214,7 @@ farm wait <id>
 | --- | --- |
 | `site` | `landing/` and `docs/` (home, `cli`, the decisions index, decision 0180), each built with `ink build` and served with `ink serve` on loopback |
 | `dashboard` | `ink serve --data` with an empty data folder, signed out |
-| `mock` | the design mock, from `--from <folder>` (default `tools/shoot/mock`), for a reference from the same engine |
+| `mock` | the design mock, from `--from <folder>` (a folder you copy in for the run; the mock is git-ignored and never committed), for a reference from the same engine |
 | `probe` | nothing: whether a browser starts here, and which |
 | `lock` | nothing: prints `tools/shoot/package-lock.json` between markers, to be committed |
 

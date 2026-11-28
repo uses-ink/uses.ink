@@ -111,4 +111,4 @@ A layer depends only on the layers before it, and `standalone` crates depend on 
 | Crate | Path | Purpose | May use |
 |---|---|---|---|
 | `farm` | `tools/farm` | The build farm client: run a repo's jobs and cargo commands on hosts with a free slot | none |
-| `xtask` | `tools/xtask` | Repo tasks: cargo xtask token \| diag \| brand \| layout \| docs \| component \| release \| check | `freehand`, `uses-ink-token` |
+| `xtask` | `tools/xtask` | Repo tasks: cargo xtask token \| diag \| brand \| layout \| docs \| component \| worker \| shoot \| release \| check | `freehand`, `uses-ink-token` |
