@@ -853,6 +853,94 @@ pub enum Problem {
         /// The right it needs or lacks: `read`, `deploy`, `edit`, `destroy`, `keys` or `members`.
         right: String,
     },
+    /// `hook.body.large`: the webhook body is {size} and only {limit} are read
+    #[serde(rename = "hook.body.large")]
+    HookBodyLarge {
+        /// How large it is.
+        size: Bytes,
+        /// The most that is allowed.
+        limit: Bytes,
+    },
+    /// `hook.header.missing`: the webhook delivery has no `{header}` header
+    #[serde(rename = "hook.header.missing")]
+    HookHeaderMissing {
+        /// The header's name.
+        header: String,
+    },
+    /// `hook.signature.invalid`: the webhook delivery's signature or token does not authenticate its body
+    #[serde(rename = "hook.signature.invalid")]
+    HookSignatureInvalid,
+    /// `hook.delivery.replayed`: the webhook delivery {delivery} was seen already
+    #[serde(rename = "hook.delivery.replayed")]
+    HookDeliveryReplayed {
+        /// The delivery id the forge gave the webhook call.
+        delivery: String,
+    },
+    /// `hook.payload.malformed`: the signed webhook body is not a push event this reads: {reason}
+    #[serde(rename = "hook.payload.malformed")]
+    HookPayloadMalformed {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `forge.call.failed`: the forge did not answer
+    #[serde(rename = "forge.call.failed")]
+    ForgeCallFailed,
+    /// `forge.call.refused`: the forge answered with status {status}
+    #[serde(rename = "forge.call.refused")]
+    ForgeCallRefused {
+        /// The HTTP status the forge answered with.
+        status: u64,
+    },
+    /// `forge.reply.large`: the forge's reply is {size} and only {limit} are read
+    #[serde(rename = "forge.reply.large")]
+    ForgeReplyLarge {
+        /// How large it is.
+        size: Bytes,
+        /// The most that is allowed.
+        limit: Bytes,
+    },
+    /// `forge.reply.malformed`: the forge's reply is not what its API documents
+    #[serde(rename = "forge.reply.malformed")]
+    ForgeReplyMalformed,
+    /// `forge.instances.invalid`: the list of forge instances is not valid: {reason}
+    #[serde(rename = "forge.instances.invalid")]
+    ForgeInstancesInvalid {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `repo.host.unlisted`: {host} is not a forge this server talks to
+    #[serde(rename = "repo.host.unlisted")]
+    RepoHostUnlisted {
+        /// The forge's host name, as written.
+        host: String,
+    },
+    /// `repo.proof.missing`: the repository has no `.well-known/uses-ink` file the server can read
+    #[serde(rename = "repo.proof.missing")]
+    RepoProofMissing,
+    /// `repo.proof.wrong`: `.well-known/uses-ink` does not carry the challenge
+    #[serde(rename = "repo.proof.wrong")]
+    RepoProofWrong,
+    /// `repo.app.missing`: the uses.ink GitHub App is not installed on the repository
+    #[serde(rename = "repo.app.missing")]
+    RepoAppMissing,
+    /// `repo.app.suspended`: the uses.ink GitHub App's installation on the repository is suspended
+    #[serde(rename = "repo.app.suspended")]
+    RepoAppSuspended,
+    /// `repo.account.mismatch`: the App is installed on `{login}`, not on the account that claimed the repository
+    #[serde(rename = "repo.account.mismatch")]
+    RepoAccountMismatch {
+        /// The account's name on the forge.
+        login: String,
+    },
+    /// `app.sign.failed`: the GitHub App's JWT could not be signed
+    #[serde(rename = "app.sign.failed")]
+    AppSignFailed,
+    /// `app.key.invalid`: the GitHub App's private key cannot be read: {reason}
+    #[serde(rename = "app.key.invalid")]
+    AppKeyInvalid {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -1114,6 +1202,24 @@ impl Problem {
         "org.member.unknown",
         "org.owner.last",
         "org.role.denied",
+        "hook.body.large",
+        "hook.header.missing",
+        "hook.signature.invalid",
+        "hook.delivery.replayed",
+        "hook.payload.malformed",
+        "forge.call.failed",
+        "forge.call.refused",
+        "forge.reply.large",
+        "forge.reply.malformed",
+        "forge.instances.invalid",
+        "repo.host.unlisted",
+        "repo.proof.missing",
+        "repo.proof.wrong",
+        "repo.app.missing",
+        "repo.app.suspended",
+        "repo.account.mismatch",
+        "app.sign.failed",
+        "app.key.invalid",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -1276,6 +1382,24 @@ impl Problem {
             Self::OrgMemberUnknown { .. } => "org.member.unknown",
             Self::OrgOwnerLast { .. } => "org.owner.last",
             Self::OrgRoleDenied { .. } => "org.role.denied",
+            Self::HookBodyLarge { .. } => "hook.body.large",
+            Self::HookHeaderMissing { .. } => "hook.header.missing",
+            Self::HookSignatureInvalid => "hook.signature.invalid",
+            Self::HookDeliveryReplayed { .. } => "hook.delivery.replayed",
+            Self::HookPayloadMalformed { .. } => "hook.payload.malformed",
+            Self::ForgeCallFailed => "forge.call.failed",
+            Self::ForgeCallRefused { .. } => "forge.call.refused",
+            Self::ForgeReplyLarge { .. } => "forge.reply.large",
+            Self::ForgeReplyMalformed => "forge.reply.malformed",
+            Self::ForgeInstancesInvalid { .. } => "forge.instances.invalid",
+            Self::RepoHostUnlisted { .. } => "repo.host.unlisted",
+            Self::RepoProofMissing => "repo.proof.missing",
+            Self::RepoProofWrong => "repo.proof.wrong",
+            Self::RepoAppMissing => "repo.app.missing",
+            Self::RepoAppSuspended => "repo.app.suspended",
+            Self::RepoAccountMismatch { .. } => "repo.account.mismatch",
+            Self::AppSignFailed => "app.sign.failed",
+            Self::AppKeyInvalid { .. } => "app.key.invalid",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -1439,6 +1563,24 @@ impl Problem {
             Self::OrgMemberUnknown { .. } => Severity::Error,
             Self::OrgOwnerLast { .. } => Severity::Error,
             Self::OrgRoleDenied { .. } => Severity::Error,
+            Self::HookBodyLarge { .. } => Severity::Error,
+            Self::HookHeaderMissing { .. } => Severity::Error,
+            Self::HookSignatureInvalid => Severity::Error,
+            Self::HookDeliveryReplayed { .. } => Severity::Error,
+            Self::HookPayloadMalformed { .. } => Severity::Error,
+            Self::ForgeCallFailed => Severity::Error,
+            Self::ForgeCallRefused { .. } => Severity::Error,
+            Self::ForgeReplyLarge { .. } => Severity::Error,
+            Self::ForgeReplyMalformed => Severity::Error,
+            Self::ForgeInstancesInvalid { .. } => Severity::Error,
+            Self::RepoHostUnlisted { .. } => Severity::Error,
+            Self::RepoProofMissing => Severity::Error,
+            Self::RepoProofWrong => Severity::Error,
+            Self::RepoAppMissing => Severity::Error,
+            Self::RepoAppSuspended => Severity::Error,
+            Self::RepoAccountMismatch { .. } => Severity::Error,
+            Self::AppSignFailed => Severity::Error,
+            Self::AppKeyInvalid { .. } => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -1602,6 +1744,24 @@ impl Problem {
             Self::OrgMemberUnknown { .. } => Fault::Author,
             Self::OrgOwnerLast { .. } => Fault::Author,
             Self::OrgRoleDenied { .. } => Fault::Author,
+            Self::HookBodyLarge { .. } => Fault::Source,
+            Self::HookHeaderMissing { .. } => Fault::Source,
+            Self::HookSignatureInvalid => Fault::Source,
+            Self::HookDeliveryReplayed { .. } => Fault::Source,
+            Self::HookPayloadMalformed { .. } => Fault::Source,
+            Self::ForgeCallFailed => Fault::Source,
+            Self::ForgeCallRefused { .. } => Fault::Source,
+            Self::ForgeReplyLarge { .. } => Fault::Source,
+            Self::ForgeReplyMalformed => Fault::Source,
+            Self::ForgeInstancesInvalid { .. } => Fault::Operator,
+            Self::RepoHostUnlisted { .. } => Fault::Author,
+            Self::RepoProofMissing => Fault::Author,
+            Self::RepoProofWrong => Fault::Author,
+            Self::RepoAppMissing => Fault::Author,
+            Self::RepoAppSuspended => Fault::Author,
+            Self::RepoAccountMismatch { .. } => Fault::Author,
+            Self::AppSignFailed => Fault::Operator,
+            Self::AppKeyInvalid { .. } => Fault::Operator,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -1895,6 +2055,12 @@ pub enum Announcement {
         /// The file that holds the retired owner token.
         token_file: String,
     },
+    /// `hook.event.ignored`: the webhook delivery queues nothing: {reason}
+    #[serde(rename = "hook.event.ignored")]
+    HookEventIgnored {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
 }
 impl Announcement {
     /// Every code, in catalog order.
@@ -1940,6 +2106,7 @@ impl Announcement {
         "cache.entry.unwritten",
         "cache.entry.evicted",
         "auth.token.retired",
+        "hook.event.ignored",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -1985,6 +2152,7 @@ impl Announcement {
             Self::CacheEntryUnwritten { .. } => "cache.entry.unwritten",
             Self::CacheEntryEvicted { .. } => "cache.entry.evicted",
             Self::AuthTokenRetired { .. } => "auth.token.retired",
+            Self::HookEventIgnored { .. } => "hook.event.ignored",
         }
     }
 }
@@ -2315,6 +2483,38 @@ impl From<&Problem> for Coded {
                 "org.role.denied",
                 vec![Field::from(id.clone()), Field::from(role.clone()), Field::from(right.clone())],
             ),
+            Problem::HookBodyLarge { size, limit, .. } => {
+                Coded::new("hook.body.large", vec![Field::from(*size), Field::from(*limit)])
+            }
+            Problem::HookHeaderMissing { header, .. } => {
+                Coded::new("hook.header.missing", vec![Field::from(header.clone())])
+            }
+            Problem::HookSignatureInvalid => Coded::new("hook.signature.invalid", vec![]),
+            Problem::HookDeliveryReplayed { delivery, .. } => {
+                Coded::new("hook.delivery.replayed", vec![Field::from(delivery.clone())])
+            }
+            Problem::HookPayloadMalformed { reason, .. } => {
+                Coded::new("hook.payload.malformed", vec![Field::from(reason.clone())])
+            }
+            Problem::ForgeCallFailed => Coded::new("forge.call.failed", vec![]),
+            Problem::ForgeCallRefused { status, .. } => Coded::new("forge.call.refused", vec![Field::from(*status)]),
+            Problem::ForgeReplyLarge { size, limit, .. } => {
+                Coded::new("forge.reply.large", vec![Field::from(*size), Field::from(*limit)])
+            }
+            Problem::ForgeReplyMalformed => Coded::new("forge.reply.malformed", vec![]),
+            Problem::ForgeInstancesInvalid { reason, .. } => {
+                Coded::new("forge.instances.invalid", vec![Field::from(reason.clone())])
+            }
+            Problem::RepoHostUnlisted { host, .. } => Coded::new("repo.host.unlisted", vec![Field::from(host.clone())]),
+            Problem::RepoProofMissing => Coded::new("repo.proof.missing", vec![]),
+            Problem::RepoProofWrong => Coded::new("repo.proof.wrong", vec![]),
+            Problem::RepoAppMissing => Coded::new("repo.app.missing", vec![]),
+            Problem::RepoAppSuspended => Coded::new("repo.app.suspended", vec![]),
+            Problem::RepoAccountMismatch { login, .. } => {
+                Coded::new("repo.account.mismatch", vec![Field::from(login.clone())])
+            }
+            Problem::AppSignFailed => Coded::new("app.sign.failed", vec![]),
+            Problem::AppKeyInvalid { reason, .. } => Coded::new("app.key.invalid", vec![Field::from(reason.clone())]),
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -2521,6 +2721,24 @@ impl TryFrom<Coded> for Problem {
             "org.role.denied" => {
                 Self::OrgRoleDenied { id: fields.next()?, role: fields.next()?, right: fields.next()? }
             }
+            "hook.body.large" => Self::HookBodyLarge { size: fields.next()?, limit: fields.next()? },
+            "hook.header.missing" => Self::HookHeaderMissing { header: fields.next()? },
+            "hook.signature.invalid" => Self::HookSignatureInvalid,
+            "hook.delivery.replayed" => Self::HookDeliveryReplayed { delivery: fields.next()? },
+            "hook.payload.malformed" => Self::HookPayloadMalformed { reason: fields.next()? },
+            "forge.call.failed" => Self::ForgeCallFailed,
+            "forge.call.refused" => Self::ForgeCallRefused { status: fields.next()? },
+            "forge.reply.large" => Self::ForgeReplyLarge { size: fields.next()?, limit: fields.next()? },
+            "forge.reply.malformed" => Self::ForgeReplyMalformed,
+            "forge.instances.invalid" => Self::ForgeInstancesInvalid { reason: fields.next()? },
+            "repo.host.unlisted" => Self::RepoHostUnlisted { host: fields.next()? },
+            "repo.proof.missing" => Self::RepoProofMissing,
+            "repo.proof.wrong" => Self::RepoProofWrong,
+            "repo.app.missing" => Self::RepoAppMissing,
+            "repo.app.suspended" => Self::RepoAppSuspended,
+            "repo.account.mismatch" => Self::RepoAccountMismatch { login: fields.next()? },
+            "app.sign.failed" => Self::AppSignFailed,
+            "app.key.invalid" => Self::AppKeyInvalid { reason: fields.next()? },
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },
@@ -2676,6 +2894,9 @@ impl From<&Announcement> for Coded {
             Announcement::AuthTokenRetired { token_file, .. } => {
                 Coded::new("auth.token.retired", vec![Field::from(token_file.clone())])
             }
+            Announcement::HookEventIgnored { reason, .. } => {
+                Coded::new("hook.event.ignored", vec![Field::from(reason.clone())])
+            }
         }
     }
 }
@@ -2731,6 +2952,7 @@ impl TryFrom<Coded> for Announcement {
             "cache.entry.unwritten" => Self::CacheEntryUnwritten { entry: fields.next()? },
             "cache.entry.evicted" => Self::CacheEntryEvicted { count: fields.next()?, limit: fields.next()? },
             "auth.token.retired" => Self::AuthTokenRetired { token_file: fields.next()? },
+            "hook.event.ignored" => Self::HookEventIgnored { reason: fields.next()? },
             _ => return fields.unknown(),
         };
         fields.end(made)

@@ -422,6 +422,58 @@ impl Message<'_> {
             Problem::OrgRoleDenied { role, id, right, .. } => {
                 write!(out, "a {role} of {id} cannot do this: it needs the {right} right over that member")
             }
+            Problem::HookBodyLarge { size, limit, .. } => {
+                write!(out, "the webhook body is {size} and only {limit} are read")
+            }
+            Problem::HookHeaderMissing { header, .. } => {
+                write!(out, "the webhook delivery has no `{header}` header")
+            }
+            Problem::HookSignatureInvalid => {
+                write!(out, "the webhook delivery's signature or token does not authenticate its body")
+            }
+            Problem::HookDeliveryReplayed { delivery, .. } => {
+                write!(out, "the webhook delivery {delivery} was seen already")
+            }
+            Problem::HookPayloadMalformed { reason, .. } => {
+                write!(out, "the signed webhook body is not a push event this reads: {reason}")
+            }
+            Problem::ForgeCallFailed => write!(out, "the forge did not answer"),
+            Problem::ForgeCallRefused { status, .. } => {
+                write!(out, "the forge answered with status {status}")
+            }
+            Problem::ForgeReplyLarge { size, limit, .. } => {
+                write!(out, "the forge's reply is {size} and only {limit} are read")
+            }
+            Problem::ForgeReplyMalformed => {
+                write!(out, "the forge's reply is not what its API documents")
+            }
+            Problem::ForgeInstancesInvalid { reason, .. } => {
+                write!(out, "the list of forge instances is not valid: {reason}")
+            }
+            Problem::RepoHostUnlisted { host, .. } => {
+                write!(out, "{host} is not a forge this server talks to")
+            }
+            Problem::RepoProofMissing => {
+                write!(out, "the repository has no `.well-known/uses-ink` file the server can read")
+            }
+            Problem::RepoProofWrong => {
+                write!(out, "`.well-known/uses-ink` does not carry the challenge")
+            }
+            Problem::RepoAppMissing => {
+                write!(out, "the uses.ink GitHub App is not installed on the repository")
+            }
+            Problem::RepoAppSuspended => {
+                write!(out, "the uses.ink GitHub App's installation on the repository is suspended")
+            }
+            Problem::RepoAccountMismatch { login, .. } => {
+                write!(out, "the App is installed on `{login}`, not on the account that claimed the repository")
+            }
+            Problem::AppSignFailed => {
+                write!(out, "the GitHub App's JWT could not be signed")
+            }
+            Problem::AppKeyInvalid { reason, .. } => {
+                write!(out, "the GitHub App's private key cannot be read: {reason}")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -664,6 +716,9 @@ impl Message<'_> {
             Announcement::AuthTokenRetired { token_file, .. } => {
                 write!(out, "the owner token in `{token_file}` no longer works")
             }
+            Announcement::HookEventIgnored { reason, .. } => {
+                write!(out, "the webhook delivery queues nothing: {reason}")
+            }
         }
     }
 }
@@ -801,6 +856,24 @@ impl Fix<'_> {
             Problem::OrgMemberUnknown { .. } => true,
             Problem::OrgOwnerLast { .. } => true,
             Problem::OrgRoleDenied { .. } => true,
+            Problem::HookBodyLarge { .. } => true,
+            Problem::HookHeaderMissing { .. } => true,
+            Problem::HookSignatureInvalid => true,
+            Problem::HookDeliveryReplayed { .. } => true,
+            Problem::HookPayloadMalformed { .. } => true,
+            Problem::ForgeCallFailed => true,
+            Problem::ForgeCallRefused { .. } => true,
+            Problem::ForgeReplyLarge { .. } => true,
+            Problem::ForgeReplyMalformed => true,
+            Problem::ForgeInstancesInvalid { .. } => true,
+            Problem::RepoHostUnlisted { .. } => true,
+            Problem::RepoProofMissing => true,
+            Problem::RepoProofWrong => true,
+            Problem::RepoAppMissing => true,
+            Problem::RepoAppSuspended => true,
+            Problem::RepoAccountMismatch { .. } => true,
+            Problem::AppSignFailed => true,
+            Problem::AppKeyInvalid { .. } => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -873,6 +946,7 @@ impl Fix<'_> {
             Announcement::CacheEntryUnwritten { .. } => false,
             Announcement::CacheEntryEvicted { .. } => false,
             Announcement::AuthTokenRetired { .. } => true,
+            Announcement::HookEventIgnored { .. } => true,
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.
@@ -1277,6 +1351,78 @@ impl Fix<'_> {
             Problem::OrgRoleDenied { .. } => {
                 write!(out, "ask an owner of the organization, or an admin when the member is not an owner")
             }
+            Problem::HookBodyLarge { .. } => {
+                write!(out, "send a smaller delivery, or ask the operator to raise the webhook body limit")
+            }
+            Problem::HookHeaderMissing { .. } => {
+                write!(out, "point the forge's webhook at this server with its secret set, and send a push event")
+            }
+            Problem::HookSignatureInvalid => {
+                write!(out, "set the same secret on the forge's webhook and in the server; nothing was queued")
+            }
+            Problem::HookDeliveryReplayed { .. } => {
+                write!(
+                    out,
+                    "nothing to do: the first delivery was handled; a redelivery after the replay window is taken again"
+                )
+            }
+            Problem::HookPayloadMalformed { .. } => {
+                write!(out, "send the forge's push event as JSON; other events are ignored by their header")
+            }
+            Problem::ForgeCallFailed => {
+                write!(out, "check again in a minute; nothing was refused, only unchecked")
+            }
+            Problem::ForgeCallRefused { .. } => {
+                write!(out, "check that the App or token still has access to the repository, then try again")
+            }
+            Problem::ForgeReplyLarge { .. } => {
+                write!(out, "ask the operator to raise the forge reply limit, or use a smaller repository")
+            }
+            Problem::ForgeReplyMalformed => {
+                write!(
+                    out,
+                    "check again later; if it keeps happening the forge changed its API, which is ours to follow"
+                )
+            }
+            Problem::ForgeInstancesInvalid { .. } => {
+                write!(out, "fix the list: one primary instance, each host once, each a plain DNS name")
+            }
+            Problem::RepoHostUnlisted { .. } => {
+                write!(
+                    out,
+                    "ask the operator to list the instance, or use the repo challenge on an instance that is listed"
+                )
+            }
+            Problem::RepoProofMissing => {
+                write!(
+                    out,
+                    "commit the challenge line to `.well-known/uses-ink` on the default branch of a public repository, then prove again"
+                )
+            }
+            Problem::RepoProofWrong => {
+                write!(
+                    out,
+                    "put the challenge line from the claim in that file exactly, on its own line, and prove again"
+                )
+            }
+            Problem::RepoAppMissing => {
+                write!(out, "install the App on the account and choose the repository, then prove again")
+            }
+            Problem::RepoAppSuspended => {
+                write!(out, "unsuspend the installation in the account's GitHub settings, then prove again")
+            }
+            Problem::RepoAccountMismatch { .. } => {
+                write!(
+                    out,
+                    "claim the repository from the account that owns it, or install the App on the account you claim from"
+                )
+            }
+            Problem::AppSignFailed => {
+                write!(out, "check the App's private key in the secret store; it must be the RSA key GitHub issued")
+            }
+            Problem::AppKeyInvalid { .. } => {
+                write!(out, "store the PEM GitHub issued, unchanged, as the App's private key")
+            }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")
             }
@@ -1438,6 +1584,9 @@ impl Fix<'_> {
             Announcement::CacheEntryEvicted { .. } => Ok(()),
             Announcement::AuthTokenRetired { .. } => {
                 write!(out, "sign in with `ink login --data <folder>`, and delete the file")
+            }
+            Announcement::HookEventIgnored { .. } => {
+                write!(out, "nothing to do; only a push to a followed branch builds")
             }
         }
     }

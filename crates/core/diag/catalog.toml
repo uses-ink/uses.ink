@@ -80,6 +80,10 @@ until = "When the hold ends, as an RFC 3339 timestamp (UTC)."
 id = "The id of the row, as 32 hex digits."
 deploy = "The deploy's id, the hash of its manifest."
 build = "The build's id."
+host = "The forge's host name, as written."
+delivery = "The delivery id the forge gave the webhook call."
+login = "The account's name on the forge."
+status = "The HTTP status the forge answered with."
 
 [diagnostic."config.syntax.invalid"]
 severity = "error"
@@ -982,6 +986,124 @@ fields = { id = "text", role = "text", right = "text" }
 message = "a {role} of {id} cannot do this: it needs the {right} right over that member"
 fix = "ask an owner of the organization, or an admin when the member is not an owner"
 
+[diagnostic."hook.body.large"]
+severity = "error"
+fault = "source"
+fields = { size = "bytes", limit = "bytes" }
+message = "the webhook body is {size} and only {limit} are read"
+fix = "send a smaller delivery, or ask the operator to raise the webhook body limit"
+
+[diagnostic."hook.header.missing"]
+severity = "error"
+fault = "source"
+fields = { header = "text" }
+message = "the webhook delivery has no `{header}` header"
+fix = "point the forge's webhook at this server with its secret set, and send a push event"
+
+[diagnostic."hook.signature.invalid"]
+severity = "error"
+fault = "source"
+message = "the webhook delivery's signature or token does not authenticate its body"
+fix = "set the same secret on the forge's webhook and in the server; nothing was queued"
+
+[diagnostic."hook.delivery.replayed"]
+severity = "error"
+fault = "source"
+fields = { delivery = "text" }
+message = "the webhook delivery {delivery} was seen already"
+fix = "nothing to do: the first delivery was handled; a redelivery after the replay window is taken again"
+
+[diagnostic."hook.payload.malformed"]
+severity = "error"
+fault = "source"
+fields = { reason = "text" }
+message = "the signed webhook body is not a push event this reads: {reason}"
+fix = "send the forge's push event as JSON; other events are ignored by their header"
+
+[diagnostic."forge.call.failed"]
+severity = "error"
+fault = "source"
+message = "the forge did not answer"
+fix = "check again in a minute; nothing was refused, only unchecked"
+
+[diagnostic."forge.call.refused"]
+severity = "error"
+fault = "source"
+fields = { status = "count" }
+message = "the forge answered with status {status}"
+fix = "check that the App or token still has access to the repository, then try again"
+
+[diagnostic."forge.reply.large"]
+severity = "error"
+fault = "source"
+fields = { size = "bytes", limit = "bytes" }
+message = "the forge's reply is {size} and only {limit} are read"
+fix = "ask the operator to raise the forge reply limit, or use a smaller repository"
+
+[diagnostic."forge.reply.malformed"]
+severity = "error"
+fault = "source"
+message = "the forge's reply is not what its API documents"
+fix = "check again later; if it keeps happening the forge changed its API, which is ours to follow"
+
+[diagnostic."forge.instances.invalid"]
+severity = "error"
+fault = "operator"
+fields = { reason = "text" }
+message = "the list of forge instances is not valid: {reason}"
+fix = "fix the list: one primary instance, each host once, each a plain DNS name"
+
+[diagnostic."repo.host.unlisted"]
+severity = "error"
+fault = "author"
+fields = { host = "text" }
+message = "{host} is not a forge this server talks to"
+fix = "ask the operator to list the instance, or use the repo challenge on an instance that is listed"
+
+[diagnostic."repo.proof.missing"]
+severity = "error"
+fault = "author"
+message = "the repository has no `.well-known/uses-ink` file the server can read"
+fix = "commit the challenge line to `.well-known/uses-ink` on the default branch of a public repository, then prove again"
+
+[diagnostic."repo.proof.wrong"]
+severity = "error"
+fault = "author"
+message = "`.well-known/uses-ink` does not carry the challenge"
+fix = "put the challenge line from the claim in that file exactly, on its own line, and prove again"
+
+[diagnostic."repo.app.missing"]
+severity = "error"
+fault = "author"
+message = "the uses.ink GitHub App is not installed on the repository"
+fix = "install the App on the account and choose the repository, then prove again"
+
+[diagnostic."repo.app.suspended"]
+severity = "error"
+fault = "author"
+message = "the uses.ink GitHub App's installation on the repository is suspended"
+fix = "unsuspend the installation in the account's GitHub settings, then prove again"
+
+[diagnostic."repo.account.mismatch"]
+severity = "error"
+fault = "author"
+fields = { login = "text" }
+message = "the App is installed on `{login}`, not on the account that claimed the repository"
+fix = "claim the repository from the account that owns it, or install the App on the account you claim from"
+
+[diagnostic."app.sign.failed"]
+severity = "error"
+fault = "operator"
+message = "the GitHub App's JWT could not be signed"
+fix = "check the App's private key in the secret store; it must be the RSA key GitHub issued"
+
+[diagnostic."app.key.invalid"]
+severity = "error"
+fault = "operator"
+fields = { reason = "text" }
+message = "the GitHub App's private key cannot be read: {reason}"
+fix = "store the PEM GitHub issued, unchanged, as the App's private key"
+
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"
@@ -1332,3 +1454,8 @@ fix = "make the proxy send X-Forwarded-For and set the trusted hops to the proxy
 fields = { token_file = "text" }
 message = "the owner token in `{token_file}` no longer works"
 fix = "sign in with `ink login --data <folder>`, and delete the file"
+
+[notice."hook.event.ignored"]
+fields = { reason = "text" }
+message = "the webhook delivery queues nothing: {reason}"
+fix = "nothing to do; only a push to a followed branch builds"
