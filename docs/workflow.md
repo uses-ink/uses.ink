@@ -213,7 +213,7 @@ farm wait <id>
 | Target | What it takes pictures of |
 | --- | --- |
 | `site` | `landing/` and `docs/` (home, `cli`, the decisions index, decision 0180), each built with `ink build` and served with `ink serve` on loopback |
-| `dashboard` | `ink serve --data` with an empty data folder, signed out |
+| `dashboard` | `ink serve --data` on a data folder the real `ink` fills (a site with three deploys, a domain claim, an organization with a member), drawn signed out, as its owner (site, understood, deploys, settings, account, an error page) and as a newcomer with nothing; the sign-in links go to the driver and are not printed |
 | `mock` | the design mock, from `--from <folder>` (a folder you copy in for the run; the mock is git-ignored and never committed), for a reference from the same engine |
 | `probe` | nothing: whether a browser starts here, and which |
 | `lock` | nothing: prints `tools/shoot/package-lock.json` between markers, to be committed |
