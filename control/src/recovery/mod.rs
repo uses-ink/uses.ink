@@ -1,4 +1,4 @@
-//! Recovery codes (decision 0084, `docs/auth.md` section 9): ten codes of 128 random bits, shown
+//! Recovery codes (decision 0085, `docs/auth.md` section 9): ten codes of 128 random bits, shown
 //! once when they are made, kept as digests, each spent once to register a new passkey.
 //!
 //! - **A code** ([`Code`]) is 26 Crockford base32 characters and a check character, in groups of

@@ -1,5 +1,5 @@
 ---
-number: "0085"
+number: "0086"
 title: "The client address behind a proxy is read from X-Forwarded-For by trusted hop count, off by default"
 status: built
 date: 2026-11-28
@@ -7,9 +7,9 @@ area: security
 supersedes: []
 ---
 
-## 0085 The client address behind a proxy is read from X-Forwarded-For by trusted hop count, off by default
+## 0086 The client address behind a proxy is read from X-Forwarded-For by trusted hop count, off by default
 
-Built (2026-11-28). It closes the forwarded-header item of 0066. Every limit by source (0066, 0082, 0084)
+Built (2026-11-28). It closes the forwarded-header item of 0066. Every limit by source (0066, 0083, 0085)
 counts the address of the connection, which behind a reverse proxy is the proxy's.
 
 - **Typed setting, off by default.** `edge_axum::Forwarded` is `Off` or `Hops(NonZeroU8)`. `Bridge::forwarded`

@@ -1,5 +1,5 @@
 ---
-number: "0082"
+number: "0083"
 title: "Every cookie route that changes state checks its origin, and starting a passkey sign-in is limited per source"
 status: built
 date: 2026-11-28
@@ -7,7 +7,7 @@ area: security
 supersedes: []
 ---
 
-## 0082 Every cookie route that changes state checks its origin, and starting a passkey sign-in is limited per source
+## 0083 Every cookie route that changes state checks its origin, and starting a passkey sign-in is limited per source
 
 Built (2026-11-28). It closes two "not done" items of 0068 (slice 2): the Origin check on the older
 `Door` routes and a limit on `POST /v1/passkeys/challenge`.
@@ -28,7 +28,7 @@ Built (2026-11-28). It closes two "not done" items of 0068 (slice 2): the Origin
   limited per source: 60 an hour by default, `Quota` (the sliding window of the sign-in limiter, now
   shared), `429` with `Retry-After` and the new code `auth.rate.limited`. A request with no known source
   shares one bucket, so a missing address is no way round. `Ceremonies::with_challenges` sets another
-  rate. Behind a reverse proxy every request has the proxy's source until 0085's forwarded-header setting
+  rate. Behind a reverse proxy every request has the proxy's source until 0086's forwarded-header setting
   is on, and then the limit is one for everybody behind it: 60 an hour is enough for a household and a
   reason to turn that setting on.
 

@@ -1,5 +1,5 @@
 ---
-number: "0084"
+number: "0085"
 title: "Recovery codes are minted once, kept as digests, and each is spent once to register a new passkey"
 status: built
 date: 2026-11-28
@@ -7,7 +7,7 @@ area: security
 supersedes: []
 ---
 
-## 0084 Recovery codes are minted once, kept as digests, and each is spent once to register a new passkey
+## 0085 Recovery codes are minted once, kept as digests, and each is spent once to register a new passkey
 
 Built (2026-11-28). It follows `docs/auth.md` section 9 (recovery codes) and closes the recovery item of
 0068. Email recovery with a delay is not built.
@@ -22,7 +22,7 @@ Built (2026-11-28). It follows `docs/auth.md` section 9 (recovery codes) and clo
   code text is stored or logged; the audit log gets `recovery.minted` and `recovery.used` with the row id.
   The digest read back is compared in constant time. The table is migration 203 (`control::recovery::Entry`).
 - **Mint:** `POST /v1/recovery/codes` returns ten codes with 201, once. The old set is deleted in the
-  same batch. It needs a session, an Origin check and a step-up (0083). `GET /v1/recovery/codes` returns
+  same batch. It needs a session, an Origin check and a step-up (0084). `GET /v1/recovery/codes` returns
   the count left and no secret.
 - **Spend:** `POST /v1/recovery` with `{code, label}` needs no session. It checks the Origin, applies a
   per-source limit (`Quota::RECOVERIES`, ten an hour, `Ceremonies::with_recoveries` sets another), then

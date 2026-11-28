@@ -1,5 +1,5 @@
 ---
-number: "0081"
+number: "0082"
 title: "Sessions are listed and ended by id on the Door, and the dashboard ends one with a form post"
 status: built
 date: 2026-11-28
@@ -7,7 +7,7 @@ area: security
 supersedes: []
 ---
 
-## 0081 Sessions are listed and ended by id on the Door, and the dashboard ends one with a form post
+## 0082 Sessions are listed and ended by id on the Door, and the dashboard ends one with a form post
 
 Built (2026-11-28). The owner has not read it. It closes the first "not done" item of 0066 (a route to
 list and revoke sessions) and the session list of `docs/auth.md` section 8.
