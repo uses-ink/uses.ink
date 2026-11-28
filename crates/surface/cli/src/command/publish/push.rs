@@ -137,6 +137,16 @@ impl Push {
         usize::try_from(files).unwrap_or(usize::MAX)
     }
 
+    /// `error` as the failure of a command whose build is queued: the site keeps it going.
+    fn queued(build: BuildId, error: Error) -> Error {
+        match error {
+            Error::Deploy { source } => {
+                Error::Deploy { source: Failure::Following { build: build.to_string(), source: Box::new(source) } }
+            }
+            other => other,
+        }
+    }
+
     /// Sends the folder and, unless told not to, waits for what the site builds of it.
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
         let calls = self.remote.folder(&self.dir)?;
@@ -164,8 +174,8 @@ impl Push {
         }
         let follow =
             Follow { calls: &calls, poll: Duration::from_millis(self.poll), wait: Duration::from_secs(self.wait) };
-        let ended = follow.until(build, io)?;
-        let row = follow.settle(&ended)?;
+        let ended = follow.until(build, io).map_err(|error| Self::queued(build, error))?;
+        let row = follow.settle(&ended).map_err(|error| Self::queued(build, error))?;
         io.stage(&StageLine::new(
             Verb::Built,
             format!(

@@ -425,6 +425,9 @@ is what the person is approving), and on approval prints the private key **once*
 when stdout is not a terminal or `--out <file>` is given (it refuses to print a secret into a
 scrollback: `auth.key.print-refused`, new). The private key never reaches the server.
 
+- **Push needs `read` to follow its build.** A deploy key has only `deploy` by default, so `ink push`
+  with it queues the build and stops with `auth.right.missing`, saying the build is queued on the
+  site. CI pushes with `ink push --no-wait`, or the key is made with `--right read,deploy`.
 - **How CI reads it**: `INK_KEY` (the `ink-ed25519-1:` text) or `INK_KEY_FILE` (a path), plus
   `INK_SERVER`. Both follow the `INK_*` rule of `cli.md` section 13. A file is better than an
   environment variable, which any child process inherits; the docs say so and show the CI step

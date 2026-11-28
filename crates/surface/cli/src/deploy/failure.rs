@@ -246,6 +246,14 @@ pub enum Failure {
         /// What stopped it.
         source: Box<Failure>,
     },
+    /// Something stopped a command that had queued a build: the build is the server's and keeps
+    /// going. Says what the inner failure says; only what the command left behind differs.
+    Following {
+        /// The build, as the server named it.
+        build: String,
+        /// What stopped the command.
+        source: Box<Failure>,
+    },
     /// The build ended without a deploy.
     Ended {
         /// The build.
@@ -321,7 +329,7 @@ impl Failure {
             | Self::Occupied { .. }
             | Self::Placing { .. }
             | Self::PrintRefused => Exit::Usage,
-            Self::Uploading { source, .. } => source.exit(),
+            Self::Uploading { source, .. } | Self::Following { source, .. } => source.exit(),
             Self::Held { .. } => Exit::Conflict,
             Self::Ended { state: JobState::Refused, .. } => Exit::Content,
             Self::Ended { .. }
@@ -370,7 +378,7 @@ impl Failure {
             Self::Nameless => "init.target.missing",
             Self::Tree { .. } => "push.tree.invalid",
             Self::Incomplete { .. } => "push.upload.incomplete",
-            Self::Uploading { source, .. } => source.kind(),
+            Self::Uploading { source, .. } | Self::Following { source, .. } => source.kind(),
             Self::Ended { state: JobState::Refused, .. } => "push.build.refused",
             Self::Ended { .. } => "push.build.failed",
             Self::Held { .. } => "push.deploy.held",
@@ -399,6 +407,14 @@ impl Failure {
         }
     }
 
+    /// The build the server holds for this command, when it had queued one before it stopped.
+    pub(crate) fn queued(&self) -> Option<&str> {
+        match self {
+            Self::Following { build, .. } => Some(build),
+            _ => None,
+        }
+    }
+
     /// What to do about it, when there is one thing to say.
     pub(crate) fn remedy(&self) -> Option<&'static str> {
         Some(match self {
@@ -406,6 +422,14 @@ impl Failure {
             Self::Link { .. } => "fix or remove the file, then run `ink init` again",
             Self::Linked { .. } => "run `ink init --force` to link it to another site",
             Self::Nameless => "give `--handle NAME` to make a site, or `--site ID` to link one that exists",
+            Self::Following { source, .. } => {
+                return match source.as_ref() {
+                    Self::Refused { refusal: Some(refusal), .. } if refusal.problem == "auth.right.missing" => Some(
+                        "this key may queue builds and not read them: push with `--no-wait`, or make a key with `ink key add --right read,deploy`",
+                    ),
+                    other => other.remedy(),
+                };
+            }
             Self::Incomplete { .. } | Self::Waited { .. } => "run the command again",
             Self::Uploading { source, .. } => {
                 return source.remedy().or(Some("run `ink push` again to send what is left"));
@@ -474,6 +498,7 @@ impl fmt::Display for Failure {
                 write!(out, "the server still lacked {missing} files after {rounds} rounds of sending them")
             }
             Self::Uploading { sent, .. } => write!(out, "the upload stopped after the server took {sent} files"),
+            Self::Following { source, .. } => fmt::Display::fmt(source, out),
             Self::Ended { build, state, count, .. } => match state {
                 JobState::Refused => write!(out, "the build {build} was refused: {count} problems stop the site"),
                 _ => write!(out, "the build {build} {state} without making a deploy"),
@@ -522,6 +547,7 @@ impl std::error::Error for Failure {
             Self::Link { source, .. } => Some(source),
             Self::Tree { source } => Some(source),
             Self::Uploading { source, .. } => Some(source.as_ref()),
+            Self::Following { source, .. } => source.source(),
             Self::Archive { source } => Some(source),
             Self::Ended { first: Some(first), .. } => Some(first),
             Self::Refused { refusal, .. } => {

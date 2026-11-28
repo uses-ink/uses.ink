@@ -31,6 +31,11 @@ pub(crate) enum State {
         /// How many.
         sent: u64,
     },
+    /// A build was queued on the site before the command stopped: the server keeps it going.
+    Queued {
+        /// The build.
+        build: String,
+    },
     /// The command could not say what it had done before it stopped.
     Unknown,
 }
@@ -42,6 +47,9 @@ impl fmt::Display for State {
             Self::Partial { path } => write!(out, "`{path}` may be partly written"),
             Self::Uploaded { sent } => {
                 write!(out, "the site holds {sent} files of this push: run it again to send the rest")
+            }
+            Self::Queued { build } => {
+                write!(out, "build {build} is queued on the site and keeps going: `ink watch {build}` follows it")
             }
             Self::Unknown => write!(out, "what the command had written is not known: run it again"),
         }
@@ -161,7 +169,11 @@ impl Error {
         match self {
             Self::Folder(FolderError::Write { path, .. }) => State::Partial { path: Self::shown(path) },
             Self::Terminal { .. } | Self::Json { .. } => State::Unknown,
-            Self::Deploy { source } => source.stored().map_or(State::Unchanged, |sent| State::Uploaded { sent }),
+            Self::Deploy { source } => match (source.stored(), source.queued()) {
+                (Some(sent), _) => State::Uploaded { sent },
+                (None, Some(build)) => State::Queued { build: build.to_owned() },
+                (None, None) => State::Unchanged,
+            },
             _ => State::Unchanged,
         }
     }

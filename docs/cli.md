@@ -535,7 +535,9 @@ note[source.git.default]: reading the git repository, since .git exists
 A command that stops prints one error block, then exits 2 (or 1 for a content refusal). Four
 parts, always in this order: the line (`error[code]: wording`), `caused by` with a rail down the
 causes outermost first, `fix:`, and a **state line** saying what the run left behind. The state
-line is typed: `nothing was changed`, or `the output folder is partly written: build again`.
+line is typed: `nothing was changed`, `the output folder is partly written: build again`, or, for a
+command that stopped after the site queued its build, `build X is queued on the site and keeps
+going`.
 
 ```text
 error[output.manifest.invalid]: the earlier build's manifest .ink/out/ink.json does not parse
