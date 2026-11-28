@@ -1,10 +1,14 @@
-# The landing page of uses.ink: one page, built by `ink` like any site (decision 0171). The look
-# is the one of the docs site (decision 0142); the picture is drawn by `cargo xtask brand`.
-# `cargo xtask check sites` builds it twice and refuses any diagnostic or a second deploy that differs.
+# The landing page of uses.ink: one page, built by `ink` like any site (decisions 0171 and 0181).
+# The look is the doodle design pass of `ink:theme-quiet` (decision 0180): the palette and faces
+# of `crates/core/token/token.toml`, the stylesheet and the marks of the theme, and the pictures
+# drawn by `cargo xtask brand` into this folder. `layout = "panels"` cuts the page at its rules
+# into panels. `cargo xtask check sites` builds it twice and refuses any diagnostic or a second
+# deploy that differs.
 
 [theme]
 use = "ink:theme-quiet"
 look = "uses-ink"
+layout = "panels"
 
 [site]
 title = "uses.ink"
