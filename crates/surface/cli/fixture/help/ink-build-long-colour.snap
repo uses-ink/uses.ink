@@ -1,0 +1,59 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Build the folder into an output folder and print its deploy id.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[1m\e[36mbuild\e[0m \e[36m[OPTIONS]\e[0m
+
+\e[2mAlso typed as \e[0m\e[1m\e[36mink b\e[0m
+
+\e[1mExamples\e[0m
+  \e[1m\e[36mink\e[0m \e[1m\e[36mbuild\e[0m                      \e[2m# \e[0mBuild this folder into .ink/out
+  \e[1m\e[36mink\e[0m \e[1m\e[36mbuild\e[0m \e[1m\e[36m--strict\e[0m             \e[2m# \e[0mThe same, but a warning stops the build
+  \e[1m\e[36mink\e[0m \e[1m\e[36m-C\e[0m garden \e[1m\e[36mbuild\e[0m \e[1m\e[36m-o\e[0m public  \e[2m# \e[0mBuild another folder into ./public
+
+\e[1mOutput\e[0m
+  \e[1m\e[36m-o, --out\e[0m \e[36m<DIR>\e[0m   Where to write the site \e[2m[default: .ink/out]\e[0m
+  \e[1m\e[36m    --base\e[0m \e[36m<URL>\e[0m  The address the site is served at, for feeds and canonical
+                    links
+  \e[1m\e[36m    --strict\e[0m      Exit 6 on warnings, and write nothing
+
+\e[1mWork\e[0m
+  \e[1m\e[36m    --cache\e[0m \e[36m<DIR>\e[0m  Where to keep work between builds, such as image copies
+                     \e[2m[default: .ink/cache]\e[0m
+
+\e[1mSource\e[0m
+  \e[1m\e[36m    --source\e[0m \e[36m<KIND>\e[0m  `\e[1m\e[36mfolder\e[0m` reads the files on disk, `\e[1m\e[36mgit\e[0m` reads a commit
+                       \e[2m[default: `git` when .git exists, said as a notice]\e[0m
+  \e[1m\e[36m    --rev\e[0m \e[36m<REV>\e[0m      The commit to read, as `\e[1m\e[36mgit\e[0m \e[1m\e[36mrev-parse\e[0m` takes it; only for
+                       a git repository \e[2m[default: HEAD]\e[0m
+
+\e[1mVerification\e[0m
+  \e[1m\e[36m    --check\e[0m             Build natively and through the wasm components, write
+                          nothing, and fail (exit 1) when the two deploys differ
+  \e[1m\e[36m    --components\e[0m \e[36m<DIR>\e[0m  A folder whose components replace the ones `\e[1m\e[36mink\e[0m`
+                          carries when `\e[1m\e[36m--check\e[0m` runs them:
+                          `\e[1m\e[36mformat-markdown.wasm\e[0m` (or `\e[1m\e[36mformat-obsidian.wasm\e[0m` for
+                          a vault) and `\e[1m\e[36mtheme-quiet.wasm\e[0m`, as `\e[1m\e[36mcargo\e[0m \e[1m\e[36mxtask\e[0m
+                          \e[1m\e[36mcomponent\e[0m` writes them. A file the folder lacks is the
+                          bundled one; each component run says which it used
+                          (`\e[1m\e[36m-v\e[0m`, or `\e[1m\e[36mcomponents\e[0m` in `\e[1m\e[36m--json\e[0m`). Compiled
+                          components are kept in `\e[1m\e[36mcomponents/\e[0m` of the cache
+
+\e[1mNotes\e[0m
+  The folder is read, interpreted and rendered in full before the output folder
+  is touched. A build that fails, or warns under --strict, writes nothing: the
+  previous build stays as it was.
+
+\e[1mExit codes\e[0m
+  0  Built; warnings, if any, were printed
+  1  The site has errors, or --check found the two builds differ; nothing was
+     written
+  2  Wrong usage, or an output folder ink will not write into; nothing was
+     changed
+  6  --strict was given and there were warnings; nothing was written
+
+\e[2mSee also\e[0m  \e[1m\e[36mink check\e[0m, \e[1m\e[36mink serve\e[0m, \e[1m\e[36mink push\e[0m
+\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
+          \e[2m(see `ink --help`)\e[0m

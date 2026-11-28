@@ -1,0 +1,13 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Print a completion script for your shell.
+
+Usage: ink completions <SHELL>
+
+Arguments
+  <SHELL>  The shell to print the script for
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink completions --help adds examples, notes and exit codes

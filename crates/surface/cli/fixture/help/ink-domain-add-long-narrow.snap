@@ -1,0 +1,66 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Ask to prove a custom domain.
+
+Usage: ink domain add [OPTIONS] <NAME>
+
+Examples
+  # Print the record that proves the name
+  ink domain add www.example.org
+
+Arguments
+  <NAME>  The name, such as `www.example.org`
+
+Account
+      --api <URL>
+        The API's address, `http://host[:port]`;
+        `account.api` in the config file [env: INK_API]
+      --site <ID>
+        The site's id; `account.site` in the config file
+        [env: INK_SITE]
+      --org <ID>
+        Act as this organization, by its id: the site is one
+        of its sites, and the key's role there is what is
+        checked. See `ink org list` [env: INK_ORG]
+      --timeout <SECONDS>
+        Seconds one call may take [default: 30]
+        [env: INK_TIMEOUT]
+      --retries <N>
+        How many more times a call that is safe to repeat is
+        tried when the network fails [default: 2]
+        [env: INK_RETRIES]
+      --retry-wait <MS>
+        Milliseconds before the first retry; each wait is
+        twice the one before [default: 500]
+        [env: INK_RETRY_WAIT]
+
+Notes
+  Asks to prove the name and prints the TXT record to
+  publish at `_uses-ink.<name>`. Asking again makes a new
+  token, which the old record does not prove. The name
+  serves nothing until `ink domain prove` has seen the
+  record.
+
+Exit codes
+  0  Done
+  2  Wrong usage: no site named, an id that is none, a
+     deploy the site lacks
+  3  Not signed in, or the token was refused
+  4  The API could not be reached or failed; safe to retry
+  5  The API refused the change as it stands: the deploy is
+     already live, say
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a
+                CI job; never a flag, so it stays out of
+                process lists. `ink login` keeps one in the
+                config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of
+                INK_KEY
+
+Docs    https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global  -C, --json, -q, -v, --color, --no-progress, --log,
+        --log-file (see `ink --help`)

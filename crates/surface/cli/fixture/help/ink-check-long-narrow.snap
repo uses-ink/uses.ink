@@ -1,0 +1,42 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Read the folder and report what is wrong; writes nothing.
+
+Usage: ink check [OPTIONS]
+
+Also typed as ink c
+
+Examples
+  # Read this folder and list its problems
+  ink check
+
+  # The same, but a warning is an exit 6
+  ink check --strict
+
+Options
+      --strict  Exit with 6 when there are warnings
+
+Source
+      --source <KIND>  `folder` reads the files on disk,
+                       `git` reads a commit [default: `git`
+                       when .git exists, said as a notice]
+      --rev <REV>      The commit to read, as `git
+                       rev-parse` takes it; only for a git
+                       repository [default: HEAD]
+
+Notes
+  The folder is read and interpreted exactly as a build
+  would; nothing is written.
+
+Exit codes
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was
+     changed
+  6  --strict was given and there were warnings
+
+See also  ink build, ink explain
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log,
+          --log-file (see `ink --help`)

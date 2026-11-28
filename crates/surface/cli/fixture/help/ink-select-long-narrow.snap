@@ -1,0 +1,44 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+List what is published and why, or choose what to publish.
+
+Usage: ink select [OPTIONS] [PATHS]...
+
+Examples
+  # List every page, whether it is published, and why
+  ink select
+
+  # Publish one page of a vault
+  ink select notes/trip.md
+
+Arguments
+  [PATHS]...  Pages to select, as paths in the folder:
+              `publish: true` is written into the
+              frontmatter of each, which the file must
+              already have. Without a path or `--folder`,
+              every page is listed with whether it is
+              published and why
+
+Options
+      --folder <GLOB>  Select every file a glob matches
+                       (`notes/**`) by adding it to
+                       `include` in ink.toml
+      --remove         Take the selection back: remove
+                       `publish: true` from each page, or
+                       the glob from `include`. In a public
+                       source a page that is not selected is
+                       still published by default
+      --dry-run        Say what would be written and write
+                       nothing
+
+Exit codes
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was
+     changed
+
+See also  ink explain, ink pin
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log,
+          --log-file (see `ink --help`)

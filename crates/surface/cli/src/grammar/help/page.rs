@@ -1,202 +1,148 @@
-//! A help page under construction: headings, paragraphs and two aligned columns.
+//! The parts a page of help is made of, pushed as lines of roles into one document: sections with
+//! a heading, paragraphs, and the lines of an example with their commands marked.
 
-use super::paint::{Face, Paint};
+use crate::grammar::tree::{Located, Tree};
+use crate::output::term::{Doc, Line, Look, Paragraph, Render, Role, Width};
 
-/// One row of two columns.
-#[derive(Clone, Debug)]
-pub(crate) struct Row {
-    /// What you type, or the key of the row.
-    pub(crate) left: String,
-    /// What it is, wrapped under itself.
-    pub(crate) right: String,
-    /// Whether the left column is something you type, and so is painted as such.
-    pub(crate) typed: bool,
-}
-
-impl Row {
-    /// A row whose left column is something you type.
-    pub(crate) fn typed(left: impl Into<String>, right: impl Into<String>) -> Self {
-        Self { left: left.into(), right: right.into(), typed: true }
-    }
-
-    /// A row whose left column is a key, such as an exit code.
-    pub(crate) fn keyed(left: impl Into<String>, right: impl Into<String>) -> Self {
-        Self { left: left.into(), right: right.into(), typed: false }
-    }
-}
-
-/// The text of a page, written as it is built.
+/// A page under construction: blocks, each after a blank line.
 #[derive(Debug)]
-pub(crate) struct Page<'p, P> {
-    paint: &'p P,
-    width: usize,
-    text: String,
+pub(crate) struct Sheet {
+    doc: Doc,
 }
 
-impl<'p, P: Paint> Page<'p, P> {
-    /// How far a row is indented.
-    const INDENT: usize = 2;
-    /// How far a wide row's second column hangs under its first.
-    const HANG: usize = 4;
-
-    /// An empty page that wraps at `width` columns.
-    pub(crate) const fn new(paint: &'p P, width: usize) -> Self {
-        Self { paint, width, text: String::new() }
+impl Sheet {
+    /// An empty page that looks like `look`.
+    pub(crate) fn new(look: Look) -> Self {
+        Self { doc: Doc::new(look) }
     }
 
-    /// The text so far.
-    pub(crate) fn finish(self) -> String {
-        self.text
+    /// The finished document.
+    pub(crate) fn finish(self) -> Doc {
+        self.doc
     }
 
     /// A blank line, unless the page is empty or already ends in one.
-    pub(crate) fn gap(&mut self) {
-        if !self.text.is_empty() && !self.text.ends_with("\n\n") {
-            self.text.push('\n');
+    fn gap(&mut self) {
+        if self.doc.lines().last().is_some_and(|line| !line.is_empty()) {
+            self.doc.blank();
         }
     }
 
-    /// A heading line.
-    pub(crate) fn heading(&mut self, heading: &str) {
+    /// A line as it is, after a blank one.
+    pub(crate) fn line(&mut self, line: Line) {
         self.gap();
-        let painted = self.paint.paint(Face::Heading, heading);
-        self.text.push_str(&painted);
-        self.text.push('\n');
+        self.doc.push(line);
     }
 
     /// A paragraph, wrapped.
-    pub(crate) fn paragraph(&mut self, text: &str) {
+    pub(crate) fn paragraph(&mut self, line: Line) {
         self.gap();
-        for line in Wrap::new(self.width).lines(text) {
-            self.text.push_str(&line);
-            self.text.push('\n');
-        }
+        Paragraph::new(line, 0).render(&mut self.doc);
     }
 
-    /// A line as it is, such as a usage line or a pointer to another page.
-    pub(crate) fn line(&mut self, text: &str) {
+    /// `block` as it is, after a blank line.
+    pub(crate) fn block(&mut self, block: &impl Render) {
         self.gap();
-        self.text.push_str(text);
-        self.text.push('\n');
+        block.render(&mut self.doc);
     }
 
-    /// `heading`, then `rows` in two columns: the first as wide as its longest entry plus two,
-    /// measured on unstyled text, the second wrapped with a hanging indent.
-    pub(crate) fn table(&mut self, heading: &str, rows: &[Row]) {
-        self.heading(heading);
-        self.rows(rows);
-    }
-
-    /// `rows` in two columns, under whatever came before. A row whose first column is wider than
-    /// half the page does not set the column: its second is written below it, indented, so one
-    /// long example does not squeeze every other row's text into a sliver.
-    pub(crate) fn rows(&mut self, rows: &[Row]) {
-        let half = self.width / 2;
-        let wide = |row: &Row| row.left.chars().count() + 2 > half;
-        let column = rows.iter().filter(|row| !wide(row)).map(|row| row.left.chars().count()).max().unwrap_or(0) + 2;
-        let room = self.width.saturating_sub(Self::INDENT + column).max(20);
-        for row in rows {
-            let left = if row.typed { self.paint.paint(Face::Literal, &row.left) } else { row.left.clone() };
-            self.text.push_str(&" ".repeat(Self::INDENT));
-            self.text.push_str(&left);
-            if wide(row) {
-                self.text.push('\n');
-                let below = Self::INDENT + Self::HANG;
-                for line in Wrap::new(self.width.saturating_sub(below).max(20)).lines(&row.right) {
-                    self.text.push_str(&" ".repeat(below));
-                    self.text.push_str(&line);
-                    self.text.push('\n');
-                }
-                continue;
-            }
-            let pad = column.saturating_sub(row.left.chars().count());
-            let mut lines = Wrap::new(room).lines(&row.right).into_iter();
-            if let Some(first) = lines.next() {
-                self.text.push_str(&" ".repeat(pad));
-                self.text.push_str(&first);
-            }
-            self.text.push('\n');
-            for rest in lines {
-                self.text.push_str(&" ".repeat(Self::INDENT + column));
-                self.text.push_str(&rest);
-                self.text.push('\n');
-            }
-        }
+    /// A heading, then `block` under it.
+    pub(crate) fn section(&mut self, heading: &str, block: &impl Render) {
+        self.gap();
+        self.doc.push(Line::new().with(Role::Heading, heading));
+        block.render(&mut self.doc);
     }
 }
 
-/// Greedy word wrap at a width in characters.
+/// How wide a page is: the width the stream gives, between 40 and 100 columns, and 80 when the
+/// stream has no limit (a pipe, or `INK_WIDTH=0`).
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Wrap {
-    width: usize,
+pub(crate) struct Measure;
+
+impl Measure {
+    /// The columns of the narrowest page.
+    const LEAST: usize = 40;
+    /// The columns of the widest page.
+    const MOST: usize = 100;
+    /// The columns of a page for a stream with no limit.
+    const USUAL: usize = 80;
+
+    /// `look`, with the width a page of help is wrapped at.
+    pub(crate) const fn of(look: Look) -> Look {
+        let columns = match look.width {
+            Width::Unlimited => Self::USUAL,
+            Width::Columns(columns) if columns < Self::LEAST => Self::LEAST,
+            Width::Columns(columns) if columns > Self::MOST => Self::MOST,
+            Width::Columns(columns) => columns,
+        };
+        Look { width: Width::Columns(columns), ..look }
+    }
 }
 
-impl Wrap {
-    /// Wraps at `width`.
-    pub(crate) const fn new(width: usize) -> Self {
-        Self { width }
-    }
+/// A line to type, its words in the roles they have: commands of the tree strong, flags literal,
+/// what is given to them plain.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Typed<'a> {
+    pub(crate) tree: &'a Tree,
+    pub(crate) text: &'a str,
+}
 
-    /// `text` as lines no longer than the width, except for a word that is longer itself.
-    pub(crate) fn lines(self, text: &str) -> Vec<String> {
-        let mut lines: Vec<String> = Vec::new();
-        for paragraph in text.split('\n') {
-            let mut line = String::new();
-            for word in paragraph.split_whitespace() {
-                let fits = line.is_empty() || line.chars().count() + 1 + word.chars().count() <= self.width;
-                if !fits {
-                    lines.push(std::mem::take(&mut line));
-                }
-                if !line.is_empty() {
-                    line.push(' ');
-                }
-                line.push_str(word);
+impl Typed<'_> {
+    /// The line, a word at a time.
+    pub(crate) fn line(self) -> Line {
+        let mut line = Line::new();
+        let mut here = Located::root(self.tree);
+        for (at, word) in self.text.split(' ').enumerate() {
+            if at > 0 {
+                line = line.with(Role::Plain, " ");
             }
-            lines.push(line);
+            line = if at == 0 {
+                line.strong(Role::Literal, word)
+            } else if word.starts_with('-') {
+                line.with(Role::Literal, word)
+            } else if let Some(next) = here.enter(word) {
+                here = next;
+                line.strong(Role::Literal, word)
+            } else {
+                line.with(Role::Plain, word)
+            };
         }
-        lines
+        line
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::output::term::Look;
 
     #[test]
-    fn the_second_column_starts_two_past_the_longest_first() {
-        let mut page = Page::new(&Look::PLAIN, 80);
-        page.rows(&[Row::typed("a", "one"), Row::typed("long-name", "two")]);
-        assert_eq!(page.finish(), "  a          one\n  long-name  two\n");
+    fn a_width_is_clamped_and_a_pipe_gets_eighty() {
+        let width = |width| Measure::of(Look { width, ..Look::PLAIN }).width;
+        assert_eq!(width(Width::Unlimited), Width::Columns(80));
+        assert_eq!(width(Width::Columns(10)), Width::Columns(40));
+        assert_eq!(width(Width::Columns(60)), Width::Columns(60));
+        assert_eq!(width(Width::Columns(300)), Width::Columns(100));
     }
 
     #[test]
-    fn a_long_description_hangs_under_itself() {
-        let mut page = Page::new(&Look::PLAIN, 30);
-        page.rows(&[Row::keyed("x", "aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn")]);
-        let text = page.finish();
-        assert!(text.lines().count() > 1, "{text}");
-        assert!(text.lines().skip(1).all(|line| line.starts_with("     ")), "{text}");
-    }
-
-    #[test]
-    fn styled_text_does_not_skew_the_columns() {
-        let mut page = Page::new(&Look { colour: true, ..Look::PLAIN }, 80);
-        page.rows(&[Row::typed("ab", "x"), Row::typed("abcd", "y")]);
-        let text = page.finish();
-        let plain: String = {
-            let mut out = String::new();
-            let mut skip = false;
-            for c in text.chars() {
-                match (skip, c) {
-                    (_, '\u{1b}') => skip = true,
-                    (true, 'm') => skip = false,
-                    (false, c) => out.push(c),
-                    _ => {}
-                }
-            }
-            out
-        };
-        assert_eq!(plain, "  ab    x\n  abcd  y\n");
+    fn the_commands_of_a_line_are_marked_and_its_arguments_are_not() {
+        let line = Typed { tree: Tree::ink(), text: "ink -C garden build -o public" }.line();
+        let roles: Vec<(Role, String)> = line
+            .pieces()
+            .iter()
+            .filter(|piece| piece.text != " ")
+            .map(|piece| (piece.role, piece.text.clone()))
+            .collect();
+        assert_eq!(
+            roles,
+            [
+                (Role::Literal, "ink".to_owned()),
+                (Role::Literal, "-C".to_owned()),
+                (Role::Plain, "garden".to_owned()),
+                (Role::Literal, "build".to_owned()),
+                (Role::Literal, "-o".to_owned()),
+                (Role::Plain, "public".to_owned()),
+            ]
+        );
     }
 }

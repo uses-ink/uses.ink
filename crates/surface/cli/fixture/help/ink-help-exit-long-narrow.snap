@@ -1,0 +1,22 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Exit codes
+  0  Done. Warnings, if any, were printed.
+  1  Content error: the build or check failed on
+     diagnostics, or `build --check` found the two builds
+     differ. Nothing changed live; `ink build` wrote
+     nothing.
+  2  Usage error: a folder that is missing or cannot be
+     listed, a path given wrong, an output folder `ink
+     build` will not write into.
+  3  Not signed in, or access to a source was lost.
+  4  Network or service unavailable. Safe to retry.
+  5  Conflict: the site is paused after a rollback, a mount
+     conflict, an unpushed commit.
+  6  `--strict` was given and there were warnings. Nothing
+     was written.
+
+130 is the shell's code for a command that was interrupted
+and 101 is Rust's for a panic. Neither is in the set above;
+both can end any command.

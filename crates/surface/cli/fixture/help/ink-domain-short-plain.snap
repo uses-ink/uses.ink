@@ -1,0 +1,16 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Claim, prove, list and remove custom domains.
+
+Usage: ink domain <COMMAND>
+
+Commands
+  add     Ask to prove a custom domain
+  list    The site's custom domains
+  prove   Check the record and serve the site at the name
+  remove  Stop serving a name, or drop its claim
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink domain --help adds examples, notes and exit codes

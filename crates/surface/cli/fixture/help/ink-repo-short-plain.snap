@@ -1,0 +1,17 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Claim, prove, rotate, list and release the site's repository.
+
+Usage: ink repo <COMMAND>
+
+Commands
+  claim    Ask to prove the site's repository
+  prove    Read the forge and bind the repository to the site
+  rotate   Put a new webhook secret in place of the old
+  list     The site's repositories
+  release  Let go of a repository and delete its secret
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink repo --help adds examples, notes and exit codes

@@ -1,0 +1,56 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Add a person to an organization.
+
+Usage: ink org member add [OPTIONS] <ORG> <ACCOUNT>
+
+Examples
+  # Let a person read, deploy and edit the organization's
+  # sites
+  ink org member add 0123456789abcdef0123456789abcdef fedcba9876543210fedcba9876543210 --role writer
+
+Arguments
+  <ORG>      The organization's id
+  <ACCOUNT>  The person's account id
+
+Options
+      --role <ROLE>  What they may do: owner, admin, writer
+                     or reader [default: reader]
+
+Account
+      --api <URL>
+        The API's address, `http://host[:port]`;
+        `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>
+        Seconds one call may take [default: 30]
+        [env: INK_TIMEOUT]
+
+Notes
+  Needs a key with the `members` right, which only a key
+  approved with a passkey sign-in can have: `ink login
+  --rights read,deploy,edit,keys,members`. Your own role
+  must manage the one you give: only an owner makes an
+  owner.
+
+Exit codes
+  0  Done
+  2  Wrong usage: no API named, a key that is none, a
+     private key that would print to a terminal
+  3  No key, or the API refused the signature, or nobody
+     approved the key in time
+  4  The API could not be reached or failed; safe to retry
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a
+                CI job; never a flag, so it stays out of
+                process lists. `ink login` keeps one in the
+                config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of
+                INK_KEY
+
+Docs    https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global  -C, --json, -q, -v, --color, --no-progress, --log,
+        --log-file (see `ink --help`)

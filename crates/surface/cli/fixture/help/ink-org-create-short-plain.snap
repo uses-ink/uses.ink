@@ -1,0 +1,19 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Make an organization, with you as its owner.
+
+Usage: ink org create [OPTIONS] <NAME>
+
+Arguments
+  <NAME>  What it is called: one line, at most 64 characters
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink org create --help adds examples, notes and exit codes

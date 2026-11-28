@@ -8,6 +8,7 @@ source: crates/standalone/fixture/src/lib.rs
 \e[31mBad\e[0m \e[1m\e[31mBad\e[0m
 \e[36mWork\e[0m \e[1m\e[36mWork\e[0m
 \e[35mId\e[0m \e[1m\e[35mId\e[0m
+\e[36mValue\e[0m \e[1m\e[36mValue\e[0m
 \e[34mPlace\e[0m \e[1m\e[34mPlace\e[0m
 \e[34mCode\e[0m \e[1m\e[34mCode\e[0m
 \e[4m\e[36mLink\e[0m \e[1m\e[4m\e[36mLink\e[0m

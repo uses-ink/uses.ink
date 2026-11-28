@@ -1,0 +1,36 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Read the folder and report what is wrong; writes nothing.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[1m\e[36mcheck\e[0m \e[36m[OPTIONS]\e[0m
+
+\e[2mAlso typed as \e[0m\e[1m\e[36mink c\e[0m
+
+\e[1mExamples\e[0m
+  \e[1m\e[36mink\e[0m \e[1m\e[36mcheck\e[0m           \e[2m# \e[0mRead this folder and list its problems
+  \e[1m\e[36mink\e[0m \e[1m\e[36mcheck\e[0m \e[1m\e[36m--strict\e[0m  \e[2m# \e[0mThe same, but a warning is an exit 6
+
+\e[1mOptions\e[0m
+  \e[1m\e[36m    --strict\e[0m  Exit with 6 when there are warnings
+
+\e[1mSource\e[0m
+  \e[1m\e[36m    --source\e[0m \e[36m<KIND>\e[0m  `\e[1m\e[36mfolder\e[0m` reads the files on disk, `\e[1m\e[36mgit\e[0m` reads a commit
+                       \e[2m[default: `git` when .git exists, said as a notice]\e[0m
+  \e[1m\e[36m    --rev\e[0m \e[36m<REV>\e[0m      The commit to read, as `\e[1m\e[36mgit\e[0m \e[1m\e[36mrev-parse\e[0m` takes it; only for
+                       a git repository \e[2m[default: HEAD]\e[0m
+
+\e[1mNotes\e[0m
+  The folder is read and interpreted exactly as a build would; nothing is
+  written.
+
+\e[1mExit codes\e[0m
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was changed
+  6  --strict was given and there were warnings
+
+\e[2mSee also\e[0m  \e[1m\e[36mink build\e[0m, \e[1m\e[36mink explain\e[0m
+\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
+          \e[2m(see `ink --help`)\e[0m

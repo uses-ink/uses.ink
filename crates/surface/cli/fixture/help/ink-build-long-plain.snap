@@ -1,0 +1,59 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Build the folder into an output folder and print its deploy id.
+
+Usage: ink build [OPTIONS]
+
+Also typed as ink b
+
+Examples
+  ink build                      # Build this folder into .ink/out
+  ink build --strict             # The same, but a warning stops the build
+  ink -C garden build -o public  # Build another folder into ./public
+
+Output
+  -o, --out <DIR>   Where to write the site [default: .ink/out]
+      --base <URL>  The address the site is served at, for feeds and canonical
+                    links
+      --strict      Exit 6 on warnings, and write nothing
+
+Work
+      --cache <DIR>  Where to keep work between builds, such as image copies
+                     [default: .ink/cache]
+
+Source
+      --source <KIND>  `folder` reads the files on disk, `git` reads a commit
+                       [default: `git` when .git exists, said as a notice]
+      --rev <REV>      The commit to read, as `git rev-parse` takes it; only for
+                       a git repository [default: HEAD]
+
+Verification
+      --check             Build natively and through the wasm components, write
+                          nothing, and fail (exit 1) when the two deploys differ
+      --components <DIR>  A folder whose components replace the ones `ink`
+                          carries when `--check` runs them:
+                          `format-markdown.wasm` (or `format-obsidian.wasm` for
+                          a vault) and `theme-quiet.wasm`, as `cargo xtask
+                          component` writes them. A file the folder lacks is the
+                          bundled one; each component run says which it used
+                          (`-v`, or `components` in `--json`). Compiled
+                          components are kept in `components/` of the cache
+
+Notes
+  The folder is read, interpreted and rendered in full before the output folder
+  is touched. A build that fails, or warns under --strict, writes nothing: the
+  previous build stays as it was.
+
+Exit codes
+  0  Built; warnings, if any, were printed
+  1  The site has errors, or --check found the two builds differ; nothing was
+     written
+  2  Wrong usage, or an output folder ink will not write into; nothing was
+     changed
+  6  --strict was given and there were warnings; nothing was written
+
+See also  ink check, ink serve, ink push
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+          (see `ink --help`)

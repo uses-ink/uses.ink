@@ -1,0 +1,28 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Sign in to uses.ink.
+
+Usage: ink login [OPTIONS]
+
+Options
+      --label <TEXT>    What the person sees beside the fingerprint.
+                        [default: this machine's name]
+      --data <FOLDER>   The server's data folder: add this key to its
+                        `operator-keys` file instead of asking a person to
+                        approve it. Whoever can write that folder is the
+                        operator
+      --wait <SECONDS>  Seconds to wait for a person to approve the key
+                        [default: 600]
+      --poll <SECONDS>  Seconds between asks whether it was approved
+                        [default: 2]
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink login --help adds examples, notes and exit codes

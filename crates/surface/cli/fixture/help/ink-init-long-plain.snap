@@ -1,0 +1,60 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Link this folder to a site, without publishing it.
+
+Usage: ink init [OPTIONS]
+
+Examples
+  # Make a site that takes uploads, and link this folder to it
+  ink init --handle garden
+
+  # Link this folder to a site that exists
+  ink init --site 0123456789abcdef0123456789abcdef
+
+Options
+      --handle <NAME>  Make a site with this handle, built from what `ink push`
+                       sends, and link the folder to it
+      --force          Replace a link the folder has to another site
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --site <ID>          The site's id; `account.site` in the config file
+                           [env: INK_SITE]
+      --org <ID>           Act as this organization, by its id: the site is one
+                           of its sites, and the key's role there is what is
+                           checked. See `ink org list` [env: INK_ORG]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+      --retries <N>        How many more times a call that is safe to repeat is
+                           tried when the network fails [default: 2]
+                           [env: INK_RETRIES]
+      --retry-wait <MS>    Milliseconds before the first retry; each wait is
+                           twice the one before [default: 500]
+                           [env: INK_RETRY_WAIT]
+
+Notes
+  Writes .uses/site, which holds the site's id and the API's address and no
+  credential. A folder with no link refuses push, status, watch and export; the
+  [account] table of the config file never stands in for it.
+
+Exit codes
+  0  Done
+  2  Wrong usage: no site named, an id that is none, a deploy the site lacks
+  3  Not signed in, or the token was refused
+  4  The API could not be reached or failed; safe to retry
+  5  The API refused the change as it stands: the deploy is already live, say
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a CI job; never a
+                flag, so it stays out of process lists. `ink login` keeps one in
+                the config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of INK_KEY
+
+See also  ink push, ink status
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+          (see `ink --help`)

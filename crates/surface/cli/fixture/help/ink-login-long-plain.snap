@@ -1,0 +1,58 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Sign in to uses.ink.
+
+Usage: ink login [OPTIONS]
+
+Examples
+  # Ask for approval, and wait for it
+  ink login --api http://api.localhost:8080
+
+  # Enrol as the operator of a local server, with no browser
+  ink login --data ./data --api http://api.localhost:8080
+
+Options
+      --label <TEXT>    What the person sees beside the fingerprint.
+                        [default: this machine's name]
+      --data <FOLDER>   The server's data folder: add this key to its
+                        `operator-keys` file instead of asking a person to
+                        approve it. Whoever can write that folder is the
+                        operator
+      --wait <SECONDS>  Seconds to wait for a person to approve the key
+                        [default: 600]
+      --poll <SECONDS>  Seconds between asks whether it was approved
+                        [default: 2]
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Notes
+  Makes a key pair on this machine; only its public half and a fingerprint leave
+  it. A person approves the fingerprint, or with --data the operator's file
+  takes it. The private key stays in a file of yours (mode 0600) and is never
+  printed.
+
+Exit codes
+  0  Done
+  2  Wrong usage: no API named, a key that is none, a private key that would
+     print to a terminal
+  3  No key, or the API refused the signature, or nobody approved the key in
+     time
+  4  The API could not be reached or failed; safe to retry
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a CI job; never a
+                flag, so it stays out of process lists. `ink login` keeps one in
+                the config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of INK_KEY
+
+See also  ink whoami, ink key, ink logout
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+          (see `ink --help`)

@@ -56,15 +56,20 @@ pub(crate) enum Group {
     Write,
     /// Why the site looks as it does, and how to change that.
     Understand,
-    /// Talking to uses.ink.
+    /// Sending a site to uses.ink and seeing how it is doing.
     Publish,
+    /// Who you are on uses.ink: sign-in, keys and organizations.
+    Account,
+    /// Running a server and keeping it clean.
+    Operate,
     /// Shell and help plumbing.
     Tools,
 }
 
 impl Group {
     /// Every group, in the order help lists them.
-    pub(crate) const ALL: [Self; 4] = [Self::Write, Self::Understand, Self::Publish, Self::Tools];
+    pub(crate) const ALL: [Self; 6] =
+        [Self::Write, Self::Understand, Self::Publish, Self::Account, Self::Operate, Self::Tools];
 
     /// The heading help prints.
     pub(crate) const fn title(self) -> &'static str {
@@ -72,6 +77,8 @@ impl Group {
             Self::Write => "Write",
             Self::Understand => "Understand",
             Self::Publish => "Publish",
+            Self::Account => "Account",
+            Self::Operate => "Operate",
             Self::Tools => "Tools",
         }
     }
@@ -121,6 +128,8 @@ pub(crate) struct Entry {
     pub(crate) detail: &'static str,
     /// What to try.
     pub(crate) examples: &'static [Example],
+    /// Other commands to read next, as typed: `ink status`.
+    pub(crate) see: &'static [&'static str],
     /// The codes it can end with.
     pub(crate) endings: &'static [Ending],
     /// The variables it reads of its own.
@@ -157,9 +166,29 @@ pub(crate) struct Tree {
 }
 
 impl Tree {
+    /// The page of the docs that tells what the command line does, for the end of long help.
+    pub(crate) const DOCS: &'static str = concat!(env!("CARGO_PKG_REPOSITORY"), "/blob/main/docs/cli.md");
+
     /// The tree of `ink`.
     pub(crate) const fn ink() -> &'static Self {
         &entries::INK
+    }
+
+    /// Every command, each with the words that name it from the root, the commands of a group
+    /// right after the group.
+    pub(crate) fn walk(&self) -> Vec<(Vec<&'static str>, &'static Entry)> {
+        let mut found = Vec::new();
+        let mut open: Vec<(Vec<&'static str>, &'static Entry)> =
+            self.entries.iter().rev().map(|entry| (vec![entry.name], entry)).collect();
+        while let Some((path, entry)) = open.pop() {
+            for child in entry.children.iter().rev() {
+                let mut below = path.clone();
+                below.push(child.name);
+                open.push((below, child));
+            }
+            found.push((path, entry));
+        }
+        found
     }
 
     /// The commands of `group`, in the order help lists them, hidden ones left out.

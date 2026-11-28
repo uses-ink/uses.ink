@@ -1,0 +1,40 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Build in memory and serve it on 127.0.0.1 while you write.
+
+Usage: ink preview [OPTIONS] <COMMAND>
+
+Examples
+  ink preview --port 4100  # Preview on 127.0.0.1:4100
+
+Commands
+  list    The previews of the site's branches
+  remove  End a preview now
+
+Options
+      --port <PORT>  The port on 127.0.0.1 [default: 4000]
+
+Work
+      --cache <DIR>  Where to keep work between builds, such as image copies
+                     [default: .ink/cache]
+
+Source
+      --source <KIND>  `folder` reads the files on disk, `git` reads a commit
+                       [default: `git` when .git exists, said as a notice]
+      --rev <REV>      The commit to read, as `git rev-parse` takes it; only for
+                       a git repository [default: HEAD]
+
+Notes
+  With no verb, builds in memory and serves on 127.0.0.1. `list` and `remove`
+  are about the previews a server built from the site's branches (the watch of
+  `ink serve --data`), which end by themselves after `--preview-days`.
+
+Exit codes
+  0  Stopped with Ctrl-C
+  2  The folder is no deploy, or the address cannot be used
+
+See also  ink build, ink serve
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+          (see `ink --help`)

@@ -1,0 +1,37 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Claim, prove, rotate, list and release the site's repository.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[1m\e[36mrepo\e[0m \e[36m<COMMAND>\e[0m
+
+\e[1mExamples\e[0m
+  \e[1m\e[36mink\e[0m \e[1m\e[36mrepo\e[0m \e[1m\e[36mclaim\e[0m  \e[2m# \e[0mAsk to prove the site's repository
+  \e[1m\e[36mink\e[0m \e[1m\e[36mrepo\e[0m \e[1m\e[36mprove\e[0m  \e[2m# \e[0mBuild the site when the forge says it moved
+
+\e[1mCommands\e[0m
+  \e[1m\e[36mclaim\e[0m    Ask to prove the site's repository
+  \e[1m\e[36mprove\e[0m    Read the forge and bind the repository to the site
+  \e[1m\e[36mrotate\e[0m   Put a new webhook secret in place of the old
+  \e[1m\e[36mlist\e[0m     The site's repositories
+  \e[1m\e[36mrelease\e[0m  Let go of a repository and delete its secret
+
+\e[1mExit codes\e[0m
+  0  Done
+  2  Wrong usage: no site named, an id that is none, a deploy the site lacks
+  3  Not signed in, or the token was refused
+  4  The API could not be reached or failed; safe to retry
+  5  The API refused the change as it stands: the deploy is already live, say
+
+\e[1mEnvironment\e[0m
+  \e[1m\e[36mINK_API\e[0m       The address of the API, as --api
+  \e[1m\e[36mINK_SITE\e[0m      The site's id, as --site
+  \e[1m\e[36mINK_KEY\e[0m       The private key to sign requests with, for a CI job; never a
+                flag, so it stays out of process lists. `\e[1m\e[36mink\e[0m \e[1m\e[36mlogin\e[0m` keeps one in
+                the config folder instead
+  \e[1m\e[36mINK_KEY_FILE\e[0m  A file that holds that key, in place of INK_KEY
+
+\e[2mSee also\e[0m  \e[1m\e[36mink status\e[0m, \e[1m\e[36mink domain\e[0m
+\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
+          \e[2m(see `ink --help`)\e[0m

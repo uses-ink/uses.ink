@@ -1,0 +1,19 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+The people in an organization.
+
+Usage: ink org member list [OPTIONS] <ORG>
+
+Arguments
+  <ORG>  The organization's id, as `ink org list` shows it
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink org member list --help adds examples, notes and exit codes

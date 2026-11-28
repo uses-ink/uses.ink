@@ -1,0 +1,45 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+The site's custom domains.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[1m\e[36mdomain\e[0m \e[1m\e[36mlist\e[0m \e[36m[OPTIONS]\e[0m
+
+\e[1mExamples\e[0m
+  \e[1m\e[36mink\e[0m \e[1m\e[36mdomain\e[0m \e[1m\e[36mlist\e[0m  \e[2m# \e[0mThe names that serve the site and the ones still to prove
+
+\e[1mAccount\e[0m
+  \e[1m\e[36m    --api\e[0m \e[36m<URL>\e[0m          The API's address, `\e[1m\e[36mhttp://host[:port]\e[0m`;
+                           `\e[1m\e[36maccount.api\e[0m` in the config file \e[2m[env: INK_API]\e[0m
+  \e[1m\e[36m    --site\e[0m \e[36m<ID>\e[0m          The site's id; `\e[1m\e[36maccount.site\e[0m` in the config file
+                           \e[2m[env: INK_SITE]\e[0m
+  \e[1m\e[36m    --org\e[0m \e[36m<ID>\e[0m           Act as this organization, by its id: the site is one
+                           of its sites, and the key's role there is what is
+                           checked. See `\e[1m\e[36mink\e[0m \e[1m\e[36morg\e[0m \e[1m\e[36mlist\e[0m` \e[2m[env: INK_ORG]\e[0m
+  \e[1m\e[36m    --timeout\e[0m \e[36m<SECONDS>\e[0m  Seconds one call may take \e[2m[default: 30]\e[0m
+                           \e[2m[env: INK_TIMEOUT]\e[0m
+  \e[1m\e[36m    --retries\e[0m \e[36m<N>\e[0m        How many more times a call that is safe to repeat is
+                           tried when the network fails \e[2m[default: 2]\e[0m
+                           \e[2m[env: INK_RETRIES]\e[0m
+  \e[1m\e[36m    --retry-wait\e[0m \e[36m<MS>\e[0m    Milliseconds before the first retry; each wait is
+                           twice the one before \e[2m[default: 500]\e[0m
+                           \e[2m[env: INK_RETRY_WAIT]\e[0m
+
+\e[1mExit codes\e[0m
+  0  Done
+  2  Wrong usage: no site named, an id that is none, a deploy the site lacks
+  3  Not signed in, or the token was refused
+  4  The API could not be reached or failed; safe to retry
+  5  The API refused the change as it stands: the deploy is already live, say
+
+\e[1mEnvironment\e[0m
+  \e[1m\e[36mINK_API\e[0m       The address of the API, as --api
+  \e[1m\e[36mINK_SITE\e[0m      The site's id, as --site
+  \e[1m\e[36mINK_KEY\e[0m       The private key to sign requests with, for a CI job; never a
+                flag, so it stays out of process lists. `\e[1m\e[36mink\e[0m \e[1m\e[36mlogin\e[0m` keeps one in
+                the config folder instead
+  \e[1m\e[36mINK_KEY_FILE\e[0m  A file that holds that key, in place of INK_KEY
+
+\e[2mDocs\e[0m    \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mGlobal\e[0m  \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
+        \e[2m(see `ink --help`)\e[0m

@@ -16,20 +16,20 @@ fn ink(args: &[&str]) -> (Exit, String, String) {
 }
 
 #[test]
-fn the_root_help_lists_the_four_groups_with_their_aliases() {
+fn the_root_help_lists_the_groups_with_their_aliases() {
     let (exit, help, _) = ink(&["--help"]);
     assert_eq!(exit, Exit::Done);
-    for group in ["\nWrite\n", "\nUnderstand\n", "\nPublish\n", "\nTools\n"] {
+    for group in ["\nWrite\n", "\nUnderstand\n", "\nPublish\n", "\nAccount\n", "\nOperate\n", "\nTools\n"] {
         assert!(help.contains(group), "{group}: {help}");
     }
     for line in [
         "  check, c  ",
         "  build, b  ",
         "  deploy  ",
-        "Global options:",
+        "\nGlobal options\n",
         "-C, --dir <DIR>",
-        "Examples:",
-        "Environment:",
+        "\nExamples\n",
+        "\nEnvironment\n",
     ] {
         assert!(help.contains(line), "{line}: {help}");
     }
@@ -54,14 +54,14 @@ fn a_leaf_has_option_groups_examples_and_exit_codes_and_short_help_stops_early()
         "\nWork\n",
         "\nVerification\n",
         "-o, --out <DIR>",
-        "Examples:",
-        "Exit codes:",
+        "\nExamples\n",
+        "\nExit codes\n",
         "  6  ",
     ] {
         assert!(long.contains(line), "{line}: {long}");
     }
     let (_, short, _) = ink(&["build", "-h"]);
-    assert!(short.contains("-o, --out <DIR>") && !short.contains("Examples:"), "{short}");
+    assert!(short.contains("-o, --out <DIR>") && !short.contains("\nExamples\n"), "{short}");
 }
 
 #[test]

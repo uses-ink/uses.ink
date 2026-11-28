@@ -1,0 +1,26 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Print a completion script for your shell.
+
+Usage: ink completions <SHELL>
+
+Examples
+  # Print the bash script; see `ink help completions`
+  ink completions bash
+
+  # Print the nushell script
+  ink completions nushell
+
+Arguments
+  <SHELL>  The shell to print the script for
+
+Exit codes
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was
+     changed
+
+Docs    https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global  -C, --json, -q, -v, --color, --no-progress, --log,
+        --log-file (see `ink --help`)

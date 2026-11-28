@@ -162,8 +162,7 @@ pub struct Origin {
     /// said as a notice].
     #[arg(long, value_enum, value_name = "KIND")]
     pub source: Option<Kind>,
-    /// The commit to read, as `git rev-parse` takes it [default: HEAD]. Only for a git
-    /// repository.
+    /// The commit to read, as `git rev-parse` takes it; only for a git repository [default: HEAD].
     #[arg(long, value_name = "REV")]
     pub rev: Option<String>,
 }
@@ -348,8 +347,8 @@ pub struct Serve {
     #[arg(long, default_value = "api.localhost", help_heading = Heading::SERVER)]
     pub api_host: String,
     /// Where sites are served, for the addresses the API reports (`<handle>.<host>`) and the
-    /// origin passkeys are made for: give the address a browser uses to reach this server.
-    /// [default: `http://localhost:` and the port the server listens on, which the start says]
+    /// origin passkeys are made for: give the address a browser uses to reach this server
+    /// [default: `http://localhost:` and the listening port]
     #[arg(long, help_heading = Heading::SERVER)]
     pub origin: Option<String>,
     /// Prints every setting a start would run with, each with its default or the flag that

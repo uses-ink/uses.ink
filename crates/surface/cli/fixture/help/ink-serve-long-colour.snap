@@ -1,0 +1,408 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Serve a built deploy the way production does.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[1m\e[36mserve\e[0m \e[36m[OPTIONS]\e[0m \e[36m[FOLDER]\e[0m
+
+\e[1mExamples\e[0m
+  \e[2m# \e[0mServe .ink/out of this folder on 127.0.0.1:8080
+  \e[1m\e[36mink\e[0m \e[1m\e[36mserve\e[0m
+
+  \e[2m# \e[0mServe .ink/out of another folder
+  \e[1m\e[36mink\e[0m \e[1m\e[36m-C\e[0m garden \e[1m\e[36mserve\e[0m
+
+  \e[2m# \e[0mSelf-host: serve, watch and build git sites from disk, restarting a crashed
+  \e[2m# \e[0mloop three times
+  \e[1m\e[36mink\e[0m \e[1m\e[36mserve\e[0m \e[1m\e[36m--data\e[0m state \e[1m\e[36m--git-scheme\e[0m file \e[1m\e[36m--restart-limit\e[0m 3
+
+  \e[2m# \e[0mTurn on the API and send sign-in links by SMTP
+  \e[1m\e[36mink\e[0m \e[1m\e[36mserve\e[0m \e[1m\e[36m--data\e[0m state \e[1m\e[36m--mail\e[0m smtp \e[1m\e[36m--mail-from\e[0m ink@example.org \e[1m\e[36m--smtp-host\e[0m mail.example.org
+
+\e[1mArguments\e[0m
+  \e[36m[FOLDER]\e[0m  A folder `\e[1m\e[36mink\e[0m \e[1m\e[36mbuild\e[0m` wrote into, or with `\e[1m\e[36m--host-mode\e[0m \e[1m\e[36mfolders\e[0m` a
+            folder of them, one per host name \e[2m[default: .ink/out of the site]\e[0m
+
+\e[1mServer\e[0m
+  \e[1m\e[36m    --addr\e[0m \e[36m<ADDRESS>\e[0m         The address to listen on
+                               \e[2m[default: 127.0.0.1:8080]\e[0m
+  \e[1m\e[36m    --host-mode\e[0m \e[36m<HOST_MODE>\e[0m  How a request's host picks a deploy
+                               \e[2m[default: auto]\e[0m
+  \e[1m\e[36m    --data\e[0m \e[36m<DATA>\e[0m            Turns on the control plane and its API. Its
+                               database, blobs, sealing key and the operator's
+                               public keys live in this folder. Without it only
+                               the folder is served
+  \e[1m\e[36m    --api-host\e[0m \e[36m<API_HOST>\e[0m    The host name whose requests are API calls,
+                               signed with a key (`\e[1m\e[36mink\e[0m \e[1m\e[36mlogin\e[0m`)
+                               \e[2m[default: api.localhost]\e[0m
+  \e[1m\e[36m    --origin\e[0m \e[36m<ORIGIN>\e[0m        Where sites are served, for the addresses the API
+                               reports (`\e[1m\e[36m<handle>.<host>\e[0m`) and the origin
+                               passkeys are made for: give the address a browser
+                               uses to reach this server \e[2m[default:\e[0m
+                               \e[2m`http://localhost:`\e[0m \e[2mand\e[0m \e[2mthe\e[0m \e[2mlistening\e[0m \e[2mport]\e[0m
+
+\e[1mLimits\e[0m
+  \e[1m\e[36m    --api-body\e[0m \e[36m<API_BODY>\e[0m            The largest JSON request body, in bytes.
+                                       \e[2m[default: 65536]\e[0m
+  \e[1m\e[36m    --upload-bytes\e[0m \e[36m<UPLOAD_BYTES>\e[0m    The largest uploaded archive, in bytes.
+                                       \e[2m[default: 268435456]\e[0m
+  \e[1m\e[36m    --upload-files\e[0m \e[36m<UPLOAD_FILES>\e[0m    The most files in an uploaded archive.
+                                       \e[2m[default: 10000]\e[0m
+  \e[1m\e[36m    --upload-file\e[0m \e[36m<UPLOAD_FILE>\e[0m      The largest file in an uploaded archive,
+                                       in bytes. \e[2m[default: 67108864]\e[0m
+  \e[1m\e[36m    --upload-tree\e[0m \e[36m<UPLOAD_TREE>\e[0m      The largest tree `\e[1m\e[36mink\e[0m \e[1m\e[36mpush\e[0m` may send, in
+                                       bytes; the tree is read whole.
+                                       \e[2m[default: 8388608]\e[0m
+  \e[1m\e[36m    --upload-part\e[0m \e[36m<UPLOAD_PART>\e[0m      The most bytes of files in one `\e[1m\e[36mink\e[0m \e[1m\e[36mpush\e[0m`
+                                       request, held in memory while it is
+                                       checked and stored. \e[2m[default: 67108864]\e[0m
+  \e[1m\e[36m    --export-bytes\e[0m \e[36m<EXPORT_BYTES>\e[0m    The largest exported archive, in bytes.
+                                       \e[2m[default: 268435456]\e[0m
+  \e[1m\e[36m    --poll-interval\e[0m \e[36m<POLL_INTERVAL>\e[0m  Seconds between polls of a git source. At
+                                       least 10. \e[2m[default: 600]\e[0m
+  \e[1m\e[36m    --poll-max\e[0m \e[36m<POLL_MAX>\e[0m            Seconds a source that does not change is
+                                       backed off to. \e[2m[default: 3600]\e[0m
+  \e[1m\e[36m    --abuse-limit\e[0m \e[36m<ABUSE_LIMIT>\e[0m      Abuse reports that may be sent per
+                                       source, as `\e[1m\e[36m<count>/<window>\e[0m`. Reports
+                                       take no account, so this is what bounds
+                                       them. \e[2m[default: 5/1h]\e[0m
+                                       \e[2m[env: INK_ABUSE_LIMIT]\e[0m
+  \e[1m\e[36m    --enrol-limit\e[0m \e[36m<ENROL_LIMIT>\e[0m      Asks to enrol a key that may be sent per
+                                       source, as `\e[1m\e[36m<count>/<window>\e[0m`. They take
+                                       no account, so this keeps one source from
+                                       filling the queue of waiting keys.
+                                       \e[2m[default: 5/1h]\e[0m \e[2m[env: INK_ENROL_LIMIT]\e[0m
+  \e[1m\e[36m    --handle-hold\e[0m \e[36m<DAYS>\e[0m             Days a handle is held after its site left
+                                       it, so no one else can claim it; a
+                                       verified owner's handle is held for good.
+                                       \e[2m[default: 365]\e[0m \e[2m[env: INK_HANDLE_HOLD]\e[0m
+  \e[1m\e[36m    --limit-stored\e[0m \e[36m<BYTES>\e[0m           Bytes an account may store across its
+                                       sites; a deploy over it is refused whole.
+                                       \e[2m[default: 1073741824]\e[0m
+                                       \e[2m[env: INK_LIMIT_STORED]\e[0m
+  \e[1m\e[36m    --limit-builds\e[0m \e[36m<N>\e[0m               Builds an account may start in 24 hours;
+                                       a request over it is refused.
+                                       \e[2m[default: 60]\e[0m \e[2m[env: INK_LIMIT_BUILDS]\e[0m
+  \e[1m\e[36m    --limit-sites\e[0m \e[36m<N>\e[0m                Sites an account may have. \e[2m[default: 10]\e[0m
+                                       \e[2m[env: INK_LIMIT_SITES]\e[0m
+  \e[1m\e[36m    --limit-deploys\e[0m \e[36m<N>\e[0m              Deploys of a site that are kept, the live
+                                       one included; older ones are removed with
+                                       the files only they used. \e[2m[default: 20]\e[0m
+                                       \e[2m[env: INK_LIMIT_DEPLOYS]\e[0m
+  \e[1m\e[36m    --remove-step\e[0m \e[36m<N>\e[0m                The most blobs one step of removing a
+                                       site deletes. A removal runs in steps
+                                       this size, so a site with many files
+                                       never holds a request or a worker for
+                                       long. \e[2m[default: 500]\e[0m
+                                       \e[2m[env: INK_REMOVE_STEP]\e[0m
+  \e[1m\e[36m    --preview-days\e[0m \e[36m<DAYS>\e[0m            Days a preview of a branch is served
+                                       before it ends and is swept. Previews are
+                                       public to anyone with the address.
+                                       \e[2m[default: 7]\e[0m \e[2m[env: INK_PREVIEW_DAYS]\e[0m
+  \e[1m\e[36m    --preview-branches\e[0m \e[36m<N>\e[0m           The most branches of one public git site
+                                       the watch builds as previews, by name;
+                                       `\e[1m\e[36m0\e[0m` builds none. The branch the site
+                                       itself builds is not one of them.
+                                       \e[2m[default: 10]\e[0m \e[2m[env: INK_PREVIEW_BRANCHES]\e[0m
+  \e[1m\e[36m    --limit-domains\e[0m \e[36m<N>\e[0m              The most custom domains one site has,
+                                       proved and not. A claim of a name costs a
+                                       row, so the number bounds what one site
+                                       can ask for. \e[2m[default: 10]\e[0m
+                                       \e[2m[env: INK_LIMIT_DOMAINS]\e[0m
+  \e[1m\e[36m    --limit-reports\e[0m \e[36m<N>\e[0m              The most abuse reports open at once, over
+                                       every source. Anyone may send one, so the
+                                       number bounds what many sources together
+                                       can store; a report the operator actioned
+                                       by suspending a site stops counting, and
+                                       raising this is the only other way to
+                                       make room. \e[2m[default: 10000]\e[0m
+                                       \e[2m[env: INK_LIMIT_REPORTS]\e[0m
+  \e[1m\e[36m    --blob-grace\e[0m \e[36m<SECONDS>\e[0m           Seconds a blob that no deploy and no
+                                       preview names stays before it is deleted.
+                                       A build that skipped uploading a blob
+                                       because the store held it keeps it until
+                                       its deploy is recorded, so this must
+                                       outlast that gap. \e[2m[default: 900]\e[0m
+                                       \e[2m[env: INK_BLOB_GRACE]\e[0m
+  \e[1m\e[36m    --domain-recheck-days\e[0m \e[36m<DAYS>\e[0m     Days between two reads of the TXT record
+                                       that proves a custom domain. A name whose
+                                       record no longer carries its token stops
+                                       resolving at once. \e[2m[default: 30]\e[0m
+                                       \e[2m[env: INK_DOMAIN_RECHECK_DAYS]\e[0m
+  \e[1m\e[36m    --domain-lapse-days\e[0m \e[36m<DAYS>\e[0m       Days a custom domain that failed its
+                                       check keeps its name before any site may
+                                       claim it. The owner may publish the
+                                       record again in that time and the name
+                                       serves again. \e[2m[default: 14]\e[0m
+                                       \e[2m[env: INK_DOMAIN_LAPSE_DAYS]\e[0m
+  \e[1m\e[36m    --limit-build-time\e[0m \e[36m<SECONDS>\e[0m     Seconds one build may take: a worker
+                                       holds a request for no longer than this,
+                                       so a build that runs past it is given to
+                                       another. \e[2m[default: 600]\e[0m
+                                       \e[2m[env: INK_LIMIT_BUILD_TIME]\e[0m
+
+\e[1mMail\e[0m
+  \e[1m\e[36m    --mail\e[0m \e[36m<MAIL>\e[0m                    Where sign-in mail goes \e[2m[default: stdout]\e[0m
+                                       \e[2m[env: INK_MAIL]\e[0m
+  \e[1m\e[36m    --mail-from\e[0m \e[36m<MAIL_FROM>\e[0m          The address mail is sent from. Required
+                                       with `\e[1m\e[36m--mail\e[0m \e[1m\e[36msmtp\e[0m` \e[2m[env: INK_MAIL_FROM]\e[0m
+  \e[1m\e[36m    --smtp-host\e[0m \e[36m<SMTP_HOST>\e[0m          The SMTP server's host name
+                                       \e[2m[env: INK_SMTP_HOST]\e[0m
+  \e[1m\e[36m    --smtp-port\e[0m \e[36m<SMTP_PORT>\e[0m          The SMTP server's port. \e[2m[default:\e[0m \e[2m587,\e[0m \e[2mor\e[0m
+                                       \e[2m465\e[0m \e[2mwith\e[0m \e[2m`--smtp-security\e[0m \e[2mimplicit`]\e[0m
+                                       \e[2m[env: INK_SMTP_PORT]\e[0m
+  \e[1m\e[36m    --smtp-security\e[0m \e[36m<SMTP_SECURITY>\e[0m  How the SMTP connection is secured
+                                       \e[2m[default: starttls]\e[0m
+                                       \e[2m[env: INK_SMTP_SECURITY]\e[0m
+  \e[1m\e[36m    --smtp-user\e[0m \e[36m<SMTP_USER>\e[0m          The SMTP username \e[2m[env: INK_SMTP_USER]\e[0m
+  \e[1m\e[36m    --smtp-password-file\e[0m \e[36m<SMTP_PASSWORD_FILE>\e[0m
+        A file holding the SMTP password. `\e[1m\e[36mINK_SMTP_PASSWORD\e[0m` holds it instead;
+        there is no flag for the password itself, which a process list would
+        show \e[2m[env: INK_SMTP_PASSWORD_FILE]\e[0m
+  \e[1m\e[36m    --login-base\e[0m \e[36m<LOGIN_BASE>\e[0m        Where the link in a message points; the
+                                       token is added as one more path segment.
+                                       \e[2m[default:\e[0m \e[2mthe\e[0m \e[2mdashboard's\e[0m \e[2m`/login`\e[0m \e[2mon\e[0m \e[2mthe\e[0m
+                                       \e[2mAPI's\e[0m \e[2maddress]\e[0m \e[2m[env: INK_LOGIN_BASE]\e[0m
+  \e[1m\e[36m    --outbox\e[0m \e[36m<OUTBOX>\e[0m                How many messages wait to be sent before
+                                       more are dropped. \e[2m[default: 256]\e[0m
+                                       \e[2m[env: INK_OUTBOX]\e[0m
+  \e[1m\e[36m    --courier-rest\e[0m \e[36m<COURIER_REST>\e[0m    How long the mail sender rests when
+                                       nothing waits. \e[2m[default: 1s]\e[0m
+                                       \e[2m[env: INK_COURIER_REST]\e[0m
+
+\e[1mSign-in\e[0m
+  \e[1m\e[36m    --login-get-signs-in\e[0m             Whether opening the link with a GET signs
+                                       in, which a mail scanner can do for you.
+                                       Without it a GET only looks, and a page
+                                       in front of the API POSTs
+                                       \e[2m[env: INK_LOGIN_GET_SIGNS_IN]\e[0m
+  \e[1m\e[36m    --login-ttl\e[0m \e[36m<LOGIN_TTL>\e[0m          How long a sign-in link works.
+                                       \e[2m[default: 15m]\e[0m \e[2m[env: INK_LOGIN_TTL]\e[0m
+  \e[1m\e[36m    --admin-ttl\e[0m \e[36m<ADMIN_TTL>\e[0m          How long the first-run link works.
+                                       \e[2m[default: 24h]\e[0m \e[2m[env: INK_ADMIN_TTL]\e[0m
+  \e[1m\e[36m    --session-expiry\e[0m \e[36m<SESSION_EXPIRY>\e[0m
+        How a session ends \e[2m[default: sliding]\e[0m \e[2m[env: INK_SESSION_EXPIRY]\e[0m
+  \e[1m\e[36m    --session-idle\e[0m \e[36m<SESSION_IDLE>\e[0m    How long a sliding session may sit
+                                       unused. \e[2m[default: 7d]\e[0m
+                                       \e[2m[env: INK_SESSION_IDLE]\e[0m
+  \e[1m\e[36m    --session-limit\e[0m \e[36m<SESSION_LIMIT>\e[0m  The longest a session lasts.
+                                       \e[2m[default: 30d]\e[0m \e[2m[env: INK_SESSION_LIMIT]\e[0m
+  \e[1m\e[36m    --signup\e[0m \e[36m<SIGNUP>\e[0m                Who may make an account by signing in:
+                                       `\e[1m\e[36mfirst\e[0m` (the first, by the first-run
+                                       link), `\e[1m\e[36mopen\e[0m` (any address that receives
+                                       mail) or `\e[1m\e[36mclosed\e[0m`. \e[2m[default: first]\e[0m
+                                       \e[2m[env: INK_SIGNUP]\e[0m
+  \e[1m\e[36m    --rate-address\e[0m \e[36m<RATE_ADDRESS>\e[0m    Requests for a link per address, as
+                                       `\e[1m\e[36m<count>/<window>\e[0m`. \e[2m[default: 5/1h]\e[0m
+                                       \e[2m[env: INK_RATE_ADDRESS]\e[0m
+  \e[1m\e[36m    --rate-source\e[0m \e[36m<RATE_SOURCE>\e[0m      Requests for a link per source (an IPv4
+                                       address or an IPv6 /64). \e[2m[default: 20/1h]\e[0m
+                                       \e[2m[env: INK_RATE_SOURCE]\e[0m
+  \e[1m\e[36m    --rate-tracked\e[0m \e[36m<RATE_TRACKED>\e[0m    How many addresses and sources the limits
+                                       remember at once. \e[2m[default: 10000]\e[0m
+                                       \e[2m[env: INK_RATE_TRACKED]\e[0m
+  \e[1m\e[36m    --cookie-name\e[0m \e[36m<COOKIE_NAME>\e[0m      The session cookie's name. \e[2m[default:\e[0m
+                                       \e[2m`__Host-ink-session`,\e[0m \e[2mor\e[0m \e[2m`ink-session`\e[0m \e[2mon\e[0m
+                                       \e[2mplain\e[0m \e[2mhttp]\e[0m \e[2m[env: INK_COOKIE_NAME]\e[0m
+  \e[1m\e[36m    --cookie-unprefixed\e[0m              Take a `\e[1m\e[36m--cookie-name\e[0m` that does not
+                                       start with `\e[1m\e[36m__Host-\e[0m` on a `\e[1m\e[36mSecure\e[0m`
+                                       cookie. Without it such a name is
+                                       refused, because a `\e[1m\e[36m__Host-\e[0m` name is what
+                                       stops a sibling site from setting the
+                                       cookie \e[2m[env: INK_COOKIE_UNPREFIXED]\e[0m
+  \e[1m\e[36m    --cookie-path\e[0m \e[36m<COOKIE_PATH>\e[0m      The session cookie's path. \e[2m[default: /]\e[0m
+                                       \e[2m[env: INK_COOKIE_PATH]\e[0m
+  \e[1m\e[36m    --rp-id\e[0m \e[36m<RP_ID>\e[0m                  The relying party id of passkeys: a host
+                                       name the dashboard is served on or above.
+                                       A passkey made under one id never works
+                                       under another. \e[2m[default: the API host]\e[0m
+                                       \e[2m[env: INK_RP_ID]\e[0m
+  \e[1m\e[36m    --rp-origin\e[0m \e[36m<RP_ORIGIN>\e[0m          An origin the dashboard is served from,
+                                       which passkey ceremonies must come from.
+                                       Repeat for more than one.
+                                       \e[2m[default: the origin of the API host]\e[0m
+                                       \e[2m[env: INK_RP_ORIGIN]\e[0m
+  \e[1m\e[36m    --allow-origin\e[0m \e[36m<ALLOW_ORIGIN>\e[0m    An origin besides the API's own that may
+                                       post state-changing requests with a
+                                       session cookie, such as a dashboard
+                                       served on another host. Repeat for more
+                                       than one \e[2m[env: INK_ALLOW_ORIGIN]\e[0m
+  \e[1m\e[36m    --challenge-limit\e[0m \e[36m<CHALLENGE_LIMIT>\e[0m
+        Passkey sign-ins that may start per source, as `\e[1m\e[36m<count>/<window>\e[0m`.
+        \e[2m[default: 60/1h]\e[0m \e[2m[env: INK_CHALLENGE_LIMIT]\e[0m
+  \e[1m\e[36m    --recovery-limit\e[0m \e[36m<RECOVERY_LIMIT>\e[0m
+        Recovery codes that may be tried per source, as `\e[1m\e[36m<count>/<window>\e[0m`.
+        \e[2m[default: 10/1h]\e[0m \e[2m[env: INK_RECOVERY_LIMIT]\e[0m
+  \e[1m\e[36m    --step-up-window\e[0m \e[36m<STEP_UP_WINDOW>\e[0m
+        How recent a passkey sign-in must be to add or remove a passkey, approve
+        a key or make recovery codes. \e[2m[default: 5m]\e[0m \e[2m[env: INK_STEP_UP_WINDOW]\e[0m
+  \e[1m\e[36m    --forwarded-hops\e[0m \e[36m<FORWARDED_HOPS>\e[0m
+        How many reverse proxies of yours sit in front of the server. With it,
+        the client's address is read from `\e[1m\e[36mX-Forwarded-For\e[0m`, that many entries
+        from the end, and a request without it is refused.
+        \e[2m[default: off, the connection's address is used]\e[0m
+        \e[2m[env: INK_FORWARDED_HOPS]\e[0m
+
+\e[1mKeys\e[0m
+  \e[1m\e[36m    --audience\e[0m \e[36m<AUDIENCE>\e[0m            The authority a signature is made for, as
+                                       a client writes it: `\e[1m\e[36mhost[:port]\e[0m` of the
+                                       API. Not the `\e[1m\e[36mHost\e[0m` header, so a proxy
+                                       cannot choose it. \e[2m[default:\e[0m \e[2m`--api-host`\e[0m
+                                       \e[2mand\e[0m \e[2mthe\e[0m \e[2mport\e[0m \e[2mof\e[0m \e[2m`--addr`]\e[0m
+                                       \e[2m[env: INK_AUDIENCE]\e[0m
+  \e[1m\e[36m    --auth-skew\e[0m \e[36m<AUTH_SKEW>\e[0m          Seconds either side of the server's time
+                                       a signed request may be, and the quiet
+                                       after a restart. At most 300.
+                                       \e[2m[default: 60]\e[0m \e[2m[env: INK_AUTH_SKEW]\e[0m
+  \e[1m\e[36m    --auth-nonces\e[0m \e[36m<AUTH_NONCES>\e[0m      How many request nonces are remembered
+                                       for one key at once. \e[2m[default: 1024]\e[0m
+                                       \e[2m[env: INK_AUTH_NONCES]\e[0m
+  \e[1m\e[36m    --key-device\e[0m \e[36m<KEY_DEVICE>\e[0m        How long a device key lives.
+                                       \e[2m[default: 180d]\e[0m \e[2m[env: INK_KEY_DEVICE]\e[0m
+  \e[1m\e[36m    --key-deploy\e[0m \e[36m<KEY_DEPLOY>\e[0m        How long a deploy key lives.
+                                       \e[2m[default: 90d]\e[0m \e[2m[env: INK_KEY_DEPLOY]\e[0m
+  \e[1m\e[36m    --key-ceiling\e[0m \e[36m<KEY_CEILING>\e[0m      The longest a key may be asked to live.
+                                       \e[2m[default: 365d]\e[0m \e[2m[env: INK_KEY_CEILING]\e[0m
+  \e[1m\e[36m    --enrol-ttl\e[0m \e[36m<ENROL_TTL>\e[0m          How long a person has to approve a key.
+                                       \e[2m[default: 10m]\e[0m \e[2m[env: INK_ENROL_TTL]\e[0m
+  \e[1m\e[36m    --enrol-guesses\e[0m \e[36m<ENROL_GUESSES>\e[0m  How many wrong codes close enrolling.
+                                       \e[2m[default: 5]\e[0m \e[2m[env: INK_ENROL_GUESSES]\e[0m
+  \e[1m\e[36m    --enrol-waiting\e[0m \e[36m<ENROL_WAITING>\e[0m  How many keys may wait for approval at
+                                       once. \e[2m[default: 20]\e[0m
+                                       \e[2m[env: INK_ENROL_WAITING]\e[0m
+  \e[1m\e[36m    --enrol-closed\e[0m \e[36m<ENROL_CLOSED>\e[0m    How long enrolling stays closed.
+                                       \e[2m[default: 1m]\e[0m \e[2m[env: INK_ENROL_CLOSED]\e[0m
+
+\e[1mHosting\e[0m
+  \e[1m\e[36m    --site-ttl\e[0m \e[36m<SITE_TTL>\e[0m            Seconds a site's live deploy is
+                                       remembered before the control plane is
+                                       asked again: a new deploy or a rollback
+                                       shows within this long. The default asks
+                                       every time, since the lookup and the
+                                       control plane share one process and one
+                                       database, so there is no staleness to
+                                       trade for speed; raise it only to spare
+                                       the database a read per request.
+                                       \e[2m[default: 0]\e[0m
+  \e[1m\e[36m    --site-deploys\e[0m \e[36m<SITE_DEPLOYS>\e[0m    How many decoded deploys the lookup
+                                       keeps. \e[2m[default: 64]\e[0m
+  \e[1m\e[36m    --poll-lookout\e[0m \e[36m<POLL_LOOKOUT>\e[0m    Seconds before the watch looks again for
+                                       a site it has not seen move, at most; so
+                                       a new site is first polled within this
+                                       long. At least 1. \e[2m[default: 5]\e[0m
+  \e[1m\e[36m    --worker-lease\e[0m \e[36m<WORKER_LEASE>\e[0m    Seconds a worker holds a build request
+                                       before the queue gives it to another.
+                                       \e[2m[default: 900]\e[0m
+  \e[1m\e[36m    --worker-idle\e[0m \e[36m<WORKER_IDLE>\e[0m      Seconds a worker rests when the queue is
+                                       empty. \e[2m[default: 2]\e[0m
+  \e[1m\e[36m    --restart-limit\e[0m \e[36m<RESTART_LIMIT>\e[0m  How many times in a row the watch or the
+                                       worker may crash before it is left
+                                       stopped. \e[2m[default: 5]\e[0m
+  \e[1m\e[36m    --restart-delay\e[0m \e[36m<RESTART_DELAY>\e[0m  Seconds to wait before a crashed loop is
+                                       started again. \e[2m[default: 2]\e[0m
+  \e[1m\e[36m    --restart-healthy\e[0m \e[36m<RESTART_HEALTHY>\e[0m
+        Seconds a loop must run for a crash after it to count as the first
+        again. \e[2m[default: 60]\e[0m
+  \e[1m\e[36m    --git-scheme\e[0m \e[36m<GIT_SCHEMES>\e[0m       A kind of git address a site may be added
+                                       with and the builder fetches; repeat for
+                                       more. \e[2m[default: https]\e[0m
+  \e[1m\e[36m    --git-cache\e[0m \e[36m<GIT_CACHE>\e[0m          Where clones of git sites are kept.
+                                       \e[2m[default: <data>/git]\e[0m
+  \e[1m\e[36m    --git-time\e[0m \e[36m<GIT_TIME>\e[0m            Seconds a fetch and read of a git source
+                                       may take. \e[2m[default: 120]\e[0m
+  \e[1m\e[36m    --git-connect\e[0m \e[36m<GIT_CONNECT>\e[0m      Seconds to wait for a connection to an
+                                       https git remote. \e[2m[default: 10]\e[0m
+  \e[1m\e[36m    --git-request\e[0m \e[36m<GIT_REQUEST>\e[0m      Seconds one https request to a git remote
+                                       may take in all, its body included: also
+                                       the longest a pack may take to arrive.
+                                       \e[2m[default: 120]\e[0m
+  \e[1m\e[36m    --git-redirects\e[0m \e[36m<GIT_REDIRECTS>\e[0m  Which redirects of an https git remote
+                                       are followed; one that leaves https never
+                                       is. \e[2m[default: first]\e[0m
+  \e[1m\e[36m    --git-ca\e[0m \e[36m<GIT_CAS>\e[0m               A PEM file of certificate authorities to
+                                       trust beside the bundled web roots, for a
+                                       forge with a private authority; repeat
+                                       for more. Certificates are always
+                                       verified
+  \e[1m\e[36m    --resolver\e[0m \e[36m<RESOLVER>\e[0m            How the TXT records that prove a custom
+                                       domain are read: `\e[1m\e[36msystem\e[0m` asks
+                                       nameservers, `\e[1m\e[36moffline\e[0m` asks none, so a
+                                       claim is made and a proof says why it
+                                       cannot be checked. \e[2m[default: system]\e[0m
+                                       \e[2m[env: INK_RESOLVER]\e[0m
+  \e[1m\e[36m    --resolver-server\e[0m \e[36m<ADDR>\e[0m         A nameserver to ask, as `\e[1m\e[36mADDRESS\e[0m` or
+                                       `\e[1m\e[36mADDRESS:PORT\e[0m`, in order; repeat for
+                                       more. \e[2m[default:\e[0m \e[2mthe\e[0m \e[2m`nameserver`\e[0m \e[2mlines\e[0m \e[2mof\e[0m
+                                       \e[2m`--resolver-file`]\e[0m
+                                       \e[2m[env: INK_RESOLVER_SERVERS]\e[0m
+  \e[1m\e[36m    --resolver-confirm\e[0m \e[36m<ADDR>\e[0m        A second set of nameservers, as `\e[1m\e[36mADDRESS\e[0m`
+                                       or `\e[1m\e[36mADDRESS:PORT\e[0m`; repeat for more. When
+                                       it is set, a proof record is trusted only
+                                       when both sets give the same records, so
+                                       one forged answer on the way to one
+                                       nameserver proves nothing. DNSSEC is not
+                                       checked either way. \e[2m[default: none]\e[0m
+                                       \e[2m[env: INK_RESOLVER_CONFIRM]\e[0m
+  \e[1m\e[36m    --resolver-file\e[0m \e[36m<PATH>\e[0m           The file the system lists its nameservers
+                                       in. \e[2m[default: /etc/resolv.conf]\e[0m
+                                       \e[2m[env: INK_RESOLVER_FILE]\e[0m
+  \e[1m\e[36m    --resolver-timeout\e[0m \e[36m<SECONDS>\e[0m     Seconds one lookup of a proof record may
+                                       take in all, shared by the nameservers in
+                                       turn. 1 to 60. \e[2m[default: 5]\e[0m
+                                       \e[2m[env: INK_RESOLVER_TIMEOUT]\e[0m
+  \e[1m\e[36m    --forge-hooks\e[0m                    Take webhooks from forges at `\e[1m\e[36mPOST\e[0m
+                                       \e[1m\e[36m/v1/hooks/{github,forgejo,gitlab}\e[0m`, and
+                                       let a site claim and prove its
+                                       repository, which the server reads from
+                                       the forge over https. Off by default
+                                       \e[2m[env: INK_FORGE_HOOKS]\e[0m
+  \e[1m\e[36m    --forge-instances\e[0m \e[36m<FILE>\e[0m         A TOML file of the Forgejo instances this
+                                       server talks to, in the format of the
+                                       built-in list (Codeberg). A repository on
+                                       a host that is on no list is refused
+                                       before anything is sent
+                                       \e[2m[env: INK_FORGE_INSTANCES]\e[0m
+  \e[1m\e[36m    --forge-gitlab\e[0m \e[36m<HOST>\e[0m            The GitLab hosts this server talks to;
+                                       repeat or separate with commas.
+                                       \e[2m[default: gitlab.com]\e[0m
+                                       \e[2m[env: INK_FORGE_GITLAB]\e[0m
+  \e[1m\e[36m    --forge-route\e[0m \e[36m<HOST=ADDR>\e[0m        Send a forge's name to an address instead
+                                       of the one DNS gives, as
+                                       `\e[1m\e[36mHOST=ADDRESS:PORT\e[0m`: for a mirror, or a
+                                       test. The certificate is still checked
+                                       for the name \e[2m[env: INK_FORGE_ROUTES]\e[0m
+  \e[1m\e[36m    --forge-timeout\e[0m \e[36m<SECONDS>\e[0m        Seconds one call to a forge may take in
+                                       all. \e[2m[default: 10]\e[0m
+                                       \e[2m[env: INK_FORGE_TIMEOUT]\e[0m
+  \e[1m\e[36m    --forge-reply\e[0m \e[36m<BYTES>\e[0m            The most bytes of a forge's reply that
+                                       are read. \e[2m[default: 1048576]\e[0m
+                                       \e[2m[env: INK_FORGE_REPLY]\e[0m
+  \e[1m\e[36m    --forge-body\e[0m \e[36m<BYTES>\e[0m             The most bytes of a webhook body that are
+                                       read. \e[2m[default: 5242880]\e[0m
+                                       \e[2m[env: INK_FORGE_BODY]\e[0m
+  \e[1m\e[36m    --forge-window\e[0m \e[36m<SECONDS>\e[0m         Seconds a delivery id is remembered, so
+                                       the same delivery is taken once.
+                                       \e[2m[default: 600]\e[0m \e[2m[env: INK_FORGE_WINDOW]\e[0m
+  \e[1m\e[36m    --forge-remembered\e[0m \e[36m<N>\e[0m           How many delivery ids of one repository
+                                       are remembered at once. \e[2m[default: 10000]\e[0m
+                                       \e[2m[env: INK_FORGE_REMEMBERED]\e[0m
+
+\e[1mNotes\e[0m
+  Unlike preview, this serves what `\e[1m\e[36mink\e[0m \e[1m\e[36mbuild\e[0m` already wrote, through the same
+  edge code production runs: conditional and range requests, the host and path
+  refusals, the request and response budgets, and the manifest's headers as they
+  are in production.
+
+\e[1mExit codes\e[0m
+  0  Stopped with Ctrl-C
+  2  The folder is no deploy, or the address cannot be used
+
+\e[1mEnvironment\e[0m
+  \e[1m\e[36mINK_SMTP_PASSWORD\e[0m  The SMTP password for --mail smtp; never a flag, so it
+                     stays out of process lists. Every other sign-in setting is
+                     a flag with its own INK_ variable
+
+\e[2mSee also\e[0m  \e[1m\e[36mink build\e[0m, \e[1m\e[36mink login\e[0m
+\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
+          \e[2m(see `ink --help`)\e[0m

@@ -1,0 +1,14 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Show this message, or the help of one command.
+
+Usage: ink help [TOPIC]...
+
+Arguments
+  [TOPIC]...  A command (`deploy rollback`), `exit`, `environment`, or a
+              diagnostic or decision code
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink help --help adds examples, notes and exit codes

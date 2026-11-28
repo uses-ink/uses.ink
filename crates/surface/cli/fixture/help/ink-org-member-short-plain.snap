@@ -1,0 +1,16 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Who is in an organization.
+
+Usage: ink org member <COMMAND>
+
+Commands
+  list    The people in an organization
+  add     Add a person to an organization
+  remove  Remove a person from an organization
+  role    Give a member another role
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink org member --help adds examples, notes and exit codes

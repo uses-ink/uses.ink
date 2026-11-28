@@ -1,0 +1,15 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Make organizations and manage who is in them.
+
+Usage: ink org <COMMAND>
+
+Commands
+  create  Make an organization, with you as its owner
+  list    The organizations you are a member of
+  member  Who is in an organization
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink org --help adds examples, notes and exit codes

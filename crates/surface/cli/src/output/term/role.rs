@@ -20,6 +20,8 @@ pub(crate) enum Role {
     Work,
     /// A name to find again: deploy ids, pins.
     Id,
+    /// A placeholder for what the person types in: `<FOLDER>` in a usage line.
+    Value,
     /// Where something is: file and line, the snippet gutter.
     Place,
     /// A catalog code in a list.
@@ -63,7 +65,7 @@ impl Theme {
                 Role::Good => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Green))),
                 Role::Warn => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Yellow))),
                 Role::Bad => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Red))),
-                Role::Work => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Cyan))),
+                Role::Work | Role::Value => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Cyan))),
                 Role::Id | Role::Figure => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Magenta))),
                 Role::Place | Role::Code => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Blue))),
                 Role::Link => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Cyan))).underline(),
@@ -79,7 +81,7 @@ impl Theme {
 
     /// Every role, for the golden that prints the table.
     #[cfg(test)]
-    pub(crate) const ROLES: [Role; 13] = [
+    pub(crate) const ROLES: [Role; 14] = [
         Role::Heading,
         Role::Literal,
         Role::Good,
@@ -87,6 +89,7 @@ impl Theme {
         Role::Bad,
         Role::Work,
         Role::Id,
+        Role::Value,
         Role::Place,
         Role::Code,
         Role::Link,

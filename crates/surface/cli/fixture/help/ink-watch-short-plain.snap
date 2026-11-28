@@ -1,0 +1,37 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Follow a build of this site to its end.
+
+Usage: ink watch [OPTIONS] [BUILD]
+
+Arguments
+  [BUILD]  The build to follow, by the start of its id. Without one, the build
+           that is running or queued, or else the next one the site starts
+
+Options
+      --wait <SECONDS>  Seconds to wait before stopping; the build keeps going
+                        on the server [default: 300]
+      --poll <MS>       Milliseconds between two looks at the site
+                        [default: 1000]
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --site <ID>          The site's id; `account.site` in the config file
+                           [env: INK_SITE]
+      --org <ID>           Act as this organization, by its id: the site is one
+                           of its sites, and the key's role there is what is
+                           checked. See `ink org list` [env: INK_ORG]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+      --retries <N>        How many more times a call that is safe to repeat is
+                           tried when the network fails [default: 2]
+                           [env: INK_RETRIES]
+      --retry-wait <MS>    Milliseconds before the first retry; each wait is
+                           twice the one before [default: 500]
+                           [env: INK_RETRY_WAIT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink watch --help adds examples, notes and exit codes

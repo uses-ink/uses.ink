@@ -1,0 +1,40 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Build the folder into an output folder and print its deploy id.
+
+Usage: ink build [OPTIONS]
+
+Also typed as ink b
+
+Output
+  -o, --out <DIR>   Where to write the site [default: .ink/out]
+      --base <URL>  The address the site is served at, for feeds and canonical
+                    links
+      --strict      Exit 6 on warnings, and write nothing
+
+Work
+      --cache <DIR>  Where to keep work between builds, such as image copies
+                     [default: .ink/cache]
+
+Source
+      --source <KIND>  `folder` reads the files on disk, `git` reads a commit
+                       [default: `git` when .git exists, said as a notice]
+      --rev <REV>      The commit to read, as `git rev-parse` takes it; only for
+                       a git repository [default: HEAD]
+
+Verification
+      --check             Build natively and through the wasm components, write
+                          nothing, and fail (exit 1) when the two deploys differ
+      --components <DIR>  A folder whose components replace the ones `ink`
+                          carries when `--check` runs them:
+                          `format-markdown.wasm` (or `format-obsidian.wasm` for
+                          a vault) and `theme-quiet.wasm`, as `cargo xtask
+                          component` writes them. A file the folder lacks is the
+                          bundled one; each component run says which it used
+                          (`-v`, or `components` in `--json`). Compiled
+                          components are kept in `components/` of the cache
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink build --help adds examples, notes and exit codes

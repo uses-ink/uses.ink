@@ -1,0 +1,38 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Lift a suspension.
+
+Usage: ink abuse reinstate [OPTIONS] <SITE>
+
+Examples
+  ink abuse reinstate 0123456789abcdef0123456789abcdef  # Serve the site again
+
+Arguments
+  <SITE>  The site's id
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Exit codes
+  0  Done
+  2  Wrong usage: no API named, a key that is none, a private key that would
+     print to a terminal
+  3  No key, or the API refused the signature, or nobody approved the key in
+     time
+  4  The API could not be reached or failed; safe to retry
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a CI job; never a
+                flag, so it stays out of process lists. `ink login` keeps one in
+                the config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of INK_KEY
+
+Docs    https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)

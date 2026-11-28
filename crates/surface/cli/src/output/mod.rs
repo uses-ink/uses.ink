@@ -24,7 +24,7 @@ use crate::output::failure::Failure;
 use crate::output::report::{Event, Noted, Shown, Texts};
 use crate::output::stage::StageLine;
 use crate::output::term::{
-    Answer, Draw, Elapsed, Line, Look, Meter, Pacing, Phase, Render, Show, Styled, Terminal, Verbatim, Writer,
+    Answer, Draw, Elapsed, Line, Look, Meter, Pacing, Phase, Render, Show, Terminal, Verbatim, Writer,
 };
 
 /// How much a command says, from `-qq` to `-vv`. Each level adds to the one before.
@@ -160,12 +160,6 @@ impl<'a> Io<'a> {
     /// has no colour in the text it carries.
     pub(crate) const fn prose(&self) -> Look {
         Look { colour: self.out.look().colour && !self.json, ..self.out.look() }
-    }
-
-    /// The result as text that was painted for this stream's look (see [`Styled`]), or nothing
-    /// with `--json`.
-    pub(crate) fn painted(&mut self, text: &str) -> Result<(), Error> {
-        self.result(&Styled(text.to_owned()))
     }
 
     /// A block beside the result, such as a build's change set, as text on stderr when the run

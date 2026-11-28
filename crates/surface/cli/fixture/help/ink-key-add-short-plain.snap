@@ -1,0 +1,32 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Make a key for another machine, such as a CI job.
+
+Usage: ink key add [OPTIONS]
+
+Options
+      --site <ID>       A site's id: make a deploy key for that one site.
+                        Without it, a device key
+      --label <TEXT>    What the person sees beside the fingerprint
+                        [default: ci]
+      --right <LIST>    The rights to give, such as `read,deploy`.
+                        [default: what the kind has by default]
+      --expires <TTL>   How long the key lives, such as `90d`.
+                        [default: the server's, per kind]
+      --out <FILE>      Write the private key to this file (0600) instead of
+                        printing it
+      --wait <SECONDS>  Seconds to wait for a person to approve the key
+                        [default: 600]
+      --poll <SECONDS>  Seconds between asks whether it was approved
+                        [default: 2]
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink key add --help adds examples, notes and exit codes

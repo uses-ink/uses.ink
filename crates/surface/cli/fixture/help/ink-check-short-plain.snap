@@ -1,0 +1,21 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Read the folder and report what is wrong; writes nothing.
+
+Usage: ink check [OPTIONS]
+
+Also typed as ink c
+
+Options
+      --strict  Exit with 6 when there are warnings
+
+Source
+      --source <KIND>  `folder` reads the files on disk, `git` reads a commit
+                       [default: `git` when .git exists, said as a notice]
+      --rev <REV>      The commit to read, as `git rev-parse` takes it; only for
+                       a git repository [default: HEAD]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink check --help adds examples, notes and exit codes

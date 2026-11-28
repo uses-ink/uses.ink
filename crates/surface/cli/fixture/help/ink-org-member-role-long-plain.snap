@@ -1,0 +1,44 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Give a member another role.
+
+Usage: ink org member role [OPTIONS] <ORG> <ACCOUNT> <ROLE>
+
+Examples
+  # Make a member an admin
+  ink org member role 0123456789abcdef0123456789abcdef fedcba9876543210fedcba9876543210 admin
+
+Arguments
+  <ORG>      The organization's id
+  <ACCOUNT>  The person's account id
+  <ROLE>     What they may do from now on: owner, admin, writer or reader
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Notes
+  An organization's last owner cannot be given a lower role or removed.
+
+Exit codes
+  0  Done
+  2  Wrong usage: no API named, a key that is none, a private key that would
+     print to a terminal
+  3  No key, or the API refused the signature, or nobody approved the key in
+     time
+  4  The API could not be reached or failed; safe to retry
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a CI job; never a
+                flag, so it stays out of process lists. `ink login` keeps one in
+                the config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of INK_KEY
+
+Docs    https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)

@@ -1,0 +1,87 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Turn a folder of writing into a site, and publish it.
+
+Usage: ink [OPTIONS] <COMMAND>
+
+Examples
+  ink check                 # Read this folder and list its problems
+  ink build -o public       # Build into ./public
+  ink explain posts/a.md    # Why one file looks the way it does
+  ink select notes/trip.md  # Publish one page of a vault
+
+Write
+  check, c  Read the folder and report what is wrong; writes nothing
+  build, b  Build the folder into an output folder and print its deploy id
+  preview   Build in memory and serve it on 127.0.0.1 while you write
+
+Understand
+  explain  Show the decisions behind the site, or behind one file
+  pin      Write one decision's value into ink.toml
+  select   List what is published and why, or choose what to publish
+
+Publish
+  init    Link this folder to a site, without publishing it
+  push    Send the folder to its site and start a deploy
+  status  Show what is live and what is building
+  watch   Follow a build of this site to its end
+  domain  Claim, prove, list and remove custom domains
+  repo    Claim, prove, rotate, list and release the site's repository
+  deploy  List, read, roll back and resume deploys
+  export  Download the site, or the files the last push sent, to a folder
+
+Account
+  login   Sign in to uses.ink
+  logout  Sign out: end this machine's key
+  whoami  Show who you are signed in as
+  key     List, make and end keys
+  org     Make organizations and manage who is in them
+
+Operate
+  serve  Serve a built deploy the way production does
+  abuse  Read reports, suspend sites and lift suspensions
+
+Tools
+  completions  Print a completion script for your shell
+  man          Print the manual page
+  help         Show this message, or the help of one command
+
+Global options
+  -C, --dir <DIR>        The site's folder [default: .] [env: INK_DIR]
+      --json             One JSON document on stdout, diagnostics as NDJSON on
+                         stderr
+  -q, --quiet...         Say less: `-q` drops stage lines and notices and keeps
+                         warnings, the result and what a build makes public;
+                         `-qq` leaves only errors
+  -v, --verbose...       Say more: -v adds notices, -vv adds every file
+      --color <WHEN>     When to colour output, decided for each stream: `auto`
+                         follows `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`,
+                         `TERM` and whether the stream is a terminal
+                         [default: auto] [env: INK_COLOR]
+      --no-progress      Print log lines only, with no live redraw of progress
+                         [env: INK_NO_PROGRESS]
+      --log <FILTER>     Log to stderr as `ink=debug,edge=trace` says: areas
+                         (ink, engine, build, edge, control, db, blob, host,
+                         plugin, watch, queue, cli) or targets, at a level. Off
+                         unless this, `-v` or `INK_LOG` asks [env: INK_LOG]
+      --log-file <PATH>  Also write the log as JSON lines to this file
+                         [env: INK_LOG_FILE]
+  -h, --help             Print help; -h is short and --help is long
+  -V, --version          Print the version
+
+Environment
+  INK_DIR          The site's folder, as -C
+  INK_COLOR        auto, always or never, as --color
+  INK_NO_PROGRESS  Log lines only, as --no-progress
+  INK_LOG          The log filter, as --log; RUST_LOG is not read
+  INK_LOG_FILE     Also write the log as JSON lines here, as --log-file
+  INK_LOG_FORMAT   pretty, compact or json, on stderr
+  INK_LOG_SPANS    none, open, close or full
+  INK_LOG_TIMINGS  1 prints the span timing table at the end
+  NO_COLOR         Set and not empty: no colour
+  CLICOLOR_FORCE   Set and not 0: colour even to a pipe
+  INK_COMPONENTS   The folder the build script reads components from
+
+Read `ink help <command>` for one command and `ink help exit` for the exit
+codes.

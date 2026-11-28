@@ -1,0 +1,41 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Download the site, or the files the last push sent, to a folder.
+
+Usage: ink export [OPTIONS] [DIR]
+
+Arguments
+  [DIR]  The folder to write: new, or empty [default: export]
+
+Options
+      --source             Download the files the last push sent, not the site
+                           they built
+      --deploy <DEPLOY>    Download this deploy, by the start of its id, not the
+                           live one
+      --max-files <N>      Most files the archive may hold [default: 100000]
+      --max-file <BYTES>   Most bytes one file may hold [default: 104857600]
+      --max-bytes <BYTES>  Most bytes all the files may hold
+                           [default: 2147483648]
+      --max-name <BYTES>   Longest file name, in bytes [default: 1024]
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --site <ID>          The site's id; `account.site` in the config file
+                           [env: INK_SITE]
+      --org <ID>           Act as this organization, by its id: the site is one
+                           of its sites, and the key's role there is what is
+                           checked. See `ink org list` [env: INK_ORG]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+      --retries <N>        How many more times a call that is safe to repeat is
+                           tried when the network fails [default: 2]
+                           [env: INK_RETRIES]
+      --retry-wait <MS>    Milliseconds before the first retry; each wait is
+                           twice the one before [default: 500]
+                           [env: INK_RETRY_WAIT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink export --help adds examples, notes and exit codes

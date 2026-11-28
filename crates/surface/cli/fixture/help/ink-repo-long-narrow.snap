@@ -1,0 +1,46 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Claim, prove, rotate, list and release the site's
+repository.
+
+Usage: ink repo <COMMAND>
+
+Examples
+  # Ask to prove the site's repository
+  ink repo claim
+
+  # Build the site when the forge says it moved
+  ink repo prove
+
+Commands
+  claim    Ask to prove the site's repository
+  prove    Read the forge and bind the repository to the
+           site
+  rotate   Put a new webhook secret in place of the old
+  list     The site's repositories
+  release  Let go of a repository and delete its secret
+
+Exit codes
+  0  Done
+  2  Wrong usage: no site named, an id that is none, a
+     deploy the site lacks
+  3  Not signed in, or the token was refused
+  4  The API could not be reached or failed; safe to retry
+  5  The API refused the change as it stands: the deploy is
+     already live, say
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a
+                CI job; never a flag, so it stays out of
+                process lists. `ink login` keeps one in the
+                config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of
+                INK_KEY
+
+See also  ink status, ink domain
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log,
+          --log-file (see `ink --help`)

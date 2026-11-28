@@ -1,0 +1,42 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Show the decisions behind the site, or behind one file.
+
+Usage: ink explain [OPTIONS] [PATH]
+
+Examples
+  # Why one file looks the way it does
+  ink explain posts/a.md
+
+  # Replay one decision, rung by rung
+  ink explain posts/a.md --why page.title
+
+Arguments
+  [PATH]  A file of the folder, as a path in it: only its
+          decisions. Without one, every decision
+
+Options
+      --why <CODE>  Replay one decision's ladder, rung by
+                    rung: `ink explain posts/a.md --why
+                    page.title`, or a site code alone
+                    (`--why site.title`)
+
+Source
+      --source <KIND>  `folder` reads the files on disk,
+                       `git` reads a commit [default: `git`
+                       when .git exists, said as a notice]
+      --rev <REV>      The commit to read, as `git
+                       rev-parse` takes it; only for a git
+                       repository [default: HEAD]
+
+Exit codes
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was
+     changed
+
+See also  ink pin, ink select
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log,
+          --log-file (see `ink --help`)

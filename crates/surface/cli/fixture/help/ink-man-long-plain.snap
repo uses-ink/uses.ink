@@ -1,0 +1,18 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Print the manual page.
+
+Usage: ink man
+
+Examples
+  ink man  # The manual page as roff, to save as ink.1
+
+Exit codes
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was changed
+
+Docs    https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)

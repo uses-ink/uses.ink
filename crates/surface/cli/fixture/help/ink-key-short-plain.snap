@@ -1,0 +1,15 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+List, make and end keys.
+
+Usage: ink key <COMMAND>
+
+Commands
+  list    The account's keys
+  add     Make a key for another machine, such as a CI job
+  revoke  End a key
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink key --help adds examples, notes and exit codes

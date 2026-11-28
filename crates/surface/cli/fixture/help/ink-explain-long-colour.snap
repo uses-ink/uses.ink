@@ -1,0 +1,35 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Show the decisions behind the site, or behind one file.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[1m\e[36mexplain\e[0m \e[36m[OPTIONS]\e[0m \e[36m[PATH]\e[0m
+
+\e[1mExamples\e[0m
+  \e[1m\e[36mink\e[0m \e[1m\e[36mexplain\e[0m posts/a.md                   \e[2m# \e[0mWhy one file looks the way it does
+  \e[1m\e[36mink\e[0m \e[1m\e[36mexplain\e[0m posts/a.md \e[1m\e[36m--why\e[0m page.title  \e[2m# \e[0mReplay one decision, rung by rung
+
+\e[1mArguments\e[0m
+  \e[36m[PATH]\e[0m  A file of the folder, as a path in it: only its decisions. Without
+          one, every decision
+
+\e[1mOptions\e[0m
+  \e[1m\e[36m    --why\e[0m \e[36m<CODE>\e[0m  Replay one decision's ladder, rung by rung: `\e[1m\e[36mink\e[0m \e[1m\e[36mexplain\e[0m
+                    \e[1m\e[36mposts/a.md\e[0m \e[1m\e[36m--why\e[0m \e[1m\e[36mpage.title\e[0m`, or a site code alone (`\e[1m\e[36m--why\e[0m
+                    \e[1m\e[36msite.title\e[0m`)
+
+\e[1mSource\e[0m
+  \e[1m\e[36m    --source\e[0m \e[36m<KIND>\e[0m  `\e[1m\e[36mfolder\e[0m` reads the files on disk, `\e[1m\e[36mgit\e[0m` reads a commit
+                       \e[2m[default: `git` when .git exists, said as a notice]\e[0m
+  \e[1m\e[36m    --rev\e[0m \e[36m<REV>\e[0m      The commit to read, as `\e[1m\e[36mgit\e[0m \e[1m\e[36mrev-parse\e[0m` takes it; only for
+                       a git repository \e[2m[default: HEAD]\e[0m
+
+\e[1mExit codes\e[0m
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was changed
+
+\e[2mSee also\e[0m  \e[1m\e[36mink pin\e[0m, \e[1m\e[36mink select\e[0m
+\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
+          \e[2m(see `ink --help`)\e[0m

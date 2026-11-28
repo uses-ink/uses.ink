@@ -57,7 +57,7 @@ impl<'a> Manual<'a> {
 
     /// Every entry, the commands of a group after the group.
     fn entries(&self) -> impl Iterator<Item = &'a Entry> {
-        self.tree.entries.iter().flat_map(|entry| std::iter::once(entry).chain(entry.children))
+        self.tree.walk().into_iter().map(|(_, entry)| entry)
     }
 
     /// What `pick` gives for the root, then for every entry.

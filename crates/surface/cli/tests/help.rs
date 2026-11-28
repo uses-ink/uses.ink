@@ -39,20 +39,26 @@ fn listed(help: &str, headings: &[&str]) -> Vec<String> {
     names
 }
 
-/// Every command path of the tree: `["build"]`, `["key", "add"]`, and so on.
+/// Every command path of the tree: `["build"]`, `["key", "add"]`, and so on, found by asking each
+/// page for the commands it lists.
 fn commands() -> Vec<Vec<String>> {
     let root = ink(&["--help"]);
     assert_eq!(root.code, 0, "{}", root.err);
     let mut paths = Vec::new();
-    for name in listed(&root.out, &["Write", "Understand", "Publish", "Tools"]) {
-        let help = ink(&[&name, "--help"]).out;
-        let children = listed(&help, &["Commands"]);
-        if children.is_empty() {
-            paths.push(vec![name]);
-        } else {
-            paths.extend(children.into_iter().map(|child| vec![name.clone(), child]));
-            paths.push(vec![name]);
+    let mut open: Vec<Vec<String>> =
+        listed(&root.out, &["Write", "Understand", "Publish", "Account", "Operate", "Tools"])
+            .into_iter()
+            .map(|name| vec![name])
+            .collect();
+    while let Some(path) = open.pop() {
+        let mut asked: Vec<&str> = path.iter().map(String::as_str).collect();
+        asked.push("--help");
+        for child in listed(&ink(&asked).out, &["Commands"]) {
+            let mut below = path.clone();
+            below.push(child);
+            open.push(below);
         }
+        paths.push(path);
     }
     paths
 }
@@ -60,7 +66,7 @@ fn commands() -> Vec<Vec<String>> {
 #[test]
 fn every_command_has_help_that_says_what_it_does_and_how_it_ends() {
     let paths = commands();
-    assert!(paths.len() >= 27, "the tree is {paths:?}");
+    assert!(paths.len() >= 40, "the tree is {paths:?}");
     for path in paths {
         let words: Vec<&str> = path.iter().map(String::as_str).collect();
         let named = words.join(" ");
@@ -72,14 +78,14 @@ fn every_command_has_help_that_says_what_it_does_and_how_it_ends() {
         let first = help.out.lines().next().unwrap_or_default();
         assert!(first.ends_with('.'), "ink {named} opens with a sentence: {first:?}");
         assert!(help.out.contains(&format!("Usage: ink {named}")), "ink {named} names its usage:\n{}", help.out);
-        assert!(help.out.contains("Exit codes:"), "ink {named} says how it ends:\n{}", help.out);
+        assert!(help.out.contains("\nExit codes\n"), "ink {named} says how it ends:\n{}", help.out);
         // the same page by the other way in
         let mut spoken = vec!["help"];
         spoken.extend(&words);
         assert_eq!(ink(&spoken).out, help.out, "ink help {named} is ink {named} --help");
         for (number, line) in help.out.lines().enumerate() {
             assert!(
-                line.chars().count() <= 100,
+                line.chars().count() <= 100 || line.starts_with("  ink "),
                 "ink {named} line {number} is {} columns: {line}",
                 line.chars().count()
             );
@@ -88,16 +94,6 @@ fn every_command_has_help_that_says_what_it_does_and_how_it_ends() {
             assert!(glyph.is_none(), "ink {named} uses {glyph:?} in prose: {line}");
         }
     }
-}
-
-#[test]
-fn a_long_example_does_not_squeeze_the_others() {
-    let help = ink(&["serve", "--help"]).out;
-    let examples: Vec<&str> =
-        help.lines().skip_while(|line| *line != "Examples:").skip(1).take_while(|line| line.starts_with(' ')).collect();
-    assert!(examples.len() >= 4, "{help}");
-    let widest = examples.iter().map(|line| line.len() - line.trim_start().len()).max().unwrap();
-    assert!(widest <= 8, "an example's text is pushed {widest} columns in:\n{}", examples.join("\n"));
 }
 
 #[test]

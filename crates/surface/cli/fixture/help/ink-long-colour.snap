@@ -1,0 +1,87 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Turn a folder of writing into a site, and publish it.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[36m[OPTIONS]\e[0m \e[36m<COMMAND>\e[0m
+
+\e[1mExamples\e[0m
+  \e[1m\e[36mink\e[0m \e[1m\e[36mcheck\e[0m                 \e[2m# \e[0mRead this folder and list its problems
+  \e[1m\e[36mink\e[0m \e[1m\e[36mbuild\e[0m \e[1m\e[36m-o\e[0m public       \e[2m# \e[0mBuild into ./public
+  \e[1m\e[36mink\e[0m \e[1m\e[36mexplain\e[0m posts/a.md    \e[2m# \e[0mWhy one file looks the way it does
+  \e[1m\e[36mink\e[0m \e[1m\e[36mselect\e[0m notes/trip.md  \e[2m# \e[0mPublish one page of a vault
+
+\e[1mWrite\e[0m
+  \e[1m\e[36mcheck, c\e[0m  Read the folder and report what is wrong; writes nothing
+  \e[1m\e[36mbuild, b\e[0m  Build the folder into an output folder and print its deploy id
+  \e[1m\e[36mpreview\e[0m   Build in memory and serve it on 127.0.0.1 while you write
+
+\e[1mUnderstand\e[0m
+  \e[1m\e[36mexplain\e[0m  Show the decisions behind the site, or behind one file
+  \e[1m\e[36mpin\e[0m      Write one decision's value into ink.toml
+  \e[1m\e[36mselect\e[0m   List what is published and why, or choose what to publish
+
+\e[1mPublish\e[0m
+  \e[1m\e[36minit\e[0m    Link this folder to a site, without publishing it
+  \e[1m\e[36mpush\e[0m    Send the folder to its site and start a deploy
+  \e[1m\e[36mstatus\e[0m  Show what is live and what is building
+  \e[1m\e[36mwatch\e[0m   Follow a build of this site to its end
+  \e[1m\e[36mdomain\e[0m  Claim, prove, list and remove custom domains
+  \e[1m\e[36mrepo\e[0m    Claim, prove, rotate, list and release the site's repository
+  \e[1m\e[36mdeploy\e[0m  List, read, roll back and resume deploys
+  \e[1m\e[36mexport\e[0m  Download the site, or the files the last push sent, to a folder
+
+\e[1mAccount\e[0m
+  \e[1m\e[36mlogin\e[0m   Sign in to uses.ink
+  \e[1m\e[36mlogout\e[0m  Sign out: end this machine's key
+  \e[1m\e[36mwhoami\e[0m  Show who you are signed in as
+  \e[1m\e[36mkey\e[0m     List, make and end keys
+  \e[1m\e[36morg\e[0m     Make organizations and manage who is in them
+
+\e[1mOperate\e[0m
+  \e[1m\e[36mserve\e[0m  Serve a built deploy the way production does
+  \e[1m\e[36mabuse\e[0m  Read reports, suspend sites and lift suspensions
+
+\e[1mTools\e[0m
+  \e[1m\e[36mcompletions\e[0m  Print a completion script for your shell
+  \e[1m\e[36mman\e[0m          Print the manual page
+  \e[1m\e[36mhelp\e[0m         Show this message, or the help of one command
+
+\e[1mGlobal options\e[0m
+  \e[1m\e[36m-C, --dir\e[0m \e[36m<DIR>\e[0m        The site's folder \e[2m[default: .]\e[0m \e[2m[env: INK_DIR]\e[0m
+  \e[1m\e[36m    --json\e[0m             One JSON document on stdout, diagnostics as NDJSON on
+                         stderr
+  \e[1m\e[36m-q, --quiet\e[0m...         Say less: `\e[1m\e[36m-q\e[0m` drops stage lines and notices and keeps
+                         warnings, the result and what a build makes public;
+                         `\e[1m\e[36m-qq\e[0m` leaves only errors
+  \e[1m\e[36m-v, --verbose\e[0m...       Say more: -v adds notices, -vv adds every file
+  \e[1m\e[36m    --color\e[0m \e[36m<WHEN>\e[0m     When to colour output, decided for each stream: `\e[1m\e[36mauto\e[0m`
+                         follows `\e[1m\e[36mNO_COLOR\e[0m`, `\e[1m\e[36mCLICOLOR\e[0m`, `\e[1m\e[36mCLICOLOR_FORCE\e[0m`,
+                         `\e[1m\e[36mTERM\e[0m` and whether the stream is a terminal
+                         \e[2m[default: auto]\e[0m \e[2m[env: INK_COLOR]\e[0m
+  \e[1m\e[36m    --no-progress\e[0m      Print log lines only, with no live redraw of progress
+                         \e[2m[env: INK_NO_PROGRESS]\e[0m
+  \e[1m\e[36m    --log\e[0m \e[36m<FILTER>\e[0m     Log to stderr as `\e[1m\e[36mink=debug,edge=trace\e[0m` says: areas
+                         (ink, engine, build, edge, control, db, blob, host,
+                         plugin, watch, queue, cli) or targets, at a level. Off
+                         unless this, `\e[1m\e[36m-v\e[0m` or `\e[1m\e[36mINK_LOG\e[0m` asks \e[2m[env: INK_LOG]\e[0m
+  \e[1m\e[36m    --log-file\e[0m \e[36m<PATH>\e[0m  Also write the log as JSON lines to this file
+                         \e[2m[env: INK_LOG_FILE]\e[0m
+  \e[1m\e[36m-h, --help\e[0m             Print help; -h is short and --help is long
+  \e[1m\e[36m-V, --version\e[0m          Print the version
+
+\e[1mEnvironment\e[0m
+  \e[1m\e[36mINK_DIR\e[0m          The site's folder, as -C
+  \e[1m\e[36mINK_COLOR\e[0m        auto, always or never, as --color
+  \e[1m\e[36mINK_NO_PROGRESS\e[0m  Log lines only, as --no-progress
+  \e[1m\e[36mINK_LOG\e[0m          The log filter, as --log; RUST_LOG is not read
+  \e[1m\e[36mINK_LOG_FILE\e[0m     Also write the log as JSON lines here, as --log-file
+  \e[1m\e[36mINK_LOG_FORMAT\e[0m   pretty, compact or json, on stderr
+  \e[1m\e[36mINK_LOG_SPANS\e[0m    none, open, close or full
+  \e[1m\e[36mINK_LOG_TIMINGS\e[0m  1 prints the span timing table at the end
+  \e[1m\e[36mNO_COLOR\e[0m         Set and not empty: no colour
+  \e[1m\e[36mCLICOLOR_FORCE\e[0m   Set and not 0: colour even to a pipe
+  \e[1m\e[36mINK_COMPONENTS\e[0m   The folder the build script reads components from
+
+\e[2mRead\e[0m \e[2m`\e[0m\e[1m\e[36mink\e[0m \e[1m\e[36mhelp\e[0m \e[1m\e[36m<command>\e[0m\e[2m`\e[0m \e[2mfor\e[0m \e[2mone\e[0m \e[2mcommand\e[0m \e[2mand\e[0m \e[2m`\e[0m\e[1m\e[36mink\e[0m \e[1m\e[36mhelp\e[0m \e[1m\e[36mexit\e[0m\e[2m`\e[0m \e[2mfor\e[0m \e[2mthe\e[0m \e[2mexit\e[0m
+\e[2mcodes.\e[0m

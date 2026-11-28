@@ -56,16 +56,18 @@ pub(crate) struct Piece {
     pub(crate) text: String,
     /// The text already carries its own escape codes, as a snippet from `annotate-snippets` does.
     pub(crate) styled: bool,
+    /// Wrapping never breaks the text, spaces and all: a default or a variable in brackets.
+    pub(crate) whole: bool,
 }
 
 impl Piece {
     fn new(role: Role, strength: Strength, text: &str) -> Self {
-        Self { role, strength, text: Safe(text).text(), styled: false }
+        Self { role, strength, text: Safe(text).text(), styled: false, whole: false }
     }
 
     /// Text that was styled by someone else; its width is that of the text without the escapes.
     pub(crate) fn ansi(text: String) -> Self {
-        Self { role: Role::Plain, strength: Strength::Normal, text, styled: true }
+        Self { role: Role::Plain, strength: Strength::Normal, text, styled: true, whole: false }
     }
 
     /// Columns the text takes.
@@ -100,6 +102,15 @@ impl Line {
     #[must_use]
     pub(crate) fn strong(mut self, role: Role, text: impl AsRef<str>) -> Self {
         self.0.push(Piece::new(role, Strength::Strong, text.as_ref()));
+        self
+    }
+
+    /// `text` in `role` as one unit: wrapping moves it to the next line whole, never through it.
+    #[must_use]
+    pub(crate) fn atom(mut self, role: Role, text: impl AsRef<str>) -> Self {
+        let mut piece = Piece::new(role, Strength::Normal, text.as_ref());
+        piece.whole = true;
+        self.0.push(piece);
         self
     }
 
@@ -257,5 +268,14 @@ impl Doc {
     /// The lines.
     pub(crate) fn lines(&self) -> &[Line] {
         &self.lines
+    }
+
+    /// The text as a reader sees it, with no styling, a newline after each line.
+    pub(crate) fn text(&self) -> String {
+        self.lines.iter().fold(String::new(), |mut out, line| {
+            out.push_str(&line.text());
+            out.push('\n');
+            out
+        })
     }
 }

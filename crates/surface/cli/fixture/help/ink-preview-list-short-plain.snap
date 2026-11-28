@@ -1,0 +1,27 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+The previews of the site's branches.
+
+Usage: ink preview list [OPTIONS]
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --site <ID>          The site's id; `account.site` in the config file
+                           [env: INK_SITE]
+      --org <ID>           Act as this organization, by its id: the site is one
+                           of its sites, and the key's role there is what is
+                           checked. See `ink org list` [env: INK_ORG]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+      --retries <N>        How many more times a call that is safe to repeat is
+                           tried when the network fails [default: 2]
+                           [env: INK_RETRIES]
+      --retry-wait <MS>    Milliseconds before the first retry; each wait is
+                           twice the one before [default: 500]
+                           [env: INK_RETRY_WAIT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink preview list --help adds examples, notes and exit codes

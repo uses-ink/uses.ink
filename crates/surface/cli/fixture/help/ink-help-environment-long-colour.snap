@@ -1,0 +1,24 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+\e[1mEnvironment\e[0m
+  \e[1m\e[36mINK_DIR\e[0m            The site's folder, as -C
+  \e[1m\e[36mINK_COLOR\e[0m          auto, always or never, as --color
+  \e[1m\e[36mINK_NO_PROGRESS\e[0m    Log lines only, as --no-progress
+  \e[1m\e[36mINK_LOG\e[0m            The log filter, as --log; RUST_LOG is not read
+  \e[1m\e[36mINK_LOG_FILE\e[0m       Also write the log as JSON lines here, as --log-file
+  \e[1m\e[36mINK_LOG_FORMAT\e[0m     pretty, compact or json, on stderr
+  \e[1m\e[36mINK_LOG_SPANS\e[0m      none, open, close or full
+  \e[1m\e[36mINK_LOG_TIMINGS\e[0m    1 prints the span timing table at the end
+  \e[1m\e[36mNO_COLOR\e[0m           Set and not empty: no colour
+  \e[1m\e[36mCLICOLOR_FORCE\e[0m     Set and not 0: colour even to a pipe
+  \e[1m\e[36mINK_COMPONENTS\e[0m     The folder the build script reads components from
+  \e[1m\e[36mINK_API\e[0m            The address of the API, as --api
+  \e[1m\e[36mINK_SITE\e[0m           The site's id, as --site
+  \e[1m\e[36mINK_KEY\e[0m            The private key to sign requests with, for a CI job; never
+                     a flag, so it stays out of process lists. `\e[1m\e[36mink\e[0m \e[1m\e[36mlogin\e[0m` keeps
+                     one in the config folder instead
+  \e[1m\e[36mINK_KEY_FILE\e[0m       A file that holds that key, in place of INK_KEY
+  \e[1m\e[36mINK_SMTP_PASSWORD\e[0m  The SMTP password for --mail smtp; never a flag, so it
+                     stays out of process lists. Every other sign-in setting is
+                     a flag with its own INK_ variable

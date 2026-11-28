@@ -1,0 +1,10 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Print the manual page.
+
+Usage: ink man
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink man --help adds examples, notes and exit codes

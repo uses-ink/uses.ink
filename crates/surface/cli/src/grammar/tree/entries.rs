@@ -1,5 +1,19 @@
 //! What the tree says: the wording of `ink`'s help, once.
 
+/// The id of a site or an organization in an example: 32 hex digits, as the API gives them.
+macro_rules! site {
+    () => {
+        "0123456789abcdef0123456789abcdef"
+    };
+}
+
+/// The id of an account in an example.
+macro_rules! person {
+    () => {
+        "fedcba9876543210fedcba9876543210"
+    };
+}
+
 use super::{Ending, Entry, Example, Group, Tree, Variable};
 use crate::output::exit::Exit;
 
@@ -102,6 +116,7 @@ impl Entry {
             about,
             detail: "",
             examples: &[],
+            see: &[],
             endings: READ,
             env: SOURCE_ENV,
             children: &[],
@@ -129,7 +144,7 @@ const KEY_CHILDREN: &[Entry] = &[
     Entry {
         detail: "A person approves the new key, as with login. Its private key is written to --out, or printed once to a pipe, never to a terminal.",
         examples: &[Example {
-            line: "ink key add --site 0123abcd --label ci --out ci.key",
+            line: concat!("ink key add --site ", site!(), " --label ci --out ci.key"),
             about: "A deploy key for one site, written to a file",
         }],
         endings: AUTH,
@@ -146,7 +161,7 @@ const KEY_CHILDREN: &[Entry] = &[
 
 const ORG_MEMBER_CHILDREN: &[Entry] = &[
     Entry {
-        examples: &[Example { line: "ink org member list 0123abcd", about: "The people in an organization" }],
+        examples: &[Example { line: concat!("ink org member list ", site!()), about: "The people in an organization" }],
         endings: AUTH,
         env: SITE_ENV,
         ..Entry::built("list", Group::Publish, "The people in an organization")
@@ -154,7 +169,7 @@ const ORG_MEMBER_CHILDREN: &[Entry] = &[
     Entry {
         detail: "Needs a key with the `members` right, which only a key approved with a passkey sign-in can have: `ink login --rights read,deploy,edit,keys,members`. Your own role must manage the one you give: only an owner makes an owner.",
         examples: &[Example {
-            line: "ink org member add 0123abcd 4f5a6b7c --role writer",
+            line: concat!("ink org member add ", site!(), " ", person!(), " --role writer"),
             about: "Let a person read, deploy and edit the organization's sites",
         }],
         endings: AUTH,
@@ -162,14 +177,20 @@ const ORG_MEMBER_CHILDREN: &[Entry] = &[
         ..Entry::built("add", Group::Publish, "Add a person to an organization")
     },
     Entry {
-        examples: &[Example { line: "ink org member remove 0123abcd 4f5a6b7c", about: "Take the person out" }],
+        examples: &[Example {
+            line: concat!("ink org member remove ", site!(), " ", person!()),
+            about: "Take the person out",
+        }],
         endings: AUTH,
         env: SITE_ENV,
         ..Entry::built("remove", Group::Publish, "Remove a person from an organization")
     },
     Entry {
         detail: "An organization's last owner cannot be given a lower role or removed.",
-        examples: &[Example { line: "ink org member role 0123abcd 4f5a6b7c admin", about: "Make a member an admin" }],
+        examples: &[Example {
+            line: concat!("ink org member role ", site!(), " ", person!(), " admin"),
+            about: "Make a member an admin",
+        }],
         endings: AUTH,
         env: SITE_ENV,
         ..Entry::built("role", Group::Publish, "Give a member another role")
@@ -191,7 +212,7 @@ const ORG_CHILDREN: &[Entry] = &[
     },
     Entry {
         children: ORG_MEMBER_CHILDREN,
-        examples: &[Example { line: "ink org member list 0123abcd", about: "The people in an organization" }],
+        examples: &[Example { line: concat!("ink org member list ", site!()), about: "The people in an organization" }],
         endings: AUTH,
         env: SITE_ENV,
         ..Entry::built("member", Group::Publish, "Who is in an organization")
@@ -208,7 +229,7 @@ const ABUSE_CHILDREN: &[Entry] = &[
     Entry {
         detail: "A suspended site serves a notice and takes no deploy, build or change; its files stay and come back whole when the suspension is lifted. Only the operator's key may do this: it is the key `ink login --data` made.",
         examples: &[Example {
-            line: "ink abuse suspend 0123abcd --kind phishing --report 4f5a",
+            line: concat!("ink abuse suspend ", site!(), " --kind phishing --report ", person!()),
             about: "Take the site down, naming the report that led to it",
         }],
         endings: AUTH,
@@ -216,7 +237,7 @@ const ABUSE_CHILDREN: &[Entry] = &[
         ..Entry::built("suspend", Group::Publish, "Take a site down")
     },
     Entry {
-        examples: &[Example { line: "ink abuse reinstate 0123abcd", about: "Serve the site again" }],
+        examples: &[Example { line: concat!("ink abuse reinstate ", site!()), about: "Serve the site again" }],
         endings: AUTH,
         env: SITE_ENV,
         ..Entry::built("reinstate", Group::Publish, "Lift a suspension")
@@ -353,11 +374,12 @@ const ENTRIES: &[Entry] = &[
                 line: "ink init --handle garden",
                 about: "Make a site that takes uploads, and link this folder to it",
             },
-            Example { line: "ink init --site 0123abcd", about: "Link this folder to a site that exists" },
+            Example { line: concat!("ink init --site ", site!()), about: "Link this folder to a site that exists" },
         ],
         endings: REMOTE,
         env: SITE_ENV,
-        ..Entry::built("init", Group::Write, "Link this folder to a site, without publishing it")
+        see: &["ink push", "ink status"],
+        ..Entry::built("init", Group::Publish, "Link this folder to a site, without publishing it")
     },
     Entry {
         aliases: &["c"],
@@ -367,6 +389,7 @@ const ENTRIES: &[Entry] = &[
             Example { line: "ink check --strict", about: "The same, but a warning is an exit 6" },
         ],
         endings: CHECK,
+        see: &["ink build", "ink explain"],
         ..Entry::built("check", Group::Write, "Read the folder and report what is wrong; writes nothing")
     },
     Entry {
@@ -378,6 +401,7 @@ const ENTRIES: &[Entry] = &[
             Example { line: "ink -C garden build -o public", about: "Build another folder into ./public" },
         ],
         endings: BUILD,
+        see: &["ink check", "ink serve", "ink push"],
         ..Entry::built("build", Group::Write, "Build the folder into an output folder and print its deploy id")
     },
     Entry {
@@ -385,6 +409,7 @@ const ENTRIES: &[Entry] = &[
         detail: "With no verb, builds in memory and serves on 127.0.0.1. `list` and `remove` are about the previews a server built from the site's branches (the watch of `ink serve --data`), which end by themselves after `--preview-days`.",
         examples: &[Example { line: "ink preview --port 4100", about: "Preview on 127.0.0.1:4100" }],
         endings: SERVER,
+        see: &["ink build", "ink serve"],
         ..Entry::built("preview", Group::Write, "Build in memory and serve it on 127.0.0.1 while you write")
     },
     Entry {
@@ -403,13 +428,15 @@ const ENTRIES: &[Entry] = &[
         ],
         endings: SERVER,
         env: SERVE_ENV,
-        ..Entry::built("serve", Group::Write, "Serve a built deploy the way production does")
+        see: &["ink build", "ink login"],
+        ..Entry::built("serve", Group::Operate, "Serve a built deploy the way production does")
     },
     Entry {
         examples: &[
             Example { line: "ink explain posts/a.md", about: "Why one file looks the way it does" },
             Example { line: "ink explain posts/a.md --why page.title", about: "Replay one decision, rung by rung" },
         ],
+        see: &["ink pin", "ink select"],
         ..Entry::built("explain", Group::Understand, "Show the decisions behind the site, or behind one file")
     },
     Entry {
@@ -417,6 +444,7 @@ const ENTRIES: &[Entry] = &[
             Example { line: "ink pin posts/a.md page.title", about: "Write that file's title decision into ink.toml" },
             Example { line: "ink pin site.title --dry-run", about: "Print the pin and write nothing" },
         ],
+        see: &["ink explain"],
         ..Entry::built("pin", Group::Understand, "Write one decision's value into ink.toml")
     },
     Entry {
@@ -424,6 +452,7 @@ const ENTRIES: &[Entry] = &[
             Example { line: "ink select", about: "List every page, whether it is published, and why" },
             Example { line: "ink select notes/trip.md", about: "Publish one page of a vault" },
         ],
+        see: &["ink explain", "ink pin"],
         ..Entry::built("select", Group::Understand, "List what is published and why, or choose what to publish")
     },
     Entry {
@@ -437,19 +466,22 @@ const ENTRIES: &[Entry] = &[
         ],
         endings: AUTH,
         env: SITE_ENV,
-        ..Entry::built("login", Group::Publish, "Sign in to uses.ink")
+        see: &["ink whoami", "ink key", "ink logout"],
+        ..Entry::built("login", Group::Account, "Sign in to uses.ink")
     },
     Entry {
         examples: &[Example { line: "ink logout", about: "End this machine's key and forget it" }],
         endings: AUTH,
         env: SITE_ENV,
-        ..Entry::built("logout", Group::Publish, "Sign out: end this machine's key")
+        see: &["ink login"],
+        ..Entry::built("logout", Group::Account, "Sign out: end this machine's key")
     },
     Entry {
         examples: &[Example { line: "ink whoami", about: "The account, the key and what it may do" }],
         endings: AUTH,
         env: SITE_ENV,
-        ..Entry::built("whoami", Group::Publish, "Show who you are signed in as")
+        see: &["ink key list", "ink org list"],
+        ..Entry::built("whoami", Group::Account, "Show who you are signed in as")
     },
     Entry {
         children: KEY_CHILDREN,
@@ -459,7 +491,8 @@ const ENTRIES: &[Entry] = &[
         }],
         endings: AUTH,
         env: SITE_ENV,
-        ..Entry::built("key", Group::Publish, "List, make and end keys")
+        see: &["ink login", "ink org"],
+        ..Entry::built("key", Group::Account, "List, make and end keys")
     },
     Entry {
         children: ORG_CHILDREN,
@@ -467,7 +500,8 @@ const ENTRIES: &[Entry] = &[
         examples: &[Example { line: "ink org list", about: "Your organizations and your role in each" }],
         endings: AUTH,
         env: SITE_ENV,
-        ..Entry::built("org", Group::Publish, "Make organizations and manage who is in them")
+        see: &["ink key", "ink whoami"],
+        ..Entry::built("org", Group::Account, "Make organizations and manage who is in them")
     },
     Entry {
         children: ABUSE_CHILDREN,
@@ -475,7 +509,8 @@ const ENTRIES: &[Entry] = &[
         examples: &[Example { line: "ink abuse list", about: "What strangers reported, and what was done" }],
         endings: AUTH,
         env: SITE_ENV,
-        ..Entry::built("abuse", Group::Publish, "Read reports, suspend sites and lift suspensions")
+        see: &["ink serve", "ink domain"],
+        ..Entry::built("abuse", Group::Operate, "Read reports, suspend sites and lift suspensions")
     },
     Entry {
         detail: "Sends only the files the site does not hold, so an interrupted push is resumed by running it again. Waits for the build and prints the deploy id; --no-wait prints the build id. A key that may deploy and not read (a CI deploy key made with no `--right`) can only push with --no-wait. A deploy that is recorded and not live exits 5.",
@@ -485,12 +520,14 @@ const ENTRIES: &[Entry] = &[
         ],
         endings: PUSH,
         env: SITE_ENV,
+        see: &["ink status", "ink watch", "ink deploy"],
         ..Entry::built("push", Group::Publish, "Send the folder to its site and start a deploy")
     },
     Entry {
         examples: &[Example { line: "ink status --json", about: "The overview as one JSON document" }],
         endings: REMOTE,
         env: SITE_ENV,
+        see: &["ink push", "ink deploy list"],
         ..Entry::built("status", Group::Publish, "Show what is live and what is building")
     },
     Entry {
@@ -498,6 +535,7 @@ const ENTRIES: &[Entry] = &[
         examples: &[Example { line: "ink watch", about: "Follow the build that is running, or wait for the next" }],
         endings: PUSH,
         env: SITE_ENV,
+        see: &["ink push", "ink status"],
         ..Entry::built("watch", Group::Publish, "Follow a build of this site to its end")
     },
     Entry {
@@ -511,6 +549,7 @@ const ENTRIES: &[Entry] = &[
         ],
         endings: REMOTE,
         env: SITE_ENV,
+        see: &["ink status", "ink repo"],
         ..Entry::built("domain", Group::Publish, "Claim, prove, list and remove custom domains")
     },
     Entry {
@@ -521,6 +560,7 @@ const ENTRIES: &[Entry] = &[
         ],
         endings: REMOTE,
         env: SITE_ENV,
+        see: &["ink status", "ink domain"],
         ..Entry::built("repo", Group::Publish, "Claim, prove, rotate, list and release the site's repository")
     },
     Entry {
@@ -531,6 +571,7 @@ const ENTRIES: &[Entry] = &[
         ],
         endings: REMOTE,
         env: SITE_ENV,
+        see: &["ink push", "ink status"],
         ..Entry::built("deploy", Group::Publish, "List, read, roll back and resume deploys")
     },
     Entry {
@@ -547,6 +588,7 @@ const ENTRIES: &[Entry] = &[
         ],
         endings: REMOTE,
         env: SITE_ENV,
+        see: &["ink push", "ink build"],
         ..Entry::built("export", Group::Publish, "Download the site, or the files the last push sent, to a folder")
     },
     Entry {
@@ -556,7 +598,10 @@ const ENTRIES: &[Entry] = &[
         ],
         ..Entry::built("completions", Group::Tools, "Print a completion script for your shell")
     },
-    Entry::built("man", Group::Tools, "Print the manual page"),
+    Entry {
+        examples: &[Example { line: "ink man", about: "The manual page as roff, to save as ink.1" }],
+        ..Entry::built("man", Group::Tools, "Print the manual page")
+    },
     Entry {
         examples: &[
             Example { line: "ink help exit", about: "The exit codes" },

@@ -1,0 +1,24 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Environment
+  INK_DIR            The site's folder, as -C
+  INK_COLOR          auto, always or never, as --color
+  INK_NO_PROGRESS    Log lines only, as --no-progress
+  INK_LOG            The log filter, as --log; RUST_LOG is not read
+  INK_LOG_FILE       Also write the log as JSON lines here, as --log-file
+  INK_LOG_FORMAT     pretty, compact or json, on stderr
+  INK_LOG_SPANS      none, open, close or full
+  INK_LOG_TIMINGS    1 prints the span timing table at the end
+  NO_COLOR           Set and not empty: no colour
+  CLICOLOR_FORCE     Set and not 0: colour even to a pipe
+  INK_COMPONENTS     The folder the build script reads components from
+  INK_API            The address of the API, as --api
+  INK_SITE           The site's id, as --site
+  INK_KEY            The private key to sign requests with, for a CI job; never
+                     a flag, so it stays out of process lists. `ink login` keeps
+                     one in the config folder instead
+  INK_KEY_FILE       A file that holds that key, in place of INK_KEY
+  INK_SMTP_PASSWORD  The SMTP password for --mail smtp; never a flag, so it
+                     stays out of process lists. Every other sign-in setting is
+                     a flag with its own INK_ variable

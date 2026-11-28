@@ -14,6 +14,7 @@ use crate::grammar::tree::Tree;
 use crate::output::Io;
 use crate::output::error::Error;
 use crate::output::exit::Exit;
+use crate::output::term::Finished;
 use crate::settings::{Process, Settings};
 
 /// What `ink help --json` prints.
@@ -65,9 +66,10 @@ impl Completions {
 impl Topic {
     /// Prints the help of a topic.
     fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let help = Help::new(Tree::ink(), io.prose(), crate::grammar::help::Columns::of(&Process));
-        let text = help.topic(&self.words).map_err(|source| Error::Help { source })?;
-        io.painted(text.trim_end())?;
+        let help = Help::new(Tree::ink(), io.prose());
+        let page = help.topic(&self.words).map_err(|source| Error::Help { source })?;
+        let text = page.text();
+        io.result(&Finished(page))?;
         io.json(&HelpText { schema: "uses.help/v1", text: &text })?;
         Ok(Exit::Done)
     }

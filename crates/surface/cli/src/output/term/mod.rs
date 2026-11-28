@@ -19,7 +19,10 @@ pub(crate) use doc::{Doc, Line, Piece, Render, Safe};
 pub(crate) use glyph::Glyph;
 #[cfg(test)]
 pub(crate) use glyph::Glyphs;
-pub(crate) use layout::{Answer, Cut, Flex, Gutter, Rail, Record, Styled, Table, Tree, Trees, Verbatim};
+pub(crate) use layout::{
+    Answer, Cut, Defs, Empty, Finished, Flex, Gutter, Listed, Paragraph, Rail, Record, Samples, Table, Tree, Trees,
+    Verbatim,
+};
 pub use look::Surroundings;
 pub(crate) use look::{Asked, Look, Terminal, Width};
 #[cfg(test)]

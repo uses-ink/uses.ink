@@ -1,0 +1,450 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Serve a built deploy the way production does.
+
+Usage: ink serve [OPTIONS] [FOLDER]
+
+Examples
+  # Serve .ink/out of this folder on 127.0.0.1:8080
+  ink serve
+
+  # Serve .ink/out of another folder
+  ink -C garden serve
+
+  # Self-host: serve, watch and build git sites from disk,
+  # restarting a crashed loop three times
+  ink serve --data state --git-scheme file --restart-limit 3
+
+  # Turn on the API and send sign-in links by SMTP
+  ink serve --data state --mail smtp --mail-from ink@example.org --smtp-host mail.example.org
+
+Arguments
+  [FOLDER]  A folder `ink build` wrote into, or with
+            `--host-mode folders` a folder of them, one per
+            host name [default: .ink/out of the site]
+
+Server
+      --addr <ADDRESS>
+        The address to listen on [default: 127.0.0.1:8080]
+      --host-mode <HOST_MODE>
+        How a request's host picks a deploy [default: auto]
+      --data <DATA>
+        Turns on the control plane and its API. Its
+        database, blobs, sealing key and the operator's
+        public keys live in this folder. Without it only the
+        folder is served
+      --api-host <API_HOST>
+        The host name whose requests are API calls, signed
+        with a key (`ink login`) [default: api.localhost]
+      --origin <ORIGIN>
+        Where sites are served, for the addresses the API
+        reports (`<handle>.<host>`) and the origin passkeys
+        are made for: give the address a browser uses to
+        reach this server [default: `http://localhost:` and
+        the listening port]
+
+Limits
+      --api-body <API_BODY>
+        The largest JSON request body, in bytes.
+        [default: 65536]
+      --upload-bytes <UPLOAD_BYTES>
+        The largest uploaded archive, in bytes.
+        [default: 268435456]
+      --upload-files <UPLOAD_FILES>
+        The most files in an uploaded archive.
+        [default: 10000]
+      --upload-file <UPLOAD_FILE>
+        The largest file in an uploaded archive, in bytes.
+        [default: 67108864]
+      --upload-tree <UPLOAD_TREE>
+        The largest tree `ink push` may send, in bytes; the
+        tree is read whole. [default: 8388608]
+      --upload-part <UPLOAD_PART>
+        The most bytes of files in one `ink push` request,
+        held in memory while it is checked and stored.
+        [default: 67108864]
+      --export-bytes <EXPORT_BYTES>
+        The largest exported archive, in bytes.
+        [default: 268435456]
+      --poll-interval <POLL_INTERVAL>
+        Seconds between polls of a git source. At least 10.
+        [default: 600]
+      --poll-max <POLL_MAX>
+        Seconds a source that does not change is backed off
+        to. [default: 3600]
+      --abuse-limit <ABUSE_LIMIT>
+        Abuse reports that may be sent per source, as
+        `<count>/<window>`. Reports take no account, so this
+        is what bounds them. [default: 5/1h]
+        [env: INK_ABUSE_LIMIT]
+      --enrol-limit <ENROL_LIMIT>
+        Asks to enrol a key that may be sent per source, as
+        `<count>/<window>`. They take no account, so this
+        keeps one source from filling the queue of waiting
+        keys. [default: 5/1h] [env: INK_ENROL_LIMIT]
+      --handle-hold <DAYS>
+        Days a handle is held after its site left it, so no
+        one else can claim it; a verified owner's handle is
+        held for good. [default: 365] [env: INK_HANDLE_HOLD]
+      --limit-stored <BYTES>
+        Bytes an account may store across its sites; a
+        deploy over it is refused whole.
+        [default: 1073741824] [env: INK_LIMIT_STORED]
+      --limit-builds <N>
+        Builds an account may start in 24 hours; a request
+        over it is refused. [default: 60]
+        [env: INK_LIMIT_BUILDS]
+      --limit-sites <N>
+        Sites an account may have. [default: 10]
+        [env: INK_LIMIT_SITES]
+      --limit-deploys <N>
+        Deploys of a site that are kept, the live one
+        included; older ones are removed with the files only
+        they used. [default: 20] [env: INK_LIMIT_DEPLOYS]
+      --remove-step <N>
+        The most blobs one step of removing a site deletes.
+        A removal runs in steps this size, so a site with
+        many files never holds a request or a worker for
+        long. [default: 500] [env: INK_REMOVE_STEP]
+      --preview-days <DAYS>
+        Days a preview of a branch is served before it ends
+        and is swept. Previews are public to anyone with the
+        address. [default: 7] [env: INK_PREVIEW_DAYS]
+      --preview-branches <N>
+        The most branches of one public git site the watch
+        builds as previews, by name; `0` builds none. The
+        branch the site itself builds is not one of them.
+        [default: 10] [env: INK_PREVIEW_BRANCHES]
+      --limit-domains <N>
+        The most custom domains one site has, proved and
+        not. A claim of a name costs a row, so the number
+        bounds what one site can ask for. [default: 10]
+        [env: INK_LIMIT_DOMAINS]
+      --limit-reports <N>
+        The most abuse reports open at once, over every
+        source. Anyone may send one, so the number bounds
+        what many sources together can store; a report the
+        operator actioned by suspending a site stops
+        counting, and raising this is the only other way to
+        make room. [default: 10000] [env: INK_LIMIT_REPORTS]
+      --blob-grace <SECONDS>
+        Seconds a blob that no deploy and no preview names
+        stays before it is deleted. A build that skipped
+        uploading a blob because the store held it keeps it
+        until its deploy is recorded, so this must outlast
+        that gap. [default: 900] [env: INK_BLOB_GRACE]
+      --domain-recheck-days <DAYS>
+        Days between two reads of the TXT record that proves
+        a custom domain. A name whose record no longer
+        carries its token stops resolving at once.
+        [default: 30] [env: INK_DOMAIN_RECHECK_DAYS]
+      --domain-lapse-days <DAYS>
+        Days a custom domain that failed its check keeps its
+        name before any site may claim it. The owner may
+        publish the record again in that time and the name
+        serves again. [default: 14]
+        [env: INK_DOMAIN_LAPSE_DAYS]
+      --limit-build-time <SECONDS>
+        Seconds one build may take: a worker holds a request
+        for no longer than this, so a build that runs past
+        it is given to another. [default: 600]
+        [env: INK_LIMIT_BUILD_TIME]
+
+Mail
+      --mail <MAIL>      Where sign-in mail goes
+                         [default: stdout] [env: INK_MAIL]
+      --mail-from <MAIL_FROM>
+        The address mail is sent from. Required with `--mail
+        smtp` [env: INK_MAIL_FROM]
+      --smtp-host <SMTP_HOST>
+        The SMTP server's host name [env: INK_SMTP_HOST]
+      --smtp-port <SMTP_PORT>
+        The SMTP server's port. [default: 587, or 465 with
+        `--smtp-security implicit`] [env: INK_SMTP_PORT]
+      --smtp-security <SMTP_SECURITY>
+        How the SMTP connection is secured
+        [default: starttls] [env: INK_SMTP_SECURITY]
+      --smtp-user <SMTP_USER>
+        The SMTP username [env: INK_SMTP_USER]
+      --smtp-password-file <SMTP_PASSWORD_FILE>
+        A file holding the SMTP password.
+        `INK_SMTP_PASSWORD` holds it instead; there is no
+        flag for the password itself, which a process list
+        would show [env: INK_SMTP_PASSWORD_FILE]
+      --login-base <LOGIN_BASE>
+        Where the link in a message points; the token is
+        added as one more path segment. [default: the
+        dashboard's `/login` on the API's address]
+        [env: INK_LOGIN_BASE]
+      --outbox <OUTBOX>  How many messages wait to be sent
+                         before more are dropped.
+                         [default: 256] [env: INK_OUTBOX]
+      --courier-rest <COURIER_REST>
+        How long the mail sender rests when nothing waits.
+        [default: 1s] [env: INK_COURIER_REST]
+
+Sign-in
+      --login-get-signs-in
+        Whether opening the link with a GET signs in, which
+        a mail scanner can do for you. Without it a GET only
+        looks, and a page in front of the API POSTs
+        [env: INK_LOGIN_GET_SIGNS_IN]
+      --login-ttl <LOGIN_TTL>
+        How long a sign-in link works. [default: 15m]
+        [env: INK_LOGIN_TTL]
+      --admin-ttl <ADMIN_TTL>
+        How long the first-run link works. [default: 24h]
+        [env: INK_ADMIN_TTL]
+      --session-expiry <SESSION_EXPIRY>
+        How a session ends [default: sliding]
+        [env: INK_SESSION_EXPIRY]
+      --session-idle <SESSION_IDLE>
+        How long a sliding session may sit unused.
+        [default: 7d] [env: INK_SESSION_IDLE]
+      --session-limit <SESSION_LIMIT>
+        The longest a session lasts. [default: 30d]
+        [env: INK_SESSION_LIMIT]
+      --signup <SIGNUP>
+        Who may make an account by signing in: `first` (the
+        first, by the first-run link), `open` (any address
+        that receives mail) or `closed`. [default: first]
+        [env: INK_SIGNUP]
+      --rate-address <RATE_ADDRESS>
+        Requests for a link per address, as
+        `<count>/<window>`. [default: 5/1h]
+        [env: INK_RATE_ADDRESS]
+      --rate-source <RATE_SOURCE>
+        Requests for a link per source (an IPv4 address or
+        an IPv6 /64). [default: 20/1h]
+        [env: INK_RATE_SOURCE]
+      --rate-tracked <RATE_TRACKED>
+        How many addresses and sources the limits remember
+        at once. [default: 10000] [env: INK_RATE_TRACKED]
+      --cookie-name <COOKIE_NAME>
+        The session cookie's name. [default:
+        `__Host-ink-session`, or `ink-session` on plain
+        http] [env: INK_COOKIE_NAME]
+      --cookie-unprefixed
+        Take a `--cookie-name` that does not start with
+        `__Host-` on a `Secure` cookie. Without it such a
+        name is refused, because a `__Host-` name is what
+        stops a sibling site from setting the cookie
+        [env: INK_COOKIE_UNPREFIXED]
+      --cookie-path <COOKIE_PATH>
+        The session cookie's path. [default: /]
+        [env: INK_COOKIE_PATH]
+      --rp-id <RP_ID>
+        The relying party id of passkeys: a host name the
+        dashboard is served on or above. A passkey made
+        under one id never works under another.
+        [default: the API host] [env: INK_RP_ID]
+      --rp-origin <RP_ORIGIN>
+        An origin the dashboard is served from, which
+        passkey ceremonies must come from. Repeat for more
+        than one. [default: the origin of the API host]
+        [env: INK_RP_ORIGIN]
+      --allow-origin <ALLOW_ORIGIN>
+        An origin besides the API's own that may post
+        state-changing requests with a session cookie, such
+        as a dashboard served on another host. Repeat for
+        more than one [env: INK_ALLOW_ORIGIN]
+      --challenge-limit <CHALLENGE_LIMIT>
+        Passkey sign-ins that may start per source, as
+        `<count>/<window>`. [default: 60/1h]
+        [env: INK_CHALLENGE_LIMIT]
+      --recovery-limit <RECOVERY_LIMIT>
+        Recovery codes that may be tried per source, as
+        `<count>/<window>`. [default: 10/1h]
+        [env: INK_RECOVERY_LIMIT]
+      --step-up-window <STEP_UP_WINDOW>
+        How recent a passkey sign-in must be to add or
+        remove a passkey, approve a key or make recovery
+        codes. [default: 5m] [env: INK_STEP_UP_WINDOW]
+      --forwarded-hops <FORWARDED_HOPS>
+        How many reverse proxies of yours sit in front of
+        the server. With it, the client's address is read
+        from `X-Forwarded-For`, that many entries from the
+        end, and a request without it is refused.
+        [default: off, the connection's address is used]
+        [env: INK_FORWARDED_HOPS]
+
+Keys
+      --audience <AUDIENCE>
+        The authority a signature is made for, as a client
+        writes it: `host[:port]` of the API. Not the `Host`
+        header, so a proxy cannot choose it.
+        [default: `--api-host` and the port of `--addr`]
+        [env: INK_AUDIENCE]
+      --auth-skew <AUTH_SKEW>
+        Seconds either side of the server's time a signed
+        request may be, and the quiet after a restart. At
+        most 300. [default: 60] [env: INK_AUTH_SKEW]
+      --auth-nonces <AUTH_NONCES>
+        How many request nonces are remembered for one key
+        at once. [default: 1024] [env: INK_AUTH_NONCES]
+      --key-device <KEY_DEVICE>
+        How long a device key lives. [default: 180d]
+        [env: INK_KEY_DEVICE]
+      --key-deploy <KEY_DEPLOY>
+        How long a deploy key lives. [default: 90d]
+        [env: INK_KEY_DEPLOY]
+      --key-ceiling <KEY_CEILING>
+        The longest a key may be asked to live.
+        [default: 365d] [env: INK_KEY_CEILING]
+      --enrol-ttl <ENROL_TTL>
+        How long a person has to approve a key.
+        [default: 10m] [env: INK_ENROL_TTL]
+      --enrol-guesses <ENROL_GUESSES>
+        How many wrong codes close enrolling. [default: 5]
+        [env: INK_ENROL_GUESSES]
+      --enrol-waiting <ENROL_WAITING>
+        How many keys may wait for approval at once.
+        [default: 20] [env: INK_ENROL_WAITING]
+      --enrol-closed <ENROL_CLOSED>
+        How long enrolling stays closed. [default: 1m]
+        [env: INK_ENROL_CLOSED]
+
+Hosting
+      --site-ttl <SITE_TTL>
+        Seconds a site's live deploy is remembered before
+        the control plane is asked again: a new deploy or a
+        rollback shows within this long. The default asks
+        every time, since the lookup and the control plane
+        share one process and one database, so there is no
+        staleness to trade for speed; raise it only to spare
+        the database a read per request. [default: 0]
+      --site-deploys <SITE_DEPLOYS>
+        How many decoded deploys the lookup keeps.
+        [default: 64]
+      --poll-lookout <POLL_LOOKOUT>
+        Seconds before the watch looks again for a site it
+        has not seen move, at most; so a new site is first
+        polled within this long. At least 1. [default: 5]
+      --worker-lease <WORKER_LEASE>
+        Seconds a worker holds a build request before the
+        queue gives it to another. [default: 900]
+      --worker-idle <WORKER_IDLE>
+        Seconds a worker rests when the queue is empty.
+        [default: 2]
+      --restart-limit <RESTART_LIMIT>
+        How many times in a row the watch or the worker may
+        crash before it is left stopped. [default: 5]
+      --restart-delay <RESTART_DELAY>
+        Seconds to wait before a crashed loop is started
+        again. [default: 2]
+      --restart-healthy <RESTART_HEALTHY>
+        Seconds a loop must run for a crash after it to
+        count as the first again. [default: 60]
+      --git-scheme <GIT_SCHEMES>
+        A kind of git address a site may be added with and
+        the builder fetches; repeat for more.
+        [default: https]
+      --git-cache <GIT_CACHE>
+        Where clones of git sites are kept.
+        [default: <data>/git]
+      --git-time <GIT_TIME>
+        Seconds a fetch and read of a git source may take.
+        [default: 120]
+      --git-connect <GIT_CONNECT>
+        Seconds to wait for a connection to an https git
+        remote. [default: 10]
+      --git-request <GIT_REQUEST>
+        Seconds one https request to a git remote may take
+        in all, its body included: also the longest a pack
+        may take to arrive. [default: 120]
+      --git-redirects <GIT_REDIRECTS>
+        Which redirects of an https git remote are followed;
+        one that leaves https never is. [default: first]
+      --git-ca <GIT_CAS>
+        A PEM file of certificate authorities to trust
+        beside the bundled web roots, for a forge with a
+        private authority; repeat for more. Certificates are
+        always verified
+      --resolver <RESOLVER>
+        How the TXT records that prove a custom domain are
+        read: `system` asks nameservers, `offline` asks
+        none, so a claim is made and a proof says why it
+        cannot be checked. [default: system]
+        [env: INK_RESOLVER]
+      --resolver-server <ADDR>
+        A nameserver to ask, as `ADDRESS` or `ADDRESS:PORT`,
+        in order; repeat for more. [default: the
+        `nameserver` lines of `--resolver-file`]
+        [env: INK_RESOLVER_SERVERS]
+      --resolver-confirm <ADDR>
+        A second set of nameservers, as `ADDRESS` or
+        `ADDRESS:PORT`; repeat for more. When it is set, a
+        proof record is trusted only when both sets give the
+        same records, so one forged answer on the way to one
+        nameserver proves nothing. DNSSEC is not checked
+        either way. [default: none]
+        [env: INK_RESOLVER_CONFIRM]
+      --resolver-file <PATH>
+        The file the system lists its nameservers in.
+        [default: /etc/resolv.conf] [env: INK_RESOLVER_FILE]
+      --resolver-timeout <SECONDS>
+        Seconds one lookup of a proof record may take in
+        all, shared by the nameservers in turn. 1 to 60.
+        [default: 5] [env: INK_RESOLVER_TIMEOUT]
+      --forge-hooks
+        Take webhooks from forges at `POST
+        /v1/hooks/{github,forgejo,gitlab}`, and let a site
+        claim and prove its repository, which the server
+        reads from the forge over https. Off by default
+        [env: INK_FORGE_HOOKS]
+      --forge-instances <FILE>
+        A TOML file of the Forgejo instances this server
+        talks to, in the format of the built-in list
+        (Codeberg). A repository on a host that is on no
+        list is refused before anything is sent
+        [env: INK_FORGE_INSTANCES]
+      --forge-gitlab <HOST>
+        The GitLab hosts this server talks to; repeat or
+        separate with commas. [default: gitlab.com]
+        [env: INK_FORGE_GITLAB]
+      --forge-route <HOST=ADDR>
+        Send a forge's name to an address instead of the one
+        DNS gives, as `HOST=ADDRESS:PORT`: for a mirror, or
+        a test. The certificate is still checked for the
+        name [env: INK_FORGE_ROUTES]
+      --forge-timeout <SECONDS>
+        Seconds one call to a forge may take in all.
+        [default: 10] [env: INK_FORGE_TIMEOUT]
+      --forge-reply <BYTES>
+        The most bytes of a forge's reply that are read.
+        [default: 1048576] [env: INK_FORGE_REPLY]
+      --forge-body <BYTES>
+        The most bytes of a webhook body that are read.
+        [default: 5242880] [env: INK_FORGE_BODY]
+      --forge-window <SECONDS>
+        Seconds a delivery id is remembered, so the same
+        delivery is taken once. [default: 600]
+        [env: INK_FORGE_WINDOW]
+      --forge-remembered <N>
+        How many delivery ids of one repository are
+        remembered at once. [default: 10000]
+        [env: INK_FORGE_REMEMBERED]
+
+Notes
+  Unlike preview, this serves what `ink build` already
+  wrote, through the same edge code production runs:
+  conditional and range requests, the host and path
+  refusals, the request and response budgets, and the
+  manifest's headers as they are in production.
+
+Exit codes
+  0  Stopped with Ctrl-C
+  2  The folder is no deploy, or the address cannot be used
+
+Environment
+  INK_SMTP_PASSWORD  The SMTP password for --mail smtp;
+                     never a flag, so it stays out of
+                     process lists. Every other sign-in
+                     setting is a flag with its own INK_
+                     variable
+
+See also  ink build, ink login
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log,
+          --log-file (see `ink --help`)

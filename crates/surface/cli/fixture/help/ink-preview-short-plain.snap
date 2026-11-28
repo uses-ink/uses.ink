@@ -1,0 +1,27 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Build in memory and serve it on 127.0.0.1 while you write.
+
+Usage: ink preview [OPTIONS] <COMMAND>
+
+Commands
+  list    The previews of the site's branches
+  remove  End a preview now
+
+Options
+      --port <PORT>  The port on 127.0.0.1 [default: 4000]
+
+Work
+      --cache <DIR>  Where to keep work between builds, such as image copies
+                     [default: .ink/cache]
+
+Source
+      --source <KIND>  `folder` reads the files on disk, `git` reads a commit
+                       [default: `git` when .git exists, said as a notice]
+      --rev <REV>      The commit to read, as `git rev-parse` takes it; only for
+                       a git repository [default: HEAD]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink preview --help adds examples, notes and exit codes

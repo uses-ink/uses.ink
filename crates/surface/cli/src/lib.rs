@@ -102,7 +102,8 @@ impl Cli {
         }
     }
 
-    /// Writes the help of the command `args` name to `into`, in the faces of `look`.
+    /// Writes the help of the command `args` name to `into`, laid out for a stream that looks like
+    /// `look`.
     fn help(
         args: &[std::ffi::OsString],
         depth: help::Depth,
@@ -111,9 +112,8 @@ impl Cli {
     ) -> Result<(), clap::Error> {
         let words: Vec<String> = args.iter().skip(1).filter_map(|arg| arg.to_str()).map(str::to_owned).collect();
         let tree = tree::Tree::ink();
-        let text = help::Help::new(tree, look, help::Columns::of(&settings::Process))
-            .render(&tree::Located::walk(tree, &words), depth);
-        write!(into, "{text}").map_err(clap::Error::from)
+        let page = help::Help::new(tree, look).render(&tree::Located::walk(tree, &words), depth);
+        term::Writer::new(into, look).emit(&term::Finished(page)).map_err(clap::Error::from)
     }
 
     /// Whether clap refused the command line, as it does for a mistyped one, and has not asked to

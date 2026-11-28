@@ -1,0 +1,36 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Write one decision's value into ink.toml.
+
+Usage: ink pin [OPTIONS] <PATH>...
+
+Examples
+  # Write that file's title decision into ink.toml
+  ink pin posts/a.md page.title
+
+  # Print the pin and write nothing
+  ink pin site.title --dry-run
+
+Arguments
+  <PATH>...  A decision, addressed `[PATH] CODE`: a file's path and a code
+             (`posts/a.md page.title`), or a site code alone (`site.title`)
+
+Options
+      --dry-run  Print the pin and write nothing
+
+Source
+      --source <KIND>  `folder` reads the files on disk, `git` reads a commit
+                       [default: `git` when .git exists, said as a notice]
+      --rev <REV>      The commit to read, as `git rev-parse` takes it; only for
+                       a git repository [default: HEAD]
+
+Exit codes
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was changed
+
+See also  ink explain
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+          (see `ink --help`)

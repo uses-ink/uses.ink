@@ -1,0 +1,22 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Print a completion script for your shell.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[1m\e[36mcompletions\e[0m \e[36m<SHELL>\e[0m
+
+\e[1mExamples\e[0m
+  \e[1m\e[36mink\e[0m \e[1m\e[36mcompletions\e[0m bash     \e[2m# \e[0mPrint the bash script; see `\e[1m\e[36mink help completions\e[0m`
+  \e[1m\e[36mink\e[0m \e[1m\e[36mcompletions\e[0m nushell  \e[2m# \e[0mPrint the nushell script
+
+\e[1mArguments\e[0m
+  \e[36m<SHELL>\e[0m  The shell to print the script for
+
+\e[1mExit codes\e[0m
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was changed
+
+\e[2mDocs\e[0m    \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mGlobal\e[0m  \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
+        \e[2m(see `ink --help`)\e[0m

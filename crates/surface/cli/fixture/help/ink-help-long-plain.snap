@@ -1,0 +1,23 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Show this message, or the help of one command.
+
+Usage: ink help [TOPIC]...
+
+Examples
+  ink help exit        # The exit codes
+  ink help page.title  # What a decision or diagnostic code means
+
+Arguments
+  [TOPIC]...  A command (`deploy rollback`), `exit`, `environment`, or a
+              diagnostic or decision code
+
+Exit codes
+  0  Done; warnings, if any, were printed
+  1  The site has errors
+  2  Wrong usage, or a folder that is missing; nothing was changed
+
+Docs    https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)

@@ -1,0 +1,15 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Read reports, suspend sites and lift suspensions.
+
+Usage: ink abuse <COMMAND>
+
+Commands
+  list       The reports of strangers, newest first
+  suspend    Take a site down
+  reinstate  Lift a suspension
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink abuse --help adds examples, notes and exit codes

@@ -6,8 +6,8 @@ use diag::{Catalog, Unreadable, Wording};
 use model::AnyCode;
 use model::decision::Scope;
 
-use super::page::{Page, Row};
-use super::paint::Paint;
+use super::page::Sheet;
+use crate::output::term::{Defs, Line, Role};
 
 /// Why `ink help <word>` has nothing to say.
 #[derive(Debug)]
@@ -83,8 +83,8 @@ impl Meaning {
             .map_err(|_| Refusal::Topic { words: vec![word.to_owned()] })
     }
 
-    /// Writes the meaning into `page`.
-    pub(super) fn write<P: Paint>(&self, page: &mut Page<'_, P>) {
+    /// Writes the meaning into `sheet`.
+    pub(super) fn write(&self, sheet: &mut Sheet) {
         match self {
             Self::Said { code, kind, said } => {
                 let how = [said.severity.as_deref(), said.fault.as_deref()]
@@ -92,23 +92,23 @@ impl Meaning {
                     .flatten()
                     .collect::<Vec<_>>()
                     .join(", ");
-                page.heading(code);
-                let about = if how.is_empty() { (*kind).to_owned() } else { format!("a {kind}: {how}") };
-                page.paragraph(&about);
-                let mut rows = vec![Row::keyed("It says", said.message.as_str())];
+                sheet.line(Line::new().strong(Role::Heading, code));
+                let about = if how.is_empty() { (*kind).to_owned() } else { format!("A {kind}: {how}.") };
+                sheet.paragraph(Line::plain(about));
+                let mut defs = Defs::new(2)
+                    .row(Line::new().with(Role::Quiet, "It says"), Line::marked(Role::Plain, &said.message));
                 if let Some(fix) = &said.fix {
-                    rows.push(Row::keyed("The fix", fix.as_str()));
+                    defs = defs.row(Line::new().with(Role::Quiet, "The fix"), Line::marked(Role::Plain, fix));
                 }
-                page.gap();
-                page.rows(&rows);
+                sheet.section("Meaning", &defs);
             }
             Self::Decision { code } => {
-                page.heading(code.name());
+                sheet.line(Line::new().strong(Role::Heading, code.name()));
                 let scope = match code.scope() {
                     Scope::Site => "decided once for the site",
                     Scope::File => "decided for each file",
                 };
-                page.paragraph(&format!("A decision, {scope}. `ink explain` lists what was decided, `ink explain --why {}` replays the ladder that decided it, and `ink pin` writes the value into ink.toml.", code.name()));
+                sheet.paragraph(Line::marked(Role::Plain, &format!("A decision, {scope}. `ink explain` lists what was decided, `ink explain --why {}` replays the ladder that decided it, and `ink pin` writes the value into ink.toml.", code.name())));
             }
         }
     }

@@ -1,0 +1,43 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Claim, prove, list and remove custom domains.
+
+Usage: ink domain <COMMAND>
+
+Examples
+  # Ask to prove a name
+  ink domain add www.example.org
+
+  # Serve the site at it once the record is published
+  ink domain prove www.example.org
+
+Commands
+  add     Ask to prove a custom domain
+  list    The site's custom domains
+  prove   Check the record and serve the site at the name
+  remove  Stop serving a name, or drop its claim
+
+Exit codes
+  0  Done
+  2  Wrong usage: no site named, an id that is none, a
+     deploy the site lacks
+  3  Not signed in, or the token was refused
+  4  The API could not be reached or failed; safe to retry
+  5  The API refused the change as it stands: the deploy is
+     already live, say
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a
+                CI job; never a flag, so it stays out of
+                process lists. `ink login` keeps one in the
+                config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of
+                INK_KEY
+
+See also  ink status, ink repo
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log,
+          --log-file (see `ink --help`)

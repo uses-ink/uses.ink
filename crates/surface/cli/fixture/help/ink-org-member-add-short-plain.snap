@@ -1,0 +1,24 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Add a person to an organization.
+
+Usage: ink org member add [OPTIONS] <ORG> <ACCOUNT>
+
+Arguments
+  <ORG>      The organization's id
+  <ACCOUNT>  The person's account id
+
+Options
+      --role <ROLE>  What they may do: owner, admin, writer or reader
+                     [default: reader]
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink org member add --help adds examples, notes and exit codes

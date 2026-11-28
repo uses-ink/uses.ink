@@ -1,0 +1,40 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Build in memory and serve it on 127.0.0.1 while you write.
+
+\e[1mUsage\e[0m: \e[1m\e[36mink\e[0m \e[1m\e[36mpreview\e[0m \e[36m[OPTIONS]\e[0m \e[36m<COMMAND>\e[0m
+
+\e[1mExamples\e[0m
+  \e[1m\e[36mink\e[0m \e[1m\e[36mpreview\e[0m \e[1m\e[36m--port\e[0m 4100  \e[2m# \e[0mPreview on 127.0.0.1:4100
+
+\e[1mCommands\e[0m
+  \e[1m\e[36mlist\e[0m    The previews of the site's branches
+  \e[1m\e[36mremove\e[0m  End a preview now
+
+\e[1mOptions\e[0m
+  \e[1m\e[36m    --port\e[0m \e[36m<PORT>\e[0m  The port on 127.0.0.1 \e[2m[default: 4000]\e[0m
+
+\e[1mWork\e[0m
+  \e[1m\e[36m    --cache\e[0m \e[36m<DIR>\e[0m  Where to keep work between builds, such as image copies
+                     \e[2m[default: .ink/cache]\e[0m
+
+\e[1mSource\e[0m
+  \e[1m\e[36m    --source\e[0m \e[36m<KIND>\e[0m  `\e[1m\e[36mfolder\e[0m` reads the files on disk, `\e[1m\e[36mgit\e[0m` reads a commit
+                       \e[2m[default: `git` when .git exists, said as a notice]\e[0m
+  \e[1m\e[36m    --rev\e[0m \e[36m<REV>\e[0m      The commit to read, as `\e[1m\e[36mgit\e[0m \e[1m\e[36mrev-parse\e[0m` takes it; only for
+                       a git repository \e[2m[default: HEAD]\e[0m
+
+\e[1mNotes\e[0m
+  With no verb, builds in memory and serves on 127.0.0.1. `\e[1m\e[36mlist\e[0m` and `\e[1m\e[36mremove\e[0m`
+  are about the previews a server built from the site's branches (the watch of
+  `\e[1m\e[36mink\e[0m \e[1m\e[36mserve\e[0m \e[1m\e[36m--data\e[0m`), which end by themselves after `\e[1m\e[36m--preview-days\e[0m`.
+
+\e[1mExit codes\e[0m
+  0  Stopped with Ctrl-C
+  2  The folder is no deploy, or the address cannot be used
+
+\e[2mSee also\e[0m  \e[1m\e[36mink build\e[0m, \e[1m\e[36mink serve\e[0m
+\e[2mDocs\e[0m      \e[34mhttps://github.com/uses-ink/uses.ink/blob/main/docs/cli.md\e[0m
+\e[2mGlobal\e[0m    \e[1m\e[36m-C,\e[0m \e[1m\e[36m--json,\e[0m \e[1m\e[36m-q,\e[0m \e[1m\e[36m-v,\e[0m \e[1m\e[36m--color,\e[0m \e[1m\e[36m--no-progress,\e[0m \e[1m\e[36m--log,\e[0m \e[1m\e[36m--log-file\e[0m
+          \e[2m(see `ink --help`)\e[0m

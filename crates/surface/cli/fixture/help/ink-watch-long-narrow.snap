@@ -1,0 +1,76 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Follow a build of this site to its end.
+
+Usage: ink watch [OPTIONS] [BUILD]
+
+Examples
+  # Follow the build that is running, or wait for the next
+  ink watch
+
+Arguments
+  [BUILD]  The build to follow, by the start of its id.
+           Without one, the build that is running or queued,
+           or else the next one the site starts
+
+Options
+      --wait <SECONDS>  Seconds to wait before stopping; the
+                        build keeps going on the server
+                        [default: 300]
+      --poll <MS>       Milliseconds between two looks at
+                        the site [default: 1000]
+
+Account
+      --api <URL>
+        The API's address, `http://host[:port]`;
+        `account.api` in the config file [env: INK_API]
+      --site <ID>
+        The site's id; `account.site` in the config file
+        [env: INK_SITE]
+      --org <ID>
+        Act as this organization, by its id: the site is one
+        of its sites, and the key's role there is what is
+        checked. See `ink org list` [env: INK_ORG]
+      --timeout <SECONDS>
+        Seconds one call may take [default: 30]
+        [env: INK_TIMEOUT]
+      --retries <N>
+        How many more times a call that is safe to repeat is
+        tried when the network fails [default: 2]
+        [env: INK_RETRIES]
+      --retry-wait <MS>
+        Milliseconds before the first retry; each wait is
+        twice the one before [default: 500]
+        [env: INK_RETRY_WAIT]
+
+Notes
+  Follows a build to its end: the one named, the one
+  running, or the next the site starts. Prints the deploy
+  id.
+
+Exit codes
+  0  Done: the deploy is live
+  1  The build was refused: the site does not build
+  2  Wrong usage: the folder is linked to no site, or the
+     folder cannot be read
+  3  Not signed in, or the signature was refused
+  4  The API could not be reached, the build failed or the
+     wait ran out; safe to run again
+  5  The deploy is recorded and not live, because publishing
+     is paused after a rollback
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a
+                CI job; never a flag, so it stays out of
+                process lists. `ink login` keeps one in the
+                config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of
+                INK_KEY
+
+See also  ink push, ink status
+Docs      https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global    -C, --json, -q, -v, --color, --no-progress, --log,
+          --log-file (see `ink --help`)

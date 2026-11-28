@@ -1,0 +1,56 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Make a key for another machine, such as a CI job.
+
+Usage: ink key add [OPTIONS]
+
+Examples
+  # A deploy key for one site, written to a file
+  ink key add --site 0123456789abcdef0123456789abcdef --label ci --out ci.key
+
+Options
+      --site <ID>       A site's id: make a deploy key for that one site.
+                        Without it, a device key
+      --label <TEXT>    What the person sees beside the fingerprint
+                        [default: ci]
+      --right <LIST>    The rights to give, such as `read,deploy`.
+                        [default: what the kind has by default]
+      --expires <TTL>   How long the key lives, such as `90d`.
+                        [default: the server's, per kind]
+      --out <FILE>      Write the private key to this file (0600) instead of
+                        printing it
+      --wait <SECONDS>  Seconds to wait for a person to approve the key
+                        [default: 600]
+      --poll <SECONDS>  Seconds between asks whether it was approved
+                        [default: 2]
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Notes
+  A person approves the new key, as with login. Its private key is written to
+  --out, or printed once to a pipe, never to a terminal.
+
+Exit codes
+  0  Done
+  2  Wrong usage: no API named, a key that is none, a private key that would
+     print to a terminal
+  3  No key, or the API refused the signature, or nobody approved the key in
+     time
+  4  The API could not be reached or failed; safe to retry
+
+Environment
+  INK_API       The address of the API, as --api
+  INK_SITE      The site's id, as --site
+  INK_KEY       The private key to sign requests with, for a CI job; never a
+                flag, so it stays out of process lists. `ink login` keeps one in
+                the config folder instead
+  INK_KEY_FILE  A file that holds that key, in place of INK_KEY
+
+Docs    https://github.com/uses-ink/uses.ink/blob/main/docs/cli.md
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)

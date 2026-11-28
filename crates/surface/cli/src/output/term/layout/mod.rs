@@ -5,8 +5,13 @@
 use unicode_width::UnicodeWidthStr;
 
 use super::doc::{Doc, Line, Render};
+mod flow;
+mod listed;
+
 use super::glyph::Glyph;
 use super::role::{Role, Strength};
+pub(crate) use flow::{Defs, Finished, Paragraph, Samples};
+pub(crate) use listed::{Empty, Listed};
 
 /// Where a cut column loses its text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -218,9 +223,13 @@ impl Record {
 
 impl Render for Record {
     fn render(&self, into: &mut Doc) {
-        for line in (Columns { rows: &self.rows, flex: None, lead: self.indent }).lines(into) {
-            into.push(Line::new().pad(self.indent).then(line));
+        let mut defs = Defs::inline(self.indent);
+        for row in &self.rows {
+            if let [key, value] = row.as_slice() {
+                defs = defs.row(key.clone(), value.clone());
+            }
         }
+        defs.render(into);
     }
 }
 
@@ -304,21 +313,6 @@ impl Render for Verbatim {
     fn render(&self, into: &mut Doc) {
         for line in self.0.lines() {
             into.push(Line::plain(line));
-        }
-    }
-}
-
-/// Text that was painted by the terminal layer's own [`Paint`](crate::grammar::help::Paint), such as a
-/// page of help: its escape codes are kept when colour shows and stripped when it does not.
-#[derive(Clone, Debug)]
-pub(crate) struct Styled(pub(crate) String);
-
-impl Render for Styled {
-    fn render(&self, into: &mut Doc) {
-        for line in self.0.lines() {
-            let mut whole = Line::new();
-            whole.push(super::doc::Piece::ansi(line.to_owned()));
-            into.push(whole);
         }
     }
 }

@@ -1,0 +1,24 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+Take a site down.
+
+Usage: ink abuse suspend [OPTIONS] <SITE>
+
+Arguments
+  <SITE>  The site's id, as `ink abuse list` or the site's owner gives it
+
+Options
+      --kind <KIND>  Why: phishing, malware, illegal, impersonation, spam or
+                     other [default: other]
+      --report <ID>  The report that led to it, as `ink abuse list` shows its id
+
+Account
+      --api <URL>          The API's address, `http://host[:port]`;
+                           `account.api` in the config file [env: INK_API]
+      --timeout <SECONDS>  Seconds one call may take [default: 30]
+                           [env: INK_TIMEOUT]
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink abuse suspend --help adds examples, notes and exit codes

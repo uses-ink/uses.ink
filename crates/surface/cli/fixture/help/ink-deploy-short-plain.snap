@@ -1,0 +1,16 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+List, read, roll back and resume deploys.
+
+Usage: ink deploy <COMMAND>
+
+Commands
+  list      History, newest first (also: ink deploys)
+  show      One deploy: its build and its log
+  rollback  Make an earlier deploy the live one, and pause new deploys
+  resume    Let the site deploy new pushes again after a rollback
+
+Global  -C, --json, -q, -v, --color, --no-progress, --log, --log-file
+        (see `ink --help`)
+More    ink deploy --help adds examples, notes and exit codes
