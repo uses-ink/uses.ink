@@ -16,6 +16,9 @@
 !tools
 !wit
 
+# The marks the theme crate includes at build time
+!brand
+
 # Local state inside an allowed folder
 **/target/
 **/node_modules/
