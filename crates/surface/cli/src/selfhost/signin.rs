@@ -121,6 +121,11 @@ pub struct Flags {
     /// The session cookie's name. [default: `__Host-ink-session`, or `ink-session` on plain http]
     #[arg(long, env = "INK_COOKIE_NAME", help_heading = Heading::SIGN_IN)]
     pub cookie_name: Option<edge_api::Name>,
+    /// Take a `--cookie-name` that does not start with `__Host-` on a `Secure` cookie. Without it
+    /// such a name is refused, because a `__Host-` name is what stops a sibling site from setting
+    /// the cookie.
+    #[arg(long, env = "INK_COOKIE_UNPREFIXED", help_heading = Heading::SIGN_IN)]
+    pub cookie_unprefixed: bool,
     /// The session cookie's path. [default: /]
     #[arg(long, env = "INK_COOKIE_PATH", help_heading = Heading::SIGN_IN)]
     pub cookie_path: Option<String>,
@@ -268,7 +273,12 @@ impl Flags {
     /// The cookie.
     pub(crate) fn jar(&self, secure: bool) -> Result<edge_api::Jar, Unready> {
         let path = self.cookie_path.as_deref().unwrap_or("/");
-        edge_api::Jar::new(self.cookie_name.clone(), path, secure).map_err(Self::setting("--cookie-name"))
+        let made = if self.cookie_unprefixed {
+            edge_api::Jar::unprefixed(self.cookie_name.clone(), path, secure)
+        } else {
+            edge_api::Jar::new(self.cookie_name.clone(), path, secure)
+        };
+        made.map_err(Self::setting("--cookie-name"))
     }
 
     /// The API's address as a client writes it: the API host on the origin's scheme and port.

@@ -82,6 +82,12 @@ pub enum JarError {
     },
     /// A `__Host-` name needs `Secure` and the path `/`.
     Host,
+    /// A `Secure` cookie with a name that does not start with `__Host-`: a sibling domain or a
+    /// plain-http page could set a cookie of that name and shadow the session.
+    Prefix {
+        /// The name.
+        name: String,
+    },
 }
 
 impl fmt::Display for JarError {
@@ -91,6 +97,10 @@ impl fmt::Display for JarError {
                 write!(out, "{path:?} is not a cookie path: start with / and use no space, `;` or `,`")
             }
             Self::Host => out.write_str("a `__Host-` cookie needs Secure and the path /"),
+            Self::Prefix { name } => write!(
+                out,
+                "the secure cookie name {name:?} does not start with `__Host-`, so another site on the domain could shadow it"
+            ),
         }
     }
 }
@@ -107,8 +117,17 @@ pub struct Jar {
 
 impl Jar {
     /// A jar for a name (the default for `secure` when none is given), a path and whether the
-    /// cookie is `Secure`.
+    /// cookie is `Secure`. A name that is given and is not `__Host-` is refused when the cookie is
+    /// `Secure`; [`Jar::unprefixed`] is the operator's way to ask for one anyway.
     pub fn new(name: Option<Name>, path: &str, secure: bool) -> Result<Self, JarError> {
+        if let Some(name) = name.as_ref().filter(|name| secure && !name.0.starts_with("__Host-")) {
+            return Err(JarError::Prefix { name: name.0.clone() });
+        }
+        Self::unprefixed(name, path, secure)
+    }
+
+    /// The same as [`Jar::new`], taking a `Secure` cookie whose name has no `__Host-` prefix.
+    pub fn unprefixed(name: Option<Name>, path: &str, secure: bool) -> Result<Self, JarError> {
         let graphic = path.bytes().all(|byte| byte.is_ascii_graphic() && byte != b';' && byte != b',');
         if !path.starts_with('/') || !graphic {
             return Err(JarError::Path { path: path.chars().take(80).collect() });
@@ -210,6 +229,15 @@ mod test {
             assert!(text.contains(attribute), "{text}");
         }
         assert!(!text.contains("Domain"), "{text}");
+    }
+
+    #[test]
+    fn a_secure_name_without_the_host_prefix_is_refused_unless_asked_for() {
+        let name: Name = "session".parse().unwrap();
+        assert_eq!(Jar::new(Some(name.clone()), "/", true), Err(JarError::Prefix { name: "session".to_owned() }));
+        assert!(Jar::unprefixed(Some(name.clone()), "/", true).is_ok());
+        // a plain-http cookie has no prefix to ask for
+        assert!(Jar::new(Some(name), "/", false).is_ok());
     }
 
     #[test]
