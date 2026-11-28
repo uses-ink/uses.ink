@@ -20,34 +20,33 @@ hand = ["Gaegu", "system-ui", "sans-serif"]
 mono = ["Monaspace Radon", "ui-monospace", "monospace"]
 reader = ["Literata", "Georgia", "serif"]
 
-# A look is what a theme wears: colours for light and dark, two faces named from `[face]` and five
-# sizes. A site picks one in `[theme]` (`look = "uses-ink"`); the theme's own stylesheet uses
-# the custom properties, so changing a value here changes the look and no stylesheet. A look
-# holds each role of `Role` once per scheme, and a test holds its text colours to WCAG AA (4.5:1)
-# on the paper and on the tint, in light and in dark.
+# A look is what a theme wears: colours for the paper, up to two faces named from `[face]` for the
+# body and the mono, the hand for names and headings, and five sizes. A site picks one in `[theme]`
+# (`look = "uses-ink"`); the theme's own stylesheet uses the custom properties, so changing a value
+# here changes the look and no stylesheet. A look holds each role of `Role` once in `light`; `dark`
+# is optional, and a look without one stays on its paper in a dark setting. A test holds the text
+# colours to WCAG AA (4.5:1) on the paper and on the tint, in each scheme a look has.
+#
+# The uses.ink look is the doodle design pass: pure white paper, pure black pencil, the red pen for
+# uses.ink speaking and the bucket yellow for the one thing to click. The mock shows no dark scheme,
+# so there is none. Red `#e8170b` is 4.61:1 on white, which passes AA; it is never set on a fill (it
+# is 4.29:1 on the yellow), and the fills carry the pencil's black (19.56:1 on yellow).
 [look.uses-ink.light]
-ink = "#1c1a17"     # warm near-black, not pure black
-paper = "#fffdf8"
-muted = "#5c5a53"
-line = "#ddd7c8"
-tint = "#f5f1e6"
-accent = "#bf1308"  # the red note pen, darkened to read as text
-
-[look.uses-ink.dark]
-ink = "#ece8de"
-paper = "#161411"
-muted = "#b4ae9f"
-line = "#3b372f"
-tint = "#211e1a"
-accent = "#ff8f84"
+ink = "#000000"     # the pencil
+paper = "#ffffff"
+muted = "#5c5c5c"   # quiet text: dates, captions, the footer
+line = "#000000"    # drawn lines are pencil
+tint = "#ffffff"    # the ground of code and notes is paper; the bucket does the colouring
+accent = "#e8170b"  # the red pen: uses.ink speaking, and the mark under a link
 
 [look.uses-ink.face]
 body = "reader"
+hand = "hand"
 mono = "mono"
 
 [look.uses-ink.size]
-small = "0.875rem"
-body = "1.125rem"
-h3 = "1.3rem"
-h2 = "1.6rem"
-h1 = "2.25rem"
+small = "1rem"
+body = "1.25rem"
+h3 = "1.75rem"
+h2 = "2.125rem"
+h1 = "3.875rem"

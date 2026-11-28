@@ -4,7 +4,7 @@
 
 #![allow(clippy::unwrap_used, reason = "tests stop at the first surprise")]
 
-use uses_ink_token::{Look, Rgb, Role, Scheme};
+use uses_ink_token::{Colour, Look, Rgb, Role, Scheme};
 
 /// The relative luminance of WCAG 2.2: each channel linearised, then weighted.
 fn luminance(Rgb(r, g, b): Rgb) -> f64 {
@@ -46,21 +46,55 @@ fn the_ratio_of_black_on_white_is_21() {
     assert!((contrast(Rgb(0, 0, 0), Rgb(255, 255, 255)) - 21.0).abs() < 1e-9);
 }
 
+/// Whether a look has colours of its own for a dark setting: its stylesheet then says so.
+fn has_dark(look: Look) -> bool {
+    look.css().contains("@media (prefers-color-scheme: dark)")
+}
+
 #[test]
-fn a_look_declares_each_role_in_both_schemes_and_the_dark_ones_are_not_the_light_ones() {
+fn a_look_declares_each_role_in_light_and_again_in_dark_when_it_has_one() {
     for look in Look::ALL {
         let css = look.css();
+        let times = if has_dark(*look) { 2 } else { 1 };
         for role in Role::ALL {
             assert_eq!(
                 css.matches(&format!("--{}:", role.name())).count(),
-                2,
-                "{} holds {} once per scheme",
+                times,
+                "{} holds {} once per scheme it has",
                 look.name(),
                 role.name()
             );
         }
-        assert!(css.contains("@media (prefers-color-scheme: dark)"));
-        assert_ne!(look.colour(Scheme::Light, Role::Paper), look.colour(Scheme::Dark, Role::Paper));
+        let kept = look.colour(Scheme::Light, Role::Paper) == look.colour(Scheme::Dark, Role::Paper);
+        assert_eq!(
+            kept,
+            !has_dark(*look),
+            "{}: a look with no dark scheme keeps its paper, one with a scheme changes it",
+            look.name()
+        );
+    }
+}
+
+#[test]
+fn a_look_declares_the_hand_and_the_paint_box_beside_its_roles() {
+    for look in Look::ALL {
+        let css = look.css();
+        for name in
+            ["--face-body:", "--face-hand:", "--face-mono:", "--pen:", "--bucket:", "--sky:", "--mint:", "--pink:"]
+        {
+            assert!(css.contains(name), "{} declares {name}", look.name());
+        }
+    }
+}
+
+/// The pencil is the text on every fill, and red is only ever set on paper: red on the bucket
+/// yellow is 4.29:1, under AA, so a look must not need it there.
+#[test]
+fn the_pencil_reads_on_each_fill_of_the_paint_box() {
+    let ink = Colour::Ink.rgb();
+    for fill in [Colour::Bucket, Colour::Sky, Colour::Mint, Colour::Pink] {
+        let ratio = contrast(ink, fill.rgb());
+        assert!(ratio >= 4.5, "{} on {} is {ratio:.2}:1", Colour::Ink.name(), fill.name());
     }
 }
 

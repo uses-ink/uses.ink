@@ -87,7 +87,7 @@ impl ToTokens for Tokens {
     fn to_tokens(&self, out: &mut TokenStream) {
         let colours = Palette(&self.colours);
         let faces = Faces(&self.faces);
-        let looks = Looks(&self.looks);
+        let looks = Looks { looks: &self.looks, colours: &self.colours };
         out.extend(quote! {
             use crate::{Kind, Rgb, Role, Scheme, Unknown};
             #colours
@@ -151,12 +151,12 @@ impl fmt::Display for Fault {
             Self::Stack => {
                 "is not a font stack: write a list of family names, without quotes, backslashes or control characters"
             }
-            Self::Look => "is not a look: write a table with `light`, `dark`, `face` and `size`",
+            Self::Look => "is not a look: write a table with `light`, `face` and `size`, and `dark` if it has one",
             Self::Role => {
                 "is not the colours of a scheme: write each of `ink`, `paper`, `muted`, `line`, `tint` and `accent` once, as `#rrggbb`"
             }
             Self::Size => "is not a size: write a number of `rem`, such as `1.125rem`",
-            Self::Missing => "is not a face of `[face]`; a look has a `body` and a `mono` face, named there",
+            Self::Missing => "is not a face of `[face]`; a look has a `body`, a `hand` and a `mono` face, named there",
         })
     }
 }
@@ -413,8 +413,10 @@ impl fmt::Display for Family<'_> {
 struct Look {
     name: Name,
     light: Shades,
-    dark: Shades,
+    /// `None` for a look that has no dark scheme; it keeps its paper in a dark setting.
+    dark: Option<Shades>,
     body: Vec<String>,
+    hand: Vec<String>,
     mono: Vec<String>,
     sizes: Vec<String>,
 }
@@ -426,7 +428,10 @@ struct Shades(Vec<Rgb>);
 impl Look {
     /// The colours of the look in `scheme`.
     const fn shades(&self, scheme: Scheme) -> &Shades {
-        if matches!(scheme, Scheme::Light) { &self.light } else { &self.dark }
+        match (scheme, &self.dark) {
+            (Scheme::Dark, Some(dark)) => dark,
+            _ => &self.light,
+        }
     }
 
     /// The sizes every look gives, as custom properties: `--size-small` and so on.
@@ -440,7 +445,12 @@ impl Look {
             Some(toml::Value::Table(part)) => Ok(part),
             _ => Err(Refusal { name: format!("{name}.{key}"), flaw: Fault::Look }),
         };
-        let (light, dark, face, size) = (part("light")?, part("dark")?, part("face")?, part("size")?);
+        let (light, face, size) = (part("light")?, part("face")?, part("size")?);
+        let dark = match table.remove("dark") {
+            None => None,
+            Some(toml::Value::Table(dark)) => Some(dark),
+            Some(_) => return Err(Refusal { name: format!("{name}.dark"), flaw: Fault::Look }),
+        };
         if let Some(extra) = table.keys().next() {
             return Err(Refusal { name: format!("{name}.{extra}"), flaw: Fault::Look });
         }
@@ -449,15 +459,16 @@ impl Look {
             let wanted = face.get(key).and_then(toml::Value::as_str).ok_or_else(at)?;
             faces.iter().find(|face| face.name.0 == wanted).map(|face| face.stack.clone()).ok_or_else(at)
         };
-        let (body, mono) = (stack(&face, "body")?, stack(&face, "mono")?);
-        if let Some(extra) = face.keys().find(|key| !["body", "mono"].contains(&key.as_str())) {
+        let (body, hand, mono) = (stack(&face, "body")?, stack(&face, "hand")?, stack(&face, "mono")?);
+        if let Some(extra) = face.keys().find(|key| !["body", "hand", "mono"].contains(&key.as_str())) {
             return Err(Refusal { name: format!("{name}.face.{extra}"), flaw: Fault::Missing });
         }
         Ok(Self {
             light: Shades::read(&light, &format!("{name}.light"))?,
-            dark: Shades::read(&dark, &format!("{name}.dark"))?,
+            dark: dark.map(|dark| Shades::read(&dark, &format!("{name}.dark"))).transpose()?,
             sizes: Self::sizes(&size, &name)?,
             body,
+            hand,
             mono,
             name,
         })
@@ -498,16 +509,33 @@ impl Shades {
 }
 
 /// The `Look` enum of every look.
-struct Looks<'a>(&'a [Look]);
+struct Looks<'a> {
+    looks: &'a [Look],
+    /// The paint box, whose colours that are no role join every look's stylesheet.
+    colours: &'a [Colour],
+}
 
 impl Looks<'_> {
-    /// The match arms giving each look's colour of a role in `scheme`.
-    fn arms(&self, scheme: Scheme) -> TokenStream {
-        let arms = self.0.iter().map(|look| {
+    /// The match arms giving each look's colour of a role in a scheme: one per scheme and role
+    /// for a look with a dark scheme, one per role for a look without, which keeps its paper.
+    fn arms(&self) -> TokenStream {
+        let arms = self.looks.iter().map(|look| {
             let variant = look.name.variant();
-            let roles = Role::ALL.iter().map(|role| format_ident!("{}", role.name().to_upper_camel_case()));
-            let rgbs = look.shades(scheme).0.iter().map(|Rgb(r, g, b)| quote! { Rgb(#r, #g, #b) });
-            quote! { Self::#variant => match role { #(Role::#roles => #rgbs,)* } }
+            let schemes: &[Scheme] =
+                if look.dark.is_some() { &[Scheme::Light, Scheme::Dark] } else { &[Scheme::Light] };
+            let entries = schemes.iter().flat_map(|scheme| {
+                let pattern = match (scheme, look.dark.is_some()) {
+                    (_, false) => quote! { _ },
+                    (Scheme::Light, true) => quote! { Scheme::Light },
+                    (Scheme::Dark, true) => quote! { Scheme::Dark },
+                };
+                Role::ALL.iter().zip(&look.shades(*scheme).0).map(move |(role, Rgb(r, g, b))| {
+                    let role = format_ident!("{}", role.name().to_upper_camel_case());
+                    let pattern = pattern.clone();
+                    quote! { (#pattern, Role::#role) => Rgb(#r, #g, #b) }
+                })
+            });
+            quote! { Self::#variant => match (scheme, role) { #(#entries,)* } }
         });
         quote! { #(#arms,)* }
     }
@@ -515,11 +543,11 @@ impl Looks<'_> {
 
 impl ToTokens for Looks<'_> {
     fn to_tokens(&self, out: &mut TokenStream) {
-        let names: Vec<&str> = self.0.iter().map(|l| l.name.0.as_str()).collect();
-        let variants: Vec<Ident> = self.0.iter().map(|l| l.name.variant()).collect();
-        let docs = self.0.iter().map(|l| format!(" `{}`", l.name));
-        let sheets = self.0.iter().map(|l| LookSheet(l).to_string());
-        let [light, dark] = [Scheme::Light, Scheme::Dark].map(|scheme| self.arms(scheme));
+        let names: Vec<&str> = self.looks.iter().map(|l| l.name.0.as_str()).collect();
+        let variants: Vec<Ident> = self.looks.iter().map(|l| l.name.variant()).collect();
+        let docs = self.looks.iter().map(|l| format!(" `{}`", l.name));
+        let sheets = self.looks.iter().map(|l| LookSheet { look: l, colours: self.colours }.to_string());
+        let arms = self.arms();
         out.extend(quote! {
             /// A look a theme can wear: its colours in light and dark, its faces and its sizes.
             #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -537,11 +565,9 @@ impl ToTokens for Looks<'_> {
                 }
 
                 /// The colour of `role` in `scheme`.
+                #[allow(clippy::match_same_arms, reason = "two roles may be the same colour in one look")]
                 pub const fn colour(self, scheme: Scheme, role: Role) -> Rgb {
-                    match scheme {
-                        Scheme::Light => match self { #light },
-                        Scheme::Dark => match self { #dark },
-                    }
+                    match self { #arms }
                 }
 
                 /// The stylesheet that declares the look's custom properties on `:root`, the dark
@@ -562,12 +588,16 @@ impl ToTokens for Looks<'_> {
     }
 }
 
-/// A look as a stylesheet: light colours, faces and sizes on `:root`, then the dark colours.
-struct LookSheet<'a>(&'a Look);
+/// A look as a stylesheet: light colours, the paint box's other colours, faces and sizes on
+/// `:root`, then the dark colours when the look has them.
+struct LookSheet<'a> {
+    look: &'a Look,
+    colours: &'a [Colour],
+}
 
 impl fmt::Display for LookSheet<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let look = self.0;
+        let look = self.look;
         let shades = |out: &mut fmt::Formatter<'_>, shades: &Shades, indent: &str| {
             Role::ALL
                 .iter()
@@ -576,13 +606,19 @@ impl fmt::Display for LookSheet<'_> {
         };
         writeln!(out, ":root {{")?;
         shades(out, &look.light, "  ")?;
+        for colour in self.colours.iter().filter(|c| !Role::ALL.iter().any(|role| role.name() == c.name.0)) {
+            writeln!(out, "{}", Declaration { name: &colour.name, value: colour.rgb })?;
+        }
         writeln!(out, "  --face-body: {};", Stack(&look.body))?;
+        writeln!(out, "  --face-hand: {};", Stack(&look.hand))?;
         writeln!(out, "  --face-mono: {};", Stack(&look.mono))?;
         for (key, size) in Look::SIZES.iter().zip(&look.sizes) {
             writeln!(out, "  --size-{key}: {size};")?;
         }
-        writeln!(out, "}}\n\n@media (prefers-color-scheme: dark) {{\n  :root {{")?;
-        shades(out, &look.dark, "    ")?;
+        writeln!(out, "}}")?;
+        let Some(dark) = &look.dark else { return Ok(()) };
+        writeln!(out, "\n@media (prefers-color-scheme: dark) {{\n  :root {{")?;
+        shades(out, dark, "    ")?;
         writeln!(out, "  }}\n}}")
     }
 }

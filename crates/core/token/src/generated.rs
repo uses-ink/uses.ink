@@ -142,27 +142,16 @@ impl Look {
         }
     }
     /// The colour of `role` in `scheme`.
+    #[allow(clippy::match_same_arms, reason = "two roles may be the same colour in one look")]
     pub const fn colour(self, scheme: Scheme, role: Role) -> Rgb {
-        match scheme {
-            Scheme::Light => match self {
-                Self::UsesInk => match role {
-                    Role::Ink => Rgb(28u8, 26u8, 23u8),
-                    Role::Paper => Rgb(255u8, 253u8, 248u8),
-                    Role::Muted => Rgb(92u8, 90u8, 83u8),
-                    Role::Line => Rgb(221u8, 215u8, 200u8),
-                    Role::Tint => Rgb(245u8, 241u8, 230u8),
-                    Role::Accent => Rgb(191u8, 19u8, 8u8),
-                },
-            },
-            Scheme::Dark => match self {
-                Self::UsesInk => match role {
-                    Role::Ink => Rgb(236u8, 232u8, 222u8),
-                    Role::Paper => Rgb(22u8, 20u8, 17u8),
-                    Role::Muted => Rgb(180u8, 174u8, 159u8),
-                    Role::Line => Rgb(59u8, 55u8, 47u8),
-                    Role::Tint => Rgb(33u8, 30u8, 26u8),
-                    Role::Accent => Rgb(255u8, 143u8, 132u8),
-                },
+        match self {
+            Self::UsesInk => match (scheme, role) {
+                (_, Role::Ink) => Rgb(0u8, 0u8, 0u8),
+                (_, Role::Paper) => Rgb(255u8, 255u8, 255u8),
+                (_, Role::Muted) => Rgb(92u8, 92u8, 92u8),
+                (_, Role::Line) => Rgb(0u8, 0u8, 0u8),
+                (_, Role::Tint) => Rgb(255u8, 255u8, 255u8),
+                (_, Role::Accent) => Rgb(232u8, 23u8, 11u8),
             },
         }
     }
@@ -171,7 +160,7 @@ impl Look {
     pub const fn css(self) -> &'static str {
         match self {
             Self::UsesInk => {
-                ":root {\n  --ink: #1c1a17;\n  --paper: #fffdf8;\n  --muted: #5c5a53;\n  --line: #ddd7c8;\n  --tint: #f5f1e6;\n  --accent: #bf1308;\n  --face-body: \"Literata\", \"Georgia\", serif;\n  --face-mono: \"Monaspace Radon\", ui-monospace, monospace;\n  --size-small: 0.875rem;\n  --size-body: 1.125rem;\n  --size-h3: 1.3rem;\n  --size-h2: 1.6rem;\n  --size-h1: 2.25rem;\n}\n\n@media (prefers-color-scheme: dark) {\n  :root {\n    --ink: #ece8de;\n    --paper: #161411;\n    --muted: #b4ae9f;\n    --line: #3b372f;\n    --tint: #211e1a;\n    --accent: #ff8f84;\n  }\n}\n"
+                ":root {\n  --ink: #000000;\n  --paper: #ffffff;\n  --muted: #5c5c5c;\n  --line: #000000;\n  --tint: #ffffff;\n  --accent: #e8170b;\n  --pen: #e8170b;\n  --pencil: #5c5c5c;\n  --bucket: #ffff00;\n  --sky: #80ffff;\n  --mint: #80ff80;\n  --pink: #ff9ad5;\n  --cloud: #e6e6e6;\n  --face-body: \"Literata\", \"Georgia\", serif;\n  --face-hand: \"Gaegu\", system-ui, sans-serif;\n  --face-mono: \"Monaspace Radon\", ui-monospace, monospace;\n  --size-small: 1rem;\n  --size-body: 1.25rem;\n  --size-h3: 1.75rem;\n  --size-h2: 2.125rem;\n  --size-h1: 3.875rem;\n}\n"
             }
         }
     }
