@@ -229,3 +229,47 @@ fn links_are_asked_for_within_limits_and_only_from_the_dashboards_origin() {
     assert!(bad.status().starts_with('4'), "{}", bad.text);
     assert!(!bad.problem().is_empty(), "a refusal names its code: {}", bad.text);
 }
+
+#[test]
+fn a_key_nobody_approves_or_a_person_denies_is_a_sign_in_error_that_says_so() {
+    let server = Server::start("unapproved", &["--enrol-guesses", "3", "--enrol-closed", "2s"]);
+    let first = &server.links()[0];
+    let mut owner = server.browser();
+    let entered = owner.send(("POST", target(first)), "");
+    assert_eq!(entered.status(), "200", "{}", entered.text);
+    owner.keep(&entered);
+
+    // nobody comes
+    let laptop = server.machine("laptop");
+    let waited = laptop.ink(&["login", "--wait", "2", "--poll", "1"]);
+    assert_eq!(waited.code, 3, "{}", waited.said());
+    assert!(waited.err.contains("error[auth.enrolment.expired]"), "{}", waited.err);
+    assert!(waited.err.contains("fix: run `ink login` again"), "{}", waited.err);
+    let who = laptop.ink(&["whoami"]);
+    assert_eq!(who.code, 3, "a key nobody approved was kept: {}", who.said());
+
+    // a person looks at the fingerprint and says no
+    let waiting = laptop.start(&["login", "--wait", "30", "--poll", "1"]);
+    let asked = waiting.until("/v1/approve/");
+    let code = asked.split("/v1/approve/").nth(1).unwrap().split(',').next().unwrap().to_owned();
+    let path = format!("/v1/approve/{code}");
+    let denied = owner.send(("DELETE", &path), "");
+    assert_eq!(denied.status(), "200", "{}", denied.text);
+    let (exit, said) = waiting.finish();
+    assert_eq!(exit, 3, "{said}");
+    assert!(said.contains("auth.enrolment.denied"), "{said}");
+
+    // a stranger guessing codes is closed out after three misses, and the door opens again
+    for letter in ["B", "C", "D"] {
+        let guess = owner.send(("GET", &format!("/v1/approve/{0}-{0}", letter.repeat(4))), "");
+        assert_eq!(guess.status(), "404", "{}", guess.text);
+    }
+    let closed = owner.send(("GET", "/v1/approve/HHHH-HHHH"), "");
+    assert_eq!((closed.status(), closed.problem().as_str()), ("429", "auth.enrolment.limited"), "{}", closed.text);
+    assert!(closed.header("retry-after").is_some(), "{}", closed.text);
+    let started = std::time::Instant::now();
+    while owner.send(("GET", "/v1/approve/HHHH-HHHH"), "").status() == "429" {
+        assert!(started.elapsed() < Server::PATIENCE, "the door never opened again");
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+}
