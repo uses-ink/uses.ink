@@ -134,6 +134,10 @@ hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0
   article > p > img, article .quiet-picture { padding: 12px; }
   blockquote { padding-left: 52px; font-size: 1.3125rem; }
 }
+/* stacked above the page, a contents of hundreds of links (the decisions) would push the text out of the first screens: it scrolls in a box of its own */
+@media (max-width: 64rem) {
+  .quiet-side { max-height: 15rem; overflow-y: auto; overscroll-behavior: contain; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* ------------------------------------------------------------------------------------------
