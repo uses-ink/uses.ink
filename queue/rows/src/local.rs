@@ -3,10 +3,10 @@
 use std::time::Duration;
 
 use db::{Db, Row, Statement};
+use logging::Field as _;
 use model::Timestamp;
 use queue::{Delivery, Message, MessageId, Queue, Sent, Settled};
 use sea_query::{Expr, ExprTrait, OnConflict, Order, Query};
-use logging::Field as _;
 
 use crate::Error;
 use crate::schema::Message as Table;

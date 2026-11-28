@@ -7,8 +7,8 @@ use blob::Blob;
 use build::{Build, Built, Event, Events, Outcome, Request, Source, Status};
 use engine::{BaseUrl, Blobs};
 use host_native::Memory;
-use model::Bytes;
 use logging::{Field as _, Instrument as _};
+use model::Bytes;
 
 use crate::Error;
 use crate::bundle::Bundle;
@@ -94,7 +94,9 @@ impl<B: Blob, R: Remote> Build for Local<B, R> {
         let started = Instant::now();
         events.event(Event::Started { build: request.build, trigger: request.trigger });
         let span = logging::build!(request.build, request.trigger);
-        span.in_scope(|| logging::info!(name: logging::event::BUILD_START, trigger = logging::Kind::kind(request.trigger)));
+        span.in_scope(
+            || logging::info!(name: logging::event::BUILD_START, trigger = logging::Kind::kind(request.trigger)),
+        );
         let result = self.attempt(request, events).instrument(span.clone()).await;
         let status = match &result {
             Ok(Outcome::Built(_)) => Status::Succeeded,

@@ -9,10 +9,10 @@ use config::{Config, Parsed};
 use engine::{BaseUrl, Blobs, Chosen, Engine, NoPins, RenderSettings};
 use host_image::Pixels;
 use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
+use logging::Field as _;
 use model::record::PluginId;
 use model::{Bytes, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Severity, Snapshot, Subject};
 use theme_quiet::Quiet;
-use logging::Field as _;
 
 use crate::pins::Pinned;
 use crate::reader::Reader;
