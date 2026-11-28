@@ -2,8 +2,8 @@
 
 use super::{Fixtures, Pages};
 use control::Handle;
-use uses_ink_web::view::{Ended, Entering, Outcome, Recorded, Sent, SignIn, Stored};
 use uses_ink_web::Token;
+use uses_ink_web::view::{Ended, Entering, Outcome, Recorded, Sent, SignIn, Stored};
 
 impl Fixtures {
     pub(crate) fn sign_pages(pages: &mut Pages) {
@@ -15,11 +15,8 @@ impl Fixtures {
             Recorded { event: "started".to_owned(), detail: "trigger manual".to_owned(), bad: false },
             Recorded { event: "refused".to_owned(), detail: "config.syntax.invalid".to_owned(), bad: true },
         ];
-        let outcome = Outcome {
-            status: build::Status::Refused,
-            deploy: None,
-            wall: std::time::Duration::from_millis(40),
-        };
+        let outcome =
+            Outcome { status: build::Status::Refused, deploy: None, wall: std::time::Duration::from_millis(40) };
         pages.put(
             "stored_done",
             &Stored::new(handle.clone(), Self::build(1), lines.clone(), Some(Ended::Finished(outcome))),

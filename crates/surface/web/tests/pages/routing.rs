@@ -247,15 +247,24 @@ fn the_limits_page_needs_no_session() {
 #[test]
 fn the_home_page_sends_each_person_where_they_start() {
     let signed_in = reply(&Ask::get("/"), Some(Ask::who()));
-    assert_eq!((signed_in.status, signed_in.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/account".to_owned()));
+    assert_eq!(
+        (signed_in.status, signed_in.location.unwrap().as_str().to_owned()),
+        (Status::SeeOther, "/account".to_owned())
+    );
     let signed_out = reply(&Ask::get("/"), None);
-    assert_eq!((signed_out.status, signed_out.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/signin".to_owned()));
+    assert_eq!(
+        (signed_out.status, signed_out.location.unwrap().as_str().to_owned()),
+        (Status::SeeOther, "/signin".to_owned())
+    );
 }
 
 #[test]
 fn asking_for_a_link_and_using_one_need_no_session_and_are_posts() {
     let asked = reply(&Ask::post("/signin", "address=ann%40example.org"), None);
-    assert_eq!((asked.status, asked.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/signin/sent".to_owned()));
+    assert_eq!(
+        (asked.status, asked.location.unwrap().as_str().to_owned()),
+        (Status::SeeOther, "/signin/sent".to_owned())
+    );
     assert_eq!(reply(&Ask::post("/signin", ""), None).status, Status::BadRequest, "no address, no ask");
     assert_eq!(reply(&Ask::post("/signin", "address=nobody"), None).status, Status::BadRequest);
     // opening a link only shows a page; a GET spends nothing and the page posts to the same path
@@ -263,7 +272,10 @@ fn asking_for_a_link_and_using_one_need_no_session_and_are_posts() {
     let Body::Page(text) = page.body else { panic!("a page") };
     assert!(text.contains(r#"action="/login/good""#) && text.contains(r#"name="address""#), "{text}");
     let entered = reply(&Ask::post("/login/good", ""), None);
-    assert_eq!((entered.status, entered.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/account".to_owned()));
+    assert_eq!(
+        (entered.status, entered.location.unwrap().as_str().to_owned()),
+        (Status::SeeOther, "/account".to_owned())
+    );
     assert_eq!(reply(&Ask::post("/login/bad", ""), None).status, Status::NotFound);
     assert_eq!(reply(&Ask::get("/login/a.b"), None).status, Status::NotFound, "a token has a shape");
     assert_eq!(reply(&Ask::get("/signin/sent"), None).status, Status::Ok);

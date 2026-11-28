@@ -39,8 +39,11 @@ impl View for Failed {
 
     fn body(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         FailureBlock(&self.failure).render(out)?;
-        let account = Path::account();
-        html! { p { (Link(&account, "Go to your account")) } }.render(out)
+        let (to, words) = match self.failure {
+            Failure::SignedOut => (Path::signin(), "Sign in"),
+            _ => (Path::account(), "Go to your account"),
+        };
+        html! { p { (Link(&to, words)) } }.render(out)
     }
 }
 

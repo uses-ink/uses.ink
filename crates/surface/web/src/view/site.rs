@@ -13,6 +13,7 @@ use crate::route::{Path, Screen};
 use crate::shell::{Frame, Glyph, View};
 use crate::style::look;
 use crate::view::block::{Attempt, Empty, Id, Link, Log, Outside, Pill, Post, Problem, Serving, Stamp};
+use crate::view::stored::Recorded;
 use crate::view::word::Word;
 
 /// What the Site screen shows.
@@ -32,6 +33,9 @@ pub struct Site {
     pub observed: Observed,
     /// The warnings and errors of the last build.
     pub problems: Vec<Diagnostic>,
+    /// The problems of the last build as its stored log says them, for an edge that holds no
+    /// typed diagnostics.
+    pub flagged: Vec<Recorded>,
 }
 
 impl Site {
@@ -45,6 +49,7 @@ impl Site {
             recent: Vec::new(),
             observed: Observed::default(),
             problems: Vec::new(),
+            flagged: Vec::new(),
         }
     }
 }
@@ -103,10 +108,11 @@ impl Site {
             (Path::of(Screen::Deploys, &self.handle), Path::of(Screen::Understood, &self.handle));
         html! {
             h2 { "To fix" }
-            @if self.problems.is_empty() {
+            @if self.problems.is_empty() && self.flagged.is_empty() {
                 p { "Nothing to fix. The last build raised no warnings or errors." }
             } @else {
                 @for found in &self.problems { (Problem(found)) }
+                @for line in &self.flagged { div.look::CARD { p.look::LINE { code.look::PATH { (&line.event) } " " (&line.detail) } } }
                 p { "Why a page looks as it does: " (Link(&understood, "What we understood")) "." }
             }
 

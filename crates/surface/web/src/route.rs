@@ -100,6 +100,7 @@ pub enum Route {
 
 impl Route {
     /// The address of the request, or why it is none of ours.
+    #[expect(clippy::too_many_lines, reason = "one arm a path shape")]
     pub fn read(request: &Request<'_>) -> Result<Self, Failure> {
         let mut parts = request.path.trim_matches('/').split('/');
         let (first, second, third, rest) = (parts.next(), parts.next(), parts.next(), parts.next());

@@ -68,19 +68,13 @@ pub trait Screens {
     ) -> impl Future<Output = Result<Understood, Failure>>;
 
     /// The replay of one decision.
-    fn why(
-        &self,
-        who: Id<AccountKind>,
-        handle: &Handle,
-        asked: &Asked,
-    ) -> impl Future<Output = Result<Why, Failure>>;
+    fn why(&self, who: Id<AccountKind>, handle: &Handle, asked: &Asked) -> impl Future<Output = Result<Why, Failure>>;
 
     /// The Deploys screen.
     fn deploys(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Deploys, Failure>>;
 
     /// The Settings screen.
-    fn settings(&self, who: Id<AccountKind>, handle: &Handle)
-    -> impl Future<Output = Result<Settings, Failure>>;
+    fn settings(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Settings, Failure>>;
 
     /// The Account screen.
     fn account(&self, who: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>>;
@@ -113,12 +107,7 @@ pub trait Screens {
     ) -> impl Future<Output = Result<Logged<Self::Follow>, Failure>>;
 
     /// Makes the change a form asked for.
-    fn act(
-        &self,
-        who: Id<AccountKind>,
-        handle: &Handle,
-        action: &Action,
-    ) -> impl Future<Output = Result<(), Failure>>;
+    fn act(&self, who: Id<AccountKind>, handle: &Handle, action: &Action) -> impl Future<Output = Result<(), Failure>>;
 
     /// The site as a download.
     fn export(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Download, Failure>>;
@@ -195,7 +184,9 @@ impl<S: Screens> Dashboard<S> {
         }
     }
 
-    fn failed(frame: Frame, failure: Failure) -> Reply<S::Follow> {
+    /// A failure as the page that tells it, with the status it says, for an edge that refuses a
+    /// request before the dashboard sees it.
+    pub fn failed(frame: Frame, failure: Failure) -> Reply<S::Follow> {
         let status = failure.status();
         let page = Failed::new(frame, failure);
         match Document(&page).write() {
@@ -204,6 +195,7 @@ impl<S: Screens> Dashboard<S> {
         }
     }
 
+    #[expect(clippy::too_many_lines, reason = "one arm a route")]
     async fn serve(&self, who: Option<Id<AccountKind>>, route: &Route) -> Result<Reply<S::Follow>, Failure> {
         match route {
             Route::Home => {

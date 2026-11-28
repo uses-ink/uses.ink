@@ -240,7 +240,9 @@ impl fmt::Display for Failure {
             Self::Cut { build } => write!(out, "the live log of build {build} ended before the build did"),
             Self::Render { .. } => out.write_str("a page could not be written out"),
             Self::Auth { problem, .. } => write!(out, "signing in was refused: {problem}"),
-            Self::Upload { handle } => write!(out, "{handle} is built from an upload, so there is nothing to read again"),
+            Self::Upload { handle } => {
+                write!(out, "{handle} is built from an upload, so there is nothing to read again")
+            }
             Self::NoReplay => out.write_str("this server cannot replay a decision"),
         }
     }
