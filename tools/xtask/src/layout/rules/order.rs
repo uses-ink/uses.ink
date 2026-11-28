@@ -188,6 +188,7 @@ impl Order {
         ("uses-ink-blob", &["uses-ink-model", "uses-ink-logging"]),
         ("uses-ink-blob-conformance", &["uses-ink-blob", "uses-ink-model"]),
         ("uses-ink-blob-dir", &["uses-ink-blob", "uses-ink-blob-conformance", "uses-ink-model", "uses-ink-logging"]),
+        ("uses-ink-blob-r2", &["uses-ink-blob", "uses-ink-model", "uses-ink-logging"]),
         ("uses-ink-build", &["uses-ink-blob", "uses-ink-model", "uses-ink-logging"]),
         ("uses-ink-build-conformance", &["uses-ink-blob", "uses-ink-build", "uses-ink-model"]),
         (

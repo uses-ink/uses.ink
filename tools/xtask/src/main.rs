@@ -12,7 +12,7 @@
 //! - `component`: build the plugins' guest crates for `wasm32-unknown-unknown` and wrap each
 //!   into a component under `target/plugin/`.
 //! - `worker <case>`: a Worker run in `workerd` through `wrangler dev --local`, with no Cloudflare
-//!   account: the hosted spikes and the conformance suites (`probe`, `lock`, `api`, `store`, `db`).
+//!   account: the hosted spikes and the conformance suites (`probe`, `lock`, `api`, `store`, `db`, `blob`, `rig`).
 //! - `check [stage]`: the whole gate, or one of its stages (`lint`, `test`, `docs`, `wasm`,
 //!   `sites`, `worker`), which CI runs as parallel jobs: fmt, clippy (native and wasm32), `cargo deny` and
 //!   `layout`; the components and nextest; the docs checks (links, citations, crate paths and decisions)

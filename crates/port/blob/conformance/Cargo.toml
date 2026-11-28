@@ -1,6 +1,6 @@
 [package]
 name = "uses-ink-blob-conformance"
-description = "The conformance suite every blob port adapter runs: a directory now, R2 when it lands"
+description = "The conformance suite every blob port adapter runs: a directory and R2"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -1977,6 +1977,8 @@ dependencies = [
 name = "spike-hosted-rig"
 version = "0.0.0"
 dependencies = [
+ "uses-ink-blob-conformance",
+ "uses-ink-blob-r2",
  "uses-ink-db",
  "uses-ink-db-conformance",
  "uses-ink-db-d1",
@@ -2317,6 +2319,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-blob-conformance"
+version = "0.0.0"
+dependencies = [
+ "pollster",
+ "uses-ink-blob",
+ "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-blob-r2"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "futures-util",
+ "uses-ink-blob",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "worker",
+]
+
+[[package]]
 name = "uses-ink-build"
 version = "0.0.0"
 dependencies = [
@@ -2591,13 +2614,12 @@ dependencies = [
 [[package]]
 name = "webauthn-rs-core"
 version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d13e555c106095051abd70415b88546a0d3757a7990e05b4659b4fba19e46ac"
 dependencies = [
  "base64 0.21.7",
  "crypto-glue",
  "der-parser",
  "hex",
+ "js-sys",
  "nom",
  "rand",
  "rand_chacha",

@@ -25,16 +25,21 @@ pub(crate) enum Case {
     Store,
     /// The row port's conformance suite, run through the D1 adapter in workerd.
     Db,
+    /// The blob port's conformance suite, run through the R2 adapter in workerd.
+    Blob,
+    /// Every conformance suite of the rig, in one Worker: what the gate runs.
+    Rig,
     /// H1b: the generated migrations applied by wrangler, compared with SQLite's schema.
     Migrate,
 }
 
 impl Case {
     /// Every case, in the order they are listed.
-    pub(crate) const ALL: [Self; 6] = [Self::Probe, Self::Lock, Self::Api, Self::Store, Self::Db, Self::Migrate];
+    pub(crate) const ALL: [Self; 8] =
+        [Self::Probe, Self::Lock, Self::Api, Self::Store, Self::Db, Self::Blob, Self::Rig, Self::Migrate];
 
     /// The cases the gate's stage `worker` runs: tests, not spikes.
-    pub(crate) const GATE: [Self; 2] = [Self::Db, Self::Migrate];
+    pub(crate) const GATE: [Self; 2] = [Self::Rig, Self::Migrate];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -44,6 +49,8 @@ impl Case {
             Self::Api => "api",
             Self::Store => "store",
             Self::Db => "db",
+            Self::Blob => "blob",
+            Self::Rig => "rig",
             Self::Migrate => "migrate",
         }
     }
@@ -55,7 +62,7 @@ impl Case {
             Self::Migrate => "spikes/hosted/workers/migrate",
             Self::Api => "spikes/hosted/workers/api",
             Self::Store => "spikes/hosted/workers/store",
-            Self::Db => "spikes/hosted/workers/rig",
+            Self::Db | Self::Blob | Self::Rig => "spikes/hosted/workers/rig",
         }
     }
 
@@ -65,7 +72,16 @@ impl Case {
             Self::Probe | Self::Lock | Self::Migrate => 0,
             Self::Api => 8731,
             Self::Store => 8732,
-            Self::Db => 8733,
+            Self::Db | Self::Blob | Self::Rig => 8733,
+        }
+    }
+
+    /// The suite of the rig this case runs alone, or none for every suite.
+    pub(super) const fn suite(self) -> Option<&'static str> {
+        match self {
+            Self::Db => Some("db"),
+            Self::Blob => Some("blob"),
+            Self::Probe | Self::Lock | Self::Api | Self::Store | Self::Rig | Self::Migrate => None,
         }
     }
 
@@ -78,7 +94,7 @@ impl Case {
             }
             Self::Lock => Self::lock(shell, report),
             Self::Migrate => Migrated { shell }.run(report),
-            Self::Api | Self::Store | Self::Db => Served { case: self, shell }.run(report),
+            Self::Api | Self::Store | Self::Db | Self::Blob | Self::Rig => Served { case: self, shell }.run(report),
         }
     }
 

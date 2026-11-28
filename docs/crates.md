@@ -22,8 +22,9 @@ A layer depends only on the layers before it, and `standalone` crates depend on 
 | Crate | Path | Purpose | May use |
 |---|---|---|---|
 | `uses-ink-blob` | `crates/port/blob` | The blob port: bytes at their BLAKE3 hash, scoped per tenant, read and written as chunks | `uses-ink-model`, `uses-ink-logging` |
-| `uses-ink-blob-conformance` | `crates/port/blob/conformance` | The conformance suite every blob port adapter runs: a directory now, R2 when it lands | `uses-ink-blob`, `uses-ink-model` |
+| `uses-ink-blob-conformance` | `crates/port/blob/conformance` | The conformance suite every blob port adapter runs: a directory and R2 | `uses-ink-blob`, `uses-ink-model` |
 | `uses-ink-blob-dir` | `crates/port/blob/dir` | The blob port on a directory: atomic, hash-verified, for self-hosting | `uses-ink-blob`, `uses-ink-blob-conformance`, `uses-ink-model`, `uses-ink-logging` |
+| `uses-ink-blob-r2` | `crates/port/blob/r2` | The blob port on a Cloudflare R2 bucket through workers-rs: hashed while taken, multipart past a part, for the hosted service; empty off wasm32 | `uses-ink-blob`, `uses-ink-model`, `uses-ink-logging` |
 | `uses-ink-build` | `crates/port/build` | The build port: run a build of a source into a deploy, reporting the typed event stream | `uses-ink-blob`, `uses-ink-model`, `uses-ink-logging` |
 | `uses-ink-build-conformance` | `crates/port/build/conformance` | The conformance suite every build port adapter runs: the local builder now, the container when it lands | `uses-ink-blob`, `uses-ink-build`, `uses-ink-model` |
 | `uses-ink-clock` | `crates/port/clock` | The two things a use case may not read for itself: what time it is and random bytes, as ports, with a system adapter and deterministic ones for tests | none |

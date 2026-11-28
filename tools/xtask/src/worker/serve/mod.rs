@@ -85,7 +85,7 @@ impl Served<'_> {
         let outcome = match self.case {
             Case::Api => Self::api(&mut exchange),
             Case::Store => Self::store(&mut exchange),
-            Case::Db => Self::cases(&mut exchange),
+            Case::Db | Case::Blob | Case::Rig => Self::cases(&mut exchange, self.case.suite()),
             Case::Probe | Case::Lock | Case::Migrate => Ok(()),
         };
         if outcome.is_err() {
@@ -152,9 +152,14 @@ impl Served<'_> {
     }
 
     /// The conformance cases of the Worker, one call each.
-    fn cases(exchange: &mut Exchange<'_>) -> Result<(), Fault> {
+    fn cases(exchange: &mut Exchange<'_>, suite: Option<&str>) -> Result<(), Fault> {
         let listed = exchange.call(&Call::get("/__conformance"))?;
-        let names: Vec<String> = listed.text().lines().filter(|line| !line.is_empty()).map(str::to_owned).collect();
+        let names: Vec<String> = listed
+            .text()
+            .lines()
+            .filter(|line| suite.is_none_or(|suite| line.split('/').next() == Some(suite)))
+            .map(str::to_owned)
+            .collect();
         let mut failed = Vec::new();
         for name in &names {
             if let Err(fault) = exchange.call(&Call::post(format!("/__conformance/{name}"))) {

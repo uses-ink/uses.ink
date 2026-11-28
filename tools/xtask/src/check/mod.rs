@@ -54,6 +54,7 @@ impl Gate {
                     "uses-ink-source-git-guest",
                     "uses-ink-host-wasmtime-hostile",
                     "uses-ink-db-d1",
+                    "uses-ink-blob-r2",
                     "uses-ink-edge-api",
                 ],
                 flags: &[],

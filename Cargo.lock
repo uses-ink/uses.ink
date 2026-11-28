@@ -6457,6 +6457,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-blob-r2"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "futures-util",
+ "uses-ink-blob",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "worker",
+]
+
+[[package]]
 name = "uses-ink-build"
 version = "0.0.0"
 dependencies = [
