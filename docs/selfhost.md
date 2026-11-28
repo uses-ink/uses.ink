@@ -30,13 +30,18 @@ $ ink serve
 ```
 
 `ink build` writes `.ink/out`, and `ink serve` serves it on `127.0.0.1:8080`, through the same edge
-code production runs. That serves one folder and nothing else: the start lists `api` as `off`.
+code production runs. That serves one folder and nothing else: the start lists `api` as `off`. The pages
+`ink build` writes name `http://127.0.0.1:4000` as their canonical address, the preview port; a
+site published with `ink push` is built again on the server with its own address.
 
-To run the product, give it a data folder. The folder `.ink/out` is still read, which here is the
-one `ink build` just wrote:
+To run the product, give it a data folder, and keep that folder outside the site: a data folder
+inside the site would be part of what `ink push` sends, so `ink push` refuses with
+`push.folder.holds-data` when it finds `ink.db`, `secret.key` or `operator-keys` in the folder.
+The folder `.ink/out` is still read, which here is the one `ink build` just wrote. Stop the first
+server with Ctrl-C, then, still in `site`:
 
 ```
-$ ink serve --data ./state
+$ ink serve --data ../state
 ```
 
 The start prints every setting it runs with, since nothing is silent (decision 0005), in this order
@@ -61,7 +66,7 @@ Addresses
 press ctrl-c to stop
 ```
 
-Read three things in it:
+Read these in it:
 
 - The `admin link` block: the first-run link, shown once, kept nowhere, valid for 24 hours
   (`--admin-ttl`). Opening it signs you in as the owner. A later start makes no second link and says
@@ -72,6 +77,8 @@ Read three things in it:
 - The sections below it (Addresses, Sign-in, Data, Limits, Background work, Security, Mail) list every
   setting with its value and where it came from: `default`, or the flag that changed it. A setting
   that is a warning, such as a cookie that is not `Secure` on plain http, says so with its fix.
+- `Data` section: `database` is the file, and `migrations` lists the migrations this start applied
+  to it, or says none was due. After an upgrade, that is where to read what changed.
 
 `ink serve --print-config --data ./state` prints the same report from the flags alone and exits. It
 binds nothing and makes nothing, so it does not use up the first-run link of a new folder. With
@@ -81,16 +88,47 @@ watch, mail and failures always, and each request with `-v`. `--log-format json`
 JSON object a line, `--log-level` and `-q` say how much, and `--log-time local` writes times in the
 machine's zone.
 
-Then, from another terminal, enrol the command line as the operator of this server and publish:
+Open the admin link in a browser. It shows a form with one field, the email address of the owner
+account, and a button; the button signs you in as the owner. From a script, post the form from the
+dashboard's own origin, which the server checks (`Origin` must be the dashboard's address):
+
+```
+$ curl -c jar -H 'Origin: http://api.localhost:8080' --data-urlencode address=me@example.org \
+    http://api.localhost:8080/login/<token>
+```
+
+The answer is `303` with a session cookie, and `curl -b jar http://api.localhost:8080/account`
+shows the account.
+
+Then, from another terminal in the folder that holds `site` and `state`, enrol the command line as
+the operator of this server and publish. `ink login` keeps a key but not the API address, so give
+the address to the commands that follow, here as the environment variable they all read:
 
 ```
 $ ink login --data ./state --api http://api.localhost:8080
+$ export INK_API=http://api.localhost:8080
 $ ink -C site init --handle garden
 $ ink -C site push
 ```
 
 The site is served at `http://garden.localhost:8080`. `*.localhost` names resolve to the loopback
-address in current browsers and in `curl`; elsewhere, add the names to `/etc/hosts`.
+address in current browsers and, on the hosts this was run on, in `curl` and in `ink` itself;
+elsewhere, add the names to `/etc/hosts`, or point `curl` at them with
+`--resolve garden.localhost:8080:127.0.0.1`.
+
+After a start, the server refuses signed requests for about 30 seconds: it keeps the nonces it has
+seen in memory, so it cannot tell a replay of a request signed before the restart. An `ink` call in
+that time fails with `auth.server.restarting`, the seconds to wait, and the fix: run it again. Sites
+are served at once.
+
+From the same terminal, the operator's other commands work against this server:
+
+```
+$ ink org create "Garden"            # an organization you own
+$ ink -C site domain add www.example.org   # prints the TXT record to publish
+$ ink -C site preview list           # previews of git branches; none for an upload site
+$ ink abuse list                     # the operator's key; reports of strangers
+```
 
 ## Behind a reverse proxy, on a real name
 
@@ -112,6 +150,9 @@ working directory when it is left out. It must exist or the start fails with
 - `--api-host` is the one host name whose requests are API and dashboard calls (default
   `api.localhost`). Passkeys are made for it (`--rp-id` changes that, and a passkey made under one
   id never works under another).
+- Requests of `ink` are signed for the API host on the origin's port, none for `https`, whatever
+  port `--addr` listens on. `--audience <host[:port]>` says another name, for a proxy that does not
+  pass the `Host` header the client wrote; the start prints the audience it runs with.
 - `--forwarded-hops N` says how many proxies of yours sit in front. With it the client address is
   read from `X-Forwarded-For`, `N` entries from the end, and a request without the header is
   refused; the sign-in and abuse limits count per client address, so without it every request looks
@@ -178,8 +219,45 @@ secrets:
 What is checked and what is not. `cargo xtask release image` (run on a build host through the farm)
 builds the image, reads its user and healthcheck, starts it read-only with every capability dropped,
 a fresh volume at `/data` and `serve --addr 0.0.0.0:8080 --data /data/state`, and requires
-`/healthz` to answer. The compose file above was not run; its flags are the ones that check passes,
-plus the mail ones this page takes from the source.
+`/healthz` to answer. The compose file above was run as the equivalent `podman run` (flags, the
+`INK_SMTP_PASSWORD_FILE` secret mounted at `/run/secrets/smtp`, the read-only root, `--cap-drop ALL`,
+`no-new-privileges`, a named volume, `127.0.0.1:8080` published) against an SMTP host that does not
+exist: the start printed its settings, `/healthz` answered `200` and the container's own healthcheck
+passed. No mail was sent, so the SMTP login itself is not checked.
+
+Get the first-run link and enrol the command line, in a container that has no shell and whose data
+folder you do not read from outside:
+
+```
+$ docker logs ink | grep 'admin link'      # open it, give an address, sign in
+$ ink login --api https://api.example.org  # prints a code and a fingerprint, and waits
+```
+
+`ink login` without `--data` asks for approval: it prints a code and a fingerprint, and waits. The
+dashboard has no page that approves one yet. The address `ink login` prints, `/v1/approve/<code>`,
+answers a `GET` from a signed-in browser with JSON about the request, and the approval is a `POST` to
+it with the fingerprint, from the dashboard's own origin and the session of the first-run link:
+
+```
+$ curl -b jar -H 'Origin: https://api.example.org' -H 'Content-Type: application/json' \
+    -d '{"fingerprint":"ABCD-EFGH-IJ"}' https://api.example.org/v1/approve/<code>
+```
+
+Compare the fingerprint with the one `ink login` printed first. The key is a device key of the owner
+account (it lives 180 days). `ink login --data <folder>` is for a data folder you can write on the
+machine you run `ink` on. After approval, `ink init` and `ink push` into the container worked, and
+the site was served by its host name.
+
+The gap, as it is now. `ink login` tells the person to open the address it prints, and that address
+is not a page: the dashboard has no route that shows the key's label and fingerprint and asks for
+the comparison, and a `GET` of `/v1/approve/<code>` answers JSON. What a page has to do is already
+on the API: `GET /v1/approve/<code>` for the label and fingerprint (session cookie required, no
+signature), and `POST` of `{"fingerprint": ...}`, with `Origin` equal to the dashboard's address, to
+approve. A body that is not that JSON is refused with `400` and the code `auth.approval.malformed`,
+and the wrong fingerprint with `409`. Two more things to fix with the page: the message `ink login`
+prints says to open the address and approve there, which is false until the page exists, and a code
+that is not found counts toward the guess limit that closes enrolling for a minute, so a page must
+not probe codes.
 
 - The image's healthcheck asks `/healthz` on `127.0.0.1`, which answers `200` only for a host no site
   has (decision 0051), so it works with sites and an API host of any name.
@@ -215,17 +293,51 @@ $ docker compose start ink
 ```
 
 To restore, stop the server, empty the volume, unpack the archive into it as `65532:65532` and start.
-On a bare install the same two steps are `tar` on the folder `--data` names. The restore is not
-covered by a test here: after one, `ink status` and `ink deploy list` on a site are the check.
+On a bare install the same two steps are `cp -a` or `tar` on the folder `--data` names. After a
+restore, `ink status` on a site is the check, once the server takes signed requests again (about 30
+seconds after the start). A start from a copy makes no second admin link (`admin link  not made`),
+and the sites, the accounts and their sessions are there.
 
 ## Upgrade
 
-Starting a newer `ink` applies the database migrations before it serves, and says so. There is no
-downgrade: the way back is the backup taken before. So:
+Starting a newer `ink` applies the database migrations before it serves, and says so in the
+`migrations` row of the start's Data section: the migrations applied now, or that none was due.
+There is no downgrade: the way back is the backup taken before. So:
 
 1. Take a backup, as above.
 2. Replace the binary, or `docker compose pull && docker compose up -d`.
 3. Read the start's listing for a setting whose default changed, and `ink status` for the sites.
+
+## What was run, and what was not
+
+`cargo xtask smoke` runs the first-run, backup and upgrade sections above with the real `ink`, on
+one machine, in `target/smoke`, with a free port and a home folder of its own for the keys; on a
+build host it is `farm cargo xtask smoke`. It builds the components and `ink` first, so a cold run is
+a build and about a minute of stages. `cargo xtask smoke <path to an older ink>` adds the upgrade stage:
+that `ink` makes a data folder with a site, and this one starts it. The container is
+`cargo xtask release image`'s.
+
+Run on 2026-11-28 on a Linux x86_64 host (farm-a, podman 5.8.9). The rows marked smoke are
+`cargo xtask smoke` on the tree of the commit that holds this page, with an `ink` of the commit
+before branch previews as the older one. The container rows ran on the same tree, by hand.
+
+| Step | Result |
+|---|---|
+| `cargo xtask component`, `ink` built (debug and release) | passed |
+| `ink build`, `ink serve`, `GET /` (smoke) | passed; the page names `127.0.0.1:4000` as canonical, as said above |
+| `ink serve --data`, the first-run link, sign-in, `/account` (smoke) | passed, with the address field and the `Origin` header said above |
+| `ink login --data`, `init`, `push`, `garden.localhost` (smoke) | passed once `INK_API` is set; before this page said so, `init` stopped with `deploy.setting.missing` |
+| `org create`, `org list`, `domain add` (the TXT record), `preview list`, `abuse list` (smoke) | passed |
+| Backup (`cp -a` of a stopped data folder) and a start from the copy (smoke) | passed: site, account, session, no second admin link |
+| Upgrade: a data folder of an older build started with this `ink` (smoke, older `ink` named) | passed: the `migrations` row names them, the old site is served |
+| Image built, read-only, no capabilities, `/healthz`, healthcheck (`release image`) | passed; the build failed on `main` for a while on a missing `brand/` in the build context, fixed in `.dockerignore` |
+| The compose flags as `podman run`, `/healthz`, device login, approval, `push` into the container | passed by hand, with the API published on a port other than the one listened on (`-p 18082:8080`, `--origin http://localhost:18082`); the approval was a `POST` with `curl` (no dashboard page does it yet) |
+
+Not run: the installer script and the archives (no release is published), the image from `ghcr.io`,
+`docker` itself (podman was used), the compose file through `docker compose`, a real reverse proxy
+with TLS and the Caddy file, a wildcard certificate, sending mail through SMTP, a passkey (it needs a
+browser), `ink domain prove` against real DNS, git sites and forge hooks, the container backup and
+restore with `tar`, and the platforms other than Linux x86_64.
 
 ## Limits and flags
 
