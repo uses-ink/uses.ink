@@ -6429,6 +6429,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-authority-repo"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "pollster",
+ "rcgen",
+ "rustls",
+ "tempfile",
+ "tokio",
+ "url",
+ "uses-ink-authority-forge",
+ "uses-ink-authority-forgejo",
+ "uses-ink-authority-github",
+ "uses-ink-authority-gitlab",
+ "uses-ink-blob-dir",
+ "uses-ink-build",
+ "uses-ink-clock",
+ "uses-ink-control",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
+ "uses-ink-https",
+ "uses-ink-model",
+ "uses-ink-queue-rows",
+ "uses-ink-secret",
+ "uses-ink-secret-local",
+]
+
+[[package]]
 name = "uses-ink-blob"
 version = "0.0.0"
 dependencies = [
@@ -6751,6 +6779,11 @@ dependencies = [
  "tempfile",
  "url",
  "uses-ink-authority-dns",
+ "uses-ink-authority-forge",
+ "uses-ink-authority-forgejo",
+ "uses-ink-authority-github",
+ "uses-ink-authority-gitlab",
+ "uses-ink-authority-repo",
  "uses-ink-blob",
  "uses-ink-blob-dir",
  "uses-ink-build",
@@ -6765,6 +6798,7 @@ dependencies = [
  "uses-ink-queue-rows",
  "uses-ink-secret-local",
  "uses-ink-sig",
+ "uses-ink-watch",
  "uuid",
  "webauthn-rs-core",
 ]
@@ -6979,8 +7013,10 @@ name = "uses-ink-https"
 version = "0.0.0"
 dependencies = [
  "gix",
+ "rcgen",
  "reqwest",
  "rustls",
+ "tokio",
  "webpki-roots",
 ]
 

@@ -86,6 +86,15 @@ pub struct Rollback {
     pub deploy: DeployId,
 }
 
+/// `POST /v1/sites/{site}/repos/{step}`: the repository, when it is not the site's own source.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RepoAsk {
+    /// `host/owner/name`; the site's own git source when left out.
+    #[serde(default)]
+    pub repo: Option<Parsed<authority_forge::Repo>>,
+}
+
 /// `POST /v1/login`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]

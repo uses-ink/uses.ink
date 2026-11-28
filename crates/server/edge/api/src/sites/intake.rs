@@ -10,6 +10,7 @@
 use std::collections::BTreeMap;
 
 use authority_dns::Resolver;
+use authority_forge::Transport;
 use blob::{Blob, Tenant};
 use clock::{Clock, Draw};
 use control::{Ports, Site, Slug};
@@ -30,7 +31,7 @@ struct Parts {
     placed: BTreeMap<Hash, ContentPath>,
 }
 
-impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Api<P, C, K, D, R> {
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver, T: Transport> Api<P, C, K, D, R, T> {
     /// Reads `body` as a built folder and makes it a deploy of `site`, live unless publishing is
     /// paused.
     pub(crate) async fn deploy(&self, site: &Site, body: &[u8]) -> Result<Deployed, Fault<P>> {

@@ -958,6 +958,9 @@ pub enum Problem {
         /// Why, as the part that refused it says.
         reason: String,
     },
+    /// `repo.forges.off`: this server reaches no forge, so a repository cannot be claimed
+    #[serde(rename = "repo.forges.off")]
+    RepoForgesOff,
     /// `repo.host.unlisted`: {host} is not a forge this server talks to
     #[serde(rename = "repo.host.unlisted")]
     RepoHostUnlisted {
@@ -1268,6 +1271,7 @@ impl Problem {
         "forge.reply.large",
         "forge.reply.malformed",
         "forge.instances.invalid",
+        "repo.forges.off",
         "repo.host.unlisted",
         "repo.proof.missing",
         "repo.proof.wrong",
@@ -1454,6 +1458,7 @@ impl Problem {
             Self::ForgeReplyLarge { .. } => "forge.reply.large",
             Self::ForgeReplyMalformed => "forge.reply.malformed",
             Self::ForgeInstancesInvalid { .. } => "forge.instances.invalid",
+            Self::RepoForgesOff => "repo.forges.off",
             Self::RepoHostUnlisted { .. } => "repo.host.unlisted",
             Self::RepoProofMissing => "repo.proof.missing",
             Self::RepoProofWrong => "repo.proof.wrong",
@@ -1641,6 +1646,7 @@ impl Problem {
             Self::ForgeReplyLarge { .. } => Severity::Error,
             Self::ForgeReplyMalformed => Severity::Error,
             Self::ForgeInstancesInvalid { .. } => Severity::Error,
+            Self::RepoForgesOff => Severity::Error,
             Self::RepoHostUnlisted { .. } => Severity::Error,
             Self::RepoProofMissing => Severity::Error,
             Self::RepoProofWrong => Severity::Error,
@@ -1828,6 +1834,7 @@ impl Problem {
             Self::ForgeReplyLarge { .. } => Fault::Source,
             Self::ForgeReplyMalformed => Fault::Source,
             Self::ForgeInstancesInvalid { .. } => Fault::Operator,
+            Self::RepoForgesOff => Fault::Operator,
             Self::RepoHostUnlisted { .. } => Fault::Author,
             Self::RepoProofMissing => Fault::Author,
             Self::RepoProofWrong => Fault::Author,
@@ -2600,6 +2607,7 @@ impl From<&Problem> for Coded {
             Problem::ForgeInstancesInvalid { reason, .. } => {
                 Coded::new("forge.instances.invalid", vec![Field::from(reason.clone())])
             }
+            Problem::RepoForgesOff => Coded::new("repo.forges.off", vec![]),
             Problem::RepoHostUnlisted { host, .. } => Coded::new("repo.host.unlisted", vec![Field::from(host.clone())]),
             Problem::RepoProofMissing => Coded::new("repo.proof.missing", vec![]),
             Problem::RepoProofWrong => Coded::new("repo.proof.wrong", vec![]),
@@ -2839,6 +2847,7 @@ impl TryFrom<Coded> for Problem {
             "forge.reply.large" => Self::ForgeReplyLarge { size: fields.next()?, limit: fields.next()? },
             "forge.reply.malformed" => Self::ForgeReplyMalformed,
             "forge.instances.invalid" => Self::ForgeInstancesInvalid { reason: fields.next()? },
+            "repo.forges.off" => Self::RepoForgesOff,
             "repo.host.unlisted" => Self::RepoHostUnlisted { host: fields.next()? },
             "repo.proof.missing" => Self::RepoProofMissing,
             "repo.proof.wrong" => Self::RepoProofWrong,

@@ -14,6 +14,7 @@ use std::error::Error;
 use std::fmt;
 
 use authority_dns::Resolver;
+use authority_forge::Transport;
 use blob::{Blob, Chunks, Tenant};
 use build::{BuildId, Tree, TreeError, Trigger};
 use clock::{Clock, Draw};
@@ -244,7 +245,7 @@ impl Limits {
     }
 }
 
-impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Api<P, C, K, D, R> {
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver, T: Transport> Api<P, C, K, D, R, T> {
     /// The site's tenant, when the site takes uploads.
     async fn uploads(&self, principal: Principal, id: control::Id<SiteKind>) -> Result<(Site, Tenant), Fault<P>> {
         let site = self.owned(principal, id).await?;

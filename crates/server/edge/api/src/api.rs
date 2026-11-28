@@ -1,6 +1,8 @@
 //! The API: one call in, one reply out, over the control plane's ports.
 
 use authority_dns::{Dns, Offline, Resolver};
+use authority_forge::Transport;
+use authority_repo::{Repos, Silent};
 use build::{BuildId, Trigger};
 use clock::{Clock, Draw};
 use control::{Control, Id, NewJob, NewSite, Ports, Requested, Resumed, Site, SiteKind};
@@ -38,17 +40,18 @@ enum Caller {
 /// Nothing here reads the time or draws a random number except through [`Clock`] and [`Draw`],
 /// and nothing names an adapter: the same calls on the same ports make the same rows in a test.
 #[derive(Debug)]
-pub struct Api<P: Ports, C, K, D, R = Offline> {
+pub struct Api<P: Ports, C, K, D, R = Offline, T = Silent> {
     pub(crate) control: Control<P>,
     credentials: C,
     enrol: Enrol<P::Db>,
     pub(crate) clock: K,
-    draw: D,
+    pub(crate) draw: D,
     pub(crate) limits: Limits,
     schemes: Vec<Scheme>,
     reports: Quota,
     enrolments: Quota,
     pub(crate) dns: Dns<R>,
+    pub(crate) repos: Option<Repos<T>>,
 }
 
 impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D>
@@ -71,16 +74,17 @@ where
             reports: Quota::new(Self::REPORTS, Self::TRACKED),
             enrolments: Quota::new(Self::ENROLMENTS, Self::TRACKED),
             dns: Dns::new(Offline),
+            repos: None,
         }
     }
 }
 
-impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Api<P, C, K, D, R>
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver, T: Transport> Api<P, C, K, D, R, T>
 where
     P::Db: Db,
 {
     /// The same API, reading the proof records of custom domains through `resolver`.
-    pub fn with_resolver<S: Resolver>(self, resolver: S) -> Api<P, C, K, D, S> {
+    pub fn with_resolver<S: Resolver>(self, resolver: S) -> Api<P, C, K, D, S, T> {
         Api {
             control: self.control,
             credentials: self.credentials,
@@ -92,6 +96,25 @@ where
             reports: self.reports,
             enrolments: self.enrolments,
             dns: Dns::new(resolver),
+            repos: self.repos,
+        }
+    }
+
+    /// The same API, reaching the forges `repos` knows to prove a site's repository. With `None` a
+    /// repository can be listed and nothing can be claimed.
+    pub fn with_repos<S: Transport>(self, repos: Option<Repos<S>>) -> Api<P, C, K, D, R, S> {
+        Api {
+            control: self.control,
+            credentials: self.credentials,
+            enrol: self.enrol,
+            clock: self.clock,
+            draw: self.draw,
+            limits: self.limits,
+            schemes: self.schemes,
+            reports: self.reports,
+            enrolments: self.enrolments,
+            dns: self.dns,
+            repos,
         }
     }
 
@@ -224,6 +247,8 @@ where
             Call::Claim { site, name } => self.claim(principal, (site, name)).await,
             Call::Prove { site, name } => self.prove(principal, (site, name)).await,
             Call::Unclaim { site, name } => self.unclaim(principal, (site, name)).await,
+            Call::Repos(site) => self.repo_list(principal, site).await,
+            Call::Repo { site, step } => self.repo_step(principal, (site, step), body).await,
             Call::Previews(site) => self.previews(principal, site).await,
             Call::Preview { site, slug } => self.preview(principal, (site, slug), body).await,
             Call::Unpreview { site, slug } => self.unpreview(principal, (site, slug)).await,
@@ -285,7 +310,7 @@ where
     }
 
     /// A JSON reply.
-    pub(crate) fn json<T: Serialize>(status: Status, value: &T) -> Result<Reply, Fault<P>> {
+    pub(crate) fn json<V: Serialize>(status: Status, value: &V) -> Result<Reply, Fault<P>> {
         let body = serde_json::to_vec(value).map_err(|source| Fault::Control(control::Error::Log(source)))?;
         Ok(Reply::new(status, Media::Json, body))
     }
@@ -577,7 +602,7 @@ pub trait Answers {
     fn answer(&self, request: &Request) -> impl std::future::Future<Output = Reply>;
 }
 
-impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Answers for Api<P, C, K, D, R>
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver, T: Transport> Answers for Api<P, C, K, D, R, T>
 where
     P::Db: Db,
 {

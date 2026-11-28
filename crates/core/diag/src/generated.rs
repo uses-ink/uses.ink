@@ -468,6 +468,9 @@ impl Message<'_> {
             Problem::ForgeInstancesInvalid { reason, .. } => {
                 write!(out, "the list of forge instances is not valid: {reason}")
             }
+            Problem::RepoForgesOff => {
+                write!(out, "this server reaches no forge, so a repository cannot be claimed")
+            }
             Problem::RepoHostUnlisted { host, .. } => {
                 write!(out, "{host} is not a forge this server talks to")
             }
@@ -890,6 +893,7 @@ impl Fix<'_> {
             Problem::ForgeReplyLarge { .. } => true,
             Problem::ForgeReplyMalformed => true,
             Problem::ForgeInstancesInvalid { .. } => true,
+            Problem::RepoForgesOff => true,
             Problem::RepoHostUnlisted { .. } => true,
             Problem::RepoProofMissing => true,
             Problem::RepoProofWrong => true,
@@ -1437,6 +1441,9 @@ impl Fix<'_> {
             }
             Problem::ForgeInstancesInvalid { .. } => {
                 write!(out, "fix the list: one primary instance, each host once, each a plain DNS name")
+            }
+            Problem::RepoForgesOff => {
+                write!(out, "ask the operator to start the server with `--forge-hooks`")
             }
             Problem::RepoHostUnlisted { .. } => {
                 write!(

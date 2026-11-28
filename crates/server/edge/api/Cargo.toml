@@ -11,6 +11,11 @@ publish.workspace = true
 [dependencies]
 logging.workspace = true
 authority-dns.workspace = true
+authority-forge.workspace = true
+authority-forgejo.workspace = true
+authority-github.workspace = true
+authority-gitlab.workspace = true
+authority-repo.workspace = true
 blake3.workspace = true
 blob.workspace = true
 build.workspace = true
@@ -25,6 +30,7 @@ serde.workspace = true
 serde_json.workspace = true
 sig.workspace = true
 url.workspace = true
+watch.workspace = true
 webauthn-rs-core.workspace = true
 
 # the Worker target (spikes/passkeys): rand and uuid, under the WebAuthn verifier, need their JavaScript entropy
@@ -45,6 +51,7 @@ build.workspace = true
 db-sqlite.workspace = true
 pollster.workspace = true
 queue-rows.workspace = true
+secret.workspace = true
 secret-local.workspace = true
 tempfile.workspace = true
 

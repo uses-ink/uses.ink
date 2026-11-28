@@ -520,6 +520,86 @@ impl DomainView {
     }
 }
 
+/// A repository a site claimed (decision 0160).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepoView {
+    /// `host/owner/name`.
+    pub repo: String,
+    /// The forge it lives on (`github`, `forgejo` or `gitlab`), when this server reaches its host.
+    pub forge: Option<String>,
+    /// `proven` when a push to it builds the site, `pending` when it has still to be proved.
+    pub state: String,
+    /// The line to commit, on its own line, to the file below on the default branch.
+    pub challenge: String,
+    /// The file the challenge is committed to.
+    pub file: String,
+    /// When it was asked.
+    pub created: Timestamp,
+    /// When the forge showed the challenge.
+    pub proven: Option<Timestamp>,
+    /// The path of the webhook the forge delivers pushes to, on the API host.
+    pub hook: Option<String>,
+}
+
+impl RepoView {
+    /// A claim as listed.
+    pub fn of(claim: &control::RepoClaim, forge: Option<authority_repo::Forge>) -> Self {
+        Self {
+            repo: claim.repo.to_string(),
+            forge: forge.map(|forge| forge.to_string()),
+            state: if claim.bound() { "proven" } else { "pending" }.to_owned(),
+            challenge: claim.challenge.to_string(),
+            file: authority_forge::Challenge::FILE.to_owned(),
+            created: claim.created,
+            proven: claim.proven,
+            hook: forge.map(|forge| format!("/v1/hooks/{forge}")),
+        }
+    }
+}
+
+/// A secret shown once. It prints as redacted.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Shown(String);
+
+impl Shown {
+    /// The secret, for the one place that is told it.
+    pub fn reveal(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for Shown {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str("Shown(<redacted>)")
+    }
+}
+
+/// A claim just made or a secret just rotated: the claim and the webhook secret to give the
+/// forge, which no other call tells again.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepoGiven {
+    /// The claim.
+    #[serde(flatten)]
+    pub claim: RepoView,
+    /// The secret, in hex, for the forge's webhook form.
+    pub secret: Shown,
+}
+
+impl RepoGiven {
+    /// A claim and its secret.
+    pub fn of(claim: RepoView, secret: &authority_forge::Secret) -> Self {
+        Self { claim, secret: Shown(secret.text().unwrap_or_default().to_owned()) }
+    }
+}
+
+/// A repository that was let go.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepoReleased {
+    /// `host/owner/name`.
+    pub repo: String,
+}
+
 /// A custom domain that was removed.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Unclaimed {

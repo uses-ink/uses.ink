@@ -398,6 +398,25 @@ fn a_custom_domain_is_claimed_listed_and_removed_and_its_proof_needs_a_resolver(
     assert_eq!((again.status, problem["problem"].as_str()), (Status::NotFound, Some("domain.name.unknown")));
 }
 
+#[test]
+fn a_repository_is_listed_and_a_server_that_reaches_no_forge_says_so() {
+    let fixture = Fixture::new(Limits::default());
+    let source = json!({ "kind": "git", "url": "https://codeberg.org/a/b" });
+    let site = fixture.site("tea", &source);
+    let (listed, value) = fixture.call(Method::Get, &format!("/v1/sites/{site}/repos"), b"");
+    assert_eq!((listed.status, value["items"].as_array().map(Vec::len)), (Status::Ok, Some(0)));
+    for step in ["claim", "prove", "rotate", "release"] {
+        let (off, problem) = fixture.call(Method::Post, &format!("/v1/sites/{site}/repos/{step}"), b"");
+        assert_eq!(
+            (off.status, problem["problem"].as_str()),
+            (Status::Unprocessable, Some("repo.forges.off")),
+            "{step}"
+        );
+    }
+    let (wrong, _) = fixture.call(Method::Get, &format!("/v1/sites/{site}/repos/claim"), b"");
+    assert_eq!(wrong.status, Status::MethodNotAllowed);
+}
+
 impl Fixture {
     /// A second person, with an account and no site.
     fn person(&self, byte: u8) -> Id<AccountKind> {

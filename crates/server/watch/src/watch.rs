@@ -329,7 +329,26 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
             None => listed.default.clone(),
         }
     }
+}
 
+impl<'c, P: Ports + 'static, K: Clock, D: Draw> Watch<'c, P, (), K, D> {
+    /// What a push needs and nothing of polling: a watch that only takes [`Watch::pushed`], over
+    /// the control plane, a clock and a source of ids, building up to `previews.0` branches. It
+    /// polls nothing, so it has no remote to ask.
+    pub fn pusher(control: &'c Control<P>, clocks: (K, D), previews: Previews) -> Self {
+        Self {
+            control,
+            heads: (),
+            clock: clocks.0,
+            draw: clocks.1,
+            interval: Interval::default(),
+            previews,
+            tracked: BTreeMap::new(),
+        }
+    }
+}
+
+impl<P: Ports + 'static, H, K: Clock, D: Draw> Watch<'_, P, H, K, D> {
     /// Queues the preview build of one branch at its commit, unless one was queued before.
     async fn preview(&self, site: Id<SiteKind>, tip: &Tip, when: (Timestamp, Trigger)) -> Option<Outcome> {
         let (now, trigger) = when;
@@ -454,7 +473,9 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
         let tip = Tip { branch: push.branch.clone(), head: push.head.clone() };
         self.preview(site, &tip, (now, Trigger::Push)).await.unwrap_or(Outcome::Duplicate { head: push.head.clone() })
     }
+}
 
+impl<P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'_, P, H, K, D> {
     /// How long to rest before the next round: until the first site is due, never less than
     /// [`Watch::REST`] and never more than the lookout, so a site added meanwhile is noticed.
     fn rest(&self) -> Duration {

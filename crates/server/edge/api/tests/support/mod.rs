@@ -143,6 +143,7 @@ impl Rig {
             path: path.to_owned(),
             query,
             authorization,
+            headers: Vec::new(),
             cookie: None,
             origin: None,
             site: None,

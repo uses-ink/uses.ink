@@ -80,6 +80,10 @@ pub struct Request {
     /// The `Sec-Fetch-Site` header's value, if there was one: the browser's own word on whether
     /// the request came from the same origin.
     pub site: Option<String>,
+    /// The headers a forge's webhook is read with, by name as received and in order. The adapter
+    /// copies only the headers it was told to (a forge's own), never `Authorization` or `Cookie`,
+    /// which have their own fields. Values are never printed.
+    pub headers: Vec<(String, String)>,
     /// The address the connection came from, as the adapter saw it. Behind a reverse proxy this
     /// is the proxy's, so a limit per source is then a limit for everyone behind it.
     pub source: Option<IpAddr>,
@@ -98,6 +102,7 @@ impl fmt::Debug for Request {
             .field("cookie", &held(&self.cookie))
             .field("origin", &self.origin)
             .field("site", &self.site)
+            .field("headers", &self.headers.iter().map(|(name, _)| name.as_str()).collect::<Vec<_>>())
             .field("source", &self.source)
             .field("body", &self.body)
             .finish()

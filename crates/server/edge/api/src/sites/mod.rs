@@ -4,5 +4,6 @@ mod domain;
 mod export;
 mod intake;
 mod org;
+mod repo;
 
 pub use export::{Exports, Route};

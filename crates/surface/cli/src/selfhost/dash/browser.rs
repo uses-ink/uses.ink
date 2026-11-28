@@ -95,6 +95,7 @@ impl<A: Answers> Browser<'_, A> {
             path: path.to_owned(),
             query: None,
             authorization: None,
+            headers: Vec::new(),
             cookie: self.request.cookie.clone(),
             origin: self.request.origin.clone(),
             site: self.request.site.clone(),

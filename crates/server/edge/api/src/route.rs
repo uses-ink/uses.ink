@@ -10,6 +10,32 @@ use sig::Fingerprint;
 
 use crate::reply::Method;
 
+/// One step of a repository's claim.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RepoStep {
+    /// Ask to prove the repository and get the challenge and the webhook secret.
+    Claim,
+    /// Read the forge for the challenge and bind the repository to the site.
+    Prove,
+    /// Put a new webhook secret in place of the old one.
+    Rotate,
+    /// Let go of the claim.
+    Release,
+}
+
+impl RepoStep {
+    /// The path segment and the word the CLI uses.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Claim => "claim",
+            Self::Prove => "prove",
+            Self::Rotate => "rotate",
+            Self::Release => "release",
+        }
+    }
+}
+
 /// What a request asks for. Every id is parsed; nothing here is text the control plane would
 /// have to trust.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -71,6 +97,16 @@ pub enum Call {
         site: Id<SiteKind>,
         /// The name.
         name: DomainName,
+    },
+    /// `GET /v1/sites/{site}/repos`: the repositories the site has claimed, proved and not.
+    Repos(Id<SiteKind>),
+    /// `POST /v1/sites/{site}/repos/{claim,prove,rotate,release}`: one step of the site's
+    /// repository (decision 0160).
+    Repo {
+        /// The site.
+        site: Id<SiteKind>,
+        /// The step.
+        step: RepoStep,
     },
     /// `GET /v1/sites/{site}/previews`: the previews that have not ended.
     Previews(Id<SiteKind>),
@@ -368,6 +404,11 @@ impl Call {
                 Err(source) => Err(RouteError::Build { written: (*build).to_owned(), source }),
             },
             ["domains", rest @ ..] => return Self::domain(site, rest, by),
+            ["repos"] => by(&[(Method::Get, Self::Repos(site))]),
+            ["repos", "claim"] => by(&[(Method::Post, Self::Repo { site, step: RepoStep::Claim })]),
+            ["repos", "prove"] => by(&[(Method::Post, Self::Repo { site, step: RepoStep::Prove })]),
+            ["repos", "rotate"] => by(&[(Method::Post, Self::Repo { site, step: RepoStep::Rotate })]),
+            ["repos", "release"] => by(&[(Method::Post, Self::Repo { site, step: RepoStep::Release })]),
             ["previews"] => by(&[(Method::Get, Self::Previews(site))]),
             ["previews", slug] => match slug.parse::<Slug>() {
                 Ok(slug) => by(&[
@@ -400,10 +441,12 @@ impl Call {
             | Self::Bundle(site)
             | Self::Previews(site)
             | Self::Domains(site)
+            | Self::Repos(site)
             | Self::Export { site, .. } => (Right::Read, Some(*site)),
-            Self::Claim { site, .. } | Self::Prove { site, .. } | Self::Unclaim { site, .. } => {
-                (Right::Edit, Some(*site))
-            }
+            Self::Claim { site, .. }
+            | Self::Prove { site, .. }
+            | Self::Unclaim { site, .. }
+            | Self::Repo { site, .. } => (Right::Edit, Some(*site)),
             Self::Remove(site) => (Right::Destroy, Some(*site)),
             Self::Rollback(site)
             | Self::Resume(site)
@@ -439,6 +482,16 @@ impl Call {
     }
 }
 
+impl Call {
+    /// The name of a route about the repository of a site.
+    const fn repo_name(&self) -> &'static str {
+        match self {
+            Self::Repo { step, .. } => step.name(),
+            _ => "repos",
+        }
+    }
+}
+
 impl logging::Kind for &Call {
     /// The route's name, with no site or build in it.
     fn kind(self) -> &'static str {
@@ -459,6 +512,7 @@ impl logging::Kind for &Call {
             Call::Claim { .. } => "claim",
             Call::Prove { .. } => "prove",
             Call::Unclaim { .. } => "unclaim",
+            Call::Repos(_) | Call::Repo { .. } => self.repo_name(),
             Call::Previews(_) => "previews",
             Call::Preview { .. } => "preview",
             Call::Unpreview { .. } => "unpreview",

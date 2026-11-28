@@ -62,6 +62,7 @@ mod test {
             path: "/v1/login".to_owned(),
             query: None,
             authorization: None,
+            headers: Vec::new(),
             cookie: None,
             origin: origin.map(str::to_owned),
             site: site.map(str::to_owned),

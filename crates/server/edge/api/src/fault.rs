@@ -261,6 +261,72 @@ pub enum Fault<P: Ports> {
     Raised(Raised),
     /// An upload of source is refused.
     Source(Sourced),
+    /// A repository could not be named, proved or reached.
+    Forge(Forged),
+}
+
+/// A repository call that failed outside the control plane: the repository is no repository, the
+/// forge did not show the challenge, or this server reaches no forge.
+#[derive(Debug)]
+pub struct Forged {
+    code: &'static str,
+    status: Status,
+    message: String,
+    cause: Option<Box<dyn Error>>,
+}
+
+impl Forged {
+    /// The catalog code of what went wrong.
+    pub const fn code(&self) -> &'static str {
+        self.code
+    }
+
+    /// The server was given no way to reach a forge.
+    pub fn off() -> Self {
+        Self {
+            code: "repo.forges.off",
+            status: Status::Unprocessable,
+            message: "this server reaches no forge: an operator turns them on with `--forge-hooks`".to_owned(),
+            cause: None,
+        }
+    }
+
+    /// An address that is no repository.
+    pub fn name(source: authority_forge::NameError) -> Self {
+        Self {
+            code: "hook.payload.malformed",
+            status: Status::BadRequest,
+            message: "the repository is not `host/owner/name`".to_owned(),
+            cause: Some(Box::new(source)),
+        }
+    }
+
+    /// The forge did not show the challenge, or could not be asked.
+    pub fn unproven<E: Error + 'static>(source: authority_forge::Unproven<E>) -> Self {
+        let status = match source {
+            authority_forge::Unproven::Call(_) => Status::Unavailable,
+            _ => Status::Unprocessable,
+        };
+        Self { code: source.code(), status, message: source.to_string(), cause: Some(Box::new(source)) }
+    }
+}
+
+impl fmt::Display for Forged {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(&self.message)
+    }
+}
+
+impl Error for Forged {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.cause.as_deref()
+    }
+}
+
+impl<P: Ports> From<Forged> for Fault<P> {
+    fn from(forged: Forged) -> Self {
+        Self::Forge(forged)
+    }
 }
 
 impl<P: Ports> fmt::Debug for Fault<P> {
@@ -296,6 +362,7 @@ impl<P: Ports> fmt::Display for Fault<P> {
             Self::Intake(error) => error.fmt(out),
             Self::Raised(error) => error.fmt(out),
             Self::Source(error) => error.fmt(out),
+            Self::Forge(error) => error.fmt(out),
         }
     }
 }
@@ -315,6 +382,7 @@ impl<P: Ports + 'static> Error for Fault<P> {
             Self::Folder(inner) => inner.source(),
             Self::Raised(inner) => inner.source(),
             Self::Source(inner) => Some(inner),
+            Self::Forge(inner) => Some(inner),
             _ => None,
         }
     }
@@ -377,6 +445,7 @@ impl<P: Ports> Fault<P> {
             Self::Intake(_) => "intake",
             Self::Raised(_) => "raised",
             Self::Source(error) => error.name(),
+            Self::Forge(error) => error.code,
         }
     }
 
@@ -398,6 +467,7 @@ impl<P: Ports> Fault<P> {
                 Status::Unprocessable
             }
             Self::Source(error) => error.status(),
+            Self::Forge(error) => error.status,
             Self::Control(error) => error.refusal().map_or(Status::Internal, Self::refused),
             Self::Port(port) if port.port() == Port::Resolver => Status::Unavailable,
             Self::Port(_) | Self::Store(_) | Self::Export(_) => Status::Internal,

@@ -27,6 +27,9 @@ pub struct Limits {
     /// The files one upload request carries together, in bytes: the most memory a request of a
     /// push holds.
     pub part: u64,
+    /// A forge's webhook body, in bytes. It is the operator's: a site's configuration does not
+    /// reach it, and it is set with the forge authority's own limit of the same name.
+    pub hook: u64,
 }
 
 impl Default for Limits {
@@ -42,6 +45,7 @@ impl Default for Limits {
             rows: 50,
             tree: 8 * MIB,
             part: 64 * MIB,
+            hook: 5 * MIB,
         }
     }
 }
@@ -156,12 +160,16 @@ impl Limits {
             rows: u32::try_from(rows).unwrap_or(self.rows),
             tree: Limit::Tree.under(self.tree, asked.tree)?,
             part: Limit::Part.under(self.part, asked.part)?,
+            hook: self.hook,
         })
     }
 
     /// How many body bytes `method` of `path` may send: an archive for intake, a small JSON
     /// document for the rest. An adapter reads no more than this.
     pub fn budget(&self, method: crate::Method, path: &str) -> u64 {
+        if path.starts_with(crate::HOOKS) {
+            return self.hook;
+        }
         match crate::Call::parse(method, path) {
             Ok(crate::Call::Intake(_)) => self.archive,
             Ok(crate::Call::Source(_)) => self.tree,

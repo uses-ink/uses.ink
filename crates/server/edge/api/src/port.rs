@@ -15,6 +15,8 @@ pub enum Port {
     Mailer,
     /// The resolver got no answer for a proof record.
     Resolver,
+    /// The store of delivery ids and nonces could not be reached.
+    Nonces,
     /// The passkey, recovery code or sign-in store failed.
     Store,
     /// The WebAuthn verifier failed.
@@ -56,6 +58,7 @@ impl fmt::Display for Unnamed {
             Port::Draw => "no random bytes were available",
             Port::Mailer => "a sign-in message could not be sent",
             Port::Resolver => "the proof record could not be looked up",
+            Port::Nonces => "the delivery could not be remembered",
             Port::Store => "the passkeys could not be read or written",
             Port::Verifier => "the passkey verifier failed",
         })

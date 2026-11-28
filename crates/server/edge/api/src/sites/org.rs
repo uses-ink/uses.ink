@@ -1,6 +1,7 @@
 //! Organizations: making one, its members and their roles, and acting as one (decision 0095).
 
 use authority_dns::Resolver;
+use authority_forge::Transport;
 use clock::{Clock, Draw};
 use control::keys::{Kind, Scope};
 use control::{AccountKind, Id, NewOrg, Ports, Refusal, Role, Seat, Standing};
@@ -13,7 +14,7 @@ use crate::reply::{Reply, Status};
 use crate::route::Call;
 use crate::view::{KeyView, Listed, MemberView, OrgMembers, OrgView, Unmembered};
 
-impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Api<P, C, K, D, R> {
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver, T: Transport> Api<P, C, K, D, R, T> {
     /// The same call made as the organization `org`: the account it acts for, the site's owner it
     /// is checked against and the key's reach change together. A key of a person reaches the
     /// organizations they are a member of with what both the key and their role allow; a deploy key

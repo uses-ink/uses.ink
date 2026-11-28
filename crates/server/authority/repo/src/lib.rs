@@ -17,7 +17,8 @@ mod shared;
 mod wire;
 
 pub use error::Error;
-pub use repos::{Claimed, Forges, Repos};
+pub use repos::{Claimed, Forge, Forges, Repos, Unknown};
 pub use shared::Shared;
+pub use shared::{Silent, Unreached};
 #[cfg(feature = "system")]
 pub use wire::{Unwired, Wire};

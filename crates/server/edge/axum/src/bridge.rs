@@ -85,6 +85,8 @@ impl Bridge {
         let cookie = head.headers.get("cookie").map(|value| value.as_bytes().to_vec());
         let origin = head.headers.get("origin").and_then(|value| value.to_str().ok()).map(str::to_owned);
         let site = head.headers.get("sec-fetch-site").and_then(|value| value.to_str().ok()).map(str::to_owned);
+        // a forge's webhook is read by its own headers; no other route reads any beyond the four above
+        let headers = Self::hook_headers(&head, &path);
         let peer = head.extensions.get::<Peer>().and_then(|peer| peer.0).map(|address| address.ip().to_canonical());
         let source = match self.forwarded.client(peer, &head.headers) {
             Ok(source) => source,
@@ -97,7 +99,7 @@ impl Bridge {
             Err(reply) => return Self::response(&reply),
         };
         let (reply, answered) = oneshot::channel();
-        let request = Request { method, path, query, authorization, cookie, origin, site, source, body };
+        let request = Request { method, path, query, authorization, cookie, origin, site, headers, source, body };
         if self.calls.try_send(Call { request, reply }).is_err() {
             logging::warn!(name: logging::event::REQUEST_FAILED, cause = "the API is busy or stopped");
             return Self::plain(Status::Internal);
@@ -108,6 +110,18 @@ impl Bridge {
             logging::warn!(name: logging::event::REQUEST_FAILED, cause = "the API dropped the call");
             Self::plain(Status::Internal)
         }
+    }
+
+    /// The headers a forge's webhook is read by, and none for any other route.
+    fn hook_headers(head: &axum::http::request::Parts, path: &str) -> Vec<(String, String)> {
+        if !path.starts_with(edge_api::HOOKS) {
+            return Vec::new();
+        }
+        head.headers
+            .iter()
+            .filter(|(name, _)| !matches!(name.as_str(), "authorization" | "cookie"))
+            .filter_map(|(name, value)| Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned())))
+            .collect()
     }
 
     /// The body, up to `limit` bytes, within `wait`; or the reply that says why it was not read.

@@ -1,6 +1,7 @@
 //! Custom domains: list, claim, prove and remove (decision 0093).
 
 use authority_dns::Resolver;
+use authority_forge::Transport;
 use clock::{Clock, Draw};
 use control::{DomainName, Id, NewClaim, Ports, SiteKind, Token};
 
@@ -11,7 +12,7 @@ use crate::port::{Port, Unnamed};
 use crate::reply::{Reply, Status};
 use crate::view::{DomainView, Listed, Unclaimed};
 
-impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Api<P, C, K, D, R> {
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver, T: Transport> Api<P, C, K, D, R, T> {
     /// `GET /v1/sites/{site}/domains`: the names that serve the site, then the ones it has still
     /// to prove with their records.
     pub(crate) async fn domains(&self, principal: Principal, site: Id<SiteKind>) -> Result<Reply, Fault<P>> {

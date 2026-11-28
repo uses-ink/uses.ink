@@ -33,3 +33,27 @@ impl<T: Transport> Transport for Shared<T> {
         self.0.send(request)
     }
 }
+
+/// A transport that reaches no forge: what a server holds before an operator turns forge calls on.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Silent;
+
+/// The forge was asked of a server that was given no way to reach one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Unreached;
+
+impl std::fmt::Display for Unreached {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str("this server was given no way to reach a forge")
+    }
+}
+
+impl std::error::Error for Unreached {}
+
+impl Transport for Silent {
+    type Error = Unreached;
+
+    fn send(&self, _: Request) -> impl Future<Output = Result<Response, Unreached>> {
+        std::future::ready(Err(Unreached))
+    }
+}

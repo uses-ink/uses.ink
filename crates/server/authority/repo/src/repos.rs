@@ -32,12 +32,67 @@ pub struct Claimed {
     pub secret: Secret,
 }
 
+/// Which forge a repository lives on, and so whose webhook tells of its pushes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Forge {
+    /// `github.com`.
+    Github,
+    /// An instance on the operator's list of Forgejo instances.
+    Forgejo,
+    /// A host on the operator's list of GitLab hosts.
+    Gitlab,
+}
+
+impl Forge {
+    /// Every forge.
+    pub const ALL: [Self; 3] = [Self::Github, Self::Forgejo, Self::Gitlab];
+
+    /// The name the webhook path and the API write: `github`, `forgejo`, `gitlab`.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Github => "github",
+            Self::Forgejo => "forgejo",
+            Self::Gitlab => "gitlab",
+        }
+    }
+}
+
+impl std::fmt::Display for Forge {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(self.name())
+    }
+}
+
+/// Text that names no forge.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Unknown {
+    /// What was written.
+    pub written: String,
+}
+
+impl std::fmt::Display for Unknown {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(out, "`{}` is no forge: it is github, forgejo or gitlab", self.written)
+    }
+}
+
+impl std::error::Error for Unknown {}
+
+impl std::str::FromStr for Forge {
+    type Err = Unknown;
+
+    fn from_str(text: &str) -> Result<Self, Unknown> {
+        Self::ALL.into_iter().find(|forge| forge.name() == text).ok_or_else(|| Unknown { written: text.to_owned() })
+    }
+}
+
 /// The repository authority over one transport.
 #[derive(Debug)]
 pub struct Repos<T> {
     github: Open<Shared<T>>,
     forgejo: Forgejo<Shared<T>>,
     gitlab: Gitlab<Shared<T>>,
+    hosts: Vec<Host>,
 }
 
 /// A new secret and the id of the credential that will seal it, or why none could be drawn.
@@ -66,6 +121,7 @@ impl<T: Transport> Repos<T> {
             github: Open::new(client()),
             forgejo: Forgejo::new(forges.forgejo.clone(), client()),
             gitlab: Gitlab::new(forges.gitlab.clone(), client()),
+            hosts: forges.gitlab,
         }
     }
 
@@ -77,12 +133,24 @@ impl<T: Transport> Repos<T> {
     /// Reads the challenge file of `repo` through the forge it lives on. A host no forge lists is
     /// [`Unproven::Unlisted`] and nothing is sent.
     pub async fn read(&self, repo: &Repo, challenge: &Challenge) -> Result<Proven, Unproven<T::Error>> {
+        match self.forge(repo) {
+            Some(Forge::Github) => self.github.prove(repo, challenge).await,
+            Some(Forge::Forgejo) => self.forgejo.prove(repo, challenge).await,
+            Some(Forge::Gitlab) => self.gitlab.prove(repo, challenge).await,
+            None => Err(Unproven::Unlisted { host: repo.host.clone() }),
+        }
+    }
+
+    /// The forge `repo` lives on, when its host is one the operator listed.
+    pub fn forge(&self, repo: &Repo) -> Option<Forge> {
         if repo.host == Host::GITHUB {
-            self.github.prove(repo, challenge).await
+            Some(Forge::Github)
         } else if self.forgejo.instances().find(&repo.host).is_some() {
-            self.forgejo.prove(repo, challenge).await
+            Some(Forge::Forgejo)
+        } else if self.hosts.contains(&repo.host) {
+            Some(Forge::Gitlab)
         } else {
-            self.gitlab.prove(repo, challenge).await
+            None
         }
     }
 
