@@ -142,6 +142,7 @@ impl<P: Ports> Control<P> {
         let mut batch: Vec<Statement> = vec![
             Self::wipe(table::Event::Table, table::Event::SiteId, &key),
             Self::wipe(table::Bundle::Table, table::Bundle::SiteId, &key),
+            Self::wipe(table::Pin::Table, table::Pin::SiteId, &key),
             Self::wipe(table::Seen::Table, table::Seen::SiteId, &key),
             Self::wipe(table::Removal::Table, table::Removal::SiteId, &key),
             Self::wipe(table::Preview::Table, table::Preview::SiteId, &key),

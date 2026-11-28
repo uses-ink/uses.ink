@@ -42,6 +42,7 @@ impl<B: Build, R: Blob> Harness<B, R> {
             tenant: tenant.parse::<Tenant>().unwrap(),
             trigger: Trigger::Manual,
             source: source.clone(),
+            pin: None,
             base: ExternalUrl::parse("https://cstef.uses.ink").unwrap(),
         }
     }

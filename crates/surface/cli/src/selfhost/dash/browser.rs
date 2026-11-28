@@ -174,7 +174,9 @@ impl<A: Answers> Browser<'_, A> {
                 if live.paused { view::Serving::Paused(pointer) } else { view::Serving::Live(pointer) }
             }
         };
-        let jobs = control.jobs(site.id, rows).await?;
+        // the builds of branches make previews, not deploys: they are not the site's history
+        let jobs: Vec<control::Job> =
+            control.jobs(site.id, rows).await?.into_iter().filter(|job| job.pin.is_none()).collect();
         let made = |job: &control::Job| {
             let found = job.deploy.and_then(|id| deploys.iter().find(|deploy| deploy.id == id));
             view::Attempt::of(job, found.map(view::Deploy::from))

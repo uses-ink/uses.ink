@@ -54,6 +54,13 @@ pub enum Refusal {
         /// The site.
         site: Id<Site>,
     },
+    /// The site has no preview with this label.
+    NoLabel {
+        /// The site.
+        site: Id<Site>,
+        /// The label.
+        label: String,
+    },
     /// The site's repository is private: its branches are never served at an address anyone can
     /// open (decision 0091).
     Private {
@@ -229,6 +236,7 @@ impl fmt::Display for Refusal {
             Self::Private { site } => {
                 write!(out, "the repository of site {site} is private, so its branches are not previewed")
             }
+            Self::NoLabel { site, label } => write!(out, "the site {site} has no preview labelled {label}"),
             Self::DomainOurs { .. }
             | Self::DomainTaken { .. }
             | Self::NoClaim { .. }
@@ -359,6 +367,7 @@ impl Refusal {
             Self::Serving { .. } => "site.state.serving",
             Self::NoPreview { .. } => "preview.site.unsupported",
             Self::Private { .. } => "preview.site.private",
+            Self::NoLabel { .. } => "preview.label.unknown",
             Self::DomainOurs { .. } => "domain.name.ours",
             Self::DomainTaken { .. } => "domain.name.taken",
             Self::NoClaim { .. } => "domain.claim.unknown",
@@ -400,6 +409,7 @@ impl Refusal {
                 fields
             }
             Self::Suspended { site, kind } => vec![("id", site.to_string()), ("reason", kind.to_string())],
+            Self::NoLabel { site, label } => vec![("id", site.to_string()), ("label", label.clone())],
             Self::Exists { id } => vec![("id", id.clone())],
             Self::NoAccount { account } => vec![("id", account.to_string())],
             Self::NoSite { site }

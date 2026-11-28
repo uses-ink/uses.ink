@@ -386,6 +386,9 @@ impl Message<'_> {
             Problem::DomainNameTaken { name, .. } => {
                 write!(out, "{name} belongs to another site")
             }
+            Problem::PreviewLabelUnknown { id, label, .. } => {
+                write!(out, "the site {id} has no preview named {label}")
+            }
             Problem::DomainClaimUnknown { id, name, .. } => {
                 write!(out, "the site {id} has not asked to prove {name}")
             }
@@ -787,6 +790,7 @@ impl Fix<'_> {
             Problem::PreviewSitePrivate { .. } => true,
             Problem::DomainNameOurs { .. } => true,
             Problem::DomainNameTaken { .. } => true,
+            Problem::PreviewLabelUnknown { .. } => true,
             Problem::DomainClaimUnknown { .. } => true,
             Problem::DomainProofMissing { .. } => true,
             Problem::DomainNameUnknown { .. } => true,
@@ -1236,6 +1240,9 @@ impl Fix<'_> {
                     out,
                     "if you own the name, the other site's proof is out of date: remove the name from the DNS of the old site, ask the operator, or use another name"
                 )
+            }
+            Problem::PreviewLabelUnknown { .. } => {
+                write!(out, "list the previews with `ink preview list`; one that ended or was removed is gone")
             }
             Problem::DomainClaimUnknown { .. } => {
                 write!(out, "claim the name first; it answers with the TXT record to publish")

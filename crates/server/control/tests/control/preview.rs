@@ -211,3 +211,68 @@ fn removing_a_site_removes_its_previews() {
     assert_eq!(world.count(Rows::Table), 0);
     assert!(world.run(world.control.previewed((&slug("main"), &site.handle), at(21))).unwrap().is_none());
 }
+
+fn pin(branch: &str, digit: char) -> build::Pin {
+    build::Pin { branch: branch.parse().unwrap(), revision: digit.to_string().repeat(40).parse().unwrap() }
+}
+
+fn branch_job(site: &Site, n: u8) -> control::NewJob {
+    control::NewJob {
+        id: build::BuildId::from_bytes([n; 16]),
+        site: site.id,
+        trigger: build::Trigger::Poll,
+        dedupe: None,
+        at: at(i64::from(n)),
+    }
+}
+
+#[test]
+fn a_branch_build_reads_its_commit_and_ends_as_a_preview_not_a_deploy() {
+    use crate::job::{LEASE, Scripted, Step};
+    let world = world();
+    let site = repo(&world, "cstef");
+    let pinned = pin("feature/login", 'c');
+    assert!(!world.run(world.control.pinned(site.id, &pinned)).unwrap());
+    let queued = world.run(world.control.request_branch(branch_job(&site, 10), pinned.clone())).unwrap();
+    assert_eq!(queued, control::Requested::Queued(build::BuildId::from_bytes([10; 16])));
+    assert!(world.run(world.control.pinned(site.id, &pinned)).unwrap(), "asked once, never again");
+    assert!(!world.run(world.control.pinned(site.id, &pin("feature/login", 'd'))).unwrap(), "a moved branch is new");
+    let job = world.run(world.control.job(build::BuildId::from_bytes([10; 16]))).unwrap().unwrap();
+    assert_eq!(job.pin, Some(pinned.clone()));
+    let builder = Scripted::new(&world, [Step::Build("branch")]);
+    let worked = world.run(world.control.work(&builder, at(11), LEASE)).unwrap();
+    let control::Worked::Previewed { slug: made, .. } = worked else { panic!("{worked:?}") };
+    assert_eq!(made, slug("feature-login"));
+    let seen = builder.seen().first().cloned().unwrap();
+    assert_eq!(seen.pin, Some(pinned.clone()));
+    let Source::Git { revision, .. } = seen.source else { panic!("{:?}", seen.source) };
+    assert_eq!(revision, Some(pinned.branch.revision()), "the build reads the branch it was queued for");
+    assert_eq!(world.run(world.control.live(site.id)).unwrap(), None, "no deploy was made");
+    assert_eq!(world.run(world.control.previews(site.id, at(12))).unwrap().len(), 1);
+}
+
+#[test]
+fn a_branch_that_makes_no_label_or_a_site_that_is_not_git_is_refused() {
+    let world = world();
+    let site = repo(&world, "cstef");
+    let bad = world.run(world.control.request_branch(branch_job(&site, 10), pin("..", 'c'))).unwrap_err();
+    assert!(matches!(bad, control::Error::Label(_)), "{bad:?}");
+    let upload = world.site("garden");
+    let refused = world.run(world.control.request_branch(branch_job(&upload, 11), pin("main", 'c'))).unwrap_err();
+    assert!(matches!(refused, control::Error::Refused(Refusal::NoPreview { .. })), "{refused:?}");
+}
+
+#[test]
+fn a_preview_is_removed_with_its_blobs_and_a_typo_is_not_a_success() {
+    let world = world();
+    let site = repo(&world, "cstef");
+    world.run(world.control.preview(preview(&world, &site, ("draft", 20), &[("/", "draft")]))).unwrap();
+    assert_eq!(blobs(&world, &site).len(), 2, "the file and the manifest");
+    let gone = world.run(world.control.remove_preview(site.id, &slug("draft"), at(30))).unwrap();
+    assert_eq!(gone.blobs, 2);
+    assert!(blobs(&world, &site).is_empty());
+    assert!(world.run(world.control.previewed((&slug("draft"), &site.handle), at(31))).unwrap().is_none());
+    let again = world.run(world.control.remove_preview(site.id, &slug("draft"), at(32))).unwrap_err();
+    assert!(matches!(again, control::Error::Refused(Refusal::NoLabel { .. })), "{again:?}");
+    assert_eq!(world.events("preview.expired"), 1);
+}

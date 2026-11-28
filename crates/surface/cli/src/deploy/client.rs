@@ -7,9 +7,11 @@
 use std::time::Duration;
 
 use build::BuildId;
-use control::{DomainName, Id, SiteKind};
+use control::{DomainName, Id, SiteKind, Slug};
 use edge_api::Probed;
-use edge_api::view::{BuildView, DeployView, DomainView, Listed, Moved, Status as Overview, Unclaimed};
+use edge_api::view::{
+    BuildView, DeployView, DomainView, Listed, Moved, Previewed, Status as Overview, Unclaimed, Unpreviewed,
+};
 use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
 use hyper::header::{ACCEPT, AUTHORIZATION, CONNECTION, CONTENT_TYPE, HOST};
@@ -169,6 +171,17 @@ impl Api {
     /// `POST /v1/sites/{site}/resume`.
     pub(crate) async fn resume(&self) -> Result<Moved, Failure> {
         self.read(Method::POST, "resume", b"{}".to_vec()).await
+    }
+
+    /// `GET /v1/sites/{site}/previews`: the previews that have not ended, newest first.
+    pub(crate) async fn previews(&self) -> Result<Vec<Previewed>, Failure> {
+        let items: Listed<Previewed> = self.look("previews").await?;
+        Ok(items.items)
+    }
+
+    /// `DELETE /v1/sites/{site}/previews/{label}`.
+    pub(crate) async fn unpreview(&self, slug: &Slug) -> Result<Unpreviewed, Failure> {
+        self.read(Method::DELETE, &format!("previews/{slug}"), Vec::new()).await
     }
 
     /// `GET /v1/sites/{site}/domains`: the names that serve the site, then the ones to prove.

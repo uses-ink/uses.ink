@@ -190,11 +190,12 @@ impl args::Serve {
         let schemes: Vec<String> = self.hosting.schemes().iter().map(ToString::to_string).collect();
         let (restart, (lease, idle)) = (self.hosting.restart(), self.hosting.worker());
         let poll = format!(
-            "every {}s, backing off to {}s, a new site within {}s; git over {}",
+            "every {}s, backing off to {}s, a new site within {}s; git over {}; up to {} branches of a public site as previews",
             interval.base().as_secs(),
             interval.max().as_secs(),
             interval.lookout().as_secs(),
-            schemes.join(" and ")
+            schemes.join(" and "),
+            self.hosting.previews().0
         );
         let worker = format!(
             "lease {}s, rests {}s; a loop that crashes restarts after {}s, {} times in a row",
@@ -216,7 +217,7 @@ impl args::Serve {
 
     fn start_watch(&self, tasks: &mut Tasks, product: &Product, events: &Events) {
         let (ports, origin, interval) = (Arc::clone(&product.ports), product.origin.clone(), product.interval);
-        let policy = self.hosting.policy();
+        let (policy, previews) = (self.hosting.policy(), self.hosting.previews());
         let git = self.hosting.git_cache.clone().unwrap_or_else(|| product.data.join("git"));
         let (heads, network, https) = (git.join("heads"), self.hosting.network(), product.https.clone());
         tasks.start(Task::Watch, (self.hosting.restart(), events), move |clock: Stoppable, events: Events| {
@@ -224,7 +225,8 @@ impl args::Serve {
             let heads = watch_git::Remotes::new(heads.clone(), network).with_https(https.clone());
             Box::pin(async move {
                 let control = control::Control::new(ports, origin).with_policy(policy);
-                let mut watch = watch::Watch::new(&control, heads, (clock, clock::System), interval);
+                let mut watch =
+                    watch::Watch::new(&control, heads, (clock, clock::System), interval).with_previews(previews);
                 watch.run(&events).await;
             })
         });

@@ -368,6 +368,18 @@ pub enum Preview {
     ExpiresAt,
 }
 
+/// `pin`: the branch and commit a preview build reads (decision 0101's neighbour, 0091): a row
+/// for each build of a branch, and none for a build of the site's own source.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "pin"]
+pub enum Pin {
+    Table,
+    JobId,
+    SiteId,
+    Branch,
+    Revision,
+}
+
 /// `domain`: a name a site has proved it controls, served as that site (decision 0093).
 #[derive(Clone, Copy, Debug, IdenStatic)]
 #[iden = "domain"]

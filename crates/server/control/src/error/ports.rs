@@ -37,6 +37,8 @@ pub enum Error<P: Ports> {
     Brand(crate::BrandError),
     /// The keys store failed or refused: an organization's key.
     Keys(crate::keys::Error<<P::Db as Db>::Error>),
+    /// A branch makes no preview label (its name has no letter or digit).
+    Label(crate::SlugError),
 }
 
 impl<P: Ports> fmt::Debug for Error<P> {
@@ -54,6 +56,7 @@ impl<P: Ports> fmt::Debug for Error<P> {
             Self::Origin(error) => out.debug_tuple("Origin").field(error).finish(),
             Self::Brand(error) => out.debug_tuple("Brand").field(error).finish(),
             Self::Keys(error) => out.debug_tuple("Keys").field(error).finish(),
+            Self::Label(error) => out.debug_tuple("Label").field(error).finish(),
         }
     }
 }
@@ -73,6 +76,7 @@ impl<P: Ports> fmt::Display for Error<P> {
             Self::Origin(_) => out.write_str("a site's address could not be made from the origin"),
             Self::Brand(_) => out.write_str("the brand list of this build does not read"),
             Self::Keys(_) => out.write_str("the keys store failed or refused"),
+            Self::Label(_) => out.write_str("the branch makes no preview label"),
         }
     }
 }
@@ -92,6 +96,7 @@ impl<P: Ports> std::error::Error for Error<P> {
             Self::Origin(source) => Some(source),
             Self::Brand(source) => Some(source),
             Self::Keys(source) => Some(source),
+            Self::Label(source) => Some(source),
         }
     }
 }

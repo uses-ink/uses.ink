@@ -7,6 +7,7 @@ use std::sync::Arc;
 use axum::Router;
 use axum::body::Body;
 use axum::http::{HeaderName, HeaderValue, Request, Response, StatusCode, header};
+use edge_api::view::{Previewed, Unpreviewed};
 use engine::{Blobs, Host};
 use host_native::Memory;
 use model::{Manifest, Route};
@@ -14,13 +15,114 @@ use serde::Serialize;
 
 use crate::command::images::Watched;
 use crate::command::source::{Address, Loaded, Rendering, Source};
+use crate::deploy::{Moment, Remote};
 use crate::folder::cache::Caching;
 use crate::grammar::args;
 use crate::output::error::{Error, ServeError};
 use crate::output::exit::Exit;
 use crate::output::report::Texts;
-use crate::output::term::Answer;
+use crate::output::term::{Answer, Doc, Line, Record, Render, Role, Table};
 use crate::output::{Io, Strict};
+
+/// What `ink preview` does with the previews of branches (decision 0091), instead of serving the
+/// folder: the ones a server built for the site's branches, over the API.
+#[derive(Debug, clap::Subcommand)]
+pub enum Branches {
+    /// The previews that have not ended, with their addresses.
+    List(Remote),
+    /// End a preview now, with the files only it held.
+    Remove(Unbranched),
+}
+
+/// `ink preview remove <LABEL>`.
+#[derive(Debug, clap::Args)]
+pub struct Unbranched {
+    /// The label, as `ink preview list` shows it.
+    pub label: control::Slug,
+    /// Which site.
+    #[command(flatten)]
+    pub remote: Remote,
+}
+
+/// What `ink preview list --json` prints.
+#[derive(Debug, Serialize)]
+struct ListedOut<'a> {
+    schema: &'static str,
+    site: String,
+    previews: &'a [Previewed],
+}
+
+/// What `ink preview remove --json` prints.
+#[derive(Debug, Serialize)]
+struct RemovedOut<'a> {
+    schema: &'static str,
+    #[serde(flatten)]
+    removed: &'a Unpreviewed,
+}
+
+/// The previews as a table.
+#[derive(Debug)]
+struct Listing<'a>(&'a [Previewed]);
+
+impl Render for Listing<'_> {
+    fn render(&self, into: &mut Doc) {
+        if self.0.is_empty() {
+            into.push(Line::plain("no previews"));
+            return;
+        }
+        let quiet = |text: &str| Line::new().with(Role::Quiet, text);
+        let mut table = Table::default().indent(2).row(["label", "address", "files", "ends"].map(quiet).to_vec());
+        for preview in self.0 {
+            table = table.row(vec![
+                Line::new().with(Role::Id, preview.slug.clone()),
+                Line::plain(preview.url.clone().unwrap_or_default()),
+                Line::plain(preview.files.to_string()),
+                Line::plain(Moment(preview.expires).to_string()),
+            ]);
+        }
+        table.render(into);
+    }
+}
+
+/// A preview that ended.
+#[derive(Debug)]
+struct Ended<'a>(&'a Unpreviewed);
+
+impl Render for Ended<'_> {
+    fn render(&self, into: &mut Doc) {
+        Record::new(0)
+            .field("label", Line::new().with(Role::Id, self.0.slug.clone()))
+            .field("state", Line::new().with(Role::Good, "removed"))
+            .field("files freed", Line::plain(self.0.blobs.to_string()))
+            .render(into);
+    }
+}
+
+impl Branches {
+    /// Runs the command for the site linked to `dir`.
+    pub(crate) fn run(self, dir: &Path, io: &mut Io<'_>) -> Result<Exit, Error> {
+        let fail = |source| Error::Deploy { source };
+        match self {
+            Self::List(remote) => {
+                let calls = remote.folder(dir)?;
+                let previews = calls.block(calls.api.previews()).map_err(fail)?;
+                io.result(&Listing(&previews))?;
+                io.json(&ListedOut {
+                    schema: "uses.previews/v1",
+                    site: calls.api.site.to_string(),
+                    previews: &previews,
+                })?;
+            }
+            Self::Remove(named) => {
+                let calls = named.remote.folder(dir)?;
+                let removed = calls.block(calls.api.unpreview(&named.label)).map_err(fail)?;
+                io.result(&Ended(&removed))?;
+                io.json(&RemovedOut { schema: "uses.preview-removed/v1", removed: &removed })?;
+            }
+        }
+        Ok(Exit::Done)
+    }
+}
 
 /// What `ink preview --json` prints before it serves: the address, or none when the site has
 /// errors and nothing is served.

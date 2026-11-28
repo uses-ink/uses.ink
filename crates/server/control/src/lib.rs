@@ -80,7 +80,7 @@ pub use org::{Member, NewOrg, Org, OrgKey, Orged, Role, UnknownRole};
 pub use origin::{Origin, OriginError};
 pub use policy::Policy;
 pub use ports::Ports;
-pub use preview::{NewPreview, Preview, Previewed, Slug, SlugError};
+pub use preview::{NewPreview, Pinned, Preview, Previewed, Slug, SlugError};
 pub use receipt::Receipt;
 pub use removal::{Erasing, Progress, Removal};
 pub use schema::Schema;

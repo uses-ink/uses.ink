@@ -61,6 +61,7 @@ impl ApiRefusal {
                 "the name was not refused, only unchecked: run `ink domain prove` again in a minute"
             }
             "domain.claim.unknown" => "run `ink domain add <NAME>` first; it prints the record to publish",
+            "preview.label.unknown" => "run `ink preview list` for the labels that are served",
             "auth.server.restarting" => "wait a few seconds and run the command again",
             _ => return None,
         })

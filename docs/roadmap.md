@@ -291,7 +291,10 @@ freeze.
   are code, the last owner held by one statement, and deploy keys that outlive their approver (0095). `ink abuse
   list|suspend|reinstate` calls the operator routes of C4 with the operator key (0100). `ink domain
   add|list|prove|remove` and the Settings forms are built, and `ink serve` asks a real nameserver for the proof
-  record through a small typed DNS client (`--resolver`, `--resolver-timeout`; 0101).
+  record through a small typed DNS client (`--resolver`, `--resolver-timeout`; 0101). The watch lists the
+  branches of a public git site and queues a preview build of each, up to `--preview-branches` (default 10, `0` is
+  off), through a `pin` table that keeps the branch and the commit seen (migration 308); `ink preview list|remove`
+  and `DELETE /v1/sites/{site}/previews/{label}` read and end them (0102).
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`

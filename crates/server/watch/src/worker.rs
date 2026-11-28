@@ -51,6 +51,7 @@ where
                         Worked::Idle => "idle",
                         Worked::Built { .. } => "built",
                         Worked::Refused { .. } => "refused",
+                        Worked::Previewed { .. } => "previewed",
                         _ => "dropped",
                     },
                 );

@@ -260,9 +260,13 @@ pub struct PinArgs {
     pub origin: Origin,
 }
 
-/// `ink preview`.
+/// `ink preview`: serve the folder on 127.0.0.1, or read and end the previews of branches.
 #[derive(Debug, Args)]
+#[command(args_conflicts_with_subcommands = true)]
 pub struct Preview {
+    /// What to do with the previews of branches that the watch of a server built, instead.
+    #[command(subcommand)]
+    pub command: Option<crate::command::preview::Branches>,
     /// The site's folder, from `-C`.
     #[arg(skip)]
     pub dir: PathBuf,

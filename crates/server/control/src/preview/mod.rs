@@ -15,7 +15,7 @@ use crate::fields::Fields;
 use crate::id::{Id, Site};
 use crate::{Unreadable, table};
 
-pub use migration::Previewed;
+pub use migration::{Pinned, Previewed};
 
 /// The label of a preview, the part of its host before `--`: lower-case letters, digits and single
 /// hyphens, not starting or ending with one. A handle has no `--`, so `<slug>--<handle>` is never

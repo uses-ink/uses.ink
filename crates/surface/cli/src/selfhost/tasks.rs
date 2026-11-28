@@ -97,10 +97,18 @@ pub(crate) enum Event {
     Duplicate { site: Id<SiteKind>, head: Head },
     /// The watch could not read a source's head, or queue its build.
     Unreachable { site: Id<SiteKind>, cause: Chain },
+    /// The watch queued a preview build of a branch.
+    BranchQueued { site: Id<SiteKind>, branch: String, build: BuildId },
+    /// The watch could not list a site's branches, or queue a preview of one.
+    BranchUnreachable { site: Id<SiteKind>, branch: Option<String>, cause: Chain },
+    /// The watch left branches out because the site has more than it previews.
+    BranchesCapped { site: Id<SiteKind>, left: usize },
     /// The watch could not list the sites.
     Unlisted { cause: Chain },
     /// The worker built a site.
     Built { build: BuildId, published: Published },
+    /// The worker built a branch and recorded its preview.
+    Previewed { build: BuildId, slug: String },
     /// The worker found a site that does not build.
     Refused { build: BuildId },
     /// The worker dropped a request it could not work.
@@ -127,6 +135,19 @@ impl fmt::Display for Event {
             Self::Duplicate { site, head } => write!(out, "watch: site {site} at {head} is queued already"),
             Self::Unreachable { site, cause } => write!(out, "watch: site {site}: {}", Self::chain(cause)),
             Self::Unlisted { cause } => write!(out, "watch: sites not listed: {}", Self::chain(cause)),
+            Self::BranchQueued { site, branch, build } => {
+                write!(out, "watch: queued preview build {build} of branch {branch} of site {site}")
+            }
+            Self::BranchUnreachable { site, branch: Some(branch), cause } => {
+                write!(out, "watch: site {site}, branch {branch}: {}", Self::chain(cause))
+            }
+            Self::BranchUnreachable { site, branch: None, cause } => {
+                write!(out, "watch: site {site}, branches: {}", Self::chain(cause))
+            }
+            Self::BranchesCapped { site, left } => {
+                write!(out, "watch: site {site} has {left} more branches than the previews limit")
+            }
+            Self::Previewed { build, slug } => write!(out, "worker: build {build} is the preview {slug}"),
             Self::Built { build, published } => {
                 let said = match published {
                     Published::Live { .. } => "live",
@@ -210,6 +231,9 @@ impl Report<Round> for Events {
         if let Some(error) = &round.listing {
             self.tell(Event::Unlisted { cause: Chain::of(&**error) });
         }
+        for branched in &round.branched {
+            self.branched(branched);
+        }
         for polled in &round.polled {
             let site = polled.site;
             match &polled.outcome {
@@ -222,6 +246,24 @@ impl Report<Round> for Events {
     }
 }
 
+impl Events {
+    /// Tells what the watch did about the branches of a polled site.
+    fn branched(&self, branched: &watch::Branched) {
+        let site = branched.site;
+        let name = branched.branch.as_ref().map(ToString::to_string);
+        match (&branched.outcome, name) {
+            (Outcome::Queued { build, .. }, Some(branch)) => {
+                self.tell(Event::BranchQueued { site, branch, build: *build });
+            }
+            (Outcome::Failed(error), branch) => {
+                self.tell(Event::BranchUnreachable { site, branch, cause: Chain::of(&**error) });
+            }
+            (Outcome::Capped { left }, _) => self.tell(Event::BranchesCapped { site, left: *left }),
+            _ => {}
+        }
+    }
+}
+
 impl Report<Done> for Events {
     fn report(&self, done: &Done) {
         match done {
@@ -230,6 +272,9 @@ impl Report<Done> for Events {
             }
             Done::Worked(Worked::Refused { build }) => self.tell(Event::Refused { build: *build }),
             Done::Worked(Worked::Dropped(reason)) => self.tell(Event::Dropped(*reason)),
+            Done::Worked(Worked::Previewed { build, slug }) => {
+                self.tell(Event::Previewed { build: *build, slug: slug.to_string() });
+            }
             Done::Worked(_) => {}
             Done::Failed(error) => self.tell(Event::Failed { cause: Chain::of(&**error) }),
             Done::Expired(swept) => self.tell(Event::Expired { previews: swept.previews, blobs: swept.blobs }),

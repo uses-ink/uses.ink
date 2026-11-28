@@ -93,3 +93,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0095 | [An org is an account with members whose roles are code; the last owner is held by one statement](0095-an-org-is-an-account-with-members-whose-roles-are-code.md) | built | 2026-11-28 | control |
 | 0100 | [`ink abuse` is the operator's verbs over the API's operator routes, signed by the operator key](0100-ink-abuse-is-the-operators-verbs-signed-by-the-operator-key.md) | built | 2026-11-28 | cli |
 | 0101 | [Custom domains are proved by asking a real nameserver through a small typed DNS client, chosen by a flag](0101-custom-domains-are-asked-of-a-real-nameserver-by-a-small-typed-client.md) | built | 2026-11-28 | edge |
+| 0102 | [The watch builds the branches of a public git site as previews, through a pin table beside the job](0102-the-watch-builds-the-branches-of-a-public-git-site-as-previews-through-a-pin-table.md) | built | 2026-11-28 | control |

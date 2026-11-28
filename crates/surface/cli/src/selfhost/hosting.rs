@@ -176,6 +176,10 @@ pub struct Hosting {
     /// anyone with the address. [default: 7]
     #[arg(long, value_name = "DAYS", env = "INK_PREVIEW_DAYS", help_heading = Heading::LIMITS)]
     pub preview_days: Option<u64>,
+    /// The most branches of one public git site the watch builds as previews, by name; `0` builds
+    /// none. The branch the site itself builds is not one of them. [default: 10]
+    #[arg(long, value_name = "N", env = "INK_PREVIEW_BRANCHES", help_heading = Heading::LIMITS)]
+    pub preview_branches: Option<usize>,
     /// The most custom domains one site has, proved and not. A claim of a name costs a row, so
     /// the number bounds what one site can ask for. [default: 10]
     #[arg(long, value_name = "N", env = "INK_LIMIT_DOMAINS", help_heading = Heading::LIMITS)]
@@ -219,6 +223,11 @@ impl Hosting {
             .previewing(preview)
             .domained(self.limit_domains.unwrap_or(Policy::DOMAINS));
         self.handle_hold.map_or(policy, |days| policy.holding(Duration::from_hours(days.saturating_mul(24))))
+    }
+
+    /// How many branches of a site the watch previews: the flag over the default.
+    pub(crate) fn previews(&self) -> watch::Previews {
+        self.preview_branches.map_or(watch::Previews::DEFAULT, watch::Previews)
     }
 
     /// The resolver of proof records: the flags over the defaults.

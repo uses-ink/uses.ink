@@ -169,6 +169,24 @@ const ABUSE_CHILDREN: &[Entry] = &[
     },
 ];
 
+const PREVIEW_CHILDREN: &[Entry] = &[
+    Entry {
+        examples: &[Example {
+            line: "ink preview list",
+            about: "The previews of the site's branches and where they are served",
+        }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("list", Group::Publish, "The previews of the site's branches")
+    },
+    Entry {
+        examples: &[Example { line: "ink preview remove feature-login", about: "End the preview now" }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("remove", Group::Publish, "End a preview now")
+    },
+];
+
 const DOMAIN_CHILDREN: &[Entry] = &[
     Entry {
         detail: "Asks to prove the name and prints the TXT record to publish at `_uses-ink.<name>`. Asking again makes a new token, which the old record does not prove. The name serves nothing until `ink domain prove` has seen the record.",
@@ -273,6 +291,8 @@ const ENTRIES: &[Entry] = &[
         ..Entry::built("build", Group::Write, "Build the folder into an output folder and print its deploy id")
     },
     Entry {
+        children: PREVIEW_CHILDREN,
+        detail: "With no verb, builds in memory and serves on 127.0.0.1. `list` and `remove` are about the previews a server built from the site's branches (the watch of `ink serve --data`), which end by themselves after `--preview-days`.",
         examples: &[Example { line: "ink preview --port 4100", about: "Preview on 127.0.0.1:4100" }],
         endings: SERVER,
         ..Entry::built("preview", Group::Write, "Build in memory and serve it on 127.0.0.1 while you write")

@@ -21,5 +21,5 @@ pub use error::Error;
 pub use event::{Event, Events, Status, Trigger};
 pub use id::{BuildId, BuildIdError};
 pub use port::{Build, Built, Outcome, Request};
-pub use source::{Kind, Revision, RevisionError, Source};
+pub use source::{Branch, Kind, Pin, Revision, RevisionError, Source};
 pub use tree::{Leaf, Tree, TreeError};

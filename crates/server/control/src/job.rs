@@ -115,6 +115,8 @@ pub struct Job {
     pub deploy: Option<DeployId>,
     /// Its log, as a blob of the site's tenant.
     pub log: Option<Hash>,
+    /// The branch and commit it builds, when it is a build of a preview.
+    pub pin: Option<build::Pin>,
 }
 
 impl TryFrom<&Row> for Job {
@@ -131,12 +133,13 @@ impl TryFrom<&Row> for Job {
             finished: fields.when(table::Job::FinishedAt)?,
             deploy: fields.maybe_deploy(table::Job::DeployId)?,
             log: fields.maybe_hash(table::Job::Log)?,
+            pin: None,
         })
     }
 }
 
 /// What working one request off the queue came to.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Worked {
     /// The queue was empty.
@@ -152,6 +155,13 @@ pub enum Worked {
     Refused {
         /// The build.
         build: BuildId,
+    },
+    /// A branch was built and its preview recorded; no deploy was made and nothing went live.
+    Previewed {
+        /// The build.
+        build: BuildId,
+        /// The preview's label.
+        slug: crate::Slug,
     },
     /// The request could not be worked and was removed from the queue.
     Dropped(Dropped),

@@ -24,7 +24,7 @@ use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::route::Call;
 use crate::view::{
     BuildView, DeployView, Enrolled, GrantView, KeyView, Listed, LiveView, Moved, Polled, Previewed, Removed,
-    ReportView, Reported, Requested as Asked, SiteView, Status as Overview, Suspended, Whoami,
+    ReportView, Reported, Requested as Asked, SiteView, Status as Overview, Suspended, Unpreviewed, Whoami,
 };
 
 /// Who a request is, once its signature checked: someone, or a key waiting to be enrolled.
@@ -219,6 +219,7 @@ where
             Call::Unclaim { site, name } => self.unclaim(principal, (site, name)).await,
             Call::Previews(site) => self.previews(principal, site).await,
             Call::Preview { site, slug } => self.preview(principal, (site, slug), body).await,
+            Call::Unpreview { site, slug } => self.unpreview(principal, (site, slug)).await,
             Call::Source(site) => self.probe(principal, site, body).await,
             Call::Parts(site) => self.parts(principal, site, body).await,
             Call::Bundle(site) => self.bundle(principal, site).await,
@@ -538,6 +539,14 @@ where
         let site = self.owned(principal, id).await?;
         let made = self.previewing(&site, slug, body).await?;
         Self::json(Status::Created, &made)
+    }
+
+    /// `DELETE /v1/sites/{site}/previews/{label}`: the preview ends now, with the files only it held.
+    async fn unpreview(&self, principal: Principal, target: (Id<SiteKind>, control::Slug)) -> Result<Reply, Fault<P>> {
+        let (id, slug) = target;
+        self.owned(principal, id).await?;
+        let swept = self.control.remove_preview(id, &slug, self.clock.now()).await?;
+        Self::json(Status::Ok, &Unpreviewed { slug: slug.to_string(), blobs: swept.blobs })
     }
 
     async fn intake(&self, principal: Principal, id: Id<SiteKind>, body: &[u8]) -> Result<Reply, Fault<P>> {

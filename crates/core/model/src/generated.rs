@@ -772,6 +772,14 @@ pub enum Problem {
         /// The name given instead.
         name: String,
     },
+    /// `preview.label.unknown`: the site {id} has no preview named {label}
+    #[serde(rename = "preview.label.unknown")]
+    PreviewLabelUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The preview label, as written.
+        label: String,
+    },
     /// `domain.claim.unknown`: the site {id} has not asked to prove {name}
     #[serde(rename = "domain.claim.unknown")]
     DomainClaimUnknown {
@@ -1095,6 +1103,7 @@ impl Problem {
         "preview.site.private",
         "domain.name.ours",
         "domain.name.taken",
+        "preview.label.unknown",
         "domain.claim.unknown",
         "domain.proof.missing",
         "domain.name.unknown",
@@ -1256,6 +1265,7 @@ impl Problem {
             Self::PreviewSitePrivate { .. } => "preview.site.private",
             Self::DomainNameOurs { .. } => "domain.name.ours",
             Self::DomainNameTaken { .. } => "domain.name.taken",
+            Self::PreviewLabelUnknown { .. } => "preview.label.unknown",
             Self::DomainClaimUnknown { .. } => "domain.claim.unknown",
             Self::DomainProofMissing { .. } => "domain.proof.missing",
             Self::DomainNameUnknown { .. } => "domain.name.unknown",
@@ -1418,6 +1428,7 @@ impl Problem {
             Self::PreviewSitePrivate { .. } => Severity::Error,
             Self::DomainNameOurs { .. } => Severity::Error,
             Self::DomainNameTaken { .. } => Severity::Error,
+            Self::PreviewLabelUnknown { .. } => Severity::Error,
             Self::DomainClaimUnknown { .. } => Severity::Error,
             Self::DomainProofMissing { .. } => Severity::Error,
             Self::DomainNameUnknown { .. } => Severity::Error,
@@ -1580,6 +1591,7 @@ impl Problem {
             Self::PreviewSitePrivate { .. } => Fault::Author,
             Self::DomainNameOurs { .. } => Fault::Author,
             Self::DomainNameTaken { .. } => Fault::Author,
+            Self::PreviewLabelUnknown { .. } => Fault::Author,
             Self::DomainClaimUnknown { .. } => Fault::Author,
             Self::DomainProofMissing { .. } => Fault::Source,
             Self::DomainNameUnknown { .. } => Fault::Author,
@@ -2275,6 +2287,9 @@ impl From<&Problem> for Coded {
             Problem::PreviewSitePrivate { id, .. } => Coded::new("preview.site.private", vec![Field::from(id.clone())]),
             Problem::DomainNameOurs { name, .. } => Coded::new("domain.name.ours", vec![Field::from(name.clone())]),
             Problem::DomainNameTaken { name, .. } => Coded::new("domain.name.taken", vec![Field::from(name.clone())]),
+            Problem::PreviewLabelUnknown { id, label, .. } => {
+                Coded::new("preview.label.unknown", vec![Field::from(id.clone()), Field::from(label.clone())])
+            }
             Problem::DomainClaimUnknown { id, name, .. } => {
                 Coded::new("domain.claim.unknown", vec![Field::from(id.clone()), Field::from(name.clone())])
             }
@@ -2493,6 +2508,7 @@ impl TryFrom<Coded> for Problem {
             "preview.site.private" => Self::PreviewSitePrivate { id: fields.next()? },
             "domain.name.ours" => Self::DomainNameOurs { name: fields.next()? },
             "domain.name.taken" => Self::DomainNameTaken { name: fields.next()? },
+            "preview.label.unknown" => Self::PreviewLabelUnknown { id: fields.next()?, label: fields.next()? },
             "domain.claim.unknown" => Self::DomainClaimUnknown { id: fields.next()?, name: fields.next()? },
             "domain.proof.missing" => Self::DomainProofMissing { name: fields.next()?, count: fields.next()? },
             "domain.name.unknown" => Self::DomainNameUnknown { id: fields.next()?, name: fields.next()? },

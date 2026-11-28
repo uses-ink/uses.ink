@@ -64,6 +64,30 @@ impl Listing {
 
     /// Lists the remote's references and picks the commit the revision names. Blocking.
     pub(crate) fn run(self) -> Result<watch::Head, Unlisted> {
+        let revision = self.revision.clone();
+        let refs = self.refs()?;
+        let commit = Tips(&refs).head(revision.as_deref()).map_err(Unlisted::Missing)?;
+        commit.to_hex().to_string().parse().map_err(Unlisted::Commit)
+    }
+
+    /// Lists the remote's references and reads the branches among them. Blocking.
+    pub(crate) fn branches(self) -> Result<watch::Branches, Unlisted> {
+        let refs = self.refs()?;
+        let tips = Tips(&refs);
+        let mut read = watch::Branches::default();
+        for (written, id) in tips.branches() {
+            let head = id.to_hex().to_string().parse().map_err(Unlisted::Commit)?;
+            match written.parse::<build::Branch>() {
+                Ok(branch) => read.found.push(watch::Tip { branch, head }),
+                Err(source) => read.skipped.push(watch::Skipped { written, source }),
+            }
+        }
+        read.default = tips.default_branch().and_then(|name| name.parse().ok());
+        Ok(read)
+    }
+
+    /// The references the remote advertises. Blocking.
+    fn refs(self) -> Result<Vec<gix::protocol::handshake::Ref>, Unlisted> {
         let repo = self.repository()?;
         let url = gix::url::parse(gix::bstr::BStr::new(&self.url)).map_err(Unlisted::remote)?;
         let remote = repo.remote_at(url).map_err(Unlisted::remote)?;
@@ -77,7 +101,6 @@ impl Listing {
         }
         let asked = connection.ref_map(gix::progress::Discard, gix::remote::ref_map::Options::default());
         let (map, _) = asked.map_err(|source| Unlisted::Remote { source })?;
-        let commit = Tips(&map.remote_refs).head(self.revision.as_deref()).map_err(Unlisted::Missing)?;
-        commit.to_hex().to_string().parse().map_err(Unlisted::Commit)
+        Ok(map.remote_refs)
     }
 }

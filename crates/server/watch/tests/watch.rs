@@ -28,7 +28,7 @@ use model::ExternalUrl;
 use model::git::Locator;
 use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
-use watch::{Done, Head, Heads, Interval, IntervalError, Outcome, Report, Round, Watch, Worker};
+use watch::{Done, Head, Heads, Interval, IntervalError, Outcome, Previews, Report, Round, Watch, Worker};
 
 type Ports = (Arc<Sqlite>, Directory, Queue<Arc<Sqlite>>, Sealer);
 
@@ -47,6 +47,7 @@ impl std::error::Error for Down {}
 #[derive(Debug, Default)]
 struct Remote {
     at: RefCell<Option<Head>>,
+    tips: RefCell<Vec<(&'static str, char)>>,
     asked: Cell<u32>,
 }
 
@@ -67,6 +68,19 @@ impl Heads for &Remote {
     ) -> impl Future<Output = Result<Head, Down>> {
         self.asked.set(self.asked.get() + 1);
         std::future::ready(self.at.borrow().clone().ok_or(Down))
+    }
+
+    fn branches(&self, _: &Locator, _: Option<&watch::Access>) -> impl Future<Output = Result<watch::Branches, Down>> {
+        let found = self
+            .tips
+            .borrow()
+            .iter()
+            .map(|(name, digit)| watch::Tip {
+                branch: name.parse().unwrap(),
+                head: digit.to_string().repeat(40).parse().unwrap(),
+            })
+            .collect();
+        std::future::ready(Ok(watch::Branches { default: Some("main".parse().unwrap()), found, skipped: Vec::new() }))
     }
 }
 
@@ -156,6 +170,48 @@ fn queues_a_build_when_the_source_moves_and_backs_off_when_it_does_not() {
     assert_eq!(world.builds(), 2);
     clock.advance(Duration::from_secs(600));
     assert_eq!(step(&mut watch).polled.len(), 1);
+}
+
+#[test]
+fn queues_a_preview_build_for_each_new_branch_once_and_not_for_the_default() {
+    let world = World::new();
+    let remote = Remote::default();
+    remote.move_to('a');
+    *remote.tips.borrow_mut() = vec![("main", 'a'), ("feature/login", 'c'), ("zeta", 'd'), ("beta", 'e')];
+    let clock = Manual::new(start(), 100);
+    let mut watch =
+        Watch::new(&world.control, &remote, (&clock, Counter::new()), Interval::default()).with_previews(Previews(2));
+    let first = pollster::block_on(watch.step());
+    let named: Vec<String> = first.branched.iter().filter_map(|b| b.branch.as_ref().map(ToString::to_string)).collect();
+    assert_eq!(named, ["beta", "feature/login"], "by name, capped at two, the default left out: {first:?}");
+    assert!(first.branched.iter().any(|b| matches!(b.outcome, Outcome::Capped { left: 1 })), "{first:?}");
+    let jobs = pollster::block_on(world.control.jobs(world.site, 10)).unwrap();
+    let pinned: Vec<String> = jobs.iter().filter_map(|j| j.pin.as_ref().map(|p| p.branch.to_string())).collect();
+    assert_eq!(jobs.len(), 3, "the site's own build and two previews");
+    assert_eq!(pinned.len(), 2, "{pinned:?}");
+    // a later poll with the same tips queues nothing new
+    clock.advance(Duration::from_secs(3600));
+    let again = pollster::block_on(watch.step());
+    assert!(again.branched.iter().all(|b| matches!(b.outcome, Outcome::Capped { .. })), "{again:?}");
+    assert_eq!(pollster::block_on(world.control.jobs(world.site, 10)).unwrap().len(), 3);
+    // a branch that moved is built again
+    remote.tips.borrow_mut()[1].1 = 'f';
+    clock.advance(Duration::from_secs(3600));
+    pollster::block_on(watch.step());
+    assert_eq!(pollster::block_on(world.control.jobs(world.site, 10)).unwrap().len(), 4);
+}
+
+#[test]
+fn a_watch_with_previews_off_lists_no_branches() {
+    let world = World::new();
+    let remote = Remote::default();
+    remote.move_to('a');
+    *remote.tips.borrow_mut() = vec![("feature", 'c')];
+    let clock = Manual::new(start(), 100);
+    let mut watch = Watch::new(&world.control, &remote, (&clock, Counter::new()), Interval::default());
+    let round = pollster::block_on(watch.step());
+    assert!(round.branched.is_empty(), "{round:?}");
+    assert_eq!(world.builds(), 1);
 }
 
 #[test]

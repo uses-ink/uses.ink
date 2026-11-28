@@ -35,6 +35,7 @@ folder = "The folder on disk, as the system names it."
 format = "The format plugin's id."
 files = "Every file involved, in path order."
 given = "The name as the author wrote it."
+label = "The preview label, as written."
 grant = "The name of the credential, never its value."
 header = "The header's name."
 height = "Its height in pixels."
@@ -903,6 +904,13 @@ fault = "author"
 fields = { name = "text" }
 message = "{name} belongs to another site"
 fix = "if you own the name, the other site's proof is out of date: remove the name from the DNS of the old site, ask the operator, or use another name"
+
+[diagnostic."preview.label.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text", label = "text" }
+message = "the site {id} has no preview named {label}"
+fix = "list the previews with `ink preview list`; one that ended or was removed is gone"
 
 [diagnostic."domain.claim.unknown"]
 severity = "error"

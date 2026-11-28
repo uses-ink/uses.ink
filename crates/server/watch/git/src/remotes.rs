@@ -7,7 +7,7 @@ use https::Https;
 use logging::Field as _;
 use model::git::{Locator, Network, Scheme};
 use secret::Plain;
-use watch::{Access, Head, Heads};
+use watch::{Access, Branches, Head, Heads};
 
 use crate::Unlisted;
 use crate::listing::{Listing, Login};
@@ -79,6 +79,28 @@ impl Remotes {
         }
     }
 
+    /// The connection to `url`, or the network setting's refusal, made before any connection.
+    fn listing(
+        &self,
+        url: &Locator,
+        revision: Option<&Revision>,
+        access: Option<&Access>,
+    ) -> Result<Listing, Unlisted> {
+        let scheme = url.scheme();
+        if !self.network.allows(scheme) {
+            return Err(Unlisted::Network { scheme, policy: self.network });
+        }
+        let login =
+            access.map(|access| Login { user: access.user().to_owned(), password: Plain::from(access.password()) });
+        Ok(Listing {
+            scratch: self.scratch.clone(),
+            url: url.to_string(),
+            revision: revision.map(ToString::to_string),
+            login,
+            https: (scheme == Scheme::Https).then(|| self.https.clone()),
+        })
+    }
+
     /// The head, listed from the remote or refused before any connection.
     async fn read(
         &self,
@@ -86,19 +108,7 @@ impl Remotes {
         revision: Option<&Revision>,
         access: Option<&Access>,
     ) -> Result<Head, Unlisted> {
-        let scheme = url.scheme();
-        if !self.network.allows(scheme) {
-            return Err(Unlisted::Network { scheme, policy: self.network });
-        }
-        let login =
-            access.map(|access| Login { user: access.user().to_owned(), password: Plain::from(access.password()) });
-        let listing = Listing {
-            scratch: self.scratch.clone(),
-            url: url.to_string(),
-            revision: revision.map(ToString::to_string),
-            login,
-            https: (scheme == Scheme::Https).then(|| self.https.clone()),
-        };
+        let listing = self.listing(url, revision, access)?;
         tokio::task::spawn_blocking(move || listing.run()).await.map_err(Unlisted::Task)?
     }
 }
@@ -115,5 +125,10 @@ impl Heads for Remotes {
         let read = self.read(url, revision, access).await;
         Self::said(url.scheme(), revision, &read);
         read
+    }
+
+    async fn branches(&self, url: &Locator, access: Option<&Access>) -> Result<Branches, Unlisted> {
+        let listing = self.listing(url, None, access)?;
+        tokio::task::spawn_blocking(move || listing.branches()).await.map_err(Unlisted::Task)?
     }
 }

@@ -14,7 +14,7 @@ use sea_query::{Expr, ExprTrait, Order, Query};
 use crate::deploy::{self, Published};
 use crate::id::{Id, Site as SiteKind};
 use crate::job::{self, Dropped, Job, Requested, State, Worked};
-use crate::{Control, Error, Event, Failed, Ports, Refusal, table};
+use crate::{Control, Error, Event, Failed, NewPreview, Ports, Refusal, Slug, Unreadable, table};
 
 impl<P: Ports> Control<P> {
     /// How many times a build is tried before it is given up on.
@@ -27,14 +27,39 @@ impl<P: Ports> Control<P> {
     /// Queues a build of a site. A request with the dedupe key of one still in the queue is
     /// dropped, so a forge that sends the same webhook twice builds once.
     pub async fn request_build(&self, new: job::New) -> Result<Requested, Error<P>> {
-        self.queued(new, None).await
+        self.queued(new, Attached::Nothing).await
+    }
+
+    /// Queues the build of a branch at one commit, for a preview (decision 0091): the job reads
+    /// the branch `pin.branch` of the site's git source and ends as a preview labelled by the branch, never
+    /// as a deploy. The same branch at the same commit is queued once however often it is asked
+    /// (the dedupe key says so while it is queued, and [`Control::pinned`] after).
+    pub async fn request_branch(&self, new: job::New, pin: build::Pin) -> Result<Requested, Error<P>> {
+        Slug::branch(pin.branch.as_str()).map_err(Error::Label)?;
+        let site = self.active(new.site).await?;
+        self.previewable(&site).await?;
+        self.queued(new, Attached::Pin(Box::new(pin))).await
+    }
+
+    /// Whether a build of `pin` was ever requested for `site`: the watch asks before it queues,
+    /// so a restart does not build every branch again.
+    pub async fn pinned(&self, site: Id<SiteKind>, pin: &build::Pin) -> Result<bool, Error<P>> {
+        let select = Query::select()
+            .column(table::Pin::JobId)
+            .from(table::Pin::Table)
+            .and_where(Expr::col(table::Pin::SiteId).eq(site.to_string()))
+            .and_where(Expr::col(table::Pin::Branch).eq(pin.branch.as_str()))
+            .and_where(Expr::col(table::Pin::Revision).eq(pin.revision.as_str()))
+            .limit(1)
+            .to_owned();
+        Ok(self.ports.db().first(select.into()).await?.is_some())
     }
 
     /// Queues a build of the tree an upload sent (`ink push`): the tree is a blob of the site's
     /// tenant, and so is every file it lists, which the caller has checked are held. The build
     /// reads this tree, not whatever a later push sends.
     pub async fn request_upload(&self, new: job::New, tree: Hash) -> Result<Requested, Error<P>> {
-        self.queued(new, Some(tree)).await
+        self.queued(new, Attached::Tree(tree)).await
     }
 
     /// The tree of the most recent push to `site`, if there was one: the one `ink export
@@ -68,7 +93,7 @@ impl<P: Ports> Control<P> {
         }
     }
 
-    async fn queued(&self, new: job::New, tree: Option<Hash>) -> Result<Requested, Error<P>> {
+    async fn queued(&self, new: job::New, attached: Attached) -> Result<Requested, Error<P>> {
         let site = self.active(new.site).await?;
         self.build_room(site.account, new.at).await?;
         let message = Message { body: new.id.to_string().into_bytes(), dedupe: new.dedupe };
@@ -93,14 +118,7 @@ impl<P: Ports> Control<P> {
             ])?
             .to_owned();
         let mut batch = vec![insert.into(), Event::BuildRequested { build: new.id }.insert(site.id, new.at)?];
-        if let Some(tree) = tree {
-            let bundle = Query::insert()
-                .into_table(table::Bundle::Table)
-                .columns([table::Bundle::JobId, table::Bundle::SiteId, table::Bundle::Tree])
-                .values([Expr::val(new.id.to_string()), Expr::val(site.id.to_string()), Expr::val(tree.to_string())])?
-                .to_owned();
-            batch.push(bundle.into());
-        }
+        batch.extend(attached.insert(new.id, site.id)?);
         self.ports.db().batch(batch).await?;
         Ok(Requested::Queued(new.id))
     }
@@ -126,7 +144,12 @@ impl<P: Ports> Control<P> {
     /// The job for a build id, if there is one.
     pub async fn job(&self, id: BuildId) -> Result<Option<Job>, Error<P>> {
         match self.ports.db().first(Self::jobs_where(table::Job::Id, id.to_string()).into()).await? {
-            Some(row) => Ok(Some(Job::try_from(&row)?)),
+            Some(row) => {
+                let mut jobs = [Job::try_from(&row)?];
+                self.pins(&mut jobs).await?;
+                let [job] = jobs;
+                Ok(Some(job))
+            }
             None => Ok(None),
         }
     }
@@ -140,7 +163,39 @@ impl<P: Ports> Control<P> {
             .to_owned();
         self.site(site).await?;
         let rows = self.ports.db().rows(select.into()).await?;
-        Ok(rows.iter().map(Job::try_from).collect::<Result<_, _>>()?)
+        let mut jobs = rows.iter().map(Job::try_from).collect::<Result<Vec<_>, _>>()?;
+        self.pins(&mut jobs).await?;
+        Ok(jobs)
+    }
+
+    /// Fills the pin of the jobs that build a branch, in one read of the site's pins.
+    async fn pins(&self, jobs: &mut [Job]) -> Result<(), Error<P>> {
+        let Some(first) = jobs.first() else { return Ok(()) };
+        let site = first.site;
+        let ids: Vec<String> = jobs.iter().map(|job| job.id.to_string()).collect();
+        let select = Query::select()
+            .columns([table::Pin::JobId, table::Pin::Branch, table::Pin::Revision])
+            .from(table::Pin::Table)
+            .and_where(Expr::col(table::Pin::SiteId).eq(site.to_string()))
+            .and_where(Expr::col(table::Pin::JobId).is_in(ids))
+            .to_owned();
+        for row in self.ports.db().rows(select.into()).await? {
+            let fields = crate::fields::Fields(&row);
+            let id =
+                fields.text(table::Pin::JobId)?.parse::<BuildId>().map_err(|source| Unreadable::Build { source })?;
+            let branch = fields
+                .text(table::Pin::Branch)?
+                .parse()
+                .map_err(|source| Unreadable::Revision { column: "branch", source })?;
+            let revision = fields
+                .text(table::Pin::Revision)?
+                .parse()
+                .map_err(|source| Unreadable::Revision { column: "revision", source })?;
+            if let Some(job) = jobs.iter_mut().find(|job| job.id == id) {
+                job.pin = Some(build::Pin { branch, revision });
+            }
+        }
+        Ok(())
     }
 
     /// Takes one request off the queue and runs it: builds the site's source, records the deploy
@@ -166,7 +221,7 @@ impl<P: Ports> Control<P> {
         let claimed = match self.take(now, lease).await? {
             Taken::Idle => return Ok(Worked::Idle),
             Taken::Dropped(dropped) => return Ok(Worked::Dropped(dropped)),
-            Taken::Job(claimed) => claimed,
+            Taken::Job(claimed) => *claimed,
         };
         let span = logging::job!(claimed.job.id, claimed.job.site, claimed.delivery.attempt);
         self.attempt(builder, claimed).instrument(span).await
@@ -176,7 +231,7 @@ impl<P: Ports> Control<P> {
     async fn take(&self, now: Timestamp, lease: Duration) -> Result<Taken, Error<P>> {
         let Some(delivery) = self.ports.queue().receive(now, lease).await? else { return Ok(Taken::Idle) };
         match self.claim(&delivery, now).await? {
-            Some(job) => Ok(Taken::Job(Claimed { delivery, job, now })),
+            Some(job) => Ok(Taken::Job(Box::new(Claimed { delivery, job, now }))),
             None => Ok(Taken::Dropped(self.drop_request(&delivery).await?)),
         }
     }
@@ -208,39 +263,75 @@ impl<P: Ports> Control<P> {
         let site = self.active(job.site).await?;
         let tenant = Self::tenant(site.id).map_err(Error::from)?;
         let base = self.origin.site(&site.handle).map_err(Error::Origin)?;
-        let source = match (site.source, self.tree_of(job.id).await?) {
-            (build::Source::Upload, Some(tree)) => build::Source::Bundle(tree),
-            (source, _) => source,
-        };
-        let request = Request { build: job.id, tenant: tenant.clone(), trigger: job.trigger, source, base };
-        let mut events: Vec<build::Event> = Vec::new();
-        match builder.run(&request, &mut events).await {
+        let source = match self.reads(site.source, &job).await {
+            Ok(source) => source,
             Err(error) => {
                 Self::lost(&delivery, &error);
                 self.give_up(&delivery, &job, now).await?;
+                return Err(Failed::Control(error));
+            }
+        };
+        let pin = job.pin.clone();
+        let request = Request { build: job.id, tenant: tenant.clone(), trigger: job.trigger, source, pin, base };
+        let settling = Settling { job, tenant, events: Vec::new(), now };
+        self.built(builder, (&request, settling), &delivery).await
+    }
+
+    /// Runs the build and settles what it made, giving the job up when either fails.
+    async fn built<W: Build>(
+        &self,
+        builder: &W,
+        (request, mut settling): (&Request, Settling),
+        delivery: &Delivery,
+    ) -> Result<Worked, Failed<P, build::Error<W::Error>>>
+    where
+        P: 'static,
+    {
+        let (job, now) = (settling.job.clone(), settling.now);
+        match builder.run(request, &mut settling.events).await {
+            Err(error) => {
+                Self::lost(delivery, &error);
+                self.give_up(delivery, &job, now).await?;
                 Err(Failed::Other(error))
             }
-            Ok(outcome) => {
-                let settling = Settling { job: job.clone(), tenant, events, now };
-                match self.settle(settling, outcome).await {
-                    Ok(worked) => {
-                        self.ports.queue().ack(&delivery).await.map_err(Error::from)?;
-                        Ok(worked)
-                    }
-                    Err(error) => {
-                        Self::lost(&delivery, &error);
-                        // a failure to give up is the one returned: the job is still running
-                        self.give_up(&delivery, &job, now).await?;
-                        Err(Failed::Control(error))
-                    }
+            Ok(outcome) => match self.settle(settling, outcome).await {
+                Ok(worked) => {
+                    self.ports.queue().ack(delivery).await.map_err(Error::from)?;
+                    Ok(worked)
                 }
-            }
+                Err(error) => {
+                    Self::lost(delivery, &error);
+                    // a failure to give up is the one returned: the job is still running
+                    self.give_up(delivery, &job, now).await?;
+                    Err(Failed::Control(error))
+                }
+            },
         }
+    }
+
+    /// What the build of `job` reads: the site's source, the tree a push sent, or the branch a
+    /// preview was queued for. A preview of a site that has no git source any more is refused.
+    async fn reads(&self, source: build::Source, job: &Job) -> Result<build::Source, Error<P>> {
+        Ok(match (source, self.tree_of(job.id).await?, &job.pin) {
+            (build::Source::Upload, Some(tree), _) => build::Source::Bundle(tree),
+            (build::Source::Git { url, .. }, _, Some(pin)) => {
+                build::Source::Git { url, revision: Some(pin.branch.revision()) }
+            }
+            (_, _, Some(_)) => return Err(Refusal::NoPreview { site: job.site }.into()),
+            (source, _, None) => source,
+        })
     }
 
     async fn settle(&self, running: Settling, outcome: Outcome) -> Result<Worked, Error<P>> {
         let Settling { job, tenant, mut events, now } = running;
         let (ended, worked) = match outcome {
+            Outcome::Built(built) if job.pin.is_some() => {
+                let Some(pin) = job.pin.as_ref() else { return Err(Refusal::NoPreview { site: job.site }.into()) };
+                let slug = Slug::branch(pin.branch.as_str()).map_err(Error::Label)?;
+                let new = NewPreview { site: job.site, slug: slug.clone(), manifest: built.manifest, at: now };
+                self.preview(new).await?;
+                (State::Succeeded, Worked::Previewed { build: job.id, slug })
+            }
             Outcome::Built(built) => {
                 let new = deploy::New { site: job.site, manifest: built.manifest, build: Some(job.id), at: now };
                 let recorded = self.deploy(new).await?;
@@ -352,7 +443,7 @@ impl<P: Ports> Control<P> {
 enum Taken {
     Idle,
     Dropped(Dropped),
-    Job(Claimed),
+    Job(Box<Claimed>),
 }
 
 /// A job that was claimed, with the delivery that carried it.
@@ -377,4 +468,39 @@ struct Ended {
     state: State,
     deploy: Option<model::DeployId>,
     log: Option<Hash>,
+}
+
+/// What a queued job carries besides its row: nothing, the uploaded tree of a push, or the branch
+/// and commit of a preview.
+#[derive(Clone, Debug)]
+enum Attached {
+    Nothing,
+    Tree(Hash),
+    Pin(Box<build::Pin>),
+}
+
+impl Attached {
+    /// The statement that records it beside the job row, if there is one.
+    fn insert(&self, job: BuildId, site: Id<SiteKind>) -> Result<Option<db::Statement>, sea_query::error::Error> {
+        Ok(Some(match self {
+            Self::Nothing => return Ok(None),
+            Self::Tree(tree) => Query::insert()
+                .into_table(table::Bundle::Table)
+                .columns([table::Bundle::JobId, table::Bundle::SiteId, table::Bundle::Tree])
+                .values([Expr::val(job.to_string()), Expr::val(site.to_string()), Expr::val(tree.to_string())])?
+                .to_owned()
+                .into(),
+            Self::Pin(pin) => Query::insert()
+                .into_table(table::Pin::Table)
+                .columns([table::Pin::JobId, table::Pin::SiteId, table::Pin::Branch, table::Pin::Revision])
+                .values([
+                    Expr::val(job.to_string()),
+                    Expr::val(site.to_string()),
+                    Expr::val(pin.branch.as_str()),
+                    Expr::val(pin.revision.as_str()),
+                ])?
+                .to_owned()
+                .into(),
+        }))
+    }
 }

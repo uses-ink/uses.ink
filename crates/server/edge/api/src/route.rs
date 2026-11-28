@@ -82,6 +82,13 @@ pub enum Call {
         /// The label.
         slug: Slug,
     },
+    /// `DELETE /v1/sites/{site}/previews/{label}`: the preview ends now.
+    Unpreview {
+        /// The site.
+        site: Id<SiteKind>,
+        /// The label.
+        slug: Slug,
+    },
     /// `POST /v1/sites/{site}/source`: a tree of files, answered with the blobs it is missing or
     /// a build of it.
     Source(Id<SiteKind>),
@@ -294,8 +301,11 @@ impl Call {
             },
             ["domains", rest @ ..] => return Self::domain(site, rest, by),
             ["previews"] => by(&[(Method::Get, Self::Previews(site))]),
-            ["previews", slug] => match slug.parse() {
-                Ok(slug) => by(&[(Method::Put, Self::Preview { site, slug })]),
+            ["previews", slug] => match slug.parse::<Slug>() {
+                Ok(slug) => by(&[
+                    (Method::Put, Self::Preview { site, slug: slug.clone() }),
+                    (Method::Delete, Self::Unpreview { site, slug }),
+                ]),
                 Err(source) => Err(RouteError::Label { written: (*slug).to_owned(), source }),
             },
             ["export"] => by(&[(Method::Get, Self::Export { site, deploy: None })]),
@@ -332,6 +342,7 @@ impl Call {
             | Self::Build(site)
             | Self::Intake(site)
             | Self::Preview { site, .. }
+            | Self::Unpreview { site, .. }
             | Self::Source(site)
             | Self::Parts(site) => (Right::Deploy, Some(*site)),
             Self::Keys | Self::Revoke(_) => (Right::Keys, None),
@@ -381,6 +392,7 @@ impl logging::Kind for &Call {
             Call::Unclaim { .. } => "unclaim",
             Call::Previews(_) => "previews",
             Call::Preview { .. } => "preview",
+            Call::Unpreview { .. } => "unpreview",
             Call::Source(_) => "source",
             Call::Parts(_) => "parts",
             Call::Bundle(_) => "bundle",

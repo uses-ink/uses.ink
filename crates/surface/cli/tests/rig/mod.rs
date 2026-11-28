@@ -230,7 +230,8 @@ impl Server {
         }
     }
 
-    fn once(&self, (method, target): (&str, &str), headers: &[(&str, &str)], body: &str) -> Got {
+    /// One raw request, asked once and not again.
+    pub fn once(&self, (method, target): (&str, &str), headers: &[(&str, &str)], body: &str) -> Got {
         let mut stream = TcpStream::connect(("127.0.0.1", self.port)).unwrap();
         stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
         let mut head = format!(

@@ -424,6 +424,7 @@ impl<P: Ports> Fault<P> {
             | Refusal::NoManifest { .. }
             | Refusal::NoClaim { .. }
             | Refusal::NoDomain { .. }
+            | Refusal::NoLabel { .. }
             | Refusal::NoOrg { .. }
             | Refusal::NotMember { .. }
             | Refusal::NoCredential { .. } => Status::NotFound,

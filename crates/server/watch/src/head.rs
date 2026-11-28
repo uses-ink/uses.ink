@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
-use build::Revision;
+use build::{Branch, Revision, RevisionError};
 use model::git::Locator;
 
 use crate::Access;
@@ -67,6 +67,35 @@ impl FromStr for Head {
     }
 }
 
+/// A branch of a repository and the commit it is at.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Tip {
+    /// The branch.
+    pub branch: Branch,
+    /// Its commit.
+    pub head: Head,
+}
+
+/// A reference the remote advertised under `refs/heads/` whose name is no branch this reads.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Skipped {
+    /// The name as the remote wrote it.
+    pub written: String,
+    /// Why it is no branch.
+    pub source: RevisionError,
+}
+
+/// The branches of a repository.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Branches {
+    /// The branch `HEAD` points at, when the remote says.
+    pub default: Option<Branch>,
+    /// Each branch with a commit, by name.
+    pub found: Vec<Tip>,
+    /// The references that are no branch to this.
+    pub skipped: Vec<Skipped>,
+}
+
 /// Where a repository's branch is. Futures are not required to be `Send`.
 #[expect(async_fn_in_trait, reason = "a Worker's fetch is not Send")]
 pub trait Heads {
@@ -82,4 +111,8 @@ pub trait Heads {
         revision: Option<&Revision>,
         access: Option<&Access>,
     ) -> Result<Head, Self::Error>;
+
+    /// Every branch of the repository at `url` and its commit, read with `access` when the site
+    /// has a credential. Like [`Heads::head`] it fetches no objects.
+    async fn branches(&self, url: &Locator, access: Option<&Access>) -> Result<Branches, Self::Error>;
 }

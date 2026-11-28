@@ -88,7 +88,10 @@ impl Command {
             }
             Self::Preview(mut preview) => {
                 preview.dir = site;
-                preview.run(io)
+                match preview.command.take() {
+                    Some(branches) => branches.run(&preview.dir, io),
+                    None => preview.run(io),
+                }
             }
             Self::Serve(serve) => serve.sited(&site).run(io),
             Self::Explain(explain) => explain.addressed(site).run(io),

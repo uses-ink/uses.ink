@@ -129,6 +129,7 @@ impl Follow<'_> {
             requested: Timestamp::UNIX_EPOCH,
             finished: None,
             deploy: None,
+            branch: None,
         }
     }
 

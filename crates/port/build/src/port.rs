@@ -3,7 +3,7 @@
 use blob::Tenant;
 use model::{Bytes, ExternalUrl, Manifest};
 
-use crate::{BuildId, Error, Events, Source, Trigger};
+use crate::{BuildId, Error, Events, Pin, Source, Trigger};
 
 /// What to build.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,8 +14,12 @@ pub struct Request {
     pub tenant: Tenant,
     /// What set the build off.
     pub trigger: Trigger,
-    /// Where the content comes from.
+    /// Where the content comes from. For a build of a branch this already reads the branch:
+    /// an adapter builds `source` and need not look at `pin`.
     pub source: Source,
+    /// The branch and commit of a preview build, when it is one: what the build is of, for the
+    /// adapters that name it (a container's job label, a log line).
+    pub pin: Option<Pin>,
     /// Where the site will be served, for the absolute links of its feeds and sitemap.
     pub base: ExternalUrl,
 }

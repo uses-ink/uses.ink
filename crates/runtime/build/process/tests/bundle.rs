@@ -25,6 +25,7 @@ fn request(tree: Hash) -> Request {
         tenant: TENANT.parse().unwrap(),
         trigger: Trigger::Upload,
         source: Source::Bundle(tree),
+        pin: None,
         base: ExternalUrl::parse("https://cstef.uses.ink").unwrap(),
     }
 }

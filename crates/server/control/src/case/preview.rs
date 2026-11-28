@@ -37,12 +37,7 @@ impl<P: Ports> Control<P> {
     /// take the account over the limit is refused whole.
     pub async fn preview(&self, new: NewPreview) -> Result<Preview, Error<P>> {
         let site = self.active(new.site).await?;
-        if !matches!(site.source, Source::Git { .. }) {
-            return Err(Refusal::NoPreview { site: site.id }.into());
-        }
-        if self.credentials(site.id).await?.iter().any(|credential| credential.purpose == Purpose::GitToken) {
-            return Err(Refusal::Private { site: site.id }.into());
-        }
+        self.previewable(&site).await?;
         let tenant = Self::tenant(site.id)?;
         let bytes = self.stat(&tenant, &new.manifest).await?;
         let limit = self.policy.limits.stored;
@@ -72,6 +67,38 @@ impl<P: Ports> Control<P> {
             self.reclaim(site.id, candidates, &[]).await?;
         }
         Ok(preview)
+    }
+
+    /// Whether the site has branches to preview: a git source, with no credential, so that what a
+    /// preview serves at an address anyone can open was public to begin with.
+    pub(crate) async fn previewable(&self, site: &crate::Site) -> Result<(), Error<P>> {
+        if !matches!(site.source, Source::Git { .. }) {
+            return Err(Refusal::NoPreview { site: site.id }.into());
+        }
+        if self.credentials(site.id).await?.iter().any(|credential| credential.purpose == Purpose::GitToken) {
+            return Err(Refusal::Private { site: site.id }.into());
+        }
+        Ok(())
+    }
+
+    /// Ends the preview of `site` labelled `slug` now, and frees the blobs only it named, bytes
+    /// before rows (decision 0022). A blob a deploy or another preview still names stays.
+    /// Removing what is not there is `preview.label.unknown`, so a typo is not a success.
+    pub async fn remove_preview(&self, site: Id<SiteKind>, slug: &Slug, at: Timestamp) -> Result<Swept, Error<P>> {
+        self.site(site).await?;
+        let Some(found) = self.preview_of(site, slug).await? else {
+            return Err(Refusal::NoLabel { site, label: slug.to_string() }.into());
+        };
+        let candidates = self.reach(site, found.deploy).await?;
+        let freed = self.reclaim(site, candidates, std::slice::from_ref(slug)).await?;
+        let delete = Query::delete()
+            .from_table(table::Preview::Table)
+            .and_where(Expr::col(table::Preview::SiteId).eq(site.to_string()))
+            .and_where(Expr::col(table::Preview::Slug).eq(slug.as_str()))
+            .to_owned();
+        let event = Event::PreviewExpired { slug: slug.clone() }.insert(site, at)?;
+        self.ports.db().batch(vec![delete.into(), event]).await?;
+        Ok(Swept { previews: 1, ..freed })
     }
 
     /// The previews of `site` that have not ended at `at`, newest first.

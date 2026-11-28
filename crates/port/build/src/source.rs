@@ -77,6 +77,51 @@ impl FromStr for Revision {
     }
 }
 
+/// A branch of a repository, as the remote names it. The same text rules as a [`Revision`]: it
+/// can never be read as an option.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(transparent)]
+pub struct Branch(Revision);
+
+impl Branch {
+    /// The branch as written.
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    /// The branch as a revision to fetch: the remote is asked for the branch, so the build reads
+    /// its tip when the build runs.
+    pub fn revision(&self) -> Revision {
+        self.0.clone()
+    }
+}
+
+impl fmt::Display for Branch {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(out)
+    }
+}
+
+impl FromStr for Branch {
+    type Err = RevisionError;
+
+    fn from_str(text: &str) -> Result<Self, RevisionError> {
+        text.parse().map(Self)
+    }
+}
+
+/// A branch built for a preview (decision 0091), with the commit the poll saw it at. The request's
+/// source reads the branch, so a build that runs later builds the branch as it is by then (a
+/// fetch asks the remote for refs, not for a commit id); the commit is what the watch dedupes by,
+/// so a branch that moved is queued again.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Pin {
+    /// The branch.
+    pub branch: Branch,
+    /// The commit the poll saw the branch at, as the remote named it.
+    pub revision: Revision,
+}
+
 /// The kind of a [`Source`], by the name it is stored under.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "kebab-case")]

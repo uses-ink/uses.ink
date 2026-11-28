@@ -133,6 +133,9 @@ pub struct BuildView {
     pub finished: Option<Timestamp>,
     /// The deploy it made.
     pub deploy: Option<DeployId>,
+    /// The branch it builds as a preview, when it is not a build of the site itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
 }
 
 impl From<&Job> for BuildView {
@@ -144,6 +147,7 @@ impl From<&Job> for BuildView {
             requested: job.requested,
             finished: job.finished,
             deploy: job.deploy,
+            branch: job.pin.as_ref().map(|pin| pin.branch.to_string()),
         }
     }
 }
@@ -460,6 +464,15 @@ impl Previewed {
             expires: preview.expires,
         }
     }
+}
+
+/// A preview that was removed.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Unpreviewed {
+    /// The label.
+    pub slug: String,
+    /// How many blobs only it held and were deleted.
+    pub blobs: u64,
 }
 
 /// The record to publish to prove a name: a TXT record at a host, with a value.

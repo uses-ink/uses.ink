@@ -51,6 +51,34 @@ impl Tips<'_> {
         })
     }
 
+    /// The branch `HEAD` points at, by its short name.
+    pub(crate) fn default_branch(&self) -> Option<String> {
+        self.0.iter().find_map(|tip| match tip {
+            Ref::Symbolic { full_ref_name, target, .. } if full_ref_name.as_slice() == b"HEAD" => {
+                target.strip_prefix(b"refs/heads/").map(|name| String::from_utf8_lossy(name).into_owned())
+            }
+            _ => None,
+        })
+    }
+
+    /// Every branch the remote advertises, with its commit, in the order of their names.
+    pub(crate) fn branches(&self) -> Vec<(String, ObjectId)> {
+        let mut found: Vec<(String, ObjectId)> = self
+            .0
+            .iter()
+            .filter_map(|tip| match tip {
+                Ref::Direct { full_ref_name, object }
+                | Ref::Peeled { full_ref_name, object, .. }
+                | Ref::Symbolic { full_ref_name, object, .. } => full_ref_name
+                    .strip_prefix(b"refs/heads/")
+                    .map(|name| (String::from_utf8_lossy(name).into_owned(), *object)),
+                Ref::Unborn { .. } => None,
+            })
+            .collect();
+        found.sort_by(|left, right| left.0.cmp(&right.0));
+        found
+    }
+
     /// The commit `revision` names, or the default branch's when none is named: a branch, then a
     /// tag, then a full reference name, then a commit id written out, which names itself.
     pub(crate) fn head(&self, revision: Option<&str>) -> Result<ObjectId, Missing> {
@@ -102,6 +130,16 @@ mod test {
         assert_eq!(tips.head(Some("v1")).unwrap(), id('e'), "a branch is looked for before a tag");
         assert_eq!(tips.head(Some(&"f".repeat(40))).unwrap(), id('f'), "a commit id names itself");
         assert_eq!(tips.head(Some("gone")), Err(Missing::Revision { written: "gone".into() }));
+    }
+
+    #[test]
+    fn lists_the_branches_by_name_and_the_one_head_points_at() {
+        let tips = tips();
+        let tips = Tips(&tips);
+        let names: Vec<String> = tips.branches().into_iter().map(|(name, _)| name).collect();
+        assert_eq!(names, ["main", "next", "v1"], "tags are no branches");
+        assert_eq!(tips.default_branch().as_deref(), Some("main"));
+        assert_eq!(Tips(&[]).default_branch(), None);
     }
 
     #[test]

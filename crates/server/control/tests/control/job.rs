@@ -44,6 +44,10 @@ impl Scripted {
         Self::in_folder(&world.root, steps)
     }
 
+    pub(crate) fn seen(&self) -> Vec<Request> {
+        self.seen.borrow().clone()
+    }
+
     fn in_folder(root: &std::path::Path, steps: impl IntoIterator<Item = Step>) -> Self {
         Self {
             store: Directory::open(root).unwrap(),
