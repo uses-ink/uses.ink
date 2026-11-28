@@ -108,6 +108,12 @@ impl<A: Answers> Hosted<A> {
                 return Self::convert(Dashboard::<Browser<'_, A>>::failed(nowhere, failure), None).await;
             }
         };
+        // a face or a stroke is the same for everyone: no session is asked for and no cookie rides with it
+        let asset = request.path.strip_prefix('/').and_then(web::Asset::named).filter(|_| method == web::Method::Get);
+        if let Some(asset) = asset {
+            let reply = web::Reply::<Idle> { status: web::Status::Ok, location: None, body: Body::Asset(asset) };
+            return Self::convert(reply, None).await;
+        }
         let browser = Browser { pages: &self.pages, api: &self.api, request, cookie: RefCell::new(None) };
         let who = match browser.who().await {
             Ok(who) => who,
@@ -127,6 +133,19 @@ impl<A: Answers> Hosted<A> {
         Self::convert(reply, dashboard.0.cookie.take()).await
     }
 
+    /// A face, the mark or a stroke as the API sends it: kept a day, since it never changes while
+    /// the process runs.
+    fn served(asset: web::Asset, headers: &mut Vec<Header>) -> (Media, Vec<u8>) {
+        headers.retain(|header| header.name != "cache-control");
+        headers.push(Header { name: "cache-control", value: "public, max-age=86400".to_owned() });
+        let media = match asset.medium() {
+            web::Medium::Font => Media::Font,
+            web::Medium::Style => Media::Css,
+            _ => Media::Svg,
+        };
+        (media, asset.bytes().into_owned())
+    }
+
     /// The dashboard's reply as the API's: its status, its headers, its page, and the cookie.
     async fn convert(reply: web::Reply<Idle>, cookie: Option<Cookie>) -> Reply {
         let status = Said::status_of(reply.status);
@@ -140,6 +159,7 @@ impl<A: Answers> Hosted<A> {
         let (media, body) = match reply.body {
             Body::Page(text) => (Media::Html, text.into_bytes()),
             Body::Script(text) => (Media::Script, text.as_bytes().to_vec()),
+            Body::Asset(asset) => Self::served(asset, &mut headers),
             Body::Download(file) => {
                 headers.push(Header { name: "content-disposition", value: format!("attachment; filename=\"{file}\"") });
                 (Media::Tar, file.bytes)

@@ -7,6 +7,7 @@ use std::future::Future;
 
 use control::{AccountKind, Handle, Id};
 
+use crate::asset::Asset;
 use crate::form::{Action, Asked, Seating, Token};
 use crate::route::{Only, Path, Route, Screen};
 use crate::shell::{Document, Frame, View};
@@ -146,6 +147,8 @@ pub enum Body<F> {
     Download(Download),
     /// The dashboard's script, as static text with a JavaScript content type.
     Script(&'static str),
+    /// A face, the mark or a stroke: static for the life of the process.
+    Asset(Asset),
 }
 
 /// What the dashboard answers.
@@ -166,7 +169,7 @@ impl<F> Reply<F> {
         ("cache-control", "no-store"),
         (
             "content-security-policy",
-            "default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'unsafe-inline'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+            "default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
         ),
         ("x-content-type-options", "nosniff"),
         ("referrer-policy", "same-origin"),
@@ -236,6 +239,7 @@ impl<S: Screens> Dashboard<S> {
             Route::Script => {
                 return Ok(Reply { status: Status::Ok, location: None, body: Body::Script(Self::SCRIPT) });
             }
+            Route::Asset(asset) => return Ok(Reply { status: Status::Ok, location: None, body: Body::Asset(*asset) }),
             _ => {}
         }
         let who = who.ok_or(Failure::SignedOut)?;
@@ -255,6 +259,7 @@ impl<S: Screens> Dashboard<S> {
             | Route::SignIn
             | Route::Limits
             | Route::Script
+            | Route::Asset(_)
             | Route::Sent
             | Route::Link(_)
             | Route::Ask(_)

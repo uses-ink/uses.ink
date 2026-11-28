@@ -9,6 +9,7 @@
 //! - Every screen has an empty state that says what to do, and every failure is a [`Failure`]
 //!   with a code, a cause chain and a fix, shown as a page.
 
+mod asset;
 mod dashboard;
 mod escaped;
 mod failure;
@@ -21,6 +22,7 @@ mod stream;
 mod style;
 pub mod view;
 
+pub use asset::{Asset, Medium, Wobble};
 pub use dashboard::{Acted, Body, Dashboard, Download, Logged, Reply, Screens};
 pub use failure::{Cause, Code, Failure, FieldError, Fix, Part, Unrouted};
 pub use form::{Action, Asked, Field, Form, Method, Request, Seating, Token};

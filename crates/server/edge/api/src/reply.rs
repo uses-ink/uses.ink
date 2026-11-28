@@ -211,6 +211,12 @@ pub enum Media {
     Html,
     /// The dashboard's one script, as static text.
     Script,
+    /// A `woff2` face of the dashboard.
+    Font,
+    /// An SVG image of the dashboard: the mark, or a stroke its pages borrow.
+    Svg,
+    /// The dashboard's tokens, as a stylesheet.
+    Css,
 }
 
 impl Media {
@@ -223,6 +229,9 @@ impl Media {
             Self::Tar => Some("application/x-tar"),
             Self::Html => Some("text/html; charset=utf-8"),
             Self::Script => Some("text/javascript; charset=utf-8"),
+            Self::Font => Some("font/woff2"),
+            Self::Svg => Some("image/svg+xml"),
+            Self::Css => Some("text/css; charset=utf-8"),
         }
     }
 }

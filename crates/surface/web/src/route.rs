@@ -6,6 +6,7 @@ use std::fmt::{self, Write as _};
 use build::BuildId;
 use control::{Handle, Id, SessionKind};
 
+use crate::asset::Asset;
 use crate::failure::Unrouted;
 use crate::form::{Action, Asked, Form, Method, Request, Seating, Segment, Token};
 use crate::{Failure, Field};
@@ -90,6 +91,8 @@ pub enum Route {
     SignOut,
     /// `/passkey.js`: the dashboard's one script, static text.
     Script,
+    /// `/<file>`: a face, the mark or a stroke the pages borrow.
+    Asset(Asset),
     /// `/<handle>/export`: the site as a download.
     Export(Handle),
     /// A form posted to `/<handle>/<action>`; answered by a redirect to the page it changed.
@@ -119,6 +122,9 @@ impl Route {
             Method::Post => Action::read(name, &request.body).map(|action| Self::Act(handle, action)),
             Method::Get => Err(Failure::Method { used: Method::Get }),
         };
+        if let Some(asset) = first.filter(|_| second.is_none()).and_then(Asset::named) {
+            return get(Self::Asset(asset));
+        }
         match (first, second, third) {
             (Some("account"), None, None) => get(Self::Account),
             (Some("account"), Some(name @ ("orgs" | "members" | "roles" | "removals")), None) => match request.method {
@@ -177,6 +183,7 @@ impl Route {
             | Self::SignIn
             | Self::Limits
             | Self::Script
+            | Self::Asset(_)
             | Self::EndSession(_)
             | Self::Seat(_)
             | Self::Home
@@ -209,6 +216,7 @@ impl Route {
             | Self::SignIn
             | Self::Limits
             | Self::Script
+            | Self::Asset(_)
             | Self::Home
             | Self::Ask(_)
             | Self::Sent
