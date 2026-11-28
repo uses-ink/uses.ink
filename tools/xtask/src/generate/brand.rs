@@ -1,4 +1,5 @@
-//! `brand/figure.toml` into the logo, mark and favicon, drawn with the freehand pen.
+//! `brand/figure.toml` into the logo, mark and favicon, drawn with the freehand pen, and into the
+//! drawings of the landing page, which are written into the folder of the site that shows them.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -18,12 +19,12 @@ use crate::generate::output::{Files, Generator};
 pub(crate) struct Brand;
 
 impl Brand {
-    /// The directory every drawing is written into, as `<name>.svg`.
+    /// The directory a drawing is written into, as `<name>.svg`, unless it names another.
     const DIR: &'static str = "brand";
 
-    /// The file a drawing named `name` is written to.
-    fn file(name: &str) -> PathBuf {
-        FilePath::new(Self::DIR).join(format!("{name}.svg"))
+    /// The file a drawing named `name` is written to, in `folder`.
+    fn file(folder: &str, name: &str) -> PathBuf {
+        FilePath::new(folder).join(format!("{name}.svg"))
     }
 }
 
@@ -33,17 +34,20 @@ impl Generator for Brand {
     type Source = Figure;
 
     fn generate(&self, figure: &Figure, files: &mut Files<'_>) -> Result<(), Error> {
+        let mut folders = std::collections::BTreeSet::from([Self::DIR]);
         for drawing in &figure.drawing {
             let sheet = Sheet { figure, drawing };
             let whole = sheet.paint(Cut::Whole)?.to_string();
+            let folder = drawing.folder.as_deref().unwrap_or(Self::DIR);
+            folders.insert(folder);
             for name in std::iter::once(&drawing.name).chain(&drawing.copies) {
-                files.put(Self::file(name), &whole)?;
+                files.put(Self::file(folder, name), &whole)?;
             }
             if let Some(open) = &drawing.open {
-                files.put(Self::file(open), sheet.paint(Cut::Open(open))?.to_string())?;
+                files.put(Self::file(folder, open), sheet.paint(Cut::Open(open))?.to_string())?;
             }
         }
-        files.claim(Self::DIR, "svg")
+        folders.into_iter().try_for_each(|folder| files.claim(folder, "svg"))
     }
 }
 
@@ -67,6 +71,9 @@ impl TryFrom<toml::Table> for Figure {
 #[serde(deny_unknown_fields)]
 struct Drawing {
     name: String,
+    /// The folder it is written into, relative to the root: `brand` unless it is the picture of a
+    /// site, which holds it beside its pages.
+    folder: Option<String>,
     /// A second file, drawn without the parts marked `head`.
     open: Option<String>,
     /// Other names the same drawing is written under.

@@ -79,7 +79,9 @@ impl Step for Sites {
                 Err(source) => report.fail(Error::Site { path, source }),
             }
         }
-        Handbook.run(root, report);
+        for site in Handbook::ALL {
+            site.run(root, report);
+        }
     }
 }
 
@@ -90,24 +92,30 @@ impl fmt::Display for Sites {
             "{}, then `ink build --check` on every folder of {} and on {}",
             Self::BUILD,
             Self::DIR,
-            Handbook::DIR
+            Handbook::ALL.map(|site| site.dir).join(" and ")
         )
     }
 }
 
-/// The documentation site, `docs/` built by `ink` (docs/site.md, decision 0120): `ink build
-/// --check` twice, each with a cache of its own, which must say nothing (no error, no warning, so
-/// no broken link), build the same deploy natively and as components, and build the same deploy
-/// both times.
+/// A site the repository publishes, built by `ink` from its own folder: the documentation site,
+/// `docs/` (docs/site.md, decision 0120), and the landing page, `landing/` (decision 0171). `ink
+/// build --check` twice, each with a cache of its own, which must say nothing (no error, no
+/// warning, so no broken link), build the same deploy natively and as components, and build the
+/// same deploy both times.
 #[derive(Debug, Clone, Copy)]
-struct Handbook;
+struct Handbook {
+    /// The site's folder, relative to the root.
+    dir: &'static str,
+    /// The two caches, relative to the root, emptied before each build.
+    caches: [&'static str; 2],
+}
 
 impl Handbook {
-    /// The site's folder, relative to the root.
-    const DIR: &'static str = "docs";
-
-    /// The two caches, relative to the root, emptied before each build.
-    const CACHES: [&'static str; 2] = ["target/ink-docs/first", "target/ink-docs/second"];
+    /// Every such site.
+    const ALL: [Self; 2] = [
+        Self { dir: "docs", caches: ["target/ink-docs/first", "target/ink-docs/second"] },
+        Self { dir: "landing", caches: ["target/ink-landing/first", "target/ink-landing/second"] },
+    ];
 
     /// An empty folder at `cache` under `root`.
     fn emptied(root: &Path, cache: &str) -> Result<PathBuf, Error> {
@@ -120,20 +128,20 @@ impl Handbook {
     }
 
     /// `ink build --check` of the site with `cache`, its diagnostics on stderr.
-    fn built(root: &Path, cache: &Path) -> Result<Compared, Error> {
+    fn built(self, root: &Path, cache: &Path) -> Result<Compared, Error> {
         let mut command = std::process::Command::new(root.join("target/debug/ink"));
         command
             .args(["--json", "-C"])
-            .arg(root.join(Self::DIR))
+            .arg(root.join(self.dir))
             .args(["build", "--check", "--source", "folder", "--cache"])
             .arg(cache);
-        Process::from(command).answer().map_err(|source| Error::Site { path: Self::DIR.into(), source })
+        Process::from(command).answer().map_err(|source| Error::Site { path: self.dir.into(), source })
     }
 
     /// One build, refused unless it is clean and its two deploys agree.
-    fn once(root: &Path, cache: &str) -> Result<Option<String>, Error> {
-        let path = PathBuf::from(Self::DIR);
-        let compared = Self::built(root, &Self::emptied(root, cache)?)?;
+    fn once(self, root: &Path, cache: &str) -> Result<Option<String>, Error> {
+        let path = PathBuf::from(self.dir);
+        let compared = self.built(root, &Self::emptied(root, cache)?)?;
         if compared.errors > 0 || compared.warnings > 0 {
             return Err(Error::Unclean { path, errors: compared.errors, warnings: compared.warnings });
         }
@@ -146,10 +154,10 @@ impl Handbook {
 
 impl Step for Handbook {
     fn run(&self, root: &Path, report: &mut Report) {
-        let path = PathBuf::from(Self::DIR);
+        let path = PathBuf::from(self.dir);
         let mut deploys = Vec::new();
-        for cache in Self::CACHES {
-            match Self::once(root, cache) {
+        for cache in self.caches {
+            match self.once(root, cache) {
                 Ok(deploy) => deploys.push(deploy),
                 Err(error) => return report.fail(error),
             }
@@ -164,6 +172,6 @@ impl Step for Handbook {
 
 impl fmt::Display for Handbook {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "`ink build --check` of {} twice, with no diagnostic and the same deploy", Self::DIR)
+        write!(out, "`ink build --check` of {} twice, with no diagnostic and the same deploy", self.dir)
     }
 }

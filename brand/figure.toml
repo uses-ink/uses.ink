@@ -10,6 +10,17 @@ pencil-body = [[60, 44], [86, 14], [96, 23], [70, 54]]
 pencil-eraser = [[86, 14], [92, 7], [102, 16], [96, 23]]
 pencil-tip = [[60, 44], [52, 62], [70, 54]]
 
+# The landing picture's shapes, corner to corner (a closed shape repeats its first corner).
+scene-pile = [[44, 318], [118, 312], [124, 400], [50, 405], [44, 318]]
+scene-sheet = [[76, 290], [150, 288], [152, 374], [130, 375]]
+scene-tray = [[28, 362], [30, 448], [104, 450], [106, 410]]
+scene-held = [[262, 176], [300, 174], [302, 212], [264, 214], [262, 176]]
+scene-arrow = [[376, 106], [394, 121], [374, 132]]
+scene-window = [[330, 168], [540, 164], [544, 404], [332, 408], [330, 168]]
+scene-gold = [[530, 126], [534, 136], [544, 140], [534, 144], [530, 154], [526, 144], [516, 140], [526, 136], [530, 126]]
+scene-low = [[316, 422], [320, 432], [330, 436], [320, 440], [316, 450], [312, 440], [302, 436], [312, 432], [316, 422]]
+scene-far = [[556, 416], [560, 426], [570, 430], [560, 434], [556, 444], [552, 434], [542, 430], [552, 426], [556, 416]]
+
 # The full figure, 120 px.
 [[drawing]]
 name = "logo"
@@ -61,4 +72,61 @@ stroke = [
     { line = { chain = "pencil-body" }, weight = 4.2 },
     { line = { chain = "pencil-eraser" }, weight = 4.2 },
     { line = { chain = "pencil-tip" }, weight = 4.2 },
+]
+
+# The landing page's picture (landing/index.md): a person hands a file from a pile to a browser
+# window at their own address. Written beside the page that shows it, so the site holds it.
+[[drawing]]
+name = "scene"
+folder = "landing"
+size = [580, 500]
+hand = { wobble = 0.6, tremor = 0.5 }
+shift = [4, 3]
+place = { offset = [0, 0], scale = 1 }
+fill = [
+    { shape = { polygon = "scene-pile" }, colour = "mint" },
+    { shape = { polygon = "scene-held" }, colour = "sky" },
+    { shape = { points = [[330, 168], [540, 164], [541, 192], [331, 196]] }, colour = "pink" },
+    { shape = { polygon = "scene-gold" }, colour = "bucket" },
+    { shape = { polygon = "scene-low" }, colour = "bucket" },
+    { shape = { polygon = "scene-far" }, colour = "sky" },
+]
+stroke = [
+    # the pile of files you already have
+    { line = { chain = "scene-pile" }, weight = 3 },
+    { line = { chain = "scene-sheet" }, weight = 3 },
+    { line = { chain = "scene-tray" }, weight = 3 },
+    { line = { segment = { from = [60, 340], to = [104, 340] } }, weight = 2.4 },
+    { line = { segment = { from = [60, 356], to = [96, 356] } }, weight = 2.4 },
+    { line = { segment = { from = [60, 372], to = [108, 372] } }, weight = 2.4 },
+    # a person, handing it over
+    { line = { ring = { centre = [232, 196], radius = [26, 28] } }, weight = 3 },
+    { line = { quad = { from = [222, 200], control = [231, 209], to = [242, 200] } }, weight = 2.6 },
+    { line = { points = [[222, 188], [223, 188]] }, weight = 4 },
+    { line = { points = [[240, 187], [241, 187]] }, weight = 4 },
+    { line = { quad = { from = [231, 229], control = [229, 282], to = [226, 330] } }, weight = 3 },
+    { line = { quad = { from = [230, 256], control = [206, 278], to = [186, 310] } }, weight = 3 },
+    { line = { quad = { from = [231, 254], control = [254, 240], to = [270, 214] } }, weight = 3 },
+    { line = { segment = { from = [225, 332], to = [206, 416] } }, weight = 3 },
+    { line = { segment = { from = [227, 330], to = [252, 412] } }, weight = 3 },
+    { line = { chain = "scene-held" }, weight = 3 },
+    # the arrow it takes
+    { line = { quad = { from = [300, 150], control = [340, 104], to = [392, 120] } }, weight = 3 },
+    { line = { chain = "scene-arrow" }, weight = 3 },
+    # the blog at your address
+    { line = { chain = "scene-window" }, weight = 3 },
+    { line = { segment = { from = [331, 196], to = [541, 192] } }, weight = 3 },
+    { line = { points = [[344, 182], [345, 182]] }, weight = 4 },
+    { line = { points = [[356, 181], [357, 181]] }, weight = 4 },
+    { line = { segment = { from = [350, 232], to = [490, 232] } }, weight = 5 },
+    { line = { segment = { from = [350, 262], to = [520, 262] } }, weight = 2.4 },
+    { line = { segment = { from = [350, 280], to = [512, 280] } }, weight = 2.4 },
+    { line = { segment = { from = [350, 298], to = [524, 298] } }, weight = 2.4 },
+    { line = { segment = { from = [350, 316], to = [470, 316] } }, weight = 2.4 },
+    { line = { segment = { from = [350, 348], to = [516, 348] } }, weight = 2.4 },
+    { line = { segment = { from = [350, 366], to = [500, 366] } }, weight = 2.4 },
+    # sparkles
+    { line = { chain = "scene-gold" }, weight = 2.6 },
+    { line = { chain = "scene-low" }, weight = 2.6 },
+    { line = { chain = "scene-far" }, weight = 2.6 },
 ]

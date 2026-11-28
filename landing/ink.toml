@@ -1,0 +1,13 @@
+# The landing page of uses.ink: one page, built by `ink` like any site (decision 0171). The look
+# is the one of the docs site (decision 0142); the picture is drawn by `cargo xtask brand`.
+# `cargo xtask check sites` builds it twice and refuses any diagnostic or a second deploy that differs.
+
+[theme]
+use = "ink:theme-quiet"
+look = "uses-ink"
+
+[site]
+title = "uses.ink"
+language = "en"
+home = "index.md"
+nav = []
