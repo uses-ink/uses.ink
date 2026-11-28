@@ -167,6 +167,8 @@ pub enum Status {
     Unprocessable,
     /// `500`.
     Internal,
+    /// `501`: the route is known and this server does not have it yet.
+    NotImplemented,
     /// `503`: not now; `Retry-After` says when.
     Unavailable,
 }
@@ -190,6 +192,7 @@ impl Status {
             Self::Unprocessable => 422,
             Self::TooMany => 429,
             Self::Internal => 500,
+            Self::NotImplemented => 501,
             Self::Unavailable => 503,
         }
     }

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/surface/cli", "crates/core/sig", "crates/port/clock", "crates/server/edge/api", "crates/server/edge/control", "crates/server/watch", "crates/server/watch/git", "crates/core/config", "crates/core/diag", "crates/server/edge", "crates/server/edge/axum", "crates/server/edge/folder", "crates/core/engine", "crates/standalone/fixture", "crates/standalone/freehand", "crates/standalone/freehand-web", "crates/runtime/host/image", "crates/runtime/host/native", "crates/core/model", "crates/runtime/plugin/format/markdown", "crates/runtime/plugin/theme/quiet", "crates/core/token", "crates/core/logging", "tools/farm", "tools/xtask", "crates/runtime/host/wasmtime", "crates/runtime/host/wasmtime/hostile", "crates/runtime/plugin/sdk", "crates/runtime/plugin/format/markdown/guest", "crates/runtime/plugin/format/obsidian", "crates/runtime/plugin/format/obsidian/guest", "crates/runtime/plugin/theme/quiet/guest", "crates/runtime/plugin/source/git", "crates/runtime/plugin/source/git/guest", "crates/port/blob", "crates/port/blob/conformance", "crates/port/blob/dir", "crates/port/build", "crates/port/build/conformance", "crates/runtime/build/process", "crates/server/control", "crates/server/control/keys", "crates/server/control/rows", "crates/server/control/signin", "crates/port/db", "crates/port/db/conformance", "crates/port/db/sqlite", "crates/port/db/d1", "crates/port/secret", "crates/port/secret/conformance", "crates/port/secret/local", "crates/port/queue", "crates/port/queue/conformance", "crates/port/queue/rows", "crates/surface/web", "crates/port/mail", "crates/port/mail/smtp", "crates/core/https", "crates/server/authority/dns", "crates/server/authority/email", "crates/server/authority/forge", "crates/server/authority/github", "crates/server/authority/forgejo", "crates/server/authority/gitlab", "crates/server/authority/repo", "crates/port/blob/r2", "crates/port/queue/cf", "crates/port/secret/seal", "crates/port/secret/worker", "crates/port/mail/conformance", "crates/port/mail/cf", "crates/server/edge/object/nonce", "crates/server/edge/worker", "crates/server/watch/worker", "crates/server/edge/conformance"]
+members = ["crates/surface/cli", "crates/core/sig", "crates/port/clock", "crates/server/edge/api", "crates/server/edge/control", "crates/server/watch", "crates/server/watch/git", "crates/core/config", "crates/core/diag", "crates/server/edge", "crates/server/edge/axum", "crates/server/edge/folder", "crates/core/engine", "crates/standalone/fixture", "crates/standalone/freehand", "crates/standalone/freehand-web", "crates/runtime/host/image", "crates/runtime/host/native", "crates/core/model", "crates/runtime/plugin/format/markdown", "crates/runtime/plugin/theme/quiet", "crates/core/token", "crates/core/logging", "tools/farm", "tools/xtask", "crates/runtime/host/wasmtime", "crates/runtime/host/wasmtime/hostile", "crates/runtime/plugin/sdk", "crates/runtime/plugin/format/markdown/guest", "crates/runtime/plugin/format/obsidian", "crates/runtime/plugin/format/obsidian/guest", "crates/runtime/plugin/theme/quiet/guest", "crates/runtime/plugin/source/git", "crates/runtime/plugin/source/git/guest", "crates/port/blob", "crates/port/blob/conformance", "crates/port/blob/dir", "crates/port/build", "crates/port/build/conformance", "crates/runtime/build/process", "crates/server/control", "crates/server/control/keys", "crates/server/control/rows", "crates/server/control/signin", "crates/port/db", "crates/port/db/conformance", "crates/port/db/sqlite", "crates/port/db/d1", "crates/port/secret", "crates/port/secret/conformance", "crates/port/secret/local", "crates/port/queue", "crates/port/queue/conformance", "crates/port/queue/rows", "crates/surface/web", "crates/port/mail", "crates/port/mail/smtp", "crates/core/https", "crates/server/authority/dns", "crates/server/authority/email", "crates/server/authority/forge", "crates/server/authority/github", "crates/server/authority/forgejo", "crates/server/authority/gitlab", "crates/server/authority/repo", "crates/port/blob/r2", "crates/port/queue/cf", "crates/port/secret/seal", "crates/port/secret/worker", "crates/port/mail/conformance", "crates/port/mail/cf", "crates/server/edge/object/nonce", "crates/server/edge/worker", "crates/server/watch/worker", "crates/server/edge/conformance", "crates/server/edge/app"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -20,6 +20,7 @@ authority-gitlab = { package = "uses-ink-authority-gitlab", path = "crates/serve
 authority-repo = { package = "uses-ink-authority-repo", path = "crates/server/authority/repo", default-features = false }
 authority-dns = { package = "uses-ink-authority-dns", path = "crates/server/authority/dns", default-features = false }
 blob = { package = "uses-ink-blob", path = "crates/port/blob" }
+blob-r2 = { package = "uses-ink-blob-r2", path = "crates/port/blob/r2" }
 blob-conformance = { package = "uses-ink-blob-conformance", path = "crates/port/blob/conformance" }
 blob-dir = { package = "uses-ink-blob-dir", path = "crates/port/blob/dir" }
 build = { package = "uses-ink-build", path = "crates/port/build" }
@@ -34,6 +35,7 @@ control-signin = { package = "uses-ink-control-signin", path = "crates/server/co
 # test-only: a dev-dependency of any crate, a normal dependency of none
 fixture = { package = "uses-ink-fixture", path = "crates/standalone/fixture" }
 db = { package = "uses-ink-db", path = "crates/port/db" }
+db-d1 = { package = "uses-ink-db-d1", path = "crates/port/db/d1" }
 db-conformance = { package = "uses-ink-db-conformance", path = "crates/port/db/conformance" }
 db-sqlite = { package = "uses-ink-db-sqlite", path = "crates/port/db/sqlite" }
 diag = { package = "uses-ink-diag", path = "crates/core/diag" }
@@ -43,6 +45,7 @@ edge-object-nonce = { package = "uses-ink-edge-object-nonce", path = "crates/ser
 edge-api = { package = "uses-ink-edge-api", path = "crates/server/edge/api" }
 edge-conformance = { package = "uses-ink-edge-conformance", path = "crates/server/edge/conformance" }
 edge-control = { package = "uses-ink-edge-control", path = "crates/server/edge/control", default-features = false }
+edge-worker = { package = "uses-ink-edge-worker", path = "crates/server/edge/worker" }
 edge-axum = { package = "uses-ink-edge-axum", path = "crates/server/edge/axum" }
 edge-folder = { package = "uses-ink-edge-folder", path = "crates/server/edge/folder", default-features = false }
 engine = { package = "uses-ink-engine", path = "crates/core/engine" }
@@ -55,6 +58,7 @@ host-native = { package = "uses-ink-host-native", path = "crates/runtime/host/na
 host-wasmtime = { package = "uses-ink-host-wasmtime", path = "crates/runtime/host/wasmtime" }
 model = { package = "uses-ink-model", path = "crates/core/model" }
 secret = { package = "uses-ink-secret", path = "crates/port/secret" }
+secret-worker = { package = "uses-ink-secret-worker", path = "crates/port/secret/worker" }
 sig = { package = "uses-ink-sig", path = "crates/core/sig" }
 secret-conformance = { package = "uses-ink-secret-conformance", path = "crates/port/secret/conformance" }
 secret-local = { package = "uses-ink-secret-local", path = "crates/port/secret/local" }
@@ -65,6 +69,7 @@ mail-smtp = { package = "uses-ink-mail-smtp", path = "crates/port/mail/smtp" }
 queue = { package = "uses-ink-queue", path = "crates/port/queue" }
 queue-conformance = { package = "uses-ink-queue-conformance", path = "crates/port/queue/conformance" }
 queue-rows = { package = "uses-ink-queue-rows", path = "crates/port/queue/rows" }
+queue-cf = { package = "uses-ink-queue-cf", path = "crates/port/queue/cf" }
 sdk = { package = "uses-ink-sdk", path = "crates/runtime/plugin/sdk" }
 source-git = { package = "uses-ink-source-git", path = "crates/runtime/plugin/source/git" }
 theme-quiet = { package = "uses-ink-theme-quiet", path = "crates/runtime/plugin/theme/quiet" }
@@ -139,6 +144,7 @@ tempfile = "3.27.0"
 quick-xml = "0.42.0"
 serde = { version = "1.0.229", features = ["derive"] }
 # the Workers runtime; only the hosted adapters use it, and only on wasm32 (decision 0096)
+wasm-bindgen = "=0.2.130"
 worker = { version = "=0.9.0", default-features = false, features = ["d1"] }
 serde_json = "1.0.154"
 serde-saphyr = { version = "2.2.0", default-features = false, features = ["deserialize"] }

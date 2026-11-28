@@ -178,6 +178,15 @@ impl<D: Db, K: Clock, O: Operators, N: Nonces> Signatures<D, K, O, N> {
         Self { keys, clock, operators, nonces, config, boot }
     }
 
+    /// The same verifier with its boot barrier at `boot` instead of now. A nonce store that
+    /// outlives the process (a Durable Object) keeps the barrier itself, from when it was built, so
+    /// a process that restarts often does not close the door each time.
+    #[must_use]
+    pub const fn booted(mut self, boot: Timestamp) -> Self {
+        self.boot = boot;
+        self
+    }
+
     /// The configuration.
     pub const fn config(&self) -> &Config {
         &self.config

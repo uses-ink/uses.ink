@@ -9,22 +9,27 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+authority-forge.workspace = true
 blob.workspace = true
 build.workspace = true
 bytes.workspace = true
 clock.workspace = true
 control.workspace = true
+db.workspace = true
 edge.workspace = true
 edge-api.workspace = true
 edge-conformance.workspace = true
 edge-control.workspace = true
 edge-object-nonce.workspace = true
 jiff.workspace = true
+logging.workspace = true
 model.workspace = true
+queue-rows.workspace = true
 send_wrapper.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sig.workspace = true
+watch.workspace = true
 
 # a Durable Object stub, a clock and a request exist only inside a Worker
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -33,11 +38,18 @@ worker.workspace = true
 
 [dev-dependencies]
 blob-dir.workspace = true
-db.workspace = true
 db-sqlite.workspace = true
 pollster.workspace = true
-queue-rows.workspace = true
 secret-local.workspace = true
+tempfile.workspace = true
+
+[features]
+# the bin that writes the migrations as wrangler's files: `cargo xtask worker app` runs it
+scripts = []
+
+[[bin]]
+name = "scripts"
+required-features = ["scripts"]
 
 [lints]
 workspace = true

@@ -5475,6 +5475,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "send_wrapper"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
+dependencies = [
+ "futures-core",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6810,6 +6819,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-edge-app"
+version = "0.0.0"
+dependencies = [
+ "uses-ink-blob-r2",
+ "uses-ink-control",
+ "uses-ink-db-d1",
+ "uses-ink-edge",
+ "uses-ink-edge-api",
+ "uses-ink-edge-control",
+ "uses-ink-edge-worker",
+ "uses-ink-queue-cf",
+ "uses-ink-queue-rows",
+ "uses-ink-secret-worker",
+ "wasm-bindgen",
+ "worker",
+]
+
+[[package]]
 name = "uses-ink-edge-axum"
 version = "0.0.0"
 dependencies = [
@@ -6825,6 +6852,15 @@ dependencies = [
  "uses-ink-edge",
  "uses-ink-edge-api",
  "uses-ink-logging",
+ "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-edge-conformance"
+version = "0.0.0"
+dependencies = [
+ "pollster",
+ "uses-ink-edge",
  "uses-ink-model",
 ]
 
@@ -6858,8 +6894,10 @@ dependencies = [
  "bytes",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "uses-ink-edge",
+ "uses-ink-edge-conformance",
  "uses-ink-logging",
  "uses-ink-model",
 ]
@@ -6872,12 +6910,33 @@ version = "0.0.0"
 name = "uses-ink-edge-worker"
 version = "0.0.0"
 dependencies = [
+ "bytes",
+ "futures-util",
+ "jiff 1.0.3",
  "pollster",
+ "send_wrapper",
  "serde",
  "serde_json",
+ "tempfile",
+ "uses-ink-authority-forge",
+ "uses-ink-blob",
+ "uses-ink-blob-dir",
+ "uses-ink-build",
+ "uses-ink-clock",
+ "uses-ink-control",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
+ "uses-ink-edge",
  "uses-ink-edge-api",
+ "uses-ink-edge-conformance",
+ "uses-ink-edge-control",
  "uses-ink-edge-object-nonce",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "uses-ink-queue-rows",
+ "uses-ink-secret-local",
  "uses-ink-sig",
+ "uses-ink-watch",
  "worker",
 ]
 

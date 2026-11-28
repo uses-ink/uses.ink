@@ -6,7 +6,7 @@ use std::sync::{Mutex, PoisonError};
 use edge_api::{Claimed, Claiming, Nonces};
 use edge_object_nonce::Ledger;
 
-use crate::{Answer, Malformed, Wire};
+use super::{Answer, Malformed, Wire};
 
 /// A [`Ledger`] behind the wire. It is built when the object is, with the time then: that starts
 /// the quiet period (the boot rule), so an object that was evicted and rebuilt refuses what was

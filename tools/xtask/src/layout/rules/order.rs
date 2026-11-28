@@ -31,11 +31,28 @@ impl Order {
         ("uses-ink-edge-conformance", &["uses-ink-edge", "uses-ink-model"]),
         // the nonce store: a pure state machine, and the Worker shell that puts it behind the wire (decision 0135)
         ("uses-ink-edge-object-nonce", &[]),
+        // the product Worker: the serve path and the API over the Worker's adapters, and nothing else (decision 0201)
+        (
+            "uses-ink-edge-app",
+            &[
+                "uses-ink-blob-r2",
+                "uses-ink-control",
+                "uses-ink-db-d1",
+                "uses-ink-edge",
+                "uses-ink-edge-api",
+                "uses-ink-edge-control",
+                "uses-ink-edge-worker",
+                "uses-ink-queue-cf",
+                "uses-ink-queue-rows",
+                "uses-ink-secret-worker",
+            ],
+        ),
         // the Worker's serve path reads the control plane through the edge's lookup and its tests run the
         // conformance suite on the native adapters (decision 0200)
         (
             "uses-ink-edge-worker",
             &[
+                "uses-ink-authority-forge",
                 "uses-ink-blob",
                 "uses-ink-blob-dir",
                 "uses-ink-build",
@@ -48,10 +65,12 @@ impl Order {
                 "uses-ink-edge-conformance",
                 "uses-ink-edge-control",
                 "uses-ink-edge-object-nonce",
+                "uses-ink-logging",
                 "uses-ink-model",
                 "uses-ink-queue-rows",
                 "uses-ink-secret-local",
                 "uses-ink-sig",
+                "uses-ink-watch",
             ],
         ),
         ("uses-ink-token", &[]),

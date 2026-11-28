@@ -4,6 +4,7 @@
 //! starts `wrangler dev --local`, makes its calls and reports what the Worker said. The gate's
 //! stage `worker` runs the cases that are tests; the spikes are run by name.
 
+mod app;
 mod case;
 mod fault;
 mod migrate;

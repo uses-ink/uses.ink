@@ -1052,6 +1052,13 @@ fault = "source"
 message = "the webhook delivery's signature or token does not authenticate its body"
 fix = "set the same secret on the forge's webhook and in the server; nothing was queued"
 
+[diagnostic."worker.route.pending"]
+severity = "error"
+fault = "operator"
+fields = { reason = "text" }
+message = "the hosted Worker does not answer this yet: {reason}"
+fix = "use the signed API under `/v1` with `ink`; the dashboard, sign-in, passkeys and builds of the hosted Worker are planned (decision 0201)"
+
 [diagnostic."hook.delivery.replayed"]
 severity = "error"
 fault = "source"

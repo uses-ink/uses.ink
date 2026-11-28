@@ -1,0 +1,45 @@
+# The product Worker. No account id and no secret is in this file (decision 0201): the account is
+# whatever `wrangler login` or CLOUDFLARE_API_TOKEN says, and the sealing key is a Workers secret.
+name = "uses-ink"
+main = "build/index.js"
+compatibility_date = "2026-11-01"
+
+[build]
+command = "worker-build --release"
+
+# What the Worker is told. `ORIGIN` is where sites are served (`<handle>.<host of ORIGIN>`), `API_HOST`
+# the host that answers the API, `OPERATOR_KEYS` the text of the operator's keys file. The limits
+# `API_BODY`, `UPLOAD_BYTES`, `UPLOAD_FILES`, `UPLOAD_FILE`, `UPLOAD_TREE`, `UPLOAD_PART` and
+# `EXPORT_BYTES`, the skew `AUTH_SKEW` and `LOOKUP_TTL` (seconds a live deploy is remembered, ten by
+# default; a suspension applies within it) are optional and have defaults.
+[vars]
+ORIGIN = "https://uses.ink"
+API_HOST = "api.uses.ink"
+OPERATOR_KEYS = ""
+
+# the rows of the control plane; the id is the one `wrangler d1 create uses-ink` prints
+[[d1_databases]]
+binding = "DB"
+database_name = "uses-ink"
+database_id = "00000000-0000-0000-0000-000000000000"
+# the typed migrations rendered to files: `cargo xtask worker migrations` writes them here
+migrations_dir = "../../../../target/hosted/app/migrations"
+
+# the blobs of every site: files, manifests and the build logs
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "uses-ink-blobs"
+
+# the wake-up of the queue, whose rows are in D1
+[[queues.producers]]
+binding = "WAKE"
+queue = "uses-ink-wake"
+
+# the nonces of signed requests, one object per key
+[[durable_objects.bindings]]
+name = "NONCES"
+class_name = "NonceObject"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["NonceObject"]

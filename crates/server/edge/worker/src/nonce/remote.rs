@@ -5,7 +5,7 @@ use std::fmt;
 use edge_api::{Claimed, Claiming, Nonces};
 use worker::{Method, ObjectNamespace, Request, RequestInit};
 
-use crate::{Answer, Wire};
+use super::{Answer, Wire};
 
 /// The object could not be reached or did not answer a claim.
 #[derive(Debug)]

@@ -94,7 +94,7 @@ impl Served<'_> {
             | Case::Watch
             | Case::Edge
             | Case::Rig => Self::cases(&mut exchange, self.case.suite()),
-            Case::Probe | Case::Lock | Case::Migrate => Ok(()),
+            Case::Probe | Case::Lock | Case::Migrate | Case::Migrations | Case::App => Ok(()),
         };
         if outcome.is_err() {
             let log = exchange.session.log();

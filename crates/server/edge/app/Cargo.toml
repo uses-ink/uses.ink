@@ -1,0 +1,30 @@
+[package]
+name = "uses-ink-edge-app"
+description = "The product Worker: the edge's serve path and the signed API over D1, R2, Queues, a secret binding and the nonce Durable Object"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# everything is a Worker's: bindings and a request exist only inside one, so a native build is empty
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+blob-r2.workspace = true
+control.workspace = true
+db-d1.workspace = true
+edge.workspace = true
+edge-api.workspace = true
+edge-control.workspace = true
+edge-worker.workspace = true
+queue-cf.workspace = true
+queue-rows.workspace = true
+secret-worker.workspace = true
+wasm-bindgen.workspace = true
+worker = { workspace = true, features = ["queue"] }
+
+[lints]
+workspace = true

@@ -15,27 +15,26 @@
 //! dependency's code is not linked into the final module reliably), as a few lines around
 //! [`Serving::handle`]. [`Remote`] is `wasm32` only; the rest builds natively.
 
-mod error;
+mod api;
 mod harness;
+mod nonce;
+mod schema;
 mod serve;
-mod serving;
-mod wire;
 
 #[cfg(target_arch = "wasm32")]
 mod platform;
 
-#[cfg(target_arch = "wasm32")]
-mod remote;
-
-pub use error::Malformed;
+pub use api::{Gate, Hosting, Pending, Pinned, Unready, Vars, Wired};
 pub use harness::Hosted;
+pub use nonce::{Answer, Malformed, Serving, Wire};
+pub use schema::Migrations;
 pub use serve::{Cut, Opened, Reading, Sited, Stored};
-pub use serving::Serving;
-pub use wire::{Answer, Wire};
 
+#[cfg(target_arch = "wasm32")]
+pub use api::Calls;
+#[cfg(target_arch = "wasm32")]
+pub use nonce::{Remote, Unreached};
 #[cfg(target_arch = "wasm32")]
 pub use platform::Platform;
-#[cfg(target_arch = "wasm32")]
-pub use remote::{Remote, Unreached};
 #[cfg(target_arch = "wasm32")]
 pub use serve::{Answered, Serve};

@@ -920,6 +920,12 @@ pub enum Problem {
     /// `hook.signature.invalid`: the webhook delivery's signature or token does not authenticate its body
     #[serde(rename = "hook.signature.invalid")]
     HookSignatureInvalid,
+    /// `worker.route.pending`: the hosted Worker does not answer this yet: {reason}
+    #[serde(rename = "worker.route.pending")]
+    WorkerRoutePending {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
     /// `hook.delivery.replayed`: the webhook delivery {delivery} was seen already
     #[serde(rename = "hook.delivery.replayed")]
     HookDeliveryReplayed {
@@ -1264,6 +1270,7 @@ impl Problem {
         "hook.body.large",
         "hook.header.missing",
         "hook.signature.invalid",
+        "worker.route.pending",
         "hook.delivery.replayed",
         "hook.payload.malformed",
         "forge.call.failed",
@@ -1451,6 +1458,7 @@ impl Problem {
             Self::HookBodyLarge { .. } => "hook.body.large",
             Self::HookHeaderMissing { .. } => "hook.header.missing",
             Self::HookSignatureInvalid => "hook.signature.invalid",
+            Self::WorkerRoutePending { .. } => "worker.route.pending",
             Self::HookDeliveryReplayed { .. } => "hook.delivery.replayed",
             Self::HookPayloadMalformed { .. } => "hook.payload.malformed",
             Self::ForgeCallFailed => "forge.call.failed",
@@ -1639,6 +1647,7 @@ impl Problem {
             Self::HookBodyLarge { .. } => Severity::Error,
             Self::HookHeaderMissing { .. } => Severity::Error,
             Self::HookSignatureInvalid => Severity::Error,
+            Self::WorkerRoutePending { .. } => Severity::Error,
             Self::HookDeliveryReplayed { .. } => Severity::Error,
             Self::HookPayloadMalformed { .. } => Severity::Error,
             Self::ForgeCallFailed => Severity::Error,
@@ -1827,6 +1836,7 @@ impl Problem {
             Self::HookBodyLarge { .. } => Fault::Source,
             Self::HookHeaderMissing { .. } => Fault::Source,
             Self::HookSignatureInvalid => Fault::Source,
+            Self::WorkerRoutePending { .. } => Fault::Operator,
             Self::HookDeliveryReplayed { .. } => Fault::Source,
             Self::HookPayloadMalformed { .. } => Fault::Source,
             Self::ForgeCallFailed => Fault::Source,
@@ -2592,6 +2602,9 @@ impl From<&Problem> for Coded {
                 Coded::new("hook.header.missing", vec![Field::from(header.clone())])
             }
             Problem::HookSignatureInvalid => Coded::new("hook.signature.invalid", vec![]),
+            Problem::WorkerRoutePending { reason, .. } => {
+                Coded::new("worker.route.pending", vec![Field::from(reason.clone())])
+            }
             Problem::HookDeliveryReplayed { delivery, .. } => {
                 Coded::new("hook.delivery.replayed", vec![Field::from(delivery.clone())])
             }
@@ -2840,6 +2853,7 @@ impl TryFrom<Coded> for Problem {
             "hook.body.large" => Self::HookBodyLarge { size: fields.next()?, limit: fields.next()? },
             "hook.header.missing" => Self::HookHeaderMissing { header: fields.next()? },
             "hook.signature.invalid" => Self::HookSignatureInvalid,
+            "worker.route.pending" => Self::WorkerRoutePending { reason: fields.next()? },
             "hook.delivery.replayed" => Self::HookDeliveryReplayed { delivery: fields.next()? },
             "hook.payload.malformed" => Self::HookPayloadMalformed { reason: fields.next()? },
             "forge.call.failed" => Self::ForgeCallFailed,

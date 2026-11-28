@@ -37,6 +37,7 @@ crates = [
     "uses-ink-diag",
     "uses-ink-edge",
     "uses-ink-edge-api",
+    "uses-ink-edge-app",
     "uses-ink-edge-axum",
     "uses-ink-edge-conformance",
     "uses-ink-edge-control",
@@ -388,7 +389,7 @@ last = "0199"
 reason = "kept for decisions in flight on other branches; the Worker's serve path took 0200"
 
 [[decisions.gap]]
-first = "0201"
+first = "0202"
 last = "0209"
 reason = "kept for decisions in flight on other branches; the start report and log of `ink serve` took 0210"
 

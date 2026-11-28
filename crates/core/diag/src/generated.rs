@@ -449,6 +449,9 @@ impl Message<'_> {
             Problem::HookSignatureInvalid => {
                 write!(out, "the webhook delivery's signature or token does not authenticate its body")
             }
+            Problem::WorkerRoutePending { reason, .. } => {
+                write!(out, "the hosted Worker does not answer this yet: {reason}")
+            }
             Problem::HookDeliveryReplayed { delivery, .. } => {
                 write!(out, "the webhook delivery {delivery} was seen already")
             }
@@ -886,6 +889,7 @@ impl Fix<'_> {
             Problem::HookBodyLarge { .. } => true,
             Problem::HookHeaderMissing { .. } => true,
             Problem::HookSignatureInvalid => true,
+            Problem::WorkerRoutePending { .. } => true,
             Problem::HookDeliveryReplayed { .. } => true,
             Problem::HookPayloadMalformed { .. } => true,
             Problem::ForgeCallFailed => true,
@@ -1414,6 +1418,12 @@ impl Fix<'_> {
             }
             Problem::HookSignatureInvalid => {
                 write!(out, "set the same secret on the forge's webhook and in the server; nothing was queued")
+            }
+            Problem::WorkerRoutePending { .. } => {
+                write!(
+                    out,
+                    "use the signed API under `/v1` with `ink`; the dashboard, sign-in, passkeys and builds of the hosted Worker are planned (decision 0201)"
+                )
             }
             Problem::HookDeliveryReplayed { .. } => {
                 write!(

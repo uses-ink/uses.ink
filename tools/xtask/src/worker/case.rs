@@ -3,6 +3,7 @@
 use std::fmt;
 use std::str::FromStr;
 
+use super::app::Hosted;
 use super::fault::Fault;
 use super::migrate::Migrated;
 use super::node::Packages;
@@ -43,11 +44,15 @@ pub(crate) enum Case {
     Rig,
     /// H1b: the generated migrations applied by wrangler, compared with SQLite's schema.
     Migrate,
+    /// Writes the product Worker's migrations as wrangler's files, under `target/hosted/app`.
+    Migrations,
+    /// The product Worker end to end in workerd: the API and the serve path, driven by `ink`.
+    App,
 }
 
 impl Case {
     /// Every case, in the order they are listed.
-    pub(crate) const ALL: [Self; 14] = [
+    pub(crate) const ALL: [Self; 16] = [
         Self::Probe,
         Self::Lock,
         Self::Api,
@@ -62,10 +67,12 @@ impl Case {
         Self::Edge,
         Self::Rig,
         Self::Migrate,
+        Self::Migrations,
+        Self::App,
     ];
 
     /// The cases the gate's stage `worker` runs: tests, not spikes.
-    pub(crate) const GATE: [Self; 2] = [Self::Rig, Self::Migrate];
+    pub(crate) const GATE: [Self; 3] = [Self::Rig, Self::Migrate, Self::App];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -84,6 +91,8 @@ impl Case {
             Self::Edge => "edge",
             Self::Rig => "rig",
             Self::Migrate => "migrate",
+            Self::Migrations => "migrations",
+            Self::App => "app",
         }
     }
 
@@ -92,6 +101,7 @@ impl Case {
         match self {
             Self::Probe | Self::Lock => "spikes/hosted",
             Self::Migrate => "spikes/hosted/workers/migrate",
+            Self::Migrations | Self::App => Hosted::DIR,
             Self::Api => "spikes/hosted/workers/api",
             Self::Store => "spikes/hosted/workers/store",
             Self::Db
@@ -109,7 +119,8 @@ impl Case {
     /// The port its `wrangler dev` listens on: one each, so two runs on one host do not collide.
     pub(super) const fn port(self) -> u16 {
         match self {
-            Self::Probe | Self::Lock | Self::Migrate => 0,
+            Self::Probe | Self::Lock | Self::Migrate | Self::Migrations => 0,
+            Self::App => 8734,
             Self::Api => 8731,
             Self::Store => 8732,
             Self::Db
@@ -135,7 +146,14 @@ impl Case {
             Self::Nonce => Some("nonce"),
             Self::Watch => Some("watch"),
             Self::Edge => Some("edge"),
-            Self::Probe | Self::Lock | Self::Api | Self::Store | Self::Rig | Self::Migrate => None,
+            Self::Probe
+            | Self::Lock
+            | Self::Api
+            | Self::Store
+            | Self::Rig
+            | Self::Migrate
+            | Self::Migrations
+            | Self::App => None,
         }
     }
 
@@ -148,6 +166,8 @@ impl Case {
             }
             Self::Lock => Self::lock(shell, report),
             Self::Migrate => Migrated { shell }.run(report),
+            Self::Migrations => Hosted { shell }.migrations(report),
+            Self::App => Hosted { shell }.run(report),
             Self::Api
             | Self::Store
             | Self::Db

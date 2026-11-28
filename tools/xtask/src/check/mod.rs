@@ -63,6 +63,7 @@ impl Gate {
                     "uses-ink-secret-seal",
                     "uses-ink-secret-worker",
                     "uses-ink-edge-api",
+                    "uses-ink-edge-app",
                 ],
                 flags: &[],
                 target: Target::Browser,
@@ -104,7 +105,7 @@ impl Gate {
 
     /// The Worker tests: what runs in `workerd` with no account.
     fn worker() -> impl Steps {
-        (Worker(Case::GATE[0]), Worker(Case::GATE[1]))
+        (Worker(Case::GATE[0]), Worker(Case::GATE[1]), Worker(Case::GATE[2]))
     }
 
     /// Runs the stage, or every stage in order, and reports every failure, then whether all passed.
