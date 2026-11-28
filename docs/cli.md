@@ -183,148 +183,74 @@ goes to a file only. `-q` does not silence a log asked for by name.
 ## 4. Help
 
 Help is rendered by ink, not by clap. Clap parses; ink writes the help from the same command tree,
-through the one renderer, the way baudelaire's `help.rs` does and vun's `Program` does.
+as lines of roles through the one terminal layer (decision 0220), so help is wrapped, aligned and
+coloured by the same code as every other block of output.
 
-### Layout
+### Anatomy
 
-In order, each present only when it has content:
+Every page is these blocks in this order, each present only when it has content:
 
-1. **About**: one sentence, then, for a command whose point a name does not give, a short
-   paragraph (at most four lines, the guarantee it makes).
-2. **Usage:** one line.
-3. **Groups of commands** (root), or **Commands** (a group), or **option groups** (a leaf): a
-   heading, then two aligned columns. Headings are bold. Names you can type are cyan bold.
-4. **Global options:** always last of the options; in a leaf, short form by name only when the
-   list would repeat more than six lines.
-5. **Examples:** a two-column table, the line to type and what it does.
-6. **Exit codes:** only the codes that command can end with.
-7. **Environment:** only on `ink --help` and where the command reads variables of its own.
+1. **Purpose**: one sentence. Words in backticks are typed and are drawn as such.
+2. **Usage**: `Usage: ink key add [OPTIONS]`. Command words are strong cyan, placeholders
+   (`[OPTIONS]`, `<COMMAND>`, `[FOLDER]`) are cyan.
+3. **Examples** (long form): one to four lines that parse, each with a comment after `# `. Commands of
+   the tree are strong, flags cyan, what is given to them plain, the comment dim. Comments line up
+   beside the commands when all fit; otherwise each sits above its command, since a command is never
+   broken across lines.
+4. **Commands**: for a group, a table of names and one line summaries. The root lists six task
+   groups: Write, Understand, Publish, Account, Operate, Tools.
+5. **Arguments**, then **Options** and the option groups (Server, Limits, Account, ...). The term is
+   the flag and its placeholder, `-o, --out <DIR>`; the meaning wraps with a hanging indent. A
+   default is the dim atom `[default: x]`, a variable `[env: INK_X]`, a required option the yellow
+   `[required]`; an atom moves to the next line whole.
+6. **Notes** (long form): the longer paragraph of the command.
+7. **Exit codes** and **Environment** (long form): only what that command can end with or reads.
+8. **Footer**: `See also` and `Docs` (long form), `Global` (the global flags, see `ink --help`), and
+   in short form `More`, which names the `--help` that adds the rest.
 
-Short help (`-h`) stops after the options. Long help (`--help`) adds the paragraph, examples, exit
-codes and environment. Column rule: the first column is as wide as its longest entry plus two,
-measured on unstyled text; descriptions wrap at the terminal width, at most 100, with a hanging
-indent. Flags that take a value show the default in brackets at the end of the description, in
-the one form: `[default: .ink/out]`.
+Headings are bold with no colon. `ink help <command>` and `<command> --help` are one page; `-h`
+stops after the options. The root's `--help` adds the examples and the environment.
 
-### `ink --help`
+### Width and colour
 
-```text
-Turn a folder of writing into a site, and publish it.
+Pages wrap at the stream's width, between 40 and 100 columns, and at 80 when the stream has no limit
+(a pipe, or `INK_WIDTH=0`). `INK_WIDTH` comes first, then the terminal. When a term is wider than 45
+percent of the line, or fewer than 34 columns remain beside the terms, each meaning is written below
+its term. Colour is the stream's: `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `TERM=dumb`, `--color`.
+Help adds one role, `Value`, for placeholders.
 
-Usage: ink [OPTIONS] <COMMAND>
+### The pieces
 
-Write
-  init         Link this folder to a site, without publishing it
-  check, c     Read the folder and report what is wrong; writes nothing
-  build, b     Build the folder into an output folder and print its deploy id
-  preview      Build in memory and serve it on 127.0.0.1 while you write
-  serve        Serve a built deploy the way production does
+`Line::wrap`, `Paragraph`, `Defs` (terms and meanings; key and value `Record`s are `Defs`),
+`Samples` (lines to type with comments), `Listed` (rows under a dim header) and `Empty` (what a
+list says with no rows, and a command that makes the first). Pages are built in `grammar/help`;
+the wording is in the tree (`Entry`), `Tree::DOCS` is the one link.
 
-Understand
-  explain      Show the decisions behind the site, or behind one file
-  pin          Write one decision's value into ink.toml
-  select       List what is published and why, or choose what to publish
+### The gate
 
-Publish
-  login        Sign in to uses.ink
-  logout       Sign out
-  whoami       Show who you are signed in as
-  push         Send the folder to its site and start a deploy
-  status       Show what is live and what is building
-  watch        Wait for the next deploy of this commit and report it
-  deploy       List, read, roll back and resume deploys
-  export       Write the whole site, source and history, to a folder
+`grammar/help/golden.rs` walks the whole tree and checks a golden of each page (long plain, long
+colour, long at 60 columns, short plain), that every verb has a summary and one to four examples
+that parse with the real command and have a comment, that every option has a description, that a default is only the last words of a description, that no line is
+wider than its page at 60 and 80 columns, and that `command/` and `selfhost/` hold no string with a
+sentence after a sentence. `fixture/help/` holds the goldens; bless them with `farm bless` and read
+the diff.
 
-Tools
-  completions  Print a completion script for your shell
-  man          Print the manual page
-  help         Show this message, or the help of one command
-
-Global options:
-  -C, --dir <DIR>     The site's folder [default: .]
-      --json          One JSON document on stdout, diagnostics as NDJSON on stderr
-  -q, --quiet...      Say less: -q drops progress, -qq leaves only errors
-  -v, --verbose...    Say more: -v adds notices, -vv adds every file
-      --color <WHEN>  auto, always or never [default: auto]
-      --no-progress   Print log lines only, no live redraw
-  -h, --help          Print help (-h is short, --help is long)
-  -V, --version       Print the version
-
-Examples:
-  ink check                 Read this folder and list its problems
-  ink build -o public       Build into ./public
-  ink explain posts/a.md    Why one file looks the way it does
-  ink select notes/trip.md  Publish one page of a vault
-
-See ink help <command> for one command, and ink help exit for exit codes.
-```
-
-### A group: `ink deploy --help`
+### Example: `ink push --help`
 
 ```text
-List, read, roll back and resume the deploys of a site.
+Send the folder to its site and start a deploy.
 
-Usage: ink deploy [OPTIONS] <COMMAND>
+Usage: ink push [OPTIONS]
 
-Commands
-  list      History, newest first (also: ink deploys)
-  show      One deploy: its log, its diagnostics and what its decisions changed
-  rollback  Make an earlier deploy the live one, and pause new deploys
-  resume    Let the site deploy new pushes again after a rollback
+Examples
+  ink push            # Send the folder and wait for the deploy
+  ink push --no-wait  # Queue the build and print its id
 
-Examples:
-  ink deploy list --limit 5         The five newest deploys
-  ink deploy show 5kq3v9m2tj7r      What that deploy built, and why it differs
-  ink deploy rollback 4mq8c1d0wz5e  Serve the earlier deploy again
-
-Global options: (as in `ink --help`)
-Exit codes: (see `ink help exit`)
-```
-
-### A leaf: `ink build --help`
-
-Option groups replace clap's single `Options` list: `Output`, `Source`, `Work`, `Verification`.
-The group names are headings, so they are written once in the command tree and reused by help,
-the manual and completions.
-
-```text
-Build the folder into an output folder and print its deploy id.
-
-The folder is read, interpreted and rendered in full before the output folder is
-touched. A build that fails, or warns under --strict, writes nothing: the previous
-build stays as it was.
-
-Usage: ink build [OPTIONS]
-
-Output
-  -o, --out <DIR>         Where to write the site [default: .ink/out]
-      --base <URL>        The address the site is served at, for feeds and canonical links
-      --strict            Exit 6 on warnings, and write nothing
-
-Source
-      --source <KIND>     folder reads the files on disk, git reads a commit
-                          [default: git when .git exists, said as a notice]
-      --rev <REV>         The commit to read, as `git rev-parse` takes it [default: HEAD]
-
-Work
-      --cache <DIR>       Where to keep work between builds [default: .ink/cache]
-
-Verification
-      --check             Build natively and through the wasm components; fail if they differ
-      --components <DIR>  Components that replace the bundled ones (with --check)
-
-Examples:
-  ink build                      Build this folder into .ink/out
-  ink build --strict             The same, but a warning stops the build
-  ink -C garden build -o public  Build another folder into ./public
-
-Exit codes:
-  0  Built; warnings, if any, were printed
-  1  The site has errors; nothing was written
-  2  Wrong usage, or an output folder ink will not write into; nothing was changed
-  6  --strict was given and there were warnings; nothing was written
-
-Global options: -C, --json, -q, -v, --color, --no-progress (see `ink --help`)
+Options
+      --no-wait         Return when the build is queued, without waiting for it
+      --wait <SECONDS>  Seconds to wait for the build before stopping; it keeps
+                        going on the server [default: 300]
+...
 ```
 
 `ink help exit` prints the exit-code table of section 11 and `ink help environment` prints the
@@ -744,7 +670,7 @@ $ ink push
       Read  214 files, 3.1 MB
       Sent  12 files
     Queued  build 7a1f09c2e4b8, 12 sent, 202 already held
-  Followed  build 7a1f09c2e4b8 is running
+  Followed  build 7a1f09c2e4b8, now running
      Built  deploy 5kq3v9m2tj7r is live: 61 files, 2.4 MB
 5kq3v9m2tj7r...  (the full deploy id, alone on stdout)
 
