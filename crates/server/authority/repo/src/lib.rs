@@ -11,14 +11,14 @@
 //!   operator gave when there is one.
 
 mod error;
+mod held;
 mod repos;
-mod shared;
 #[cfg(feature = "system")]
 mod wire;
 
 pub use error::Error;
+pub use held::Shared;
+pub use held::{Silent, Unreached};
 pub use repos::{Claimed, Forge, Forges, Repos, Unknown};
-pub use shared::Shared;
-pub use shared::{Silent, Unreached};
 #[cfg(feature = "system")]
 pub use wire::{Unwired, Wire};

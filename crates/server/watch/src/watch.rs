@@ -246,6 +246,28 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
         }
     }
 
+    /// Logs what a poll came to, at the level its outcome deserves.
+    fn report(site: Id<SiteKind>, outcome: &Outcome) {
+        match outcome {
+            Outcome::Failed(error) => logging::warn!(
+                name: logging::event::WATCH_POLLED,
+                site = logging::Shown(site).field(),
+                outcome = "failed",
+                error = logging::Failure(error.as_ref()).field(),
+            ),
+            Outcome::Queued { build, .. } => logging::info!(
+                name: logging::event::WATCH_QUEUED,
+                site = logging::Shown(site).field(),
+                build = logging::Shown(build).field(),
+            ),
+            other => logging::debug!(
+                name: logging::event::WATCH_POLLED,
+                site = logging::Shown(site).field(),
+                outcome = if matches!(other, Outcome::Unchanged) { "unchanged" } else { "duplicate" },
+            ),
+        }
+    }
+
     /// What a poll's answer means for the site: queues a build when the commit is new, and sets
     /// the next time to ask.
     async fn settle(&mut self, site: Id<SiteKind>, head: Result<Head, Box<dyn Error>>, now: Timestamp) -> Outcome {
@@ -264,24 +286,7 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
                 Err(error) => (Outcome::Failed(Box::new(error)), None),
             },
         };
-        match &outcome {
-            Outcome::Failed(error) => logging::warn!(
-                name: logging::event::WATCH_POLLED,
-                site = logging::Shown(site).field(),
-                outcome = "failed",
-                error = logging::Failure(error.as_ref()).field(),
-            ),
-            Outcome::Queued { build, .. } => logging::info!(
-                name: logging::event::WATCH_QUEUED,
-                site = logging::Shown(site).field(),
-                build = logging::Shown(build).field(),
-            ),
-            other => logging::debug!(
-                name: logging::event::WATCH_POLLED,
-                site = logging::Shown(site).field(),
-                outcome = if matches!(other, Outcome::Unchanged) { "unchanged" } else { "duplicate" },
-            ),
-        }
+        Self::report(site, &outcome);
         if let Some(tracked) = self.tracked.get_mut(&site) {
             tracked.wait = if moved.is_some() { interval.base() } else { interval.backed(tracked.wait) };
             if moved.is_some() {

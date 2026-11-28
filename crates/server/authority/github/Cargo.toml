@@ -18,6 +18,10 @@ serde.workspace = true
 serde_json.workspace = true
 zeroize.workspace = true
 
+# on a Worker the App key signs through ring, whose randomness there is crypto.getRandomValues
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+ring = { workspace = true, features = ["wasm32_unknown_unknown_js"] }
+
 [dev-dependencies]
 pollster.workspace = true
 
