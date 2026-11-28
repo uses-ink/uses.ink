@@ -113,17 +113,20 @@ impl<'a> Follow<'a> {
             if self.fault.is_none() && self.cancel.is_some_and(Cancel::is_set) {
                 self.fail(Failure::Cancelled);
             }
-            if self.fault.is_some() {
-                // closed so that whatever the child left behind, reading it, sees the end of its input
-                writer.take();
+            if let Some(failure) = self.fault.take() {
+                // The child is dead and reaped, but a process it started may hold its pipes open
+                // for as long as it likes (`sh -c 'sleep 30 & wait'`), and the call must not wait
+                // for it: what was already read is passed on, and the reader threads are left to
+                // end with the pipes. The input closes when `writer` drops.
+                while let Ok(line) = receiver.try_recv() {
+                    lines(&line);
+                }
+                return Err(failure);
             }
         }
         let read = reading.join().map_err(|_| Failure::Panicked { thread: "output" });
         let status = self.child.wait().map_err(Failure::Wait);
         let stderr = errors.join().map_err(|_| Failure::Panicked { thread: "errors" });
-        if let Some(failure) = self.fault.take() {
-            return Err(failure);
-        }
         read?.map_err(Failure::Wait)?;
         Ok(Done { status: status?, stderr: stderr?.map_err(Failure::Wait)? })
     }
@@ -238,17 +241,27 @@ mod tests {
     #[test]
     fn a_cancelled_call_kills_its_child_at_once_and_says_so() {
         let cancel = Cancel::default();
-        let flag = cancel.clone();
-        let setter = thread::spawn(move || {
-            thread::sleep(Duration::from_millis(50));
-            flag.set();
-        });
-        let started = Instant::now();
         let feed = Feed::Open { until: Duration::from_secs(60), cancel: Some(&cancel) };
-        let done = exec().spawn(&sh("sleep 30"), feed, &mut |_| {});
-        setter.join().unwrap();
+        // the child says it is running, and that line is what cancels it: no clock decides when
+        let done = exec().spawn(&sh("echo started; exec sleep 30"), feed, &mut |_| cancel.set());
         assert!(matches!(done, Err(Failure::Cancelled)), "{done:?}");
-        assert!(started.elapsed() < Duration::from_secs(5), "{:?}", started.elapsed());
+    }
+
+    #[test]
+    fn a_cancelled_call_does_not_wait_for_a_process_that_outlives_its_child() {
+        let cancel = Cancel::default();
+        let feed = Feed::Open { until: Duration::from_secs(60), cancel: Some(&cancel) };
+        let mut outliver = None;
+        // `sh` ends when killed, and `sleep` keeps the pipes open: a shell that does not `exec`
+        // its last command (dash) behaves like this for `sh -c 'sleep 30'`
+        let done = exec().spawn(&sh("sleep 30 & echo $!; wait"), feed, &mut |line| {
+            outliver = Some(line.to_owned());
+            cancel.set();
+        });
+        assert!(matches!(done, Err(Failure::Cancelled)), "{done:?}");
+        let pid = outliver.expect("the child said which process it started");
+        let ended = Command::new("kill").arg(&pid).status().unwrap();
+        assert!(ended.success(), "the process {pid} was still running, and is stopped now");
     }
 
     #[test]
