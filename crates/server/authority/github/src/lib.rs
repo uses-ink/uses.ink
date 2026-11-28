@@ -25,4 +25,4 @@ pub use error::Error;
 pub use hooks::Hooks;
 pub use id::{AppId, InstallationId};
 pub use jwt::{Jwt, Unsigned};
-pub use key::{Key, KeyError, Signer};
+pub use key::{Armor, Key, KeyError, Signer};

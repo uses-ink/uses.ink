@@ -21,6 +21,55 @@ pub trait Signer {
     fn sign(&self, message: &[u8]) -> Result<Vec<u8>, Self::Error>;
 }
 
+/// What a PEM label that is not an RSA private key's names. A label this crate does not know is
+/// counted and never kept: a pasted key can have its body on the first line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Armor {
+    /// `CERTIFICATE`.
+    Certificate,
+    /// `PUBLIC KEY` or `RSA PUBLIC KEY`.
+    Public,
+    /// `EC PRIVATE KEY`.
+    Curve,
+    /// `ENCRYPTED PRIVATE KEY`.
+    Encrypted,
+    /// `OPENSSH PRIVATE KEY`.
+    Openssh,
+    /// Any other label.
+    Other {
+        /// How many bytes it had.
+        length: usize,
+    },
+}
+
+impl Armor {
+    /// What `label` names.
+    fn of(label: &str) -> Self {
+        match label {
+            "CERTIFICATE" => Self::Certificate,
+            "PUBLIC KEY" | "RSA PUBLIC KEY" => Self::Public,
+            "EC PRIVATE KEY" => Self::Curve,
+            "ENCRYPTED PRIVATE KEY" => Self::Encrypted,
+            "OPENSSH PRIVATE KEY" => Self::Openssh,
+            other => Self::Other { length: other.len() },
+        }
+    }
+}
+
+impl fmt::Display for Armor {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Certificate => out.write_str("a certificate"),
+            Self::Public => out.write_str("a public key"),
+            Self::Curve => out.write_str("an elliptic curve key"),
+            Self::Encrypted => out.write_str("an encrypted key"),
+            Self::Openssh => out.write_str("an OpenSSH key"),
+            Self::Other { length } => write!(out, "unknown, {length} bytes"),
+        }
+    }
+}
+
 /// A private key that could not be read.
 #[derive(Debug)]
 #[non_exhaustive]
@@ -32,8 +81,9 @@ pub enum KeyError {
     /// The PEM label is neither `RSA PRIVATE KEY` (PKCS#1, what GitHub gives) nor `PRIVATE KEY`
     /// (PKCS#8).
     Label {
-        /// The label as written.
-        written: String,
+        /// What the label is, without the label: it is the one line of a key that may hold more
+        /// than a name, so it is never echoed.
+        armor: Armor,
     },
     /// The body is not base64.
     Base64(base64::DecodeError),
@@ -53,7 +103,7 @@ impl fmt::Display for KeyError {
         match self {
             Self::Text => out.write_str("the App key is not text"),
             Self::Frame => out.write_str("the App key has no PEM begin and end lines"),
-            Self::Label { written } => write!(out, "the PEM label `{written}` is not an RSA private key"),
+            Self::Label { armor } => write!(out, "the PEM label ({armor}) is not an RSA private key"),
             Self::Base64(_) => out.write_str("the App key's body is not base64"),
             Self::Rejected(_) => out.write_str("the App key is not an RSA key of 2048 bits or more"),
         }
@@ -98,7 +148,7 @@ impl Key {
         let pair = match label {
             "RSA PRIVATE KEY" => RsaKeyPair::from_der(der),
             "PRIVATE KEY" => RsaKeyPair::from_pkcs8(der),
-            written => return Err(KeyError::Label { written: written.to_owned() }),
+            other => return Err(KeyError::Label { armor: Armor::of(other) }),
         };
         pair.map(Self).map_err(KeyError::Rejected)
     }

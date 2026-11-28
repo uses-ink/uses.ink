@@ -8,7 +8,7 @@ extern crate uses_ink_authority_github as authority_github;
 use authority_forge::{
     Client, Fail, Fake, Faked, Host, Limits, Method, Repo, Response, Secret, Segment, State, Status,
 };
-use authority_github::{App, AppId, Error, Grant, InstallationId, Jwt, Key, KeyError, Signer, Target};
+use authority_github::{App, AppId, Armor, Error, Grant, InstallationId, Jwt, Key, KeyError, Signer, Target};
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use jiff::Timestamp;
@@ -93,6 +93,17 @@ fn a_key_reads_as_pkcs1_or_pkcs8_and_other_text_is_refused_with_its_cause() {
     ));
     assert!(matches!(Key::read(&Secret::new("-----BEGIN RSA PRIVATE KEY-----\nAAAA")), Err(KeyError::Frame)));
     assert_eq!(format!("{:?}", Key::read(&Secret::new(PEM)).unwrap()), "Key(<redacted>)");
+}
+
+#[test]
+fn a_label_that_is_not_a_key_is_named_and_never_echoed() {
+    let secret = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASC";
+    let pasted = format!("-----BEGIN {secret}-----\nAAAA\n-----END {secret}-----");
+    let refused = Key::read(&Secret::new(pasted)).unwrap_err();
+    assert!(matches!(refused, KeyError::Label { armor: Armor::Other { length } } if length == secret.len()));
+    assert!(!format!("{refused} {refused:?}").contains(secret));
+    let known = Key::read(&Secret::new("-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----")).unwrap_err();
+    assert!(matches!(known, KeyError::Label { armor: Armor::Certificate }));
 }
 
 #[test]
