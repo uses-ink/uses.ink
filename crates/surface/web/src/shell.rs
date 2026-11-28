@@ -108,7 +108,8 @@ impl<V: View + ?Sized> Document<'_, V> {
     }
 }
 
-/// The navigation: the screens of the site, then Account.
+/// The navigation: the screens of the site, then Account; a page outside the binder (sign-in)
+/// offers one tab, to sign in, since a person who is signed out has no account to open.
 #[derive(Clone, Copy, Debug)]
 struct Nav<'a>(&'a Frame);
 
@@ -119,10 +120,17 @@ impl Render for Nav<'_> {
         if let Some(handle) = &frame.site {
             screens.extend(Screen::OF_SITE.into_iter().map(|screen| (screen, Path::of(screen, handle))));
         }
-        screens.push((Screen::Account, Path::account()));
+        let outside = frame.site.is_none() && frame.here.is_none();
+        if !outside {
+            screens.push((Screen::Account, Path::account()));
+        }
+        let signin = Path::signin();
         html! {
             nav aria-label="Screens" {
                 ul.look::NAV {
+                    @if outside {
+                        li { a.look::TAB href=(&signin) { "Sign in" } }
+                    }
                     @for (screen, path) in &screens {
                         @if *screen == Screen::Account {
                             li.look::ME {
