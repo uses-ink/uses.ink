@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+use super::pattern::Reject;
+
 /// One way the release files disagree with the workspace or with each other.
 #[derive(Debug)]
 pub(crate) enum Drift {
@@ -46,6 +48,8 @@ pub(crate) enum Drift {
     WidePermissions { path: PathBuf },
     /// A tag pattern with `*`, which lets a tag name hold shell syntax into the release jobs.
     Glob { path: PathBuf, pattern: String },
+    /// A tag pattern GitHub refuses, which fails the workflow file on every push.
+    TagPattern { path: PathBuf, pattern: String, reject: Reject },
     /// A `gh release` command with a `${{ }}` expression in the script text.
     Interpolated { path: PathBuf, line: String },
     /// A tool the install action fetches without a version.
@@ -79,6 +83,11 @@ impl std::fmt::Display for Drift {
             Self::Trigger { path, on } => write!(
                 out,
                 "`{}` runs on `{on}`; releases run on version tags only (`pr-run-mode = \"skip\"`)",
+                path.display()
+            ),
+            Self::TagPattern { path, pattern, reject } => write!(
+                out,
+                "`{}` triggers on `{pattern}`, which GitHub refuses (\"invalid tags patterns\") and then fails the file on every push: {reject}",
                 path.display()
             ),
             _ => self.rest(out),

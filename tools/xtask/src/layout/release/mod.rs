@@ -4,6 +4,7 @@
 
 mod dockerfile;
 mod drift;
+mod pattern;
 mod workflow;
 
 use std::path::Path;

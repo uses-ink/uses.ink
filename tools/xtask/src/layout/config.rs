@@ -408,11 +408,11 @@ mod tests {
     #[test]
     fn the_real_file_sets_the_decisions_and_the_docs_checks() {
         let config = real();
-        assert_eq!(config.decisions.ceiling, 199);
+        assert_eq!(config.decisions.ceiling, 249);
         assert_eq!(config.decisions.home, "../history/review-fixes.md");
         let reserved: Vec<u16> = config.decisions.reserved.iter().map(|r| r.number.get()).collect();
         assert_eq!(reserved, [58, 60]);
-        assert_eq!(config.decisions.gap.len(), 14);
+        assert_eq!(config.decisions.gap.len(), 16);
         assert!(config.docs.planned.iter().any(|word| word == "planned"));
         assert!(config.docs.future.iter().any(|entry| entry.path == "docs/layout.md"), "the layout plan is waived");
         assert_eq!(config.docs.quoted.len(), 1);

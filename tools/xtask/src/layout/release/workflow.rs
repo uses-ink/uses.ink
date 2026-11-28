@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use super::drift::Drift;
+use super::pattern::Pattern;
 
 /// A workflow file, read for the rules every one of them keeps.
 #[derive(Debug)]
@@ -36,6 +37,7 @@ impl Workflow {
         let mut found = self.pins();
         found.extend(self.permits());
         found.extend(self.globs());
+        found.extend(self.patterns());
         found.extend(self.shells());
         found.extend(self.tools());
         found
@@ -68,13 +70,30 @@ impl Workflow {
         wide.then(|| Drift::WidePermissions { path: self.path.clone() })
     }
 
+    /// The patterns under `tags:`, comments between them skipped, quotes and list dashes removed.
+    fn tags(&self) -> impl Iterator<Item = &str> {
+        let after = self.text.lines().map(str::trim).skip_while(|line| *line != "tags:").skip(1);
+        let list = after.take_while(|line| line.starts_with("- ") || line.starts_with('#'));
+        list.filter_map(|line| line.strip_prefix("- "))
+            .map(|item| item.split(" #").next().unwrap_or(item).trim().trim_matches(['"', '\'']))
+    }
+
     /// Tag patterns under `tags:` that hold a `*`.
     fn globs(&self) -> Vec<Drift> {
-        let after = self.text.lines().map(str::trim).skip_while(|line| *line != "tags:").skip(1);
-        let patterns = after.take_while(|line| line.starts_with("- "));
-        patterns
+        self.tags()
             .filter(|pattern| pattern.contains('*'))
             .map(|pattern| Drift::Glob { path: self.path.clone(), pattern: pattern.to_owned() })
+            .collect()
+    }
+
+    /// Tag patterns under `tags:` that GitHub refuses: it fails the workflow file, and with it
+    /// every push, with "push event contained invalid tags patterns".
+    fn patterns(&self) -> Vec<Drift> {
+        self.tags()
+            .filter_map(|pattern| {
+                let reject = Pattern::from(pattern).reject()?;
+                Some(Drift::TagPattern { path: self.path.clone(), pattern: pattern.to_owned(), reject })
+            })
             .collect()
     }
 
@@ -102,6 +121,7 @@ impl Workflow {
 mod tests {
     use super::Workflow;
     use crate::layout::release::Drift;
+    use crate::layout::release::pattern::Reject;
 
     fn flow(text: &str) -> Workflow {
         Workflow { path: "w.yml".into(), text: text.to_owned() }
@@ -132,6 +152,19 @@ mod tests {
     fn a_star_in_a_tag_pattern_is_found() {
         let found = flow("on:\n  push:\n    tags:\n      - 'v[0-9]+'\n      - '**[0-9]*'\n").globs();
         assert!(matches!(found.as_slice(), [Drift::Glob { pattern, .. }] if pattern.contains("**")), "{found:?}");
+    }
+
+    #[test]
+    fn a_comment_between_the_tag_patterns_does_not_end_the_list() {
+        let text = "on:\n  push:\n    tags:\n      # why\n      - 'v[0-9]+' # one\n      - 'v*'\n\njobs:\n  - 'x*'\n";
+        assert_eq!(flow(text).tags().collect::<Vec<_>>(), ["v[0-9]+", "v*"]);
+    }
+
+    #[test]
+    fn a_dot_in_a_bracket_of_a_tag_pattern_is_found() {
+        let text = "tags:\n  - 'v[0-9]+.[0-9]+'\n  - 'v[0-9]+-[0-9A-Za-z.]+'\n";
+        let found = flow(text).patterns();
+        assert!(matches!(found.as_slice(), [Drift::TagPattern { reject: Reject::Class('.'), .. }]), "{found:?}");
     }
 
     #[test]

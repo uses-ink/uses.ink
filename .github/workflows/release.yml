@@ -42,9 +42,12 @@ permissions:
 on:
   push:
     tags:
-      # Hand edit: no `*`, so a tag name holds only characters that are safe in a shell.
+      # Hand edit: no `*`, so a tag name holds only characters that are safe in a shell. No `.` in
+      # a `[ ]` either: GitHub allows only letters, digits and ranges there, and refuses the file
+      # ("invalid tags patterns"), so a prerelease is `-rc1` or `-rc.1`.
       - 'v[0-9]+.[0-9]+.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+-[0-9A-Za-z.]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-[0-9A-Za-z]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-[0-9A-Za-z]+.[0-9]+'
 
 jobs:
   # Run 'dist plan' (or host) to determine what tasks we need to do
