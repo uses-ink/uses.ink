@@ -295,6 +295,7 @@ mod tests {
         "uses-ink-host-wasmtime",
         "uses-ink-host-wasmtime-hostile",
         "uses-ink-https",
+        "uses-ink-logging",
         "uses-ink-mail",
         "uses-ink-mail-smtp",
         "uses-ink-model",
