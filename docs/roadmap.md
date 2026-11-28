@@ -121,7 +121,8 @@ The two real audiences, locally.
 - `ink:source-git` over `git.fetch`, `Known<T>` dates, abilities observed and shown.
 - Images: variants, AVIF and JPEG, dimensions, EXIF stripped, thumbhash placeholders.
 - Incremental builds through the render unit index (0048); `render.cache.cold` and `render.cache.used` notices.
-- `ink:theme-notebook` as a component, the pen drawing measured marks **(owner: its design)**.
+- The hand-drawn reader look, built (0180): `look = "uses-ink"` of `theme-quiet`, from the doodle mock, its marks drawn
+  once by the pen and served as theme files. Left: margin notes for footnotes **(owner: whether they are wanted)**.
 - `ink build --check` in CI on every fixture.
 
 Progress (2026-11-27): `ink:format-obsidian` is built natively and as a component (0043): a
@@ -321,15 +322,16 @@ push is live within the measured time; a custom domain goes live with a valid ce
 ## M5: Launch
 
 - Landing at `uses.ink` from the doodle mock, built (0171): `landing/` is an `ink` site (one page, `theme-quiet`
-  with the docs look, a picture drawn by `cargo xtask brand`, no script), and `check sites` builds it twice like the
-  docs. It replaces the plan to serve it from the web crate with the pen as a wasm module. Left: the doodle look
-  and the mock's hero panel, which need a second look in `token.toml` **(owner: the rebrand)**, and deploying it
-  to `uses.ink` **(owner)**.
+  with the doodle look and `layout = "panels"` (0181), its pictures drawn by `cargo xtask brand`, no script), and
+  `check sites` builds it twice like the docs. The first panel, the address field and the yellow button, the five
+  things found, the sources, the post in a browser window and the keeps are the mock's. Left: deploying it to
+  `uses.ink` **(owner)**, a nav once the page has places to go, and what the mock does with a script (a note that
+  reacts to the address, pencil boil, draw-in).
 - Docs site, built by `ink` from `docs/` with a uses.ink theme (dogfood), built (`docs/site.md`, 0120):
   `cargo xtask check sites` builds it twice and refuses any diagnostic or a second deploy that differs. The
   gaps it found are closed: folder rules for `page.kind`, weight and order (0140); a sidebar, previous and
-  next links and an outline of a page (0141); theme tokens (T3) and the uses.ink look from
-  `crates/core/token/token.toml` (0142). Left: deploying the site once `uses.ink` is live.
+  next links and an outline of a page (0141, drawn in the same hand by 0182); theme tokens (T3) and the uses.ink
+  look from `crates/core/token/token.toml` (0142, replaced by the doodle look of 0180). Left: deploying the site once `uses.ink` is live.
 - `ink:authority-forgejo` with Codeberg pre-registered; `ink:authority-gitlab`. Built against fakes and recorded
   fixtures, with the repo challenge as the proof and Codeberg as the listed primary instance (0111, 0112). Left:
   OAuth per instance and the applications to register **(owner)**; the webhook route of 0113 is built (0160 to 0162).

@@ -39,3 +39,7 @@ site the product builds is the second dogfood after the docs (0120).
 
 Left: deploying it to `uses.ink` and the domain, which are the owner's; a doodle look and the hero panel's
 layout; the address field of the mock, once there is a service behind it.
+
+Amended by 0180 and 0181: the doodle look and the hero panel are built; the page is a page of panels, not the
+docs look, and the pictures of the mock are drawn by the pen. The "no form" and "no second look" lines above no
+longer hold.

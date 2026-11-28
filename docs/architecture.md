@@ -302,8 +302,8 @@ extra route is `theme.route.collision`, never an overwrite.
 | 3 | override a named slot | a theme declares slots in `describe()` (`header`, `footer`, `post-meta`); the author's `theme/<slot>.html` is rendered by the host with minijinja against the typed page data and handed to the theme |
 | 4 | another theme | `theme = "bob:theme-zine@1.2.0"`, pinned in `ink.lock` |
 
-First-party themes: `ink:theme-quiet` (default, calm, the author's voice) and
-`ink:theme-notebook` (the hand-drawn one, opt-in). Their design is still open (`open.md`).
+First-party themes: `ink:theme-quiet` (default, calm, the author's voice), which also wears the hand-drawn look,
+`look = "uses-ink"` (0180; 0016 named a second theme, which was not built).
 
 ## 8. The pen
 
@@ -533,9 +533,10 @@ is no hand-written or generated JS (the landing's pen loader, `crates/standalone
 is the one exception); colours and sizes from `crates/core/token/`; the dashboard's marks are drawn at render
 time by `freehand`, the landing's by the pen as a wasm module.
 
-**Landing** at `uses.ink`: `landing/` is an `ink` site (0171), one markdown page in `theme-quiet` with the docs
-look and a picture drawn by `cargo xtask brand`, from the words of the doodle mock (a local file, not tracked).
-It has no script and is not served by the `web` crate, which holds only the dashboard. Not deployed.
+**Landing** at `uses.ink`: `landing/` is an `ink` site (0171), one markdown page in `theme-quiet` with the
+hand-drawn look, a page of panels (0181), its pictures drawn by `cargo xtask brand` from the shapes of the doodle mock
+(a local file, not tracked). It has no script and is not served by the `web` crate, which holds only the dashboard.
+Not deployed.
 
 **CLI** (`ink`): `init`, `check`, `build`, `preview`, `serve`, `explain`, `pin`, `select`, `login`,
 `logout`, `whoami`, `key`, `push`, `status`, `watch`, `deploy` (`list`, `show`, `rollback`, `resume`),

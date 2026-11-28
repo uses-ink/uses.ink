@@ -12,3 +12,6 @@ supersedes: []
 Accepted, owner. `ink:theme-quiet` is the default: calm, the author's voice. `ink:theme-notebook`
 carries the uses.ink look and is chosen in `ink.toml`. uses.ink signs only the "made with"
 footer. **Why:** a reader site is the author's blog, not ours.
+
+Amended by 0180: the hand-drawn look is `look = "uses-ink"` of `ink:theme-quiet` (as 0142 had it), not a second theme
+crate; `ink:theme-notebook` is not built.

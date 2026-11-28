@@ -18,7 +18,7 @@ line here.
 | # | Question | Default |
 |---|---|---|
 | T1 | What `ink:theme-quiet` looks like: type, measure, colour, what it signs | to be designed with the owner |
-| T2 | What `ink:theme-notebook` keeps from the mock, now that marks are measured per element | to be designed with the owner |
+| T2 | What `ink:theme-notebook` keeps from the mock | answered by 0180: no second theme, the hand-drawn look is a look of `theme-quiet`, with the marks drawn once at build time |
 | T3 | Tokens every first-party theme accepts (accent, font choice, width) | accent and a serif or sans body |
 | Q12 | Raw `.md` and source link in the reader footer | both on, off per site |
 | Q19 | Backlinks and tag pages on by default; no graph view (needs JS) | yes |

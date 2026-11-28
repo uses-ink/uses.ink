@@ -249,6 +249,14 @@ path = "docs/decisions"
 reason = "one file per decision, and the generated index"
 
 [[fanout.waive]]
+path = "crates/runtime/plugin/theme/quiet/assets/marks"
+reason = "one drawn svg per mark of the look, written by `cargo xtask brand`"
+
+[[fanout.waive]]
+path = "landing"
+reason = "one page, its config and the svgs `cargo xtask brand` draws for it"
+
+[[fanout.waive]]
 path = "docs/research"
 reason = "one file per research note"
 
@@ -358,6 +366,11 @@ reason = "kept for decisions in flight on other branches; the forge webhook wiri
 first = "0163"
 last = "0169"
 reason = "kept for decisions in flight on other branches; the release work took 0170"
+
+[[decisions.gap]]
+first = "0173"
+last = "0179"
+reason = "left unused: the owner started the doodle look at 0180, and parallel work may take these numbers"
 
 # The docs checks. A block of prose with a word of `planned` (any case) names what is not built,
 # so the paths in it need not exist.

@@ -38,3 +38,7 @@ Built (2026-11-28), the open question T3.
 - **The docs site** sets `look = "uses-ink"` and `navigation = "docs"`.
 
 Left: tokens for sizes and spacing a site can set by value, and a second theme that declares tokens.
+
+Amended by 0180: the cream palette, the Literata-only faces and the light and dark pair described under "Palette" were
+not the design pass and are replaced by the doodle look (white, black, red pen, bucket yellow; no dark scheme).
+The tokens, the boundary and the identity are as written here.
