@@ -203,3 +203,27 @@ fn the_origin_is_derived_from_the_listen_address_and_said() {
     let seen = server.browser().send(("GET", "/signin"), "");
     assert_eq!(seen.status(), "200", "{}", seen.text);
 }
+
+#[test]
+fn every_form_route_refuses_a_post_from_another_origin() {
+    let server = Server::start("dash-origin", &[]);
+    let browser = server.browser();
+    let token = "0".repeat(64);
+    let routes = [
+        "/signin".to_owned(),
+        format!("/login/{token}"),
+        "/logout".to_owned(),
+        "/account/sessions/0000000000000000000000000000000".to_owned(),
+        "/diary/build".to_owned(),
+        "/diary/rollback".to_owned(),
+        "/diary/resume".to_owned(),
+        "/nothere".to_owned(),
+    ];
+    for route in &routes {
+        for header in [("Origin", "http://evil.example"), ("Sec-Fetch-Site", "cross-site")] {
+            let refused = browser.send_with(("POST", route), &[header], "");
+            assert_eq!(refused.status(), "403", "{route} with {header:?}: {}", refused.text);
+            assert!(refused.body().contains("auth.origin.refused"), "{route}: {}", refused.body());
+        }
+    }
+}
