@@ -25,6 +25,7 @@ impl<P: Ports> Control<P> {
         let site = self.active(new.site).await?;
         let tenant = Self::tenant(site.id)?;
         let bytes = self.stat(&tenant, &new.manifest).await?;
+        self.store_room(&site, &new.manifest).await?;
         let blobs = self.ports.blob();
         let id = new.manifest.id();
         blobs.put(&tenant, id.hash(), [new.manifest.canonical()]).await?;
@@ -56,6 +57,7 @@ impl<P: Ports> Control<P> {
             files = logging::Count::from(new.manifest.entries().len()).field(),
             bytes = logging::Size(bytes.count()).field(),
         );
+        self.sweep(site.id).await?;
         Ok(Recorded { deploy: id, published })
     }
 

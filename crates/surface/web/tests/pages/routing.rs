@@ -24,6 +24,10 @@ impl Follow for Replay {
 impl Screens for Fake {
     type Follow = Replay;
 
+    fn limits(&self) -> control::Limits {
+        control::Limits::DEFAULT
+    }
+
     fn site(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Site, Failure>> + Send {
         std::future::ready(Ok(Site::new(handle.clone(), Fixtures::address(), Serving::Nothing)))
     }
@@ -203,4 +207,12 @@ fn the_sign_in_page_and_the_script_need_no_session_and_nothing_else_is_scripted(
     assert!(!csp.contains("script-src 'unsafe-inline'"));
     // a person's pages still need one
     assert_eq!(reply(&Ask::get("/account"), None).status, Status::Unauthorized);
+}
+
+#[test]
+fn the_limits_page_needs_no_session() {
+    let page = reply(&Ask::get("/limits"), None);
+    assert_eq!(page.status, Status::Ok);
+    let Body::Page(text) = page.body else { panic!("a page") };
+    assert!(text.contains("<h1") && text.contains("Limits") && text.contains("1 GiB"), "{text}");
 }

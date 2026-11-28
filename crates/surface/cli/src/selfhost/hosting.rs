@@ -6,8 +6,9 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::{Args, ValueEnum};
-use control::Policy;
+use control::{Limits, Policy};
 use https::{Follow, Https, Misconfigured};
+use model::Bytes;
 use model::git::{Network, Scheme};
 
 use crate::grammar::tree::Heading;
@@ -111,13 +112,39 @@ pub struct Hosting {
     /// owner's handle is held for good. [default: 365]
     #[arg(long, value_name = "DAYS", env = "INK_HANDLE_HOLD", help_heading = Heading::LIMITS)]
     pub handle_hold: Option<u64>,
+    /// Bytes an account may store across its sites; a deploy over it is refused whole.
+    /// [default: 1073741824]
+    #[arg(long, value_name = "BYTES", env = "INK_LIMIT_STORED", help_heading = Heading::LIMITS)]
+    pub limit_stored: Option<u64>,
+    /// Builds an account may start in 24 hours; a request over it is refused. [default: 60]
+    #[arg(long, value_name = "N", env = "INK_LIMIT_BUILDS", help_heading = Heading::LIMITS)]
+    pub limit_builds: Option<u64>,
+    /// Sites an account may have. [default: 10]
+    #[arg(long, value_name = "N", env = "INK_LIMIT_SITES", help_heading = Heading::LIMITS)]
+    pub limit_sites: Option<u64>,
+    /// Deploys of a site that are kept, the live one included; older ones are removed with the
+    /// files only they used. [default: 20]
+    #[arg(long, value_name = "N", env = "INK_LIMIT_DEPLOYS", help_heading = Heading::LIMITS)]
+    pub limit_deploys: Option<u64>,
+    /// Seconds one build may take: a worker holds a request for no longer than this, so a build
+    /// that runs past it is given to another. [default: 600]
+    #[arg(long, value_name = "SECONDS", env = "INK_LIMIT_BUILD_TIME", help_heading = Heading::LIMITS)]
+    pub limit_build_time: Option<u64>,
 }
 
 impl Hosting {
     /// What the operator sets about the control plane: the flags over the defaults.
     pub(crate) fn policy(&self) -> Policy {
-        self.handle_hold
-            .map_or(Policy::DEFAULT, |days| Policy::DEFAULT.holding(Duration::from_hours(days.saturating_mul(24))))
+        let defaults = Limits::DEFAULT;
+        let limits = Limits {
+            stored: self.limit_stored.map_or(defaults.stored, Bytes),
+            builds: self.limit_builds.unwrap_or(defaults.builds),
+            sites: self.limit_sites.unwrap_or(defaults.sites),
+            deploys: self.limit_deploys.unwrap_or(defaults.deploys),
+            time: self.limit_build_time.map_or(defaults.time, Duration::from_secs),
+        };
+        let policy = Policy::DEFAULT.limited(limits);
+        self.handle_hold.map_or(policy, |days| policy.holding(Duration::from_hours(days.saturating_mul(24))))
     }
 
     /// The lookup's settings: the flags over the defaults.
@@ -157,10 +184,12 @@ impl Hosting {
         }
     }
 
-    /// How long a worker holds a request, and how long it rests when there is none.
+    /// How long a worker holds a request, and how long it rests when there is none. A request is
+    /// never held longer than a build may take.
     pub(crate) fn worker(&self) -> (Duration, Duration) {
+        let time = self.policy().limits.time;
         (
-            self.worker_lease.map_or(Duration::from_mins(15), Duration::from_secs),
+            self.worker_lease.map_or(time, Duration::from_secs).min(time),
             self.worker_idle.map_or(Duration::from_secs(2), Duration::from_secs),
         )
     }

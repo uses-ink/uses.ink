@@ -818,6 +818,27 @@ fault = "ours"
 message = "the site's id is not a valid tenant"
 fix = "give the operator this code; the id was not made from 16 bytes"
 
+[diagnostic."budget.stored.over"]
+severity = "error"
+fault = "author"
+fields = { size = "bytes", limit = "bytes" }
+message = "the account would store {size}, over its limit of {limit}"
+fix = "remove a site or a file you do not need, or ask the operator for a higher limit; the limits page lists every limit"
+
+[diagnostic."budget.builds.over"]
+severity = "error"
+fault = "author"
+fields = { count = "count", limit = "count" }
+message = "the account started {count} builds in the last day, which is its limit of {limit}"
+fix = "wait until the oldest build of the last day is 24 hours old, or ask the operator for a higher limit"
+
+[diagnostic."budget.sites.over"]
+severity = "error"
+fault = "author"
+fields = { count = "count", limit = "count" }
+message = "the account has {count} sites, which is its limit of {limit}"
+fix = "remove a site you do not use, or ask the operator for a higher limit"
+
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"

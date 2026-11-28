@@ -12,6 +12,7 @@
 
 extern crate uses_ink_control as control;
 
+mod budget;
 mod codes;
 mod credential;
 mod deploy;

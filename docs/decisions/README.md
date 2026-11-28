@@ -83,3 +83,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0085 | [Recovery codes are minted once, kept as digests, and each is spent once to register a new passkey](0085-recovery-codes-are-minted-once-and-spent-once-on-a-new-passkey.md) | built | 2026-11-28 | security |
 | 0086 | [The client address behind a proxy is read from X-Forwarded-For by trusted hop count, off by default](0086-the-client-address-behind-a-proxy-is-read-from-x-forwarded.md) | built | 2026-11-28 | security |
 | 0087 | [A handle a site leaves is held for twelve months, a verified owner's handle for good, and the brand list is a data file](0087-a-handle-a-site-leaves-is-held-for-twelve-months-a.md) | built | 2026-11-28 | control |
+| 0088 | [Budgets are one typed Limits value, counted from the rows and the blob list, and a deploy over storage is refused whole](0088-budgets-are-one-typed-limits-value-counted-from-the-rows.md) | built | 2026-11-28 | control |

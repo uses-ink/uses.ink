@@ -272,7 +272,9 @@ freeze.
   recovery policy (`auth.md` sections 8, 9, 12); previews of branches **(owner: Q7)**; custom
   domains through Cloudflare for SaaS (our TXT proof first, then the hostname).
   Built so far, natively on SQLite (the owner's defaults of `docs/hosted.md` section 12): C1, handles with a brand
-  list, a twelve month hold and verified handles that are never reclaimed (0087).
+  list, a twelve month hold and verified handles that are never reclaimed (0087); C2, budgets as one typed
+  `Limits` (1 GiB, 60 builds a day, 10 minutes a build, 20 deploys kept) that the refusals and the public `/limits`
+  page both read, with a retention sweep (0088).
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`

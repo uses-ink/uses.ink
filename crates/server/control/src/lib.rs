@@ -26,6 +26,7 @@ mod event;
 mod handle;
 mod hold;
 mod job;
+mod limits;
 mod listed;
 mod migration;
 mod origin;
@@ -46,6 +47,7 @@ pub use account::{Account, New as NewAccount};
 pub use brand::{BrandError, Brands};
 pub use case::export::{Exported, Sink, Summary};
 pub use case::serve::Serving;
+pub use case::sweep::Swept;
 pub use control::Control;
 pub use credential::{Credential, New as NewCredential, Use as Purpose};
 pub use deploy::{Deploy, Live, New as NewDeploy, Published, Recorded, Resumed};
@@ -58,6 +60,7 @@ pub use id::{
     IdError, Kind, Session as SessionKind, Site as SiteKind,
 };
 pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked};
+pub use limits::{Amount, Budget, Limits, Spent};
 pub use listed::{Canonical, Listed};
 pub use migration::{Domain, Remembered, Treed};
 pub use origin::{Origin, OriginError};

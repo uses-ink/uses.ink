@@ -11,7 +11,7 @@ use crate::form::{Action, Asked};
 use crate::route::{Only, Path, Route, Screen};
 use crate::shell::{Document, Frame, View};
 use crate::stream::{Follow, Streamed};
-use crate::view::{Account, Build, Deploys, Failed, Live, Settings, SignIn, Site, Understood, Why};
+use crate::view::{Account, Build, Deploys, Failed, Limits, Live, Settings, SignIn, Site, Understood, Why};
 use crate::{Failure, Request, Status};
 
 /// What a request for a build's log finds.
@@ -47,6 +47,9 @@ impl fmt::Display for Download {
 pub trait Screens: Send + Sync {
     /// Where a running build's events come from.
     type Follow: Follow;
+
+    /// The limits this server enforces, which the public limits page lists.
+    fn limits(&self) -> control::Limits;
 
     /// The Site screen.
     fn site(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Site, Failure>> + Send;
@@ -188,6 +191,7 @@ impl<S: Screens> Dashboard<S> {
     async fn serve(&self, who: Option<Id<AccountKind>>, route: &Route) -> Result<Reply<S::Follow>, Failure> {
         match route {
             Route::SignIn => return Reply::page(Status::Ok, &SignIn::new()),
+            Route::Limits => return Reply::page(Status::Ok, &Limits::new(self.0.limits())),
             Route::Script => {
                 return Ok(Reply { status: Status::Ok, location: None, body: Body::Script(Self::SCRIPT) });
             }
@@ -202,7 +206,7 @@ impl<S: Screens> Dashboard<S> {
             Route::Deploys(handle) => Reply::page(Status::Ok, &screens.deploys(who, handle).await?),
             Route::Settings(handle) => Reply::page(Status::Ok, &screens.settings(who, handle).await?),
             Route::Account => Reply::page(Status::Ok, &screens.account(who).await?),
-            Route::SignIn | Route::Script => Err(Failure::Unrouted { source: crate::Unrouted::Path }),
+            Route::SignIn | Route::Limits | Route::Script => Err(Failure::Unrouted { source: crate::Unrouted::Path }),
             Route::Build(handle, build) => match screens.log(who, handle, *build).await? {
                 Logged::Done(page) => Reply::page(Status::Ok, &page),
                 Logged::Running(live, follow) => {

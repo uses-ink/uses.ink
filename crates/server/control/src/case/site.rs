@@ -32,6 +32,7 @@ impl<P: Ports> Control<P> {
     pub async fn add_site(&self, new: site::New) -> Result<Site, Error<P>> {
         let stored = Stored::try_from(&new.source)?;
         self.claimable(&new.handle, new.at).await?;
+        self.site_room(new.account).await?;
         let db = self.ports.db();
         let added = Event::SiteAdded { handle: new.handle.clone() };
         let mut batch = Self::release(&new.handle, new.at);

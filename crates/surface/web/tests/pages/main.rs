@@ -10,6 +10,7 @@ mod builds;
 mod deploys;
 mod failure;
 mod fixtures;
+mod limits;
 mod routing;
 mod settings;
 mod site;

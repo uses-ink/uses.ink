@@ -347,6 +347,15 @@ impl Message<'_> {
             Problem::SiteTenantInvalid => {
                 write!(out, "the site's id is not a valid tenant")
             }
+            Problem::BudgetStoredOver { size, limit, .. } => {
+                write!(out, "the account would store {size}, over its limit of {limit}")
+            }
+            Problem::BudgetBuildsOver { count, limit, .. } => {
+                write!(out, "the account started {count} builds in the last day, which is its limit of {limit}")
+            }
+            Problem::BudgetSitesOver { count, limit, .. } => {
+                write!(out, "the account has {count} sites, which is its limit of {limit}")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -703,6 +712,9 @@ impl Fix<'_> {
             Problem::BuildLogMissing { .. } => true,
             Problem::SourcePathUnstorable => true,
             Problem::SiteTenantInvalid => true,
+            Problem::BudgetStoredOver { .. } => true,
+            Problem::BudgetBuildsOver { .. } => true,
+            Problem::BudgetSitesOver { .. } => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -1088,6 +1100,21 @@ impl Fix<'_> {
             }
             Problem::SiteTenantInvalid => {
                 write!(out, "give the operator this code; the id was not made from 16 bytes")
+            }
+            Problem::BudgetStoredOver { .. } => {
+                write!(
+                    out,
+                    "remove a site or a file you do not need, or ask the operator for a higher limit; the limits page lists every limit"
+                )
+            }
+            Problem::BudgetBuildsOver { .. } => {
+                write!(
+                    out,
+                    "wait until the oldest build of the last day is 24 hours old, or ask the operator for a higher limit"
+                )
+            }
+            Problem::BudgetSitesOver { .. } => {
+                write!(out, "remove a site you do not use, or ask the operator for a higher limit")
             }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")

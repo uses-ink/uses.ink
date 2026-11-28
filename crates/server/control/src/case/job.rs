@@ -70,6 +70,7 @@ impl<P: Ports> Control<P> {
 
     async fn queued(&self, new: job::New, tree: Option<Hash>) -> Result<Requested, Error<P>> {
         let site = self.active(new.site).await?;
+        self.build_room(site.account, new.at).await?;
         let message = Message { body: new.id.to_string().into_bytes(), dedupe: new.dedupe };
         if let Sent::Duplicate(_) = self.ports.queue().send(message, new.at).await? {
             return Ok(Requested::Duplicate);

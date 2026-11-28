@@ -1,5 +1,6 @@
 //! The use cases, one file each, as methods of `Control`.
 
+mod budget;
 mod credential;
 mod deploy;
 pub(crate) mod export;
@@ -10,3 +11,4 @@ mod remove;
 mod seen;
 pub(crate) mod serve;
 mod site;
+pub(crate) mod sweep;

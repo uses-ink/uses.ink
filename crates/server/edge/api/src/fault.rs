@@ -6,7 +6,7 @@ use std::fmt;
 use std::time::Duration;
 
 use control::keys::{Refused, Right};
-use control::{Failed, Ports, Refusal};
+use control::{Failed, Ports, Refusal, Spent};
 use db::Db;
 use jiff::Timestamp;
 use model::git::Scheme;
@@ -407,6 +407,9 @@ impl<P: Ports> Fault<P> {
             | Refusal::NoManifest { .. }
             | Refusal::NoCredential { .. } => Status::NotFound,
             Refusal::NoAccount { .. } | Refusal::MissingBlob { .. } => Status::Unprocessable,
+            Refusal::Over { spent: Spent::Stored, .. } => Status::TooLarge,
+            Refusal::Over { spent: Spent::Builds, .. } => Status::TooMany,
+            Refusal::Over { .. } => Status::Forbidden,
             _ => Status::Internal,
         }
     }

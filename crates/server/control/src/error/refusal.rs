@@ -3,11 +3,11 @@
 use std::fmt;
 
 use jiff::Timestamp;
-use model::{DeployId, Hash, Route};
+use model::{Bytes, DeployId, Hash, Route};
 
 use crate::hold::Why;
 use crate::id::{Account, Credential, Id, Site};
-use crate::{Handle, Reservation};
+use crate::{Handle, Reservation, Spent};
 
 /// A request the control plane refuses, and the fact that makes it wrong. Nothing was changed.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -105,6 +105,15 @@ pub enum Refusal {
         /// The blob.
         blob: Hash,
     },
+    /// A budget is spent: the request would take the account over a limit (decision 0088).
+    Over {
+        /// Which budget.
+        spent: Spent,
+        /// What the account has or would have: bytes for the stored budget, a count for the others.
+        value: u64,
+        /// The limit it is over, in the same unit.
+        limit: u64,
+    },
     /// A source with a path that is not text cannot be stored.
     Unstorable,
     /// A site's id is not a valid tenant. Cannot happen for an id made from 16 bytes.
@@ -141,6 +150,15 @@ impl fmt::Display for Refusal {
             Self::MissingLog { build, blob } => {
                 write!(out, "the log of build {build} is {blob}, which the store does not hold")
             }
+            Self::Over { spent: Spent::Stored, value, limit } => {
+                write!(out, "the account would store {} over its limit of {}", Bytes(*value), Bytes(*limit))
+            }
+            Self::Over { spent: Spent::Builds, value, limit } => {
+                write!(out, "the account started {value} builds in a day, which is its limit of {limit}")
+            }
+            Self::Over { spent: Spent::Sites, value, limit } => {
+                write!(out, "the account has {value} sites, which is its limit of {limit}")
+            }
             Self::Unstorable => out.write_str("a folder path that is not text cannot be stored"),
             Self::Tenant(_) => out.write_str("the site's id is not a valid tenant"),
         }
@@ -168,6 +186,9 @@ impl Refusal {
             Self::NoManifest { .. } => "deploy.manifest.missing",
             Self::NoBuild { .. } => "build.id.unknown",
             Self::MissingLog { .. } => "build.log.missing",
+            Self::Over { spent: Spent::Stored, .. } => "budget.stored.over",
+            Self::Over { spent: Spent::Builds, .. } => "budget.builds.over",
+            Self::Over { spent: Spent::Sites, .. } => "budget.sites.over",
             Self::Unstorable => "source.path.unstorable",
             Self::Tenant(_) => "site.tenant.invalid",
         }
@@ -195,6 +216,10 @@ impl Refusal {
             Self::NoManifest { deploy } => vec![("deploy", deploy.to_string())],
             Self::NoBuild { site, build } => vec![("id", site.to_string()), ("build", build.to_string())],
             Self::MissingLog { build, blob } => vec![("build", build.to_string()), ("hash", blob.to_string())],
+            Self::Over { spent, value, limit } => {
+                let name = if *spent == Spent::Stored { "size" } else { "count" };
+                vec![(name, value.to_string()), ("limit", limit.to_string())]
+            }
             Self::Unstorable | Self::Tenant(_) => Vec::new(),
         }
     }

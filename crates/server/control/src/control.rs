@@ -1,6 +1,6 @@
 //! The control plane.
 
-use crate::{Origin, Policy, Ports};
+use crate::{Limits, Origin, Policy, Ports};
 
 /// The control plane over its ports: the use cases of accounts, sites, deploys, build jobs and
 /// credentials, each written once against the port traits. Nothing here names SQLite, a
@@ -26,6 +26,11 @@ impl<P: Ports> Control<P> {
     pub const fn with_policy(mut self, policy: Policy) -> Self {
         self.policy = policy;
         self
+    }
+
+    /// The budgets this control plane enforces: what the limits page shows.
+    pub const fn limits(&self) -> &Limits {
+        &self.policy.limits
     }
 
     /// Where sites are served: what makes a site's address from its handle.

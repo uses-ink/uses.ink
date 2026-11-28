@@ -1,7 +1,7 @@
 //! Every refusal has a code of the catalog, with a fix.
 
 use build::BuildId;
-use control::{Handle, HoldReason, Id, Refusal, Reservation};
+use control::{Handle, HoldReason, Id, Refusal, Reservation, Spent};
 use jiff::Timestamp;
 use model::{Hash, Manifest, Route};
 
@@ -31,6 +31,9 @@ fn every_refusal_is_worded_by_the_catalog() {
         Refusal::NoManifest { deploy },
         Refusal::NoBuild { site, build },
         Refusal::MissingLog { build, blob },
+        Refusal::Over { spent: Spent::Stored, value: 2, limit: 1 },
+        Refusal::Over { spent: Spent::Builds, value: 2, limit: 1 },
+        Refusal::Over { spent: Spent::Sites, value: 2, limit: 1 },
         Refusal::Unstorable,
     ];
     for refusal in refusals {

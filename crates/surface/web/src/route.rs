@@ -73,6 +73,8 @@ pub enum Route {
     Account,
     /// `/signin`: the passkey sign-in page, for someone who is not signed in.
     SignIn,
+    /// `/limits`: what the server limits, public.
+    Limits,
     /// `/passkey.js`: the dashboard's one script, static text.
     Script,
     /// `/<handle>/export`: the site as a download.
@@ -107,6 +109,7 @@ impl Route {
                 Method::Get => Err(Failure::Method { used: Method::Get }),
             },
             (Some("signin"), None, None) => get(Self::SignIn),
+            (Some("limits"), None, None) => get(Self::Limits),
             (Some("passkey.js"), None, None) => get(Self::Script),
             (None, ..) => Err(Failure::SignedOut),
             (Some(handle), None, None) => get(Self::Site(Segment(handle).handle()?)),
@@ -130,7 +133,7 @@ impl Route {
     /// The site the address is about, when it is about one.
     pub const fn handle(&self) -> Option<&Handle> {
         match self {
-            Self::Account | Self::SignIn | Self::Script | Self::EndSession(_) => None,
+            Self::Account | Self::SignIn | Self::Limits | Self::Script | Self::EndSession(_) => None,
             Self::Site(handle)
             | Self::Understood(handle, _)
             | Self::Why(handle, _)
@@ -150,7 +153,7 @@ impl Route {
             Self::Deploys(_) | Self::Build(..) => Some(Screen::Deploys),
             Self::Settings(_) => Some(Screen::Settings),
             Self::Account | Self::EndSession(_) => Some(Screen::Account),
-            Self::Export(_) | Self::Act(..) | Self::SignIn | Self::Script => None,
+            Self::Export(_) | Self::Act(..) | Self::SignIn | Self::Limits | Self::Script => None,
         }
     }
 }

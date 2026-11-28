@@ -695,6 +695,30 @@ pub enum Problem {
     /// `site.tenant.invalid`: the site's id is not a valid tenant
     #[serde(rename = "site.tenant.invalid")]
     SiteTenantInvalid,
+    /// `budget.stored.over`: the account would store {size}, over its limit of {limit}
+    #[serde(rename = "budget.stored.over")]
+    BudgetStoredOver {
+        /// How large it is.
+        size: Bytes,
+        /// The most that is allowed.
+        limit: Bytes,
+    },
+    /// `budget.builds.over`: the account started {count} builds in the last day, which is its limit of {limit}
+    #[serde(rename = "budget.builds.over")]
+    BudgetBuildsOver {
+        /// How many there are.
+        count: u64,
+        /// The most that is allowed.
+        limit: u64,
+    },
+    /// `budget.sites.over`: the account has {count} sites, which is its limit of {limit}
+    #[serde(rename = "budget.sites.over")]
+    BudgetSitesOver {
+        /// How many there are.
+        count: u64,
+        /// The most that is allowed.
+        limit: u64,
+    },
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -933,6 +957,9 @@ impl Problem {
         "build.log.missing",
         "source.path.unstorable",
         "site.tenant.invalid",
+        "budget.stored.over",
+        "budget.builds.over",
+        "budget.sites.over",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -1072,6 +1099,9 @@ impl Problem {
             Self::BuildLogMissing { .. } => "build.log.missing",
             Self::SourcePathUnstorable => "source.path.unstorable",
             Self::SiteTenantInvalid => "site.tenant.invalid",
+            Self::BudgetStoredOver { .. } => "budget.stored.over",
+            Self::BudgetBuildsOver { .. } => "budget.builds.over",
+            Self::BudgetSitesOver { .. } => "budget.sites.over",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -1212,6 +1242,9 @@ impl Problem {
             Self::BuildLogMissing { .. } => Severity::Error,
             Self::SourcePathUnstorable => Severity::Error,
             Self::SiteTenantInvalid => Severity::Error,
+            Self::BudgetStoredOver { .. } => Severity::Error,
+            Self::BudgetBuildsOver { .. } => Severity::Error,
+            Self::BudgetSitesOver { .. } => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -1352,6 +1385,9 @@ impl Problem {
             Self::BuildLogMissing { .. } => Fault::Ours,
             Self::SourcePathUnstorable => Fault::Author,
             Self::SiteTenantInvalid => Fault::Ours,
+            Self::BudgetStoredOver { .. } => Fault::Author,
+            Self::BudgetBuildsOver { .. } => Fault::Author,
+            Self::BudgetSitesOver { .. } => Fault::Author,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -2011,6 +2047,15 @@ impl From<&Problem> for Coded {
             }
             Problem::SourcePathUnstorable => Coded::new("source.path.unstorable", vec![]),
             Problem::SiteTenantInvalid => Coded::new("site.tenant.invalid", vec![]),
+            Problem::BudgetStoredOver { size, limit, .. } => {
+                Coded::new("budget.stored.over", vec![Field::from(*size), Field::from(*limit)])
+            }
+            Problem::BudgetBuildsOver { count, limit, .. } => {
+                Coded::new("budget.builds.over", vec![Field::from(*count), Field::from(*limit)])
+            }
+            Problem::BudgetSitesOver { count, limit, .. } => {
+                Coded::new("budget.sites.over", vec![Field::from(*count), Field::from(*limit)])
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -2192,6 +2237,9 @@ impl TryFrom<Coded> for Problem {
             "build.log.missing" => Self::BuildLogMissing { build: fields.next()?, hash: fields.next()? },
             "source.path.unstorable" => Self::SourcePathUnstorable,
             "site.tenant.invalid" => Self::SiteTenantInvalid,
+            "budget.stored.over" => Self::BudgetStoredOver { size: fields.next()?, limit: fields.next()? },
+            "budget.builds.over" => Self::BudgetBuildsOver { count: fields.next()?, limit: fields.next()? },
+            "budget.sites.over" => Self::BudgetSitesOver { count: fields.next()?, limit: fields.next()? },
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },
