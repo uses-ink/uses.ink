@@ -49,6 +49,18 @@ pub enum Event {
         /// The build.
         build: BuildId,
     },
+    /// The site's owner was verified, so its handle is never given to anyone else.
+    HandleVerified {
+        /// The handle.
+        handle: Handle,
+    },
+    /// The site took another handle, and the old one is held.
+    SiteRenamed {
+        /// The handle it had.
+        from: Handle,
+        /// The handle it has.
+        to: Handle,
+    },
 }
 
 impl Event {
@@ -61,6 +73,8 @@ impl Event {
             Self::DeployRolledBack { .. } => "deploy.rolled-back",
             Self::SiteResumed => "site.resumed",
             Self::BuildRequested { .. } => "build.requested",
+            Self::HandleVerified { .. } => "handle.verified",
+            Self::SiteRenamed { .. } => "site.renamed",
         }
     }
 }

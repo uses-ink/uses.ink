@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::{Args, ValueEnum};
+use control::Policy;
 use https::{Follow, Https, Misconfigured};
 use model::git::{Network, Scheme};
 
@@ -106,9 +107,19 @@ pub struct Hosting {
     /// with a private authority; repeat for more. Certificates are always verified.
     #[arg(long = "git-ca", help_heading = Heading::HOSTING)]
     pub git_cas: Vec<PathBuf>,
+    /// Days a handle is held after its site left it, so no one else can claim it; a verified
+    /// owner's handle is held for good. [default: 365]
+    #[arg(long, value_name = "DAYS", env = "INK_HANDLE_HOLD", help_heading = Heading::LIMITS)]
+    pub handle_hold: Option<u64>,
 }
 
 impl Hosting {
+    /// What the operator sets about the control plane: the flags over the defaults.
+    pub(crate) fn policy(&self) -> Policy {
+        self.handle_hold
+            .map_or(Policy::DEFAULT, |days| Policy::DEFAULT.holding(Duration::from_hours(days.saturating_mul(24))))
+    }
+
     /// The lookup's settings: the flags over the defaults.
     pub(crate) fn lookup(&self) -> edge_control::Settings {
         let defaults = edge_control::Settings::default();

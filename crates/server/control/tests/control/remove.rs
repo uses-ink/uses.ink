@@ -68,7 +68,7 @@ fn the_handle_of_a_removed_site_is_not_free() {
         source: Source::Folder("/srv".into()),
         at: at(200),
     }));
-    assert!(matches!(again.unwrap_err().refusal(), Some(Refusal::Tombstoned { .. })));
+    assert!(matches!(again.unwrap_err().refusal(), Some(Refusal::Held { .. })));
     // the account survives its site
     assert_eq!(world.count(Account::Table), 1);
 }

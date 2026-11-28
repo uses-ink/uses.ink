@@ -16,6 +16,7 @@ control-rows.workspace = true
 control-signin.workspace = true
 db.workspace = true
 jiff.workspace = true
+toml.workspace = true
 model.workspace = true
 queue.workspace = true
 sea-query.workspace = true
@@ -29,6 +30,7 @@ logging.workspace = true
 logging = { workspace = true, features = ["capture"] }
 blob-dir.workspace = true
 db-sqlite.workspace = true
+diag.workspace = true
 mail.workspace = true
 pollster.workspace = true
 queue-rows.workspace = true

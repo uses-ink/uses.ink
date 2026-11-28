@@ -1,0 +1,23 @@
+# Names a person cannot claim as a handle because they are a brand, a forge or a platform that
+# someone could be mistaken for. The infrastructure and route names are in code
+# (`Handle::RESERVED`); this list is the owner's (`docs/hosted.md` HQ11) and starts short.
+# Each name is a valid handle: 3 to 32 characters of `a-z`, `0-9` and `-`, no `--`.
+# A name is cheap to add here and awkward to take back from a person who held it.
+names = [
+    "github",
+    "gitlab",
+    "forgejo",
+    "codeberg",
+    "cloudflare",
+    "obsidian",
+    "anthropic",
+    "claude",
+    "openai",
+    "google",
+    "apple",
+    "microsoft",
+    "amazon",
+    "meta",
+    "paypal",
+    "stripe",
+]

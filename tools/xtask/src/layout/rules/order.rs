@@ -253,6 +253,7 @@ impl Order {
                 "uses-ink-control-signin",
                 "uses-ink-db",
                 "uses-ink-db-sqlite",
+                "uses-ink-diag",
                 "uses-ink-mail",
                 "uses-ink-model",
                 "uses-ink-queue",

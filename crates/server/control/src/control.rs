@@ -1,6 +1,6 @@
 //! The control plane.
 
-use crate::{Origin, Ports};
+use crate::{Origin, Policy, Ports};
 
 /// The control plane over its ports: the use cases of accounts, sites, deploys, build jobs and
 /// credentials, each written once against the port traits. Nothing here names SQLite, a
@@ -12,12 +12,20 @@ use crate::{Origin, Ports};
 pub struct Control<P> {
     pub(crate) ports: P,
     pub(crate) origin: Origin,
+    pub(crate) policy: Policy,
 }
 
 impl<P: Ports> Control<P> {
     /// A control plane on `ports`, serving sites under `origin`. The database must have had the [`Domain`](crate::Domain) migration applied.
     pub const fn new(ports: P, origin: Origin) -> Self {
-        Self { ports, origin }
+        Self { ports, origin, policy: Policy::DEFAULT }
+    }
+
+    /// The same control plane under the operator's `policy` instead of the defaults.
+    #[must_use]
+    pub const fn with_policy(mut self, policy: Policy) -> Self {
+        self.policy = policy;
+        self
     }
 
     /// Where sites are served: what makes a site's address from its handle.

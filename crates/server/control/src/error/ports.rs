@@ -33,6 +33,8 @@ pub enum Error<P: Ports> {
     Manifest(crate::listed::Canonical),
     /// A site's address could not be made from the origin.
     Origin(model::UrlError),
+    /// The brand list this build carries does not read.
+    Brand(crate::BrandError),
 }
 
 impl<P: Ports> fmt::Debug for Error<P> {
@@ -48,6 +50,7 @@ impl<P: Ports> fmt::Debug for Error<P> {
             Self::Statement(error) => out.debug_tuple("Statement").field(error).finish(),
             Self::Manifest(error) => out.debug_tuple("Manifest").field(error).finish(),
             Self::Origin(error) => out.debug_tuple("Origin").field(error).finish(),
+            Self::Brand(error) => out.debug_tuple("Brand").field(error).finish(),
         }
     }
 }
@@ -65,6 +68,7 @@ impl<P: Ports> fmt::Display for Error<P> {
             Self::Statement(_) => out.write_str("a statement could not be built"),
             Self::Manifest(_) => out.write_str("a stored manifest is not in the canonical form"),
             Self::Origin(_) => out.write_str("a site's address could not be made from the origin"),
+            Self::Brand(_) => out.write_str("the brand list of this build does not read"),
         }
     }
 }
@@ -82,6 +86,7 @@ impl<P: Ports> std::error::Error for Error<P> {
             Self::Statement(source) => Some(source),
             Self::Manifest(source) => Some(source),
             Self::Origin(source) => Some(source),
+            Self::Brand(source) => Some(source),
         }
     }
 }
@@ -98,6 +103,12 @@ impl<P: Ports> From<crate::event::Unwritten> for Error<P> {
             crate::event::Unwritten::Json(source) => Self::Log(source),
             crate::event::Unwritten::Statement(source) => Self::Statement(source),
         }
+    }
+}
+
+impl<P: Ports> From<crate::BrandError> for Error<P> {
+    fn from(error: crate::BrandError) -> Self {
+        Self::Brand(error)
     }
 }
 

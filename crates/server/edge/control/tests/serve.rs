@@ -54,15 +54,18 @@ impl World {
         let folder = tempfile::tempdir().unwrap();
         let root = folder.path().join("blobs");
         let db = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new()
-            .with::<Domain>()
-            .unwrap()
-            .with::<Remembered>()
-            .unwrap()
-            .with::<Treed>()
-            .unwrap()
-            .with::<Queued>()
-            .unwrap();
+        let steps = control::Schema::after(
+            Steps::new()
+                .with::<Domain>()
+                .unwrap()
+                .with::<Remembered>()
+                .unwrap()
+                .with::<Treed>()
+                .unwrap()
+                .with::<Queued>()
+                .unwrap(),
+        )
+        .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports: Wired =
             Arc::new((db.clone(), Directory::open(&root).unwrap(), Queue::new(db), Sealer::ephemeral().unwrap()));

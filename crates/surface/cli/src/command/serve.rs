@@ -201,13 +201,14 @@ impl args::Serve {
 
     fn start_watch(&self, tasks: &mut Tasks, product: &Product, events: &Events) {
         let (ports, origin, interval) = (Arc::clone(&product.ports), product.origin.clone(), product.interval);
+        let policy = self.hosting.policy();
         let git = self.hosting.git_cache.clone().unwrap_or_else(|| product.data.join("git"));
         let (heads, network, https) = (git.join("heads"), self.hosting.network(), product.https.clone());
         tasks.start(Task::Watch, (self.hosting.restart(), events), move |clock: Stoppable, events: Events| {
             let (ports, origin) = (Arc::clone(&ports), origin.clone());
             let heads = watch_git::Remotes::new(heads.clone(), network).with_https(https.clone());
             Box::pin(async move {
-                let control = control::Control::new(ports, origin);
+                let control = control::Control::new(ports, origin).with_policy(policy);
                 let mut watch = watch::Watch::new(&control, heads, (clock, clock::System), interval);
                 watch.run(&events).await;
             })
@@ -216,6 +217,7 @@ impl args::Serve {
 
     fn start_worker(&self, tasks: &mut Tasks, product: &Product, events: &Events) {
         let (ports, origin) = (Arc::clone(&product.ports), product.origin.clone());
+        let policy = self.hosting.policy();
         let git = self.hosting.git_cache.clone().unwrap_or_else(|| product.data.join("git"));
         let settings = Settings {
             cache: git.join("clones"),
@@ -228,7 +230,8 @@ impl args::Serve {
         tasks.start(Task::Worker, (self.hosting.restart(), events), move |clock: Stoppable, events: Events| {
             let (ports, origin, settings, blobs) =
                 (Arc::clone(&ports), origin.clone(), settings.clone(), blobs.clone());
-            let remote = Fetching::new(control::Control::new(Arc::clone(&ports), origin.clone()), settings);
+            let remote =
+                Fetching::new(control::Control::new(Arc::clone(&ports), origin.clone()).with_policy(policy), settings);
             Box::pin(async move {
                 let stored = match blob_dir::Directory::open(&blobs) {
                     Ok(stored) => stored,
@@ -237,7 +240,7 @@ impl args::Serve {
                         return;
                     }
                 };
-                let control = control::Control::new(ports, origin);
+                let control = control::Control::new(ports, origin).with_policy(policy);
                 let builder = build_process::Local::new(stored).with_remote(remote);
                 watch::Worker::new(&control, builder, clock, times).run(&events).await;
             })

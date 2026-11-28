@@ -27,23 +27,15 @@ impl<P: Ports> Control<P> {
     }
 
     /// Adds a site: claims its handle and records its source, in one batch with the event that
-    /// says so. A handle that is reserved, taken, or left by a removed site is refused.
+    /// says so. A handle that is reserved, on the brand list, taken, or held after a site left
+    /// it is refused ([`Control::claimable`]); a hold that is over is released by the claim.
     pub async fn add_site(&self, new: site::New) -> Result<Site, Error<P>> {
-        if new.handle.is_reserved() {
-            return Err(Refusal::Reserved { handle: new.handle }.into());
-        }
         let stored = Stored::try_from(&new.source)?;
+        self.claimable(&new.handle, new.at).await?;
         let db = self.ports.db();
-        let tombstone = Query::select()
-            .column(table::Tombstone::Handle)
-            .from(table::Tombstone::Table)
-            .and_where(Expr::col(table::Tombstone::Handle).eq(new.handle.as_str()))
-            .to_owned();
-        if db.first(tombstone.into()).await?.is_some() {
-            return Err(Refusal::Tombstoned { handle: new.handle }.into());
-        }
         let added = Event::SiteAdded { handle: new.handle.clone() };
-        let batch = vec![Self::site_row(&new)?, Self::source_row(new.id, stored)?, added.insert(new.id, new.at)?];
+        let mut batch = Self::release(&new.handle, new.at);
+        batch.extend([Self::site_row(&new)?, Self::source_row(new.id, stored)?, added.insert(new.id, new.at)?]);
         match db.batch(batch).await {
             Ok(_) => Ok(Site {
                 id: new.id,

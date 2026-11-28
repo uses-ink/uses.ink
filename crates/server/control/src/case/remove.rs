@@ -11,7 +11,7 @@ use sea_query::{
 
 use crate::id::{Id, Site as SiteKind};
 use crate::table::{self, Computed};
-use crate::{Control, Error, Ports, Receipt};
+use crate::{Control, Error, Handle, Hold, HoldReason, Ports, Receipt};
 
 impl<P: Ports> Control<P> {
     /// Removes a site and everything of it, and returns what was removed.
@@ -47,7 +47,7 @@ impl<P: Ports> Control<P> {
                 bytes = bytes.saturating_add(size.count());
             }
         }
-        self.erase(site.handle.as_str(), id, at).await?;
+        self.erase(&site.handle, id, at).await?;
         Ok(Receipt {
             site: id,
             account: site.account,
@@ -81,7 +81,7 @@ impl<P: Ports> Control<P> {
     }
 
     /// Deletes every row of a site, children first, and leaves its handle as a tombstone.
-    async fn erase(&self, handle: &str, id: Id<SiteKind>, at: Timestamp) -> Result<(), Error<P>> {
+    async fn erase(&self, handle: &Handle, id: Id<SiteKind>, at: Timestamp) -> Result<(), Error<P>> {
         let key = id.to_string();
         let mut batch: Vec<Statement> = vec![
             Self::wipe(table::Event::Table, table::Event::SiteId, &key),
@@ -98,10 +98,11 @@ impl<P: Ports> Control<P> {
         let tombstone = Query::insert()
             .into_table(table::Tombstone::Table)
             .columns([table::Tombstone::Handle, table::Tombstone::SiteId, table::Tombstone::RemovedAt])
-            .values([Expr::val(handle), Expr::val(key), Expr::val(at.as_millisecond())])?
+            .values([Expr::val(handle.as_str()), Expr::val(key), Expr::val(at.as_millisecond())])?
             .on_conflict(OnConflict::column(table::Tombstone::Handle).do_nothing().to_owned())
             .to_owned();
         batch.push(tombstone.into());
+        batch.push(Hold::new(handle.clone(), id, HoldReason::Removed, at).lasting(self.policy.hold).insert()?);
         self.ports.db().batch(batch).await?;
         Ok(())
     }

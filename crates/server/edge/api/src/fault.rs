@@ -343,7 +343,7 @@ impl<P: Ports> From<Refusal> for Fault<P> {
 
 impl<P: Ports> Fault<P> {
     /// A stable name for what went wrong.
-    pub const fn name(&self) -> &'static str {
+    pub fn name(&self) -> &'static str {
         match self {
             Self::Route(_) => "route",
             Self::Denied(denied) => denied.code(),
@@ -359,7 +359,7 @@ impl<P: Ports> Fault<P> {
             Self::Scheme { .. } => "scheme",
             Self::Unbuilt => "unbuilt",
             Self::NoLog => "no-log",
-            Self::Control(_) => "control",
+            Self::Control(error) => error.refusal().map_or("control", Refusal::code),
             Self::Export(_) => "export",
             Self::Archive(_) => "archive",
             Self::Folder(_) => "manifest",
@@ -396,7 +396,7 @@ impl<P: Ports> Fault<P> {
         match refusal {
             Refusal::Reserved { .. }
             | Refusal::Taken { .. }
-            | Refusal::Tombstoned { .. }
+            | Refusal::Held { .. }
             | Refusal::Exists { .. }
             | Refusal::Removing { .. }
             | Refusal::NotLive { .. }
@@ -424,6 +424,7 @@ impl<P: Ports + 'static> Fault<P> {
         };
         let fields = match self {
             Self::Denied(denied) => denied.fields(),
+            Self::Control(error) => error.refusal().map_or_else(Vec::new, Refusal::fields).into_iter().collect(),
             _ => BTreeMap::new(),
         };
         let problem = Problem { problem: self.name(), message: self.to_string(), causes, fields };

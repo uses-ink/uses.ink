@@ -299,6 +299,19 @@ pub enum Seen {
     At,
 }
 
+/// `hold`: a handle that no site holds but that is not free: held for a time after its site left
+/// it, or for good when its owner was verified.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "hold"]
+pub enum Hold {
+    Table,
+    Handle,
+    SiteId,
+    Why,
+    Until,
+    At,
+}
+
 /// SQLite's row number, which orders rows that tie on a column.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 pub enum Row {

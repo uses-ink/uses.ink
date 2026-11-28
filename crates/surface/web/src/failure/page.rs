@@ -137,7 +137,7 @@ struct Refused<'a>(&'a Refusal);
 impl fmt::Display for Refused<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         out.write_str(match self.0 {
-            Refusal::Reserved { .. } | Refusal::Taken { .. } | Refusal::Tombstoned { .. } => "choose another handle",
+            Refusal::Reserved { .. } | Refusal::Taken { .. } | Refusal::Held { .. } => "choose another handle",
             Refusal::AlreadyLive { .. } => "nothing to do: this deploy is the one being served",
             Refusal::NoDeploy { .. } | Refusal::NotLive { .. } => "open Deploys and pick a deploy the site has",
             Refusal::NoSite { .. } | Refusal::Removing { .. } => {

@@ -116,7 +116,7 @@ fn a_bad_site_is_refused_with_its_reason() {
     fixture.upload("diary");
     let add = |body: Value| fixture.call(Method::Post, "/v1/sites", body.to_string().as_bytes());
     let (taken, problem) = add(json!({ "handle": "diary", "source": { "kind": "upload" } }));
-    assert_eq!((taken.status, problem["problem"].as_str()), (Status::Conflict, Some("control")));
+    assert_eq!((taken.status, problem["problem"].as_str()), (Status::Conflict, Some("handle.name.taken")));
     let (reserved, _) = add(json!({ "handle": "www", "source": { "kind": "upload" } }));
     assert_eq!(reserved.status, Status::Conflict);
     let (bad, problem) = add(json!({ "handle": "-no-", "source": { "kind": "upload" } }));
@@ -160,7 +160,7 @@ fn a_built_folder_becomes_a_deploy_and_can_be_exported_and_rolled_back() {
         (Status::Ok, json!(true), one["deploy"].clone())
     );
     let (twice, problem) = fixture.call(Method::Post, &format!("/v1/sites/{id}/rollback"), back.as_bytes());
-    assert_eq!((twice.status, problem["problem"].as_str()), (Status::Conflict, Some("control")));
+    assert_eq!((twice.status, problem["problem"].as_str()), (Status::Conflict, Some("deploy.state.live")));
     let (_, held) = put(&[("/", "third")]);
     assert_eq!(held["published"], "held");
     let (resumed, moved) = fixture.call(Method::Post, &format!("/v1/sites/{id}/resume"), b"");

@@ -7,8 +7,8 @@ use db::Row;
 use sea_query::IdenStatic;
 use serde::Serialize;
 
-use crate::Unreadable;
 use crate::fields::Fields;
+use crate::{BrandError, Brands, Unreadable};
 
 /// A handle: a lower-case DNS label of 3 to 32 characters, `[a-z0-9-]`, with no leading or
 /// trailing hyphen and no `--` (architecture section 12). Reserved names are valid handles; the
@@ -62,10 +62,28 @@ impl Handle {
         &self.0
     }
 
-    /// Whether the name is kept for uses.ink itself.
+    /// Whether the name is one of the infrastructure names of [`Handle::RESERVED`].
     pub fn is_reserved(&self) -> bool {
         Self::RESERVED.contains(&self.0.as_str())
     }
+
+    /// Why the name is kept, if it is: an infrastructure name, or a name of the brand list.
+    pub fn reservation(&self) -> Result<Option<Reservation>, BrandError> {
+        if self.is_reserved() {
+            return Ok(Some(Reservation::Infrastructure));
+        }
+        Ok(Brands::bundled()?.holds(self).then_some(Reservation::Brand))
+    }
+}
+
+/// Why a name cannot be claimed whoever asks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Reservation {
+    /// The name is infrastructure or a route noun of uses.ink itself.
+    Infrastructure,
+    /// The name is on the brand list.
+    Brand,
 }
 
 impl AsRef<str> for Handle {

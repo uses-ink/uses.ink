@@ -575,6 +575,126 @@ pub enum Problem {
     /// `auth.key.print-refused`: the private key would be printed to a terminal
     #[serde(rename = "auth.key.print-refused")]
     AuthKeyPrintRefused,
+    /// `handle.name.reserved`: `{handle}` is kept for uses.ink itself
+    #[serde(rename = "handle.name.reserved")]
+    HandleNameReserved {
+        /// The handle, as written.
+        handle: String,
+    },
+    /// `handle.name.brand`: `{handle}` is a brand name that uses.ink keeps
+    #[serde(rename = "handle.name.brand")]
+    HandleNameBrand {
+        /// The handle, as written.
+        handle: String,
+    },
+    /// `handle.name.taken`: `{handle}` belongs to a site
+    #[serde(rename = "handle.name.taken")]
+    HandleNameTaken {
+        /// The handle, as written.
+        handle: String,
+    },
+    /// `handle.name.held`: `{handle}` was left by a site and is held until {until}
+    #[serde(rename = "handle.name.held")]
+    HandleNameHeld {
+        /// The handle, as written.
+        handle: String,
+        /// When the hold ends, as an RFC 3339 timestamp (UTC).
+        until: String,
+    },
+    /// `handle.name.kept`: `{handle}` belonged to a verified owner and is never given to anyone else
+    #[serde(rename = "handle.name.kept")]
+    HandleNameKept {
+        /// The handle, as written.
+        handle: String,
+    },
+    /// `row.id.exists`: a row with the id {id} exists already
+    #[serde(rename = "row.id.exists")]
+    RowIdExists {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `account.id.unknown`: there is no account {id}
+    #[serde(rename = "account.id.unknown")]
+    AccountIdUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `site.id.unknown`: there is no site {id}
+    #[serde(rename = "site.id.unknown")]
+    SiteIdUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `site.state.removing`: the site {id} is being removed and takes no change
+    #[serde(rename = "site.state.removing")]
+    SiteStateRemoving {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `deploy.blob.missing`: {route} is served from {hash}, which the store does not hold
+    #[serde(rename = "deploy.blob.missing")]
+    DeployBlobMissing {
+        /// The route.
+        route: Route,
+        /// The BLAKE3 of its bytes, in hex.
+        hash: String,
+    },
+    /// `deploy.id.unknown`: the site {id} has no deploy {deploy}
+    #[serde(rename = "deploy.id.unknown")]
+    DeployIdUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The deploy's id, the hash of its manifest.
+        deploy: String,
+    },
+    /// `site.deploy.absent`: the site {id} has no live deploy
+    #[serde(rename = "site.deploy.absent")]
+    SiteDeployAbsent {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `deploy.state.live`: the deploy {deploy} is live on the site {id} already
+    #[serde(rename = "deploy.state.live")]
+    DeployStateLive {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The deploy's id, the hash of its manifest.
+        deploy: String,
+    },
+    /// `credential.id.unknown`: there is no credential {id}
+    #[serde(rename = "credential.id.unknown")]
+    CredentialIdUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `deploy.manifest.missing`: the manifest of the deploy {deploy} is not in the blob store
+    #[serde(rename = "deploy.manifest.missing")]
+    DeployManifestMissing {
+        /// The deploy's id, the hash of its manifest.
+        deploy: String,
+    },
+    /// `build.id.unknown`: the site {id} has no build {build}
+    #[serde(rename = "build.id.unknown")]
+    BuildIdUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The build's id.
+        build: String,
+    },
+    /// `build.log.missing`: the log of the build {build} is {hash}, which the store does not hold
+    #[serde(rename = "build.log.missing")]
+    BuildLogMissing {
+        /// The build's id.
+        build: String,
+        /// The BLAKE3 of its bytes, in hex.
+        hash: String,
+    },
+    /// `source.path.unstorable`: a folder path that is not text cannot be stored
+    #[serde(rename = "source.path.unstorable")]
+    SourcePathUnstorable,
+    /// `site.tenant.invalid`: the site's id is not a valid tenant
+    #[serde(rename = "site.tenant.invalid")]
+    SiteTenantInvalid,
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -794,6 +914,25 @@ impl Problem {
         "auth.enrolment.refused",
         "auth.key.operator",
         "auth.key.print-refused",
+        "handle.name.reserved",
+        "handle.name.brand",
+        "handle.name.taken",
+        "handle.name.held",
+        "handle.name.kept",
+        "row.id.exists",
+        "account.id.unknown",
+        "site.id.unknown",
+        "site.state.removing",
+        "deploy.blob.missing",
+        "deploy.id.unknown",
+        "site.deploy.absent",
+        "deploy.state.live",
+        "credential.id.unknown",
+        "deploy.manifest.missing",
+        "build.id.unknown",
+        "build.log.missing",
+        "source.path.unstorable",
+        "site.tenant.invalid",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -914,6 +1053,25 @@ impl Problem {
             Self::AuthEnrolmentRefused => "auth.enrolment.refused",
             Self::AuthKeyOperator => "auth.key.operator",
             Self::AuthKeyPrintRefused => "auth.key.print-refused",
+            Self::HandleNameReserved { .. } => "handle.name.reserved",
+            Self::HandleNameBrand { .. } => "handle.name.brand",
+            Self::HandleNameTaken { .. } => "handle.name.taken",
+            Self::HandleNameHeld { .. } => "handle.name.held",
+            Self::HandleNameKept { .. } => "handle.name.kept",
+            Self::RowIdExists { .. } => "row.id.exists",
+            Self::AccountIdUnknown { .. } => "account.id.unknown",
+            Self::SiteIdUnknown { .. } => "site.id.unknown",
+            Self::SiteStateRemoving { .. } => "site.state.removing",
+            Self::DeployBlobMissing { .. } => "deploy.blob.missing",
+            Self::DeployIdUnknown { .. } => "deploy.id.unknown",
+            Self::SiteDeployAbsent { .. } => "site.deploy.absent",
+            Self::DeployStateLive { .. } => "deploy.state.live",
+            Self::CredentialIdUnknown { .. } => "credential.id.unknown",
+            Self::DeployManifestMissing { .. } => "deploy.manifest.missing",
+            Self::BuildIdUnknown { .. } => "build.id.unknown",
+            Self::BuildLogMissing { .. } => "build.log.missing",
+            Self::SourcePathUnstorable => "source.path.unstorable",
+            Self::SiteTenantInvalid => "site.tenant.invalid",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -1035,6 +1193,25 @@ impl Problem {
             Self::AuthEnrolmentRefused => Severity::Error,
             Self::AuthKeyOperator => Severity::Error,
             Self::AuthKeyPrintRefused => Severity::Error,
+            Self::HandleNameReserved { .. } => Severity::Error,
+            Self::HandleNameBrand { .. } => Severity::Error,
+            Self::HandleNameTaken { .. } => Severity::Error,
+            Self::HandleNameHeld { .. } => Severity::Error,
+            Self::HandleNameKept { .. } => Severity::Error,
+            Self::RowIdExists { .. } => Severity::Error,
+            Self::AccountIdUnknown { .. } => Severity::Error,
+            Self::SiteIdUnknown { .. } => Severity::Error,
+            Self::SiteStateRemoving { .. } => Severity::Error,
+            Self::DeployBlobMissing { .. } => Severity::Error,
+            Self::DeployIdUnknown { .. } => Severity::Error,
+            Self::SiteDeployAbsent { .. } => Severity::Error,
+            Self::DeployStateLive { .. } => Severity::Error,
+            Self::CredentialIdUnknown { .. } => Severity::Error,
+            Self::DeployManifestMissing { .. } => Severity::Error,
+            Self::BuildIdUnknown { .. } => Severity::Error,
+            Self::BuildLogMissing { .. } => Severity::Error,
+            Self::SourcePathUnstorable => Severity::Error,
+            Self::SiteTenantInvalid => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -1156,6 +1333,25 @@ impl Problem {
             Self::AuthEnrolmentRefused => Fault::Author,
             Self::AuthKeyOperator => Fault::Operator,
             Self::AuthKeyPrintRefused => Fault::Author,
+            Self::HandleNameReserved { .. } => Fault::Author,
+            Self::HandleNameBrand { .. } => Fault::Author,
+            Self::HandleNameTaken { .. } => Fault::Author,
+            Self::HandleNameHeld { .. } => Fault::Author,
+            Self::HandleNameKept { .. } => Fault::Author,
+            Self::RowIdExists { .. } => Fault::Author,
+            Self::AccountIdUnknown { .. } => Fault::Author,
+            Self::SiteIdUnknown { .. } => Fault::Author,
+            Self::SiteStateRemoving { .. } => Fault::Author,
+            Self::DeployBlobMissing { .. } => Fault::Ours,
+            Self::DeployIdUnknown { .. } => Fault::Author,
+            Self::SiteDeployAbsent { .. } => Fault::Author,
+            Self::DeployStateLive { .. } => Fault::Author,
+            Self::CredentialIdUnknown { .. } => Fault::Author,
+            Self::DeployManifestMissing { .. } => Fault::Ours,
+            Self::BuildIdUnknown { .. } => Fault::Author,
+            Self::BuildLogMissing { .. } => Fault::Ours,
+            Self::SourcePathUnstorable => Fault::Author,
+            Self::SiteTenantInvalid => Fault::Ours,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -1774,6 +1970,47 @@ impl From<&Problem> for Coded {
             Problem::AuthEnrolmentRefused => Coded::new("auth.enrolment.refused", vec![]),
             Problem::AuthKeyOperator => Coded::new("auth.key.operator", vec![]),
             Problem::AuthKeyPrintRefused => Coded::new("auth.key.print-refused", vec![]),
+            Problem::HandleNameReserved { handle, .. } => {
+                Coded::new("handle.name.reserved", vec![Field::from(handle.clone())])
+            }
+            Problem::HandleNameBrand { handle, .. } => {
+                Coded::new("handle.name.brand", vec![Field::from(handle.clone())])
+            }
+            Problem::HandleNameTaken { handle, .. } => {
+                Coded::new("handle.name.taken", vec![Field::from(handle.clone())])
+            }
+            Problem::HandleNameHeld { handle, until, .. } => {
+                Coded::new("handle.name.held", vec![Field::from(handle.clone()), Field::from(until.clone())])
+            }
+            Problem::HandleNameKept { handle, .. } => Coded::new("handle.name.kept", vec![Field::from(handle.clone())]),
+            Problem::RowIdExists { id, .. } => Coded::new("row.id.exists", vec![Field::from(id.clone())]),
+            Problem::AccountIdUnknown { id, .. } => Coded::new("account.id.unknown", vec![Field::from(id.clone())]),
+            Problem::SiteIdUnknown { id, .. } => Coded::new("site.id.unknown", vec![Field::from(id.clone())]),
+            Problem::SiteStateRemoving { id, .. } => Coded::new("site.state.removing", vec![Field::from(id.clone())]),
+            Problem::DeployBlobMissing { route, hash, .. } => {
+                Coded::new("deploy.blob.missing", vec![Field::from(route.clone()), Field::from(hash.clone())])
+            }
+            Problem::DeployIdUnknown { id, deploy, .. } => {
+                Coded::new("deploy.id.unknown", vec![Field::from(id.clone()), Field::from(deploy.clone())])
+            }
+            Problem::SiteDeployAbsent { id, .. } => Coded::new("site.deploy.absent", vec![Field::from(id.clone())]),
+            Problem::DeployStateLive { id, deploy, .. } => {
+                Coded::new("deploy.state.live", vec![Field::from(id.clone()), Field::from(deploy.clone())])
+            }
+            Problem::CredentialIdUnknown { id, .. } => {
+                Coded::new("credential.id.unknown", vec![Field::from(id.clone())])
+            }
+            Problem::DeployManifestMissing { deploy, .. } => {
+                Coded::new("deploy.manifest.missing", vec![Field::from(deploy.clone())])
+            }
+            Problem::BuildIdUnknown { id, build, .. } => {
+                Coded::new("build.id.unknown", vec![Field::from(id.clone()), Field::from(build.clone())])
+            }
+            Problem::BuildLogMissing { build, hash, .. } => {
+                Coded::new("build.log.missing", vec![Field::from(build.clone()), Field::from(hash.clone())])
+            }
+            Problem::SourcePathUnstorable => Coded::new("source.path.unstorable", vec![]),
+            Problem::SiteTenantInvalid => Coded::new("site.tenant.invalid", vec![]),
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -1936,6 +2173,25 @@ impl TryFrom<Coded> for Problem {
             "auth.enrolment.refused" => Self::AuthEnrolmentRefused,
             "auth.key.operator" => Self::AuthKeyOperator,
             "auth.key.print-refused" => Self::AuthKeyPrintRefused,
+            "handle.name.reserved" => Self::HandleNameReserved { handle: fields.next()? },
+            "handle.name.brand" => Self::HandleNameBrand { handle: fields.next()? },
+            "handle.name.taken" => Self::HandleNameTaken { handle: fields.next()? },
+            "handle.name.held" => Self::HandleNameHeld { handle: fields.next()?, until: fields.next()? },
+            "handle.name.kept" => Self::HandleNameKept { handle: fields.next()? },
+            "row.id.exists" => Self::RowIdExists { id: fields.next()? },
+            "account.id.unknown" => Self::AccountIdUnknown { id: fields.next()? },
+            "site.id.unknown" => Self::SiteIdUnknown { id: fields.next()? },
+            "site.state.removing" => Self::SiteStateRemoving { id: fields.next()? },
+            "deploy.blob.missing" => Self::DeployBlobMissing { route: fields.next()?, hash: fields.next()? },
+            "deploy.id.unknown" => Self::DeployIdUnknown { id: fields.next()?, deploy: fields.next()? },
+            "site.deploy.absent" => Self::SiteDeployAbsent { id: fields.next()? },
+            "deploy.state.live" => Self::DeployStateLive { id: fields.next()?, deploy: fields.next()? },
+            "credential.id.unknown" => Self::CredentialIdUnknown { id: fields.next()? },
+            "deploy.manifest.missing" => Self::DeployManifestMissing { deploy: fields.next()? },
+            "build.id.unknown" => Self::BuildIdUnknown { id: fields.next()?, build: fields.next()? },
+            "build.log.missing" => Self::BuildLogMissing { build: fields.next()?, hash: fields.next()? },
+            "source.path.unstorable" => Self::SourcePathUnstorable,
+            "site.tenant.invalid" => Self::SiteTenantInvalid,
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },

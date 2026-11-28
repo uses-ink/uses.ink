@@ -16,6 +16,7 @@
 //! transaction, so what must hold is in a statement's `WHERE`.
 
 mod account;
+mod brand;
 mod case;
 mod control;
 mod credential;
@@ -23,14 +24,17 @@ mod deploy;
 mod error;
 mod event;
 mod handle;
+mod hold;
 mod job;
 mod listed;
 mod migration;
 mod origin;
 pub mod passkeys;
+mod policy;
 mod ports;
 mod receipt;
 pub mod recovery;
+mod schema;
 mod site;
 
 pub use control_keys as keys;
@@ -39,6 +43,7 @@ pub(crate) use control_rows::{fields, id, typed, unreadable};
 pub use control_signin as signin;
 
 pub use account::{Account, New as NewAccount};
+pub use brand::{BrandError, Brands};
 pub use case::export::{Exported, Sink, Summary};
 pub use case::serve::Serving;
 pub use control::Control;
@@ -46,7 +51,8 @@ pub use credential::{Credential, New as NewCredential, Use as Purpose};
 pub use deploy::{Deploy, Live, New as NewDeploy, Published, Recorded, Resumed};
 pub use error::{Error, Failed, Refusal, Unreadable};
 pub use event::{Event, Unwritten};
-pub use handle::{Handle, HandleError};
+pub use handle::{Handle, HandleError, Reservation};
+pub use hold::{Held, Hold, Why as HoldReason};
 pub use id::{
     Account as AccountKind, Credential as CredentialKind, Enrolment as EnrolmentKind, Factor as FactorKind, Id,
     IdError, Kind, Session as SessionKind, Site as SiteKind,
@@ -55,7 +61,9 @@ pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked}
 pub use listed::{Canonical, Listed};
 pub use migration::{Domain, Remembered, Treed};
 pub use origin::{Origin, OriginError};
+pub use policy::Policy;
 pub use ports::Ports;
 pub use receipt::Receipt;
+pub use schema::Schema;
 pub use signin::SignIn;
 pub use site::{New as NewSite, Site, State as SiteState};

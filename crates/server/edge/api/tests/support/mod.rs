@@ -56,19 +56,18 @@ impl Rig {
     pub fn new(limits: Limits) -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db: Store = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new()
-            .with::<Domain>()
-            .unwrap()
-            .with::<Remembered>()
-            .unwrap()
-            .with::<Treed>()
-            .unwrap()
-            .with::<Queued>()
-            .unwrap()
-            .with::<control::signin::Entry>()
-            .unwrap()
-            .with::<control::keys::Entry>()
-            .unwrap();
+        let steps = control::Schema::after(
+            Steps::new()
+                .with::<Domain>()
+                .unwrap()
+                .with::<Remembered>()
+                .unwrap()
+                .with::<Treed>()
+                .unwrap()
+                .with::<Queued>()
+                .unwrap(),
+        )
+        .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
             db.clone(),

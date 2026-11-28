@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use blob_dir::Directory;
 use clock::System;
-use control::signin::{Entry, Settings, SignIn};
+use control::signin::{Settings, SignIn};
 use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Refusal, Remembered, Treed};
 use db::Steps;
 use db_sqlite::Sqlite;
@@ -160,7 +160,7 @@ impl Product {
         let sealer = Sealer::beside(&file).map_err(|e| Self::adapter("sealing key")(Box::new(e)))?;
         let origin = Self::origin(settings)?;
         let ports: Ports = Arc::new((db.clone(), blobs, Queue::new(db.clone()), sealer));
-        let control = Control::new(Arc::clone(&ports), origin.clone());
+        let control = Control::new(Arc::clone(&ports), origin.clone()).with_policy(settings.hosting.policy());
         let account = Self::owner(&control)?;
         let (operators, retired, keys) = Self::credentials(settings, data)?;
         let limits = Self::limits(settings)?;
@@ -231,10 +231,7 @@ impl Product {
             .and_then(Steps::with::<Remembered>)
             .and_then(Steps::with::<Treed>)
             .and_then(Steps::with::<Queued>)
-            .and_then(Steps::with::<Entry>)
-            .and_then(Steps::with::<control::keys::Entry>)
-            .and_then(Steps::with::<control::passkeys::Entry>)
-            .and_then(Steps::with::<control::recovery::Entry>);
+            .and_then(control::Schema::after);
         let steps = steps.map_err(|e| Self::adapter("migration")(Box::new(e)))?;
         pollster::block_on(steps.apply(&db)).map_err(|e| Self::adapter("migration")(Box::new(e)))?;
         Ok(db)
@@ -262,7 +259,7 @@ impl Product {
         data: &Path,
         settings: &args::Serve,
     ) -> Result<(Fronts, Lookup), Unready> {
-        let control = Control::new(Arc::clone(ports), origin.clone());
+        let control = Control::new(Arc::clone(ports), origin.clone()).with_policy(settings.hosting.policy());
         let blobs = Directory::open(data.join("blobs")).map_err(|e| Self::adapter("blob store")(Box::new(e)))?;
         Ok(Back::pair(control, System, blobs, settings.hosting.lookup()))
     }

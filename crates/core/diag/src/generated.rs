@@ -292,6 +292,61 @@ impl Message<'_> {
             Problem::AuthKeyPrintRefused => {
                 write!(out, "the private key would be printed to a terminal")
             }
+            Problem::HandleNameReserved { handle, .. } => {
+                write!(out, "`{handle}` is kept for uses.ink itself")
+            }
+            Problem::HandleNameBrand { handle, .. } => {
+                write!(out, "`{handle}` is a brand name that uses.ink keeps")
+            }
+            Problem::HandleNameTaken { handle, .. } => {
+                write!(out, "`{handle}` belongs to a site")
+            }
+            Problem::HandleNameHeld { handle, until, .. } => {
+                write!(out, "`{handle}` was left by a site and is held until {until}")
+            }
+            Problem::HandleNameKept { handle, .. } => {
+                write!(out, "`{handle}` belonged to a verified owner and is never given to anyone else")
+            }
+            Problem::RowIdExists { id, .. } => {
+                write!(out, "a row with the id {id} exists already")
+            }
+            Problem::AccountIdUnknown { id, .. } => {
+                write!(out, "there is no account {id}")
+            }
+            Problem::SiteIdUnknown { id, .. } => write!(out, "there is no site {id}"),
+            Problem::SiteStateRemoving { id, .. } => {
+                write!(out, "the site {id} is being removed and takes no change")
+            }
+            Problem::DeployBlobMissing { route, hash, .. } => {
+                write!(out, "{route} is served from {hash}, which the store does not hold")
+            }
+            Problem::DeployIdUnknown { id, deploy, .. } => {
+                write!(out, "the site {id} has no deploy {deploy}")
+            }
+            Problem::SiteDeployAbsent { id, .. } => {
+                write!(out, "the site {id} has no live deploy")
+            }
+            Problem::DeployStateLive { deploy, id, .. } => {
+                write!(out, "the deploy {deploy} is live on the site {id} already")
+            }
+            Problem::CredentialIdUnknown { id, .. } => {
+                write!(out, "there is no credential {id}")
+            }
+            Problem::DeployManifestMissing { deploy, .. } => {
+                write!(out, "the manifest of the deploy {deploy} is not in the blob store")
+            }
+            Problem::BuildIdUnknown { id, build, .. } => {
+                write!(out, "the site {id} has no build {build}")
+            }
+            Problem::BuildLogMissing { build, hash, .. } => {
+                write!(out, "the log of the build {build} is {hash}, which the store does not hold")
+            }
+            Problem::SourcePathUnstorable => {
+                write!(out, "a folder path that is not text cannot be stored")
+            }
+            Problem::SiteTenantInvalid => {
+                write!(out, "the site's id is not a valid tenant")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -629,6 +684,25 @@ impl Fix<'_> {
             Problem::AuthEnrolmentRefused => true,
             Problem::AuthKeyOperator => true,
             Problem::AuthKeyPrintRefused => true,
+            Problem::HandleNameReserved { .. } => true,
+            Problem::HandleNameBrand { .. } => true,
+            Problem::HandleNameTaken { .. } => true,
+            Problem::HandleNameHeld { .. } => true,
+            Problem::HandleNameKept { .. } => true,
+            Problem::RowIdExists { .. } => true,
+            Problem::AccountIdUnknown { .. } => true,
+            Problem::SiteIdUnknown { .. } => true,
+            Problem::SiteStateRemoving { .. } => true,
+            Problem::DeployBlobMissing { .. } => true,
+            Problem::DeployIdUnknown { .. } => true,
+            Problem::SiteDeployAbsent { .. } => true,
+            Problem::DeployStateLive { .. } => true,
+            Problem::CredentialIdUnknown { .. } => true,
+            Problem::DeployManifestMissing { .. } => true,
+            Problem::BuildIdUnknown { .. } => true,
+            Problem::BuildLogMissing { .. } => true,
+            Problem::SourcePathUnstorable => true,
+            Problem::SiteTenantInvalid => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -973,6 +1047,47 @@ impl Fix<'_> {
             }
             Problem::AuthKeyPrintRefused => {
                 write!(out, "send it to a file with `--out`, or redirect stdout")
+            }
+            Problem::HandleNameReserved { .. } => write!(out, "choose another handle"),
+            Problem::HandleNameBrand { .. } => {
+                write!(out, "choose another handle; if the name is yours, write to the operator")
+            }
+            Problem::HandleNameTaken { .. } => write!(out, "choose another handle"),
+            Problem::HandleNameHeld { until, .. } => {
+                write!(out, "choose another handle, or claim it after {until}")
+            }
+            Problem::HandleNameKept { .. } => write!(out, "choose another handle"),
+            Problem::RowIdExists { .. } => write!(out, "use a new id"),
+            Problem::AccountIdUnknown { .. } => {
+                write!(out, "list the accounts of the server, or sign in again")
+            }
+            Problem::SiteIdUnknown { .. } => {
+                write!(out, "list the sites with `ink site list`")
+            }
+            Problem::SiteStateRemoving { .. } => {
+                write!(out, "remove it again to finish the removal, or add a new site")
+            }
+            Problem::DeployBlobMissing { .. } => write!(out, "build the site again"),
+            Problem::DeployIdUnknown { .. } => {
+                write!(out, "list its deploys with `ink deploys`")
+            }
+            Problem::SiteDeployAbsent { .. } => write!(out, "deploy the site first"),
+            Problem::DeployStateLive { .. } => {
+                write!(out, "nothing to do: it is the deploy being served")
+            }
+            Problem::CredentialIdUnknown { .. } => {
+                write!(out, "store the credential again")
+            }
+            Problem::DeployManifestMissing { .. } => write!(out, "build the site again"),
+            Problem::BuildIdUnknown { .. } => {
+                write!(out, "list its builds with `ink builds`")
+            }
+            Problem::BuildLogMissing { .. } => write!(out, "build the site again"),
+            Problem::SourcePathUnstorable => {
+                write!(out, "use a folder whose path is text")
+            }
+            Problem::SiteTenantInvalid => {
+                write!(out, "give the operator this code; the id was not made from 16 bytes")
             }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")

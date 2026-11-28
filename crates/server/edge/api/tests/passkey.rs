@@ -24,7 +24,7 @@ use blob_dir::Directory;
 use clock::{Clock, Counter, Manual};
 use control::keys::Keys;
 use control::passkeys::{Registry, Relying};
-use control::signin::{Drawn, Entry, Presented, Requested, Settings, SignIn, Signup};
+use control::signin::{Drawn, Presented, Requested, Settings, SignIn, Signup};
 use control::{AccountKind, Control, Domain, Id, Origin};
 use db::{Db, Steps};
 use db_sqlite::Sqlite;
@@ -72,19 +72,7 @@ impl Fixture {
     fn new() -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db: Store = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new()
-            .with::<Domain>()
-            .unwrap()
-            .with::<Queued>()
-            .unwrap()
-            .with::<Entry>()
-            .unwrap()
-            .with::<control::keys::Entry>()
-            .unwrap()
-            .with::<control::passkeys::Entry>()
-            .unwrap()
-            .with::<control::recovery::Entry>()
-            .unwrap();
+        let steps = control::Schema::after(Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap()).unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
             db.clone(),

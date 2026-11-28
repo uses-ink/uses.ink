@@ -271,6 +271,8 @@ freeze.
   deletion with receipt; abuse report endpoint and takedown; orgs, roles and per-account
   recovery policy (`auth.md` sections 8, 9, 12); previews of branches **(owner: Q7)**; custom
   domains through Cloudflare for SaaS (our TXT proof first, then the hostname).
+  Built so far, natively on SQLite (the owner's defaults of `docs/hosted.md` section 12): C1, handles with a brand
+  list, a twelve month hold and verified handles that are never reclaimed (0087).
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`

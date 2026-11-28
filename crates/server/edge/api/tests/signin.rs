@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use blob_dir::Directory;
 use clock::{Counter, Manual};
-use control::signin::{Entry, Settings, SignIn, Signup};
+use control::signin::{Settings, SignIn, Signup};
 use control::{Control, Domain, Origin};
 use db::Steps;
 use db_sqlite::Sqlite;
@@ -90,17 +90,7 @@ impl Fixture {
     fn new(wanted: Wanted) -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db: Store = Arc::new(Sqlite::memory().unwrap());
-        let steps = Steps::new()
-            .with::<Domain>()
-            .unwrap()
-            .with::<Queued>()
-            .unwrap()
-            .with::<Entry>()
-            .unwrap()
-            .with::<control::keys::Entry>()
-            .unwrap()
-            .with::<control::passkeys::Entry>()
-            .unwrap();
+        let steps = control::Schema::after(Steps::new().with::<Domain>().unwrap().with::<Queued>().unwrap()).unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
             db.clone(),

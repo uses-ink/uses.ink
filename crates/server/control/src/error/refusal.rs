@@ -2,30 +2,38 @@
 
 use std::fmt;
 
+use jiff::Timestamp;
 use model::{DeployId, Hash, Route};
 
-use crate::Handle;
+use crate::hold::Why;
 use crate::id::{Account, Credential, Id, Site};
+use crate::{Handle, Reservation};
 
 /// A request the control plane refuses, and the fact that makes it wrong. Nothing was changed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Refusal {
-    /// The handle is kept for uses.ink itself.
+    /// The handle is kept: for uses.ink itself, or on the brand list.
     Reserved {
         /// The handle.
         handle: Handle,
+        /// Which list it is on.
+        reservation: Reservation,
     },
     /// The handle belongs to a site.
     Taken {
         /// The handle.
         handle: Handle,
     },
-    /// The handle belonged to a site that was removed, and stays unclaimable (architecture
-    /// section 12).
-    Tombstoned {
+    /// The handle was left by a site and is held (decision 0087): for a time, or for good when
+    /// its owner was verified.
+    Held {
         /// The handle.
         handle: Handle,
+        /// Why it is held.
+        why: Why,
+        /// When the hold ends. `None` is for good.
+        until: Option<Timestamp>,
     },
     /// A row with this id exists already.
     Exists {
@@ -106,9 +114,17 @@ pub enum Refusal {
 impl fmt::Display for Refusal {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Reserved { handle } => write!(out, "{handle} is reserved for uses.ink itself"),
+            Self::Reserved { handle, reservation: Reservation::Infrastructure } => {
+                write!(out, "{handle} is reserved for uses.ink itself")
+            }
+            Self::Reserved { handle, .. } => write!(out, "{handle} is a brand name that uses.ink keeps"),
             Self::Taken { handle } => write!(out, "{handle} is taken"),
-            Self::Tombstoned { handle } => write!(out, "{handle} was used by a site that was removed and is not free"),
+            Self::Held { handle, until: Some(until), .. } => {
+                write!(out, "{handle} was left by a site and is held until {until}")
+            }
+            Self::Held { handle, until: None, .. } => {
+                write!(out, "{handle} belonged to a verified owner and is never given to anyone else")
+            }
             Self::Exists { id } => write!(out, "a row with the id {id} exists already"),
             Self::NoAccount { account } => write!(out, "there is no account {account}"),
             Self::NoSite { site } => write!(out, "there is no site {site}"),
@@ -127,6 +143,59 @@ impl fmt::Display for Refusal {
             }
             Self::Unstorable => out.write_str("a folder path that is not text cannot be stored"),
             Self::Tenant(_) => out.write_str("the site's id is not a valid tenant"),
+        }
+    }
+}
+
+impl Refusal {
+    /// The code of the catalog (`crates/core/diag/catalog.toml`) that words this refusal.
+    pub const fn code(&self) -> &'static str {
+        match self {
+            Self::Reserved { reservation: Reservation::Infrastructure, .. } => "handle.name.reserved",
+            Self::Reserved { .. } => "handle.name.brand",
+            Self::Taken { .. } => "handle.name.taken",
+            Self::Held { until: None, .. } => "handle.name.kept",
+            Self::Held { .. } => "handle.name.held",
+            Self::Exists { .. } => "row.id.exists",
+            Self::NoAccount { .. } => "account.id.unknown",
+            Self::NoSite { .. } => "site.id.unknown",
+            Self::Removing { .. } => "site.state.removing",
+            Self::MissingBlob { .. } => "deploy.blob.missing",
+            Self::NoDeploy { .. } => "deploy.id.unknown",
+            Self::NotLive { .. } => "site.deploy.absent",
+            Self::AlreadyLive { .. } => "deploy.state.live",
+            Self::NoCredential { .. } => "credential.id.unknown",
+            Self::NoManifest { .. } => "deploy.manifest.missing",
+            Self::NoBuild { .. } => "build.id.unknown",
+            Self::MissingLog { .. } => "build.log.missing",
+            Self::Unstorable => "source.path.unstorable",
+            Self::Tenant(_) => "site.tenant.invalid",
+        }
+    }
+
+    /// The data of the refusal, named as the catalog names the fields of its code.
+    pub fn fields(&self) -> Vec<(&'static str, String)> {
+        match self {
+            Self::Reserved { handle, .. } | Self::Taken { handle } => vec![("handle", handle.to_string())],
+            Self::Held { handle, until, .. } => {
+                let mut fields = vec![("handle", handle.to_string())];
+                fields.extend(until.map(|until| ("until", until.to_string())));
+                fields
+            }
+            Self::Exists { id } => vec![("id", id.clone())],
+            Self::NoAccount { account } => vec![("id", account.to_string())],
+            Self::NoSite { site } | Self::Removing { site } | Self::NotLive { site } => {
+                vec![("id", site.to_string())]
+            }
+            Self::NoDeploy { site, deploy } | Self::AlreadyLive { site, deploy } => {
+                vec![("id", site.to_string()), ("deploy", deploy.to_string())]
+            }
+            Self::MissingBlob { route, blob } => vec![("route", route.to_string()), ("hash", blob.to_string())],
+            Self::NoCredential { credential } => vec![("id", credential.to_string())],
+            Self::NoManifest { deploy } => vec![("deploy", deploy.to_string())],
+            Self::NoBuild { site, build } => vec![("id", site.to_string()), ("build", build.to_string())],
+            Self::MissingLog { build, blob } => vec![("build", build.to_string()), ("hash", blob.to_string())],
+            Self::Unstorable | Self::Tenant(_) => Vec::new(),
         }
     }
 }

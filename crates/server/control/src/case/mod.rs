@@ -3,6 +3,7 @@
 mod credential;
 mod deploy;
 pub(crate) mod export;
+mod hold;
 mod job;
 mod read;
 mod remove;

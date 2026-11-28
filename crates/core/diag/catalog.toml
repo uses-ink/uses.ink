@@ -72,6 +72,11 @@ since = "When it happened, as an RFC 3339 timestamp (UTC)."
 skew = "How many seconds the request's time is from the server's."
 token_file = "The file that holds the retired owner token."
 window = "How many seconds either side of the server's time a request may be."
+handle = "The handle, as written."
+until = "When the hold ends, as an RFC 3339 timestamp (UTC)."
+id = "The id of the row, as 32 hex digits."
+deploy = "The deploy's id, the hash of its manifest."
+build = "The build's id."
 
 [diagnostic."config.syntax.invalid"]
 severity = "error"
@@ -681,6 +686,137 @@ severity = "error"
 fault = "author"
 message = "the private key would be printed to a terminal"
 fix = "send it to a file with `--out`, or redirect stdout"
+
+[diagnostic."handle.name.reserved"]
+severity = "error"
+fault = "author"
+fields = { handle = "text" }
+message = "`{handle}` is kept for uses.ink itself"
+fix = "choose another handle"
+
+[diagnostic."handle.name.brand"]
+severity = "error"
+fault = "author"
+fields = { handle = "text" }
+message = "`{handle}` is a brand name that uses.ink keeps"
+fix = "choose another handle; if the name is yours, write to the operator"
+
+[diagnostic."handle.name.taken"]
+severity = "error"
+fault = "author"
+fields = { handle = "text" }
+message = "`{handle}` belongs to a site"
+fix = "choose another handle"
+
+[diagnostic."handle.name.held"]
+severity = "error"
+fault = "author"
+fields = { handle = "text", until = "text" }
+message = "`{handle}` was left by a site and is held until {until}"
+fix = "choose another handle, or claim it after {until}"
+
+[diagnostic."handle.name.kept"]
+severity = "error"
+fault = "author"
+fields = { handle = "text" }
+message = "`{handle}` belonged to a verified owner and is never given to anyone else"
+fix = "choose another handle"
+
+[diagnostic."row.id.exists"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "a row with the id {id} exists already"
+fix = "use a new id"
+
+[diagnostic."account.id.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "there is no account {id}"
+fix = "list the accounts of the server, or sign in again"
+
+[diagnostic."site.id.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "there is no site {id}"
+fix = "list the sites with `ink site list`"
+
+[diagnostic."site.state.removing"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "the site {id} is being removed and takes no change"
+fix = "remove it again to finish the removal, or add a new site"
+
+[diagnostic."deploy.blob.missing"]
+severity = "error"
+fault = "ours"
+fields = { route = "route", hash = "text" }
+message = "{route} is served from {hash}, which the store does not hold"
+fix = "build the site again"
+
+[diagnostic."deploy.id.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text", deploy = "text" }
+message = "the site {id} has no deploy {deploy}"
+fix = "list its deploys with `ink deploys`"
+
+[diagnostic."site.deploy.absent"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "the site {id} has no live deploy"
+fix = "deploy the site first"
+
+[diagnostic."deploy.state.live"]
+severity = "error"
+fault = "author"
+fields = { id = "text", deploy = "text" }
+message = "the deploy {deploy} is live on the site {id} already"
+fix = "nothing to do: it is the deploy being served"
+
+[diagnostic."credential.id.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "there is no credential {id}"
+fix = "store the credential again"
+
+[diagnostic."deploy.manifest.missing"]
+severity = "error"
+fault = "ours"
+fields = { deploy = "text" }
+message = "the manifest of the deploy {deploy} is not in the blob store"
+fix = "build the site again"
+
+[diagnostic."build.id.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text", build = "text" }
+message = "the site {id} has no build {build}"
+fix = "list its builds with `ink builds`"
+
+[diagnostic."build.log.missing"]
+severity = "error"
+fault = "ours"
+fields = { build = "text", hash = "text" }
+message = "the log of the build {build} is {hash}, which the store does not hold"
+fix = "build the site again"
+
+[diagnostic."source.path.unstorable"]
+severity = "error"
+fault = "author"
+message = "a folder path that is not text cannot be stored"
+fix = "use a folder whose path is text"
+
+[diagnostic."site.tenant.invalid"]
+severity = "error"
+fault = "ours"
+message = "the site's id is not a valid tenant"
+fix = "give the operator this code; the id was not made from 16 bytes"
 
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
