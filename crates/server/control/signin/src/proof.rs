@@ -90,6 +90,8 @@ pub enum Context {
     Session,
     /// The secret in the cookie of a passkey ceremony.
     Ceremony,
+    /// A one-time proof that someone reads mail at an address.
+    Authority,
 }
 
 impl Context {
@@ -103,6 +105,7 @@ impl Context {
             Self::Challenge => "uses.ink 2026-11-27 sign-in challenge",
             Self::Session => "uses.ink 2026-11-27 sign-in session",
             Self::Ceremony => "uses.ink 2026-11-27 passkey ceremony",
+            Self::Authority => "uses.ink 2026-11-28 address authority",
         }
     }
 }

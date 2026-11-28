@@ -17,6 +17,13 @@ pub enum Template {
         /// How long it works.
         valid: Duration,
     },
+    /// A one-time link that proves the reader can read mail at this address and signs nobody in.
+    Prove {
+        /// The link.
+        link: Link,
+        /// How long it works.
+        valid: Duration,
+    },
 }
 
 impl Template {
@@ -24,6 +31,7 @@ impl Template {
     pub const fn subject(&self) -> &'static str {
         match self {
             Self::Login { .. } => "Your sign-in link",
+            Self::Prove { .. } => "Confirm this address",
         }
     }
 }
@@ -35,6 +43,11 @@ impl fmt::Display for Template {
             Self::Login { link, valid } => write!(
                 out,
                 "Open this link to sign in:\n\n{link}\n\nIt works once, for {} minutes. If you did not ask for it, ignore this message.\n",
+                valid.as_secs().div_ceil(60)
+            ),
+            Self::Prove { link, valid } => write!(
+                out,
+                "Open this link to confirm that you read mail at this address:\n\n{link}\n\nIt works once, for {} minutes, and it does not sign you in. If you did not ask for it, ignore this message.\n",
                 valid.as_secs().div_ceil(60)
             ),
         }

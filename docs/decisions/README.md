@@ -89,3 +89,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0091 | [A branch preview is a labelled manifest with an end and no deploy, served at label--handle](0091-a-branch-preview-is-a-labelled-manifest-with-an-end-and-no-deploy.md) | built | 2026-11-28 | control |
 | 0092 | [The dashboard is served on the API host by ink serve, with a derived origin and a per-request site lookup](0092-the-dashboard-is-served-on-the-api-host-by-ink-serve.md) | built | 2026-11-28 | control |
 | 0093 | [A custom domain is a row proved by a TXT token that binds the name to a site; claims serve nothing](0093-a-custom-domain-is-a-row-proved-by-a-txt-token-that-binds.md) | built | 2026-11-28 | control |
+| 0094 | [The email authority is the magic link spent as a proof of an address, under its own digest key](0094-the-email-authority-is-the-magic-link-spent-as-a-proof-of-an-address.md) | built | 2026-11-28 | control |

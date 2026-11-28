@@ -247,6 +247,10 @@ impl Order {
         // The DNS authority (decision 0093): the control plane's use cases and the adapters its
         // tests run them on; the resolver port is its own.
         (
+            "uses-ink-authority-email",
+            &["uses-ink-control", "uses-ink-db", "uses-ink-db-sqlite", "uses-ink-mail", "uses-ink-queue-rows"],
+        ),
+        (
             "uses-ink-authority-dns",
             &[
                 "uses-ink-blob-dir",

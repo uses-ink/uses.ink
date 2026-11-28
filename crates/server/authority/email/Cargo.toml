@@ -1,0 +1,23 @@
+[package]
+name = "uses-ink-authority-email"
+description = "The email authority (`ink:authority-email`): the sign-in magic link as a one-time proof that someone reads mail at an address, with no session made"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+control.workspace = true
+db.workspace = true
+jiff.workspace = true
+mail.workspace = true
+
+[dev-dependencies]
+db-sqlite.workspace = true
+pollster.workspace = true
+queue-rows.workspace = true
+
+[lints]
+workspace = true

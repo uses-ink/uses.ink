@@ -286,7 +286,8 @@ freeze.
   stays whole across a resume (0090); C6, branch previews at `label--handle` that expire, are swept and
   never touch the deploys (0091), pushed by archive until the watch can build a branch; C7, custom domains as
   rows proved by a TXT token that binds the name to a site, with a `Resolver` port and a fake, served at
-  once by the edge and released with the site (0093).
+  once by the edge and released with the site (0093); C8, the email authority, the magic link spent as a
+  proof of an address under its own digest key and with no session (0094).
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`

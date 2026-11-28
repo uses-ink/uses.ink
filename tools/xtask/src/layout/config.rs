@@ -275,11 +275,12 @@ mod tests {
     use super::*;
 
     /// Every crate the rule list held in code before it became data, sorted.
-    const ENFORCED: [&str; 58] = [
+    const ENFORCED: [&str; 59] = [
         "farm",
         "freehand",
         "freehand-web",
         "uses-ink-authority-dns",
+        "uses-ink-authority-email",
         "uses-ink-blob",
         "uses-ink-blob-conformance",
         "uses-ink-blob-dir",

@@ -33,6 +33,7 @@ pub struct SignIn<D> {
 
 /// A one-time token to store.
 struct Draft<'a> {
+    context: Context,
     purpose: Purpose,
     address: Option<&'a Address>,
     account: Option<Id<AccountKind>>,
@@ -139,7 +140,7 @@ impl<D: Db> SignIn<D> {
     }
 
     async fn issue(&self, draft: Draft<'_>, now: Timestamp) -> Result<Issued, Error<D::Error>> {
-        let digest = Context::Challenge.digest(&draft.proof);
+        let digest = draft.context.digest(&draft.proof);
         let insert = Query::insert()
             .into_table(table::Challenge::Table)
             .columns([
@@ -176,6 +177,7 @@ impl<D: Db> SignIn<D> {
             return Ok(Requested::Declined);
         }
         let draft = Draft {
+            context: Context::Challenge,
             purpose: Purpose::Login,
             address: Some(address),
             account,
@@ -200,6 +202,7 @@ impl<D: Db> SignIn<D> {
             return Ok(None);
         }
         let draft = Draft {
+            context: Context::Challenge,
             purpose: Purpose::Admin,
             address: None,
             account,
@@ -249,6 +252,50 @@ impl<D: Db> SignIn<D> {
     /// was never made, was used, or ended, which look the same.
     pub async fn peek(&self, proof: &Proof, now: Timestamp) -> Result<Option<Pending>, Error<D::Error>> {
         Ok(self.live(&Context::Challenge.digest(proof), now).await?.map(|(_, pending)| pending))
+    }
+
+    /// Makes a one-time proof that someone can read mail at `address` (`ink:authority-email`,
+    /// decision 0094). It is stored like a sign-in link, in the `challenge` table, under its own
+    /// digest key ([`Context::Authority`]), so it is no sign-in and a sign-in link is no proof of
+    /// an address. The row's purpose says `login` because the table's check allows no other; the
+    /// digest key is what tells them apart. It lives for `ttl` and no account is needed.
+    pub async fn vouch(
+        &self,
+        address: &Address,
+        proof: Proof,
+        (ttl, now): (Ttl, Timestamp),
+    ) -> Result<Issued, Error<D::Error>> {
+        self.purge(now).await?;
+        let draft = Draft {
+            context: Context::Authority,
+            purpose: Purpose::Login,
+            address: Some(address),
+            account: None,
+            slot: None,
+            proof,
+            expires: ttl.after(now)?,
+        };
+        self.issue(draft, now).await
+    }
+
+    /// Spends a proof made by [`SignIn::vouch`] and returns the address it was mailed to. No
+    /// session is made and no account is touched. A proof that was never made, was used, ended,
+    /// or is a sign-in link is [`Refused::Unusable`], and the answer does not say which.
+    pub async fn attest(&self, proof: &Proof, now: Timestamp) -> Result<Address, Error<D::Error>> {
+        let digest = Context::Authority.digest(proof);
+        let (link, _) = self.live(&digest, now).await?.ok_or(Refused::Unusable)?;
+        let address = link.address.ok_or(Refused::Unusable)?;
+        let spend = Query::update()
+            .table(table::Challenge::Table)
+            .value(table::Challenge::UsedAt, now.as_millisecond())
+            .and_where(Expr::col(table::Challenge::Digest).eq(digest.as_bytes().as_slice()))
+            .and_where(Expr::col(table::Challenge::UsedAt).is_null())
+            .and_where(Expr::col(table::Challenge::ExpiresAt).gt(now.as_millisecond()))
+            .to_owned();
+        if self.db.run(spend.into()).await?.changes != 1 {
+            return Err(Refused::Unusable.into());
+        }
+        Ok(address)
     }
 
     /// Uses a link and signs in. For the first-run link, `address` is the one to give the

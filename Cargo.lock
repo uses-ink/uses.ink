@@ -6287,6 +6287,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-authority-email"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "pollster",
+ "uses-ink-control",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
+ "uses-ink-mail",
+ "uses-ink-queue-rows",
+]
+
+[[package]]
 name = "uses-ink-blob"
 version = "0.0.0"
 dependencies = [
