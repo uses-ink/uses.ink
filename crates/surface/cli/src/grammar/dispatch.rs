@@ -47,9 +47,7 @@ impl Explain {
 impl Serve {
     /// The same command with its folder defaulted to the site's `.ink/out`.
     fn sited(mut self, dir: &std::path::Path) -> Self {
-        if self.folder.as_os_str().is_empty() {
-            self.folder = dir.join(DEFAULT_OUT);
-        }
+        self.folder.get_or_insert_with(|| dir.join(DEFAULT_OUT));
         self
     }
 }

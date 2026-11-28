@@ -175,6 +175,21 @@ fn serves_a_built_deploy_with_the_edge_behaviour() {
     assert_eq!(site.get("/tea", &[&format!("If-None-Match: {etag}")]).status(), "304");
 }
 
+/// `ink serve` with no folder serves what `ink build` wrote into the site's `.ink/out`.
+#[test]
+fn serves_the_sites_own_build_when_given_no_folder() {
+    let root = scratch("default");
+    let site = root.join("site");
+    std::fs::create_dir_all(&site).unwrap();
+    std::fs::write(site.join("index.md"), "# Home\n\nBuilt in place.\n").unwrap();
+    let (exit, _, err) = ink(&["build", "-C", site.to_str().unwrap()]);
+    assert_eq!(exit, cli::Exit::Done, "{err}");
+    let served = serve(&["-C", site.to_str().unwrap()]);
+    let home = served.get("/", &[]);
+    assert_eq!(home.status(), "200", "{}", home.text);
+    assert!(home.body().contains("Built in place."), "{}", home.text);
+}
+
 #[test]
 fn answers_conditions_and_ranges_like_the_engine_headers_say() {
     let root = scratch("ranges");

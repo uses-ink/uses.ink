@@ -321,8 +321,7 @@ pub enum HostMode {
 pub struct Serve {
     /// A folder `ink build` wrote into, or with `--host-mode folders` a folder of them, one per
     /// host name [default: .ink/out of the site].
-    #[arg(default_value = "", hide_default_value = true)]
-    pub folder: PathBuf,
+    pub folder: Option<PathBuf>,
     /// The address to listen on.
     #[arg(long = "addr", default_value = "127.0.0.1:8080", help_heading = Heading::SERVER)]
     pub address: std::net::SocketAddr,

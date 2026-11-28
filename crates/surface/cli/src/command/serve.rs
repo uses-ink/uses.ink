@@ -14,6 +14,7 @@ use edge_folder::{Deploys, Files, Mode};
 use serde::Serialize;
 
 use crate::command::remote::{Fetching, Settings};
+use crate::command::source::DEFAULT_OUT;
 use crate::grammar::args::{self, HostMode};
 use crate::output::error::{Error, ServeError};
 use crate::output::exit::Exit;
@@ -348,8 +349,8 @@ impl args::Serve {
 
     /// Binds, prints the address, and serves until Ctrl-C.
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let deploys =
-            Deploys::new(&self.folder, self.host_mode.into()).map_err(|source| ServeError::Deploys { source })?;
+        let folder = self.folder.as_deref().unwrap_or_else(|| std::path::Path::new(DEFAULT_OUT));
+        let deploys = Deploys::new(folder, self.host_mode.into()).map_err(|source| ServeError::Deploys { source })?;
         let mode = Self::mode(&deploys);
         let mut product = self
             .data
