@@ -94,6 +94,7 @@ impl args::Serve {
             site: product.site.clone(),
             data: data.clone(),
             operators: product.operators.clone(),
+            migrated: Some(product.migrated.names.clone()),
             admin,
             retired: product.retired.is_some(),
         };
@@ -111,6 +112,7 @@ impl args::Serve {
                 site,
                 data: data.clone(),
                 operators: data.join("operator-keys"),
+                migrated: None,
                 admin: Admin::Unminted,
                 retired: data.join("owner-token").exists(),
             }),

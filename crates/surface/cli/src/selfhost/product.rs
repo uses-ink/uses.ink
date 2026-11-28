@@ -17,7 +17,7 @@ use blob_dir::Directory;
 use clock::System;
 use control::signin::{Settings, SignIn};
 use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Refusal, Remembered, Treed};
-use db::Steps;
+use db::{Applied, Steps};
 use db_sqlite::Sqlite;
 use edge_api::door::Config;
 use edge_api::{
@@ -151,6 +151,8 @@ pub(crate) struct Product {
     pub(crate) back: Option<Lookup>,
     /// The owner token file of an older version, when one is there: it no longer works.
     pub(crate) retired: Option<PathBuf>,
+    /// The migrations this start applied to the database, by name.
+    pub(crate) migrated: Applied,
 }
 
 impl Product {
@@ -166,7 +168,7 @@ impl Product {
     pub(crate) fn open(settings: &args::Serve, data: &Path, (site, told): (&str, Logger)) -> Result<Self, Unready> {
         std::fs::create_dir_all(data).map_err(|source| Unready::Data { path: data.to_path_buf(), source })?;
         let file = data.join("ink.db");
-        let db = Self::database(&file)?;
+        let (db, migrated) = Self::database(&file)?;
         let blobs = Directory::open(data.join("blobs")).map_err(|e| Self::adapter("blob store")(Box::new(e)))?;
         let sealer = Sealer::beside(&file).map_err(|e| Self::adapter("sealing key")(Box::new(e)))?;
         let origin = Self::origin(site)?;
@@ -258,11 +260,12 @@ impl Product {
             fronts,
             back: Some(back),
             retired,
+            migrated,
         })
     }
 
-    /// The database at `file`, with every migration applied.
-    fn database(file: &Path) -> Result<Store, Unready> {
+    /// The database at `file`, with every migration applied, and the ones this call applied.
+    fn database(file: &Path) -> Result<(Store, Applied), Unready> {
         let db = Arc::new(Sqlite::open(file).map_err(|e| Self::adapter("database")(Box::new(e)))?);
         let steps = Steps::new()
             .with::<Domain>()
@@ -271,8 +274,8 @@ impl Product {
             .and_then(Steps::with::<Queued>)
             .and_then(control::Schema::after);
         let steps = steps.map_err(|e| Self::adapter("migration")(Box::new(e)))?;
-        pollster::block_on(steps.apply(&db)).map_err(|e| Self::adapter("migration")(Box::new(e)))?;
-        Ok(db)
+        let applied = pollster::block_on(steps.apply(&db)).map_err(|e| Self::adapter("migration")(Box::new(e)))?;
+        Ok((db, applied))
     }
 
     /// Where the control plane says its sites are served, from `--origin`.

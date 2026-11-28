@@ -41,8 +41,10 @@ Sign-in
 
 Data
   data           /srv/ink/state                   --data
+  database       /srv/ink/state/ink.db            computed
   operator keys  /srv/ink/state/operator-keys     computed
   enrol yours    ink login --data /srv/ink/state  computed
+  migrations     0001_domain.sql, 0002_seen.sql   computed
 
 Limits
   json body       64 KiB   default

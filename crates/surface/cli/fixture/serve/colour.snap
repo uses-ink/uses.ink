@@ -38,8 +38,10 @@ source: crates/standalone/fixture/src/lib.rs
 
 \e[1mData\e[0m
   \e[2mdata\e[0m           \e[34m/srv/ink/state\e[0m                   \e[1m\e[36m--data\e[0m
+  \e[2mdatabase\e[0m       \e[34m/srv/ink/state/ink.db\e[0m            \e[2mcomputed\e[0m
   \e[2moperator keys\e[0m  \e[34m/srv/ink/state/operator-keys\e[0m     \e[2mcomputed\e[0m
   \e[2menrol yours\e[0m    \e[1m\e[36mink login --data /srv/ink/state\e[0m  \e[2mcomputed\e[0m
+  \e[2mmigrations\e[0m     0001_domain.sql\e[2m, \e[0m0002_seen.sql   \e[2mcomputed\e[0m
 
 \e[1mLimits\e[0m
   \e[2mjson body\e[0m       \e[35m64\e[0m \e[2mKiB\e[0m   \e[2mdefault\e[0m

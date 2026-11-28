@@ -32,6 +32,7 @@ impl Fixed {
             site,
             data: std::path::PathBuf::from("/srv/ink/state"),
             operators: std::path::PathBuf::from("/srv/ink/state/operator-keys"),
+            migrated: Some(vec!["0001_domain.sql".to_owned(), "0002_seen.sql".to_owned()]),
             admin: Admin::Issued {
                 link: "http://api.localhost:8080/login/Zx3kQ9vT2mLp7RwB4nHd6YcAeF8gJs1U".to_owned(),
                 valid: Span(Duration::from_hours(24)),

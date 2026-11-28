@@ -365,6 +365,10 @@ fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
         let part = heard.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
         settings.push_str(std::str::from_utf8(&part).unwrap());
     }
+    assert!(
+        settings.contains("migrations") && settings.contains("0001_domain.sql"),
+        "a first start says what it migrated: {settings}"
+    );
     let first = printed.lines().next().unwrap();
     let site = Site { port: first.strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap(), _stdout: received };
     guard::Guard::ready(site.port);

@@ -238,6 +238,16 @@ source: crates/standalone/fixture/src/lib.rs
           }
         },
         {
+          "key": "database",
+          "value": {
+            "unit": "path",
+            "amount": "/srv/ink/state/ink.db"
+          },
+          "source": {
+            "kind": "computed"
+          }
+        },
+        {
           "key": "operator_keys",
           "value": {
             "unit": "path",
@@ -252,6 +262,25 @@ source: crates/standalone/fixture/src/lib.rs
           "value": {
             "unit": "command",
             "amount": "ink login --data /srv/ink/state"
+          },
+          "source": {
+            "kind": "computed"
+          }
+        },
+        {
+          "key": "migrations",
+          "value": {
+            "unit": "list",
+            "amount": [
+              {
+                "unit": "text",
+                "amount": "0001_domain.sql"
+              },
+              {
+                "unit": "text",
+                "amount": "0002_seen.sql"
+              }
+            ]
           },
           "source": {
             "kind": "computed"

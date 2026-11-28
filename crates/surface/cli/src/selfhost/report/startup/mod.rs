@@ -128,6 +128,8 @@ pub(crate) struct Hosted {
     pub(crate) site: String,
     pub(crate) data: PathBuf,
     pub(crate) operators: PathBuf,
+    /// The migrations this start applied, by name; none when nothing was opened.
+    pub(crate) migrated: Option<Vec<String>>,
     pub(crate) admin: Admin,
     pub(crate) retired: bool,
 }
@@ -323,12 +325,24 @@ impl Rows<'_> {
     fn data(hosted: &Hosted) -> Section {
         let section = Section::new(Part::Data)
             .row(Row::new("data", Value::path(&hosted.data), Source::Flag("--data")))
+            .row(Row::new("database", Value::path(&hosted.data.join("ink.db")), Source::Computed))
             .row(Row::new("operator_keys", Value::path(&hosted.operators), Source::Computed))
             .row(Row::new(
                 "enrol_yours",
                 Value::Command(format!("ink login --data {}", hosted.data.display())),
                 Source::Computed,
             ));
+        let section = match &hosted.migrated {
+            Some(names) if names.is_empty() => {
+                section.row(Row::new("migrations", Value::Text("none was due".to_owned()), Source::Computed))
+            }
+            Some(names) => section.row(Row::new(
+                "migrations",
+                Value::List(names.iter().cloned().map(Value::Text).collect()),
+                Source::Computed,
+            )),
+            None => section,
+        };
         if hosted.retired {
             let file = hosted.data.join("owner-token");
             let caution = Caution::Retired { file: file.display().to_string() };
