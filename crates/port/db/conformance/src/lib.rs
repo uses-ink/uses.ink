@@ -1,5 +1,7 @@
-//! The conformance suite of the row port: each case is a type with a `check` over any [`Db`],
-//! and [`suite!`] turns every case into a test, so an adapter runs the same ones.
+//! The conformance suite of the row port: each case is a type with a `check` over any [`Db`].
+//! [`Case`] lists them, with a name each, as async functions any executor can drive (a Worker's
+//! event loop included, which `pollster` cannot), and [`suite!`] turns every case into a native
+//! test that blocks on one, so an adapter runs the same ones both ways.
 //!
 //! ```ignore
 //! db_conformance::suite!(|| MyAdapter::memory().unwrap());
@@ -167,10 +169,15 @@ impl Values {
         .unwrap();
         let blob = vec![0_u8, 255, 1, 0];
         let text = "h\u{e9}llo \u{1f980} \0 end";
-        let low =
-            [Expr::val(i64::MIN), Expr::val(1.5_f64), Expr::val(text), Expr::val(blob.clone()), Expr::val(None::<i64>)];
+        let low = [
+            Expr::val(-Value::SAFE),
+            Expr::val(1.5_f64),
+            Expr::val(text),
+            Expr::val(blob.clone()),
+            Expr::val(None::<i64>),
+        ];
         let high =
-            [Expr::val(i64::MAX), Expr::val(-0.0_f64), Expr::val(""), Expr::val(Vec::<u8>::new()), Expr::val(true)];
+            [Expr::val(Value::SAFE), Expr::val(-0.0_f64), Expr::val(""), Expr::val(Vec::<u8>::new()), Expr::val(true)];
         db.run(Self::row(low)).await.unwrap();
         db.run(Self::row(high)).await.unwrap();
         let read = Query::select()
@@ -179,13 +186,18 @@ impl Values {
             .order_by(Every::A, Order::Asc)
             .into();
         let rows = db.rows(read).await.unwrap();
-        let [low, high] = rows.as_slice() else { panic!("two rows, found {}", rows.len()) };
-        assert_eq!(low.get::<i64>(Every::A).unwrap(), i64::MIN);
+        Self::agree(&rows, text, &blob);
+    }
+
+    /// The two rows read back as written.
+    fn agree(rows: &[db::Row], text: &str, blob: &[u8]) {
+        let [low, high] = rows else { panic!("two rows, found {}", rows.len()) };
+        assert_eq!(low.get::<i64>(Every::A).unwrap(), -Value::SAFE);
         assert_eq!(low.get::<f64>(Every::B).unwrap(), 1.5);
         assert_eq!(low.get::<String>(Every::C).unwrap(), text);
         assert_eq!(low.get::<Vec<u8>>(Every::D).unwrap(), blob);
         assert_eq!(low.get::<Option<i64>>(Every::E).unwrap(), None);
-        assert_eq!(high.get::<i64>(Every::A).unwrap(), i64::MAX);
+        assert_eq!(high.get::<i64>(Every::A).unwrap(), Value::SAFE);
         assert_eq!(high.get::<String>(Every::C).unwrap(), "");
         assert_eq!(high.get::<Vec<u8>>(Every::D).unwrap(), Vec::<u8>::new());
         assert!(high.get::<bool>(Every::E).unwrap());
@@ -383,10 +395,14 @@ impl Limit {
         assert!(matches!(refused, Error::Unrenderable { index: 1, .. }));
     }
 
-    /// An integer that does not fit D1's 64 signed bits is refused, not wrapped.
+    /// An integer D1 cannot carry exactly is refused, not wrapped or rounded.
     pub async fn unsupported<D: Db>(db: &D) {
         let wide = Query::select().expr_as(Expr::val(u64::MAX), Answer::N).into();
         let refused = db.run(wide).await.unwrap_err();
+        assert!(matches!(refused, Error::Unrenderable { source: Unrenderable::Value(_), .. }), "{refused}");
+        // D1 reads numbers as floats: past 2^53 an integer would come back changed, so it is refused
+        let unsafe_ = Query::select().expr_as(Expr::val(Value::SAFE + 1), Answer::N).into();
+        let refused = db.run(unsafe_).await.unwrap_err();
         assert!(matches!(refused, Error::Unrenderable { source: Unrenderable::Value(_), .. }), "{refused}");
     }
 }
@@ -456,6 +472,11 @@ enum Gamma {
 pub struct Migrations;
 
 impl Migrations {
+    /// The migrations the checks apply, for the tools that write them as files (decision 0098).
+    pub fn steps() -> Steps {
+        Steps::new().with::<First>().unwrap().with::<Second>().unwrap()
+    }
+
     /// Applies what is missing once, writes wrangler's ledger, and refuses a newer database.
     pub async fn check<D: Db>(db: &D) {
         let first = Steps::new().with::<First>().unwrap();
@@ -507,32 +528,112 @@ impl Migrations {
     }
 }
 
+/// Lists the cases once, for the macros that need them: each entry is the [`Case`] variant, the type
+/// that holds the check, its method, and the name of the test.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! cases {
+    ($callback:path, $($lead:tt)*) => {
+        $callback! {
+            $($lead)*
+            [
+                (Values, Values, check, stores_every_kind_of_value),
+                (Large, Large, check, stores_a_large_blob),
+                (Injection, Injection, check, keeps_bound_values_as_data),
+                (Outcomes, Outcomes, check, reports_rows_and_changes),
+                (Columns, Columns, check, names_columns_as_the_statement_does),
+                (Batches, Batches, check, runs_a_batch_in_order),
+                (Atomic, Atomic, check, applies_a_batch_whole_or_not_at_all),
+                (Constraints, Constraints, check, tells_constraints_apart),
+                (Failures, Failures, check, does_not_call_a_failure_a_constraint),
+                (Parameters, Limit, check, refuses_more_parameters_than_d1),
+                (Wide, Limit, unsupported, refuses_a_value_d1_cannot_carry),
+                (Applied, Migrations, check, applies_migrations_once),
+                (Broken, Migrations, broken, leaves_nothing_of_a_failed_migration),
+                (Gap, Migrations, order, refuses_a_ledger_with_a_gap)
+            ]
+        }
+    };
+}
+
+macro_rules! define {
+    ([$(($variant:ident, $case:ident, $method:ident, $name:ident)),*]) => {
+        /// One case of the suite.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[non_exhaustive]
+        pub enum Case {
+            $(
+                #[doc = concat!("`", stringify!($case), "::", stringify!($method), "`.")]
+                $variant,
+            )*
+        }
+
+        impl Case {
+            /// Every case, in the order the suite runs them.
+            pub const ALL: &'static [Self] = &[$(Self::$variant),*];
+
+            /// Its name: the name of its native test.
+            pub const fn name(self) -> &'static str {
+                match self {
+                    $(Self::$variant => stringify!($name),)*
+                }
+            }
+
+            /// The case named `name`, if there is one.
+            pub fn named(name: &str) -> Option<Self> {
+                Self::ALL.iter().copied().find(|case| case.name() == name)
+            }
+
+            /// Runs it against `db`, which must be fresh and empty. It panics at the first surprise.
+            pub async fn run<D: Db>(self, db: &D) {
+                match self {
+                    $(Self::$variant => $case::$method(db).await,)*
+                }
+            }
+        }
+    };
+}
+
+cases!(define,);
+
+/// The native tests of [`suite!`], one per case.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! tests {
+    ($make:expr, [$(($variant:ident, $case:ident, $method:ident, $name:ident)),*]) => {
+        $(
+            #[test]
+            fn $name() {
+                let (db, _guard) = ($make)();
+                $crate::pollster::block_on($crate::Case::$variant.run(&db));
+            }
+        )*
+    };
+}
+
 /// Runs every case of the row port's suite against the adapter `$make` builds: a closure that returns the
 /// adapter, fresh and empty, with whatever must outlive it (a temporary folder, or `()`) as a
-/// pair. Each case is a test of its own, so each has its own budget.
+/// pair. Each case is a test of its own, so each has its own budget. The same cases are
+/// [`Case::ALL`], for an executor that is not `pollster`.
 #[macro_export]
 macro_rules! suite {
     ($make:expr) => {
-        $crate::suite!(@case $make, stores_every_kind_of_value, Values, check);
-        $crate::suite!(@case $make, stores_a_large_blob, Large, check);
-        $crate::suite!(@case $make, keeps_bound_values_as_data, Injection, check);
-        $crate::suite!(@case $make, reports_rows_and_changes, Outcomes, check);
-        $crate::suite!(@case $make, names_columns_as_the_statement_does, Columns, check);
-        $crate::suite!(@case $make, runs_a_batch_in_order, Batches, check);
-        $crate::suite!(@case $make, applies_a_batch_whole_or_not_at_all, Atomic, check);
-        $crate::suite!(@case $make, tells_constraints_apart, Constraints, check);
-        $crate::suite!(@case $make, does_not_call_a_failure_a_constraint, Failures, check);
-        $crate::suite!(@case $make, refuses_more_parameters_than_d1, Limit, check);
-        $crate::suite!(@case $make, refuses_a_value_d1_cannot_carry, Limit, unsupported);
-        $crate::suite!(@case $make, applies_migrations_once, Migrations, check);
-        $crate::suite!(@case $make, leaves_nothing_of_a_failed_migration, Migrations, broken);
-        $crate::suite!(@case $make, refuses_a_ledger_with_a_gap, Migrations, order);
+        $crate::cases!($crate::tests, $make,);
     };
-    (@case $make:expr, $name:ident, $case:ident, $method:ident) => {
-        #[test]
-        fn $name() {
-            let (db, _guard) = ($make)();
-            $crate::pollster::block_on($crate::$case::$method(&db));
-        }
-    };
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn every_case_has_its_own_name() {
+        let mut names: Vec<&str> = Case::ALL.iter().map(|case| case.name()).collect();
+        let count = names.len();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), count);
+        assert_eq!(count, 14);
+        assert!(Case::ALL.iter().all(|case| Case::named(case.name()) == Some(*case)));
+    }
 }

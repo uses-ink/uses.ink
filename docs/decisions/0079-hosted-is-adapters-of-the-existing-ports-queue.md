@@ -34,6 +34,13 @@ the packages, the order and the owner questions. The choices to push back on:
 - **No M4 crate is added before the layout freeze (S6 of `docs/layout.md`).** Until then M4 is
   decisions, docs and spikes under `spikes/`.
 
+**Amended (2026-11-28, 0096 to 0098).** `crates/port/db/d1` is a workspace member that is empty off
+wasm32, as chosen above; the suites expose `Case` and the stage `worker` runs them (`cargo xtask
+worker db`, `worker migrate`). D1 carries integers to 2^53 - 1, which the port now enforces for
+every adapter. The Worker bundle is 1.11 MiB raw, 0.37 MiB gzip with the passkey verifier, so one
+Worker holds. Two things were found: registration needs a clock patch of `webauthn-rs-core`, and
+`edge/api` must drop its tokio `net` dependency before it builds for wasm (W2).
+
 **Not decided here:** the account, domains, billing, bucket jurisdiction, mail provider, brand list,
 budget numbers and legal contact. They are `docs/hosted.md` section 12, each with a default.
 **Why:** the ports were shaped for D1 and R2 (0030, 0051, 0052), so the hosted shape is adapters,

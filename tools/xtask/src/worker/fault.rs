@@ -61,7 +61,9 @@ impl fmt::Display for Fault {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Command { program, .. } => write!(out, "`{program}` failed"),
-            Self::Spawn { program, .. } => write!(out, "`{program}` could not be started; is node installed for this host?"),
+            Self::Spawn { program, .. } => {
+                write!(out, "`{program}` could not be started; is node installed for this host?")
+            }
             Self::File { path, .. } => write!(out, "cannot use {}", path.display()),
             Self::Lock { path } => {
                 write!(out, "{} is missing: `cargo xtask worker lock` prints it, and it is committed", path.display())
@@ -86,11 +88,17 @@ impl std::error::Error for Fault {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Command { source, .. } => Some(source),
-            Self::Spawn { source, .. } | Self::File { source, .. } | Self::Connect(source) => Some(source),
-            Self::Send { source, .. } => Some(source),
+            Self::Spawn { source, .. }
+            | Self::File { source, .. }
+            | Self::Connect(source)
+            | Self::Send { source, .. } => Some(source),
             Self::Wire { wire, .. } => Some(wire),
             Self::Json { source, .. } => Some(source),
-            Self::Lock { .. } | Self::Ready { .. } | Self::Status { .. } | Self::Refused { .. } | Self::Differs { .. } => None,
+            Self::Lock { .. }
+            | Self::Ready { .. }
+            | Self::Status { .. }
+            | Self::Refused { .. }
+            | Self::Differs { .. } => None,
         }
     }
 }

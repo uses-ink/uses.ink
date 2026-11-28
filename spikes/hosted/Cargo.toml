@@ -3,7 +3,7 @@
 # ["spikes"]`); its own lockfile, its own `target/`.
 [workspace]
 resolver = "3"
-members = ["api", "store", "rig"]
+members = ["workers/api", "workers/store", "workers/rig"]
 
 [workspace.package]
 version = "0.0.0"

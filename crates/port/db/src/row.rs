@@ -61,6 +61,9 @@ impl Column for f64 {
     fn column(value: Value) -> Result<Self, Mismatch> {
         match value {
             Value::Real(n) => Ok(n),
+            // D1 hands numbers over as JavaScript numbers, so it cannot tell 2.0 from 2
+            #[expect(clippy::cast_precision_loss, reason = "an integer within 2^53 is exact as a float")]
+            Value::Integer(n) if n.unsigned_abs() <= Value::SAFE.unsigned_abs() => Ok(n as f64),
             other => Err(Mismatch::of(Kind::Real, &other)),
         }
     }

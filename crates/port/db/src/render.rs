@@ -51,7 +51,31 @@ impl Renderer {
             return Err(Unrenderable::TooMany(TooMany { count: values.0.len(), limit: Statement::MAX_PARAMETERS }));
         }
         let values = values.0.into_iter().map(Value::try_from).collect::<Result<Vec<_>, _>>()?;
+        for value in &values {
+            if let Value::Integer(found) = value
+                && found.unsigned_abs() > Value::SAFE.unsigned_abs()
+            {
+                return Err(Unsupported::Unsafe { found: *found }.into());
+            }
+        }
         Ok(Rendered { text, values })
+    }
+}
+
+impl Renderer {
+    /// Renders `statement` as one line with its values written into the text as literals, for a
+    /// migration file that wrangler applies (decision 0098). The text is checked as `render` checks
+    /// it, and sea-query writes the literals, escaped: text in quotes, bytes as `x'..'`.
+    pub fn inline(&self, statement: &Statement) -> Result<String, Unrenderable> {
+        self.render(statement)?;
+        Ok(match statement.query() {
+            Query::Select(query) => query.to_string(SqliteQueryBuilder),
+            Query::Insert(query) => query.to_string(SqliteQueryBuilder),
+            Query::Update(query) => query.to_string(SqliteQueryBuilder),
+            Query::Delete(query) => query.to_string(SqliteQueryBuilder),
+            Query::Table(query) => SchemaStatementBuilder::build(query, SqliteQueryBuilder),
+            Query::Index(query) => SchemaStatementBuilder::build(query, SqliteQueryBuilder),
+        })
     }
 }
 
@@ -81,6 +105,11 @@ pub enum Unsupported {
         /// The integer.
         found: u64,
     },
+    /// An integer beyond 2^53 - 1 in magnitude, which D1 would round through a JavaScript number.
+    Unsafe {
+        /// The integer.
+        found: i64,
+    },
     /// A database enum value, which D1 does not have.
     Enum,
     /// A kind of value this adapter does not know how to bind.
@@ -94,6 +123,7 @@ impl fmt::Display for Unsupported {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Wide { found } => write!(out, "the integer {found} does not fit in 64 signed bits"),
+            Self::Unsafe { found } => write!(out, "the integer {found} is beyond what D1 carries exactly (2^53 - 1)"),
             Self::Enum => out.write_str("a database enum value cannot be stored"),
             Self::Kind { kind } => write!(out, "this adapter cannot bind {kind}"),
         }

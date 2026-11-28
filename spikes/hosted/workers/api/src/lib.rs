@@ -7,7 +7,7 @@
 mod ceremony;
 
 /// The server's WebAuthn adapter, compiled from the API crate's own file.
-#[path = "../../../../crates/server/edge/api/src/webauthn.rs"]
+#[path = "../../../../../crates/server/edge/api/src/webauthn.rs"]
 mod webauthn;
 
 // the crates the API stands on, linked so their size counts

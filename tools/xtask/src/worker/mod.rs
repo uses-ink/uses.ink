@@ -4,16 +4,12 @@
 //! starts `wrangler dev --local`, makes its calls and reports what the Worker said. The gate's
 //! stage `worker` runs the cases that are tests; the spikes are run by name.
 
-mod build;
 mod case;
 mod fault;
-mod loopback;
 mod migrate;
-mod npm;
+mod node;
 mod probe;
 mod serve;
-mod session;
-mod shell;
 
 use std::path::Path;
 
@@ -30,7 +26,7 @@ pub(crate) struct Worker(pub(crate) Case);
 
 impl Step for Worker {
     fn run(&self, root: &Path, report: &mut Report) {
-        if let Err(fault) = self.0.run(&shell::Shell::new(root), report) {
+        if let Err(fault) = self.0.run(&node::Shell::new(root), report) {
             report.fail(Error::Worker { case: self.0, fault });
         }
     }

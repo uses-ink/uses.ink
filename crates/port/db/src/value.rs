@@ -49,6 +49,11 @@ impl fmt::Display for Kind {
 }
 
 impl Value {
+    /// The largest integer every database carries exactly: D1 hands numbers to JavaScript, whose
+    /// numbers are exact up to 2^53 - 1. Wider integers are refused when a statement is rendered,
+    /// so no adapter stores one that another would read back changed.
+    pub const SAFE: i64 = (1 << 53) - 1;
+
     /// Which kind this value is.
     pub const fn kind(&self) -> Kind {
         match self {

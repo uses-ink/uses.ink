@@ -5,10 +5,10 @@ use std::str::FromStr;
 
 use super::fault::Fault;
 use super::migrate::Migrated;
-use super::npm::Packages;
+use super::node::Packages;
+use super::node::Shell;
 use super::probe::Probe;
 use super::serve::Served;
-use super::shell::Shell;
 use crate::error::Error;
 use crate::report::{Line, Report};
 
@@ -52,10 +52,10 @@ impl Case {
     pub(super) const fn dir(self) -> &'static str {
         match self {
             Self::Probe | Self::Lock => "spikes/hosted",
-            Self::Migrate => "spikes/hosted/migrate",
-            Self::Api => "spikes/hosted/api",
-            Self::Store => "spikes/hosted/store",
-            Self::Db => "spikes/hosted/rig",
+            Self::Migrate => "spikes/hosted/workers/migrate",
+            Self::Api => "spikes/hosted/workers/api",
+            Self::Store => "spikes/hosted/workers/store",
+            Self::Db => "spikes/hosted/workers/rig",
         }
     }
 
@@ -72,7 +72,10 @@ impl Case {
     /// Runs it, its lines into `report`.
     pub(super) fn run(self, shell: &Shell, report: &mut Report) -> Result<(), Fault> {
         match self {
-            Self::Probe => Probe { shell }.run(report),
+            Self::Probe => {
+                Probe { shell }.run(report);
+                Ok(())
+            }
             Self::Lock => Self::lock(shell, report),
             Self::Migrate => Migrated { shell }.run(report),
             Self::Api | Self::Store | Self::Db => Served { case: self, shell }.run(report),
@@ -85,7 +88,7 @@ impl Case {
         for manifest in ["Cargo.toml", "spikes/hosted/Cargo.toml"] {
             let mut fetch = shell.command(env!("CARGO"), shell.root());
             fetch.args(["fetch", "--manifest-path", manifest]);
-            shell.run(fetch)?;
+            Shell::run(fetch)?;
         }
         let npm = Packages { shell };
         let mut files = vec![("spikes/hosted/package-lock.json", npm.resolve()?)];

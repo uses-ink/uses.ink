@@ -2,25 +2,25 @@
 
 use std::path::{Path, PathBuf};
 
-use super::fault::Fault;
 use super::shell::Shell;
 use crate::process::Process;
+use crate::worker::fault::Fault;
 
 /// How big a built Worker is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct Size {
+pub(crate) struct Size {
     /// The module's bytes.
-    pub(super) raw: usize,
+    pub(crate) raw: usize,
     /// The module's bytes after `gzip -9`.
-    pub(super) gzip: usize,
+    pub(crate) gzip: usize,
 }
 
 /// A Worker crate and what building it takes.
 #[derive(Debug, Clone)]
-pub(super) struct Crate<'a> {
-    pub(super) shell: &'a Shell,
+pub(crate) struct Crate<'a> {
+    pub(crate) shell: &'a Shell,
     /// The crate's folder, relative to the root.
-    pub(super) dir: &'static str,
+    pub(crate) dir: &'static str,
 }
 
 impl Crate<'_> {
@@ -28,7 +28,7 @@ impl Crate<'_> {
     const BUILDER: &'static str = "=0.9.0";
 
     /// The crate's folder.
-    pub(super) fn path(&self) -> PathBuf {
+    pub(crate) fn path(&self) -> PathBuf {
         self.shell.root().join(self.dir)
     }
 
@@ -40,15 +40,15 @@ impl Crate<'_> {
         }
         let mut command = self.shell.command(env!("CARGO"), self.shell.root());
         command.args(["install", "worker-build", "--version", Self::BUILDER, "--locked", "--root"]).arg(&root);
-        self.shell.run(command)
+        Shell::run(command)
     }
 
     /// Builds the release module and returns its size.
-    pub(super) fn build(&self) -> Result<Size, Fault> {
+    pub(crate) fn build(&self) -> Result<Size, Fault> {
         self.tool()?;
         let mut command = self.shell.command("worker-build", &self.path());
         command.arg("--release");
-        self.shell.run(command)?;
+        Shell::run(command)?;
         self.size(&self.path().join("build/index_bg.wasm"))
     }
 
@@ -66,11 +66,11 @@ impl Crate<'_> {
     }
 
     /// What `wrangler deploy --dry-run` says the upload is: its `Total Upload` line.
-    pub(super) fn upload(&self) -> Result<String, Fault> {
+    pub(crate) fn upload(&self) -> Result<String, Fault> {
         let out = self.shell.root().join(Shell::HOME).join("dry").join(self.dir.replace('/', "_"));
         let mut command = self.shell.command("wrangler", &self.path());
         command.args(["deploy", "--dry-run", "--outdir"]).arg(&out);
-        let text = self.shell.text(command)?;
+        let text = Shell::text(command)?;
         Ok(text.lines().filter(|line| line.contains("Total Upload")).collect::<Vec<_>>().join("; "))
     }
 }

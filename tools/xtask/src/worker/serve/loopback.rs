@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-use super::fault::{Fault, Wire};
+use crate::worker::fault::{Fault, Wire};
 
 /// The bytes a chunked call sends: a size, cut in pieces, from a seed, so both ends can hash them.
 #[derive(Debug, Clone, Copy)]
@@ -139,7 +139,7 @@ impl Loopback {
     const WITHIN: Duration = Duration::from_secs(300);
 
     /// Sends `call` and reads the reply.
-    pub(crate) fn send(&self, call: &Call) -> Result<Reply, Fault> {
+    pub(crate) fn send(self, call: &Call) -> Result<Reply, Fault> {
         let mut stream = TcpStream::connect(("127.0.0.1", self.port)).map_err(Fault::Connect)?;
         stream.set_read_timeout(Some(Self::WITHIN)).map_err(Fault::Connect)?;
         stream.set_write_timeout(Some(Self::WITHIN)).map_err(Fault::Connect)?;
@@ -158,8 +158,9 @@ impl Loopback {
         let read = stream.read_to_end(&mut raw);
         match (Reply::parse(&raw), sent, read) {
             (Ok(reply), _, _) => Ok(reply),
-            (Err(wire), Err(error), _) => Err(Fault::Send { path: call.path.clone(), wire, source: error }),
-            (Err(wire), Ok(()), Err(error)) => Err(Fault::Send { path: call.path.clone(), wire, source: error }),
+            (Err(wire), Err(error), _) | (Err(wire), Ok(()), Err(error)) => {
+                Err(Fault::Send { path: call.path.clone(), wire, source: error })
+            }
             (Err(wire), Ok(()), Ok(_)) => Err(Fault::Wire { path: call.path.clone(), wire }),
         }
     }

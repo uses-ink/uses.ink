@@ -5,22 +5,22 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::fault::Fault;
 use crate::process::Process;
+use crate::worker::fault::Fault;
 
 /// Where the commands of one run start from and find their tools.
 #[derive(Debug, Clone)]
-pub(super) struct Shell {
+pub(crate) struct Shell {
     root: PathBuf,
     path: OsString,
 }
 
 impl Shell {
     /// Where this run keeps what it installs and builds, relative to the root.
-    pub(super) const HOME: &'static str = "target/hosted";
+    pub(crate) const HOME: &'static str = "target/hosted";
 
     /// A shell for the workspace at `root`: the tools of the run first, then the host's own.
-    pub(super) fn new(root: &Path) -> Self {
+    pub(crate) fn new(root: &Path) -> Self {
         let home = root.join(Self::HOME);
         let mut dirs = vec![home.join("tools/bin"), home.join("node/node_modules/.bin")];
         if let Some(user) = std::env::var_os("HOME") {
@@ -32,12 +32,12 @@ impl Shell {
     }
 
     /// The workspace root.
-    pub(super) fn root(&self) -> &Path {
+    pub(crate) fn root(&self) -> &Path {
         &self.root
     }
 
     /// `program` run in `dir`, with this shell's `PATH` and no prompts, telemetry or update checks.
-    pub(super) fn command(&self, program: &str, dir: &Path) -> Command {
+    pub(crate) fn command(&self, program: &str, dir: &Path) -> Command {
         let mut command = Command::new(program);
         command
             .current_dir(dir)
@@ -52,19 +52,19 @@ impl Shell {
     }
 
     /// `command` run to its end, its output going where the farm's log is.
-    pub(super) fn run(&self, command: Command) -> Result<(), Fault> {
+    pub(crate) fn run(command: Command) -> Result<(), Fault> {
         let program = Self::name(&command);
         Process::from(command).status().map_err(|source| Fault::Command { program, source })
     }
 
     /// What `command` printed, as text.
-    pub(super) fn text(&self, command: Command) -> Result<String, Fault> {
+    pub(crate) fn text(command: Command) -> Result<String, Fault> {
         let program = Self::name(&command);
         Process::from(command).text(&[]).map_err(|source| Fault::Command { program, source })
     }
 
     /// The command line, for saying what failed.
-    pub(super) fn name(command: &Command) -> String {
+    pub(crate) fn name(command: &Command) -> String {
         std::iter::once(command.get_program())
             .chain(command.get_args())
             .map(|word| word.to_string_lossy().into_owned())
@@ -73,12 +73,12 @@ impl Shell {
     }
 
     /// A file's bytes.
-    pub(super) fn read(path: &Path) -> Result<Vec<u8>, Fault> {
+    pub(crate) fn read(path: &Path) -> Result<Vec<u8>, Fault> {
         std::fs::read(path).map_err(|source| Fault::File { path: path.to_path_buf(), source })
     }
 
     /// Writes a file, and the folders above it.
-    pub(super) fn write(path: &Path, bytes: &[u8]) -> Result<(), Fault> {
+    pub(crate) fn write(path: &Path, bytes: &[u8]) -> Result<(), Fault> {
         let file = |source| Fault::File { path: path.to_path_buf(), source };
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(file)?;

@@ -6,7 +6,7 @@ use std::fmt;
 
 use sea_query::{ColumnDef, Expr, IdenStatic, Order, Query, Table};
 
-use crate::{ColumnError, Db, Error, Statement};
+use crate::{ColumnError, Db, Error, Renderer, Statement, Unrenderable};
 
 /// One migration: what it does to the schema, built from typed definitions.
 pub trait Migration {
@@ -82,6 +82,15 @@ impl std::error::Error for StepError {}
 #[derive(Clone, Debug, Default)]
 pub struct Steps {
     steps: Vec<Step>,
+}
+
+/// A migration as a file wrangler applies: `migrations/0001_name.sql`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Script {
+    /// The file name, which is the name wrangler records in its ledger.
+    pub name: String,
+    /// The statements, one to a line, each ending in `;`, with their values written in.
+    pub text: String,
 }
 
 /// The migrations a run applied, by name, in order.
@@ -175,6 +184,21 @@ impl Steps {
     /// The ledger names of the migrations, in order.
     pub fn names(&self) -> impl Iterator<Item = String> + '_ {
         self.steps.iter().map(Step::ledger)
+    }
+
+    /// The migrations as wrangler's files, rendered by the one [`Renderer`]. The ledger row is not
+    /// in them: `wrangler d1 migrations apply` writes its own, under the same name.
+    pub fn scripts(&self) -> Result<Vec<Script>, Unrenderable> {
+        let mut scripts = Vec::with_capacity(self.steps.len());
+        for step in &self.steps {
+            let mut text = String::new();
+            for statement in (step.statements)() {
+                text.push_str(&Renderer.inline(&statement)?);
+                text.push_str(";\n");
+            }
+            scripts.push(Script { name: step.ledger(), text });
+        }
+        Ok(scripts)
     }
 
     /// Whether the ledger's names are the first of the set's, in order.
@@ -274,6 +298,45 @@ mod test {
         fn statements() -> Vec<Statement> {
             Vec::new()
         }
+    }
+
+    struct Seeded;
+
+    #[derive(Clone, Copy, IdenStatic)]
+    enum Seed {
+        Table,
+        Word,
+        Raw,
+    }
+
+    impl Migration for Seeded {
+        const NUMBER: u32 = 7;
+        const NAME: &'static str = "seeded";
+        fn statements() -> Vec<Statement> {
+            vec![
+                Table::create()
+                    .table(Seed::Table)
+                    .col(ColumnDef::new(Seed::Word).text())
+                    .col(ColumnDef::new(Seed::Raw).blob())
+                    .into(),
+                Query::insert()
+                    .into_table(Seed::Table)
+                    .columns([Seed::Word, Seed::Raw])
+                    .values_panic([Expr::val("it's"), Expr::val(vec![0_u8, 255])])
+                    .into(),
+            ]
+        }
+    }
+
+    #[test]
+    fn writes_scripts_with_the_values_in_them() {
+        let scripts = Steps::new().with::<Seeded>().unwrap().scripts().unwrap();
+        assert_eq!(scripts.len(), 1);
+        assert_eq!(scripts[0].name, "0007_seeded.sql");
+        let lines: Vec<&str> = scripts[0].text.lines().collect();
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].ends_with(");"), "{}", lines[0]);
+        assert!(lines[1].contains("'it''s'") && lines[1].contains("x'00FF'"), "{}", lines[1]);
     }
 
     #[test]

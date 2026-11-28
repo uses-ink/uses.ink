@@ -26,6 +26,7 @@ crates = [
     "uses-ink-control-signin",
     "uses-ink-db",
     "uses-ink-db-conformance",
+    "uses-ink-db-d1",
     "uses-ink-db-sqlite",
     "uses-ink-diag",
     "uses-ink-edge",
@@ -124,6 +125,10 @@ exempt = ["fixture", "support", "tests"]
 [[fanout.waive]]
 path = ""
 reason = "the root's directories: each belongs to the tool that reads it (`.cargo`, `.config`, `.github`, `wit`) or to a different kind of content (`brand`, `spikes`)"
+
+[[fanout.waive]]
+path = "spikes/hosted/vendor/webauthn-rs-core/src"
+reason = "a copy of a published crate with one patch (decision 0096), kept as published"
 
 [[fanout.waive]]
 path = "crates/core/config/src"

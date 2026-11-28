@@ -2,13 +2,14 @@
 
 use std::time::Instant;
 
-use super::build::Crate;
+mod loopback;
+mod session;
+
+use self::loopback::{Body, Call, Reply, Stream};
+use self::session::Session;
 use super::case::Case;
 use super::fault::Fault;
-use super::loopback::{Body, Call, Reply, Stream};
-use super::npm::Packages;
-use super::session::Session;
-use super::shell::Shell;
+use super::node::{Crate, Packages, Shell};
 use crate::report::{Line, Report};
 
 /// One case, run.
@@ -46,7 +47,12 @@ impl Exchange<'_> {
         let text = reply.text();
         text.lines().for_each(|line| self.say(format!("  {line}")));
         if reply.status != 200 {
-            return Err(Fault::Status { path: call.path.clone(), status: reply.status, body: text, log: self.session.log() });
+            return Err(Fault::Status {
+                path: call.path.clone(),
+                status: reply.status,
+                body: text,
+                log: self.session.log(),
+            });
         }
         match text.lines().find(|line| line.starts_with("fail ")) {
             Some(line) => Err(Fault::Refused { path: call.path.clone(), line: line.to_owned() }),
@@ -108,15 +114,24 @@ impl Served<'_> {
         let probe = Stream { total: 1 << 20, piece: 64 << 10, seed: 1 };
         exchange.call(&Call::put("/r2/direct/chunked", Body::Chunked(probe)))?;
         exchange.call(&Call::put("/r2/direct/fixed", Body::Fixed(probe)))?;
-        for (index, (total, piece)) in [(1 << 10, 1 << 10), (3 << 20, 64 << 10), (20 << 20, 64 << 10)].into_iter().enumerate() {
+        for (index, (total, piece)) in
+            [(1 << 10, 1 << 10), (3 << 20, 64 << 10), (20 << 20, 64 << 10)].into_iter().enumerate()
+        {
             let stream = Stream { total, piece, seed: 10 + index as u64 };
             let hash = stream.hash();
             exchange.call(&Call::put(format!("/r2/{hash}"), Body::Chunked(stream)))?;
             let back = exchange.send(&Call::get(format!("/r2/{hash}")))?;
             let same = blake3::hash(&back.body).to_hex().to_string() == hash;
-            exchange.say(format!("  read back {} bytes, hash {}", back.body.len(), if same { "equal" } else { "DIFFERENT" }));
+            exchange.say(format!(
+                "  read back {} bytes, hash {}",
+                back.body.len(),
+                if same { "equal" } else { "DIFFERENT" }
+            ));
             if !same || back.status != 200 {
-                return Err(Fault::Refused { path: format!("/r2/{hash}"), line: "the object read back differs".to_owned() });
+                return Err(Fault::Refused {
+                    path: format!("/r2/{hash}"),
+                    line: "the object read back differs".to_owned(),
+                });
             }
         }
         let wrong = Stream { total: 12 << 20, piece: 64 << 10, seed: 99 };
@@ -127,7 +142,10 @@ impl Served<'_> {
         if refused.status != 409 || absent.status != 404 {
             return Err(Fault::Refused {
                 path: format!("/r2/{claimed}"),
-                line: format!("a mismatch must answer 409 and store nothing, got {} and {}", refused.status, absent.status),
+                line: format!(
+                    "a mismatch must answer 409 and store nothing, got {} and {}",
+                    refused.status, absent.status
+                ),
             });
         }
         Ok(())

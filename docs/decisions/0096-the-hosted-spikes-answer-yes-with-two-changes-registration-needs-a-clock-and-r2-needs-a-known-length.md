@@ -11,7 +11,7 @@ supersedes: []
 
 Built (2026-11-28). The H0b spikes of `docs/hosted.md` section 5.0 ran in `workerd` through
 `cargo xtask worker <api|store>` (stage `worker`, farm job `worker`, x86 hosts with node), with no
-account. They are `spikes/hosted/{api,store}`, outside the cargo workspace; npm is pinned in
+account. They are `spikes/hosted/workers/{api,store}`, outside the cargo workspace; npm is pinned in
 `spikes/hosted/package.json` and its lockfile (wrangler 4.168.0, which brings miniflare and workerd
 1.20261127), installed under `target/hosted/`; Rust is `worker` 0.9.0 and `worker-build` 0.9.0.
 
@@ -66,7 +66,7 @@ Three findings:
 
 - `bucket.put(key, request.body)` with a chunked body (no length) fails: `Provided readable stream
   must have a known length`. With a `Content-Length` it works (1 MiB).
-- The gateway in `spikes/hosted/store` hashes with blake3 as chunks arrive, buffers up to 8 MiB, and
+- The gateway in `spikes/hosted/workers/store` hashes with blake3 as chunks arrive, buffers up to 8 MiB, and
   past that cuts 8 MiB parts into a multipart upload (the minimum part is 5 MiB). 1 KiB: 5 ms; 3 MiB
   in one put: 65 to 75 ms; 20 MiB in 3 parts: 476 ms; the peak buffer is 8 MiB (the isolate has
   128 MB). It completes on a hash match; on a mismatch it aborts, answers 409 and stores nothing

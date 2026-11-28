@@ -7,10 +7,9 @@ use std::process::{Child, Stdio};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, channel};
 use std::time::{Duration, Instant};
 
-use super::build::Crate;
-use super::fault::Fault;
 use super::loopback::Loopback;
-use super::shell::Shell;
+use crate::worker::fault::Fault;
+use crate::worker::node::{Crate, Shell};
 
 /// A running `wrangler dev`, its output kept as the last lines.
 #[derive(Debug)]
@@ -33,9 +32,9 @@ impl Session {
         let shell = krate.shell;
         let state = shell.root().join(Shell::HOME).join("state").join(krate.dir.replace('/', "_"));
         // a run starts from nothing: the cases assume empty tables
-        std::fs::remove_dir_all(&state).or_else(|e| if e.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(e) }).map_err(|source| {
-            Fault::File { path: state.clone(), source }
-        })?;
+        std::fs::remove_dir_all(&state)
+            .or_else(|e| if e.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(e) })
+            .map_err(|source| Fault::File { path: state.clone(), source })?;
         let mut command = shell.command("wrangler", &krate.path());
         command
             .args(["dev", "--local", "--ip", "127.0.0.1", "--port"])
@@ -53,10 +52,14 @@ impl Session {
         let (send, lines) = channel();
         if let Some(out) = child.stdout.take() {
             let send = send.clone();
-            std::thread::spawn(move || BufReader::new(out).lines().map_while(Result::ok).for_each(|line| drop(send.send(line))));
+            std::thread::spawn(move || {
+                BufReader::new(out).lines().map_while(Result::ok).for_each(|line| drop(send.send(line)));
+            });
         }
         if let Some(err) = child.stderr.take() {
-            std::thread::spawn(move || BufReader::new(err).lines().map_while(Result::ok).for_each(|line| drop(send.send(line))));
+            std::thread::spawn(move || {
+                BufReader::new(err).lines().map_while(Result::ok).for_each(|line| drop(send.send(line)));
+            });
         }
         let mut session = Self { child, lines, tail: VecDeque::new(), address: Loopback { port } };
         session.ready()?;

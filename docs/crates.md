@@ -29,6 +29,7 @@ A layer depends only on the layers before it, and `standalone` crates depend on 
 | `uses-ink-clock` | `crates/port/clock` | The two things a use case may not read for itself: what time it is and random bytes, as ports, with a system adapter and deterministic ones for tests | none |
 | `uses-ink-db` | `crates/port/db` | The row port: typed statements, atomic batches and typed rows, shaped like D1, and the migration runner over it | `uses-ink-logging` |
 | `uses-ink-db-conformance` | `crates/port/db/conformance` | The conformance suite every row port adapter runs: SQLite now, D1 when it lands | `uses-ink-db` |
+| `uses-ink-db-d1` | `crates/port/db/d1` | The row port on Cloudflare D1 through workers-rs, for the hosted service; empty off wasm32 | `uses-ink-db`, `uses-ink-logging` |
 | `uses-ink-db-sqlite` | `crates/port/db/sqlite` | The row port on a SQLite file or memory, for self-hosting | `uses-ink-db`, `uses-ink-db-conformance`, `uses-ink-logging` |
 | `uses-ink-mail` | `crates/port/mail` | The mail port: typed messages and addresses, a Mailer trait, and the stand-ins that capture or print a message | none |
 | `uses-ink-mail-smtp` | `crates/port/mail/smtp` | The SMTP adapter of the mail port: lettre over rustls, with the password held as a sealed-in-memory secret | `uses-ink-mail`, `uses-ink-secret` |

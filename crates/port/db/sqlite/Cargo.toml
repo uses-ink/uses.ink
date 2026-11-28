@@ -12,6 +12,17 @@ publish.workspace = true
 logging.workspace = true
 db.workspace = true
 rusqlite.workspace = true
+db-conformance = { workspace = true, optional = true }
+sea-query = { workspace = true, optional = true }
+
+# `scripts` writes the conformance suite's migrations as wrangler files and what SQLite makes of
+# them, for `cargo xtask worker migrate` (decision 0098)
+[features]
+scripts = ["dep:db-conformance", "dep:sea-query"]
+
+[[bin]]
+name = "scripts"
+required-features = ["scripts"]
 
 [dev-dependencies]
 logging = { workspace = true, features = ["capture"] }

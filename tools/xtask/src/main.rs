@@ -106,29 +106,32 @@ impl Task {
         }
     }
 
+    /// What the tasks that take an argument, or that refuse one, report; none for the rest.
+    fn argued(self, root: &Path, argument: Option<&str>) -> Option<Report> {
+        Some(match (self, argument) {
+            (Self::Check, given) => match given.map(str::parse::<check::Stage>).transpose() {
+                Ok(stage) => check::Gate::new(root).run(stage),
+                Err(error) => Report::from(error),
+            },
+            (Self::Worker, Some(given)) => match given.parse::<worker::Case>() {
+                Ok(case) => {
+                    let mut report = Report::default();
+                    check::Step::run(&worker::Worker(case), root, &mut report);
+                    report
+                }
+                Err(error) => Report::from(error),
+            },
+            (Self::Worker, None) => Report::from(Error::Case { given: String::new() }),
+            (_, Some(_)) => Report::from(Error::Stageless { task: self }),
+            (_, None) => return None,
+        })
+    }
+
     /// Runs it from the workspace at `root`, with the argument after its name: a stage of `check`,
     /// a case of `worker`; the report holds every line and every failure.
     fn run(self, root: &Path, argument: Option<&str>) -> Report {
-        match (self, argument) {
-            (Self::Check, given) => {
-                return match given.map(str::parse::<check::Stage>).transpose() {
-                    Ok(stage) => check::Gate::new(root).run(stage),
-                    Err(error) => Report::from(error),
-                };
-            }
-            (Self::Worker, Some(given)) => {
-                return match given.parse::<worker::Case>() {
-                    Ok(case) => {
-                        let mut report = Report::default();
-                        check::Step::run(&worker::Worker(case), root, &mut report);
-                        report
-                    }
-                    Err(error) => Report::from(error),
-                };
-            }
-            (Self::Worker, None) => return Report::from(Error::Case { given: String::new() }),
-            (_, Some(_)) => return Report::from(Error::Stageless { task: self }),
-            (_, None) => {}
+        if let Some(done) = self.argued(root, argument) {
+            return done;
         }
         let mut report = Report::default();
         let mut output = Output::new(root, Mode::Write);

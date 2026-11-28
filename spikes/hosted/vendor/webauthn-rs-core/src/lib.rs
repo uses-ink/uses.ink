@@ -39,6 +39,7 @@ pub mod attestation;
 pub mod crypto;
 pub mod fake;
 
+#[path = "ceremony.rs"] // PATCHED: renamed from core.rs, a name the layout rules ban (decision 0096)
 mod core;
 pub mod error;
 mod interface;

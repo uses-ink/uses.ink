@@ -1,0 +1,16 @@
+[package]
+name = "spike-hosted-rig"
+description = "The test Worker of the hosted adapters: runs a conformance suite's cases, one call each, on a D1 binding in workerd"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = { version = "=0.9.0", features = ["d1"] }
+db = { package = "uses-ink-db", path = "../../../../crates/port/db" }
+db-conformance = { package = "uses-ink-db-conformance", path = "../../../../crates/port/db/conformance" }
+db-d1 = { package = "uses-ink-db-d1", path = "../../../../crates/port/db/d1" }

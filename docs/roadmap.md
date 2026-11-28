@@ -266,7 +266,12 @@ pass, what runs in `workerd` with no account, and the owner questions with defau
 named for the layout after `docs/layout.md` S6; no M4 crate is added to the workspace before that
 freeze.
 
-- Planned, test rig first (H1): the conformance suites run inside `workerd`, then `crates/port/db/d1` on it.
+- Built, the Cloudflare rig, locally with no account (0096 to 0098): `cargo xtask worker <case>` and the stage `worker`
+  (farm job `worker`, x86 hosts with node) run Workers in `workerd`. H0b: the Worker with the passkey verifier is 1.11 MiB
+  raw and 0.37 MiB gzip, sign-in runs, registration needs a clock patch; D1 carries integers to 2^53 - 1; R2 needs a
+  known length, so the gateway hashes while streaming and uploads in 8 MiB parts; the container start needs the account.
+  H1: `db-conformance` is a list of async cases, and `crates/port/db/d1` passes all 14 in `workerd`. H1b: the typed
+  migrations are rendered to wrangler files and applied with `wrangler d1 migrations apply --local` to the same schema as SQLite.
 - Planned adapters, in parallel after H1: `crates/port/blob/r2`, `crates/port/queue/cf` (the rows of `crates/port/queue/rows` over D1 plus a
   wake-up, since Cloudflare Queues has no lease or dedupe key), `crates/port/secret/worker`, `crates/port/mail/cf`,
   `crates/server/watch/worker`, the nonce store as a per-account Durable Object (`auth.md` section 5).

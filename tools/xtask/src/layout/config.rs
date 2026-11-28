@@ -275,7 +275,7 @@ mod tests {
     use super::*;
 
     /// Every crate the rule list held in code before it became data, sorted.
-    const ENFORCED: [&str; 59] = [
+    const ENFORCED: [&str; 60] = [
         "farm",
         "freehand",
         "freehand-web",

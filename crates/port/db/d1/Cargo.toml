@@ -1,0 +1,20 @@
+[package]
+name = "uses-ink-db-d1"
+description = "The row port on Cloudflare D1 through workers-rs, for the hosted service; empty off wasm32"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# D1 exists only inside a Worker: off wasm32 this crate is empty and pulls in nothing, so the
+# workspace builds and tests natively.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+logging.workspace = true
+db.workspace = true
+serde.workspace = true
+worker.workspace = true
+
+[lints]
+workspace = true

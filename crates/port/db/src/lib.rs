@@ -26,7 +26,7 @@ pub use port::{Db, Outcome};
 pub use render::{Rendered, Renderer, TooMany, Unrenderable, Unsupported};
 pub use row::{Column, ColumnError, ColumnFault, Row};
 pub use statement::{Shape, Statement};
-pub use step::{Applied, Ledger, Migration, StepError, Steps, Unapplied};
+pub use step::{Applied, Ledger, Migration, Script, StepError, Steps, Unapplied};
 
 /// The builders statements are made with, so every crate shares one version of them.
 pub use sea_query;

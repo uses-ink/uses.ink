@@ -1,0 +1,9 @@
+# Local only: `cargo xtask worker db`. Never deployed.
+name = "spike-hosted-rig"
+main = "build/index.js"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rig"
+database_id = "00000000-0000-0000-0000-000000000000"

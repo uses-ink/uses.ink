@@ -1,0 +1,9 @@
+# The database `cargo xtask worker migrate` applies the generated migrations to, locally (decision 0098).
+name = "spike-hosted-migrate"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "spike"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "../../../../target/hosted/migrate/out/migrations"
