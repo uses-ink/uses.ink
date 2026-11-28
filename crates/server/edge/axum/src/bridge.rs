@@ -138,6 +138,9 @@ impl Bridge {
         if let Some(retry) = reply.retry {
             put("retry-after", &retry.as_secs().to_string());
         }
+        for header in &reply.headers {
+            put(header.name, &header.value);
+        }
         if !reply.allow.is_empty() {
             let allow: Vec<String> = reply.allow.iter().map(ToString::to_string).collect();
             put("allow", &allow.join(", "));

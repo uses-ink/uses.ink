@@ -138,6 +138,8 @@ pub enum Status {
     Created,
     /// `202`: the request was taken and its effect, if any, comes later.
     Accepted,
+    /// `303`: the change was made; the `Location` header names the page to read next.
+    SeeOther,
     /// `400`: the request is malformed.
     BadRequest,
     /// `401`: no valid credential.
@@ -171,6 +173,7 @@ impl Status {
             Self::Ok => 200,
             Self::Created => 201,
             Self::Accepted => 202,
+            Self::SeeOther => 303,
             Self::BadRequest => 400,
             Self::Unauthorized => 401,
             Self::Forbidden => 403,
@@ -199,6 +202,10 @@ pub enum Media {
     Ndjson,
     /// A tar archive.
     Tar,
+    /// A page of the dashboard, which the answerer's own headers fence in.
+    Html,
+    /// The dashboard's one script, as static text.
+    Script,
 }
 
 impl Media {
@@ -209,8 +216,21 @@ impl Media {
             Self::Json => Some("application/json"),
             Self::Ndjson => Some("application/x-ndjson"),
             Self::Tar => Some("application/x-tar"),
+            Self::Html => Some("text/html; charset=utf-8"),
+            Self::Script => Some("text/javascript; charset=utf-8"),
         }
     }
+}
+
+/// A header an answerer sets itself, such as a page's `Content-Security-Policy` or a redirect's
+/// `Location`. The name is lower case, as HTTP/2 writes it, and is one of a fixed set the answerer
+/// knows by heart, so it is a `&'static str`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Header {
+    /// The name, in lower case.
+    pub name: &'static str,
+    /// The value.
+    pub value: String,
 }
 
 /// The API's answer. It can carry one `Set-Cookie`, whose value is a secret and does not print;
@@ -233,6 +253,9 @@ pub struct Reply {
     pub ceremony: Option<Cookie>,
     /// How long to wait before asking again (`Retry-After`), for a `429` or a `503`.
     pub retry: Option<Duration>,
+    /// Headers of the answerer's own, set after the adapter's defaults and replacing any of the
+    /// same name: the dashboard's page policy, a redirect's `Location`, a download's name.
+    pub headers: Vec<Header>,
 }
 
 impl fmt::Debug for Reply {
@@ -246,6 +269,7 @@ impl fmt::Debug for Reply {
             .field("cookie", &self.cookie)
             .field("ceremony", &self.ceremony)
             .field("retry", &self.retry)
+            .field("headers", &self.headers)
             .finish()
     }
 }
@@ -253,7 +277,17 @@ impl fmt::Debug for Reply {
 impl Reply {
     /// A reply with a body.
     pub const fn new(status: Status, media: Media, body: Vec<u8>) -> Self {
-        Self { status, media, body, allow: Vec::new(), challenge: false, cookie: None, ceremony: None, retry: None }
+        Self {
+            status,
+            media,
+            body,
+            allow: Vec::new(),
+            challenge: false,
+            cookie: None,
+            ceremony: None,
+            retry: None,
+            headers: Vec::new(),
+        }
     }
 
     /// A reply with no body.

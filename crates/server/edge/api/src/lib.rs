@@ -57,7 +57,7 @@ pub use fault::{Denied, Fault, Intake};
 pub use limits::{Asked, Limit, Limits, Raised};
 pub use operator::{NoOperators, OperatorFile, OperatorKey, Operators, Unreadable as OperatorError};
 pub use port::{Port, Unnamed};
-pub use reply::{Media, Method, Payload, Reply, Request, Status, UnknownMethod};
+pub use reply::{Header, Media, Method, Payload, Reply, Request, Status, UnknownMethod};
 pub use route::{Call, RouteError};
 pub use signature::{Claimed, Config as Signing, Failed, Nonces, Signatures, Window, WindowError};
 pub use sites::{Exports, Route};

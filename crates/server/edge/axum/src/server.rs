@@ -197,7 +197,9 @@ where
     /// One request: within the concurrency limit, within the lookup budget, answered by the edge.
     async fn answer(State(inner): State<Arc<Self>>, request: Request) -> Response<Body> {
         let id = inner.requests.fetch_add(1, Ordering::Relaxed);
-        let span = logging::request!(id, request.method().as_str(), Clip(request.uri().path()));
+        // a sign-in link's token is in its path and never in a span
+        let path = edge_api::Enter::redact(request.uri().path());
+        let span = logging::request!(id, request.method().as_str(), Clip(&path));
         Self::serve(inner, request).instrument(span).await
     }
 

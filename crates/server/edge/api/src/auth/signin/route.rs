@@ -59,6 +59,8 @@ impl std::error::Error for EnterError {}
 impl Enter {
     /// The path under which a link's token is the last segment.
     const LOGIN: &'static str = "/v1/login";
+    /// The dashboard's page for a link, under which the token is the last segment too.
+    const PAGE: &'static str = "/login";
     /// The session's path.
     const SESSION: &'static str = "/v1/session";
     /// The path of the account's sessions, under which a session's id is the last segment.
@@ -113,7 +115,7 @@ impl Enter {
 
     /// `path` as it may be logged: the token of a link is cut out.
     pub fn redact(path: &str) -> String {
-        let secret = [Self::LOGIN, Self::APPROVE].into_iter().find(|base| {
+        let secret = [Self::LOGIN, Self::PAGE, Self::APPROVE].into_iter().find(|base| {
             path.strip_prefix(*base).and_then(|rest| rest.strip_prefix('/')).is_some_and(|rest| !rest.is_empty())
         });
         match secret {
@@ -168,6 +170,8 @@ mod test {
     #[test]
     fn a_log_line_has_no_token() {
         assert_eq!(Enter::redact(&format!("/v1/login/{TOKEN}")), "/v1/login/<redacted>");
+        assert_eq!(Enter::redact(&format!("/login/{TOKEN}")), "/login/<redacted>");
+        assert_eq!(Enter::redact("/login"), "/login");
         assert_eq!(Enter::redact("/v1/login"), "/v1/login");
         assert_eq!(Enter::redact("/v1/sites"), "/v1/sites");
     }
