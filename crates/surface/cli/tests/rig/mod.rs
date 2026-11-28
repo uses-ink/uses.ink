@@ -110,6 +110,7 @@ pub struct Server {
     pub audience: String,
     log: PathBuf,
     extra: Vec<String>,
+    explicit: bool,
 }
 
 impl Drop for Server {
@@ -124,6 +125,15 @@ impl Server {
 
     /// Starts a server on a fresh folder named for the test, with `extra` flags.
     pub fn start(name: &str, extra: &[&str]) -> Self {
+        Self::boot(name, extra, true)
+    }
+
+    /// Starts a server that is not given `--origin`, so it derives one from where it listens.
+    pub fn derived(name: &str, extra: &[&str]) -> Self {
+        Self::boot(name, extra, false)
+    }
+
+    fn boot(name: &str, extra: &[&str], explicit: bool) -> Self {
         let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("cli-rig-{name}"));
         std::fs::remove_dir_all(&root).ok();
         let data = root.join("data");
@@ -139,6 +149,7 @@ impl Server {
             audience: format!("api.localhost:{port}"),
             log: root.join("serve.log"),
             extra: extra.iter().map(|flag| (*flag).to_owned()).collect(),
+            explicit,
         };
         server.spawn();
         server
@@ -154,7 +165,12 @@ impl Server {
             .args(["--data", self.data.to_str().unwrap()])
             .args(["--audience", &self.audience, "--auth-skew", "10"])
             // the dashboard's origin is what passkeys are made for: this server's own port
-            .args(["--origin", &format!("http://localhost:{}", self.port)])
+            .args(
+                self.explicit
+                    .then(|| ["--origin".to_owned(), format!("http://localhost:{}", self.port)])
+                    .into_iter()
+                    .flatten(),
+            )
             .args(&self.extra)
             .stdin(Stdio::null())
             .stdout(sink.try_clone().unwrap())
@@ -194,7 +210,7 @@ impl Server {
             .split_whitespace()
             .map(|word| word.trim_matches(|c: char| matches!(c, ',' | ')' | '(' | ';' | '<' | '>' | '"')))
             // the request log names the route too, with the token redacted
-            .filter(|word| word.starts_with("http") && word.contains("/v1/login/"))
+            .filter(|word| word.starts_with("http") && word.contains("/login/"))
             .map(str::to_owned)
             .collect()
     }

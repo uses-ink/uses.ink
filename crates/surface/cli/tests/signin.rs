@@ -18,8 +18,8 @@ use rig::{Machine, Server};
 use serde_json::json;
 
 /// The path of a link the server printed: what a browser would request.
-fn target(link: &str) -> &str {
-    &link[link.find("/v1/login/").unwrap()..]
+fn target(link: &str) -> String {
+    format!("/v1{}", &link[link.find("/login/").unwrap()..])
 }
 
 /// Starts `ink <args>` on `machine`, approves the key it asks for in `browser` and returns what
@@ -55,7 +55,7 @@ fn a_stranger_signs_in_enrols_a_machine_publishes_and_logs_out() {
         "the start gives the API address a client types, port included: {}",
         server.said()
     );
-    let first = target(&links[0]).to_owned();
+    let first = target(&links[0]);
     let mut owner = server.browser();
     assert_eq!(owner.send(("GET", "/v1/session"), "").status(), "401", "no session before the link");
     let looked = server.http(("GET", &first), &[], "");
@@ -173,7 +173,7 @@ fn a_stranger_signs_in_enrols_a_machine_publishes_and_logs_out() {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
     let mail = server.links();
-    let entered = ann.send(("POST", target(&mail[1])), "");
+    let entered = ann.send(("POST", &target(&mail[1])), "");
     assert_eq!(entered.status(), "200", "{}{mail:?}{}", entered.text, server.said());
     ann.keep(&entered);
     assert_eq!(ann.send(("GET", "/v1/session"), "").status(), "200");
@@ -235,7 +235,7 @@ fn a_key_nobody_approves_or_a_person_denies_is_a_sign_in_error_that_says_so() {
     let server = Server::start("unapproved", &["--enrol-guesses", "3", "--enrol-closed", "2s"]);
     let first = &server.links()[0];
     let mut owner = server.browser();
-    let entered = owner.send(("POST", target(first)), "");
+    let entered = owner.send(("POST", &target(first)), "");
     assert_eq!(entered.status(), "200", "{}", entered.text);
     owner.keep(&entered);
 

@@ -102,14 +102,29 @@ impl args::Serve {
     #[expect(clippy::too_many_lines, reason = "one listing of every setting, a field each")]
     fn start_api(&self, product: Product, data: &std::path::Path, io: &mut Io<'_>) -> Result<(Mount, Beside), Error> {
         let (limits, interval) = (product.limits, product.interval);
-        let sites = self.origin.trim_start_matches("http://").trim_start_matches("https://");
+        let sites = product.site.trim_start_matches("http://").trim_start_matches("https://");
         let record = Record::new(0)
             .field(
                 "api",
                 Line::plain(format!(
                     "{}/v1/sites (host {})",
-                    crate::selfhost::signin::Flags::api_address(&self.origin, &self.api_host),
+                    crate::selfhost::signin::Flags::api_address(&product.site, &self.api_host),
                     self.api_host
+                )),
+            )
+            .field(
+                "origin",
+                Line::plain(if self.origin.is_some() {
+                    format!("{} (from --origin)", product.site)
+                } else {
+                    format!("{} (from the listen address; give --origin to change it)", product.site)
+                }),
+            )
+            .field(
+                "dashboard",
+                Line::plain(format!(
+                    "{} (sign in with the link `ink` prints or mails)",
+                    crate::selfhost::signin::Flags::api_address(&product.site, &self.api_host)
                 )),
             )
             .field("data", Line::plain(data.display().to_string()))
@@ -362,20 +377,21 @@ impl args::Serve {
         let folder = self.folder.as_deref().unwrap_or_else(|| std::path::Path::new(DEFAULT_OUT));
         let deploys = Deploys::new(folder, self.host_mode.into()).map_err(|source| ServeError::Deploys { source })?;
         let mode = Self::mode(&deploys);
-        let mut product = self
-            .data
-            .as_deref()
-            .map(|data| Product::open(&self, data))
-            .transpose()
-            .map_err(|source| ServeError::Product { source })?;
-        let fronts = product.as_ref().map(|product| product.fronts.clone());
-        let back = product.as_mut().and_then(|product| product.back.take());
-        let server = Self::server(fronts, deploys)?;
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .map_err(|source| ServeError::Run { source })?;
         let (listener, address) = self.bind(&runtime)?;
+        let site = self.origin.clone().unwrap_or_else(|| format!("http://localhost:{}", address.port()));
+        let mut product = self
+            .data
+            .as_deref()
+            .map(|data| Product::open(&self, data, &site))
+            .transpose()
+            .map_err(|source| ServeError::Product { source })?;
+        let fronts = product.as_ref().map(|product| product.fronts.clone());
+        let back = product.as_mut().and_then(|product| product.back.take());
+        let server = Self::server(fronts, deploys)?;
         io.json(&Started { schema: "uses.serve/v1", address: format!("http://{address}"), mode })?;
         io.result(&Answer::of(format_args!("http://{address}")))?;
         let (events, told) = Events::channel();

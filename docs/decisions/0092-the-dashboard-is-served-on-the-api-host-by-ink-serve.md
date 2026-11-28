@@ -28,7 +28,7 @@ Built (2026-11-28). `ink serve --data` mounts the web dashboard (`crates/surface
   that posts. Cookies are `HttpOnly`, `SameSite=Lax`, `Secure` unless the origin is local http. The token of
   `/login/<token>` is redacted from the request log like `/v1/login/<token>`.
 - **The link points at the dashboard.** The default `--login-base` is `<api host>/login`, not `/v1/login`.
-  `/v1/login/<token>` still works for a client that is not a browser. `signin` and `v1` are reserved handles, since a
+  `/v1/login/<token>` still works for a client that is not a browser. `signin` is a reserved handle (`v1` is under the handle minimum), since a
   handle is the first path segment of a site's screens.
 - **Replies carry headers.** `edge_api::Reply` has `headers`, `Status::SeeOther` and the media `Html` and `Script`, so
   a page can redirect and set its own security headers; the bridge applies them.

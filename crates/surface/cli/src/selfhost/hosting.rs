@@ -57,7 +57,9 @@ impl From<Redirects> for Follow {
 #[derive(Clone, Debug, Args)]
 pub struct Hosting {
     /// Seconds a site's live deploy is remembered before the control plane is asked again: a new
-    /// deploy or a rollback shows within this long. 0 asks every time. [default: 10]
+    /// deploy or a rollback shows within this long. The default asks every time, since the lookup
+    /// and the control plane share one process and one database, so there is no staleness to
+    /// trade for speed; raise it only to spare the database a read per request. [default: 0]
     #[arg(long, help_heading = Heading::HOSTING)]
     pub site_ttl: Option<u64>,
     /// How many decoded deploys the lookup keeps. [default: 64]
@@ -161,7 +163,7 @@ impl Hosting {
     pub(crate) fn lookup(&self) -> edge_control::Settings {
         let defaults = edge_control::Settings::default();
         edge_control::Settings {
-            ttl: self.site_ttl.map_or(defaults.ttl, Duration::from_secs),
+            ttl: Duration::from_secs(self.site_ttl.unwrap_or(0)),
             deploys: self.site_deploys.unwrap_or(defaults.deploys),
             ..defaults
         }

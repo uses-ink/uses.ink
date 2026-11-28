@@ -74,7 +74,7 @@ inherits = "default"
 # The self-host loop comes first, then what compiles components on a cold cache (a second or
 # more each, tens on a busy host) and what waits on a TLS server that is made to stall: the first override that matches a test wins.
 [[profile.ci.overrides]]
-filter = "binary_id(uses-ink-cli::selfhost) | binary_id(uses-ink-cli::push) | binary_id(uses-ink-cli::signin) | binary_id(uses-ink-cli::passkey) | binary_id(uses-ink-cli::vault) | binary_id(uses-ink-cli::bundle) | binary_id(uses-ink-cli::git) | binary_id(uses-ink-host-wasmtime::component) | binary_id(uses-ink-host-native::https) | binary_id(uses-ink-watch-git::https) | binary_id(uses-ink-host-native::git) | binary_id(uses-ink-host-native::fetch)"
+filter = "binary_id(uses-ink-cli::selfhost) | binary_id(uses-ink-cli::push) | binary_id(uses-ink-cli::signin) | binary_id(uses-ink-cli::dashboard) | binary_id(uses-ink-cli::passkey) | binary_id(uses-ink-cli::vault) | binary_id(uses-ink-cli::bundle) | binary_id(uses-ink-cli::git) | binary_id(uses-ink-host-wasmtime::component) | binary_id(uses-ink-host-native::https) | binary_id(uses-ink-watch-git::https) | binary_id(uses-ink-host-native::git) | binary_id(uses-ink-host-native::fetch)"
 slow-timeout = { period = "60s", terminate-after = 2 }
 
 [[profile.ci.overrides]]
@@ -94,12 +94,12 @@ slow-timeout = { period = "30s", terminate-after = 2 }
 filter = "binary_id(uses-ink-cli::push)"
 slow-timeout = { period = "30s", terminate-after = 2 }
 
-# A stranger's first hour starts `ink serve`, signs in by its links, enrols keys and pushes over
+# A stranger's first hour and the dashboard over it start `ink serve`, signs in by its links, enrols keys and pushes over
 # real HTTP; the passkey ceremonies run against the same server; the vault builds a site with
 # photos (AVIF) natively and through the components, three times. Each waits on the server or on
 # a build, so this is the ceiling for a hang.
 [[profile.default.overrides]]
-filter = "binary_id(uses-ink-cli::signin) | binary_id(uses-ink-cli::passkey) | binary_id(uses-ink-cli::vault)"
+filter = "binary_id(uses-ink-cli::signin) | binary_id(uses-ink-cli::dashboard) | binary_id(uses-ink-cli::passkey) | binary_id(uses-ink-cli::vault)"
 slow-timeout = { period = "30s", terminate-after = 2 }
 
 # The help and failure tests run the real `ink` once for every command or every way to fail, so

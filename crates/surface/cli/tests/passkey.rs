@@ -26,7 +26,7 @@ fn owner(server: &Server) -> Browser<'_> {
     let links = server.links();
     let link = &links[0];
     let mut browser = server.browser();
-    let entered = browser.send(("POST", &link[link.find("/v1/login/").unwrap()..]), "");
+    let entered = browser.send(("POST", &format!("/v1{}", &link[link.find("/login/").unwrap()..])), "");
     assert_eq!(entered.status(), "200", "{}", entered.text);
     browser.keep(&entered);
     browser

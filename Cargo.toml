@@ -32,6 +32,7 @@ db-conformance = { package = "uses-ink-db-conformance", path = "crates/port/db/c
 db-sqlite = { package = "uses-ink-db-sqlite", path = "crates/port/db/sqlite" }
 diag = { package = "uses-ink-diag", path = "crates/core/diag" }
 edge = { package = "uses-ink-edge", path = "crates/server/edge" }
+web = { package = "uses-ink-web", path = "crates/surface/web" }
 edge-api = { package = "uses-ink-edge-api", path = "crates/server/edge/api" }
 edge-control = { package = "uses-ink-edge-control", path = "crates/server/edge/control" }
 edge-axum = { package = "uses-ink-edge-axum", path = "crates/server/edge/axum" }

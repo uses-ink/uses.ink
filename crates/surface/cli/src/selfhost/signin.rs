@@ -77,7 +77,7 @@ pub struct Flags {
     #[arg(long, env = "INK_SMTP_PASSWORD_FILE", help_heading = Heading::MAIL)]
     pub smtp_password_file: Option<PathBuf>,
     /// Where the link in a message points; the token is added as one more path segment.
-    /// [default: the API's address, `/v1/login`]
+    /// [default: the dashboard's `/login` on the API's address]
     #[arg(long, env = "INK_LOGIN_BASE", help_heading = Heading::MAIL)]
     pub login_base: Option<String>,
     /// Whether opening the link with a GET signs in, which a mail scanner can do for you.
@@ -246,7 +246,7 @@ impl Flags {
     /// Who passkeys are made for: the flags, or the API host on the scheme and port of `origin`.
     pub(crate) fn relying(&self, origin: &str, api_host: &str) -> Result<control::passkeys::Relying, Unready> {
         let base = Self::api_base(origin, api_host);
-        let site = base.trim_end_matches("/v1/login").to_owned();
+        let site = base.trim_end_matches("/login").to_owned();
         let host = api_host.rsplit_once(':').map_or(api_host, |(host, _)| host).to_ascii_lowercase();
         let id = self.rp_id.clone().unwrap_or(host);
         let origins = if self.rp_origin.is_empty() { vec![site] } else { self.rp_origin.clone() };
@@ -275,12 +275,12 @@ impl Flags {
         format!("{scheme}://{api_host}{port}")
     }
 
-    /// The API's own login address on the origin's scheme and port.
+    /// The dashboard's login address on the origin's scheme and port.
     fn api_base(origin: &str, api_host: &str) -> String {
-        format!("{}/v1/login", Self::api_address(origin, api_host))
+        format!("{}/login", Self::api_address(origin, api_host))
     }
 
-    /// Where links point: the flag, or the API's own `/v1/login`.
+    /// Where links point: the flag, or the dashboard's `/login`.
     pub(crate) fn base(&self, origin: &str, api_host: &str) -> Result<LinkBase, Unready> {
         let text = self.login_base.clone().unwrap_or_else(|| Self::api_base(origin, api_host));
         text.parse().map_err(Self::setting("--login-base"))
@@ -412,8 +412,8 @@ mod test {
     }
 
     #[test]
-    fn the_default_link_base_is_the_apis_login_on_the_origins_port() {
-        assert_eq!(Flags::api_base("http://localhost:8080", "api.localhost"), "http://api.localhost:8080/v1/login");
-        assert_eq!(Flags::api_base("https://ink.example", "api.ink.example"), "https://api.ink.example/v1/login");
+    fn the_default_link_base_is_the_dashboards_login_on_the_origins_port() {
+        assert_eq!(Flags::api_base("http://localhost:8080", "api.localhost"), "http://api.localhost:8080/login");
+        assert_eq!(Flags::api_base("https://ink.example", "api.ink.example"), "https://api.ink.example/login");
     }
 }

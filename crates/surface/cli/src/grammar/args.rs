@@ -337,8 +337,9 @@ pub struct Serve {
     pub api_host: String,
     /// Where sites are served, for the addresses the API reports (`<handle>.<host>`) and the
     /// origin passkeys are made for: give the address a browser uses to reach this server.
-    #[arg(long, default_value = "http://localhost:8080", help_heading = Heading::SERVER)]
-    pub origin: String,
+    /// [default: `http://localhost:` and the port the server listens on, which the start says]
+    #[arg(long, help_heading = Heading::SERVER)]
+    pub origin: Option<String>,
     /// The largest JSON request body, in bytes. [default: 65536]
     #[arg(long, help_heading = Heading::LIMITS)]
     pub api_body: Option<u64>,

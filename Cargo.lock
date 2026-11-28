@@ -6405,6 +6405,7 @@ dependencies = [
  "uses-ink-theme-quiet",
  "uses-ink-watch",
  "uses-ink-watch-git",
+ "uses-ink-web",
 ]
 
 [[package]]

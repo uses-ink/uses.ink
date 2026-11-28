@@ -28,6 +28,7 @@ use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 
 use crate::grammar::args;
+use crate::selfhost::dash::{Hosted, Pages};
 use crate::selfhost::signin::{Flags, Sender, Told};
 
 /// The adapters of the control plane `ink serve` runs.
@@ -47,9 +48,11 @@ pub(crate) type Store = Arc<Sqlite>;
 pub(crate) type Callers = Signatures<Store, System, OperatorFile>;
 
 /// The API as `ink serve` wires it, with the sign-in routes beside it.
-pub(crate) type Wired = Routed<
-    Routed<Api<Ports, Callers, System, System>, Door<Store, System, System>>,
-    Ceremonies<Store, System, System, Webauthn>,
+pub(crate) type Wired = Hosted<
+    Routed<
+        Routed<Api<Ports, Callers, System, System>, Door<Store, System, System>>,
+        Ceremonies<Store, System, System, Webauthn>,
+    >,
 >;
 
 /// Why the control plane could not be set up.
@@ -130,6 +133,8 @@ pub(crate) struct Product {
     pub(crate) ports: Ports,
     /// Where the control plane says its sites are served.
     pub(crate) origin: Origin,
+    /// The address a browser reaches this server at, as the start says it.
+    pub(crate) site: String,
     /// The data folder.
     pub(crate) data: PathBuf,
     /// How the loops reach an https git remote.
@@ -152,26 +157,26 @@ impl Product {
 
     /// Sets the control plane up in `settings.data`, migrating the database and making the owner.
     #[expect(clippy::too_many_lines, reason = "one sequence of adapters, each a line")]
-    pub(crate) fn open(settings: &args::Serve, data: &Path) -> Result<Self, Unready> {
+    pub(crate) fn open(settings: &args::Serve, data: &Path, site: &str) -> Result<Self, Unready> {
         std::fs::create_dir_all(data).map_err(|source| Unready::Data { path: data.to_path_buf(), source })?;
         let file = data.join("ink.db");
         let db = Self::database(&file)?;
         let blobs = Directory::open(data.join("blobs")).map_err(|e| Self::adapter("blob store")(Box::new(e)))?;
         let sealer = Sealer::beside(&file).map_err(|e| Self::adapter("sealing key")(Box::new(e)))?;
-        let origin = Self::origin(settings)?;
+        let origin = Self::origin(site)?;
         let ports: Ports = Arc::new((db.clone(), blobs, Queue::new(db.clone()), sealer));
         let control = Control::new(Arc::clone(&ports), origin.clone()).with_policy(settings.hosting.policy());
         let account = Self::owner(&control)?;
         let (operators, retired, keys) = Self::credentials(settings, data)?;
         let limits = Self::limits(settings)?;
         let flags = &settings.signin;
-        let secure = Flags::secure(&settings.origin)?;
-        let base = flags.base(&settings.origin, &settings.api_host)?;
+        let secure = Flags::secure(site)?;
+        let base = flags.base(site, &settings.api_host)?;
         let (sign, rates) = (flags.settings(), flags.rates());
         let (courier, outbox, capacity) = Self::courier(flags)?;
         let db_for_keys = Arc::clone(&db);
         let entry = flags.step_up_window.into_iter().fold(SignIn::new(db, sign), SignIn::with_window);
-        let relying = flags.relying(&settings.origin, &settings.api_host)?;
+        let relying = flags.relying(site, &settings.api_host)?;
         let passkeys = Webauthn::new(relying.clone())
             .map_err(|e| Unready::Setting { flag: "--rp-origin", source: Box::new(e) })?;
         let gates = Ceremonies::new(
@@ -193,7 +198,10 @@ impl Product {
             .allow_origin
             .iter()
             .fold(Door::new(entry, (System, System), enrol, config), |door, origin| door.with_origin(origin.as_str()));
+        let origins = door.origins().clone();
         let api = Routed::new(api, door);
+        let policy = settings.hosting.policy();
+        let pages = Pages::new(Control::new(Arc::clone(&ports), origin.clone()).with_policy(policy), origins, limits);
         let told = Told(std::sync::Mutex::new(std::io::stderr()));
         let mailing = Mailing {
             courier,
@@ -208,7 +216,7 @@ impl Product {
             admin,
         };
         Ok(Self {
-            api: Routed::new(api, gates),
+            api: Hosted::new(Routed::new(api, gates), pages),
             mailing,
             limits,
             interval: Self::interval(settings)?,
@@ -216,6 +224,7 @@ impl Product {
             keys,
             ports,
             origin,
+            site: site.to_owned(),
             data: data.to_path_buf(),
             https: Self::https(settings)?,
             fronts,
@@ -239,8 +248,8 @@ impl Product {
     }
 
     /// Where the control plane says its sites are served, from `--origin`.
-    fn origin(settings: &args::Serve) -> Result<Origin, Unready> {
-        let url = model::ExternalUrl::parse(settings.origin.clone())
+    fn origin(site: &str) -> Result<Origin, Unready> {
+        let url = model::ExternalUrl::parse(site.to_owned())
             .map_err(|e| Unready::Setting { flag: "--origin", source: Box::new(e) })?;
         Origin::try_from(&url).map_err(|e| Unready::Setting { flag: "--origin", source: Box::new(e) })
     }

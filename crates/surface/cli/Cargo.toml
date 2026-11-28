@@ -26,6 +26,7 @@ control.workspace = true
 db.workspace = true
 db-sqlite.workspace = true
 edge-api.workspace = true
+web.workspace = true
 sig.workspace = true
 edge-control.workspace = true
 clap.workspace = true
