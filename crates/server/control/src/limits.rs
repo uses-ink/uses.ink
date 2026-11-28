@@ -93,6 +93,15 @@ pub enum Spent {
 }
 
 impl Spent {
+    /// The code of the catalog that words a refusal of this budget.
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Stored => "budget.stored.over",
+            Self::Builds => "budget.builds.over",
+            Self::Sites => "budget.sites.over",
+        }
+    }
+
     /// The budget it is of.
     pub const fn budget(self) -> Budget {
         match self {

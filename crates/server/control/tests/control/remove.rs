@@ -9,7 +9,7 @@ use build::Source;
 use control::table::{
     self, Account, Credential, Deploy, Event, Live, Publication, Removal as Pending, Site, Tombstone,
 };
-use control::{NewAccount, NewCredential, NewDeploy, NewSite, Policy, Ports, Purpose, Refusal, Removal, SiteState};
+use control::{NewAccount, NewCredential, NewDeploy, NewSite, Ports, Purpose, Refusal, Removal, SiteState};
 use model::Hash;
 use sea_query::{Expr, ExprTrait};
 use secret::Plain;
@@ -177,7 +177,7 @@ fn world_id<K>(n: u8) -> control::Id<K> {
 
 /// A site with `files` pages of one deploy, under a policy that deletes `step` blobs at most.
 fn stepped(step: u64, files: usize) -> (World, control::Site) {
-    let world = World::new().under(Policy::DEFAULT.stepping(step));
+    let world = World::new().under(World::BARE.stepping(step));
     let site = world.site("cstef");
     let texts: Vec<(String, String)> = (0..files).map(|n| (format!("/p{n}"), format!("page {n}"))).collect();
     let pages: Vec<(&str, &str)> = texts.iter().map(|(route, text)| (route.as_str(), text.as_str())).collect();
@@ -227,7 +227,7 @@ fn a_removal_that_fails_partway_resumes_with_a_whole_receipt() {
     let folder = tempfile::tempdir().unwrap();
     // steps of two, and a store that fails on its fourth delete
     let flaky = Flaky { inner: Directory::open(folder.path()).unwrap(), deletes: Cell::new(3) };
-    let control = World::over(flaky).with_policy(Policy::DEFAULT.stepping(2));
+    let control = World::over(flaky).with_policy(World::BARE.stepping(2));
     let account = world_id(1);
     pollster::block_on(control.add_account(NewAccount { id: account, at: at(0) })).unwrap();
     let id = world_id(2);

@@ -368,6 +368,18 @@ pub enum Preview {
     ExpiresAt,
 }
 
+/// `doomed`: a blob no deploy and no preview names, queued for deletion until its grace is over
+/// (decision 0150).
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "doomed"]
+pub enum Doomed {
+    Table,
+    SiteId,
+    Blob,
+    Bytes,
+    Since,
+}
+
 /// `pin`: the branch and commit a preview build reads (decision 0101's neighbour, 0091): a row
 /// for each build of a branch, and none for a build of the site's own source.
 #[derive(Clone, Copy, Debug, IdenStatic)]

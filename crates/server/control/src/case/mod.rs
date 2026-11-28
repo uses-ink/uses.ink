@@ -5,6 +5,7 @@ mod budget;
 mod credential;
 mod deploy;
 pub(crate) mod domain;
+mod doomed;
 pub(crate) mod export;
 mod hold;
 mod job;

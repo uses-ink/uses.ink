@@ -47,6 +47,10 @@ pub(crate) fn at(n: i64) -> Timestamp {
 }
 
 impl World {
+    /// The defaults of the control plane with no grace on an unnamed blob, so a test that asks
+    /// what a sweep deleted reads the answer at once. A test of the grace sets its own.
+    pub(crate) const BARE: control::Policy = control::Policy::DEFAULT.graced(std::time::Duration::ZERO);
+
     /// Where the test sites are served.
     fn origin() -> Origin {
         Origin::try_from(&model::ExternalUrl::parse("https://uses.ink").unwrap()).unwrap()
@@ -71,7 +75,12 @@ impl World {
         .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (db.clone(), Directory::open(&root).unwrap(), Queue::new(db), Sealer::ephemeral().unwrap());
-        Self { control: Control::new(ports, Self::origin()), root, _folder: folder, next: Cell::new(1) }
+        Self {
+            control: Control::new(ports, Self::origin()).with_policy(Self::BARE),
+            root,
+            _folder: folder,
+            next: Cell::new(1),
+        }
     }
 
     /// The same world under the operator's `policy`.
@@ -96,6 +105,7 @@ impl World {
         .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         Control::new((db.clone(), blob, Queue::new(db), Sealer::ephemeral().unwrap()), Self::origin())
+            .with_policy(Self::BARE)
     }
 
     /// A fresh id: the same calls in the same order draw the same ids.

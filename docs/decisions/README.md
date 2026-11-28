@@ -115,3 +115,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0140 | [A `[folder]` table in `ink.toml` rules the kind, weight and order of the pages in a folder](0140-a-folder-table-in-ink-toml-rules-the-kind-and-order-of-the-pages-in-it.md) | built | 2026-11-28 | config |
 | 0141 | [The theme gets the section tree, the neighbours and the outline, and `theme-quiet` draws them with `navigation = "docs"`](0141-the-theme-gets-the-section-tree-the-neighbours-and-the-outline-and-draws.md) | built | 2026-11-28 | theme |
 | 0142 | [A theme declares tokens, and the uses.ink docs look comes from `token.toml`](0142-a-theme-declares-tokens-and-the-uses-ink-docs-look-comes-from-token-toml.md) | built | 2026-11-28 | theme |
+| 0150 | [A blob nothing names is queued and deleted only after a grace](0150-a-blob-nothing-names-is-queued-and-deleted-only-after-a-grace.md) | accepted | 2026-11-28 | control |

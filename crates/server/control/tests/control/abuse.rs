@@ -40,7 +40,7 @@ fn a_report_is_recorded_open_and_listed_newest_first() {
 
 #[test]
 fn reports_stop_at_the_limit_over_every_source() {
-    let world = World::new().under(control::Policy::DEFAULT.reported(2));
+    let world = World::new().under(World::BARE.reported(2));
     let (first, second, third) = (report(&world, "one", 10), report(&world, "two", 20), report(&world, "three", 30));
     world.run(world.control.report(first)).unwrap();
     world.run(world.control.report(second)).unwrap();
@@ -53,7 +53,7 @@ fn reports_stop_at_the_limit_over_every_source() {
 
 #[test]
 fn an_actioned_report_stops_counting_toward_the_limit() {
-    let world = World::new().under(control::Policy::DEFAULT.reported(1));
+    let world = World::new().under(World::BARE.reported(1));
     let site = world.site("cstef");
     let first = report(&world, "cstef", 10);
     world.run(world.control.report(first.clone())).unwrap();

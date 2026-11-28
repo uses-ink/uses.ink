@@ -16,7 +16,8 @@ use crate::{Control, Error, Ports, Site, Spent};
 const DAY: i64 = 24 * 60 * 60 * 1000;
 
 impl<P: Ports> Control<P> {
-    /// How many bytes the account stores: every blob of every site's tenant.
+    /// How many bytes the account stores: every blob of every site's tenant, but those queued for
+    /// deletion (decision 0150).
     pub async fn stored(&self, account: Id<AccountKind>) -> Result<Bytes, Error<P>> {
         let sites = Query::select()
             .column(table::Site::Id)
@@ -25,10 +26,13 @@ impl<P: Ports> Control<P> {
             .to_owned();
         let mut total = 0_u64;
         for row in self.ports.db().rows(sites.into()).await? {
-            let tenant = Self::tenant(Fields(&row).id(table::Site::Id)?)?;
+            let site = Fields(&row).id(table::Site::Id)?;
+            let tenant = Self::tenant(site)?;
             for listed in self.ports.blob().list(&tenant).await? {
                 total = total.saturating_add(listed.size.count());
             }
+            // a queued blob is stored until its grace is over, and is not the account's to pay for
+            total = total.saturating_sub(self.waiting(site).await?);
         }
         Ok(Bytes(total))
     }
@@ -88,17 +92,17 @@ impl<P: Ports> Control<P> {
     /// limit, the site's older deploys are swept first, as they will be once this one is
     /// recorded; still over, the blobs only this deploy brought are removed, so a refused deploy
     /// leaves no bytes.
-    pub(crate) async fn store_room(&self, site: &Site, manifest: &Manifest) -> Result<(), Error<P>> {
+    pub(crate) async fn store_room(&self, site: &Site, manifest: &Manifest, at: Timestamp) -> Result<(), Error<P>> {
         let limit = self.policy.limits.stored;
         if self.stored(site.account).await? <= limit {
             return Ok(());
         }
-        self.trim(site.id, Some(manifest)).await?;
+        self.trim(site.id, Some(manifest), at).await?;
         let total = self.stored(site.account).await?;
         if total <= limit {
             return Ok(());
         }
-        self.discard(site.id, manifest).await?;
+        self.discard(site.id, manifest, at).await?;
         Err(self.policy.limits.over(Spent::Stored, total.count()).into())
     }
 }

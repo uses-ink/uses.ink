@@ -189,6 +189,11 @@ pub struct Hosting {
     /// site stops counting, and raising this is the only other way to make room. [default: 10000]
     #[arg(long, value_name = "N", env = "INK_LIMIT_REPORTS", help_heading = Heading::LIMITS)]
     pub limit_reports: Option<u64>,
+    /// Seconds a blob that no deploy and no preview names stays before it is deleted. A build that
+    /// skipped uploading a blob because the store held it keeps it until its deploy is recorded, so
+    /// this must outlast that gap. [default: 900]
+    #[arg(long, value_name = "SECONDS", env = "INK_BLOB_GRACE", help_heading = Heading::LIMITS)]
+    pub blob_grace: Option<u64>,
     /// How the TXT records that prove a custom domain are read: `system` asks nameservers, `offline`
     /// asks none, so a claim is made and a proof says why it cannot be checked. [default: system]
     #[arg(long, value_enum, env = "INK_RESOLVER", help_heading = Heading::HOSTING)]
@@ -227,7 +232,8 @@ impl Hosting {
             .stepping(self.remove_step.unwrap_or(Policy::STEP))
             .previewing(preview)
             .domained(self.limit_domains.unwrap_or(Policy::DOMAINS))
-            .reported(self.limit_reports.unwrap_or(Policy::REPORTS));
+            .reported(self.limit_reports.unwrap_or(Policy::REPORTS))
+            .graced(self.blob_grace.map_or(Policy::GRACE, Duration::from_secs));
         self.handle_hold.map_or(policy, |days| policy.holding(Duration::from_hours(days.saturating_mul(24))))
     }
 

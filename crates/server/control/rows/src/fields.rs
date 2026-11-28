@@ -102,6 +102,12 @@ impl Fields<'_> {
         .transpose()
     }
 
+    /// A column holding a hash.
+    pub fn hash(self, column: impl IdenStatic) -> Result<Hash, Unreadable> {
+        let text = self.text(column)?;
+        Hash::from_str(&text).map_err(|source| Unreadable::Hash { column: column.as_str(), source })
+    }
+
     /// A nullable column holding a hash.
     pub fn maybe_hash(self, column: impl IdenStatic) -> Result<Option<Hash>, Unreadable> {
         let text: Option<String> = self.0.get(column)?;

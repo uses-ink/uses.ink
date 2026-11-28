@@ -19,6 +19,7 @@ mod credential;
 mod deploy;
 mod domain;
 mod export;
+mod grace;
 mod handle;
 mod job;
 mod keys;

@@ -4,13 +4,13 @@
 use blob::{Blob, Tenant};
 use build::{BuildId, Source, Trigger};
 use control::table::{Deploy, Job};
-use control::{Limits, NewDeploy, NewJob, NewSite, Policy, Ports as _, Refusal, Spent};
+use control::{Limits, NewDeploy, NewJob, NewSite, Ports as _, Refusal, Spent};
 use model::Bytes;
 
 use crate::world::{World, at};
 
 fn world(limits: Limits) -> World {
-    World::new().under(Policy::DEFAULT.limited(limits))
+    World::new().under(World::BARE.limited(limits))
 }
 
 fn deploy(site: &control::Site, manifest: model::Manifest, n: i64) -> NewDeploy {
@@ -120,7 +120,7 @@ fn sweeping_below_the_limit_changes_nothing() {
     let site = world.site("cstef");
     let manifest = world.stage(&site, &[("/", "one")]);
     world.run(world.control.deploy(deploy(&site, manifest, 10))).unwrap();
-    assert_eq!(world.run(world.control.sweep(site.id)).unwrap(), control::Swept::default());
+    assert_eq!(world.run(world.control.sweep(site.id, at(30))).unwrap(), control::Swept::default());
 }
 
 #[test]

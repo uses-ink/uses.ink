@@ -25,7 +25,7 @@ impl<P: Ports> Control<P> {
         let site = self.active(new.site).await?;
         let tenant = Self::tenant(site.id)?;
         let bytes = self.stat(&tenant, &new.manifest).await?;
-        self.store_room(&site, &new.manifest).await?;
+        self.store_room(&site, &new.manifest, new.at).await?;
         let blobs = self.ports.blob();
         let id = new.manifest.id();
         blobs.put(&tenant, id.hash(), [new.manifest.canonical()]).await?;
@@ -39,6 +39,8 @@ impl<P: Ports> Control<P> {
             Event::DeployPublished { deploy: id, previous: before.map(|live| live.deploy) }
                 .moved(site.id, new.at, id)?,
         ];
+        // the deploy names these now: whatever queued them for deletion no longer may
+        let batch: Vec<Statement> = batch.into_iter().chain(Self::revive(site.id, &new.manifest)).collect();
         let outcomes = self.ports.db().batch(batch).await?;
         let moved = outcomes.get(2).is_some_and(|outcome| outcome.changes == 1);
         let published = match (moved, before) {
@@ -57,7 +59,7 @@ impl<P: Ports> Control<P> {
             files = logging::Count::from(new.manifest.entries().len()).field(),
             bytes = logging::Size(bytes.count()).field(),
         );
-        self.sweep(site.id).await?;
+        self.sweep(site.id, new.at).await?;
         Ok(Recorded { deploy: id, published })
     }
 

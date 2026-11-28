@@ -1,11 +1,14 @@
 //! Keeping a site's deploys to the limit, and the files only the dropped ones used (decision
-//! 0088). A blob is removed only when a dropped deploy named it and no kept deploy does, so
-//! nothing a push has uploaded and not yet published is touched.
+//! 0088). A blob is queued only when a dropped deploy named it and no kept deploy does, and it is
+//! deleted when its grace is over and nothing names it again (decision 0150). A push that has
+//! uploaded and not yet published is protected by that grace and no more: an upload that is
+//! skipped because the store holds the blob is not seen by any row.
 
 use std::collections::BTreeSet;
 
-use blob::{Blob, Chunks, Deleted};
+use blob::{Blob, Chunks};
 use db::{Db, Statement};
+use jiff::Timestamp;
 use model::{Bytes, DeployId, Hash, Manifest};
 use sea_query::{Expr, ExprTrait, IntoColumnRef, IntoTableRef, Order, Query};
 
@@ -17,6 +20,14 @@ use crate::{Control, Error, Ports};
 
 /// How many ids one statement names: under the smallest bound-parameter limit of a database.
 const CHUNK: usize = 40;
+
+/// The deploys a sweep drops, the blobs it must keep, and when it runs.
+#[derive(Debug)]
+pub(crate) struct Dropping<'a> {
+    pub(crate) deploys: &'a [DeployId],
+    pub(crate) protect: BTreeSet<Hash>,
+    pub(crate) at: Timestamp,
+}
 
 /// What a sweep removed.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -35,14 +46,20 @@ pub struct Swept {
 impl<P: Ports> Control<P> {
     /// Drops the deploys of `site` beyond the limit: the live deploy, the one it replaced and
     /// the newest of the rest are kept, up to [`Limits::deploys`](crate::Limits). The files
-    /// only a dropped deploy served go with it, bytes before rows (decision 0022).
-    pub async fn sweep(&self, site: Id<SiteKind>) -> Result<Swept, Error<P>> {
-        self.trim(site, None).await
+    /// only a dropped deploy served are queued with it and deleted once their grace is over
+    /// (decision 0150): at `at` those queued before the grace are.
+    pub async fn sweep(&self, site: Id<SiteKind>, at: Timestamp) -> Result<Swept, Error<P>> {
+        self.trim(site, None, at).await
     }
 
     /// A sweep as it would be once `incoming`, a deploy not recorded yet, is: the deploy counts
     /// as the newest and its blobs are never removed.
-    pub(crate) async fn trim(&self, site: Id<SiteKind>, incoming: Option<&Manifest>) -> Result<Swept, Error<P>> {
+    pub(crate) async fn trim(
+        &self,
+        site: Id<SiteKind>,
+        incoming: Option<&Manifest>,
+        at: Timestamp,
+    ) -> Result<Swept, Error<P>> {
         let site = self.site(site).await?;
         let mut ids = self.deploy_ids(site.id).await?;
         let mut protect = BTreeSet::new();
@@ -67,19 +84,18 @@ impl<P: Ports> Control<P> {
             }
         }
         let dropped: Vec<DeployId> = ids.into_iter().filter(|id| !kept.contains(id)).collect();
-        self.drop_deploys(site.id, &kept, (&dropped, protect)).await
+        self.drop_deploys(site.id, &kept, Dropping { deploys: &dropped, protect, at }).await
     }
 
-    /// Removes `dropped` deploys of `site` and the blobs they named that no `kept` deploy and no
-    /// blob of `protect` reaches. The second of `dropped` is what to protect.
+    /// Removes the `dropping` deploys of `site` and queues the blobs they named that no `kept`
+    /// deploy and no blob of `protect` reaches, then deletes the queued blobs that are due.
     pub(crate) async fn drop_deploys(
         &self,
         site: Id<SiteKind>,
         kept: &BTreeSet<DeployId>,
-        dropped: (&[DeployId], BTreeSet<Hash>),
+        dropping: Dropping<'_>,
     ) -> Result<Swept, Error<P>> {
-        let (dropped, mut protected) = dropped;
-        let tenant = Self::tenant(site)?;
+        let Dropping { deploys: dropped, protect: mut protected, at } = dropping;
         for deploy in kept.iter().copied().chain(self.preview_ids(site, &[]).await?) {
             protected.extend(self.reach(site, deploy).await?);
         }
@@ -87,13 +103,8 @@ impl<P: Ports> Control<P> {
         for deploy in dropped {
             goners.extend(self.reach(site, *deploy).await?);
         }
-        let mut swept = Swept { deploys: dropped.len() as u64, ..Swept::default() };
-        for hash in goners.difference(&protected) {
-            if let Deleted::Removed(size) = self.ports.blob().delete(&tenant, *hash).await? {
-                swept.blobs += 1;
-                swept.bytes = Bytes(swept.bytes.count().saturating_add(size.count()));
-            }
-        }
+        goners.retain(|hash| !protected.contains(hash));
+        self.condemn(site, &goners, at).await?;
         let key = site.to_string();
         let mut batch: Vec<Statement> = Vec::new();
         for chunk in dropped.chunks(CHUNK) {
@@ -104,7 +115,8 @@ impl<P: Ports> Control<P> {
             batch.push(Self::forget(table::Deploy::Table, deploys, (table::Deploy::Id, &names)));
         }
         self.ports.db().batch(batch).await?;
-        Ok(swept)
+        let freed = self.reap_site(site, at, &protected).await?;
+        Ok(Swept { deploys: dropped.len() as u64, ..freed })
     }
 
     /// The statement that deletes the rows of `table` of the site `key` whose `column` is one of
@@ -122,19 +134,18 @@ impl<P: Ports> Control<P> {
             .into()
     }
 
-    /// Removes the blobs `manifest` names that no recorded deploy of `site` reaches: what a
-    /// refused deploy brought and nothing else uses.
-    pub(crate) async fn discard(&self, site: Id<SiteKind>, manifest: &Manifest) -> Result<(), Error<P>> {
-        let tenant = Self::tenant(site)?;
+    /// Queues the blobs `manifest` names that no recorded deploy and no preview of `site` reaches:
+    /// what a refused deploy brought and nothing else uses. They are deleted once their grace is
+    /// over, so a build that skipped uploading one because the store held it keeps it.
+    pub(crate) async fn discard(&self, site: Id<SiteKind>, manifest: &Manifest, at: Timestamp) -> Result<(), Error<P>> {
         let mut held = BTreeSet::new();
         for deploy in self.deploy_ids(site).await?.into_iter().chain(self.preview_ids(site, &[]).await?) {
             held.extend(self.reach(site, deploy).await?);
         }
-        for entry in manifest.entries() {
-            if !held.contains(&entry.blob()) {
-                self.ports.blob().delete(&tenant, entry.blob()).await?;
-            }
-        }
+        let goners: BTreeSet<Hash> =
+            manifest.entries().iter().map(model::Served::blob).filter(|blob| !held.contains(blob)).collect();
+        self.condemn(site, &goners, at).await?;
+        self.reap_site(site, at, &BTreeSet::new()).await?;
         Ok(())
     }
 

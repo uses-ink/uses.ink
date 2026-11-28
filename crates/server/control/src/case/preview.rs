@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use blob::{Blob, Deleted};
+use blob::Blob;
 use build::Source;
 use db::{Db, Statement};
 use jiff::Timestamp;
@@ -15,6 +15,14 @@ use crate::id::{Id, Site as SiteKind};
 use crate::{
     Control, Error, Event, Handle, NewPreview, Ports, Preview, Purpose, Refusal, SiteState, Slug, Spent, Swept, table,
 };
+
+/// The blobs of a deploy that went, which an abandon queues unless something else names them.
+#[derive(Debug)]
+struct Leaving<'a> {
+    candidates: BTreeSet<Hash>,
+    ignoring: &'a [Slug],
+    at: Timestamp,
+}
 
 /// What a preview host serves: the site and the deploy of the preview.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -43,7 +51,7 @@ impl<P: Ports> Control<P> {
         let limit = self.policy.limits.stored;
         let total = self.stored(site.account).await?;
         if total > limit {
-            self.discard(site.id, &new.manifest).await?;
+            self.discard(site.id, &new.manifest, new.at).await?;
             return Err(self.policy.limits.over(Spent::Stored, total.count()).into());
         }
         let id = new.manifest.id();
@@ -61,10 +69,13 @@ impl<P: Ports> Control<P> {
             expires: Timestamp::from_millisecond(ends).unwrap_or(Timestamp::MAX),
         };
         let event = Event::PreviewPushed { slug: new.slug, deploy: id }.insert(site.id, new.at)?;
-        self.ports.db().batch(vec![preview.replace()?, event]).await?;
+        let mut batch = vec![preview.replace()?, event];
+        batch.extend(Self::revive(site.id, &new.manifest));
+        self.ports.db().batch(batch).await?;
         if let Some(old) = before.filter(|old| old.deploy != id) {
             let candidates = self.reach(site.id, old.deploy).await?;
-            self.reclaim(site.id, candidates, &[]).await?;
+            self.abandon(site.id, Leaving { candidates, ignoring: &[], at: new.at }).await?;
+            self.reap_site(site.id, new.at, &BTreeSet::new()).await?;
         }
         Ok(preview)
     }
@@ -81,8 +92,9 @@ impl<P: Ports> Control<P> {
         Ok(())
     }
 
-    /// Ends the preview of `site` labelled `slug` now, and frees the blobs only it named, bytes
-    /// before rows (decision 0022). A blob a deploy or another preview still names stays.
+    /// Ends the preview of `site` labelled `slug` now, and queues the blobs only it named, which
+    /// are deleted once their grace is over (decision 0150). A blob a deploy or another preview
+    /// still names stays.
     /// Removing what is not there is `preview.label.unknown`, so a typo is not a success.
     pub async fn remove_preview(&self, site: Id<SiteKind>, slug: &Slug, at: Timestamp) -> Result<Swept, Error<P>> {
         self.site(site).await?;
@@ -90,7 +102,7 @@ impl<P: Ports> Control<P> {
             return Err(Refusal::NoLabel { site, label: slug.to_string() }.into());
         };
         let candidates = self.reach(site, found.deploy).await?;
-        let freed = self.reclaim(site, candidates, std::slice::from_ref(slug)).await?;
+        self.abandon(site, Leaving { candidates, ignoring: std::slice::from_ref(slug), at }).await?;
         let delete = Query::delete()
             .from_table(table::Preview::Table)
             .and_where(Expr::col(table::Preview::SiteId).eq(site.to_string()))
@@ -98,6 +110,7 @@ impl<P: Ports> Control<P> {
             .to_owned();
         let event = Event::PreviewExpired { slug: slug.clone() }.insert(site, at)?;
         self.ports.db().batch(vec![delete.into(), event]).await?;
+        let freed = self.reap_site(site, at, &BTreeSet::new()).await?;
         Ok(Swept { previews: 1, ..freed })
     }
 
@@ -133,8 +146,9 @@ impl<P: Ports> Control<P> {
             .map(|found| Showing { site: site.id, deploy: found.deploy }))
     }
 
-    /// Removes every preview that has ended at `at`, with the blobs only they named, bytes before
-    /// rows (decision 0022). A blob a deploy or another preview of the site still names stays.
+    /// Removes every preview that has ended at `at`, queues the blobs only they named and deletes
+    /// the queued blobs of every site whose grace is over (decision 0150). A blob a deploy or
+    /// another preview of the site still names stays.
     pub async fn expire(&self, at: Timestamp) -> Result<Swept, Error<P>> {
         let select = Query::select()
             .columns(Preview::COLUMNS)
@@ -154,9 +168,7 @@ impl<P: Ports> Control<P> {
             for preview in &these {
                 candidates.extend(self.reach(site, preview.deploy).await?);
             }
-            let freed = self.reclaim(site, candidates, &gone).await?;
-            swept.blobs += freed.blobs;
-            swept.bytes = Bytes(swept.bytes.count().saturating_add(freed.bytes.count()));
+            self.abandon(site, Leaving { candidates, ignoring: &gone, at }).await?;
             let mut batch: Vec<Statement> = Vec::new();
             for slug in &gone {
                 batch.push(
@@ -172,30 +184,22 @@ impl<P: Ports> Control<P> {
             self.ports.db().batch(batch).await?;
             swept.previews += gone.len() as u64;
         }
+        let freed = self.reap(at).await?;
+        swept.blobs += freed.blobs;
+        swept.bytes = Bytes(swept.bytes.count().saturating_add(freed.bytes.count()));
         Ok(swept)
     }
 
-    /// Deletes the `candidates` blobs that no deploy of `site` and no preview of it, but those
-    /// labelled `ignoring`, reaches.
-    async fn reclaim(
-        &self,
-        site: Id<SiteKind>,
-        candidates: BTreeSet<Hash>,
-        ignoring: &[Slug],
-    ) -> Result<Swept, Error<P>> {
-        let tenant = Self::tenant(site)?;
+    /// Queues the `leaving` blobs that no deploy of `site` and no preview of it, but those
+    /// labelled `ignoring`, reaches. The caller removes the rows that named them, then reaps.
+    async fn abandon(&self, site: Id<SiteKind>, leaving: Leaving<'_>) -> Result<(), Error<P>> {
+        let Leaving { candidates, ignoring, at } = leaving;
         let mut held = BTreeSet::new();
         for deploy in self.deploy_ids(site).await?.into_iter().chain(self.preview_ids(site, ignoring).await?) {
             held.extend(self.reach(site, deploy).await?);
         }
-        let mut swept = Swept::default();
-        for hash in candidates.difference(&held) {
-            if let Deleted::Removed(size) = self.ports.blob().delete(&tenant, *hash).await? {
-                swept.blobs += 1;
-                swept.bytes = Bytes(swept.bytes.count().saturating_add(size.count()));
-            }
-        }
-        Ok(swept)
+        let goners: BTreeSet<Hash> = candidates.difference(&held).copied().collect();
+        self.condemn(site, &goners, at).await
     }
 
     /// The preview of `site` with this label, ended or not.

@@ -23,6 +23,9 @@ pub struct Policy {
     /// taken from anyone, and the per-source rate bounds only one source at a time, so this bounds
     /// what many sources together can store. A report the operator actioned no longer counts.
     pub reports: u64,
+    /// How long a blob that nothing names any more stays before it is deleted (`--blob-grace`).
+    /// It must outlast the time between a build's upload and its recorded deploy.
+    pub grace: Duration,
 }
 
 impl Policy {
@@ -34,6 +37,7 @@ impl Policy {
         preview: Self::PREVIEW,
         domains: Self::DOMAINS,
         reports: Self::REPORTS,
+        grace: Self::GRACE,
     };
 
     /// How long a preview lasts unless the operator says: seven days (`docs/hosted.md` HQ12).
@@ -41,6 +45,10 @@ impl Policy {
 
     /// How many custom domains a site has, proved and not, unless the operator says: ten.
     pub const DOMAINS: u64 = 10;
+
+    /// How long an unnamed blob stays unless the operator says: fifteen minutes, longer than the
+    /// default build time of ten (decision 0150).
+    pub const GRACE: Duration = Duration::from_mins(15);
 
     /// How many abuse reports are open at once unless the operator says: ten thousand.
     pub const REPORTS: u64 = 10_000;
@@ -80,6 +88,13 @@ impl Policy {
     #[must_use]
     pub const fn reported(mut self, reports: u64) -> Self {
         self.reports = reports;
+        self
+    }
+
+    /// The same policy keeping an unnamed blob for `grace` before it is deleted.
+    #[must_use]
+    pub const fn graced(mut self, grace: Duration) -> Self {
+        self.grace = grace;
         self
     }
 

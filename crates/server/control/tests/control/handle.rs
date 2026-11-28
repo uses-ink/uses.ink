@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use build::Source;
 use control::table::{Hold, Tombstone};
-use control::{AccountKind, Error, HoldReason, Id, NewSite, Policy, Ports as _, Refusal, Reservation, Site, SiteKind};
+use control::{AccountKind, Error, HoldReason, Id, NewSite, Ports as _, Refusal, Reservation, Site, SiteKind};
 use db::Db as _;
 use jiff::Timestamp;
 use sea_query::{Expr, Query};
@@ -15,7 +15,7 @@ use crate::world::{World, at};
 const HOLD: Duration = Duration::from_secs(1000);
 
 fn world() -> World {
-    World::new().under(Policy::DEFAULT.holding(HOLD))
+    World::new().under(World::BARE.holding(HOLD))
 }
 
 /// Claims `handle` for a new account's site at `time`, with an upload source.

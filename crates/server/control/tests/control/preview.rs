@@ -6,8 +6,8 @@ use blob::{Blob, Tenant};
 use build::Source;
 use control::table::{Deploy, Preview as Rows};
 use control::{
-    AccountKind, Limits, NewAccount, NewDeploy, NewPreview, NewSite, Origin, Policy, Ports as _, Purpose, Refusal,
-    Site, SiteKind, Slug, SlugError,
+    AccountKind, Limits, NewAccount, NewDeploy, NewPreview, NewSite, Origin, Ports as _, Purpose, Refusal, Site,
+    SiteKind, Slug, SlugError,
 };
 use model::{Bytes, ExternalUrl, Hash};
 use secret::Plain;
@@ -18,7 +18,7 @@ use crate::world::{World, at};
 const LIFE: Duration = Duration::from_secs(1000);
 
 fn world() -> World {
-    World::new().under(Policy::DEFAULT.previewing(LIFE))
+    World::new().under(World::BARE.previewing(LIFE))
 }
 
 /// A site of a new account with a public git source.
@@ -126,7 +126,7 @@ fn a_new_push_to_a_label_replaces_the_preview_and_frees_what_only_it_held() {
 
 #[test]
 fn retention_never_sweeps_a_blob_a_preview_serves() {
-    let world = World::new().under(Policy::DEFAULT.previewing(LIFE).limited(Limits { deploys: 1, ..Limits::DEFAULT }));
+    let world = World::new().under(World::BARE.previewing(LIFE).limited(Limits { deploys: 1, ..Limits::DEFAULT }));
     let site = repo(&world, "cstef");
     // the preview shares the file "a" with the oldest deploy, which is the one the sweep drops
     let new = preview(&world, &site, ("feature", 5), &[("/", "a"), ("/p", "only the preview has this")]);
@@ -168,7 +168,7 @@ fn only_a_public_git_site_has_previews() {
 
 #[test]
 fn a_preview_over_the_storage_budget_is_refused_whole() {
-    let world = World::new().under(Policy::DEFAULT.limited(Limits { stored: Bytes(300), ..Limits::DEFAULT }));
+    let world = World::new().under(World::BARE.limited(Limits { stored: Bytes(300), ..Limits::DEFAULT }));
     let site = repo(&world, "cstef");
     let big = "b".repeat(400);
     let refused = world.run(world.control.preview(preview(&world, &site, ("main", 10), &[("/", big.as_str())])));

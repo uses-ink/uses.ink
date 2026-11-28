@@ -242,7 +242,6 @@ impl fmt::Display for Refusal {
                 write!(out, "the repository of site {site} is private, so its branches are not previewed")
             }
             Self::NoLabel { site, label } => write!(out, "the site {site} has no preview labelled {label}"),
-            Self::ReportsFull { limit } => write!(out, "the control plane holds as many open abuse reports as it may, {limit}"),
             Self::DomainOurs { .. }
             | Self::DomainTaken { .. }
             | Self::NoClaim { .. }
@@ -253,7 +252,8 @@ impl fmt::Display for Refusal {
             | Self::Member { .. }
             | Self::NotMember { .. }
             | Self::LastOwner { .. }
-            | Self::Role { .. } => self.domain(out).and_then(|()| self.org(out)),
+            | Self::ReportsFull { .. }
+            | Self::Role { .. } => self.domain(out).and_then(|()| self.org(out)).and_then(|()| self.abuse(out)),
             Self::Exists { id } => write!(out, "a row with the id {id} exists already"),
             Self::NoAccount { account } => write!(out, "there is no account {account}"),
             Self::NoSite { site } => write!(out, "there is no site {site}"),
@@ -330,6 +330,18 @@ impl Refusal {
 }
 
 impl Refusal {
+    /// Words a refusal about abuse reports.
+    fn abuse(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ReportsFull { limit } => {
+                write!(out, "the control plane holds as many open abuse reports as it may, {limit}")
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+impl Refusal {
     /// Words a refusal about a custom domain.
     fn domain(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -398,9 +410,7 @@ impl Refusal {
             Self::NoManifest { .. } => "deploy.manifest.missing",
             Self::NoBuild { .. } => "build.id.unknown",
             Self::MissingLog { .. } => "build.log.missing",
-            Self::Over { spent: Spent::Stored, .. } => "budget.stored.over",
-            Self::Over { spent: Spent::Builds, .. } => "budget.builds.over",
-            Self::Over { spent: Spent::Sites, .. } => "budget.sites.over",
+            Self::Over { spent, .. } => spent.code(),
             Self::Unstorable => "source.path.unstorable",
             Self::Tenant(_) => "site.tenant.invalid",
         }
