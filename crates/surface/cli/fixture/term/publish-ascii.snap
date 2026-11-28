@@ -12,7 +12,7 @@ garden  https://garden.uses.ink
   paused   new deploys are recorded, not live: ink deploy resume
   latest   7a1f3c9e5b2d48a6c0e1f7b9d3a5c2e4 running upload, requested 2026-11-27 08:00Z
   pending  7a1f3c9e5b2d48a6c0e1f7b9d3a5c2e4 running upload, requested 2026-11-27 08:00Z
-  domains  not listed: this API has no domains yet
+  domains  not listed here; `ink domain list` shows them
   site     5c0e1f7a9b2d4863a1f0e7c9d2b4a688
   handle   garden
   address  https://garden.uses.ink

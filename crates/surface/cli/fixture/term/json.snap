@@ -166,7 +166,7 @@ source: crates/standalone/fixture/src/lib.rs
     }
   ],
   "health": "paused",
-  "domains": "not listed: this API has no domains yet"
+  "domains": "not listed here; `ink domain list` shows them"
 }
 {
   "schema": "uses.progress/v1",

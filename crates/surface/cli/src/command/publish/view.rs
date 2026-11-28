@@ -66,7 +66,7 @@ pub(crate) struct Standing<'a> {
     #[serde(flatten)]
     pub(crate) overview: &'a Overview,
     pub(crate) health: Health,
-    /// Where the API says domains are: this API does not list them.
+    /// Where the domains are: the overview does not hold them, `ink domain list` does.
     pub(crate) domains: &'static str,
 }
 
@@ -80,7 +80,7 @@ impl<'a> Standing<'a> {
             schema: Self::SCHEMA,
             overview,
             health: Health::of(overview),
-            domains: "not listed: this API has no domains yet",
+            domains: "not listed here; `ink domain list` shows them",
         }
     }
 

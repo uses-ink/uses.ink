@@ -12,7 +12,7 @@ source: crates/standalone/fixture/src/lib.rs
   \e[2mpaused\e[0m   \e[33mnew\e[0m \e[33mdeploys\e[0m \e[33mare\e[0m \e[33mrecorded,\e[0m \e[33mnot\e[0m \e[33mlive:\e[0m \e[1m\e[36mink\e[0m \e[1m\e[36mdeploy\e[0m \e[1m\e[36mresume\e[0m
   \e[2mlatest\e[0m   \e[35m7a1f3c9e5b2d48a6c0e1f7b9d3a5c2e4\e[0m \e[33mrunning\e[0m \e[2mupload,\e[0m \e[2mrequested\e[0m \e[2m2026-11-27\e[0m \e[2m08:00Z\e[0m
   \e[2mpending\e[0m  \e[35m7a1f3c9e5b2d48a6c0e1f7b9d3a5c2e4\e[0m \e[33mrunning\e[0m \e[2mupload,\e[0m \e[2mrequested\e[0m \e[2m2026-11-27\e[0m \e[2m08:00Z\e[0m
-  \e[2mdomains\e[0m  \e[2mnot\e[0m \e[2mlisted:\e[0m \e[2mthis\e[0m \e[2mAPI\e[0m \e[2mhas\e[0m \e[2mno\e[0m \e[2mdomains\e[0m \e[2myet\e[0m
+  \e[2mdomains\e[0m  \e[2mnot\e[0m \e[2mlisted\e[0m \e[2mhere;\e[0m \e[2m`ink\e[0m \e[2mdomain\e[0m \e[2mlist`\e[0m \e[2mshows\e[0m \e[2mthem\e[0m
   \e[2msite\e[0m     \e[35m5c0e1f7a9b2d4863a1f0e7c9d2b4a688\e[0m
   \e[2mhandle\e[0m   garden
   \e[2maddress\e[0m  https://garden.uses.ink
