@@ -122,7 +122,7 @@ pub enum Body<F> {
     /// A whole HTML page.
     Page(String),
     /// An HTML page sent in chunks, ending with the result.
-    Streamed(Streamed<F>),
+    Streamed(Box<Streamed<F>>),
     /// A file to save.
     Download(Download),
     /// The dashboard's script, as static text with a JavaScript content type.
@@ -243,9 +243,11 @@ impl<S: Screens> Dashboard<S> {
             Route::Build(handle, build) => match screens.log(who, handle, *build).await? {
                 Logged::Done(page) => Reply::page(Status::Ok, &page),
                 Logged::Stored(page) => Reply::page(Status::Ok, &page),
-                Logged::Running(live, follow) => {
-                    Ok(Reply { status: Status::Ok, location: None, body: Body::Streamed(Streamed::new(live, follow)) })
-                }
+                Logged::Running(live, follow) => Ok(Reply {
+                    status: Status::Ok,
+                    location: None,
+                    body: Body::Streamed(Box::new(Streamed::new(live, follow))),
+                }),
             },
             Route::Export(handle) => Ok(Reply {
                 status: Status::Ok,
