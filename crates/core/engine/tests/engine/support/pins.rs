@@ -3,7 +3,7 @@
 use engine::{Patterns, Pin, Pins};
 use model::code::{AnyDecision, Code};
 use model::decision::{self, Decision};
-use model::{ContentPath, Evidence, Span};
+use model::{ContentPath, Evidence, PageKind, Section, Span};
 
 /// Pins, includes and excludes, held in lists, the pins erased as storage holds them. A pattern
 /// matches a path it prefixes.
@@ -12,6 +12,8 @@ pub struct Pinned {
     pins: Vec<AnyDecision>,
     include: Vec<String>,
     exclude: Vec<String>,
+    folders: Vec<(String, PageKind)>,
+    sections: Vec<Section>,
 }
 
 fn span() -> Span {
@@ -42,6 +44,18 @@ impl Pinned {
         self
     }
 
+    /// A `[folder]` table that gives the pages under `folder` the kind `kind`.
+    pub fn folder(mut self, folder: &str, kind: PageKind) -> Self {
+        self.folders.push((folder.to_owned(), kind));
+        self
+    }
+
+    /// A `[folder]` table that says a weight or an order.
+    pub fn section(mut self, section: Section) -> Self {
+        self.sections.push(section);
+        self
+    }
+
     pub fn exclude(mut self, prefix: &str) -> Self {
         self.exclude.push(prefix.to_owned());
         self
@@ -62,5 +76,14 @@ impl Patterns for Pinned {
 
     fn excluded(&self, path: &ContentPath) -> Option<Span> {
         self.exclude.iter().any(|p| path.as_str().starts_with(p.as_str())).then(span)
+    }
+
+    fn folder_kind(&self, path: &ContentPath) -> Option<(PageKind, Span)> {
+        let held = |folder: &&(String, PageKind)| path.as_str().starts_with(&format!("{}/", folder.0));
+        self.folders.iter().filter(held).max_by_key(|folder| folder.0.len()).map(|folder| (folder.1, span()))
+    }
+
+    fn sections(&self) -> Vec<Section> {
+        self.sections.clone()
     }
 }

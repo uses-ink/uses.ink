@@ -2,7 +2,7 @@
 
 use config::Config;
 use engine::{Patterns, Pin, Pins};
-use model::{Code, ContentPath, Span};
+use model::{Code, ContentPath, PageKind, Section, Span};
 
 /// The pins, includes and excludes of one `ink.toml`.
 #[derive(Clone, Copy, Debug)]
@@ -21,5 +21,13 @@ impl Patterns for Pinned<'_> {
 
     fn excluded(&self, path: &ContentPath) -> Option<Span> {
         self.0.exclude().find(path).map(|pattern| pattern.span)
+    }
+
+    fn folder_kind(&self, path: &ContentPath) -> Option<(PageKind, Span)> {
+        self.0.folder_kind(path)
+    }
+
+    fn sections(&self) -> Vec<Section> {
+        self.0.sections()
     }
 }

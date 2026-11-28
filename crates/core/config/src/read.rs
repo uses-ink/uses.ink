@@ -6,7 +6,7 @@ mod node;
 use std::str::FromStr;
 
 use model::decision::Scope;
-use model::{ContentPath, Diagnostic, Each, Problem, Span, Spanned, Subject, Word};
+use model::{ContentPath, Diagnostic, Each, Order, PageKind, Problem, Span, Spanned, Subject, Word};
 use toml::de::DeTable;
 
 pub(crate) use node::{Key, Node, Refused, Table};
@@ -14,7 +14,7 @@ pub(crate) use node::{Key, Node, Refused, Table};
 use crate::pin::{KeyPath, Place};
 use crate::theme::{Kebab, Theme, Token};
 use crate::value::{Cause, Expected, Shape, Toml};
-use crate::{Config, Image, Offsets, Parsed, Patterns, Pinned, Quality, Width, Widths};
+use crate::{Config, Folder, Image, Offsets, Parsed, Patterns, Pinned, Quality, Width, Widths};
 
 /// The walk: what read cleanly so far, and every problem.
 #[derive(Debug, Default)]
@@ -88,6 +88,7 @@ impl Reader {
             "image" => self.image(&path, node),
             "include" => self.config.include = self.patterns(&path, node),
             "exclude" => self.config.exclude = self.patterns(&path, node),
+            "folder" => self.folders(&path, node),
             table if Place::holds(table, Scope::Site) || Place::holds(table, Scope::File) => {
                 let Some(entries) = self.table(&path, node, Shape::Table(table)) else { return };
                 for (key, node) in entries.entries() {
@@ -172,6 +173,70 @@ impl Reader {
                 None
             }
         }
+    }
+
+    /// The `[folder]` tables: each key is a folder's path, each value its table.
+    fn folders(&mut self, path: &KeyPath<'_>, node: Node<'_>) {
+        let Some(tables) = self.table(path, node, Shape::Table("folder")) else { return };
+        for (key, node) in tables.entries() {
+            let path = path.and(key.name);
+            let folder = match ContentPath::parse(key.name) {
+                Ok(folder) => folder,
+                Err(error) => {
+                    self.invalid(&path, &Expected::because(Shape::FileKey, error), key.span);
+                    continue;
+                }
+            };
+            let Some(table) = self.table(&path, node, Shape::Folder) else { continue };
+            let mut found = Folder::new(folder, key.span);
+            for (key, value) in table.entries() {
+                let path = path.and(key.name);
+                let whole = Offsets(key.span.start()..value.span().end()).into();
+                match key.name {
+                    "kind" => found.kind = self.kind(&path, value, whole),
+                    "weight" => found.weight = self.weight(&path, value, whole),
+                    "order" => found.order = self.order(&path, value, whole),
+                    _ => self.unknown(&path, key.span),
+                }
+            }
+            self.config.folders.push(found);
+        }
+    }
+
+    /// `kind` of a folder: a page or a post, not a home.
+    fn kind(&mut self, path: &KeyPath<'_>, node: Node<'_>, whole: Span) -> Option<Spanned<PageKind>> {
+        match node.text() {
+            Ok("page") => Some(Spanned::new(PageKind::Page, whole)),
+            Ok("post") => Some(Spanned::new(PageKind::Post, whole)),
+            _ => {
+                self.invalid(path, &Shape::One(&["page", "post"]).into(), node.span());
+                None
+            }
+        }
+    }
+
+    /// `weight` of a folder: a whole number.
+    fn weight(&mut self, path: &KeyPath<'_>, node: Node<'_>, whole: Span) -> Option<Spanned<i32>> {
+        let weight = node.whole().ok().and_then(|number| i32::try_from(number).ok());
+        if weight.is_none() {
+            self.invalid(path, &Shape::Weight.into(), node.span());
+        }
+        weight.map(|weight| Spanned::new(weight, whole))
+    }
+
+    /// `order` of a folder: how its pages are listed.
+    fn order(&mut self, path: &KeyPath<'_>, node: Node<'_>, whole: Span) -> Option<Spanned<Order>> {
+        let order = match node.text() {
+            Ok("route") => Order::Route,
+            Ok("title") => Order::Title,
+            Ok("newest") => Order::Newest,
+            Ok("oldest") => Order::Oldest,
+            _ => {
+                self.invalid(path, &Shape::One(&["route", "title", "newest", "oldest"]).into(), node.span());
+                return None;
+            }
+        };
+        Some(Spanned::new(order, whole))
     }
 
     fn image(&mut self, path: &KeyPath<'_>, node: Node<'_>) {

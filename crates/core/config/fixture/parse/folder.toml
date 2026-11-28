@@ -1,0 +1,13 @@
+# A folder of pages that carry dates, and a folder of sections.
+[folder."decisions"]
+kind = "page"
+order = "route"
+
+[folder."guides/advanced"]
+weight = 20
+order = "title"
+
+[folder."log"]
+kind = "post"
+order = "newest"
+weight = -1

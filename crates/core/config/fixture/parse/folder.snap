@@ -1,0 +1,17 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+input_file: crates/core/config/fixture/parse/folder.toml
+---
+folder decisions at 72..83 `"decisions"`
+  kind Page at 85..98 `kind = "page"`
+  order Route at 99..114 `order = "route"`
+folder guides/advanced at 124..141 `"guides/advanced"`
+  weight 20 at 143..154 `weight = 20`
+  order Title at 155..170 `order = "title"`
+folder log at 180..185 `"log"`
+  kind Post at 187..200 `kind = "post"`
+  weight -1 at 218..229 `weight = -1`
+  order Newest at 201..217 `order = "newest"`
+section decisions 0 Route
+section guides/advanced 20 Title
+section log -1 Newest

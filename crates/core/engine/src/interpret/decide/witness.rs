@@ -24,7 +24,7 @@ pub(crate) use folder::{Content, Docs, Drafts, Folder, Hidden, Obsidian, Posts, 
 pub(crate) use front::{Draft, Front, Heading, Inline};
 pub(crate) use history::{Changed, Created, History};
 pub(crate) use name::{Dated, FileName, Repository, Stem};
-pub(crate) use pattern::{Exclude, Include, Pattern};
+pub(crate) use pattern::{Exclude, Include, Pattern, Rule};
 
 use crate::interpret::decide::ladder::{Case, Testimony, Witness};
 use crate::interpret::decide::trace::{Named, Witnessed};

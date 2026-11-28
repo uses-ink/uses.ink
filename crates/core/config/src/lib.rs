@@ -23,6 +23,9 @@
 //!
 //! [page."posts/old/x.md"]
 //! title = "On shelves"             # pins page.title on posts/old/x.md
+//!
+//! [folder."notes"]
+//! kind = "page"                    # every page in `notes/` is a page, dated or not
 //! ```
 //!
 //! [`Config::parse`] never fails: problems are diagnostics with spans, and a key with a problem
@@ -32,6 +35,7 @@
 //!
 //! The `toml` crate is seen only by `read`, `toml_edit` only by `write`.
 
+mod folder;
 mod image;
 mod pattern;
 mod pin;
@@ -43,8 +47,9 @@ mod write;
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use model::{AnyCode, AnyDecision, AnyOf, Code, ContentPath, Diagnostic, Span, Subject};
+use model::{AnyCode, AnyDecision, AnyOf, Code, ContentPath, Diagnostic, PageKind, Section, Span, Spanned, Subject};
 
+pub use folder::Folder;
 pub use image::{Image, ImageError, Quality, Width, Widths};
 pub use pattern::{Pattern, PatternError, Patterns};
 pub use pin::Pinned;
@@ -93,6 +98,7 @@ pub struct Config {
     image: Image,
     include: Patterns,
     exclude: Patterns,
+    folders: Vec<Folder>,
 }
 
 /// The result of reading `ink.toml`: what applied, and every problem found.
@@ -132,6 +138,17 @@ impl Config {
         self.theme.as_ref()
     }
 
+    /// The tokens `[theme]` sets, each name and value as written with its place, in the order
+    /// written.
+    pub fn tokens(&self) -> impl Iterator<Item = (Spanned<&str>, Spanned<&str>)> {
+        self.theme.iter().flat_map(|theme| theme.tokens.iter()).map(|token| {
+            (
+                Spanned::new(token.name.value.as_str(), token.name.span),
+                Spanned::new(token.value.value.as_str(), token.value.span),
+            )
+        })
+    }
+
     /// The `[image]` table: the keys it has, and the empty table when there is none.
     pub const fn image(&self) -> &Image {
         &self.image
@@ -145,6 +162,27 @@ impl Config {
     /// `exclude = [...]`: files that are not part of the site.
     pub fn exclude(&self) -> &Patterns {
         &self.exclude
+    }
+
+    /// The `[folder]` tables, in the order written.
+    pub fn folders(&self) -> &[Folder] {
+        &self.folders
+    }
+
+    /// What the `[folder]` tables make of the page `file`: the `kind` of the deepest folder that
+    /// holds it and says one, and where that is written.
+    pub fn folder_kind(&self, file: &ContentPath) -> Option<(PageKind, Span)> {
+        self.folders
+            .iter()
+            .filter(|folder| file.is_within(&folder.path) && *file != folder.path)
+            .filter_map(|folder| folder.kind.as_ref().map(|kind| (folder.path.as_str().len(), kind)))
+            .max_by_key(|(depth, _)| *depth)
+            .map(|(_, kind)| (kind.value, kind.span))
+    }
+
+    /// The folders that say a weight or an order, as the site's sections.
+    pub fn sections(&self) -> Vec<Section> {
+        self.folders.iter().filter_map(Folder::section).collect()
     }
 
     /// Records `pinned` for `C` on `subject`.

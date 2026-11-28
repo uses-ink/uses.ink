@@ -89,6 +89,8 @@ pub enum Witnessed {
     Folder(Marker),
     /// An `include` or `exclude` pattern.
     Pattern(List),
+    /// A `[folder]` table of `ink.toml`.
+    Rule,
     /// The home page's decision of another code.
     Derived(AnyCode),
     /// A file at the top named as a home page.
@@ -178,6 +180,7 @@ impl fmt::Display for Witnessed {
             Self::Folder(Marker::Content) => out.write_str("content folder"),
             Self::Pattern(List::Include) => out.write_str("include"),
             Self::Pattern(List::Exclude) => out.write_str("exclude"),
+            Self::Rule => out.write_str("folder table"),
             Self::Derived(code) => write!(out, "home's {code}"),
             Self::Index => out.write_str("home file name"),
             Self::Used => out.write_str("used by a page"),

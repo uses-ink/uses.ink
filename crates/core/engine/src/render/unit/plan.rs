@@ -16,7 +16,8 @@ use crate::render::Generated;
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Reads {
-    /// The site's identity, root, layout and home; its navigation, whether it has feeds, the
+    /// The site's identity, root, layout and home; its navigation, what `ink.toml` says of its
+    /// folders, whether it has feeds, the
     /// pages the page links to or embeds, each as a page without its body (route, title, kind,
     /// dates, tags, summary); and the assets the page shows.
     Linked,

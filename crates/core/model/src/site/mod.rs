@@ -5,16 +5,16 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-mod author;
 pub(crate) mod document;
 pub mod highlight;
 mod page;
 pub(crate) mod picture;
 pub(crate) mod route;
+mod section;
 mod tag;
 
-pub use author::{Author, EmptyAuthor};
-pub use page::{Page, PageId, PageKind};
+pub use page::{Author, EmptyAuthor, Page, PageId, PageKind};
+pub use section::{Branch, Neighbours, Order, Section};
 pub use tag::{Tag, TagError};
 
 use crate::{AnyCode, ContentPath, Hash, Language, Picture, Route};
@@ -117,6 +117,8 @@ pub struct Site {
     assets: Vec<Asset>,
     nav: Vec<PageId>,
     excluded: Vec<Excluded>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    sections: Vec<Section>,
     /// Where each page is in `pages`, by id: a theme looks a page up for every link it writes.
     /// Built from `pages`, so it is not part of what the site is.
     #[serde(skip)]
@@ -172,6 +174,8 @@ pub struct SiteParts {
     pub nav: Vec<PageId>,
     /// Every file left out.
     pub excluded: Vec<Excluded>,
+    /// What `ink.toml` says of each folder.
+    pub sections: Vec<Section>,
 }
 
 impl SiteParts {
@@ -186,18 +190,20 @@ impl SiteParts {
             assets: Vec::new(),
             nav: Vec::new(),
             excluded: Vec::new(),
+            sections: Vec::new(),
         }
     }
 }
 
 impl Site {
-    /// Pages and assets are sorted by route, exclusions by path. A route used twice, or a home
+    /// Pages and assets are sorted by route, exclusions and sections by path. A route used twice, or a home
     /// or nav entry that is not a page, is an error.
     pub fn new(parts: SiteParts) -> Result<Self, SiteError> {
-        let SiteParts { identity, root, layout, home, mut pages, mut assets, nav, mut excluded } = parts;
+        let SiteParts { identity, root, layout, home, mut pages, mut assets, nav, mut excluded, mut sections } = parts;
         pages.sort_by(|a, b| a.route.cmp(&b.route));
         assets.sort();
         excluded.sort();
+        sections.sort();
         let mut routes: Vec<(&Route, &ContentPath)> =
             pages.iter().map(|p| (&p.route, &p.file)).chain(assets.iter().map(|a| (&a.route, &a.file))).collect();
         routes.sort();
@@ -216,7 +222,7 @@ impl Site {
         if let Some(page) = home.iter().chain(&nav).find(|id| !ids.contains_key(*id)) {
             return Err(SiteError::Missing { page: *page });
         }
-        Ok(Self { identity, root, layout, home, pages, assets, nav, excluded, ids })
+        Ok(Self { identity, root, layout, home, pages, assets, nav, excluded, sections, ids })
     }
 
     /// What the site says about itself.

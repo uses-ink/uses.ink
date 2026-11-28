@@ -7,8 +7,8 @@ use model::code;
 use crate::interpret::decide::ladder::Ladder;
 use crate::interpret::decide::witness::{
     Body, Changed, Content, Created, Dated, Derived, Docs, Draft, Drafts, Exclude, Fallback, FileName, Folder, Front,
-    Heading, Hidden, History, Implied, Include, Inline, Obsidian, Otherwise, Pattern, Pin, Posts, Repository, Stem,
-    Templates,
+    Heading, Hidden, History, Implied, Include, Inline, Obsidian, Otherwise, Pattern, Pin, Posts, Repository, Rule,
+    Stem, Templates,
 };
 use crate::interpret::pipeline::file::asset::Used;
 use crate::interpret::pipeline::site::Index;
@@ -43,12 +43,14 @@ pub(crate) type Publish = Ladder<
 >;
 /// `page.publish` of a plain file: used by a published page.
 pub(crate) type Plain = Ladder<code::Publish, (Pin<code::Publish>, Used, Fallback<code::Publish>)>;
-/// `page.kind`: `type`, then a posts folder, then a frontmatter date, then a dated name.
+/// `page.kind`: `type`, then a `[folder]` table, then a posts folder, then a frontmatter date,
+/// then a dated name.
 pub(crate) type Kind = Ladder<
     code::Kind,
     (
         Pin<code::Kind>,
         Front<code::Kind>,
+        Rule,
         Folder<Posts>,
         Implied<code::Date, Front<code::Date>>,
         Implied<code::Date, FileName<Dated>>,

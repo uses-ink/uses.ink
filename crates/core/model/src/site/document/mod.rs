@@ -16,10 +16,12 @@ pub use visit::Visit;
 mod anchor;
 mod block;
 mod inline;
+mod outline;
 
 pub use anchor::{Anchor, Level, LevelError};
 pub use block::{Alignment, Block, CalloutKind, Definition, Folding, Item, Task};
 pub use inline::{ImageSource, Inline, LinkTarget};
+pub use outline::Heading;
 
 /// A page's body.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]

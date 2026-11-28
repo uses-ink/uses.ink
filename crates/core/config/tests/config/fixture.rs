@@ -41,6 +41,25 @@ impl<C: Code> Each<C> for Print<'_> {
     }
 }
 
+/// The folder tables and the sections they make.
+fn folders(out: &mut String, text: &str, config: &Config) {
+    for folder in config.folders() {
+        writeln!(out, "folder {} {}", folder.path, quote(text, folder.span)).unwrap();
+        if let Some(kind) = &folder.kind {
+            writeln!(out, "  kind {:?} {}", kind.value, quote(text, kind.span)).unwrap();
+        }
+        if let Some(weight) = &folder.weight {
+            writeln!(out, "  weight {} {}", weight.value, quote(text, weight.span)).unwrap();
+        }
+        if let Some(order) = &folder.order {
+            writeln!(out, "  order {:?} {}", order.value, quote(text, order.span)).unwrap();
+        }
+    }
+    for section in config.sections() {
+        writeln!(out, "section {} {} {:?}", section.folder, section.weight, section.order).unwrap();
+    }
+}
+
 fn print(text: &str, parsed: &Parsed) -> String {
     let mut out = String::new();
     let config = &parsed.config;
@@ -70,6 +89,7 @@ fn print(text: &str, parsed: &Parsed) -> String {
             writeln!(out, "image {name} {} {}", quality.value.get(), quote(text, quality.span)).unwrap();
         }
     }
+    folders(&mut out, text, config);
     for (name, patterns) in [("include", config.include()), ("exclude", config.exclude())] {
         for pattern in patterns {
             writeln!(out, "{name} {} {}", pattern.value, quote(text, pattern.span)).unwrap();
@@ -180,4 +200,18 @@ fn include_is_added_and_removed_in_place() {
         }
         out
     });
+}
+
+#[test]
+fn the_deepest_folder_that_says_a_kind_decides_it() {
+    let parsed = Config::parse(
+        "[folder.\"docs\"]\nkind = \"page\"\n[folder.\"docs/log\"]\nkind = \"post\"\n[folder.\"docs/log/old\"]\nweight = 3\n",
+    );
+    assert_eq!(parsed.diagnostics, []);
+    let kind = |file: &str| parsed.config.folder_kind(&path(file)).map(|(kind, _)| kind);
+    assert_eq!(kind("docs/a.md"), Some(PageKind::Page));
+    assert_eq!(kind("docs/log/a.md"), Some(PageKind::Post));
+    assert_eq!(kind("docs/log/old/a.md"), Some(PageKind::Post), "a folder that says no kind leaves the one above");
+    assert_eq!(kind("other/a.md"), None);
+    assert_eq!(kind("docs"), None, "a folder is not inside itself");
 }

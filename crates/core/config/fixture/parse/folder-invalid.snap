@@ -1,0 +1,13 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+input_file: crates/core/config/fixture/parse/folder-invalid.toml
+---
+folder decisions at 8..19 `"decisions"`
+folder ok at 120..124 `"ok"`
+error config.value.invalid: ConfigValueInvalid { key: "folder.decisions.kind", expected: "one of \"page\", \"post\"" } at 28..34 `"home"`
+error config.value.invalid: ConfigValueInvalid { key: "folder.decisions.weight", expected: "a whole number, such as 10 or -1" } at 44..47 `1.5`
+error config.value.invalid: ConfigValueInvalid { key: "folder.decisions.order", expected: "one of \"route\", \"title\", \"newest\", \"oldest\"" } at 56..64 `"random"`
+error config.key.unknown: ConfigKeyUnknown { key: "folder.decisions.colour" } at 65..71 `colour`
+error config.value.invalid: ConfigValueInvalid { key: "folder.\"/abs\"", expected: "the path of a file as its key, and a path in a snapshot does not start with `/`" } at 89..95 `"/abs"`
+error config.value.invalid: ConfigValueInvalid { key: "folder.ok.weight", expected: "a whole number, such as 10 or -1" } at 135..146 `99999999999`
+error config.value.invalid: ConfigValueInvalid { key: "folder.x", expected: "a table: `[folder.\"path\"]` with `kind`, `weight` and `order`" } at 161..162 `1`

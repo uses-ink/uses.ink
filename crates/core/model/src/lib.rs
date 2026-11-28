@@ -57,13 +57,13 @@ pub use output::manifest::{
     MediaUnknown, Served, Status,
 };
 pub use site::document::{
-    Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Folding, Footnote, FootnoteName, ImageSource,
-    Inline, Item, Level, LevelError, LinkTarget, Task, Visit,
+    Alignment, Anchor, Block, CalloutKind, Definition, Document, Fold, Folding, Footnote, FootnoteName, Heading,
+    ImageSource, Inline, Item, Level, LevelError, LinkTarget, Task, Visit,
 };
 pub use site::picture::{Dimensions, Picture, Variant};
 pub use site::route::{Route, RouteError, Slug, SlugError};
 pub use site::{
-    Asset, Author, EmptyAuthor, Excluded, Identity, Layout, Page, PageId, PageKind, Root, Site, SiteError, SiteParts,
-    Tag, TagError,
+    Asset, Author, Branch, EmptyAuthor, Excluded, Identity, Layout, Neighbours, Order, Page, PageId, PageKind, Root,
+    Section, Site, SiteError, SiteParts, Tag, TagError,
 };
 pub use value::{Cause, Expected, Form, FromFront, Raw, Refusal, Shown, Value, Wanted};

@@ -100,8 +100,8 @@ struct Linked<'a> {
     assets: Vec<&'a Asset>,
 }
 
-/// What the same for every page of a site: its identity, root, layout, home and navigation, and
-/// whether it has feeds.
+/// What the same for every page of a site: its identity, root, layout, home and navigation, what
+/// `ink.toml` says of its folders, and whether it has feeds.
 #[derive(Serialize)]
 struct Common<'a> {
     identity: &'a model::Identity,
@@ -109,6 +109,7 @@ struct Common<'a> {
     layout: model::Layout,
     home: Option<PageId>,
     nav: Vec<(PageId, Option<Hash>)>,
+    sections: &'a [model::Section],
     feeds: bool,
 }
 
@@ -233,6 +234,7 @@ impl<'a, C: Cache> Units<'a, C> {
             layout: site.layout(),
             home: site.home().map(|page| page.id),
             nav: self.briefs_of(site.nav().iter().copied())?,
+            sections: site.sections(),
             feeds: Channel::is_dated(site),
         };
         let digest = Digest::of(&common)?;

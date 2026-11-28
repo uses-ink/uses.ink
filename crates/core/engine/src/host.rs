@@ -8,7 +8,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use model::code::Code;
-use model::{ContentPath, Diagnostic, File, Hash, Page, Read, Sink, Site, Span};
+use model::{ContentPath, Diagnostic, File, Hash, Page, PageKind, Read, Section, Sink, Site, Span};
 
 use crate::render::Reads;
 
@@ -57,6 +57,10 @@ pub trait Patterns {
     fn included(&self, path: &ContentPath) -> Option<Span>;
     /// Where the first `exclude` pattern matching `path` is written, if one does.
     fn excluded(&self, path: &ContentPath) -> Option<Span>;
+    /// The kind a `[folder]` table gives the page at `path`, and where it is written.
+    fn folder_kind(&self, path: &ContentPath) -> Option<(PageKind, Span)>;
+    /// What the `[folder]` tables say of each folder, for the site's navigation and listings.
+    fn sections(&self) -> Vec<Section>;
 }
 
 impl<P: Patterns + ?Sized> Patterns for &P {
@@ -66,6 +70,14 @@ impl<P: Patterns + ?Sized> Patterns for &P {
 
     fn excluded(&self, path: &ContentPath) -> Option<Span> {
         P::excluded(self, path)
+    }
+
+    fn folder_kind(&self, path: &ContentPath) -> Option<(PageKind, Span)> {
+        P::folder_kind(self, path)
+    }
+
+    fn sections(&self) -> Vec<Section> {
+        P::sections(self)
     }
 }
 
@@ -96,6 +108,14 @@ impl Patterns for NoPins {
 
     fn excluded(&self, _path: &ContentPath) -> Option<Span> {
         None
+    }
+
+    fn folder_kind(&self, _path: &ContentPath) -> Option<(PageKind, Span)> {
+        None
+    }
+
+    fn sections(&self) -> Vec<Section> {
+        Vec::new()
     }
 }
 

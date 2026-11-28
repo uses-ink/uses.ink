@@ -1,0 +1,14 @@
+[folder."decisions"]
+kind = "home"
+weight = 1.5
+order = "random"
+colour = "red"
+
+[folder."/abs"]
+kind = "page"
+
+[folder."ok"]
+weight = 99999999999
+
+[folder]
+x = 1

@@ -505,3 +505,32 @@ fn templates_settings_that_do_not_read_are_said_and_the_convention_stands() {
     assert_eq!(invalid, [".obsidian/templates.json", ".obsidian/core-plugins.json"]);
     assert!(on::<code::Ignored>(&vault, "templates/a.md").value);
 }
+
+#[test]
+fn a_folder_table_makes_the_dated_pages_in_it_pages_unless_a_page_says_otherwise() {
+    use engine::Witnessed;
+    let tree = Tree::new()
+        .file("log/a.md", "---\ndate: 2024-03-01\n---\ntext\n")
+        .file("log/b.md", "---\ndate: 2024-03-02\ntype: post\n---\ntext\n")
+        .file("c.md", "---\ndate: 2024-03-03\n---\ntext\n");
+    let kind = |understood, file| on::<code::Kind>(understood, file);
+    let plain = tree.understand(&Pinned::none());
+    assert_eq!(kind(&plain, "log/a.md").value, PageKind::Post, "a date alone makes a post");
+    let ruled = tree.understand(&Pinned::none().folder("log", PageKind::Page));
+    let a = kind(&ruled, "log/a.md");
+    assert_eq!((a.value, matches!(a.evidence, Evidence::Config { .. })), (PageKind::Page, true));
+    assert_eq!(kind(&ruled, "log/b.md").value, PageKind::Post, "a page's own type outranks the folder");
+    assert_eq!(kind(&ruled, "c.md").value, PageKind::Post, "a page outside the folder is not ruled");
+    let traced = tree.trace(&Pinned::none().folder("log", PageKind::Page), AnyCode::Kind, subject("log/a.md"));
+    let witnesses: Vec<_> = traced.trace.unwrap().rungs.iter().map(|rung| rung.witness).collect();
+    assert_eq!(witnesses[..3], [Witnessed::Pin, Witnessed::Front, Witnessed::Rule]);
+}
+
+#[test]
+fn the_sections_of_the_pins_reach_the_site() {
+    use model::{Order, Section};
+    let tree = Tree::new().file("a/x.md", "text\n").file("b/y.md", "text\n");
+    let section = Section::new(path("b"), -2, Order::Title);
+    let understood = tree.understand(&Pinned::none().section(section.clone()));
+    assert_eq!(understood.site.unwrap().sections(), [section]);
+}

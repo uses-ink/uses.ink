@@ -85,6 +85,29 @@ interface site {
         picture: option<picture>,
     }
 
+    /// One token a site sets for its theme in `[theme]` of `ink.toml`: its name and the word it is
+    /// set to. A theme declares which tokens it takes and refuses the rest with a diagnostic.
+    record token {
+        name: string,
+        value: string,
+    }
+
+    /// How the pages of a folder are listed (`model::Order`).
+    enum order {
+        route,
+        title,
+        newest,
+        oldest,
+    }
+
+    /// What `ink.toml` says of one folder (`model::Section`).
+    record section {
+        folder: path,
+        /// Where the folder stands among its siblings: lower first.
+        weight: s32,
+        order: order,
+    }
+
     record excluded {
         path: path,
         /// The decision code that left it out, `noun.noun`.
@@ -100,5 +123,7 @@ interface site {
         assets: list<asset>,
         nav: list<page-id>,
         excluded: list<excluded>,
+        /// What `ink.toml` says of its folders, in path order.
+        sections: list<section>,
     }
 }

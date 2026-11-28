@@ -58,6 +58,10 @@ pub(crate) enum Shape<'a> {
     },
     /// The key of a file's table, which is the file's path.
     FileKey,
+    /// `[folder."x"]`.
+    Folder,
+    /// `weight` of a folder.
+    Weight,
     /// `[theme]`.
     Theme,
     /// `use` in `[theme]`.
@@ -116,6 +120,8 @@ impl fmt::Display for Shape<'_> {
             Self::Table(table) => write!(out, "a table: `[{table}]`"),
             Self::Pins { table, file } => write!(out, "a table of pins: `[{}]`", KeyPath(vec![table, file.as_str()])),
             Self::FileKey => out.write_str("the path of a file as its key"),
+            Self::Folder => out.write_str("a table: `[folder.\"path\"]` with `kind`, `weight` and `order`"),
+            Self::Weight => out.write_str("a whole number, such as 10 or -1"),
             Self::Theme => out.write_str("a table: `[theme]` with `use = \"<scope>:theme-<variant>\"` and tokens"),
             Self::ThemeId => out.write_str("a theme plugin id, such as \"ink:theme-quiet\""),
             Self::Image => out.write_str("a table: `[image]` with `widths`, `avif-quality` and `jpeg-quality`"),

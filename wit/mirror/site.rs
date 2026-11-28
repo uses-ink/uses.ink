@@ -1,8 +1,8 @@
 // Pages, sites, and what a format read. Part of `wit/mirror`.
 
 use model::{
-    Asset, Author, Diagnostic, Dimensions, Excluded, Front, Hash, Identity, Layout, Notice, Page, PageId, PageKind,
-    Picture, Read, Root, Site, SiteParts, Span, Spanned, Tag, Variant, When,
+    Asset, Author, Diagnostic, Dimensions, Excluded, Front, Hash, Identity, Layout, Notice, Order, Page, PageId,
+    PageKind, Picture, Read, Root, Section, Site, SiteParts, Span, Spanned, Tag, Variant, When,
 };
 
 use super::refusal::{Malformed, Unmirrored};
@@ -101,6 +101,47 @@ impl TryFrom<Layout> for sited::Layout {
             Layout::Flat => Ok(Self::Flat),
             _ => Err(Unmirrored::Layout),
         }
+    }
+}
+
+impl TryFrom<Order> for sited::Order {
+    type Error = Unmirrored;
+
+    fn try_from(order: Order) -> Result<Self, Unmirrored> {
+        match order {
+            Order::Route => Ok(Self::Route),
+            Order::Title => Ok(Self::Title),
+            Order::Newest => Ok(Self::Newest),
+            Order::Oldest => Ok(Self::Oldest),
+            _ => Err(Unmirrored::Order),
+        }
+    }
+}
+
+impl From<sited::Order> for Order {
+    fn from(order: sited::Order) -> Self {
+        match order {
+            sited::Order::Route => Self::Route,
+            sited::Order::Title => Self::Title,
+            sited::Order::Newest => Self::Newest,
+            sited::Order::Oldest => Self::Oldest,
+        }
+    }
+}
+
+impl TryFrom<&Section> for sited::Section {
+    type Error = Unmirrored;
+
+    fn try_from(section: &Section) -> Result<Self, Unmirrored> {
+        Ok(Self { folder: section.folder.to_string(), weight: section.weight, order: section.order.try_into()? })
+    }
+}
+
+impl TryFrom<sited::Section> for Section {
+    type Error = Malformed;
+
+    fn try_from(section: sited::Section) -> Result<Self, Malformed> {
+        Ok(Self::new(Written::read(section.folder)?, section.weight, section.order.into()))
     }
 }
 
@@ -209,6 +250,7 @@ impl TryFrom<&Site> for sited::Site {
                     because: excluded.because.name().to_owned(),
                 })
                 .collect(),
+            sections: site.sections().iter().map(sited::Section::try_from).collect::<Result<_, _>>()?,
         })
     }
 }
@@ -250,6 +292,7 @@ impl TryFrom<sited::Site> for Site {
             .into_iter()
             .map(|excluded| Ok(Excluded::new(Written::read(excluded.path)?, Written::read(excluded.because)?)))
             .collect::<Result<_, Malformed>>()?;
+        parts.sections = site.sections.into_iter().map(Section::try_from).collect::<Result<_, _>>()?;
         Self::new(parts).map_err(|source| Malformed::Site { source })
     }
 }

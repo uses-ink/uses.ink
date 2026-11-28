@@ -132,7 +132,7 @@ impl<B: Blobs, P: Pins, F: Formats, T> Engine<B, P, F, T> {
             &shown,
             &mut journal,
         );
-        let parts = Parts { scope: &scope, sources, assets: &assets, routes: &routes };
+        let parts = Parts { scope: &scope, sources, assets: &assets, routes: &routes, sections: pins.sections() };
         let site = Assemble.step((logging::Stage::Decide, "assemble"), parts, &mut journal);
         Guard { selection }.step((logging::Stage::Decide, "guard"), (), &mut journal);
         let site = site.filter(|_| !journal.stops());

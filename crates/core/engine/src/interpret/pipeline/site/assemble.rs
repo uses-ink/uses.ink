@@ -24,6 +24,8 @@ pub(crate) struct Parts<'a> {
     /// The plain files published.
     pub(crate) assets: &'a [InRoot<'a>],
     pub(crate) routes: &'a Routes,
+    /// What `ink.toml` says of each folder.
+    pub(crate) sections: Vec<model::Section>,
 }
 
 /// Builds the site, unless the journal holds an error: all or nothing (open.md Q6).
@@ -37,7 +39,7 @@ impl Stage<Parts<'_>> for Assemble {
         if journal.stops() {
             return None;
         }
-        let Parts { scope, sources, assets, routes } = parts;
+        let Parts { scope, sources, assets, routes, sections } = parts;
         let home = journal.needed::<Home>(&Whole)?;
         let mut identity = Identity::new(journal.needed::<SiteTitle>(&Whole)?, journal.needed::<Language>(&Whole)?);
         identity.description = journal.needed::<Description>(&Whole)?;
@@ -46,6 +48,7 @@ impl Stage<Parts<'_>> for Assemble {
         site.home = home.as_ref().map(PageId::of);
         site.nav = journal.needed::<Nav>(&Whole)?.iter().map(PageId::of).collect();
         site.excluded = Self::excluded(scope, journal);
+        site.sections = sections;
         for source in sources {
             if journal.value::<Publish>(&source.subject()) == Some(&true) {
                 site.pages.push(Self::page(source, routes, home.as_ref(), journal)?);

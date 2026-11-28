@@ -1,11 +1,12 @@
 //! [`Pattern`]: an `include` or `exclude` pattern of `ink.toml` matching the file, evidence
 //! `Config`. What a match means is the code's: an `exclude` ignores a file, an `include` keeps
-//! it and, in a vault, selects it for publishing.
+//! it and, in a vault, selects it for publishing. [`Rule`] is the `[folder]` table's say of a
+//! page's kind, evidence `Config` as well, below the page's own say.
 
 use std::marker::PhantomData;
 
-use model::code::{Code, Ignored, Publish};
-use model::{ContentPath, Evidence, Span};
+use model::code::{Code, Ignored, Kind, Publish};
+use model::{ContentPath, Evidence, PageKind, Span};
 
 use crate::Patterns;
 use crate::interpret::decide::Filed;
@@ -74,4 +75,20 @@ impl Named for Pattern<Include> {
 
 impl Named for Pattern<Exclude> {
     const NAME: Witnessed = Witnessed::Pattern(trace::List::Exclude);
+}
+
+/// The `kind` of the deepest `[folder]` table that holds the page and says one.
+#[derive(Debug, Default)]
+pub(crate) struct Rule;
+
+impl<G: Filed + ?Sized> Witness<Kind, G> for Rule {
+    fn testify(&self, case: &Case<'_, Kind, G>, testimony: &mut Testimony<PageKind>) {
+        if let Some((kind, span)) = case.patterns.folder_kind(case.ground.path()) {
+            testimony.value(kind, Evidence::Config { span });
+        }
+    }
+}
+
+impl Named for Rule {
+    const NAME: Witnessed = Witnessed::Rule;
 }

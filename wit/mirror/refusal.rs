@@ -23,6 +23,8 @@ pub enum Unmirrored {
     Root,
     /// A site's layout.
     Layout,
+    /// How a folder's pages are listed.
+    Order,
     /// A subject.
     Subject,
     /// A field type of the catalog.
