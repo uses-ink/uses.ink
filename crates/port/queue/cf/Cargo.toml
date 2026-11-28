@@ -1,0 +1,30 @@
+[package]
+name = "uses-ink-queue-cf"
+description = "The queue port on Cloudflare: the rows of the database port are the queue, and a Queues message only wakes a consumer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+db.workspace = true
+logging.workspace = true
+model.workspace = true
+queue.workspace = true
+queue-rows.workspace = true
+serde.workspace = true
+
+# a Queues binding exists only inside a Worker, so the wake-up that uses it is built for wasm32 only
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+worker = { workspace = true, features = ["queue"] }
+
+[dev-dependencies]
+db-sqlite.workspace = true
+pollster.workspace = true
+queue-conformance.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

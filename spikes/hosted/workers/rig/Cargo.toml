@@ -10,9 +10,12 @@ license.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
-worker = { version = "=0.9.0", features = ["d1"] }
+worker = { version = "=0.9.0", features = ["d1", "queue"] }
 db = { package = "uses-ink-db", path = "../../../../crates/port/db" }
 db-conformance = { package = "uses-ink-db-conformance", path = "../../../../crates/port/db/conformance" }
 db-d1 = { package = "uses-ink-db-d1", path = "../../../../crates/port/db/d1" }
 blob-conformance = { package = "uses-ink-blob-conformance", path = "../../../../crates/port/blob/conformance" }
 blob-r2 = { package = "uses-ink-blob-r2", path = "../../../../crates/port/blob/r2" }
+queue-cf = { package = "uses-ink-queue-cf", path = "../../../../crates/port/queue/cf" }
+queue-conformance = { package = "uses-ink-queue-conformance", path = "../../../../crates/port/queue/conformance" }
+queue-rows = { package = "uses-ink-queue-rows", path = "../../../../crates/port/queue/rows" }

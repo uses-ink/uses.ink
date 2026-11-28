@@ -55,6 +55,7 @@ crates = [
     "uses-ink-mail-smtp",
     "uses-ink-model",
     "uses-ink-queue",
+    "uses-ink-queue-cf",
     "uses-ink-queue-conformance",
     "uses-ink-queue-rows",
     "uses-ink-sdk",

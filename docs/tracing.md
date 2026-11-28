@@ -161,7 +161,7 @@ Events have constant names. The main ones, by area:
 | blob | `blob.io` |
 | watch, worker | `watch.polled`, `watch.queued`, `worker.tick`, `git.head` (the head read), `task.started`, `task.crashed`, `task.restarting`, `task.gave_up`, `task.stopped` (supervision) |
 | edge lookup, folder | `sites.serving`, `sites.asked`, `sites.placed`, `sites.failed`, `sites.stopped`; `folder.opened`, `folder.loaded`, `folder.refused` |
-| queue, secret, cache | `queue.sent`, `queue.received`, `queue.settled`; `key.opened`, `key.refused`, `secret.sealed`, `secret.opened`; `cache.stayed` |
+| queue, secret, cache | `queue.sent`, `queue.received`, `queue.settled`, `queue.woken` (hosted: whether the wake-up was sent); `key.opened`, `key.refused`, `secret.sealed`, `secret.opened`; `cache.stayed` |
 
 `unit.planned` says what the incremental planner did with one unit and why: `outcome` is `reused`
 or `rendered`, `reason` is `hit` (the cache held the unit under its key), `miss` (it held nothing

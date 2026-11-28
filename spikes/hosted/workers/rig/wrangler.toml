@@ -8,6 +8,10 @@ binding = "DB"
 database_name = "rig"
 database_id = "00000000-0000-0000-0000-000000000000"
 
+[[queues.producers]]
+binding = "WAKE"
+queue = "rig-wake"
+
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "rig"

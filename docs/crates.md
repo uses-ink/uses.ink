@@ -35,7 +35,8 @@ A layer depends only on the layers before it, and `standalone` crates depend on 
 | `uses-ink-mail` | `crates/port/mail` | The mail port: typed messages and addresses, a Mailer trait, and the stand-ins that capture or print a message | none |
 | `uses-ink-mail-smtp` | `crates/port/mail/smtp` | The SMTP adapter of the mail port: lettre over rustls, with the password held as a sealed-in-memory secret | `uses-ink-mail`, `uses-ink-secret` |
 | `uses-ink-queue` | `crates/port/queue` | The queue port: at-least-once delivery with a visibility timeout and a dedupe key | `uses-ink-model` |
-| `uses-ink-queue-conformance` | `crates/port/queue/conformance` | The conformance suite every queue port adapter runs: the local queue now, Cloudflare Queues when they land | `uses-ink-model`, `uses-ink-queue` |
+| `uses-ink-queue-cf` | `crates/port/queue/cf` | The queue port on Cloudflare: the rows of the database port are the queue, and a Queues message only wakes a consumer | `uses-ink-db`, `uses-ink-db-sqlite`, `uses-ink-model`, `uses-ink-queue`, `uses-ink-queue-conformance`, `uses-ink-queue-rows`, `uses-ink-logging` |
+| `uses-ink-queue-conformance` | `crates/port/queue/conformance` | The conformance suite every queue port adapter runs: the rows and the Cloudflare adapter | `uses-ink-model`, `uses-ink-queue` |
 | `uses-ink-queue-rows` | `crates/port/queue/rows` | The queue port in rows of the database port, with the claim as one statement | `uses-ink-db`, `uses-ink-db-sqlite`, `uses-ink-model`, `uses-ink-queue`, `uses-ink-queue-conformance`, `uses-ink-logging` |
 | `uses-ink-secret` | `crates/port/secret` | The secret port: sealing credentials at rest, with the key kept inside the adapter | none |
 | `uses-ink-secret-conformance` | `crates/port/secret/conformance` | The conformance suite every secret port adapter runs | `uses-ink-secret` |

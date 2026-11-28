@@ -1,6 +1,6 @@
 [package]
 name = "uses-ink-queue-conformance"
-description = "The conformance suite every queue port adapter runs: the local queue now, Cloudflare Queues when they land"
+description = "The conformance suite every queue port adapter runs: the rows and the Cloudflare adapter"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -217,6 +217,19 @@ impl Order {
         ("uses-ink-db-sqlite", &["uses-ink-db", "uses-ink-db-conformance", "uses-ink-logging"]),
         ("uses-ink-queue", &["uses-ink-model"]),
         ("uses-ink-queue-conformance", &["uses-ink-model", "uses-ink-queue"]),
+        // hosted: the rows are the queue, and a Cloudflare Queues message only wakes a consumer (0079)
+        (
+            "uses-ink-queue-cf",
+            &[
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-model",
+                "uses-ink-queue",
+                "uses-ink-queue-conformance",
+                "uses-ink-queue-rows",
+                "uses-ink-logging",
+            ],
+        ),
         (
             "uses-ink-queue-rows",
             &[

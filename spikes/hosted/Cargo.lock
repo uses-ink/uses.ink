@@ -1982,6 +1982,9 @@ dependencies = [
  "uses-ink-db",
  "uses-ink-db-conformance",
  "uses-ink-db-d1",
+ "uses-ink-queue-cf",
+ "uses-ink-queue-conformance",
+ "uses-ink-queue-rows",
  "worker",
 ]
 
@@ -2475,6 +2478,40 @@ name = "uses-ink-queue"
 version = "0.0.0"
 dependencies = [
  "uses-ink-model",
+]
+
+[[package]]
+name = "uses-ink-queue-cf"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "uses-ink-db",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "uses-ink-queue",
+ "uses-ink-queue-rows",
+ "worker",
+]
+
+[[package]]
+name = "uses-ink-queue-conformance"
+version = "0.0.0"
+dependencies = [
+ "pollster",
+ "uses-ink-model",
+ "uses-ink-queue",
+]
+
+[[package]]
+name = "uses-ink-queue-rows"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "sea-query",
+ "uses-ink-db",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "uses-ink-queue",
 ]
 
 [[package]]

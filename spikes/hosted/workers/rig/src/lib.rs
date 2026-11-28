@@ -4,6 +4,7 @@
 //! text is workerd's output.
 
 mod blobs;
+mod jobs;
 mod rows;
 mod suite;
 

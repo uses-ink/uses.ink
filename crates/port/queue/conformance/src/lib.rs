@@ -1,6 +1,7 @@
 //! The conformance suite of the queue port: each case is a type with a `check` over any
-//! [`Queue`], and [`suite!`] turns every case into a test. Time is a number of seconds the case
-//! passes in, so no case sleeps.
+//! [`Queue`]. [`Case`] lists them, with a name each, as async functions any executor can drive (a
+//! Worker's event loop included, which `pollster` cannot), and [`suite!`] turns every case into a
+//! native test. Time is a number of seconds the case passes in, so no case sleeps.
 //!
 //! ```ignore
 //! queue_conformance::suite!(|| (MyAdapter::in_memory(), ()));
@@ -201,25 +202,105 @@ impl Bodies {
     }
 }
 
+/// Lists the cases once, for the macros that need them: each entry is the [`Case`] variant, the type
+/// that holds the check, its method, and the name of the test.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! cases {
+    ($callback:path, $($lead:tt)*) => {
+        $callback! {
+            $($lead)*
+            [
+                (Ordered, Order, check, delivers_oldest_first_and_once),
+                (Hidden, Visible, check, hides_a_message_until_its_time),
+                (Leased, Lease, check, delivers_again_when_a_lease_ends),
+                (Settled, Acks, check, settles_only_a_current_delivery),
+                (Released, Release, check, releases_a_message_for_a_delay),
+                (Deduped, Dedupes, check, drops_a_message_whose_key_is_held),
+                (Bytes, Bodies, check, carries_any_bytes)
+            ]
+        }
+    };
+}
+
+macro_rules! define {
+    ([$(($variant:ident, $case:ident, $method:ident, $name:ident)),*]) => {
+        /// One case of the suite.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[non_exhaustive]
+        pub enum Case {
+            $(
+                #[doc = concat!("`", stringify!($case), "::", stringify!($method), "`.")]
+                $variant,
+            )*
+        }
+
+        impl Case {
+            /// Every case, in the order the suite runs them.
+            pub const ALL: &'static [Self] = &[$(Self::$variant),*];
+
+            /// Its name: the name of its native test.
+            pub const fn name(self) -> &'static str {
+                match self {
+                    $(Self::$variant => stringify!($name),)*
+                }
+            }
+
+            /// The case named `name`, if there is one.
+            pub fn named(name: &str) -> Option<Self> {
+                Self::ALL.iter().copied().find(|case| case.name() == name)
+            }
+
+            /// Runs it against `queue`, which must be fresh and empty. It panics at the first surprise.
+            pub async fn run<Q: Queue>(self, queue: &Q) {
+                match self {
+                    $(Self::$variant => $case::$method(queue).await,)*
+                }
+            }
+        }
+    };
+}
+
+cases!(define,);
+
+/// The native tests of [`suite!`], one per case.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! tests {
+    ($make:expr, [$(($variant:ident, $case:ident, $method:ident, $name:ident)),*]) => {
+        $(
+            #[test]
+            fn $name() {
+                let (queue, _guard) = ($make)();
+                $crate::pollster::block_on($crate::Case::$variant.run(&queue));
+            }
+        )*
+    };
+}
+
 /// Runs every case of the queue port's suite against the adapter `$make` builds: a closure that
 /// returns the adapter, fresh and empty, and whatever must outlive it (or `()`) as a pair. Each
-/// case is a test of its own, so each has its own budget.
+/// case is a test of its own, so each has its own budget. The same cases are [`Case::ALL`], for an
+/// executor that is not `pollster`.
 #[macro_export]
 macro_rules! suite {
     ($make:expr) => {
-        $crate::suite!(@case $make, delivers_oldest_first_and_once, Order);
-        $crate::suite!(@case $make, hides_a_message_until_its_time, Visible);
-        $crate::suite!(@case $make, delivers_again_when_a_lease_ends, Lease);
-        $crate::suite!(@case $make, settles_only_a_current_delivery, Acks);
-        $crate::suite!(@case $make, releases_a_message_for_a_delay, Release);
-        $crate::suite!(@case $make, drops_a_message_whose_key_is_held, Dedupes);
-        $crate::suite!(@case $make, carries_any_bytes, Bodies);
+        $crate::cases!($crate::tests, $make,);
     };
-    (@case $make:expr, $name:ident, $case:ident) => {
-        #[test]
-        fn $name() {
-            let (queue, _guard) = ($make)();
-            $crate::pollster::block_on($crate::$case::check(&queue));
-        }
-    };
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn every_case_has_its_own_name() {
+        let mut names: Vec<&str> = Case::ALL.iter().map(|case| case.name()).collect();
+        let count = names.len();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), count);
+        assert_eq!(count, 7);
+        assert!(Case::ALL.iter().all(|case| Case::named(case.name()) == Some(*case)));
+    }
 }

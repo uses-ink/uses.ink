@@ -3,6 +3,7 @@
 use worker::{Env, Response, Result};
 
 use crate::blobs::Blobs;
+use crate::jobs::Jobs;
 use crate::rows::Rows;
 
 /// One conformance suite, by the port it tests.
@@ -12,17 +13,20 @@ pub(crate) enum Suite {
     Db,
     /// The blob port on R2.
     Blob,
+    /// The queue port on the rows of D1, woken through Queues.
+    Queue,
 }
 
 impl Suite {
     /// Every suite, in the order they are listed.
-    const ALL: [Self; 2] = [Self::Db, Self::Blob];
+    const ALL: [Self; 3] = [Self::Db, Self::Blob, Self::Queue];
 
     /// Its name in the paths.
     const fn name(self) -> &'static str {
         match self {
             Self::Db => "db",
             Self::Blob => "blob",
+            Self::Queue => "queue",
         }
     }
 
@@ -36,6 +40,7 @@ impl Suite {
         match self {
             Self::Db => Rows::names(),
             Self::Blob => Blobs::names(),
+            Self::Queue => Jobs::names(),
         }
     }
 
@@ -55,6 +60,7 @@ impl Suite {
         let ran = match self {
             Self::Db => Rows { env }.run(case).await?,
             Self::Blob => Blobs { env }.run(case).await?,
+            Self::Queue => Jobs { env }.run(case).await?,
         };
         if ran { Response::ok(format!("ok {}/{case}\n", self.name())) } else { Response::error(format!("no case {case}"), 404) }
     }

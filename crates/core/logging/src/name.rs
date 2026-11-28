@@ -157,6 +157,8 @@ pub mod event {
     pub const QUEUE_RECEIVED: &str = "queue.received";
     /// A delivery was acknowledged or released, or its lease had already gone.
     pub const QUEUE_SETTLED: &str = "queue.settled";
+    /// A consumer was asked to run after a message was queued; the answer says whether it was.
+    pub const QUEUE_WOKEN: &str = "queue.woken";
     /// The sealing key was read from its file, or made.
     pub const KEY_OPENED: &str = "key.opened";
     /// The sealing key file was refused.

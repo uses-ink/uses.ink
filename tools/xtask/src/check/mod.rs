@@ -55,6 +55,7 @@ impl Gate {
                     "uses-ink-host-wasmtime-hostile",
                     "uses-ink-db-d1",
                     "uses-ink-blob-r2",
+                    "uses-ink-queue-cf",
                     "uses-ink-edge-api",
                 ],
                 flags: &[],

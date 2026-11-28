@@ -7011,6 +7011,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-queue-cf"
+version = "0.0.0"
+dependencies = [
+ "pollster",
+ "serde",
+ "serde_json",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "uses-ink-queue",
+ "uses-ink-queue-conformance",
+ "uses-ink-queue-rows",
+ "worker",
+]
+
+[[package]]
 name = "uses-ink-queue-conformance"
 version = "0.0.0"
 dependencies = [
