@@ -167,7 +167,14 @@ impl Fixture {
         assert_eq!(self.ask(address, "10.0.0.1").status, Status::Accepted);
         let reply = self.redeem(&self.token());
         assert_eq!(reply.status, Status::Ok, "{}", String::from_utf8_lossy(&reply.body));
-        json(&reply)["session"].as_str().unwrap().to_owned()
+        Self::secret(&reply)
+    }
+
+    /// The session secret a sign-in set as its cookie, which is the only place it is.
+    fn secret(reply: &Reply) -> String {
+        let cookie = reply.cookie.as_ref().unwrap().to_string();
+        let value = cookie.split_once('=').unwrap().1;
+        value.split(';').next().unwrap().to_owned()
     }
 }
 
@@ -203,8 +210,10 @@ fn a_link_signs_in_once_and_the_session_is_a_cookie() {
     assert_eq!(reply.status, Status::Ok);
     let body = json(&reply);
     assert_eq!(body["created_account"], json!(true));
-    let secret = body["session"].as_str().unwrap().to_owned();
+    assert!(body.get("session").is_none(), "the secret is not in the body: {body}");
+    let secret = Fixture::secret(&reply);
     assert_eq!(secret.len(), 64);
+    assert!(!String::from_utf8_lossy(&reply.body).contains(&secret));
     // the cookie: name, value and every attribute
     let cookie = reply.cookie.as_ref().unwrap().to_string();
     assert!(cookie.starts_with(&format!("ink-session={secret}; ")), "{cookie}");
@@ -232,6 +241,25 @@ fn a_link_signs_in_once_and_the_session_is_a_cookie() {
     assert!(end.cookie.as_ref().unwrap().to_string().contains("Max-Age=0"));
     let after = fixture.send((Method::Get, "/v1/session"), held, b"");
     assert_eq!((after.status, after.challenge), (Status::Unauthorized, true));
+}
+
+#[test]
+fn signing_in_by_email_ends_the_session_the_browser_held() {
+    let fixture = Fixture::new(Wanted::default());
+    let old = fixture.sign_in("me@example.org");
+    let jar = format!("ink-session={old}");
+    let held = Held { cookie: Some(&jar), ..Held::default() };
+    assert_eq!(fixture.send((Method::Get, "/v1/session"), held, b"").status, Status::Ok);
+    assert_eq!(fixture.ask("me@example.org", "10.0.0.1").status, Status::Accepted);
+    let path = format!("/v1/login/{}", fixture.token());
+    let reply = fixture.send((Method::Post, &path), held, b"");
+    assert_eq!(reply.status, Status::Ok);
+    let new = Fixture::secret(&reply);
+    assert_ne!(new, old);
+    assert_eq!(fixture.send((Method::Get, "/v1/session"), held, b"").status, Status::Unauthorized);
+    let fresh = format!("ink-session={new}");
+    let now = Held { cookie: Some(&fresh), ..Held::default() };
+    assert_eq!(fixture.send((Method::Get, "/v1/session"), now, b"").status, Status::Ok);
 }
 
 #[test]
@@ -433,7 +461,7 @@ fn nothing_that_prints_holds_a_secret() {
     let shown = format!("{request:?}");
     assert!(!shown.contains(&token) && !shown.contains("sekrit"), "{shown}");
     let reply = pollster::block_on(fixture.front.answer(&request));
-    let secret = json(&reply)["session"].as_str().unwrap().to_owned();
+    let secret = Fixture::secret(&reply);
     let shown = format!("{reply:?}");
     assert!(!shown.contains(&secret), "{shown}");
     assert_eq!(edge_api::Enter::redact(&path), "/v1/login/<redacted>");

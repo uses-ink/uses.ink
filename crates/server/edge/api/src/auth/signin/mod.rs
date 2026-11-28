@@ -9,8 +9,8 @@
 //! |---|---|
 //! | `POST /v1/login` `{"address"}` | Asks for a link. Always answers `202 {"requested":true}` in the same shape, whether or not the address has an account, whether or not mail will be sent. `429` with `Retry-After` when a rate limit is reached; that too is independent of whether the address exists. |
 //! | `GET /v1/login/{token}` | What the link is for and when it ends, without using it, so a mail scanner that opens links does not spend it. `404` for any token that is no good, in one shape. With `reveals` it signs in as `POST` does. |
-//! | `POST /v1/login/{token}` | Uses the link. `200` with the session secret in the body (a bearer token) and in `Set-Cookie`. The first-run link also takes `{"address"}` to give the owner's account. |
-//! | `GET /v1/session` | The session of the bearer token or the cookie. `401` otherwise. |
+//! | `POST /v1/login/{token}` | Uses the link. `200` with the session's description in the body and its secret in `Set-Cookie` only, which is `HttpOnly`. The first-run link also takes `{"address"}` to give the owner's account. |
+//! | `GET /v1/session` | The session of the cookie. `401` otherwise. |
 //! | `DELETE /v1/session` | Ends it and clears the cookie. |
 //! | `GET /v1/sessions` | The account's live sessions, newest first, with the asking one marked `current`. No secret is in it. |
 //! | `DELETE /v1/sessions/{id}` | Ends one of the account's sessions by its id. `404` for an id that is another account's, ended or never made. Ending the asking one clears the cookie. |
@@ -304,10 +304,10 @@ impl From<&Session> for Shown {
     }
 }
 
-/// A sign-in: the session's secret, once. It is a bearer token and the value of the cookie.
+/// A sign-in: what the session is. Its secret is in the cookie and nowhere else, so a script on
+/// the page that read the body (the cookie is `HttpOnly`) could not take it.
 #[derive(Serialize)]
-struct Signed<'a> {
-    session: &'a str,
+struct Signed {
     #[serde(flatten)]
     shown: Shown,
     created_account: bool,
@@ -389,7 +389,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         match call {
             Enter::Ask => self.ask(request, body).await,
             Enter::Look(proof) if !self.config.reveals => self.look(proof).await,
-            Enter::Look(proof) | Enter::Redeem(proof) => self.redeem(proof, body).await,
+            Enter::Look(proof) | Enter::Redeem(proof) => self.redeem(request, proof, body).await,
             Enter::Show => self.show(request).await,
             Enter::End => self.end(request).await,
             Enter::Sessions => self.sessions(request).await,
@@ -446,7 +446,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         Self::json(Status::Ok, &Looked { purpose: pending.purpose.name(), expires: pending.expires })
     }
 
-    async fn redeem(&self, proof: Option<Proof>, body: &[u8]) -> Result<Reply, Step<D::Error>> {
+    async fn redeem(&self, request: &Request, proof: Option<Proof>, body: &[u8]) -> Result<Reply, Step<D::Error>> {
         let proof = proof.ok_or_else(Step::unusable)?;
         let asked: Redeem =
             if body.is_empty() { Redeem::default() } else { Unreadable::read(body).map_err(Step::Body)? };
@@ -457,9 +457,13 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
             .redeem(Presented { proof: &proof, address: address.as_ref() }, self.drawn()?, now)
             .await
             .map_err(Step::Sign)?;
+        // a sign-in replaces the session the browser held, as a passkey one does: the old secret
+        // stops working, so a session id is never kept across a sign-in
+        if let Some(old) = self.held(request) {
+            self.entry.end(&old, now).await.map_err(Step::Sign)?;
+        }
         let age = Duration::try_from(entered.session.limit.duration_since(now)).unwrap_or_default();
         let signed = Signed {
-            session: entered.secret.reveal(),
             shown: Shown::from(&entered.session),
             created_account: entered.created,
         };
