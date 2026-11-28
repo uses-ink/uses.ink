@@ -64,7 +64,8 @@ class Engines {
           return chromium.launch({
             headless: true,
             executablePath: await sparticuz.executablePath(),
-            args: sparticuz.args,
+            // its Lambda flags run the browser in one process, which a closed context takes down
+            args: sparticuz.args.filter((arg) => arg !== "--single-process" && arg !== "--no-zygote"),
           });
         },
       },
