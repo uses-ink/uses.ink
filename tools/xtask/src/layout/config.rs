@@ -275,7 +275,7 @@ mod tests {
     use super::*;
 
     /// Every crate the rule list held in code before it became data, sorted.
-    const ENFORCED: [&str; 70] = [
+    const ENFORCED: [&str; 72] = [
         "farm",
         "freehand",
         "freehand-web",
@@ -309,6 +309,8 @@ mod tests {
         "uses-ink-edge-axum",
         "uses-ink-edge-control",
         "uses-ink-edge-folder",
+        "uses-ink-edge-object-nonce",
+        "uses-ink-edge-worker",
         "uses-ink-engine",
         "uses-ink-fixture",
         "uses-ink-format-markdown",

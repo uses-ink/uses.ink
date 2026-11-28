@@ -4,6 +4,7 @@ use worker::{Env, Response, Result};
 
 use crate::blobs::Blobs;
 use crate::jobs::Jobs;
+use crate::ledger::Ledgers;
 use crate::post::Post;
 use crate::vault::Vault;
 use crate::rows::Rows;
@@ -21,11 +22,13 @@ pub(crate) enum Suite {
     Secret,
     /// The mail port through the Cloudflare adapter over a fake provider.
     Mail,
+    /// The nonce store, through a Durable Object.
+    Nonce,
 }
 
 impl Suite {
     /// Every suite, in the order they are listed.
-    const ALL: [Self; 5] = [Self::Db, Self::Blob, Self::Queue, Self::Secret, Self::Mail];
+    const ALL: [Self; 6] = [Self::Db, Self::Blob, Self::Queue, Self::Secret, Self::Mail, Self::Nonce];
 
     /// Its name in the paths.
     const fn name(self) -> &'static str {
@@ -35,6 +38,7 @@ impl Suite {
             Self::Queue => "queue",
             Self::Secret => "secret",
             Self::Mail => "mail",
+            Self::Nonce => "nonce",
         }
     }
 
@@ -51,6 +55,7 @@ impl Suite {
             Self::Queue => Jobs::names(),
             Self::Secret => Vault::names(),
             Self::Mail => Post::names(),
+            Self::Nonce => Ledgers::names(),
         }
     }
 
@@ -73,6 +78,7 @@ impl Suite {
             Self::Queue => Jobs { env }.run(case).await?,
             Self::Secret => Vault { env }.run(case).await?,
             Self::Mail => Post.run(case).await?,
+            Self::Nonce => Ledgers { env }.run(case).await?,
         };
         if ran { Response::ok(format!("ok {}/{case}\n", self.name())) } else { Response::error(format!("no case {case}"), 404) }
     }

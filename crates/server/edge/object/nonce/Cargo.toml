@@ -1,0 +1,12 @@
+[package]
+name = "uses-ink-edge-object-nonce"
+description = "The nonce store's state machine, without a Worker in it: claims, the bound per key, the end of a window, the quiet after a start"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

@@ -39,6 +39,8 @@ crates = [
     "uses-ink-edge-axum",
     "uses-ink-edge-control",
     "uses-ink-edge-folder",
+    "uses-ink-edge-object-nonce",
+    "uses-ink-edge-worker",
     "uses-ink-engine",
     "uses-ink-fixture",
     "uses-ink-format-markdown",
@@ -139,6 +141,10 @@ reason = "the root's directories: each belongs to the tool that reads it (`.carg
 [[fanout.waive]]
 path = "spikes/hosted/vendor/webauthn-rs-core/src"
 reason = "a copy of a published crate with one patch (decision 0096), kept as published"
+
+[[fanout.waive]]
+path = "crates/server/edge"
+reason = "the edge crate and its families: the runtimes (`axum`, `folder`), the API, the control plane, and the Worker side (`object/<name>` state machines, `worker` shell), each its own crate (decision 0135)"
 
 [[fanout.waive]]
 path = "crates/core/config/src"

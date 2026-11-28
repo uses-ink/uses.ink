@@ -57,6 +57,8 @@ impl Gate {
                     "uses-ink-blob-r2",
                     "uses-ink-queue-cf",
                     "uses-ink-mail-cf",
+                    "uses-ink-edge-object-nonce",
+                    "uses-ink-edge-worker",
                     "uses-ink-secret-seal",
                     "uses-ink-secret-worker",
                     "uses-ink-edge-api",

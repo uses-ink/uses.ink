@@ -27,6 +27,9 @@ impl Order {
         ("uses-ink-edge", &["uses-ink-model", "uses-ink-logging"]),
         ("uses-ink-edge-axum", &["uses-ink-model", "uses-ink-edge", "uses-ink-edge-api", "uses-ink-logging"]),
         ("uses-ink-edge-folder", &["uses-ink-model", "uses-ink-edge", "uses-ink-logging"]),
+        // the nonce store: a pure state machine, and the Worker shell that puts it behind the wire (decision 0135)
+        ("uses-ink-edge-object-nonce", &[]),
+        ("uses-ink-edge-worker", &["uses-ink-edge-api", "uses-ink-edge-object-nonce", "uses-ink-sig"]),
         ("uses-ink-token", &[]),
         // The signed-request profile (decision 0068): the CLI signs and the server verifies with the
         // same code; it knows no crate of ours.

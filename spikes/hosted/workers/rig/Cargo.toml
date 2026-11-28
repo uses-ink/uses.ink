@@ -24,4 +24,8 @@ secret-worker = { package = "uses-ink-secret-worker", path = "../../../../crates
 mail = { package = "uses-ink-mail", path = "../../../../crates/port/mail" }
 mail-cf = { package = "uses-ink-mail-cf", path = "../../../../crates/port/mail/cf" }
 mail-conformance = { package = "uses-ink-mail-conformance", path = "../../../../crates/port/mail/conformance" }
+edge-api = { package = "uses-ink-edge-api", path = "../../../../crates/server/edge/api" }
+edge-worker = { package = "uses-ink-edge-worker", path = "../../../../crates/server/edge/worker" }
+sig = { package = "uses-ink-sig", path = "../../../../crates/core/sig" }
 secret = { package = "uses-ink-secret", path = "../../../../crates/port/secret" }
+wasm-bindgen = "=0.2.130"

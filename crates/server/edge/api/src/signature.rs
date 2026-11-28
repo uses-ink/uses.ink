@@ -12,20 +12,20 @@
 //! server starts, any request made before `boot + skew` is answered `restarting`, so a request
 //! captured before the restart cannot be replayed into the empty store.
 
-use std::collections::HashMap;
+use std::convert::Infallible;
 use std::error::Error;
 use std::fmt;
-use std::sync::{Mutex, PoisonError};
 
 use clock::Clock;
 use control::keys::{Audit, Effective, Grants, Keys, Kind, State};
 use control::{AccountKind, Id};
 use db::Db;
 use jiff::Timestamp;
-use sig::{Audience, Claim, Covered, KeyId, KeyType, Nonce, Verifying};
+use sig::{Audience, Claim, Covered, KeyType, Verifying};
 
 use crate::auth::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
 use crate::fault::Denied;
+use crate::nonce::{Claimed, Claiming, Nonces, Remembered};
 use crate::operator::{OperatorKey, Operators};
 
 /// The skew window: how many seconds either side of the server's time a request's `created` may
@@ -111,75 +111,34 @@ impl Config {
     }
 }
 
-/// What claiming a nonce found.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Claimed {
-    /// New: now remembered.
-    Fresh,
-    /// Seen before inside its window.
-    Replay,
-    /// The key has as many nonces as are remembered at once.
-    Full,
-}
-
-/// The nonces seen, per key, each until the end of its window. Memory only.
-#[derive(Debug, Default)]
-pub struct Nonces {
-    seen: Mutex<HashMap<KeyId, HashMap<Nonce, u64>>>,
-}
-
-impl Nonces {
-    /// An empty store.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Remembers `nonce` of `key` until `until` (unix seconds), or says why not. `now` is when
-    /// it is claimed: what ended before it is forgotten first.
-    pub fn claim(&self, whose: (KeyId, Nonce), until: u64, now: (u64, usize)) -> Claimed {
-        let ((key, nonce), (now, most)) = (whose, now);
-        let mut seen = self.seen.lock().unwrap_or_else(PoisonError::into_inner);
-        seen.retain(|_, nonces| {
-            nonces.retain(|_, end| *end > now);
-            !nonces.is_empty()
-        });
-        let nonces = seen.entry(key).or_default();
-        if nonces.contains_key(&nonce) {
-            return Claimed::Replay;
-        }
-        if nonces.len() >= most {
-            return Claimed::Full;
-        }
-        nonces.insert(nonce, until);
-        Claimed::Fresh
-    }
-}
-
 /// Why a signature could not be checked at all (as opposed to being refused).
 #[derive(Debug)]
 #[non_exhaustive]
-pub enum Failed<D, O> {
+pub enum Failed<D, O, N = Infallible> {
     /// The key rows could not be read.
     Keys(control::keys::Error<D>),
     /// The operator's keys could not be read.
     Operators(O),
+    /// The nonce store could not be reached.
+    Nonces(N),
 }
 
-impl<D, O> fmt::Display for Failed<D, O> {
+impl<D, O, N> fmt::Display for Failed<D, O, N> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Keys(_) => out.write_str("the keys could not be read"),
             Self::Operators(_) => out.write_str("the operator's keys could not be read"),
+            Self::Nonces(_) => out.write_str("the nonce store could not be reached"),
         }
     }
 }
 
-impl<D: Error + 'static, O: Error + 'static> Error for Failed<D, O> {
+impl<D: Error + 'static, O: Error + 'static, N: Error + 'static> Error for Failed<D, O, N> {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Keys(source) => Some(source),
             Self::Operators(source) => Some(source),
+            Self::Nonces(source) => Some(source),
         }
     }
 }
@@ -194,21 +153,29 @@ enum Found {
 /// The [`Credentials`] adapter for signed requests: the operator's file, the account's keys and
 /// keys waiting to be enrolled, over a clock.
 #[derive(Debug)]
-pub struct Signatures<D, K, O> {
+pub struct Signatures<D, K, O, N = Remembered> {
     keys: Keys<D>,
     clock: K,
     operators: O,
-    nonces: Nonces,
+    nonces: N,
     config: Config,
     boot: Timestamp,
 }
 
 impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
-    /// A verifier over `keys` and the `operators`, started now: its boot barrier begins here.
+    /// A verifier over `keys` and the `operators`, started now: its boot barrier begins here. Its
+    /// nonces are in memory.
     pub fn new(keys: Keys<D>, parts: (K, O), config: Config) -> Self {
+        Self::with_nonces(keys, parts, config, Remembered::new())
+    }
+}
+
+impl<D: Db, K: Clock, O: Operators, N: Nonces> Signatures<D, K, O, N> {
+    /// A verifier over `keys` and the `operators` that remembers nonces in `nonces`, started now.
+    pub fn with_nonces(keys: Keys<D>, parts: (K, O), config: Config, nonces: N) -> Self {
         let (clock, operators) = parts;
         let boot = clock.now();
-        Self { keys, clock, operators, nonces: Nonces::new(), config, boot }
+        Self { keys, clock, operators, nonces, config, boot }
     }
 
     /// The configuration.
@@ -225,7 +192,7 @@ impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
         u64::try_from(time.as_second()).unwrap_or(0)
     }
 
-    async fn find(&self, id: KeyId) -> Result<Option<Found>, Failed<D::Error, O::Error>> {
+    async fn find(&self, id: sig::KeyId) -> Result<Option<Found>, Failed<D::Error, O::Error, N::Error>> {
         let operators = self.operators.keys().map_err(Failed::Operators)?;
         if let Some(found) = operators.into_iter().find(|key| key.public.id(key.key_type) == id) {
             return Ok(Some(Found::Operator(found)));
@@ -271,10 +238,14 @@ impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
     }
 }
 
-impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
+impl<D: Db, K: Clock, O: Operators, N: Nonces> Signatures<D, K, O, N> {
     /// Why a key that proved itself may not be used: it was revoked or has ended. Only a caller
     /// who signed may hear it, so the answer tells a key's holder and nobody else.
-    async fn ended(&self, found: &Found, now: Timestamp) -> Result<Option<Denied>, Failed<D::Error, O::Error>> {
+    async fn ended(
+        &self,
+        found: &Found,
+        now: Timestamp,
+    ) -> Result<Option<Denied>, Failed<D::Error, O::Error, N::Error>> {
         let Found::Key(key) = found else { return Ok(None) };
         Ok(match key.state(now) {
             State::Live => None,
@@ -292,10 +263,11 @@ impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
         found: &Found,
         claim: &Claim,
         now: Timestamp,
-    ) -> Result<Option<Denied>, Failed<D::Error, O::Error>> {
+    ) -> Result<Option<Denied>, Failed<D::Error, O::Error, N::Error>> {
         let (secs, window) = (Self::seconds(now), self.config.window.seconds());
         let until = claim.created.seconds() + window;
-        Ok(match self.nonces.claim((claim.key, claim.nonce), until, (secs, self.config.nonces)) {
+        let claiming = Claiming { key: claim.key, nonce: claim.nonce, until, now: secs, most: self.config.nonces };
+        Ok(match self.nonces.claim(claiming).await.map_err(Failed::Nonces)? {
             Claimed::Fresh => None,
             Claimed::Replay => {
                 if let Found::Key(key) = found {
@@ -306,13 +278,14 @@ impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
                 }
                 Some(Denied::Replayed)
             }
+            Claimed::Quiet { seconds } => Some(Denied::Restarting { seconds }),
             _ => Some(Denied::Flooded { window }),
         })
     }
 }
 
-impl<D: Db, K: Clock, O: Operators> Credentials for Signatures<D, K, O> {
-    type Error = Failed<D::Error, O::Error>;
+impl<D: Db, K: Clock, O: Operators, N: Nonces> Credentials for Signatures<D, K, O, N> {
+    type Error = Failed<D::Error, O::Error, N::Error>;
 
     async fn verify(&self, offered: &Offered, at: &Presented<'_>) -> Result<Verdict, Self::Error> {
         // the passkey is reserved: refused as a signature that does not verify is
@@ -364,17 +337,5 @@ mod test {
         assert_eq!(Window::new(301), Err(WindowError::Over { asked: 301 }));
         assert_eq!(Window::new(300).map(Window::seconds), Ok(300));
         assert_eq!(Window::default().seconds(), 60);
-    }
-
-    #[test]
-    fn a_nonce_is_claimed_once_until_its_window_ends_and_the_store_is_bounded() {
-        let nonces = Nonces::new();
-        let key = KeyId::new([1; 16]);
-        assert_eq!(nonces.claim((key, Nonce::new([1; 16])), 100, (50, 2)), Claimed::Fresh);
-        assert_eq!(nonces.claim((key, Nonce::new([1; 16])), 100, (51, 2)), Claimed::Replay);
-        assert_eq!(nonces.claim((key, Nonce::new([2; 16])), 100, (51, 2)), Claimed::Fresh);
-        assert_eq!(nonces.claim((key, Nonce::new([3; 16])), 100, (51, 2)), Claimed::Full);
-        assert_eq!(nonces.claim((KeyId::new([2; 16]), Nonce::new([1; 16])), 100, (51, 2)), Claimed::Fresh);
-        assert_eq!(nonces.claim((key, Nonce::new([1; 16])), 200, (101, 2)), Claimed::Fresh);
     }
 }

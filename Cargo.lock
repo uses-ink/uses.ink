@@ -6824,6 +6824,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-edge-object-nonce"
+version = "0.0.0"
+
+[[package]]
+name = "uses-ink-edge-worker"
+version = "0.0.0"
+dependencies = [
+ "pollster",
+ "serde",
+ "serde_json",
+ "uses-ink-edge-api",
+ "uses-ink-edge-object-nonce",
+ "uses-ink-sig",
+ "worker",
+]
+
+[[package]]
 name = "uses-ink-engine"
 version = "0.0.0"
 dependencies = [
