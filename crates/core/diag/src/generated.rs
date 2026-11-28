@@ -271,6 +271,9 @@ impl Message<'_> {
             Problem::AuthEnrolmentLimited { seconds, .. } => {
                 write!(out, "enrolment is closed for {seconds} seconds after too many requests")
             }
+            Problem::AuthApprovalMalformed => {
+                write!(out, "the approval body is not the JSON `{{\"fingerprint\": ...}}` this route reads")
+            }
             Problem::AuthEnrolmentLifetime { asked, limit, .. } => {
                 write!(out, "a key of {asked} days is over this server's ceiling of {limit} days")
             }
@@ -831,6 +834,7 @@ impl Fix<'_> {
             Problem::AuthEnrolmentExpired => true,
             Problem::AuthEnrolmentDenied => true,
             Problem::AuthEnrolmentLimited { .. } => true,
+            Problem::AuthApprovalMalformed => true,
             Problem::AuthEnrolmentLifetime { .. } => true,
             Problem::AuthEnrolmentSite => true,
             Problem::AuthEnrolmentRights => true,
@@ -1231,6 +1235,12 @@ impl Fix<'_> {
             }
             Problem::AuthEnrolmentLimited { .. } => {
                 write!(out, "wait, then run `ink login` again")
+            }
+            Problem::AuthApprovalMalformed => {
+                write!(
+                    out,
+                    "post `{{\"fingerprint\": \"<the fingerprint both screens show>\"}}` as JSON, from the dashboard's origin, with the session cookie"
+                )
             }
             Problem::AuthEnrolmentLifetime { limit, .. } => {
                 write!(out, "ask for {limit} days or fewer with `--expires`")

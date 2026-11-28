@@ -289,6 +289,9 @@ fn a_person_with_a_session_approves_a_key_and_a_stranger_cannot_guess_the_code()
     // the fingerprint compared must be the one asked
     let wrong = json!({ "fingerprint": "AAAA-AAAA-AA" }).to_string();
     assert_eq!(fixture.send((Method::Post, &path), held, wrong.as_bytes()).status, Status::Conflict);
+    // a body that is not the fingerprint is told apart from every other unreadable body
+    let bad = fixture.send((Method::Post, &path), held, b"not json");
+    assert_eq!((bad.status, json(&bad)["problem"].clone()), (Status::BadRequest, json!("auth.approval.malformed")));
     let right = json!({ "fingerprint": device.id().fingerprint().to_string() }).to_string();
     assert_eq!(fixture.send((Method::Post, &path), held, right.as_bytes()).status, Status::Ok);
     // spent: the answer of a code that never was

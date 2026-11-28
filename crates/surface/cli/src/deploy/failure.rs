@@ -53,6 +53,9 @@ impl ApiRefusal {
             "auth.signature.refused" | "auth.key.unknown" => "run `ink login` to sign in again on this machine",
             "auth.key.revoked" | "auth.key.expired" => "run `ink login`; for CI, make a new key with `ink key add`",
             "auth.right.missing" => "use a key with that right, or approve one with `ink key add`",
+            "auth.approval.malformed" => {
+                "post `{\"fingerprint\": \"<the fingerprint both screens show>\"}` as JSON, with `Origin` and the session cookie"
+            }
             "auth.enrolment.expired" | "auth.enrolment.denied" | "auth.enrolment.limited" => "run `ink login` again",
             "domain.proof.missing" => {
                 "publish the TXT record `ink domain add` showed, wait for your DNS to answer it, then run `ink domain prove` again"

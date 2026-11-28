@@ -657,6 +657,12 @@ fields = { seconds = "count" }
 message = "enrolment is closed for {seconds} seconds after too many requests"
 fix = "wait, then run `ink login` again"
 
+[diagnostic."auth.approval.malformed"]
+severity = "error"
+fault = "author"
+message = "the approval body is not the JSON `{{\"fingerprint\": ...}}` this route reads"
+fix = "post `{{\"fingerprint\": \"<the fingerprint both screens show>\"}}` as JSON, from the dashboard's origin, with the session cookie"
+
 [diagnostic."auth.enrolment.lifetime"]
 severity = "error"
 fault = "author"

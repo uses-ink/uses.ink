@@ -100,6 +100,8 @@ pub enum Step<E> {
     Method(EnterError),
     /// The body is not the JSON the route reads.
     Body(Unreadable),
+    /// The body of an approval is not `{"fingerprint": ...}`.
+    Approval(Unreadable),
     /// The body went over its limit.
     Large {
         /// The limit.
@@ -141,7 +143,7 @@ impl<E> std::fmt::Display for Step<E> {
         match self {
             Self::Route => out.write_str("there is no such route"),
             Self::Method(error) => error.fmt(out),
-            Self::Body(error) => error.fmt(out),
+            Self::Body(error) | Self::Approval(error) => error.fmt(out),
             Self::Large { limit } => write!(out, "the body is over the limit of {limit} bytes"),
             Self::Limited(error) => error.fmt(out),
             Self::Closed(error) => error.fmt(out),
@@ -164,7 +166,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Step<E> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Method(source) => Some(source),
-            Self::Body(source) => Some(source),
+            Self::Body(source) | Self::Approval(source) => Some(source),
             Self::Limited(source) => Some(source),
             Self::Closed(source) => Some(source),
             Self::Keys(source) => Some(source),
@@ -190,6 +192,7 @@ impl<E: std::error::Error + 'static> Step<E> {
         match self {
             Self::Route | Self::Method(_) => "route",
             Self::Body(_) => "body",
+            Self::Approval(_) => "auth.approval.malformed",
             Self::Large { .. } => "too-large",
             Self::Limited(_) => "auth.rate.limited",
             Self::Closed(_) => "auth.enrolment.limited",
@@ -223,7 +226,7 @@ impl<E: std::error::Error + 'static> Step<E> {
             | Self::Seat(control::Seated::NotMember { .. })
             | Self::Sign(Error::Refused(Refused::Unusable)) => Status::NotFound,
             Self::Method(_) => Status::MethodNotAllowed,
-            Self::Body(_) => Status::BadRequest,
+            Self::Body(_) | Self::Approval(_) => Status::BadRequest,
             Self::Large { .. } => Status::TooLarge,
             Self::Limited(_) | Self::Closed(_) => Status::TooMany,
             Self::Keys(refused) => Turned(refused).status(),
@@ -664,7 +667,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     ) -> Result<Reply, Step<D::Error>> {
         let (who, now) = self.gated(request).await?;
         self.fresh(request, now).await?;
-        let asked: Approve = Unreadable::read(body).map_err(Step::Body)?;
+        let asked: Approve = Unreadable::read(body).map_err(Step::Approval)?;
         let Some(code) = code else { return Err(self.missed(now)) };
         let fingerprint = asked.fingerprint.0;
         let approval = Approval { code, fingerprint: fingerprint.clone(), by: who.account, within: who.rights };

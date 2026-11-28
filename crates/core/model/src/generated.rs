@@ -565,6 +565,9 @@ pub enum Problem {
         /// How many seconds.
         seconds: u64,
     },
+    /// `auth.approval.malformed`: the approval body is not the JSON `{"fingerprint": ...}` this route reads
+    #[serde(rename = "auth.approval.malformed")]
+    AuthApprovalMalformed,
     /// `auth.enrolment.lifetime`: a key of {asked} days is over this server's ceiling of {limit} days
     #[serde(rename = "auth.enrolment.lifetime")]
     AuthEnrolmentLifetime {
@@ -1212,6 +1215,7 @@ impl Problem {
         "auth.enrolment.expired",
         "auth.enrolment.denied",
         "auth.enrolment.limited",
+        "auth.approval.malformed",
         "auth.enrolment.lifetime",
         "auth.enrolment.site",
         "auth.enrolment.rights",
@@ -1400,6 +1404,7 @@ impl Problem {
             Self::AuthEnrolmentExpired => "auth.enrolment.expired",
             Self::AuthEnrolmentDenied => "auth.enrolment.denied",
             Self::AuthEnrolmentLimited { .. } => "auth.enrolment.limited",
+            Self::AuthApprovalMalformed => "auth.approval.malformed",
             Self::AuthEnrolmentLifetime { .. } => "auth.enrolment.lifetime",
             Self::AuthEnrolmentSite => "auth.enrolment.site",
             Self::AuthEnrolmentRights => "auth.enrolment.rights",
@@ -1589,6 +1594,7 @@ impl Problem {
             Self::AuthEnrolmentExpired => Severity::Error,
             Self::AuthEnrolmentDenied => Severity::Error,
             Self::AuthEnrolmentLimited { .. } => Severity::Error,
+            Self::AuthApprovalMalformed => Severity::Error,
             Self::AuthEnrolmentLifetime { .. } => Severity::Error,
             Self::AuthEnrolmentSite => Severity::Error,
             Self::AuthEnrolmentRights => Severity::Error,
@@ -1778,6 +1784,7 @@ impl Problem {
             Self::AuthEnrolmentExpired => Fault::Source,
             Self::AuthEnrolmentDenied => Fault::Source,
             Self::AuthEnrolmentLimited { .. } => Fault::Source,
+            Self::AuthApprovalMalformed => Fault::Author,
             Self::AuthEnrolmentLifetime { .. } => Fault::Author,
             Self::AuthEnrolmentSite => Fault::Author,
             Self::AuthEnrolmentRights => Fault::Author,
@@ -2481,6 +2488,7 @@ impl From<&Problem> for Coded {
             Problem::AuthEnrolmentLimited { seconds, .. } => {
                 Coded::new("auth.enrolment.limited", vec![Field::from(*seconds)])
             }
+            Problem::AuthApprovalMalformed => Coded::new("auth.approval.malformed", vec![]),
             Problem::AuthEnrolmentLifetime { asked, limit, .. } => {
                 Coded::new("auth.enrolment.lifetime", vec![Field::from(*asked), Field::from(*limit)])
             }
@@ -2793,6 +2801,7 @@ impl TryFrom<Coded> for Problem {
             "auth.enrolment.expired" => Self::AuthEnrolmentExpired,
             "auth.enrolment.denied" => Self::AuthEnrolmentDenied,
             "auth.enrolment.limited" => Self::AuthEnrolmentLimited { seconds: fields.next()? },
+            "auth.approval.malformed" => Self::AuthApprovalMalformed,
             "auth.enrolment.lifetime" => Self::AuthEnrolmentLifetime { asked: fields.next()?, limit: fields.next()? },
             "auth.enrolment.site" => Self::AuthEnrolmentSite,
             "auth.enrolment.rights" => Self::AuthEnrolmentRights,

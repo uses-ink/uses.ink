@@ -133,6 +133,7 @@ impl Task {
     }
 
     /// What the tasks that take an argument, or that refuse one, report; none for the rest.
+    #[expect(clippy::too_many_lines, reason = "one arm for each task that takes an argument")]
     fn argued(self, root: &Path, argument: Option<&str>, flags: &[String]) -> Option<Report> {
         Some(match (self, argument) {
             (Self::Shoot, Some(given)) => match (given.parse::<shoot::Target>(), shoot::Flags::parse(flags)) {

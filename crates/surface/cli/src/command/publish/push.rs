@@ -78,7 +78,7 @@ impl Scanned {
         let read = Folder { output, ..Folder::new(dir) }.read(&mut store).map_err(SourceError::Refused)?;
         let snapshot = read.snapshot;
         let modified = |path: &ContentPath| snapshot.facts_of(path).and_then(|facts| facts.updated.exact()).copied();
-        let leaves = snapshot
+        let leaves: Vec<Leaf> = snapshot
             .tree()
             .iter()
             .map(|entry| Leaf {
