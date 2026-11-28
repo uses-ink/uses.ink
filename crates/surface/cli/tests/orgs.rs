@@ -146,6 +146,20 @@ fn an_organization_is_made_staffed_and_acted_as_and_its_deploy_key_outlives_its_
 }
 
 #[test]
+fn a_member_added_with_no_role_is_a_reader() {
+    let server = Server::start("orgs-default-role", &["--signup", "open", "--site-ttl", "0"]);
+    let machine = operator(&server);
+    let (_ann, ann_id) = person(&server, "ann@example.org", 2);
+    let made = machine.ink(&["org", "create", "Garden club", "--json"]);
+    assert_eq!(made.code, 0, "{}", made.said());
+    let org = made.json()["id"].as_str().unwrap().to_owned();
+
+    let added = machine.ink(&["org", "member", "add", &org, &ann_id, "--json"]);
+    assert_eq!(added.code, 0, "{}", added.said());
+    assert_eq!(added.json()["role"], "reader", "{}", added.out);
+}
+
+#[test]
 fn the_account_screen_makes_an_organization_and_changes_who_is_in_it() {
     let server = Server::start("orgs-web", &["--signup", "open", "--site-ttl", "0"]);
     let link = server.links().pop().unwrap();

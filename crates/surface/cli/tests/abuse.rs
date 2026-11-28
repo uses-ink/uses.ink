@@ -55,6 +55,28 @@ fn the_operator_reads_a_report_suspends_the_site_and_lifts_it() {
 }
 
 #[test]
+fn a_suspension_with_no_kind_and_no_report_is_other_and_stands_alone() {
+    let server = Server::start("abuse-default", &["--site-ttl", "0"]);
+    let data = server.data.to_str().unwrap().to_owned();
+    let mut operator = server.machine("operator");
+    operator.dir = server.root.join("site");
+    std::fs::create_dir_all(&operator.dir).unwrap();
+    let logged = operator.ink(&["login", "--data", &data, "--label", "operator"]);
+    assert_eq!(logged.code, 0, "{}", logged.said());
+    operator.write("index.md", "# Garden\n\nHello.\n");
+    let init = operator.ink(&["init", "--handle", "garden", "--json"]);
+    assert_eq!(init.code, 0, "{}", init.said());
+    let site = init.json()["site"].as_str().unwrap().to_owned();
+    let pushed = operator.ink(&["push", "--wait", "30"]);
+    assert_eq!(pushed.code, 0, "{}", pushed.said());
+
+    let suspended = operator.ink(&["abuse", "suspend", &site, "--json"]);
+    assert_eq!(suspended.code, 0, "{}", suspended.said());
+    assert_eq!(suspended.json()["kind"], "other", "{}", suspended.out);
+    assert_eq!(server.page("garden", "/").status(), "403");
+}
+
+#[test]
 fn a_machine_with_no_key_or_a_bad_kind_is_refused_before_anything_changes() {
     let server = Server::start("abuse-refused", &["--site-ttl", "0"]);
     let nobody = server.machine("nobody");
