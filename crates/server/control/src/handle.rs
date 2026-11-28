@@ -30,7 +30,7 @@ impl Handle {
 
     /// Names kept for uses.ink itself: infrastructure and route nouns (decision 0045 lists
     /// them; the brand list is the owner's, question O3, and is not here yet).
-    pub const RESERVED: [&'static str; 24] = [
+    pub const RESERVED: [&'static str; 26] = [
         "www",
         "app",
         "api",
@@ -55,6 +55,8 @@ impl Handle {
         "root",
         "abuse",
         "security",
+        "signin",
+        "v1",
     ];
 
     /// The handle as text.

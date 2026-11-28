@@ -5,7 +5,7 @@ use sea_query::{Expr, ExprTrait, Query};
 
 use crate::account::{self, Account};
 use crate::fields::Fields;
-use crate::id::{Id, Site as SiteKind};
+use crate::id::{Account as AccountKind, Id, Site as SiteKind};
 use crate::site::{self, Site, Stored};
 use crate::{Control, Error, Event, Handle, Ports, Refusal, table};
 
@@ -23,6 +23,19 @@ impl<P: Ports> Control<P> {
                 Err(Refusal::Exists { id: new.id.to_string() }.into())
             }
             Err(error) => Err(error.into()),
+        }
+    }
+
+    /// The account `id`, or [`Refusal::NoAccount`] when there is none.
+    pub async fn account(&self, id: Id<AccountKind>) -> Result<Account, Error<P>> {
+        let select = Query::select()
+            .columns([table::Account::Id, table::Account::CreatedAt])
+            .from(table::Account::Table)
+            .and_where(Expr::col(table::Account::Id).eq(id.to_string()))
+            .to_owned();
+        match self.ports.db().first(select.into()).await? {
+            Some(row) => Ok(Account::try_from(&row)?),
+            None => Err(Refusal::NoAccount { account: id }.into()),
         }
     }
 
