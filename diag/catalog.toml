@@ -1003,6 +1003,12 @@ fault = "author"
 message = "this change needs a passkey sign-in within the last few minutes"
 fix = "sign in with a passkey again, then repeat the change"
 
+[diagnostic."auth.recovery.refused"]
+severity = "error"
+fault = "source"
+message = "that recovery code is unknown, was used, or has a typo"
+fix = "check the code, use another, or sign in with a passkey"
+
 [notice."auth.token.retired"]
 fields = { token_file = "text" }
 message = "the owner token in `{token_file}` no longer works"

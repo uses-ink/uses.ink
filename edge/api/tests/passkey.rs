@@ -26,7 +26,7 @@ use control::keys::Keys;
 use control::passkeys::{Registry, Relying};
 use control::signin::{Drawn, Entry, Presented, Requested, Settings, SignIn, Signup};
 use control::{AccountKind, Control, Domain, Id, Origin};
-use db::Steps;
+use db::{Db, Steps};
 use db_sqlite::Sqlite;
 use edge_api::{
     Answers, Api, Ceremonies, Closing, Door, Enrol, Jar, Limits, Method, NoOperators, Passing, Payload, Reply, Request,
@@ -82,6 +82,8 @@ impl Fixture {
             .with::<control::keys::Entry>()
             .unwrap()
             .with::<control::passkeys::Entry>()
+            .unwrap()
+            .with::<control::recovery::Entry>()
             .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (
@@ -729,4 +731,116 @@ fn approving_a_key_needs_the_same_step_up() {
     assert_eq!(code(&late), "auth.step-up.required");
     let fresh = pair(fixture.sign_in(&phone, account.as_bytes()).cookie.as_ref().unwrap());
     assert_eq!(fixture.send((Method::Post, &second), &fresh, &spare_fingerprint).status, Status::Ok);
+}
+
+/// Signs in with `authenticator` and returns the session cookie as `name=value`.
+fn cookie_of(reply: &Reply) -> String {
+    pair(reply.cookie.as_ref().unwrap())
+}
+
+#[test]
+fn recovery_codes_are_shown_once_kept_as_digests_and_a_new_set_voids_the_old() {
+    let fixture = Fixture::new();
+    let (account, link) = fixture.person("me@example.org");
+    let phone = Authenticator::synced(1, ORIGIN, HOST);
+    let link_jar = format!("__Host-ink-session={link}");
+    // with no passkey the link's session may mint, and the first set is ten codes
+    let first = fixture.send((Method::Post, "/v1/recovery/codes"), &link_jar, &Value::Null);
+    assert_eq!(first.status, Status::Created, "{}", text(&first));
+    let first: Vec<String> =
+        body(&first)["codes"].as_array().unwrap().iter().map(|code| code.as_str().unwrap().to_owned()).collect();
+    assert_eq!(first.len(), 10);
+    assert!(first.iter().all(|code| code.len() == 33 && code.split('-').count() == 7), "{first:?}");
+    assert_eq!(first.iter().collect::<std::collections::BTreeSet<_>>().len(), 10, "ten different codes");
+    // only digests are at rest: the table has 32-byte digests and no code text, and so does the log
+    let rows = pollster::block_on(fixture.db.rows(
+        sea_query::Query::select()
+            .columns([control::table::RecoveryCode::Digest, control::table::RecoveryCode::Id])
+            .from(control::table::RecoveryCode::Table)
+            .to_owned()
+            .into(),
+    ))
+    .unwrap();
+    assert_eq!(rows.len(), 10);
+    let events = pollster::block_on(fixture.keys.events(account, 50)).unwrap();
+    let logged = format!("{events:?}");
+    for code in &first {
+        assert!(!logged.contains(&code.replace('-', "")) && !logged.contains(code), "a code is in the log");
+    }
+    // once a passkey exists the link's session no longer mints; a passkey sign-in does
+    assert_eq!(fixture.register(&link, &phone).status, Status::Created);
+    let refused = fixture.send((Method::Post, "/v1/recovery/codes"), &link_jar, &Value::Null);
+    assert_eq!((refused.status, code(&refused)), (Status::Forbidden, "auth.step-up.required".to_owned()));
+    let jar = cookie_of(&fixture.sign_in(&phone, account.as_bytes()));
+    assert_eq!(body(&fixture.send((Method::Get, "/v1/recovery/codes"), &jar, &Value::Null))["remaining"], json!(10));
+    let second = fixture.send((Method::Post, "/v1/recovery/codes"), &jar, &Value::Null);
+    assert_eq!(second.status, Status::Created, "{}", text(&second));
+    let second: Vec<String> =
+        body(&second)["codes"].as_array().unwrap().iter().map(|code| code.as_str().unwrap().to_owned()).collect();
+    assert!(first.iter().all(|old| !second.contains(old)));
+    // the old set is void, the new one is not
+    let old = fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": first[0], "label": "new"}));
+    assert_eq!((old.status, code(&old)), (Status::Unauthorized, "auth.recovery.refused".to_owned()));
+    assert_eq!(fixture.send((Method::Get, "/v1/recovery/codes"), "", &Value::Null).status, Status::Unauthorized);
+    let events: Vec<String> =
+        pollster::block_on(fixture.keys.events(account, 50)).unwrap().into_iter().map(|event| event.name).collect();
+    assert_eq!(events.iter().filter(|name| *name == "recovery.minted").count(), 2, "{events:?}");
+}
+
+#[test]
+fn a_recovery_code_is_spent_once_to_register_a_passkey_and_a_wrong_one_is_limited() {
+    let fixture = Fixture::new();
+    let (account, link) = fixture.person("me@example.org");
+    let phone = Authenticator::synced(1, ORIGIN, HOST);
+    assert_eq!(fixture.register(&link, &phone).status, Status::Created);
+    let jar = cookie_of(&fixture.sign_in(&phone, account.as_bytes()));
+    let minted = fixture.send((Method::Post, "/v1/recovery/codes"), &jar, &Value::Null);
+    let codes: Vec<String> =
+        body(&minted)["codes"].as_array().unwrap().iter().map(|code| code.as_str().unwrap().to_owned()).collect();
+    // the phone is lost: with no session at all, a code starts a registration and clears any cookie
+    let stale = format!("__Host-ink-session={link}");
+    let started = fixture.send((Method::Post, "/v1/recovery"), &stale, &json!({"code": codes[0], "label": "new phone"}));
+    assert_eq!(started.status, Status::Ok, "{}", text(&started));
+    assert!(started.cookie.as_ref().unwrap().to_string().contains("Max-Age=0"), "a stale session cookie is dropped");
+    let ceremony = pair(started.ceremony.as_ref().unwrap());
+    let spare = Authenticator::hardware(5, ORIGIN, HOST);
+    let credential = spare.create(&body(&started));
+    let added = fixture.send((Method::Post, "/v1/passkeys"), &ceremony, &json!({"label": "new phone", "credential": credential}));
+    assert_eq!(added.status, Status::Created, "{}", text(&added));
+    // and the new passkey signs in
+    assert_eq!(fixture.sign_in(&spare, account.as_bytes()).status, Status::Ok);
+    // a code is spent: the same one again is the answer of a code that never was
+    let again = fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": codes[0], "label": "x"}));
+    assert_eq!((again.status, code(&again)), (Status::Unauthorized, "auth.recovery.refused".to_owned()));
+    assert_eq!(body(&fixture.send((Method::Get, "/v1/recovery/codes"), &jar, &Value::Null))["remaining"], json!(9));
+    // the code's case, dashes and look-alike letters do not matter
+    let loose = codes[1].to_ascii_lowercase().replace('-', "");
+    assert_eq!(fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": loose, "label": "x"})).status, Status::Ok);
+    // a typo is caught before it is counted: any number of them, and then the real code still works
+    for _ in 0..20 {
+        let typo = fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": "ABCD-EFGH", "label": "x"}));
+        assert_eq!((typo.status, code(&typo)), (Status::Unprocessable, "auth.recovery.refused".to_owned()));
+    }
+    // the cross-origin post of a code does nothing
+    let cross = fixture.send_with(
+        (Method::Post, "/v1/recovery"),
+        Fetch { origin: Some("https://evil.example"), site: None },
+        "",
+        &json!({"code": codes[2], "label": "x"}),
+    );
+    assert_eq!((cross.status, code(&cross)), (Status::Forbidden, "auth.origin.refused".to_owned()));
+    // ten tries a source an hour; a well-formed code that is no code of ours counts
+    let never = control::recovery::Code::from_bytes([9; 16]).reveal();
+    for _ in 0..7 {
+        let miss = fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": never, "label": "x"}));
+        assert_eq!(miss.status, Status::Unauthorized);
+    }
+    let limited = fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": codes[2], "label": "x"}));
+    assert_eq!((limited.status, code(&limited)), (Status::TooMany, "auth.rate.limited".to_owned()));
+    assert!(limited.retry.is_some());
+    fixture.clock.advance(Duration::from_secs(3601));
+    assert_eq!(fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": codes[2], "label": "x"})).status, Status::Ok);
+    let events: Vec<String> =
+        pollster::block_on(fixture.keys.events(account, 50)).unwrap().into_iter().map(|event| event.name).collect();
+    assert_eq!(events.iter().filter(|name| *name == "recovery.used").count(), 3, "{events:?}");
 }

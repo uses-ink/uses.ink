@@ -242,6 +242,11 @@ impl Quota {
     /// guard against guessing.
     pub const CHALLENGES: Rate = Rate { count: 60, window: Ttl::secs(3600) };
 
+    /// What spending a recovery code is held to by default: ten an hour from one source. A code is
+    /// 128 random bits, so the limit is not what stops a guess; it bounds the work a stranger can
+    /// make the server do.
+    pub const RECOVERIES: Rate = Rate { count: 10, window: Ttl::secs(3600) };
+
     /// A quota of `rate` for each source, remembering at most `tracked` sources.
     pub fn new(rate: Rate, tracked: usize) -> Self {
         Self { rate, tracked, seen: Mutex::default() }

@@ -195,6 +195,14 @@ impl<D: Db> Registry<D> {
         Self { db }
     }
 
+    /// The recovery codes of the same database.
+    pub fn codes(&self) -> crate::recovery::Codes<D>
+    where
+        D: Clone,
+    {
+        crate::recovery::Codes::new(self.db.clone())
+    }
+
     fn day(now: Timestamp) -> Date {
         Offset::UTC.to_datetime(now).date()
     }

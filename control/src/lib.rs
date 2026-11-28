@@ -30,6 +30,7 @@ mod origin;
 pub mod passkeys;
 mod ports;
 mod receipt;
+pub mod recovery;
 mod site;
 
 pub use control_keys as keys;

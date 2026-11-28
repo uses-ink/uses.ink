@@ -204,6 +204,18 @@ pub enum Ceremony {
     ExpiresAt,
 }
 
+/// `recovery_code`: the digest of one of an account's recovery codes, and when it was spent.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "recovery_code"]
+pub enum RecoveryCode {
+    Table,
+    Id,
+    Digest,
+    AccountId,
+    CreatedAt,
+    UsedAt,
+}
+
 /// `auth_config`: the relying party id the first passkey was made under.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 #[iden = "auth_config"]
@@ -324,6 +336,7 @@ pub enum Named {
     AuthEventAccount,
     PasskeyAccount,
     CeremonyExpires,
+    RecoveryAccount,
 }
 
 /// The values a text column may hold, as a `CHECK`: the schema is built from the names the code

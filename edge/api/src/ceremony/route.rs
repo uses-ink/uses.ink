@@ -23,6 +23,14 @@ pub enum Step {
     /// `DELETE /v1/passkeys/{id}`: remove one, and end the sessions it made. Needs a session. A
     /// path that is no id is `None`, and is answered as an id that names nothing.
     Remove(Option<Id<FactorKind>>),
+    /// `GET /v1/recovery/codes`: how many recovery codes are unspent. Needs a session.
+    Left,
+    /// `POST /v1/recovery/codes`: make a new set of recovery codes, ending the old one, and show
+    /// them once. Needs a session that stepped up.
+    Mint,
+    /// `POST /v1/recovery` `{"code","label"}`: spend a recovery code to start registering a new
+    /// passkey. Needs nothing but the code.
+    Recover,
 }
 
 /// A method a passkey route does not take.
@@ -51,6 +59,9 @@ enum Tail<'a> {
 
 impl Step {
     const BASE: &'static str = "/v1/passkeys";
+    /// The path of recovery, and under it the codes.
+    const RECOVERY: &'static str = "/v1/recovery";
+    const CODES: &'static str = "/v1/recovery/codes";
 
     /// What follows the base path: nothing, or one segment.
     fn tail(path: &str) -> Option<Tail<'_>> {
@@ -64,22 +75,21 @@ impl Step {
 
     /// Whether `path` is one of the passkey routes, whatever the method.
     pub fn owns(path: &str) -> bool {
-        Self::tail(path).is_some()
+        let path = path.trim_end_matches('/');
+        path == Self::RECOVERY || path == Self::CODES || Self::tail(path).is_some()
     }
 
     /// Whether the step changes something, so a browser must prove where it came from.
     pub const fn mutates(self) -> bool {
-        !matches!(self, Self::List)
+        !matches!(self, Self::List | Self::Left)
     }
 
     /// The step `method` of `path` is: `None` when the path is not a passkey route.
     pub fn parse(method: Method, path: &str) -> Option<Result<Self, StepError>> {
-        let table: Vec<(Method, Self)> = match Self::tail(path)? {
-            Tail::Base => vec![(Method::Get, Self::List), (Method::Post, Self::Register)],
-            Tail::Segment("options") => vec![(Method::Post, Self::Options)],
-            Tail::Segment("challenge") => vec![(Method::Post, Self::Challenge)],
-            Tail::Segment("session") => vec![(Method::Post, Self::Assert)],
-            Tail::Segment(id) => vec![(Method::Delete, Self::Remove(id.parse().ok()))],
+        let table: Vec<(Method, Self)> = match path.trim_end_matches('/') {
+            Self::RECOVERY => vec![(Method::Post, Self::Recover)],
+            Self::CODES => vec![(Method::Get, Self::Left), (Method::Post, Self::Mint)],
+            _ => Self::passkeys(path)?,
         };
         let allowed: Vec<Method> = table.iter().map(|(known, _)| *known).collect();
         Some(
@@ -89,6 +99,17 @@ impl Step {
                 .map(|(_, step)| step)
                 .ok_or(StepError { asked: method, allowed }),
         )
+    }
+
+    /// The methods and steps of a path under `/v1/passkeys`.
+    fn passkeys(path: &str) -> Option<Vec<(Method, Self)>> {
+        Some(match Self::tail(path)? {
+            Tail::Base => vec![(Method::Get, Self::List), (Method::Post, Self::Register)],
+            Tail::Segment("options") => vec![(Method::Post, Self::Options)],
+            Tail::Segment("challenge") => vec![(Method::Post, Self::Challenge)],
+            Tail::Segment("session") => vec![(Method::Post, Self::Assert)],
+            Tail::Segment(id) => vec![(Method::Delete, Self::Remove(id.parse().ok()))],
+        })
     }
 }
 

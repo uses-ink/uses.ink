@@ -34,6 +34,10 @@ pub enum Stop {
     Origin,
     /// A rate limit was reached.
     Limited(Limited),
+    /// The text is no recovery code.
+    Code(control::recovery::CodeError),
+    /// No unspent recovery code has that digest: it was never made, was spent, or was replaced.
+    Spent,
     /// The session has not been proved with a passkey recently enough to change credentials.
     Step {
         /// How recent a passkey sign-in must be.
@@ -87,6 +91,8 @@ impl fmt::Display for Stop {
             Self::Large { limit } => write!(out, "the body is over the limit of {limit} bytes"),
             Self::Origin => out.write_str("the request did not come from this dashboard"),
             Self::Limited(error) => error.fmt(out),
+            Self::Code(error) => error.fmt(out),
+            Self::Spent => out.write_str("that recovery code is unknown, was used, or was replaced by a new set"),
             Self::Step { window } => {
                 write!(out, "this change needs a passkey sign-in within the last {window}")
             }
@@ -117,6 +123,7 @@ impl Error for Stop {
             Self::Refused { refusal, .. } => Some(refusal),
             Self::Label(source) => Some(source),
             Self::Limited(source) => Some(source),
+            Self::Code(source) => Some(source),
             Self::Store(source) | Self::Verifier(source) | Self::Draw(source) => Some(source.as_ref()),
             Self::Json(source) => Some(source),
             _ => None,
@@ -138,6 +145,11 @@ impl Stop {
         }
     }
 
+    /// The failure of the recovery code store this is.
+    pub fn stored_codes<E: Error + 'static>(error: control::recovery::Error<E>) -> Self {
+        Self::Store(Box::new(error))
+    }
+
     /// The failure of the sign-in store this is.
     pub fn signed<E: Error + 'static>(error: SignError<E>) -> Self {
         Self::Store(Box::new(error))
@@ -152,6 +164,7 @@ impl Stop {
             Self::Origin => "auth.origin.refused",
             Self::Limited(_) => "auth.rate.limited",
             Self::Step { .. } => "auth.step-up.required",
+            Self::Code(_) | Self::Spent => "auth.recovery.refused",
             Self::Anonymous => "unauthorized",
             Self::Challenge => "auth.passkey.challenge",
             Self::Refused { refusal, .. } => match refusal.reason {
@@ -186,7 +199,8 @@ impl Stop {
             Self::Large { .. } => Status::TooLarge,
             Self::Origin | Self::Step { .. } => Status::Forbidden,
             Self::Limited(_) => Status::TooMany,
-            Self::Anonymous | Self::Raced => Status::Unauthorized,
+            Self::Code(_) => Status::Unprocessable,
+            Self::Anonymous | Self::Raced | Self::Spent => Status::Unauthorized,
             Self::Challenge | Self::Taken | Self::Moved { .. } => Status::Conflict,
             Self::Refused { flow, .. } => match flow {
                 Flow::Login => Status::Unauthorized,

@@ -357,6 +357,9 @@ impl Message<'_> {
                     "passkeys were made for `{was}` and the relying party id is now `{now}`; {passkeys} would stop working"
                 )
             }
+            Problem::AuthRecoveryRefused => {
+                write!(out, "that recovery code is unknown, was used, or has a typo")
+            }
             Problem::AuthStepUpRequired => {
                 write!(out, "this change needs a passkey sign-in within the last few minutes")
             }
@@ -645,6 +648,7 @@ impl Fix<'_> {
             Problem::AuthPasskeyMissing => true,
             Problem::AuthPasskeyLabel => true,
             Problem::AuthRelyingPartyChanged { .. } => true,
+            Problem::AuthRecoveryRefused => true,
             Problem::AuthStepUpRequired => true,
             Problem::AuthRateLimited => true,
             Problem::AuthSessionMissing => true,
@@ -1002,6 +1006,9 @@ impl Fix<'_> {
                     out,
                     "set `--rp-id {was}` again, or accept that people sign in with an email link and add passkeys anew"
                 )
+            }
+            Problem::AuthRecoveryRefused => {
+                write!(out, "check the code, use another, or sign in with a passkey")
             }
             Problem::AuthStepUpRequired => {
                 write!(out, "sign in with a passkey again, then repeat the change")

@@ -35,6 +35,7 @@ use control::passkeys::{
     Asserted, Audit, Authenticating, Begin, Created, Flow, Fresh, Passkey, Passkeys, Person, Reason, Refusal,
     Registering, Registry, Relying,
 };
+use control::recovery::{Code, Codes};
 use control::signin::{Entered, Passed, Proof, Session, SignIn};
 use db::Db;
 use jiff::Timestamp;
@@ -70,6 +71,8 @@ pub struct Ceremonies<D, K, R, P> {
     passkeys: P,
     config: Passing,
     challenge: Quota,
+    codes: Codes<D>,
+    recovery: Quota,
 }
 
 /// The body of `POST /v1/passkeys/options`.
@@ -136,13 +139,33 @@ struct Began {
     limit: Timestamp,
 }
 
+/// The body of `POST /v1/recovery`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Recovering {
+    code: String,
+    label: String,
+}
+
+/// How many recovery codes are unspent.
+#[derive(Serialize)]
+struct Left {
+    remaining: u64,
+}
+
+/// A new set of recovery codes, shown once.
+#[derive(Serialize)]
+struct Minted {
+    codes: Vec<String>,
+}
+
 /// A passkey removed.
 #[derive(Serialize)]
 struct Removed {
     removed: bool,
 }
 
-impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
+impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
     /// How many sources are remembered at once.
     const TRACKED: usize = 10_000;
 
@@ -150,7 +173,16 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
     /// randomness from `clocks.1`, verifying with `passkeys`.
     pub fn new(stores: (SignIn<D>, Registry<D>), clocks: (K, R), passkeys: P, config: Passing) -> Self {
         let challenge = Quota::new(Quota::CHALLENGES, Self::TRACKED);
-        Self { entry: stores.0, registry: stores.1, clock: clocks.0, draw: clocks.1, passkeys, config, challenge }
+        let (codes, recovery) = (stores.1.codes(), Quota::new(Quota::RECOVERIES, Self::TRACKED));
+        Self { entry: stores.0, registry: stores.1, clock: clocks.0, draw: clocks.1, passkeys, config, challenge, codes, recovery }
+    }
+
+    /// The same routes with a different limit on spending recovery codes, per source. The default
+    /// is [`Quota::RECOVERIES`].
+    #[must_use]
+    pub fn with_recoveries(mut self, rate: Rate) -> Self {
+        self.recovery = Quota::new(rate, Self::TRACKED);
+        self
     }
 
     /// The same routes with a different limit on starting a sign-in, per source. The default is
@@ -198,6 +230,9 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
             Step::Assert => self.assert(request, body, now).await,
             Step::List => self.list(request, now).await,
             Step::Remove(id) => self.remove(request, id, now).await,
+            Step::Left => self.left(request, now).await,
+            Step::Mint => self.mint(request, now).await,
+            Step::Recover => self.recover(body, request, now).await,
         }
     }
 
@@ -263,38 +298,86 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
         self.fresh(&session, now).await?;
         let naming: Naming = Unreadable::read(body).map_err(Stop::Body)?;
         let label = Label::parse(&naming.label).map_err(Stop::Label)?;
+        self.starting(session.account, label, now).await
+    }
+
+    /// Starts registering a passkey for `account`: the options for `navigator.credentials.create()`
+    /// and the ceremony cookie that binds the reply to this browser.
+    async fn starting(&self, account: Id<AccountKind>, label: Label, now: Timestamp) -> Result<Reply, Stop> {
         let existing: Vec<_> = self
             .registry
-            .list(session.account)
+            .list(account)
             .await
             .map_err(Stop::stored)?
             .into_iter()
             .map(|passkey| passkey.stored.credential)
             .collect();
-        let who = Person { account: session.account, label };
+        let who = Person { account, label };
         let (creation, Registering(state)) =
             self.passkeys.start_registration(&who, &existing).map_err(|error| Stop::Verifier(Box::new(error)))?;
         let drawn = self.drawn()?;
         let mut reply = Self::json(Status::Ok, &creation)?;
-        let begin = Begin { flow: Flow::Register, account: Some(session.account), state: &state, proof: &drawn.proof };
+        let begin = Begin { flow: Flow::Register, account: Some(account), state: &state, proof: &drawn.proof };
         self.begin(begin, now, &mut reply).await?;
         Ok(reply)
     }
 
-    async fn register(&self, request: &Request, body: &[u8], now: Timestamp) -> Result<Reply, Stop> {
+    /// How many recovery codes are unspent.
+    async fn left(&self, request: &Request, now: Timestamp) -> Result<Reply, Stop> {
+        let session = self.session(request, now).await?;
+        let remaining = self.codes.left(session.account).await.map_err(Stop::stored_codes)?;
+        Self::json(Status::Ok, &Left { remaining })
+    }
+
+    /// Makes a new set of recovery codes and shows them, once. The old set ends in the same batch.
+    async fn mint(&self, request: &Request, now: Timestamp) -> Result<Reply, Stop> {
         let session = self.session(request, now).await?;
         self.fresh(&session, now).await?;
+        let drawn = Draws(&self.draw).minted().map_err(|error| Stop::Draw(Box::new(error)))?;
+        let codes = self.codes.mint(session.account, drawn, now).await.map_err(Stop::stored_codes)?;
+        let shown = Minted { codes: codes.iter().map(Code::reveal).collect() };
+        Self::json(Status::Created, &shown)
+    }
+
+    /// Spends a recovery code to start registering a passkey for the account it belongs to. A code
+    /// that is not shaped like one is turned away before it is counted or looked up, so a typo is
+    /// not an attempt; the browser is told to drop any session cookie, so the registration that
+    /// follows is the ceremony's alone.
+    async fn recover(&self, body: &[u8], request: &Request, now: Timestamp) -> Result<Reply, Stop> {
+        let asked: Recovering = Unreadable::read(body).map_err(Stop::Body)?;
+        let code: Code = asked.code.parse().map_err(Stop::Code)?;
+        let label = Label::parse(&asked.label).map_err(Stop::Label)?;
+        self.recovery.admit(request.source, now).map_err(Stop::Limited)?;
+        let account = self.codes.spend(&code, now).await.map_err(Stop::stored_codes)?.ok_or(Stop::Spent)?;
+        let mut reply = self.starting(account, label, now).await?;
+        reply.cookie = Some(self.config.session.clear());
+        Ok(reply)
+    }
+
+    async fn register(&self, request: &Request, body: &[u8], now: Timestamp) -> Result<Reply, Stop> {
+        // a session adds a passkey to its own account, once it has stepped up; with no session the
+        // ceremony cookie alone is the proof, because only a recovery code starts one without a session
+        let session = match self.session(request, now).await {
+            Ok(session) => Some(session),
+            Err(Stop::Anonymous) if self.held(request).is_some() => None,
+            Err(stop) => return Err(stop),
+        };
+        if let Some(session) = &session {
+            self.fresh(session, now).await?;
+        }
         let registered: Registered = Unreadable::read(body).map_err(Stop::Body)?;
         let label = Label::parse(&registered.label).map_err(Stop::Label)?;
         let spent = self.spent(request, Flow::Register, now).await?;
-        if spent.account != Some(session.account) {
-            return Err(Stop::Challenge);
-        }
+        let account = match (&session, spent.account) {
+            (Some(session), Some(account)) if session.account == account => account,
+            (None, Some(account)) => account,
+            _ => return Err(Stop::Challenge),
+        };
         let refused = |refusal| Stop::Refused { flow: Flow::Register, refusal };
         let enrolled =
             self.passkeys.finish_registration(&Registering(spent.state), &registered.credential).map_err(refused)?;
         let id = self.drawn()?.factor;
-        let fresh = Fresh { id, account: session.account, enrolled: &enrolled, label: &label };
+        let fresh = Fresh { id, account, enrolled: &enrolled, label: &label };
         self.registry.add(fresh, self.config.relying.id(), now).await.map_err(Stop::stored)?;
         let mut reply = Self::json(Status::Created, &Added { id: id.to_string(), label: label.to_string() })?;
         reply.ceremony = Some(self.config.ceremony.clear());
@@ -385,13 +468,13 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
     }
 }
 
-impl<D: Db, K: Clock, R: Draw, P: Passkeys> Answers for Ceremonies<D, K, R, P> {
+impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Answers for Ceremonies<D, K, R, P> {
     fn answer(&self, request: &Request) -> impl std::future::Future<Output = Reply> {
         self.respond(request)
     }
 }
 
-impl<D: Db, K: Clock, R: Draw, P: Passkeys> Owner for Ceremonies<D, K, R, P> {
+impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Owner for Ceremonies<D, K, R, P> {
     fn owns(&self, path: &str) -> bool {
         Step::owns(path)
     }

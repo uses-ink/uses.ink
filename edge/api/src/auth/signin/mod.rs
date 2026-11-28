@@ -252,6 +252,16 @@ impl<R: Draw> Draws<'_, R> {
         }
         Ok(Drawn::new(bytes))
     }
+
+    /// A [`control::recovery::Mint`] from twenty draws of 16 bytes: the codes, then their row ids.
+    pub fn minted(&self) -> Result<control::recovery::Mint, R::Error> {
+        let mut codes = [[0_u8; 16]; control::recovery::Mint::COUNT];
+        let mut ids = [[0_u8; 16]; control::recovery::Mint::COUNT];
+        for slot in codes.iter_mut().chain(ids.iter_mut()) {
+            *slot = self.0.bytes()?;
+        }
+        Ok(control::recovery::Mint { codes, ids })
+    }
 }
 
 /// What `POST /v1/login` always answers.

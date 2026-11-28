@@ -33,6 +33,7 @@ uuid = { version = "1", features = ["js"] }
 
 [dev-dependencies]
 p256.workspace = true
+sea-query.workspace = true
 serde_cbor_2.workspace = true
 sha2.workspace = true
 trace = { workspace = true, features = ["capture"] }
