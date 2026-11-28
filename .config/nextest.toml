@@ -70,6 +70,10 @@ slow-timeout = { period = "2s", terminate-after = 1 }
 # catches a hang or a runaway test. The selected profile's overrides win over the default's.
 [profile.ci]
 inherits = "default"
+# One failing test must not hide the others: nextest cancels the run at the first failure by
+# default, and the CI log then shows one test of many that may be broken. Locally the run still
+# stops at the first failure.
+fail-fast = false
 
 # The self-host loop comes first, then what compiles components on a cold cache (a second or
 # more each, tens on a busy host) and what waits on a TLS server that is made to stall: the first override that matches a test wins.
