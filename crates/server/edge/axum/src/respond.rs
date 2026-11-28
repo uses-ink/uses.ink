@@ -40,6 +40,7 @@ impl From<Code> for StatusCode {
             Status::Moved => Self::MOVED_PERMANENTLY,
             Status::NotModified => Self::NOT_MODIFIED,
             Status::BadRequest => Self::BAD_REQUEST,
+            Status::Forbidden => Self::FORBIDDEN,
             Status::NotFound => Self::NOT_FOUND,
             Status::MethodNotAllowed => Self::METHOD_NOT_ALLOWED,
             Status::RequestTimeout => Self::REQUEST_TIMEOUT,
