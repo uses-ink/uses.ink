@@ -9,6 +9,7 @@ crates = [
     "farm",
     "freehand",
     "freehand-web",
+    "uses-ink-authority-dns",
     "uses-ink-blob",
     "uses-ink-blob-conformance",
     "uses-ink-blob-dir",

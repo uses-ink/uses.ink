@@ -13,6 +13,8 @@ pub enum Port {
     Draw,
     /// The mailer could not send a message.
     Mailer,
+    /// The resolver got no answer for a proof record.
+    Resolver,
 }
 
 /// The error of a port, kept as the cause of a failure that names the port. The port's own error
@@ -47,6 +49,7 @@ impl fmt::Display for Unnamed {
             Port::Credentials => "the credential could not be checked",
             Port::Draw => "no random bytes were available",
             Port::Mailer => "a sign-in message could not be sent",
+            Port::Resolver => "the proof record could not be looked up",
         })
     }
 }

@@ -39,6 +39,7 @@ impl Order {
         (
             "uses-ink-edge-api",
             &[
+                "uses-ink-authority-dns",
                 "uses-ink-blob",
                 "uses-ink-blob-dir",
                 "uses-ink-build",
@@ -243,6 +244,21 @@ impl Order {
         // Keys for machines (decision 0068): the rows' floor, the sign-in's lifetimes and credentials, and
         // the signed-request profile's key types.
         ("uses-ink-control-keys", &["uses-ink-control-rows", "uses-ink-control-signin", "uses-ink-db", "uses-ink-sig"]),
+        // The DNS authority (decision 0093): the control plane's use cases and the adapters its
+        // tests run them on; the resolver port is its own.
+        (
+            "uses-ink-authority-dns",
+            &[
+                "uses-ink-blob-dir",
+                "uses-ink-build",
+                "uses-ink-control",
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-model",
+                "uses-ink-queue-rows",
+                "uses-ink-secret-local",
+            ],
+        ),
         // The use cases know the ports; the adapters are what its tests run against.
         (
             "uses-ink-control",

@@ -17,6 +17,7 @@ mod budget;
 mod codes;
 mod credential;
 mod deploy;
+mod domain;
 mod export;
 mod handle;
 mod job;

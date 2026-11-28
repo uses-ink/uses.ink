@@ -279,3 +279,84 @@ fn a_preview_is_served_at_its_label_until_it_ends() {
         assert!(fronts.resolve(&host("main--tea.uses.ink")).await.unwrap().is_none());
     });
 }
+
+impl World {
+    /// Makes `name` serve `site`, as the DNS authority's proof would: a claim, then a record that
+    /// carries its token.
+    fn domain(&self, site: Id<SiteKind>, name: &str) {
+        let name: control::DomainName = name.parse().unwrap();
+        let token = control::Token::from_bytes([7; 16]);
+        pollster::block_on(self.control.claim_domain(control::NewClaim {
+            site,
+            name: name.clone(),
+            token,
+            at: start(),
+        }))
+        .unwrap();
+        let found = control::Found::new(1, vec![token]);
+        pollster::block_on(self.control.prove_domain(control::Proving { site, name, found, at: start() })).unwrap();
+    }
+}
+
+#[test]
+fn a_proven_custom_domain_serves_the_site_until_it_is_removed() {
+    let mut world = World::new(Settings::default());
+    let site = world.site("tea");
+    let deploy = world.publish(site, "<h1>tea</h1>", 1);
+    world.domain(site, "www.example.com");
+    let name: control::DomainName = "pending.example.com".parse().unwrap();
+    let claim = control::NewClaim { site, name, token: control::Token::from_bytes([8; 16]), at: start() };
+    pollster::block_on(world.control.claim_domain(claim)).unwrap();
+    let lookups = Control::new(Arc::clone(world.control.ports()), world.control.origin().clone());
+    world.run(|fronts| async move {
+        let resolved = fronts.resolve(&host("www.example.com")).await.unwrap().unwrap();
+        assert_eq!(resolved.deploy.manifest.id(), deploy);
+        // a name that was only claimed, one nobody claimed and an address serve nothing
+        assert!(fronts.resolve(&host("pending.example.com")).await.unwrap().is_none());
+        assert!(fronts.resolve(&host("other.example.com")).await.unwrap().is_none());
+        assert!(fronts.resolve(&host("127.0.0.1")).await.unwrap().is_none());
+        // the handle's own address still serves, and the domain stops the moment it is removed
+        assert!(fronts.resolve(&host("tea.uses.ink")).await.unwrap().is_some());
+        lookups.remove_domain(site, &"www.example.com".parse().unwrap(), start()).await.unwrap();
+        assert!(fronts.resolve(&host("www.example.com")).await.unwrap().is_none());
+        assert!(fronts.resolve(&host("tea.uses.ink")).await.unwrap().is_some());
+    });
+}
+
+#[test]
+fn a_suspended_site_answers_the_notice_at_its_custom_domain_too() {
+    let mut world = World::new(Settings { ttl: Duration::ZERO, ..Settings::default() });
+    let site = world.site("tea");
+    world.publish(site, "<h1>tea</h1>", 1);
+    world.domain(site, "www.example.com");
+    let suspension = control::Suspension {
+        site,
+        kind: control::AbuseKind::Malware,
+        by: "operator".to_owned(),
+        report: None,
+        at: start(),
+    };
+    pollster::block_on(world.control.suspend(suspension)).unwrap();
+    world.run(|fronts| async move {
+        let edge = Edge::new(fronts.clone(), Files, Limits::default()).unwrap();
+        let mut asked = Request::new("GET", "/tea", Scheme::Plain);
+        asked.extend([(&b"host"[..], &b"www.example.com"[..])]);
+        let answer = edge.respond(&asked).await;
+        assert_eq!(answer.response.status, Status::Forbidden);
+        assert!(matches!(answer.response.body, edge::Body::Text(ref text) if text.contains("suspended for malware") && !text.contains("tea<")));
+    });
+}
+
+#[test]
+fn a_removed_site_frees_its_custom_domain_at_once() {
+    let mut world = World::new(Settings::default());
+    let site = world.site("tea");
+    world.publish(site, "<h1>tea</h1>", 1);
+    world.domain(site, "www.example.com");
+    let lookups = Control::new(Arc::clone(world.control.ports()), world.control.origin().clone());
+    world.run(|fronts| async move {
+        assert!(fronts.resolve(&host("www.example.com")).await.unwrap().is_some());
+        lookups.remove_site(site, start()).await.unwrap();
+        assert!(fronts.resolve(&host("www.example.com")).await.unwrap().is_none());
+    });
+}

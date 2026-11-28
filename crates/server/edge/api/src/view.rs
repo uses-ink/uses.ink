@@ -461,3 +461,50 @@ impl Previewed {
         }
     }
 }
+
+/// The record to publish to prove a name: a TXT record at a host, with a value.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecordView {
+    /// Where to publish it.
+    pub host: String,
+    /// What it says.
+    pub value: String,
+}
+
+/// A custom domain of a site, as its owner reads it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DomainView {
+    /// The name.
+    pub name: String,
+    /// `proven` when the name serves the site, `pending` when it has still to be proved.
+    pub state: String,
+    /// When the proof was seen, for a proven name.
+    pub proven: Option<Timestamp>,
+    /// The record that proves a pending name.
+    pub record: Option<RecordView>,
+}
+
+impl DomainView {
+    /// A name that serves the site.
+    pub fn proven(domain: &control::Proven) -> Self {
+        Self { name: domain.name.to_string(), state: "proven".to_owned(), proven: Some(domain.at), record: None }
+    }
+
+    /// A name the site asked to prove, with the record that proves it.
+    pub fn pending(claim: &control::Claim) -> Self {
+        let challenge = authority_dns::Challenge::of(claim);
+        Self {
+            name: claim.name.to_string(),
+            state: "pending".to_owned(),
+            proven: None,
+            record: Some(RecordView { host: challenge.host.to_string(), value: challenge.value }),
+        }
+    }
+}
+
+/// A custom domain that was removed.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Unclaimed {
+    /// The name.
+    pub name: String,
+}

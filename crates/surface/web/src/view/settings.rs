@@ -8,7 +8,7 @@ use build::Source;
 use control::{Handle, Purpose};
 use jiff::Timestamp;
 use model::ExternalUrl;
-use unspliced::{Halt, Render, Sink, html};
+use unspliced::{Halt, Lazy, Render, Sink, html};
 
 use crate::escaped::Escaped;
 use crate::route::Path;
@@ -28,6 +28,30 @@ pub struct Held {
     pub created: Timestamp,
 }
 
+/// Where a custom domain stands.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Standing {
+    /// The name serves the site since this time.
+    Proven(Timestamp),
+    /// The name waits for a TXT record: where to publish it and what it says.
+    Pending {
+        /// The host of the record.
+        host: String,
+        /// Its value.
+        value: String,
+    },
+}
+
+/// A custom domain of the site (decision 0093).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Custom {
+    /// The name.
+    pub name: String,
+    /// Where it stands.
+    pub standing: Standing,
+}
+
 /// What the Settings screen shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
@@ -43,12 +67,47 @@ pub struct Settings {
     pub serving: Serving,
     /// The credentials its source needs.
     pub credentials: Vec<Held>,
+    /// The custom domains it serves or has still to prove.
+    pub domains: Vec<Custom>,
 }
 
 impl Settings {
     /// A Settings screen for `handle`.
     pub fn new(handle: Handle, address: ExternalUrl, source: Source, serving: Serving) -> Self {
-        Self { frame: Frame::of(&handle, Screen::Settings), handle, address, source, serving, credentials: Vec::new() }
+        Self {
+            frame: Frame::of(&handle, Screen::Settings),
+            handle,
+            address,
+            source,
+            serving,
+            credentials: Vec::new(),
+            domains: Vec::new(),
+        }
+    }
+}
+
+impl Settings {
+    fn custom(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        html! {
+            @if self.domains.is_empty() {
+                (Empty { title: "No custom domain", what: "The site is served at its address above. Custom domains are added with `ink domain add`; they show up here once verified." })
+            } @else {
+                ul {
+                    @for custom in &self.domains {
+                        li {
+                            code { (Escaped(&custom.name)) }
+                            @match &custom.standing {
+                                Standing::Proven(at) => { " serves this site since " (Stamp(*at)) "." },
+                                Standing::Pending { host, value } => {
+                                    " is waiting for proof. Publish a TXT record at " code { (Escaped(host)) } " with the value " code { (Escaped(value)) } ", then ask for the proof again."
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .render(out)
     }
 }
 
@@ -71,7 +130,7 @@ impl View for Settings {
             h2 { "Address" }
             p { (Outside(&address)) }
             h2 { "Domains" }
-            (Empty { title: "No custom domain", what: "The site is served at its address above. Custom domains are added with `ink domain add`; they show up here once verified." })
+            (Lazy(|out: &mut dyn Sink| self.custom(out)))
             h2 { "Theme" }
             p { "The theme is read from your source. To change it, commit this to " code.look::PATH { "ink.toml" } ":" }
             pre { code { "[theme]\nname = \"quiet\"" } }

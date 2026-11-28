@@ -368,6 +368,27 @@ pub enum Preview {
     ExpiresAt,
 }
 
+/// `domain`: a name a site has proved it controls, served as that site (decision 0093).
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "domain"]
+pub enum Domain {
+    Table,
+    Name,
+    SiteId,
+    ProvenAt,
+}
+
+/// `domain_claim`: a name a site has asked to prove, with the token its TXT record must carry.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "domain_claim"]
+pub enum Claim {
+    Table,
+    Name,
+    SiteId,
+    Token,
+    CreatedAt,
+}
+
 /// SQLite's row number, which orders rows that tie on a column.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 pub enum Row {
@@ -406,6 +427,8 @@ pub enum Named {
     PasskeyAccount,
     CeremonyExpires,
     RecoveryAccount,
+    DomainSite,
+    ClaimSite,
 }
 
 /// The values a text column may hold, as a `CHECK`: the schema is built from the names the code

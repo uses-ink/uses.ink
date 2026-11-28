@@ -4,6 +4,7 @@ mod abuse;
 mod budget;
 mod credential;
 mod deploy;
+pub(crate) mod domain;
 pub(crate) mod export;
 mod hold;
 mod job;

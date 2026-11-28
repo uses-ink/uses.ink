@@ -26,7 +26,7 @@ pub use failed::Failed;
 pub use limits::Limits;
 pub use passkeys::{Kept, SignIn};
 pub use sessions::Seen;
-pub use settings::{Held, Settings};
+pub use settings::{Custom, Held, Settings, Standing};
 pub use site::Site;
 pub use stored::{Recorded, Stored};
 pub use understood::{Group, Understood};

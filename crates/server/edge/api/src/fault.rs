@@ -358,6 +358,7 @@ impl<P: Ports> Fault<P> {
             Self::Denied(denied) => denied.code(),
             Self::Port(port) => match port.port() {
                 Port::Draw => "random",
+                Port::Resolver => "domain.lookup.failed",
                 _ => "credentials",
             },
             Self::Store(_) => "credentials",
@@ -398,6 +399,7 @@ impl<P: Ports> Fault<P> {
             }
             Self::Source(error) => error.status(),
             Self::Control(error) => error.refusal().map_or(Status::Internal, Self::refused),
+            Self::Port(port) if port.port() == Port::Resolver => Status::Unavailable,
             Self::Port(_) | Self::Store(_) | Self::Export(_) => Status::Internal,
         }
     }
@@ -406,6 +408,7 @@ impl<P: Ports> Fault<P> {
     const fn refused(refusal: &Refusal) -> Status {
         match refusal {
             Refusal::Reserved { .. }
+            | Refusal::DomainTaken { .. }
             | Refusal::Taken { .. }
             | Refusal::Held { .. }
             | Refusal::Exists { .. }
@@ -417,13 +420,19 @@ impl<P: Ports> Fault<P> {
             | Refusal::NoDeploy { .. }
             | Refusal::NoBuild { .. }
             | Refusal::NoManifest { .. }
+            | Refusal::NoClaim { .. }
+            | Refusal::NoDomain { .. }
             | Refusal::NoCredential { .. } => Status::NotFound,
-            Refusal::NoAccount { .. } | Refusal::NoPreview { .. } | Refusal::MissingBlob { .. } => {
-                Status::Unprocessable
-            }
+            Refusal::NoAccount { .. }
+            | Refusal::NoPreview { .. }
+            | Refusal::DomainOurs { .. }
+            | Refusal::Unproven { .. }
+            | Refusal::MissingBlob { .. } => Status::Unprocessable,
             Refusal::Over { spent: Spent::Stored, .. } => Status::TooLarge,
             Refusal::Over { spent: Spent::Builds, .. } => Status::TooMany,
-            Refusal::Suspended { .. } | Refusal::Private { .. } | Refusal::Over { .. } => Status::Forbidden,
+            Refusal::Suspended { .. } | Refusal::Private { .. } | Refusal::DomainRoom { .. } | Refusal::Over { .. } => {
+                Status::Forbidden
+            }
             _ => Status::Internal,
         }
     }

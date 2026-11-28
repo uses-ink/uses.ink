@@ -888,6 +888,55 @@ fields = { id = "text" }
 message = "the repository of site {id} is private, so its branches are not previewed"
 fix = "a preview is public to anyone with its address; remove the site's git token if the repository is public"
 
+[diagnostic."domain.name.ours"]
+severity = "error"
+fault = "author"
+fields = { name = "text" }
+message = "{name} is served by uses.ink itself, so no site can claim it as a custom domain"
+fix = "claim a domain you own, such as `www.example.com`; a site already has an address under uses.ink"
+
+[diagnostic."domain.name.taken"]
+severity = "error"
+fault = "author"
+fields = { name = "text" }
+message = "{name} belongs to another site"
+fix = "if you own the name, the other site's proof is out of date: remove the name from the DNS of the old site, ask the operator, or use another name"
+
+[diagnostic."domain.claim.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text", name = "text" }
+message = "the site {id} has not asked to prove {name}"
+fix = "claim the name first; it answers with the TXT record to publish"
+
+[diagnostic."domain.proof.missing"]
+severity = "error"
+fault = "source"
+fields = { name = "text", count = "count" }
+message = "the TXT record of `_uses-ink.{name}` does not carry the token of this claim ({count} records found)"
+fix = "publish the TXT record the claim gave at `_uses-ink.<name>`, wait for your DNS to answer it, and check again; a claim that was made again has a new token"
+
+[diagnostic."domain.name.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text", name = "text" }
+message = "the site {id} does not serve {name}"
+fix = "list the site's domains and check the name"
+
+[diagnostic."domain.lookup.failed"]
+severity = "error"
+fault = "ours"
+fields = {}
+message = "the DNS lookup of the proof record got no answer"
+fix = "check again in a minute; the name is not refused, only unchecked"
+
+[diagnostic."domain.site.full"]
+severity = "error"
+fault = "author"
+fields = { id = "text", limit = "count" }
+message = "the site {id} has as many custom domains as it may, {limit}"
+fix = "remove a domain the site does not use, or ask the operator for a higher limit"
+
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"

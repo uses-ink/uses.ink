@@ -17,15 +17,25 @@ pub struct Policy {
     pub removal: u64,
     /// How long a preview of a branch is served (`--preview-days`).
     pub preview: Duration,
+    /// The most custom domains a site has, proved and not (`--limit-domains`).
+    pub domains: u64,
 }
 
 impl Policy {
     /// The defaults: a hold of twelve months and the default [`Limits`].
-    pub const DEFAULT: Self =
-        Self { hold: Hold::DEFAULT, limits: Limits::DEFAULT, removal: Self::STEP, preview: Self::PREVIEW };
+    pub const DEFAULT: Self = Self {
+        hold: Hold::DEFAULT,
+        limits: Limits::DEFAULT,
+        removal: Self::STEP,
+        preview: Self::PREVIEW,
+        domains: Self::DOMAINS,
+    };
 
     /// How long a preview lasts unless the operator says: seven days (`docs/hosted.md` HQ12).
     pub const PREVIEW: Duration = Duration::from_hours(7 * 24);
+
+    /// How many custom domains a site has, proved and not, unless the operator says: ten.
+    pub const DOMAINS: u64 = 10;
 
     /// How many blobs a step of a removal deletes unless the operator says.
     pub const STEP: u64 = 500;
@@ -48,6 +58,13 @@ impl Policy {
     #[must_use]
     pub const fn previewing(mut self, preview: Duration) -> Self {
         self.preview = preview;
+        self
+    }
+
+    /// The same policy letting a site have `domains` custom domains.
+    #[must_use]
+    pub const fn domained(mut self, domains: u64) -> Self {
+        self.domains = domains;
         self
     }
 

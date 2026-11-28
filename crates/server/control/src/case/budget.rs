@@ -58,7 +58,7 @@ impl<P: Ports> Control<P> {
         self.counted(count).await
     }
 
-    async fn counted(&self, count: sea_query::SelectStatement) -> Result<u64, Error<P>> {
+    pub(crate) async fn counted(&self, count: sea_query::SelectStatement) -> Result<u64, Error<P>> {
         let row = self.ports.db().first(count.into()).await?;
         let row = row
             .ok_or(db::ColumnError { column: Computed::Count.as_str().to_owned(), fault: db::ColumnFault::Missing })?;

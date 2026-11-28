@@ -145,6 +145,8 @@ impl<P: Ports> Control<P> {
             Self::wipe(table::Seen::Table, table::Seen::SiteId, &key),
             Self::wipe(table::Removal::Table, table::Removal::SiteId, &key),
             Self::wipe(table::Preview::Table, table::Preview::SiteId, &key),
+            Self::wipe(table::Domain::Table, table::Domain::SiteId, &key),
+            Self::wipe(table::Claim::Table, table::Claim::SiteId, &key),
             Self::wipe(table::Suspension::Table, table::Suspension::SiteId, &key),
             Self::wipe(table::Live::Table, table::Live::SiteId, &key),
             Self::wipe(table::Publication::Table, table::Publication::SiteId, &key),

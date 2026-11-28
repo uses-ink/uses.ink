@@ -73,6 +73,21 @@ pub enum Event {
         /// Its label.
         slug: crate::Slug,
     },
+    /// The site asked to prove a custom domain.
+    DomainClaimed {
+        /// The name.
+        name: crate::DomainName,
+    },
+    /// The site proved a custom domain: the name serves it.
+    DomainProven {
+        /// The name.
+        name: crate::DomainName,
+    },
+    /// The site stopped serving a custom domain, or a claim of one was dropped.
+    DomainRemoved {
+        /// The name.
+        name: crate::DomainName,
+    },
     /// The site took another handle, and the old one is held.
     SiteRenamed {
         /// The handle it had.
@@ -96,6 +111,9 @@ impl Event {
             Self::SiteRenamed { .. } => "site.renamed",
             Self::PreviewPushed { .. } => "preview.pushed",
             Self::PreviewExpired { .. } => "preview.expired",
+            Self::DomainClaimed { .. } => "domain.claimed",
+            Self::DomainProven { .. } => "domain.proven",
+            Self::DomainRemoved { .. } => "domain.removed",
             Self::SiteSuspended { .. } => "site.suspended",
             Self::SiteReinstated => "site.reinstated",
         }

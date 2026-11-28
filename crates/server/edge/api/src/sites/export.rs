@@ -2,6 +2,7 @@
 
 use std::future::Future;
 
+use authority_dns::Resolver;
 use clock::{Clock, Draw};
 use control::{Exported, Id, Ports, Sink, SiteKind};
 use model::DeployId;
@@ -49,7 +50,7 @@ impl Sink for Exports {
     }
 }
 
-impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Api<P, C, K, D, R> {
     pub(crate) async fn export(&self, principal: Principal, route: Route) -> Result<Reply, Fault<P>> {
         self.owned(principal, route.site).await?;
         let mut sink = Exports::new(self.limits.export);

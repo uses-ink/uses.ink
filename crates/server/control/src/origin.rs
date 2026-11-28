@@ -75,6 +75,12 @@ impl Origin {
         label.parse().ok()
     }
 
+    /// Whether `name` is the origin's host or under it: a name the operator serves, so no site
+    /// may claim it as a custom domain.
+    pub fn covers(&self, name: &crate::DomainName) -> bool {
+        name.is_under(self.name())
+    }
+
     /// The preview a host name is under this origin: `main` and `cstef` for `main--cstef.uses.ink`.
     /// A name that is a handle, or whose first label is not a label and a handle joined by `--`,
     /// is no preview, so a name is never both (decision 0091).

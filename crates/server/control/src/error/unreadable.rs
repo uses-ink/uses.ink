@@ -22,6 +22,16 @@ pub enum Unreadable {
         /// Why.
         source: crate::SlugError,
     },
+    /// The column holds a bad domain name.
+    Domain {
+        /// Why.
+        source: crate::NameError,
+    },
+    /// The column holds a bad domain token.
+    Token {
+        /// Why.
+        source: crate::TokenError,
+    },
     /// The column holds a bad build id.
     Build {
         /// Why.
@@ -59,6 +69,8 @@ impl fmt::Display for Unreadable {
             Self::Cell(cell) => cell.fmt(out),
             Self::Handle { .. } => out.write_str("column `handle` holds a bad handle"),
             Self::Slug { .. } => out.write_str("column `slug` holds a bad preview label"),
+            Self::Domain { .. } => out.write_str("column `name` holds a bad domain name"),
+            Self::Token { .. } => out.write_str("column `token` holds a bad domain token"),
             Self::Build { .. } => out.write_str("a stored build id is bad"),
             Self::Locator { column } => {
                 write!(out, "column `{column}` holds a kind of source this version does not know")
@@ -78,6 +90,8 @@ impl std::error::Error for Unreadable {
             Self::Cell(source) => source.source(),
             Self::Handle { source } => Some(source),
             Self::Slug { source } => Some(source),
+            Self::Domain { source } => Some(source),
+            Self::Token { source } => Some(source),
             Self::Build { source } => Some(source),
             Self::Url { source, .. } => Some(source),
             Self::Revision { source, .. } => Some(source),

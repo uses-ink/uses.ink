@@ -365,3 +365,35 @@ fn a_branch_preview_is_pushed_listed_and_never_a_deploy() {
     let (_, gone) = fixture.call(Method::Get, &format!("/v1/sites/{git}/previews"), b"");
     assert_eq!(gone["items"].as_array().map(Vec::len), Some(0));
 }
+
+#[test]
+fn a_custom_domain_is_claimed_listed_and_removed_and_its_proof_needs_a_resolver() {
+    let fixture = Fixture::new(Limits::default());
+    let site = fixture.upload("tea");
+    let path = format!("/v1/sites/{site}/domains/www.example.com");
+    let (made, value) = fixture.call(Method::Put, &path, b"");
+    assert_eq!(made.status, Status::Created, "{value}");
+    assert_eq!(
+        (value["state"].as_str(), value["record"]["host"].as_str()),
+        (Some("pending"), Some("_uses-ink.www.example.com"))
+    );
+    assert!(value["record"]["value"].as_str().unwrap().starts_with("uses-ink-domain="));
+    let (listed, value) = fixture.call(Method::Get, &format!("/v1/sites/{site}/domains"), b"");
+    assert_eq!((listed.status, value["items"].as_array().map(Vec::len)), (Status::Ok, Some(1)));
+    // this server has no DNS resolver: the proof says so and nothing is proved
+    let (unchecked, problem) = fixture.call(Method::Post, &format!("{path}/proof"), b"");
+    assert_eq!((unchecked.status, problem["problem"].as_str()), (Status::Unavailable, Some("domain.lookup.failed")));
+    assert!(problem["causes"][1].as_str().unwrap().contains("no DNS resolver"), "{problem}");
+    // a name uses.ink serves itself, and text that is no name
+    let (ours, problem) = fixture.call(Method::Put, &format!("/v1/sites/{site}/domains/tea.uses.ink"), b"");
+    assert_eq!((ours.status, problem["problem"].as_str()), (Status::Unprocessable, Some("domain.name.ours")));
+    let (bad, _) = fixture.call(Method::Put, &format!("/v1/sites/{site}/domains/localhost"), b"");
+    assert_eq!(bad.status, Status::BadRequest);
+    // the record is read first, so a name nobody claimed answers the same without a resolver
+    let (none, problem) = fixture.call(Method::Post, &format!("/v1/sites/{site}/domains/none.example.com/proof"), b"");
+    assert_eq!((none.status, problem["problem"].as_str()), (Status::Unavailable, Some("domain.lookup.failed")));
+    let (removed, value) = fixture.call(Method::Delete, &path, b"");
+    assert_eq!((removed.status, value["name"].as_str()), (Status::Ok, Some("www.example.com")));
+    let (again, problem) = fixture.call(Method::Delete, &path, b"");
+    assert_eq!((again.status, problem["problem"].as_str()), (Status::NotFound, Some("domain.name.unknown")));
+}

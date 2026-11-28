@@ -284,7 +284,9 @@ freeze.
   page both read, with a retention sweep (0088); C4, unsigned abuse reports limited per source and operator
   suspension that serves a notice and no bytes (0089); C3, removal in bounded steps with a receipt that
   stays whole across a resume (0090); C6, branch previews at `label--handle` that expire, are swept and
-  never touch the deploys (0091), pushed by archive until the watch can build a branch.
+  never touch the deploys (0091), pushed by archive until the watch can build a branch; C7, custom domains as
+  rows proved by a TXT token that binds the name to a site, with a `Resolver` port and a fake, served at
+  once by the edge and released with the site (0093).
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`

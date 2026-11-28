@@ -760,6 +760,53 @@ pub enum Problem {
         /// The id of the row, as 32 hex digits.
         id: String,
     },
+    /// `domain.name.ours`: {name} is served by uses.ink itself, so no site can claim it as a custom domain
+    #[serde(rename = "domain.name.ours")]
+    DomainNameOurs {
+        /// The name given instead.
+        name: String,
+    },
+    /// `domain.name.taken`: {name} belongs to another site
+    #[serde(rename = "domain.name.taken")]
+    DomainNameTaken {
+        /// The name given instead.
+        name: String,
+    },
+    /// `domain.claim.unknown`: the site {id} has not asked to prove {name}
+    #[serde(rename = "domain.claim.unknown")]
+    DomainClaimUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The name given instead.
+        name: String,
+    },
+    /// `domain.proof.missing`: the TXT record of `_uses-ink.{name}` does not carry the token of this claim ({count} records found)
+    #[serde(rename = "domain.proof.missing")]
+    DomainProofMissing {
+        /// The name given instead.
+        name: String,
+        /// How many there are.
+        count: u64,
+    },
+    /// `domain.name.unknown`: the site {id} does not serve {name}
+    #[serde(rename = "domain.name.unknown")]
+    DomainNameUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The name given instead.
+        name: String,
+    },
+    /// `domain.lookup.failed`: the DNS lookup of the proof record got no answer
+    #[serde(rename = "domain.lookup.failed")]
+    DomainLookupFailed,
+    /// `domain.site.full`: the site {id} has as many custom domains as it may, {limit}
+    #[serde(rename = "domain.site.full")]
+    DomainSiteFull {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The most that is allowed.
+        limit: u64,
+    },
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -1008,6 +1055,13 @@ impl Problem {
         "auth.operator.required",
         "preview.site.unsupported",
         "preview.site.private",
+        "domain.name.ours",
+        "domain.name.taken",
+        "domain.claim.unknown",
+        "domain.proof.missing",
+        "domain.name.unknown",
+        "domain.lookup.failed",
+        "domain.site.full",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -1157,6 +1211,13 @@ impl Problem {
             Self::AuthOperatorRequired => "auth.operator.required",
             Self::PreviewSiteUnsupported { .. } => "preview.site.unsupported",
             Self::PreviewSitePrivate { .. } => "preview.site.private",
+            Self::DomainNameOurs { .. } => "domain.name.ours",
+            Self::DomainNameTaken { .. } => "domain.name.taken",
+            Self::DomainClaimUnknown { .. } => "domain.claim.unknown",
+            Self::DomainProofMissing { .. } => "domain.proof.missing",
+            Self::DomainNameUnknown { .. } => "domain.name.unknown",
+            Self::DomainLookupFailed => "domain.lookup.failed",
+            Self::DomainSiteFull { .. } => "domain.site.full",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -1307,6 +1368,13 @@ impl Problem {
             Self::AuthOperatorRequired => Severity::Error,
             Self::PreviewSiteUnsupported { .. } => Severity::Error,
             Self::PreviewSitePrivate { .. } => Severity::Error,
+            Self::DomainNameOurs { .. } => Severity::Error,
+            Self::DomainNameTaken { .. } => Severity::Error,
+            Self::DomainClaimUnknown { .. } => Severity::Error,
+            Self::DomainProofMissing { .. } => Severity::Error,
+            Self::DomainNameUnknown { .. } => Severity::Error,
+            Self::DomainLookupFailed => Severity::Error,
+            Self::DomainSiteFull { .. } => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -1457,6 +1525,13 @@ impl Problem {
             Self::AuthOperatorRequired => Fault::Author,
             Self::PreviewSiteUnsupported { .. } => Fault::Author,
             Self::PreviewSitePrivate { .. } => Fault::Author,
+            Self::DomainNameOurs { .. } => Fault::Author,
+            Self::DomainNameTaken { .. } => Fault::Author,
+            Self::DomainClaimUnknown { .. } => Fault::Author,
+            Self::DomainProofMissing { .. } => Fault::Source,
+            Self::DomainNameUnknown { .. } => Fault::Author,
+            Self::DomainLookupFailed => Fault::Ours,
+            Self::DomainSiteFull { .. } => Fault::Author,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -2140,6 +2215,21 @@ impl From<&Problem> for Coded {
                 Coded::new("preview.site.unsupported", vec![Field::from(id.clone())])
             }
             Problem::PreviewSitePrivate { id, .. } => Coded::new("preview.site.private", vec![Field::from(id.clone())]),
+            Problem::DomainNameOurs { name, .. } => Coded::new("domain.name.ours", vec![Field::from(name.clone())]),
+            Problem::DomainNameTaken { name, .. } => Coded::new("domain.name.taken", vec![Field::from(name.clone())]),
+            Problem::DomainClaimUnknown { id, name, .. } => {
+                Coded::new("domain.claim.unknown", vec![Field::from(id.clone()), Field::from(name.clone())])
+            }
+            Problem::DomainProofMissing { name, count, .. } => {
+                Coded::new("domain.proof.missing", vec![Field::from(name.clone()), Field::from(*count)])
+            }
+            Problem::DomainNameUnknown { id, name, .. } => {
+                Coded::new("domain.name.unknown", vec![Field::from(id.clone()), Field::from(name.clone())])
+            }
+            Problem::DomainLookupFailed => Coded::new("domain.lookup.failed", vec![]),
+            Problem::DomainSiteFull { id, limit, .. } => {
+                Coded::new("domain.site.full", vec![Field::from(id.clone()), Field::from(*limit)])
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -2331,6 +2421,13 @@ impl TryFrom<Coded> for Problem {
             "auth.operator.required" => Self::AuthOperatorRequired,
             "preview.site.unsupported" => Self::PreviewSiteUnsupported { id: fields.next()? },
             "preview.site.private" => Self::PreviewSitePrivate { id: fields.next()? },
+            "domain.name.ours" => Self::DomainNameOurs { name: fields.next()? },
+            "domain.name.taken" => Self::DomainNameTaken { name: fields.next()? },
+            "domain.claim.unknown" => Self::DomainClaimUnknown { id: fields.next()?, name: fields.next()? },
+            "domain.proof.missing" => Self::DomainProofMissing { name: fields.next()?, count: fields.next()? },
+            "domain.name.unknown" => Self::DomainNameUnknown { id: fields.next()?, name: fields.next()? },
+            "domain.lookup.failed" => Self::DomainLookupFailed,
+            "domain.site.full" => Self::DomainSiteFull { id: fields.next()?, limit: fields.next()? },
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },

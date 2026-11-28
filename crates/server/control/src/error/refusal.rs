@@ -7,7 +7,7 @@ use model::{Bytes, DeployId, Hash, Route};
 
 use crate::hold::Why;
 use crate::id::{Account, Credential, Id, Site};
-use crate::{Handle, Reservation, Spent};
+use crate::{DomainName, Handle, Reservation, Spent};
 
 /// A request the control plane refuses, and the fact that makes it wrong. Nothing was changed.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -57,6 +57,44 @@ pub enum Refusal {
     Private {
         /// The site.
         site: Id<Site>,
+    },
+    /// The name is one the operator serves itself, so no site may claim it as a custom domain.
+    DomainOurs {
+        /// The name.
+        name: DomainName,
+    },
+    /// Another site proved the name.
+    DomainTaken {
+        /// The name.
+        name: DomainName,
+    },
+    /// The site has not asked to prove the name, or its claim was dropped.
+    NoClaim {
+        /// The site.
+        site: Id<Site>,
+        /// The name.
+        name: DomainName,
+    },
+    /// The TXT record does not carry the claim's token.
+    Unproven {
+        /// The name.
+        name: DomainName,
+        /// How many TXT records the name has.
+        records: u64,
+    },
+    /// The site does not serve the name.
+    NoDomain {
+        /// The site.
+        site: Id<Site>,
+        /// The name.
+        name: DomainName,
+    },
+    /// The site has as many custom domains as it may.
+    DomainRoom {
+        /// The site.
+        site: Id<Site>,
+        /// The limit.
+        limit: u64,
     },
     /// A row with this id exists already.
     Exists {
@@ -146,17 +184,8 @@ pub enum Refusal {
 impl fmt::Display for Refusal {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Reserved { handle, reservation: Reservation::Infrastructure } => {
-                write!(out, "{handle} is reserved for uses.ink itself")
-            }
-            Self::Reserved { handle, .. } => write!(out, "{handle} is a brand name that uses.ink keeps"),
+            Self::Reserved { .. } | Self::Held { .. } => self.handle(out),
             Self::Taken { handle } => write!(out, "{handle} is taken"),
-            Self::Held { handle, until: Some(until), .. } => {
-                write!(out, "{handle} was left by a site and is held until {until}")
-            }
-            Self::Held { handle, until: None, .. } => {
-                write!(out, "{handle} belonged to a verified owner and is never given to anyone else")
-            }
             Self::Suspended { site, kind } => write!(out, "the site {site} is suspended for {kind}"),
             Self::Serving { site } => write!(out, "the site {site} is not suspended"),
             Self::NoPreview { site } => {
@@ -165,6 +194,12 @@ impl fmt::Display for Refusal {
             Self::Private { site } => {
                 write!(out, "the repository of site {site} is private, so its branches are not previewed")
             }
+            Self::DomainOurs { .. }
+            | Self::DomainTaken { .. }
+            | Self::NoClaim { .. }
+            | Self::Unproven { .. }
+            | Self::NoDomain { .. }
+            | Self::DomainRoom { .. } => self.domain(out),
             Self::Exists { id } => write!(out, "a row with the id {id} exists already"),
             Self::NoAccount { account } => write!(out, "there is no account {account}"),
             Self::NoSite { site } => write!(out, "there is no site {site}"),
@@ -184,6 +219,44 @@ impl fmt::Display for Refusal {
             Self::Over { spent, value, limit } => Self::over(out, *spent, (*value, *limit)),
             Self::Unstorable => out.write_str("a folder path that is not text cannot be stored"),
             Self::Tenant(_) => out.write_str("the site's id is not a valid tenant"),
+        }
+    }
+}
+
+impl Refusal {
+    /// Words a refusal about a handle.
+    fn handle(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Reserved { handle, reservation: Reservation::Infrastructure } => {
+                write!(out, "{handle} is reserved for uses.ink itself")
+            }
+            Self::Reserved { handle, .. } => write!(out, "{handle} is a brand name that uses.ink keeps"),
+            Self::Held { handle, until: Some(until), .. } => {
+                write!(out, "{handle} was left by a site and is held until {until}")
+            }
+            Self::Held { handle, until: None, .. } => {
+                write!(out, "{handle} belonged to a verified owner and is never given to anyone else")
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+impl Refusal {
+    /// Words a refusal about a custom domain.
+    fn domain(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::DomainOurs { name } => write!(out, "{name} is served by uses.ink itself"),
+            Self::DomainTaken { name } => write!(out, "{name} belongs to another site"),
+            Self::NoClaim { site, name } => write!(out, "the site {site} has not asked to prove {name}"),
+            Self::Unproven { name, records } => {
+                write!(out, "the TXT record of {name} does not carry the token ({records} records found)")
+            }
+            Self::NoDomain { site, name } => write!(out, "the site {site} does not serve {name}"),
+            Self::DomainRoom { site, limit } => {
+                write!(out, "the site {site} has as many custom domains as it may, {limit}")
+            }
+            _ => Ok(()),
         }
     }
 }
@@ -213,6 +286,12 @@ impl Refusal {
             Self::Serving { .. } => "site.state.serving",
             Self::NoPreview { .. } => "preview.site.unsupported",
             Self::Private { .. } => "preview.site.private",
+            Self::DomainOurs { .. } => "domain.name.ours",
+            Self::DomainTaken { .. } => "domain.name.taken",
+            Self::NoClaim { .. } => "domain.claim.unknown",
+            Self::Unproven { .. } => "domain.proof.missing",
+            Self::NoDomain { .. } => "domain.name.unknown",
+            Self::DomainRoom { .. } => "domain.site.full",
             Self::Exists { .. } => "row.id.exists",
             Self::NoAccount { .. } => "account.id.unknown",
             Self::NoSite { .. } => "site.id.unknown",
@@ -243,6 +322,12 @@ impl Refusal {
                 fields
             }
             Self::Suspended { site, kind } => vec![("id", site.to_string()), ("reason", kind.to_string())],
+            Self::DomainOurs { name } | Self::DomainTaken { name } => vec![("name", name.to_string())],
+            Self::NoClaim { site, name } | Self::NoDomain { site, name } => {
+                vec![("id", site.to_string()), ("name", name.to_string())]
+            }
+            Self::Unproven { name, records } => vec![("name", name.to_string()), ("count", records.to_string())],
+            Self::DomainRoom { site, limit } => vec![("id", site.to_string()), ("limit", limit.to_string())],
             Self::Exists { id } => vec![("id", id.clone())],
             Self::NoAccount { account } => vec![("id", account.to_string())],
             Self::NoSite { site }

@@ -1,5 +1,6 @@
 //! The API: one call in, one reply out, over the control plane's ports.
 
+use authority_dns::{Dns, Offline, Resolver};
 use build::{BuildId, Trigger};
 use clock::{Clock, Draw};
 use control::{Control, Id, NewJob, NewSite, Ports, Requested, Resumed, Site, SiteKind};
@@ -37,7 +38,7 @@ enum Caller {
 /// Nothing here reads the time or draws a random number except through [`Clock`] and [`Draw`],
 /// and nothing names an adapter: the same calls on the same ports make the same rows in a test.
 #[derive(Debug)]
-pub struct Api<P: Ports, C, K, D> {
+pub struct Api<P: Ports, C, K, D, R = Offline> {
     pub(crate) control: Control<P>,
     credentials: C,
     enrol: Enrol<P::Db>,
@@ -46,13 +47,16 @@ pub struct Api<P: Ports, C, K, D> {
     pub(crate) limits: Limits,
     schemes: Vec<Scheme>,
     reports: Quota,
+    pub(crate) dns: Dns<R>,
 }
 
 impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D>
 where
     P::Db: Db,
 {
-    /// The API of `control`, for the callers `credentials` knows, within `limits`.
+    /// The API of `control`, for the callers `credentials` knows, within `limits`. It has no DNS
+    /// resolver, so a custom domain can be claimed and listed and no proof of one can be checked
+    /// until [`Api::with_resolver`] gives it one.
     pub fn new(control: Control<P>, callers: (C, Enrol<P::Db>), clocks: (K, D), limits: Limits) -> Self {
         let (credentials, enrol) = callers;
         Self {
@@ -64,6 +68,27 @@ where
             limits,
             schemes: vec![Scheme::Https],
             reports: Quota::new(Self::REPORTS, Self::TRACKED),
+            dns: Dns::new(Offline),
+        }
+    }
+}
+
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Api<P, C, K, D, R>
+where
+    P::Db: Db,
+{
+    /// The same API, reading the proof records of custom domains through `resolver`.
+    pub fn with_resolver<S: Resolver>(self, resolver: S) -> Api<P, C, K, D, S> {
+        Api {
+            control: self.control,
+            credentials: self.credentials,
+            enrol: self.enrol,
+            clock: self.clock,
+            draw: self.draw,
+            limits: self.limits,
+            schemes: self.schemes,
+            reports: self.reports,
+            dns: Dns::new(resolver),
         }
     }
 
@@ -173,6 +198,10 @@ where
             Call::Log { site, build } => self.log(principal, site, build).await,
             Call::Export { site, deploy } => self.export(principal, Route { site, deploy }).await,
             Call::Intake(site) => self.intake(principal, site, body).await,
+            Call::Domains(site) => self.domains(principal, site).await,
+            Call::Claim { site, name } => self.claim(principal, (site, name)).await,
+            Call::Prove { site, name } => self.prove(principal, (site, name)).await,
+            Call::Unclaim { site, name } => self.unclaim(principal, (site, name)).await,
             Call::Previews(site) => self.previews(principal, site).await,
             Call::Preview { site, slug } => self.preview(principal, (site, slug), body).await,
             Call::Source(site) => self.probe(principal, site, body).await,
@@ -496,7 +525,7 @@ pub trait Answers {
     fn answer(&self, request: &Request) -> impl std::future::Future<Output = Reply>;
 }
 
-impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Answers for Api<P, C, K, D>
+impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw, R: Resolver> Answers for Api<P, C, K, D, R>
 where
     P::Db: Db,
 {

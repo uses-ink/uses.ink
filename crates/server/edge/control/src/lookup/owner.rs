@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use blob::Tenant;
 use clock::Clock;
-use control::{Control, Handle, Id, Ports, SiteKind, Slug};
+use control::{Control, DomainName, Handle, Id, Ports, Site, SiteKind, Slug};
 use edge::{Deploy, Hostname, Notice, Resolved};
 use edge_folder::Placed;
 use jiff::{SignedDuration, Timestamp};
@@ -96,7 +96,10 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
         let pointer = match (origin.handle(name), origin.preview(name)) {
             (Some(handle), _) => self.pointer(&handle).await?,
             (None, Some((slug, handle))) => self.previewed(&slug, &handle).await?,
-            (None, None) => return Ok(None),
+            (None, None) => match self.owner(name).await? {
+                Some(site) => self.pointer(&site.handle).await?,
+                None => return Ok(None),
+            },
         };
         let Some(pointer) = pointer else { return Ok(None) };
         let loaded = self.loaded(&pointer).await?;
@@ -107,11 +110,24 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
     /// suspension is asked of the control plane each time, and only for a host that serves
     /// nothing.
     async fn notice(&self, hostname: &Hostname) -> Noticed {
-        let Some(handle) = hostname.name().and_then(|name| self.control.origin().handle(name)) else {
-            return Ok(None);
+        let Some(name) = hostname.name() else { return Ok(None) };
+        let handle = match self.control.origin().handle(name) {
+            Some(handle) => handle,
+            None => match self.owner(name).await? {
+                Some(site) => site.handle,
+                None => return Ok(None),
+            },
         };
         let suspended = self.control.suspended(&handle).await.map_err(|error| Failure::Lookup(Chain::of(&error)))?;
         Ok(suspended.map(|suspension| Notice { reason: suspension.kind.name() }))
+    }
+
+    /// The site that proved `name` as a custom domain. Never remembered, like a preview: it is one
+    /// indexed read, and a domain that was removed or whose site was removed stops serving at once.
+    /// A host that is no domain name is no custom domain.
+    async fn owner(&self, name: &str) -> Result<Option<Site>, Failure> {
+        let Ok(name) = name.parse::<DomainName>() else { return Ok(None) };
+        self.control.domained(&name).await.map_err(|error| Failure::Lookup(Chain::of(&error)))
     }
 
     /// Whether a pointer made at `at` is still believed at `now`.

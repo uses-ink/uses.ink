@@ -1,0 +1,27 @@
+[package]
+name = "uses-ink-authority-dns"
+description = "The DNS authority (`ink:authority-dns`): a TXT record at `_uses-ink.<name>` that binds a custom domain to a site, read through a Resolver port with a fake"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+control.workspace = true
+jiff.workspace = true
+
+[dev-dependencies]
+blob-dir.workspace = true
+db.workspace = true
+db-sqlite.workspace = true
+build.workspace = true
+model.workspace = true
+pollster.workspace = true
+queue-rows.workspace = true
+secret-local.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

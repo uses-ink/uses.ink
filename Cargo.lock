@@ -6270,6 +6270,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-authority-dns"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "pollster",
+ "tempfile",
+ "uses-ink-blob-dir",
+ "uses-ink-build",
+ "uses-ink-control",
+ "uses-ink-db",
+ "uses-ink-db-sqlite",
+ "uses-ink-model",
+ "uses-ink-queue-rows",
+ "uses-ink-secret-local",
+]
+
+[[package]]
 name = "uses-ink-blob"
 version = "0.0.0"
 dependencies = [
@@ -6565,6 +6582,7 @@ dependencies = [
  "sha2 0.11.2",
  "tempfile",
  "url",
+ "uses-ink-authority-dns",
  "uses-ink-blob",
  "uses-ink-blob-dir",
  "uses-ink-build",

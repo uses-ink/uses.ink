@@ -136,6 +136,10 @@ pub struct Hosting {
     /// anyone with the address. [default: 7]
     #[arg(long, value_name = "DAYS", env = "INK_PREVIEW_DAYS", help_heading = Heading::LIMITS)]
     pub preview_days: Option<u64>,
+    /// The most custom domains one site has, proved and not. A claim of a name costs a row, so
+    /// the number bounds what one site can ask for. [default: 10]
+    #[arg(long, value_name = "N", env = "INK_LIMIT_DOMAINS", help_heading = Heading::LIMITS)]
+    pub limit_domains: Option<u64>,
     /// Seconds one build may take: a worker holds a request for no longer than this, so a build
     /// that runs past it is given to another. [default: 600]
     #[arg(long, value_name = "SECONDS", env = "INK_LIMIT_BUILD_TIME", help_heading = Heading::LIMITS)]
@@ -154,8 +158,11 @@ impl Hosting {
             time: self.limit_build_time.map_or(defaults.time, Duration::from_secs),
         };
         let preview = self.preview_days.map_or(Policy::PREVIEW, |days| Duration::from_hours(days.saturating_mul(24)));
-        let policy =
-            Policy::DEFAULT.limited(limits).stepping(self.remove_step.unwrap_or(Policy::STEP)).previewing(preview);
+        let policy = Policy::DEFAULT
+            .limited(limits)
+            .stepping(self.remove_step.unwrap_or(Policy::STEP))
+            .previewing(preview)
+            .domained(self.limit_domains.unwrap_or(Policy::DOMAINS));
         self.handle_hold.map_or(policy, |days| policy.holding(Duration::from_hours(days.saturating_mul(24))))
     }
 

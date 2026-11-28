@@ -1,7 +1,7 @@
 //! Every refusal has a code of the catalog, with a fix.
 
 use build::BuildId;
-use control::{Handle, HoldReason, Id, Refusal, Reservation, Spent};
+use control::{DomainName, Handle, HoldReason, Id, Refusal, Reservation, Spent};
 use jiff::Timestamp;
 use model::{Hash, Manifest, Route};
 
@@ -12,6 +12,7 @@ fn every_refusal_is_worded_by_the_catalog() {
     let deploy = Manifest::new(Vec::new()).unwrap().id();
     let (site, account) = (Id::from_bytes([1; 16]), Id::from_bytes([2; 16]));
     let (route, blob, build) = (Route::parse("/a").unwrap(), Hash::of("a"), BuildId::from_bytes([3; 16]));
+    let name: DomainName = "tea.example.com".parse().unwrap();
     let until = Some(Timestamp::from_second(1).unwrap());
     let refusals = [
         Refusal::Reserved { handle: handle.clone(), reservation: Reservation::Infrastructure },
@@ -38,6 +39,12 @@ fn every_refusal_is_worded_by_the_catalog() {
         Refusal::Serving { site },
         Refusal::NoPreview { site },
         Refusal::Private { site },
+        Refusal::DomainOurs { name: name.clone() },
+        Refusal::DomainTaken { name: name.clone() },
+        Refusal::NoClaim { site, name: name.clone() },
+        Refusal::Unproven { name: name.clone(), records: 2 },
+        Refusal::NoDomain { site, name },
+        Refusal::DomainRoom { site, limit: 1 },
         Refusal::Unstorable,
     ];
     for refusal in refusals {

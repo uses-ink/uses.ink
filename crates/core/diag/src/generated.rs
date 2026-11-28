@@ -380,6 +380,30 @@ impl Message<'_> {
             Problem::PreviewSitePrivate { id, .. } => {
                 write!(out, "the repository of site {id} is private, so its branches are not previewed")
             }
+            Problem::DomainNameOurs { name, .. } => {
+                write!(out, "{name} is served by uses.ink itself, so no site can claim it as a custom domain")
+            }
+            Problem::DomainNameTaken { name, .. } => {
+                write!(out, "{name} belongs to another site")
+            }
+            Problem::DomainClaimUnknown { id, name, .. } => {
+                write!(out, "the site {id} has not asked to prove {name}")
+            }
+            Problem::DomainProofMissing { name, count, .. } => {
+                write!(
+                    out,
+                    "the TXT record of `_uses-ink.{name}` does not carry the token of this claim ({count} records found)"
+                )
+            }
+            Problem::DomainNameUnknown { id, name, .. } => {
+                write!(out, "the site {id} does not serve {name}")
+            }
+            Problem::DomainLookupFailed => {
+                write!(out, "the DNS lookup of the proof record got no answer")
+            }
+            Problem::DomainSiteFull { id, limit, .. } => {
+                write!(out, "the site {id} has as many custom domains as it may, {limit}")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -746,6 +770,13 @@ impl Fix<'_> {
             Problem::AuthOperatorRequired => true,
             Problem::PreviewSiteUnsupported { .. } => true,
             Problem::PreviewSitePrivate { .. } => true,
+            Problem::DomainNameOurs { .. } => true,
+            Problem::DomainNameTaken { .. } => true,
+            Problem::DomainClaimUnknown { .. } => true,
+            Problem::DomainProofMissing { .. } => true,
+            Problem::DomainNameUnknown { .. } => true,
+            Problem::DomainLookupFailed => true,
+            Problem::DomainSiteFull { .. } => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -1173,6 +1204,36 @@ impl Fix<'_> {
                     out,
                     "a preview is public to anyone with its address; remove the site's git token if the repository is public"
                 )
+            }
+            Problem::DomainNameOurs { .. } => {
+                write!(
+                    out,
+                    "claim a domain you own, such as `www.example.com`; a site already has an address under uses.ink"
+                )
+            }
+            Problem::DomainNameTaken { .. } => {
+                write!(
+                    out,
+                    "if you own the name, the other site's proof is out of date: remove the name from the DNS of the old site, ask the operator, or use another name"
+                )
+            }
+            Problem::DomainClaimUnknown { .. } => {
+                write!(out, "claim the name first; it answers with the TXT record to publish")
+            }
+            Problem::DomainProofMissing { .. } => {
+                write!(
+                    out,
+                    "publish the TXT record the claim gave at `_uses-ink.<name>`, wait for your DNS to answer it, and check again; a claim that was made again has a new token"
+                )
+            }
+            Problem::DomainNameUnknown { .. } => {
+                write!(out, "list the site's domains and check the name")
+            }
+            Problem::DomainLookupFailed => {
+                write!(out, "check again in a minute; the name is not refused, only unchecked")
+            }
+            Problem::DomainSiteFull { .. } => {
+                write!(out, "remove a domain the site does not use, or ask the operator for a higher limit")
             }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")

@@ -4,7 +4,7 @@ use std::fmt;
 
 use build::BuildId;
 use control::keys::Right;
-use control::{EnrolmentKind, Id, IdError, SiteKind, Slug};
+use control::{DomainName, EnrolmentKind, Id, IdError, NameError, SiteKind, Slug};
 use model::DeployId;
 use serde::Deserialize;
 use serde::de::IntoDeserializer;
@@ -49,6 +49,30 @@ pub enum Call {
         site: Id<SiteKind>,
         /// A deploy that is not the live one.
         deploy: Option<DeployId>,
+    },
+    /// `GET /v1/sites/{site}/domains`: the custom domains the site serves and has still to prove.
+    Domains(Id<SiteKind>),
+    /// `PUT /v1/sites/{site}/domains/{name}`: ask to prove a name; answered with the record to
+    /// publish.
+    Claim {
+        /// The site.
+        site: Id<SiteKind>,
+        /// The name.
+        name: DomainName,
+    },
+    /// `POST /v1/sites/{site}/domains/{name}/proof`: read the record and make the name serve.
+    Prove {
+        /// The site.
+        site: Id<SiteKind>,
+        /// The name.
+        name: DomainName,
+    },
+    /// `DELETE /v1/sites/{site}/domains/{name}`: stop serving the name, or drop the claim.
+    Unclaim {
+        /// The site.
+        site: Id<SiteKind>,
+        /// The name.
+        name: DomainName,
     },
     /// `GET /v1/sites/{site}/previews`: the previews that have not ended.
     Previews(Id<SiteKind>),
@@ -127,6 +151,13 @@ pub enum RouteError {
         /// The text.
         written: String,
     },
+    /// A part of the path should be a domain name and is not.
+    Domain {
+        /// The text.
+        written: String,
+        /// Why not.
+        source: NameError,
+    },
     /// A part of the path should be a deploy and is not.
     Deploy {
         /// The text.
@@ -147,6 +178,7 @@ impl fmt::Display for RouteError {
             Self::Build { written } => write!(out, "{written:?} in the path is not a build id"),
             Self::Deploy { written } => write!(out, "{written:?} in the path is not a deploy id"),
             Self::Label { written } => write!(out, "{written:?} in the path is not a preview label"),
+            Self::Domain { written, .. } => write!(out, "{written:?} in the path is not a domain name"),
         }
     }
 }
@@ -155,6 +187,7 @@ impl std::error::Error for RouteError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Id { source, .. } => Some(source),
+            Self::Domain { source, .. } => Some(source),
             _ => None,
         }
     }
@@ -212,6 +245,26 @@ impl Call {
         })
     }
 
+    /// The routes under a site's `domains`.
+    fn domain(site: Id<SiteKind>, tail: &[&str], by: &Pick<'_>) -> Option<Result<Self, RouteError>> {
+        let named = |name: &str| {
+            name.parse::<DomainName>().map_err(|source| RouteError::Domain { written: name.to_owned(), source })
+        };
+        let routed = |name: &str| -> Result<Self, RouteError> {
+            let name = named(name)?;
+            by(&[
+                (Method::Put, Self::Claim { site, name: name.clone() }),
+                (Method::Delete, Self::Unclaim { site, name }),
+            ])
+        };
+        Some(match tail {
+            [] => by(&[(Method::Get, Self::Domains(site))]),
+            [name] => routed(name),
+            [name, "proof"] => named(name).and_then(|name| by(&[(Method::Post, Self::Prove { site, name })])),
+            _ => return None,
+        })
+    }
+
     /// The routes under one site: its noun, and what follows.
     fn nested(site: Id<SiteKind>, tail: &[&str], by: &Pick<'_>) -> Option<Result<Self, RouteError>> {
         Some(match tail {
@@ -229,6 +282,7 @@ impl Call {
                 Ok(build) => by(&[(Method::Get, Self::Log { site, build })]),
                 Err(_) => Err(RouteError::Build { written: (*build).to_owned() }),
             },
+            ["domains", rest @ ..] => return Self::domain(site, rest, by),
             ["previews"] => by(&[(Method::Get, Self::Previews(site))]),
             ["previews", slug] => match slug.parse() {
                 Ok(slug) => by(&[(Method::Put, Self::Preview { site, slug })]),
@@ -257,7 +311,11 @@ impl Call {
             | Self::Log { site, .. }
             | Self::Bundle(site)
             | Self::Previews(site)
+            | Self::Domains(site)
             | Self::Export { site, .. } => (Right::Read, Some(*site)),
+            Self::Claim { site, .. } | Self::Prove { site, .. } | Self::Unclaim { site, .. } => {
+                (Right::Edit, Some(*site))
+            }
             Self::Remove(site) => (Right::Destroy, Some(*site)),
             Self::Rollback(site)
             | Self::Resume(site)
@@ -308,6 +366,10 @@ impl logging::Kind for &Call {
             Call::Log { .. } => "log",
             Call::Export { .. } => "export",
             Call::Intake(_) => "intake",
+            Call::Domains(_) => "domains",
+            Call::Claim { .. } => "claim",
+            Call::Prove { .. } => "prove",
+            Call::Unclaim { .. } => "unclaim",
             Call::Previews(_) => "previews",
             Call::Preview { .. } => "preview",
             Call::Source(_) => "source",
