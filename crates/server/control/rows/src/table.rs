@@ -338,6 +338,21 @@ pub enum Suspension {
     At,
 }
 
+/// `removal`: a removal that has begun and not finished, with what it has counted so far.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "removal"]
+pub enum Removal {
+    Table,
+    SiteId,
+    AccountId,
+    Handle,
+    Deploys,
+    Builds,
+    Credentials,
+    Blobs,
+    Bytes,
+}
+
 /// SQLite's row number, which orders rows that tie on a column.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 pub enum Row {

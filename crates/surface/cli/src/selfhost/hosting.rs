@@ -126,6 +126,10 @@ pub struct Hosting {
     /// files only they used. [default: 20]
     #[arg(long, value_name = "N", env = "INK_LIMIT_DEPLOYS", help_heading = Heading::LIMITS)]
     pub limit_deploys: Option<u64>,
+    /// The most blobs one step of removing a site deletes. A removal runs in steps this size, so
+    /// a site with many files never holds a request or a worker for long. [default: 500]
+    #[arg(long, value_name = "N", env = "INK_REMOVE_STEP", help_heading = Heading::LIMITS)]
+    pub remove_step: Option<u64>,
     /// Seconds one build may take: a worker holds a request for no longer than this, so a build
     /// that runs past it is given to another. [default: 600]
     #[arg(long, value_name = "SECONDS", env = "INK_LIMIT_BUILD_TIME", help_heading = Heading::LIMITS)]
@@ -143,7 +147,7 @@ impl Hosting {
             deploys: self.limit_deploys.unwrap_or(defaults.deploys),
             time: self.limit_build_time.map_or(defaults.time, Duration::from_secs),
         };
-        let policy = Policy::DEFAULT.limited(limits);
+        let policy = Policy::DEFAULT.limited(limits).stepping(self.remove_step.unwrap_or(Policy::STEP));
         self.handle_hold.map_or(policy, |days| policy.holding(Duration::from_hours(days.saturating_mul(24))))
     }
 

@@ -34,7 +34,7 @@ Built (2026-11-28), with the owner's default of `docs/hosted.md` HQ10: suspend f
 - **The edge asks twice only for a host that serves nothing.** A suspension is not cached: it is read from the
   control plane for each request to a host that has no live deploy, so a lift or a suspension applies at once
   for hosts that were not just served. A host the edge remembers as live is answered from the pointer cache until
-  its time to live ends (`Settings::ttl` of the edge lookups), which is the longest a suspension can wait to take
+  its time to live ends (`--site-ttl`), which is the longest a suspension can wait to take
   effect.
 - **Not done.** Notifying the reporter or the owner, dismissing a report without suspending, and a dashboard
   screen for reports (the operator uses the API).

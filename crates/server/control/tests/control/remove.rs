@@ -6,8 +6,10 @@ use std::path::Path;
 use blob::{Blob, Deleted, Listed, Stored, Tenant};
 use blob_dir::{Directory, Error as Fault, Reading};
 use build::Source;
-use control::table::{self, Account, Credential, Deploy, Event, Live, Publication, Site, Tombstone};
-use control::{NewAccount, NewCredential, NewDeploy, NewSite, Ports, Purpose, Refusal, SiteState};
+use control::table::{
+    self, Account, Credential, Deploy, Event, Live, Publication, Removal as Pending, Site, Tombstone,
+};
+use control::{NewAccount, NewCredential, NewDeploy, NewSite, Policy, Ports, Purpose, Refusal, Removal, SiteState};
 use model::Hash;
 use sea_query::{Expr, ExprTrait};
 use secret::Plain;
@@ -164,10 +166,97 @@ fn a_crash_between_bytes_and_rows_leaves_a_marked_site_and_removing_again_finish
     control.ports().blob().deletes.set(usize::MAX);
     let receipt = pollster::block_on(control.remove_site(id, at(200))).unwrap();
     assert_eq!(receipt.deploys, 1);
-    assert_eq!(receipt.blobs, 2, "one of three blobs went in the failed run");
+    assert_eq!(receipt.blobs, 3, "the receipt counts the failed run's blob too");
+    assert!(receipt.bytes.count() > 6, "the two files and the manifest: {}", receipt.bytes);
     assert!(pollster::block_on(control.site(id)).is_err());
 }
 
 fn world_id<K>(n: u8) -> control::Id<K> {
     control::Id::from_bytes([n; 16])
+}
+
+/// A site with `files` pages of one deploy, under a policy that deletes `step` blobs at most.
+fn stepped(step: u64, files: usize) -> (World, control::Site) {
+    let world = World::new().under(Policy::DEFAULT.stepping(step));
+    let site = world.site("cstef");
+    let texts: Vec<(String, String)> = (0..files).map(|n| (format!("/p{n}"), format!("page {n}"))).collect();
+    let pages: Vec<(&str, &str)> = texts.iter().map(|(route, text)| (route.as_str(), text.as_str())).collect();
+    let manifest = world.stage(&site, &pages);
+    world.run(world.control.deploy(NewDeploy { site: site.id, manifest, build: None, at: at(10) })).unwrap();
+    (world, site)
+}
+
+#[test]
+fn a_removal_runs_in_bounded_steps_and_the_receipt_counts_them_all() {
+    // four files and the manifest are five blobs: steps of two are 2, 2 and a last of one
+    let (world, site) = stepped(2, 4);
+    let tenant = Tenant::try_from(site.id).unwrap();
+    let left = || world.run(world.control.ports().blob().list(&tenant)).unwrap().len();
+    assert_eq!(left(), 5);
+    let Removal::More(first) = world.run(world.control.remove_step(site.id, at(100))).unwrap() else {
+        panic!("a first step with more to do")
+    };
+    assert_eq!(first.blobs, 2);
+    assert_eq!(left(), 3, "a step deletes at most its share");
+    // between steps the site is marked, serves nothing and has its removal row
+    assert_eq!(world.run(world.control.site(site.id)).unwrap().state, SiteState::Removing);
+    assert_eq!(world.count(Pending::Table), 1);
+    let Removal::More(second) = world.run(world.control.remove_step(site.id, at(101))).unwrap() else {
+        panic!("a second step with more to do")
+    };
+    assert_eq!((second.blobs, left()), (4, 1));
+    let Removal::Done(receipt) = world.run(world.control.remove_step(site.id, at(102))).unwrap() else {
+        panic!("the last step")
+    };
+    assert_eq!((receipt.blobs, receipt.deploys, receipt.removed), (5, 1, at(102)));
+    assert!(second.bytes.count() < receipt.bytes.count());
+    assert_eq!(world.count(Pending::Table), 0, "the removal row goes with the site");
+    assert_eq!(world.count(Site::Table), 0);
+    assert_eq!(left(), 0);
+}
+
+#[test]
+fn a_step_of_an_unknown_site_is_refused() {
+    let world = World::new();
+    let refused = world.run(world.control.remove_step(world.id(), at(1))).unwrap_err();
+    assert!(matches!(refused.refusal(), Some(Refusal::NoSite { .. })), "{refused:?}");
+}
+
+#[test]
+fn a_removal_that_fails_partway_resumes_with_a_whole_receipt() {
+    let folder = tempfile::tempdir().unwrap();
+    // steps of two, and a store that fails on its fourth delete
+    let flaky = Flaky { inner: Directory::open(folder.path()).unwrap(), deletes: Cell::new(3) };
+    let control = World::over(flaky).with_policy(Policy::DEFAULT.stepping(2));
+    let account = world_id(1);
+    pollster::block_on(control.add_account(NewAccount { id: account, at: at(0) })).unwrap();
+    let id = world_id(2);
+    let site = pollster::block_on(control.add_site(NewSite {
+        id,
+        account,
+        handle: "cstef".parse().unwrap(),
+        source: Source::Folder("/srv".into()),
+        at: at(1),
+    }))
+    .unwrap();
+    let tenant = Tenant::try_from(site.id).unwrap();
+    let mut entries = Vec::new();
+    for n in 0..4 {
+        let text = format!("page {n}");
+        let hash = Hash::of(&text);
+        pollster::block_on(control.ports().blob().put(&tenant, hash, [text.as_bytes()])).unwrap();
+        let route = model::Route::parse(format!("/p{n}")).unwrap();
+        entries.push(model::Served::new(route, hash, model::MediaType::Html, vec![]));
+    }
+    let manifest = model::Manifest::new(entries).unwrap();
+    pollster::block_on(control.deploy(NewDeploy { site: id, manifest, build: None, at: at(10) })).unwrap();
+    // the first step deletes two, the second deletes one and then the store fails
+    assert!(matches!(pollster::block_on(control.remove_step(id, at(100))).unwrap(), Removal::More(_)));
+    let failed = pollster::block_on(control.remove_step(id, at(101))).unwrap_err();
+    assert!(matches!(failed, control::Error::Blob(_)), "{failed:?}");
+    let left = pollster::block_on(control.ports().blob().list(&tenant)).unwrap().len();
+    assert_eq!(left, 2, "three of five blobs are gone, including the one deleted before the failure");
+    control.ports().blob().deletes.set(usize::MAX);
+    let receipt = pollster::block_on(control.remove_site(id, at(200))).unwrap();
+    assert_eq!((receipt.blobs, receipt.deploys), (5, 1), "every step counted, the failed one too");
 }

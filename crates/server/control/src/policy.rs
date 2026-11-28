@@ -1,5 +1,5 @@
 //! What the operator sets about how the control plane behaves: how long a handle is held, and
-//! the budgets that join it later. Every value has a default that is written down.
+//! the budgets and how a removal is bounded. Every value has a default that is written down.
 
 use std::time::Duration;
 
@@ -13,16 +13,28 @@ pub struct Policy {
     pub hold: Duration,
     /// The budgets (`--limit-stored` and the flags beside it).
     pub limits: Limits,
+    /// The most blobs one step of a removal deletes (`--remove-step`).
+    pub removal: u64,
 }
 
 impl Policy {
     /// The defaults: a hold of twelve months and the default [`Limits`].
-    pub const DEFAULT: Self = Self { hold: Hold::DEFAULT, limits: Limits::DEFAULT };
+    pub const DEFAULT: Self = Self { hold: Hold::DEFAULT, limits: Limits::DEFAULT, removal: Self::STEP };
+
+    /// How many blobs a step of a removal deletes unless the operator says.
+    pub const STEP: u64 = 500;
 
     /// The same policy holding a handle for `hold`.
     #[must_use]
     pub const fn holding(mut self, hold: Duration) -> Self {
         self.hold = hold;
+        self
+    }
+
+    /// The same policy deleting at most `blobs` in a step of a removal.
+    #[must_use]
+    pub const fn stepping(mut self, blobs: u64) -> Self {
+        self.removal = blobs;
         self
     }
 

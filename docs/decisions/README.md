@@ -85,3 +85,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0087 | [A handle a site leaves is held for twelve months, a verified owner's handle for good, and the brand list is a data file](0087-a-handle-a-site-leaves-is-held-for-twelve-months-a.md) | built | 2026-11-28 | control |
 | 0088 | [Budgets are one typed Limits value, counted from the rows and the blob list, and a deploy over storage is refused whole](0088-budgets-are-one-typed-limits-value-counted-from-the-rows.md) | built | 2026-11-28 | control |
 | 0089 | [A reported site is suspended first, as a row of its own, and anyone may report with no account](0089-a-reported-site-is-suspended-first-as-a-row-of-its-own.md) | built | 2026-11-28 | control |
+| 0090 | [A removal runs in bounded steps and keeps its totals in a row, so a resume gives a whole receipt](0090-a-removal-runs-in-bounded-steps-and-keeps-its-totals-in-a-row.md) | built | 2026-11-28 | control |

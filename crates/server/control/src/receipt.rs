@@ -23,8 +23,8 @@ pub struct Receipt {
     pub removed: Timestamp,
     /// How many deploys it had.
     pub deploys: u64,
-    /// How many blobs were deleted by this run, and how many bytes they held. A run that
-    /// finishes an earlier, interrupted one counts only what was left.
+    /// How many blobs were deleted, and how many bytes they held, over every step of the
+    /// removal: a removal that stopped and was resumed counts the whole of it (decision 0090).
     pub blobs: u64,
     /// The bytes those blobs held.
     pub bytes: Bytes,

@@ -36,6 +36,7 @@ mod policy;
 mod ports;
 mod receipt;
 pub mod recovery;
+mod removal;
 mod schema;
 mod site;
 
@@ -71,6 +72,7 @@ pub use origin::{Origin, OriginError};
 pub use policy::Policy;
 pub use ports::Ports;
 pub use receipt::Receipt;
+pub use removal::{Erasing, Progress, Removal};
 pub use schema::Schema;
 pub use signin::SignIn;
 pub use site::{New as NewSite, Site, State as SiteState};

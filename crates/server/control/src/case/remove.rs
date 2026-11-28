@@ -10,27 +10,102 @@ use sea_query::{
 };
 
 use crate::id::{Id, Site as SiteKind};
+use crate::removal::Begun;
 use crate::table::{self, Computed};
-use crate::{Control, Error, Handle, Hold, HoldReason, Ports, Receipt};
+use crate::{Control, Error, Handle, Hold, HoldReason, Ports, Progress, Receipt, Removal, Site};
 
 impl<P: Ports> Control<P> {
-    /// Removes a site and everything of it, and returns what was removed.
-    ///
-    /// The order is the point. First the site is marked `removing` and its live pointer is
-    /// dropped, so it serves nothing. Then every blob of its tenant is deleted. Only then are
-    /// its rows deleted, and its handle left as a tombstone. A crash between the steps leaves
-    /// the marked row, which is a diagnosable state and never bytes without a row; removing the
-    /// site again finishes the job, and the receipt counts only what that run removed of blobs.
+    /// Removes a site and everything of it, and returns what was removed: steps until one is
+    /// done.
     pub async fn remove_site(&self, id: Id<SiteKind>, at: Timestamp) -> Result<Receipt, Error<P>> {
+        loop {
+            if let Removal::Done(receipt) = self.remove_step(id, at).await? {
+                return Ok(receipt);
+            }
+        }
+    }
+
+    /// One bounded step of removing a site: at most [`Policy::removal`](crate::Policy) blobs
+    /// are deleted, so no step is longer than the operator allows.
+    ///
+    /// The order is the point (decision 0022). The first step marks the site `removing`, drops
+    /// its live pointer, so it serves nothing, and records the counts of what it had in a
+    /// `removal` row. Every step deletes blobs and adds what it deleted to that row. The step
+    /// that finds no more than its share left deletes them, then the rows, and leaves the handle
+    /// held. A crash or a failing store between steps leaves the marked site and its row, which
+    /// is a diagnosable state and never bytes without a row; calling again resumes, and the
+    /// receipt counts the whole removal, not the part since the last start. A step that fails
+    /// partway still records the blobs it deleted before the failure.
+    pub async fn remove_step(&self, id: Id<SiteKind>, at: Timestamp) -> Result<Removal, Error<P>> {
         let site = self.site(id).await?;
         let tenant = Self::tenant(id)?;
+        let begun = match self.begun(id).await? {
+            Some(begun) => begun,
+            None => self.begin(&site).await?,
+        };
+        let store = self.ports.blob();
+        let share = usize::try_from(Ord::max(self.policy.removal, 1)).unwrap_or(usize::MAX);
+        let listed = store.list(&tenant).await?;
+        let last = listed.len() <= share;
+        let (mut removed, mut bytes) = (0_u64, 0_u64);
+        let mut failed = None;
+        for entry in listed.into_iter().take(share) {
+            match store.delete(&tenant, entry.hash).await {
+                Ok(Deleted::Removed(held)) => {
+                    removed += 1;
+                    bytes = bytes.saturating_add(held.count());
+                }
+                Ok(_) => {}
+                Err(error) => {
+                    failed = Some(error);
+                    break;
+                }
+            }
+        }
+        if removed > 0 {
+            self.ports.db().batch(vec![Begun::add(id, removed, bytes)]).await?;
+        }
+        if let Some(error) = failed {
+            return Err(error.into());
+        }
+        if !last {
+            let total = (begun.blobs.saturating_add(removed), begun.bytes.saturating_add(bytes));
+            return Ok(Removal::More(Progress { site: id, blobs: total.0, bytes: Bytes(total.1) }));
+        }
+        self.erase(&site.handle, id, at).await?;
+        Ok(Removal::Done(begun.receipt((removed, bytes), at)))
+    }
+
+    /// The removal of `site` that has begun, if one has.
+    async fn begun(&self, site: Id<SiteKind>) -> Result<Option<Begun>, Error<P>> {
+        let select = Query::select()
+            .columns(Begun::COLUMNS)
+            .from(table::Removal::Table)
+            .and_where(Expr::col(table::Removal::SiteId).eq(site.to_string()))
+            .to_owned();
+        let row = self.ports.db().first(select.into()).await?;
+        Ok(row.map(|row| Begun::read(&row)).transpose()?)
+    }
+
+    /// Begins a removal: takes the counts, marks the site and unpublishes it, in one batch.
+    async fn begin(&self, site: &Site) -> Result<Begun, Error<P>> {
+        let key = site.id.to_string();
         let db = self.ports.db();
-        let key = id.to_string();
         let counts = db.first(Self::counts(&key).into()).await?;
         let counts = counts.ok_or(db::ColumnError {
             column: Computed::Deploys.as_str().to_owned(),
             fault: db::ColumnFault::Missing,
         })?;
+        let begun = Begun {
+            site: site.id,
+            account: site.account,
+            handle: site.handle.clone(),
+            deploys: counts.get(Computed::Deploys)?,
+            builds: counts.get(Computed::Builds)?,
+            credentials: counts.get(Computed::Credentials)?,
+            blobs: 0,
+            bytes: 0,
+        };
         let mark = Query::update()
             .table(table::Site::Table)
             .value(table::Site::State, crate::site::State::Removing.name())
@@ -38,27 +113,8 @@ impl<P: Ports> Control<P> {
             .to_owned();
         let unpublish =
             Query::delete().from_table(table::Live::Table).and_where(Expr::col(table::Live::SiteId).eq(key)).to_owned();
-        db.batch(vec![mark.into(), unpublish.into()]).await?;
-        let blobs = self.ports.blob();
-        let (mut removed, mut bytes) = (0_u64, 0_u64);
-        for listed in blobs.list(&tenant).await? {
-            if let Deleted::Removed(size) = blobs.delete(&tenant, listed.hash).await? {
-                removed += 1;
-                bytes = bytes.saturating_add(size.count());
-            }
-        }
-        self.erase(&site.handle, id, at).await?;
-        Ok(Receipt {
-            site: id,
-            account: site.account,
-            handle: site.handle,
-            removed: at,
-            deploys: counts.get(Computed::Deploys)?,
-            blobs: removed,
-            bytes: Bytes(bytes),
-            builds: counts.get(Computed::Builds)?,
-            credentials: counts.get(Computed::Credentials)?,
-        })
+        db.batch(vec![begun.insert()?, mark.into(), unpublish.into()]).await?;
+        Ok(begun)
     }
 
     /// The number of rows of `table` that belong to `site`, as a subquery.
@@ -87,6 +143,7 @@ impl<P: Ports> Control<P> {
             Self::wipe(table::Event::Table, table::Event::SiteId, &key),
             Self::wipe(table::Bundle::Table, table::Bundle::SiteId, &key),
             Self::wipe(table::Seen::Table, table::Seen::SiteId, &key),
+            Self::wipe(table::Removal::Table, table::Removal::SiteId, &key),
             Self::wipe(table::Suspension::Table, table::Suspension::SiteId, &key),
             Self::wipe(table::Live::Table, table::Live::SiteId, &key),
             Self::wipe(table::Publication::Table, table::Publication::SiteId, &key),
