@@ -13,7 +13,7 @@ use crate::deploy::{Moment, Remote};
 use crate::output::Io;
 use crate::output::error::Error;
 use crate::output::exit::Exit;
-use crate::output::term::{Doc, Line, Record, Render, Role, Table};
+use crate::output::term::{Doc, Empty, Line, Listed, Record, Render, Role};
 
 /// `ink repo <claim|prove|rotate|list|release>`: a group with no behaviour of its own.
 #[derive(Debug, Args)]
@@ -123,18 +123,19 @@ impl Render for Given<'_> {
     }
 }
 
+/// What the list of repositories says when the site has claimed none.
+const EMPTY: Empty = Empty {
+    said: "No repositories claimed.",
+    next: Some(("ink repo claim", "Ask to build the site when its repository moves")),
+};
+
 /// The repositories as a table.
 #[derive(Debug)]
 struct Listing<'a>(&'a [RepoView]);
 
 impl Render for Listing<'_> {
     fn render(&self, into: &mut Doc) {
-        if self.0.is_empty() {
-            into.push(Line::plain("no repositories claimed"));
-            return;
-        }
-        let quiet = |text: &str| Line::new().with(Role::Quiet, text);
-        let mut table = Table::default().indent(2).row(["repo", "state", "since or challenge"].map(quiet).to_vec());
+        let mut table = Listed::new(EMPTY, &["repo", "state", "since or challenge"]);
         for repo in self.0 {
             let (role, word) = if repo.proven.is_some() {
                 (Role::Good, "building on push")

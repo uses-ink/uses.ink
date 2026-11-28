@@ -21,7 +21,7 @@ use crate::grammar::args;
 use crate::output::error::{Error, ServeError};
 use crate::output::exit::Exit;
 use crate::output::report::Texts;
-use crate::output::term::{Answer, Doc, Line, Record, Render, Role, Table};
+use crate::output::term::{Answer, Doc, Empty, Line, Listed, Record, Render, Role};
 use crate::output::{Io, Strict};
 
 /// What `ink preview` does with the previews of branches (decision 0091), instead of serving the
@@ -60,18 +60,19 @@ struct RemovedOut<'a> {
     removed: &'a Unpreviewed,
 }
 
+/// What the list of previews says when no branch has one.
+const EMPTY: Empty = Empty {
+    said: "No previews.",
+    next: Some(("ink serve --data state", "A server that watches a git site builds one for each branch")),
+};
+
 /// The previews as a table.
 #[derive(Debug)]
 struct Listing<'a>(&'a [Previewed]);
 
 impl Render for Listing<'_> {
     fn render(&self, into: &mut Doc) {
-        if self.0.is_empty() {
-            into.push(Line::plain("no previews"));
-            return;
-        }
-        let quiet = |text: &str| Line::new().with(Role::Quiet, text);
-        let mut table = Table::default().indent(2).row(["label", "address", "files", "ends"].map(quiet).to_vec());
+        let mut table = Listed::new(EMPTY, &["label", "address", "files", "ends"]);
         for preview in self.0 {
             table = table.row(vec![
                 Line::new().with(Role::Id, preview.slug.clone()),

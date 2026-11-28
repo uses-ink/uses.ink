@@ -13,7 +13,7 @@ use crate::deploy::{Failure, Moment};
 use crate::output::Io;
 use crate::output::error::Error;
 use crate::output::exit::Exit;
-use crate::output::term::{Doc, Line, Record, Render, Role as Tone, Table};
+use crate::output::term::{Doc, Empty, Line, Listed, Record, Render, Role as Tone, Table};
 use crate::settings::{Preferences, Process};
 
 /// `ink org <create|list|member>`: a group with no behaviour of its own.
@@ -181,18 +181,19 @@ struct GoneOut<'a> {
     gone: &'a Unmembered,
 }
 
+/// What the list of organizations says when you are in none.
+const EMPTY: Empty = Empty {
+    said: "You are in no organizations.",
+    next: Some(("ink org create \"Garden club\"", "Make one; you are its owner")),
+};
+
 /// The organizations as a table.
 #[derive(Debug)]
 struct Listing<'a>(&'a [OrgView]);
 
 impl Render for Listing<'_> {
     fn render(&self, into: &mut Doc) {
-        if self.0.is_empty() {
-            into.push(Line::plain("no organizations"));
-            return;
-        }
-        let quiet = |text: &str| Line::new().with(Tone::Quiet, text);
-        let mut table = Table::default().indent(2).row(["id", "name", "role", "members"].map(quiet).to_vec());
+        let mut table = Listed::new(EMPTY, &["id", "name", "role", "members"]);
         for org in self.0 {
             table = table.row(vec![
                 Line::new().with(Tone::Id, org.id.to_string()),

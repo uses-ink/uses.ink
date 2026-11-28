@@ -5,7 +5,7 @@ use std::fmt;
 use jiff::Timestamp;
 
 use super::wire::{Enrolled, Row, Whoami};
-use crate::output::term::{Doc, Line, Record, Render, Role, Table};
+use crate::output::term::{Doc, Empty, Line, Listed, Record, Render, Role};
 
 /// A moment, UTC and ISO, as tables show it.
 #[derive(Clone, Copy, Debug)]
@@ -96,16 +96,19 @@ impl Render for Who<'_> {
     }
 }
 
+/// What the list of keys says when the account has none to show.
+const EMPTY: Empty = Empty {
+    said: "No keys to list.",
+    next: Some(("ink key add --label ci --out ci.key", "Make a key for another machine, such as a CI job")),
+};
+
 /// The keys of an account: one row each, with the day each was last used and nothing finer.
 #[derive(Debug)]
 pub(crate) struct Keys<'a>(pub(crate) &'a [Row]);
 
 impl Render for Keys<'_> {
     fn render(&self, into: &mut Doc) {
-        let quiet = |text: &str| Line::new().with(Role::Quiet, text);
-        let mut table = Table::default()
-            .indent(2)
-            .row(["fingerprint", "kind", "label", "rights", "ends", "last used", "state"].map(quiet).to_vec());
+        let mut table = Listed::new(EMPTY, &["fingerprint", "kind", "label", "rights", "ends", "last used", "state"]);
         for row in self.0 {
             let (role, state) = match &row.revoked {
                 Some(revoked) => (Role::Warn, format!("revoked ({})", revoked.why)),

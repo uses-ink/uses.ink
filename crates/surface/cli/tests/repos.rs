@@ -216,7 +216,7 @@ fn a_repository_is_claimed_proved_and_builds_the_site_on_a_signed_push() {
     let released = machine.ink(&["repo", "release", "--site", site]);
     assert_eq!(released.code, 0, "{}", released.said());
     assert_eq!(fixture.push(&fresh, "d-6", SHA).status(), "401");
-    assert!(machine.ink(&["repo", "list", "--site", site]).out.contains("no repositories claimed"));
+    assert!(machine.ink(&["repo", "list", "--site", site]).out.contains("No repositories claimed."));
     assert_ne!(machine.ink(&["repo", "release", "--site", site]).code, 0);
 }
 

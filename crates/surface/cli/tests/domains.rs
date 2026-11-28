@@ -142,7 +142,7 @@ fn a_site_proves_a_name_through_a_nameserver_and_the_name_serves_it() {
     let removed = machine.ink(&["domain", "remove", "www.example.org"]);
     assert_eq!(removed.code, 0, "{}", removed.said());
     assert_eq!(under(&server, "www.example.org").status(), "404", "a removed name serves nothing");
-    assert!(machine.ink(&["domain", "list"]).out.contains("no custom domains"));
+    assert!(machine.ink(&["domain", "list"]).out.contains("No custom domains."));
     let again = machine.ink(&["domain", "remove", "www.example.org"]);
     assert_ne!(again.code, 0, "{}", again.said());
 

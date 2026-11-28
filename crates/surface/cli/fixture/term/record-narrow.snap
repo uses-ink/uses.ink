@@ -1,7 +1,9 @@
 ---
-source: fixture/src/lib.rs
+source: crates/standalone/fixture/src/lib.rs
 ---
-  api          http://api.localhost/v1/sites (host api.localhost)
+  api          http://api.localhost/v1/sites
+               (host api.localhost)
   owner token  in .data/owner-token
-  limits       json body 65536 B, upload 268435456 B
+  limits       json body 65536 B, upload
+               268435456 B
 5kq3v9m2tj7r

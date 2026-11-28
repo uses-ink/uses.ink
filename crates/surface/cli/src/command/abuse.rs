@@ -15,7 +15,7 @@ use crate::deploy::{Failure, Moment};
 use crate::output::Io;
 use crate::output::error::Error;
 use crate::output::exit::Exit;
-use crate::output::term::{Doc, Line, Record, Render, Role, Table};
+use crate::output::term::{Doc, Empty, Line, Listed, Record, Render, Role};
 use crate::settings::{Preferences, Process};
 
 /// `ink abuse <list|suspend|reinstate>`: a group with no behaviour of its own.
@@ -103,19 +103,16 @@ struct Taking {
     report: Option<Id<ReportKind>>,
 }
 
+/// What the list of reports says when no stranger sent one.
+const EMPTY: Empty = Empty { said: "No reports.", next: None };
+
 /// The reports as a table.
 #[derive(Debug)]
 struct Listing<'a>(&'a [Row]);
 
 impl Render for Listing<'_> {
     fn render(&self, into: &mut Doc) {
-        if self.0.is_empty() {
-            into.push(Line::plain("no reports"));
-            return;
-        }
-        let quiet = |text: &str| Line::new().with(Role::Quiet, text);
-        let mut table =
-            Table::default().indent(2).row(["id", "handle", "kind", "state", "came", "contact"].map(quiet).to_vec());
+        let mut table = Listed::new(EMPTY, &["id", "handle", "kind", "state", "came", "contact"]);
         for report in self.0 {
             let state = if report.state == "open" { Role::Warn } else { Role::Good };
             table = table.row(vec![

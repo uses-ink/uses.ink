@@ -10,7 +10,7 @@ use crate::deploy::{Moment, Remote};
 use crate::output::Io;
 use crate::output::error::Error;
 use crate::output::exit::Exit;
-use crate::output::term::{Doc, Line, Record, Render, Role, Table};
+use crate::output::term::{Doc, Empty, Line, Listed, Record, Render, Role};
 
 /// `ink domain <add|list|prove|remove>`: a group with no behaviour of its own.
 #[derive(Debug, Args)]
@@ -92,18 +92,19 @@ impl Render for Standing<'_> {
     }
 }
 
+/// What the list of domains says when the site has none.
+const EMPTY: Empty = Empty {
+    said: "No custom domains.",
+    next: Some(("ink domain add www.example.org", "Ask to serve the site at a name of yours")),
+};
+
 /// The domains as a table.
 #[derive(Debug)]
 struct Listing<'a>(&'a [DomainView]);
 
 impl Render for Listing<'_> {
     fn render(&self, into: &mut Doc) {
-        if self.0.is_empty() {
-            into.push(Line::plain("no custom domains"));
-            return;
-        }
-        let quiet = |text: &str| Line::new().with(Role::Quiet, text);
-        let mut table = Table::default().indent(2).row(["name", "state", "since or record"].map(quiet).to_vec());
+        let mut table = Listed::new(EMPTY, &["name", "state", "since or record"]);
         for domain in self.0 {
             let (role, word) =
                 if domain.proven.is_some() { (Role::Good, "serving") } else { (Role::Warn, "waiting for proof") };
