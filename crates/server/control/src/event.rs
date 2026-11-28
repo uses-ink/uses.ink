@@ -54,6 +54,13 @@ pub enum Event {
         /// The handle.
         handle: Handle,
     },
+    /// The operator suspended the site.
+    SiteSuspended {
+        /// Why.
+        kind: crate::AbuseKind,
+    },
+    /// The operator lifted the suspension.
+    SiteReinstated,
     /// The site took another handle, and the old one is held.
     SiteRenamed {
         /// The handle it had.
@@ -75,6 +82,8 @@ impl Event {
             Self::BuildRequested { .. } => "build.requested",
             Self::HandleVerified { .. } => "handle.verified",
             Self::SiteRenamed { .. } => "site.renamed",
+            Self::SiteSuspended { .. } => "site.suspended",
+            Self::SiteReinstated => "site.reinstated",
         }
     }
 }

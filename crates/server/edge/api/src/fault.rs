@@ -79,6 +79,8 @@ pub enum Denied {
     },
     /// Enrolling is closed for a while.
     Limited(Closed),
+    /// The call is the operator's and the key is not.
+    Operator,
 }
 
 impl Denied {
@@ -97,6 +99,7 @@ impl Denied {
             Self::Restarting { .. } => "auth.server.restarting",
             Self::Right { .. } => "auth.right.missing",
             Self::Limited(_) => "auth.enrolment.limited",
+            Self::Operator => "auth.operator.required",
         }
     }
 
@@ -104,7 +107,7 @@ impl Denied {
     pub const fn status(&self) -> Status {
         match self {
             Self::Malformed | Self::Missing | Self::NotCanonical | Self::Digest => Status::BadRequest,
-            Self::Right { .. } => Status::Forbidden,
+            Self::Right { .. } | Self::Operator => Status::Forbidden,
             Self::Flooded { .. } | Self::Limited(_) => Status::TooMany,
             Self::Restarting { .. } => Status::Unavailable,
             _ => Status::Unauthorized,
@@ -166,6 +169,7 @@ impl fmt::Display for Denied {
                 write!(out, "this key has no `{right}` right on the {scope}", right = right.name())
             }
             Self::Limited(closed) => closed.fmt(out),
+            Self::Operator => out.write_str("only the operator's keys may make this call"),
         }
     }
 }
@@ -237,6 +241,8 @@ pub enum Fault<P: Ports> {
         /// The schemes the operator allows.
         allowed: Vec<Scheme>,
     },
+    /// This source has sent as many abuse reports as are taken for now.
+    Reports(Closed),
     /// A site whose content nothing builds.
     Unbuilt,
     /// A build that has written no log yet.
@@ -277,6 +283,9 @@ impl<P: Ports> fmt::Display for Fault<P> {
             Self::Scheme { scheme, allowed } => {
                 let allowed: Vec<&str> = allowed.iter().map(|scheme| scheme.name()).collect();
                 write!(out, "this server fetches git sources over {}, not {scheme}", allowed.join(" or "))
+            }
+            Self::Reports(closed) => {
+                write!(out, "no more reports are taken from this source for {} seconds", closed.seconds)
             }
             Self::Unbuilt => out.write_str("nothing builds this site: it takes uploads"),
             Self::NoLog => out.write_str("the build has written no log yet"),
@@ -357,6 +366,7 @@ impl<P: Ports> Fault<P> {
             Self::Body(_) => "body",
             Self::Large { .. } => "too-large",
             Self::Scheme { .. } => "scheme",
+            Self::Reports(_) => "abuse.report.limited",
             Self::Unbuilt => "unbuilt",
             Self::NoLog => "no-log",
             Self::Control(error) => error.refusal().map_or("control", Refusal::code),
@@ -377,6 +387,7 @@ impl<P: Ports> Fault<P> {
             Self::Denied(denied) => denied.status(),
             Self::Keys(refused) => Turned(refused).status(),
             Self::Declined => Status::Forbidden,
+            Self::Reports(_) => Status::TooMany,
             Self::Large { .. }
             | Self::Archive(
                 archive::Error::Files { .. } | archive::Error::File { .. } | archive::Error::Total { .. },
@@ -400,6 +411,7 @@ impl<P: Ports> Fault<P> {
             | Refusal::Exists { .. }
             | Refusal::Removing { .. }
             | Refusal::NotLive { .. }
+            | Refusal::Serving { .. }
             | Refusal::AlreadyLive { .. } => Status::Conflict,
             Refusal::NoSite { .. }
             | Refusal::NoDeploy { .. }
@@ -409,7 +421,7 @@ impl<P: Ports> Fault<P> {
             Refusal::NoAccount { .. } | Refusal::MissingBlob { .. } => Status::Unprocessable,
             Refusal::Over { spent: Spent::Stored, .. } => Status::TooLarge,
             Refusal::Over { spent: Spent::Builds, .. } => Status::TooMany,
-            Refusal::Over { .. } => Status::Forbidden,
+            Refusal::Suspended { .. } | Refusal::Over { .. } => Status::Forbidden,
             _ => Status::Internal,
         }
     }
@@ -427,6 +439,7 @@ impl<P: Ports + 'static> Fault<P> {
         };
         let fields = match self {
             Self::Denied(denied) => denied.fields(),
+            Self::Reports(closed) => BTreeMap::from([("seconds", closed.seconds.to_string())]),
             Self::Control(error) => error.refusal().map_or_else(Vec::new, Refusal::fields).into_iter().collect(),
             _ => BTreeMap::new(),
         };
@@ -436,7 +449,7 @@ impl<P: Ports + 'static> Fault<P> {
         reply.challenge = matches!(self, Self::Denied(_));
         reply.retry = match self {
             Self::Denied(Denied::Restarting { seconds }) => Some(Duration::from_secs(*seconds)),
-            Self::Denied(Denied::Limited(closed)) => Some(Duration::from_secs(closed.seconds)),
+            Self::Denied(Denied::Limited(closed)) | Self::Reports(closed) => Some(Duration::from_secs(closed.seconds)),
             _ => None,
         };
         if let Self::Route(RouteError::Method { allowed, .. }) = self {
@@ -461,6 +474,7 @@ impl logging::Kind for &Denied {
             Denied::Restarting { .. } => "restarting",
             Denied::Right { .. } => "right",
             Denied::Limited(_) => "limited",
+            Denied::Operator => "operator",
         }
     }
 }

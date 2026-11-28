@@ -34,6 +34,8 @@ fn every_refusal_is_worded_by_the_catalog() {
         Refusal::Over { spent: Spent::Stored, value: 2, limit: 1 },
         Refusal::Over { spent: Spent::Builds, value: 2, limit: 1 },
         Refusal::Over { spent: Spent::Sites, value: 2, limit: 1 },
+        Refusal::Suspended { site, kind: control::AbuseKind::Spam },
+        Refusal::Serving { site },
         Refusal::Unstorable,
     ];
     for refusal in refusals {

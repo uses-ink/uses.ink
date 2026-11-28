@@ -21,6 +21,8 @@ pub enum Status {
     NotModified,
     /// `400`: a request that is malformed or hostile.
     BadRequest,
+    /// `403`: the site is suspended and serves a notice.
+    Forbidden,
     /// `404`.
     NotFound,
     /// `405`.
@@ -50,6 +52,7 @@ impl Status {
             Self::Moved => 301,
             Self::NotModified => 304,
             Self::BadRequest => 400,
+            Self::Forbidden => 403,
             Self::NotFound => 404,
             Self::MethodNotAllowed => 405,
             Self::RequestTimeout => 408,

@@ -159,8 +159,8 @@ fn a_built_folder_becomes_a_deploy_and_can_be_exported_and_rolled_back() {
         (rolled.status, moved["live"]["paused"].clone(), moved["live"]["deploy"].clone()),
         (Status::Ok, json!(true), one["deploy"].clone())
     );
-    let (twice, problem) = fixture.call(Method::Post, &format!("/v1/sites/{id}/rollback"), back.as_bytes());
-    assert_eq!((twice.status, problem["problem"].as_str()), (Status::Conflict, Some("deploy.state.live")));
+    let (doubled, problem) = fixture.call(Method::Post, &format!("/v1/sites/{id}/rollback"), back.as_bytes());
+    assert_eq!((doubled.status, problem["problem"].as_str()), (Status::Conflict, Some("deploy.state.live")));
     let (_, held) = put(&[("/", "third")]);
     assert_eq!(held["published"], "held");
     let (resumed, moved) = fixture.call(Method::Post, &format!("/v1/sites/{id}/resume"), b"");
@@ -258,4 +258,78 @@ fn routes_say_what_they_take() {
         Limits::default().archive
     );
     assert_eq!(fixture.api.limits().budget(Method::Post, "/v1/sites"), Limits::default().body);
+}
+
+/// A report of `handle` as a stranger at `source` sends it.
+fn reported(fixture: &Fixture, source: &str, handle: &str) -> (edge_api::Reply, Value) {
+    let body = json!({ "handle": handle, "kind": "phishing", "detail": "asks for a bank login" });
+    let mut request = Rig::unsigned((Method::Post, "/v1/abuse"), None, body.to_string().as_bytes());
+    request.source = Some(source.parse().unwrap());
+    let reply = fixture.answer(&request);
+    let value = serde_json::from_slice(&reply.body).unwrap_or(Value::Null);
+    (reply, value)
+}
+
+#[test]
+fn abuse_reports_are_taken_unsigned_and_limited_per_source() {
+    let fixture = Fixture::new(Limits::default());
+    for _ in 0..5 {
+        let (reply, value) = reported(&fixture, "203.0.113.7", "theirs");
+        assert_eq!(reply.status, Status::Created, "{value}");
+        assert_eq!(value["id"].as_str().map(str::len), Some(32));
+    }
+    let (limited, problem) = reported(&fixture, "203.0.113.7", "theirs");
+    assert_eq!((limited.status, problem["problem"].as_str()), (Status::TooMany, Some("abuse.report.limited")));
+    assert!(limited.retry.is_some() && problem["fields"]["seconds"].is_string(), "{problem}");
+    // another source has its own count, and the same /64 shares one
+    assert_eq!(reported(&fixture, "203.0.113.8", "theirs").0.status, Status::Created);
+    // a report that does not read is refused whole, and a refused one is still counted
+    let long = json!({ "handle": "theirs", "kind": "spam", "detail": "x".repeat(3000) }).to_string();
+    let mut request = Rig::unsigned((Method::Post, "/v1/abuse"), None, long.as_bytes());
+    request.source = Some("198.51.100.1".parse().unwrap());
+    assert_eq!(fixture.answer(&request).status, Status::BadRequest);
+}
+
+#[test]
+fn only_the_operator_reads_reports_and_suspends() {
+    let fixture = Fixture::new(Limits::default());
+    let stranger: Id<AccountKind> = Id::from_bytes([3; 16]);
+    pollster::block_on(fixture.api_control().add_account(NewAccount { id: stranger, at: start() })).unwrap();
+    let theirs = pollster::block_on(fixture.api_control().add_site(control::NewSite {
+        id: Id::from_bytes([4; 16]),
+        account: stranger,
+        handle: "theirs".parse().unwrap(),
+        source: build::Source::Upload,
+        at: start(),
+    }))
+    .unwrap();
+    let (_, filed) = reported(&fixture, "203.0.113.7", "theirs");
+    let device = support::signer(5);
+    fixture.enrolled(&device, &json!({}));
+    for (method, path) in [
+        (Method::Get, "/v1/abuse".to_owned()),
+        (Method::Post, format!("/v1/sites/{}/suspend", theirs.id)),
+        (Method::Post, format!("/v1/sites/{}/reinstate", theirs.id)),
+    ] {
+        let (denied, problem) = fixture.call_as(&device, method, &path, br#"{"kind":"spam"}"#);
+        assert_eq!(
+            (denied.status, problem["problem"].as_str()),
+            (Status::Forbidden, Some("auth.operator.required")),
+            "{path}"
+        );
+    }
+    let (listed, value) = fixture.call(Method::Get, "/v1/abuse", b"");
+    assert_eq!((listed.status, value["items"][0]["state"].as_str()), (Status::Ok, Some("open")));
+    let body = json!({ "kind": "phishing", "report": filed["id"] }).to_string();
+    let path = format!("/v1/sites/{}/suspend", theirs.id);
+    let (done, value) = fixture.call(Method::Post, &path, body.as_bytes());
+    assert_eq!((done.status, value["kind"].as_str()), (Status::Ok, Some("phishing")));
+    let (_, value) = fixture.call(Method::Get, "/v1/abuse", b"");
+    assert_eq!(value["items"][0]["state"], "actioned");
+    let (repeat, problem) = fixture.call(Method::Post, &path, body.as_bytes());
+    assert_eq!((repeat.status, problem["problem"].as_str()), (Status::Forbidden, Some("site.state.suspended")));
+    let (restored, _) = fixture.call(Method::Post, &format!("/v1/sites/{}/reinstate", theirs.id), b"");
+    assert_eq!(restored.status, Status::Ok);
+    let (unlifted, problem) = fixture.call(Method::Post, &format!("/v1/sites/{}/reinstate", theirs.id), b"");
+    assert_eq!((unlifted.status, problem["problem"].as_str()), (Status::Conflict, Some("site.state.serving")));
 }

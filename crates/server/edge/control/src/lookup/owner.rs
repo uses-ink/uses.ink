@@ -7,7 +7,7 @@ use std::sync::Arc;
 use blob::Tenant;
 use clock::Clock;
 use control::{Control, Handle, Id, Ports, SiteKind};
-use edge::{Deploy, Hostname, Resolved};
+use edge::{Deploy, Hostname, Notice, Resolved};
 use edge_folder::Placed;
 use jiff::{SignedDuration, Timestamp};
 use logging::Field as _;
@@ -15,7 +15,7 @@ use model::{ContentPath, DeployId};
 use tokio::sync::mpsc;
 
 use crate::lookup::cache::Recent;
-use crate::lookup::caller::{Answer, Call};
+use crate::lookup::caller::{Answer, Ask, Call, Noticed};
 use crate::{Chain, Failure, Fronts, Locate, Settings};
 
 /// The deploy a handle serves.
@@ -66,14 +66,25 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
     pub async fn run(mut self) {
         logging::info!(name: logging::event::SITES_SERVING, ttl_us = logging::Took(self.ttl).field());
         let mut asked = 0_u64;
-        while let Some(Call { hostname, reply }) = self.calls.recv().await {
+        while let Some(Call { hostname, ask }) = self.calls.recv().await {
             asked += 1;
-            let answer = self.answer(&hostname).await;
-            if let Err(failure) = &answer {
-                logging::warn!(name: logging::event::SITES_FAILED, error = logging::Failure(failure).field());
+            match ask {
+                Ask::Serve(reply) => {
+                    let answer = self.answer(&hostname).await;
+                    if let Err(failure) = &answer {
+                        logging::warn!(name: logging::event::SITES_FAILED, error = logging::Failure(failure).field());
+                    }
+                    // a caller that went away no longer wants its answer
+                    reply.send(answer).ok();
+                }
+                Ask::Suspended(reply) => {
+                    let answer = self.notice(&hostname).await;
+                    if let Err(failure) = &answer {
+                        logging::warn!(name: logging::event::SITES_FAILED, error = logging::Failure(failure).field());
+                    }
+                    reply.send(answer).ok();
+                }
             }
-            // a caller that went away no longer wants its answer
-            reply.send(answer).ok();
         }
         logging::info!(name: logging::event::SITES_STOPPED, asked = logging::Count(asked).field());
     }
@@ -86,6 +97,17 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
         let Some(pointer) = self.pointer(&handle).await? else { return Ok(None) };
         let loaded = self.loaded(&pointer).await?;
         Ok(Some(Resolved { deploy: loaded.deploy, scope: loaded.placed }))
+    }
+
+    /// The notice of `hostname`'s site, when the site is suspended. Never remembered: a
+    /// suspension is asked of the control plane each time, and only for a host that serves
+    /// nothing.
+    async fn notice(&self, hostname: &Hostname) -> Noticed {
+        let Some(handle) = hostname.name().and_then(|name| self.control.origin().handle(name)) else {
+            return Ok(None);
+        };
+        let suspended = self.control.suspended(&handle).await.map_err(|error| Failure::Lookup(Chain::of(&error)))?;
+        Ok(suspended.map(|suspension| Notice { reason: suspension.kind.name() }))
     }
 
     /// Whether a pointer made at `at` is still believed at `now`.

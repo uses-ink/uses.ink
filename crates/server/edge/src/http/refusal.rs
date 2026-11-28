@@ -71,6 +71,13 @@ pub enum Refusal {
         /// The name.
         hostname: Hostname,
     },
+    /// The site at this name is suspended. The answer is this notice and nothing of the site.
+    Suspended {
+        /// The name.
+        hostname: Hostname,
+        /// Why, as the operator named it.
+        reason: &'static str,
+    },
     /// More requests in flight than the limit.
     Busy {
         /// The limit.
@@ -102,6 +109,7 @@ impl Refusal {
             | Self::Condition(_) => Status::BadRequest,
             Self::Unsatisfiable { .. } => Status::RangeNotSatisfiable,
             Self::Unserved { .. } => Status::NotFound,
+            Self::Suspended { .. } => Status::Forbidden,
             Self::Busy { .. } => Status::Unavailable,
             Self::Slow { stage: Stage::Head, .. } => Status::RequestTimeout,
             Self::Slow { .. } => Status::GatewayTimeout,
@@ -121,6 +129,9 @@ impl fmt::Display for Refusal {
             Self::Condition(_) => write!(out, "a conditional header is refused"),
             Self::Unsatisfiable { length } => write!(out, "the range starts past the end of a file of {length} bytes"),
             Self::Unserved { hostname } => write!(out, "no site is served at {hostname}"),
+            Self::Suspended { hostname, reason } => {
+                write!(out, "{hostname} is suspended for {reason}; if it is yours, write to the operator")
+            }
             Self::Busy { limit } => write!(out, "more than {limit} requests are in flight"),
             Self::Slow { stage, limit } => write!(out, "{stage} took more than {limit:?}"),
         }

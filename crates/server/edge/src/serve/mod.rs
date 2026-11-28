@@ -12,7 +12,7 @@ use crate::http::request::{Asked, Request, Scheme};
 use crate::http::response::{Body, Name, Response, Status};
 use crate::serve::error::Error;
 use crate::serve::hostname::Hostname;
-use crate::serve::port::{Blobs, Resolved, Sites};
+use crate::serve::port::{Blobs, Notice, Resolved, Sites};
 
 pub(crate) mod error;
 pub(crate) mod hostname;
@@ -100,10 +100,22 @@ impl<S: Sites, B: Blobs<Scope = S::Scope>> Edge<S, B> {
         let resolved = match self.sites.resolve(&asked.hostname).await {
             Ok(Some(resolved)) => resolved,
             Ok(None) if route.is_some() && route == self.probe => return self.probed(&caller),
-            Ok(None) => return self.refuse(Refusal::Unserved { hostname: asked.hostname.clone() }, &caller),
+            Ok(None) => return self.unserved(asked, &caller).await,
             Err(source) => return self.fail(Fault::Sites(source), &caller),
         };
         self.found(&Call { asked, caller, resolved: &resolved, route }).await
+    }
+
+    /// The answer for a host nothing is served at: the suspension notice when its site is
+    /// suspended, else the plain `404`.
+    async fn unserved(&self, asked: &Asked, caller: &Caller) -> Reply<S, B> {
+        match self.sites.suspended(&asked.hostname).await {
+            Ok(Some(Notice { reason })) => {
+                self.refuse(Refusal::Suspended { hostname: asked.hostname.clone(), reason }, caller)
+            }
+            Ok(None) => self.refuse(Refusal::Unserved { hostname: asked.hostname.clone() }, caller),
+            Err(source) => self.fail(Fault::Sites(source), caller),
+        }
     }
 
     /// The `200 ok` of a probe.

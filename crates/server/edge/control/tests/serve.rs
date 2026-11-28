@@ -223,3 +223,26 @@ fn a_folder_is_asked_when_the_control_plane_has_no_site() {
         assert!(both.resolve(&host("other.example")).await.unwrap().is_none());
     });
 }
+
+#[test]
+fn a_suspended_site_answers_the_notice_and_none_of_its_bytes() {
+    let mut world = World::new(Settings { ttl: Duration::ZERO, ..Settings::default() });
+    let site = world.site("tea");
+    world.publish(site, "<h1>tea</h1>", 1);
+    let suspension = control::Suspension {
+        site,
+        kind: control::AbuseKind::Malware,
+        by: "operator".to_owned(),
+        report: None,
+        at: start(),
+    };
+    pollster::block_on(world.control.suspend(suspension)).unwrap();
+    world.run(|fronts| async move {
+        let edge = Edge::new(fronts.clone(), Files, Limits::default()).unwrap();
+        let mut asked = Request::new("GET", "/tea", Scheme::Plain);
+        asked.extend([(&b"host"[..], &b"tea.uses.ink"[..])]);
+        let answer = edge.respond(&asked).await;
+        assert_eq!(answer.response.status, Status::Forbidden);
+        assert!(matches!(answer.response.body, edge::Body::Text(ref text) if text.contains("suspended for malware") && !text.contains("tea<")));
+    });
+}

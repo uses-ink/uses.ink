@@ -32,6 +32,9 @@ pub enum Factor {}
 /// An enrolment of a key.
 #[derive(Clone, Copy, Debug)]
 pub enum Enrolment {}
+/// A report of abuse.
+#[derive(Clone, Copy, Debug)]
+pub enum Report {}
 
 impl Kind for Account {
     const NOUN: &'static str = "account";
@@ -44,6 +47,9 @@ impl Kind for Session {
 }
 impl Kind for Enrolment {
     const NOUN: &'static str = "enrolment";
+}
+impl Kind for Report {
+    const NOUN: &'static str = "report";
 }
 impl Kind for Factor {
     const NOUN: &'static str = "factor";

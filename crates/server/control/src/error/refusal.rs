@@ -35,6 +35,18 @@ pub enum Refusal {
         /// When the hold ends. `None` is for good.
         until: Option<Timestamp>,
     },
+    /// The site was suspended by the operator and takes no changes (decision 0089).
+    Suspended {
+        /// The site.
+        site: Id<Site>,
+        /// Why.
+        kind: crate::AbuseKind,
+    },
+    /// The site is not suspended.
+    Serving {
+        /// The site.
+        site: Id<Site>,
+    },
     /// A row with this id exists already.
     Exists {
         /// The id, as text.
@@ -134,6 +146,8 @@ impl fmt::Display for Refusal {
             Self::Held { handle, until: None, .. } => {
                 write!(out, "{handle} belonged to a verified owner and is never given to anyone else")
             }
+            Self::Suspended { site, kind } => write!(out, "the site {site} is suspended for {kind}"),
+            Self::Serving { site } => write!(out, "the site {site} is not suspended"),
             Self::Exists { id } => write!(out, "a row with the id {id} exists already"),
             Self::NoAccount { account } => write!(out, "there is no account {account}"),
             Self::NoSite { site } => write!(out, "there is no site {site}"),
@@ -150,15 +164,7 @@ impl fmt::Display for Refusal {
             Self::MissingLog { build, blob } => {
                 write!(out, "the log of build {build} is {blob}, which the store does not hold")
             }
-            Self::Over { spent: Spent::Stored, value, limit } => {
-                write!(out, "the account would store {} over its limit of {}", Bytes(*value), Bytes(*limit))
-            }
-            Self::Over { spent: Spent::Builds, value, limit } => {
-                write!(out, "the account started {value} builds in a day, which is its limit of {limit}")
-            }
-            Self::Over { spent: Spent::Sites, value, limit } => {
-                write!(out, "the account has {value} sites, which is its limit of {limit}")
-            }
+            Self::Over { spent, value, limit } => Self::over(out, *spent, (*value, *limit)),
             Self::Unstorable => out.write_str("a folder path that is not text cannot be stored"),
             Self::Tenant(_) => out.write_str("the site's id is not a valid tenant"),
         }
@@ -166,6 +172,18 @@ impl fmt::Display for Refusal {
 }
 
 impl Refusal {
+    /// Words a refusal for going over a budget.
+    fn over(out: &mut fmt::Formatter<'_>, spent: Spent, reached: (u64, u64)) -> fmt::Result {
+        let (value, limit) = reached;
+        match spent {
+            Spent::Stored => {
+                write!(out, "the account would store {} over its limit of {}", Bytes(value), Bytes(limit))
+            }
+            Spent::Builds => write!(out, "the account started {value} builds in a day, which is its limit of {limit}"),
+            Spent::Sites => write!(out, "the account has {value} sites, which is its limit of {limit}"),
+        }
+    }
+
     /// The code of the catalog (`crates/core/diag/catalog.toml`) that words this refusal.
     pub const fn code(&self) -> &'static str {
         match self {
@@ -174,6 +192,8 @@ impl Refusal {
             Self::Taken { .. } => "handle.name.taken",
             Self::Held { until: None, .. } => "handle.name.kept",
             Self::Held { .. } => "handle.name.held",
+            Self::Suspended { .. } => "site.state.suspended",
+            Self::Serving { .. } => "site.state.serving",
             Self::Exists { .. } => "row.id.exists",
             Self::NoAccount { .. } => "account.id.unknown",
             Self::NoSite { .. } => "site.id.unknown",
@@ -203,9 +223,10 @@ impl Refusal {
                 fields.extend(until.map(|until| ("until", until.to_string())));
                 fields
             }
+            Self::Suspended { site, kind } => vec![("id", site.to_string()), ("reason", kind.to_string())],
             Self::Exists { id } => vec![("id", id.clone())],
             Self::NoAccount { account } => vec![("id", account.to_string())],
-            Self::NoSite { site } | Self::Removing { site } | Self::NotLive { site } => {
+            Self::NoSite { site } | Self::Removing { site } | Self::NotLive { site } | Self::Serving { site } => {
                 vec![("id", site.to_string())]
             }
             Self::NoDeploy { site, deploy } | Self::AlreadyLive { site, deploy } => {

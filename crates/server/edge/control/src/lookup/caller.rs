@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use edge::{Hostname, Resolved, Sites};
+use edge::{Hostname, Notice, Resolved, Sites};
 use edge_folder::Placed;
 use tokio::sync::{mpsc, oneshot};
 
@@ -11,11 +11,23 @@ use crate::Failure;
 /// What a lookup answers.
 pub(crate) type Answer = Result<Option<Resolved<Arc<Placed>>>, Failure>;
 
+/// What a lookup of a suspension answers.
+pub(crate) type Noticed = Result<Option<Notice>, Failure>;
+
+/// What a lookup asks, and where its answer goes.
+#[derive(Debug)]
+pub(crate) enum Ask {
+    /// The deploy the host serves.
+    Serve(oneshot::Sender<Answer>),
+    /// The suspension of the host's site.
+    Suspended(oneshot::Sender<Noticed>),
+}
+
 /// A lookup on its way to the task that holds the control plane.
 #[derive(Debug)]
 pub(crate) struct Call {
     pub(crate) hostname: Hostname,
-    pub(crate) reply: oneshot::Sender<Answer>,
+    pub(crate) ask: Ask,
 }
 
 /// The `Send` half: [`Sites`] over the channel to a [`crate::Back`]. Clones share the channel.
@@ -36,7 +48,15 @@ impl Sites for Fronts {
 
     async fn resolve(&self, hostname: &Hostname) -> Answer {
         let (reply, answered) = oneshot::channel();
-        self.calls.send(Call { hostname: hostname.clone(), reply }).await.map_err(|_| Failure::Gone)?;
+        let call = Call { hostname: hostname.clone(), ask: Ask::Serve(reply) };
+        self.calls.send(call).await.map_err(|_| Failure::Gone)?;
+        answered.await.map_err(|_| Failure::Gone)?
+    }
+
+    async fn suspended(&self, hostname: &Hostname) -> Noticed {
+        let (reply, answered) = oneshot::channel();
+        let call = Call { hostname: hostname.clone(), ask: Ask::Suspended(reply) };
+        self.calls.send(call).await.map_err(|_| Failure::Gone)?;
         answered.await.map_err(|_| Failure::Gone)?
     }
 }

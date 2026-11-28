@@ -719,6 +719,35 @@ pub enum Problem {
         /// The most that is allowed.
         limit: u64,
     },
+    /// `site.state.suspended`: the site {id} is suspended for {reason}
+    #[serde(rename = "site.state.suspended")]
+    SiteStateSuspended {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `site.state.serving`: the site {id} is not suspended
+    #[serde(rename = "site.state.serving")]
+    SiteStateServing {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `abuse.report.limited`: this source has sent as many abuse reports as are taken for now; try again in {seconds} seconds
+    #[serde(rename = "abuse.report.limited")]
+    AbuseReportLimited {
+        /// How many seconds.
+        seconds: u64,
+    },
+    /// `abuse.site.suspended`: this site is suspended for {reason}
+    #[serde(rename = "abuse.site.suspended")]
+    AbuseSiteSuspended {
+        /// Why, as the part that refused it says.
+        reason: String,
+    },
+    /// `auth.operator.required`: only the operator's keys may make this call
+    #[serde(rename = "auth.operator.required")]
+    AuthOperatorRequired,
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -960,6 +989,11 @@ impl Problem {
         "budget.stored.over",
         "budget.builds.over",
         "budget.sites.over",
+        "site.state.suspended",
+        "site.state.serving",
+        "abuse.report.limited",
+        "abuse.site.suspended",
+        "auth.operator.required",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -1102,6 +1136,11 @@ impl Problem {
             Self::BudgetStoredOver { .. } => "budget.stored.over",
             Self::BudgetBuildsOver { .. } => "budget.builds.over",
             Self::BudgetSitesOver { .. } => "budget.sites.over",
+            Self::SiteStateSuspended { .. } => "site.state.suspended",
+            Self::SiteStateServing { .. } => "site.state.serving",
+            Self::AbuseReportLimited { .. } => "abuse.report.limited",
+            Self::AbuseSiteSuspended { .. } => "abuse.site.suspended",
+            Self::AuthOperatorRequired => "auth.operator.required",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -1245,6 +1284,11 @@ impl Problem {
             Self::BudgetStoredOver { .. } => Severity::Error,
             Self::BudgetBuildsOver { .. } => Severity::Error,
             Self::BudgetSitesOver { .. } => Severity::Error,
+            Self::SiteStateSuspended { .. } => Severity::Error,
+            Self::SiteStateServing { .. } => Severity::Error,
+            Self::AbuseReportLimited { .. } => Severity::Error,
+            Self::AbuseSiteSuspended { .. } => Severity::Error,
+            Self::AuthOperatorRequired => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -1388,6 +1432,11 @@ impl Problem {
             Self::BudgetStoredOver { .. } => Fault::Author,
             Self::BudgetBuildsOver { .. } => Fault::Author,
             Self::BudgetSitesOver { .. } => Fault::Author,
+            Self::SiteStateSuspended { .. } => Fault::Author,
+            Self::SiteStateServing { .. } => Fault::Author,
+            Self::AbuseReportLimited { .. } => Fault::Source,
+            Self::AbuseSiteSuspended { .. } => Fault::Source,
+            Self::AuthOperatorRequired => Fault::Author,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -2056,6 +2105,17 @@ impl From<&Problem> for Coded {
             Problem::BudgetSitesOver { count, limit, .. } => {
                 Coded::new("budget.sites.over", vec![Field::from(*count), Field::from(*limit)])
             }
+            Problem::SiteStateSuspended { id, reason, .. } => {
+                Coded::new("site.state.suspended", vec![Field::from(id.clone()), Field::from(reason.clone())])
+            }
+            Problem::SiteStateServing { id, .. } => Coded::new("site.state.serving", vec![Field::from(id.clone())]),
+            Problem::AbuseReportLimited { seconds, .. } => {
+                Coded::new("abuse.report.limited", vec![Field::from(*seconds)])
+            }
+            Problem::AbuseSiteSuspended { reason, .. } => {
+                Coded::new("abuse.site.suspended", vec![Field::from(reason.clone())])
+            }
+            Problem::AuthOperatorRequired => Coded::new("auth.operator.required", vec![]),
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -2240,6 +2300,11 @@ impl TryFrom<Coded> for Problem {
             "budget.stored.over" => Self::BudgetStoredOver { size: fields.next()?, limit: fields.next()? },
             "budget.builds.over" => Self::BudgetBuildsOver { count: fields.next()?, limit: fields.next()? },
             "budget.sites.over" => Self::BudgetSitesOver { count: fields.next()?, limit: fields.next()? },
+            "site.state.suspended" => Self::SiteStateSuspended { id: fields.next()?, reason: fields.next()? },
+            "site.state.serving" => Self::SiteStateServing { id: fields.next()? },
+            "abuse.report.limited" => Self::AbuseReportLimited { seconds: fields.next()? },
+            "abuse.site.suspended" => Self::AbuseSiteSuspended { reason: fields.next()? },
+            "auth.operator.required" => Self::AuthOperatorRequired,
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },

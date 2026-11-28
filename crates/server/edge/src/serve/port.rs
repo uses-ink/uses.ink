@@ -90,6 +90,21 @@ pub trait Sites: Send + Sync {
         &self,
         hostname: &Hostname,
     ) -> impl Future<Output = Result<Option<Resolved<Self::Scope>>, Self::Error>> + Send;
+
+    /// The notice to answer with when `hostname` serves nothing because its site is suspended.
+    /// Asked only after [`Sites::resolve`] found nothing. A source with no suspensions says
+    /// `None`, which is what this does.
+    fn suspended(&self, hostname: &Hostname) -> impl Future<Output = Result<Option<Notice>, Self::Error>> + Send {
+        let _ = hostname;
+        async { Ok(None) }
+    }
+}
+
+/// Why a host that serves nothing is not simply unknown: a site that is there and is suspended.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Notice {
+    /// Why the site is suspended, as the operator named it.
+    pub reason: &'static str,
 }
 
 /// Why a blob could not be opened.

@@ -59,6 +59,14 @@ pub enum Call {
     Bundle(Id<SiteKind>),
     /// `PUT /v1/sites/{site}/deploy`: a built folder as a tar archive, made a deploy.
     Intake(Id<SiteKind>),
+    /// `POST /v1/abuse`: anyone reports a site. The other call that is not signed.
+    Report,
+    /// `GET /v1/abuse`: the operator reads the reports.
+    Reports,
+    /// `POST /v1/sites/{site}/suspend`: the operator takes a site down.
+    Suspend(Id<SiteKind>),
+    /// `POST /v1/sites/{site}/reinstate`: the operator lifts a suspension.
+    Reinstate(Id<SiteKind>),
     /// `POST /v1/enrol`: a key asks to be enrolled. The one call that is not signed.
     Enrol,
     /// `GET /v1/enrol/{id}`: the outcome of an ask, signed by the key that asked.
@@ -153,6 +161,9 @@ impl Call {
         match (parts.first(), parts.get(1)) {
             (Some(&"v1"), Some(&"sites")) => {}
             (Some(&"v1"), Some(&"whoami")) if rest.is_empty() => return by(&[(Method::Get, Self::Whoami)]),
+            (Some(&"v1"), Some(&"abuse")) if rest.is_empty() => {
+                return by(&[(Method::Post, Self::Report), (Method::Get, Self::Reports)]);
+            }
             (Some(&"v1"), Some(&noun @ ("enrol" | "keys"))) => {
                 return Self::credentials(noun, rest, &by).ok_or_else(no_route)?;
             }
@@ -195,6 +206,8 @@ impl Call {
             },
             ["rollback"] => by(&[(Method::Post, Self::Rollback(site))]),
             ["resume"] => by(&[(Method::Post, Self::Resume(site))]),
+            ["suspend"] => by(&[(Method::Post, Self::Suspend(site))]),
+            ["reinstate"] => by(&[(Method::Post, Self::Reinstate(site))]),
             ["builds"] => by(&[(Method::Get, Self::Builds(site)), (Method::Post, Self::Build(site))]),
             ["builds", build, "log"] => match build.parse::<BuildId>() {
                 Ok(build) => by(&[(Method::Get, Self::Log { site, build })]),
@@ -231,8 +244,19 @@ impl Call {
             | Self::Source(site)
             | Self::Parts(site) => (Right::Deploy, Some(*site)),
             Self::Keys | Self::Revoke(_) => (Right::Keys, None),
-            Self::Enrol | Self::Polled(_) | Self::Whoami => return None,
+            Self::Enrol
+            | Self::Polled(_)
+            | Self::Whoami
+            | Self::Report
+            | Self::Reports
+            | Self::Suspend(_)
+            | Self::Reinstate(_) => return None,
         })
+    }
+
+    /// Whether only the operator's keys may make the call: it is about every account's sites.
+    pub const fn operator(&self) -> bool {
+        matches!(self, Self::Reports | Self::Suspend(_) | Self::Reinstate(_))
     }
 
     fn site(text: &str) -> Result<Id<SiteKind>, RouteError> {
@@ -264,6 +288,10 @@ impl logging::Kind for &Call {
             Call::Source(_) => "source",
             Call::Parts(_) => "parts",
             Call::Bundle(_) => "bundle",
+            Call::Report => "report",
+            Call::Reports => "reports",
+            Call::Suspend(_) => "suspend",
+            Call::Reinstate(_) => "reinstate",
             Call::Enrol => "enrol",
             Call::Polled(_) => "polled",
             Call::Whoami => "whoami",

@@ -51,6 +51,15 @@ impl Sites for Hosts {
             Ok(found.map(|deploy| Resolved { deploy, scope: () }))
         }
     }
+
+    /// Every host under `suspended.` is a suspended site.
+    fn suspended(
+        &self,
+        hostname: &edge::Hostname,
+    ) -> impl Future<Output = Result<Option<edge::Notice>, Broken>> + Send {
+        let shown = hostname.as_str().starts_with("suspended.");
+        async move { Ok(shown.then_some(edge::Notice { reason: "phishing" })) }
+    }
 }
 
 /// Blobs held in memory.

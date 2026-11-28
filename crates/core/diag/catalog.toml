@@ -839,6 +839,41 @@ fields = { count = "count", limit = "count" }
 message = "the account has {count} sites, which is its limit of {limit}"
 fix = "remove a site you do not use, or ask the operator for a higher limit"
 
+[diagnostic."site.state.suspended"]
+severity = "error"
+fault = "author"
+fields = { id = "text", reason = "text" }
+message = "the site {id} is suspended for {reason}"
+fix = "write to the operator to ask for a review; a suspended site serves a notice, takes no deploys and starts no builds"
+
+[diagnostic."site.state.serving"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "the site {id} is not suspended"
+fix = "list the suspended sites in the reports and check the id"
+
+[diagnostic."abuse.report.limited"]
+severity = "error"
+fault = "source"
+fields = { seconds = "count" }
+message = "this source has sent as many abuse reports as are taken for now; try again in {seconds} seconds"
+fix = "wait, then send the report again; one report with the whole detail is better than several"
+
+[diagnostic."abuse.site.suspended"]
+severity = "error"
+fault = "source"
+fields = { reason = "text" }
+message = "this site is suspended for {reason}"
+fix = "if you own the site, write to the operator to ask for a review"
+
+[diagnostic."auth.operator.required"]
+severity = "error"
+fault = "author"
+fields = {}
+message = "only the operator's keys may make this call"
+fix = "sign the request with a key from the operator-keys file of the server"
+
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"

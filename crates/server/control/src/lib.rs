@@ -15,6 +15,7 @@
 //! single-statement compare-and-set are used (decision 0030): there is no interactive
 //! transaction, so what must hold is in a statement's `WHERE`.
 
+mod abuse;
 mod account;
 mod brand;
 mod case;
@@ -43,6 +44,9 @@ pub use control_rows::table;
 pub(crate) use control_rows::{fields, id, typed, unreadable};
 pub use control_signin as signin;
 
+pub use abuse::{
+    Abuse as AbuseKind, Contact, Detail, NewReport, Report, ReportError, ReportState, Reported, Suspension,
+};
 pub use account::{Account, New as NewAccount};
 pub use brand::{BrandError, Brands};
 pub use case::export::{Exported, Sink, Summary};
@@ -57,7 +61,7 @@ pub use handle::{Handle, HandleError, Reservation};
 pub use hold::{Held, Hold, Why as HoldReason};
 pub use id::{
     Account as AccountKind, Credential as CredentialKind, Enrolment as EnrolmentKind, Factor as FactorKind, Id,
-    IdError, Kind, Session as SessionKind, Site as SiteKind,
+    IdError, Kind, Report as ReportKind, Session as SessionKind, Site as SiteKind,
 };
 pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked};
 pub use limits::{Amount, Budget, Limits, Spent};

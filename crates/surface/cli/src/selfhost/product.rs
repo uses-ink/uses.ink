@@ -185,6 +185,7 @@ impl Product {
         let admin = Self::admin(&entry, account, &base)?;
         let (api, enrol) = Self::api(control, &keys, (account, &operators), (db_for_keys, limits));
         let api = api.with_schemes(settings.hosting.schemes());
+        let api = flags.abuse_limit.into_iter().fold(api, edge_api::Api::with_reports);
         let (fronts, back) = Self::lookups(&ports, &origin, data, settings)?;
         let config =
             Config { jar: flags.jar(secure)?, base: base.clone(), rates, outbox, reveals: flags.login_get_signs_in };

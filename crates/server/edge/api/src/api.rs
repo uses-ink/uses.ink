@@ -13,16 +13,17 @@ use sig::{KeyId, KeyType, Signed};
 
 use crate::Route;
 use crate::auth::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
-use crate::body::{self, AddSite, Enrolling, Rollback, Unreadable};
-use crate::enrol::Enrol;
+use crate::auth::signin::{Quota, Rate};
+use crate::body::{self, AddSite, Enrolling, Reporting, Rollback, Suspending, Unreadable};
+use crate::enrol::{Closed, Enrol};
 use crate::fault::{Denied, Fault};
 use crate::limits::Limits;
 use crate::port::{Port, Unnamed};
 use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::route::Call;
 use crate::view::{
-    BuildView, DeployView, Enrolled, GrantView, KeyView, Listed, LiveView, Moved, Polled, Removed, Requested as Asked,
-    SiteView, Status as Overview, Whoami,
+    BuildView, DeployView, Enrolled, GrantView, KeyView, Listed, LiveView, Moved, Polled, Removed, ReportView,
+    Reported, Requested as Asked, SiteView, Status as Overview, Suspended, Whoami,
 };
 
 /// Who a request is, once its signature checked: someone, or a key waiting to be enrolled.
@@ -44,6 +45,7 @@ pub struct Api<P: Ports, C, K, D> {
     draw: D,
     pub(crate) limits: Limits,
     schemes: Vec<Scheme>,
+    reports: Quota,
 }
 
 impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D>
@@ -53,7 +55,30 @@ where
     /// The API of `control`, for the callers `credentials` knows, within `limits`.
     pub fn new(control: Control<P>, callers: (C, Enrol<P::Db>), clocks: (K, D), limits: Limits) -> Self {
         let (credentials, enrol) = callers;
-        Self { control, credentials, enrol, clock: clocks.0, draw: clocks.1, limits, schemes: vec![Scheme::Https] }
+        Self {
+            control,
+            credentials,
+            enrol,
+            clock: clocks.0,
+            draw: clocks.1,
+            limits,
+            schemes: vec![Scheme::Https],
+            reports: Quota::new(Self::REPORTS, Self::TRACKED),
+        }
+    }
+
+    /// What abuse reports are held to by default: five an hour from one source (decision 0089).
+    /// A report costs a row and names a stranger's site, so the limit bounds rows and noise.
+    pub const REPORTS: Rate = Rate { count: 5, window: control::signin::Ttl::secs(3600) };
+
+    /// How many sources the report limit remembers at once.
+    const TRACKED: usize = 10_000;
+
+    /// The same API, taking abuse reports at `rate` for each source.
+    #[must_use]
+    pub fn with_reports(mut self, rate: Rate) -> Self {
+        self.reports = Quota::new(rate, Self::TRACKED);
+        self
     }
 
     /// The same API, taking git sources over `schemes` only. A new API takes `https`; a server
@@ -95,14 +120,20 @@ where
     async fn answer(&self, request: &Request) -> Result<Reply, Fault<P>> {
         let parsed = Call::parse(request.method, &request.path);
         // asking to enrol is the one call nobody signs: the key has no account yet
-        let caller = if matches!(parsed, Ok(Call::Enrol)) { None } else { Some(self.caller(request).await?) };
+        let caller =
+            if matches!(parsed, Ok(Call::Enrol | Call::Report)) { None } else { Some(self.caller(request).await?) };
         let call = parsed.map_err(Fault::Route)?;
         logging::Span::current().record("route", logging::Kind::kind(&call));
         let body = match &request.body {
             Payload::Whole(body) => body.as_slice(),
             Payload::Over { limit } => return Err(Fault::Large { limit: *limit }),
         };
-        let Some((caller, signed)) = caller else { return self.enrol(body).await };
+        let Some((caller, signed)) = caller else {
+            return match call {
+                Call::Report => self.report(request.source, body).await,
+                _ => self.enrol(body).await,
+            };
+        };
         // the digest is checked once the body is read, before anything is done with it
         signed.covers(body).map_err(|_| Fault::Denied(Denied::Digest))?;
         let principal = match (caller, &call) {
@@ -111,6 +142,9 @@ where
             // a key that is not enrolled may read its own ask and nothing else
             (Caller::Waiting(_), _) => return Err(Fault::Denied(Denied::Refused)),
         };
+        if call.operator() && !matches!(principal.via, Via::Operator { .. }) {
+            return Err(Fault::Denied(Denied::Operator));
+        }
         if let Some((right, site)) = call.needs() {
             let target = Target { account: principal.account, site };
             if !principal.effective.allows(right, &target) {
@@ -131,6 +165,9 @@ where
             Call::Deploys(site) => self.deploys(principal, site).await,
             Call::Rollback(site) => self.rollback(principal, site, body).await,
             Call::Resume(site) => self.resume(principal, site).await,
+            Call::Reports => self.reports().await,
+            Call::Suspend(site) => self.suspend(principal, site, body).await,
+            Call::Reinstate(site) => self.reinstate(site).await,
             Call::Builds(site) => self.builds(principal, site).await,
             Call::Build(site) => self.build(principal, site).await,
             Call::Log { site, build } => self.log(principal, site, build).await,
@@ -146,7 +183,7 @@ where
                 Some(key) => self.polled(id, key).await,
                 None => Err(Fault::Denied(Denied::Refused)),
             },
-            Call::Enrol => Err(Fault::Denied(Denied::Refused)),
+            Call::Enrol | Call::Report => Err(Fault::Denied(Denied::Refused)),
         }
     }
 
@@ -324,6 +361,49 @@ where
             expires: made.expires,
         };
         Self::json(Status::Created, &shown)
+    }
+
+    /// `POST /v1/abuse`: takes a report from anyone, within the per-source limit.
+    async fn report(&self, source: Option<std::net::IpAddr>, body: &[u8]) -> Result<Reply, Fault<P>> {
+        let now = self.clock.now();
+        self.reports
+            .admit(source, now)
+            .map_err(|limited| Fault::Reports(Closed { seconds: limited.retry.as_secs() }))?;
+        let said: Reporting = Unreadable::read(body).map_err(Fault::Body)?;
+        let new = control::NewReport {
+            id: Id::from_bytes(self.drawn()?),
+            handle: said.handle.0,
+            kind: said.kind,
+            detail: said.detail,
+            contact: said.contact,
+            at: now,
+        };
+        let kept = self.control.report(new).await?;
+        Self::json(Status::Created, &Reported { id: kept.id })
+    }
+
+    /// `GET /v1/abuse`: the reports, newest first, for the operator.
+    async fn reports(&self) -> Result<Reply, Fault<P>> {
+        let reports = self.control.reports(u64::from(self.limits.rows)).await?;
+        Self::json(Status::Ok, &Listed { items: reports.iter().map(ReportView::from).collect() })
+    }
+
+    /// `POST /v1/sites/{site}/suspend`: the operator takes the site down.
+    async fn suspend(&self, principal: Principal, site: Id<SiteKind>, body: &[u8]) -> Result<Reply, Fault<P>> {
+        let said: Suspending = Unreadable::read(body).map_err(Fault::Body)?;
+        let by = match principal.via {
+            Via::Operator { label } | Via::Key { label, .. } => label,
+        };
+        let suspension = control::Suspension { site, kind: said.kind, by, report: said.report, at: self.clock.now() };
+        let made = self.control.suspend(suspension).await?;
+        Self::json(Status::Ok, &Suspended { site, kind: Some(made.kind), at: made.at })
+    }
+
+    /// `POST /v1/sites/{site}/reinstate`: the operator lifts the suspension.
+    async fn reinstate(&self, site: Id<SiteKind>) -> Result<Reply, Fault<P>> {
+        let at = self.clock.now();
+        self.control.reinstate(site, at).await?;
+        Self::json(Status::Ok, &Suspended { site, kind: None, at })
     }
 
     /// `GET /v1/enrol/{id}`: the ask's outcome, to the key that made it.

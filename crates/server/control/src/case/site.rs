@@ -113,7 +113,10 @@ impl<P: Ports> Control<P> {
     pub(crate) async fn active(&self, id: Id<SiteKind>) -> Result<Site, Error<P>> {
         let site = self.site(id).await?;
         match site.state {
-            site::State::Active => Ok(site),
+            site::State::Active => match self.suspension(id).await? {
+                Some(suspension) => Err(Refusal::Suspended { site: id, kind: suspension.kind }.into()),
+                None => Ok(site),
+            },
             _ => Err(Refusal::Removing { site: id }.into()),
         }
     }

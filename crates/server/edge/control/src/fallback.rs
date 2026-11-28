@@ -65,4 +65,13 @@ where
         }
         self.then.resolve(hostname).await.map_err(Either::Then)
     }
+
+    async fn suspended(&self, hostname: &Hostname) -> Result<Option<edge::Notice>, Self::Error> {
+        if let Some(first) = &self.first
+            && let Some(notice) = first.suspended(hostname).await.map_err(Either::First)?
+        {
+            return Ok(Some(notice));
+        }
+        self.then.suspended(hostname).await.map_err(Either::Then)
+    }
 }

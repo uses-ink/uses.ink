@@ -1,5 +1,6 @@
 //! The use cases, one file each, as methods of `Control`.
 
+mod abuse;
 mod budget;
 mod credential;
 mod deploy;

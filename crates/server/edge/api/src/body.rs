@@ -178,3 +178,27 @@ pub struct Approve {
     /// The fingerprint they read on both screens.
     pub fingerprint: Parsed<sig::Fingerprint>,
 }
+
+/// `POST /v1/abuse`: a stranger reports a site. Nobody signs it.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Reporting {
+    /// The handle of the site reported.
+    pub handle: Parsed<control::Handle>,
+    /// What kind of abuse.
+    pub kind: control::AbuseKind,
+    /// What happened.
+    pub detail: control::Detail,
+    /// How to reach the reporter.
+    pub contact: Option<control::Contact>,
+}
+
+/// `POST /v1/sites/{site}/suspend`: the operator takes a site down.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Suspending {
+    /// Why.
+    pub kind: control::AbuseKind,
+    /// The report that led to it.
+    pub report: Option<control::Id<control::ReportKind>>,
+}

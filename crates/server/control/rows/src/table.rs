@@ -312,6 +312,32 @@ pub enum Hold {
     At,
 }
 
+/// `abuse_report`: what a stranger told the operator about a site.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "abuse_report"]
+pub enum Report {
+    Table,
+    Id,
+    Handle,
+    Kind,
+    Detail,
+    Contact,
+    State,
+    At,
+}
+
+/// `suspension`: a site the operator took down, and why.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "suspension"]
+pub enum Suspension {
+    Table,
+    SiteId,
+    Kind,
+    By,
+    ReportId,
+    At,
+}
+
 /// SQLite's row number, which orders rows that tie on a column.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 pub enum Row {

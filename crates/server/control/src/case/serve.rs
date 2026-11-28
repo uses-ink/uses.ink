@@ -4,7 +4,7 @@ use blob::{Blob, Chunks};
 use model::{DeployId, Manifest};
 
 use crate::id::{Id, Site as SiteKind};
-use crate::{Control, Error, Handle, Live, Ports, Refusal, SiteState};
+use crate::{Control, Error, Handle, Live, Ports, Refusal, SiteState, Suspension};
 
 /// What a handle serves now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,7 +24,19 @@ impl<P: Ports> Control<P> {
         let Some(site) = self.by_handle(handle).await?.filter(|site| site.state == SiteState::Active) else {
             return Ok(None);
         };
+        if self.suspension(site.id).await?.is_some() {
+            return Ok(None);
+        }
         Ok(self.live(site.id).await?.map(|live| Serving { site: site.id, live }))
+    }
+
+    /// The suspension of the site `handle` names, if it has one: what the edge answers with in
+    /// place of the site, and no bytes of it.
+    pub async fn suspended(&self, handle: &Handle) -> Result<Option<Suspension>, Error<P>> {
+        let Some(site) = self.by_handle(handle).await?.filter(|site| site.state == SiteState::Active) else {
+            return Ok(None);
+        };
+        self.suspension(site.id).await
     }
 
     /// The manifest of a deploy of `site`: the blob whose hash is the deploy's id, read back with

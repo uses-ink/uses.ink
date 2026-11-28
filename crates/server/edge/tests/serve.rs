@@ -275,3 +275,17 @@ fn refuses_to_serve_a_file_over_the_limit() {
     assert!(matches!(outcome, Outcome::Failed(edge::Fault::Large { length: 1000, limit: 500, .. })));
     assert_eq!(answer(&edge, &get("GET", "/tea", &[HOST])).0.status, 200);
 }
+
+#[test]
+fn a_suspended_site_answers_the_notice_and_no_bytes() {
+    let edge = Site::new().edge();
+    let (got, outcome) = answer(&edge, &get("GET", "/tea", &[("host", "suspended.example")]));
+    assert_eq!(got.status, 403);
+    let text = got.text();
+    assert!(text.contains("suspended for phishing"), "{text}");
+    assert!(!text.contains("<h1>"), "no byte of the site is in the notice");
+    assert_eq!(got.field("cache-control"), Some("no-store"));
+    assert!(matches!(outcome, Outcome::Refused(edge::Refusal::Suspended { reason: "phishing", .. })));
+    // an unknown host is still a plain 404
+    assert_eq!(answer(&edge, &get("GET", "/tea", &[("host", "other.example")])).0.status, 404);
+}

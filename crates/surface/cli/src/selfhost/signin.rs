@@ -142,6 +142,10 @@ pub struct Flags {
     /// Recovery codes that may be tried per source, as `<count>/<window>`. [default: 10/1h]
     #[arg(long, env = "INK_RECOVERY_LIMIT", help_heading = Heading::SIGN_IN)]
     pub recovery_limit: Option<Rate>,
+    /// Abuse reports that may be sent per source, as `<count>/<window>`. Reports take no
+    /// account, so this is what bounds them. [default: 5/1h]
+    #[arg(long, env = "INK_ABUSE_LIMIT", help_heading = Heading::LIMITS)]
+    pub abuse_limit: Option<Rate>,
     /// How recent a passkey sign-in must be to add or remove a passkey, approve a key or make
     /// recovery codes. [default: 5m]
     #[arg(long, env = "INK_STEP_UP_WINDOW", help_heading = Heading::SIGN_IN)]

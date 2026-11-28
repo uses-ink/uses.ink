@@ -382,3 +382,54 @@ impl From<&control::keys::Key> for KeyView {
         }
     }
 }
+
+/// `POST /v1/abuse`: a report taken.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Reported {
+    /// The report, for the reporter to quote.
+    pub id: Id<control::ReportKind>,
+}
+
+/// A report, as the operator reads it.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReportView {
+    /// The report.
+    pub id: Id<control::ReportKind>,
+    /// The handle it names.
+    pub handle: String,
+    /// What it is about.
+    pub kind: control::AbuseKind,
+    /// What happened.
+    pub detail: String,
+    /// How to reach the reporter.
+    pub contact: Option<String>,
+    /// `open` or `actioned`.
+    pub state: &'static str,
+    /// When it came.
+    pub at: Timestamp,
+}
+
+impl From<&control::Report> for ReportView {
+    fn from(report: &control::Report) -> Self {
+        Self {
+            id: report.id,
+            handle: report.handle.to_string(),
+            kind: report.kind,
+            detail: report.detail.as_str().to_owned(),
+            contact: report.contact.as_ref().map(|contact| contact.as_str().to_owned()),
+            state: report.state.name(),
+            at: report.at,
+        }
+    }
+}
+
+/// A suspension made or lifted.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Suspended {
+    /// The site.
+    pub site: Id<SiteKind>,
+    /// Why it was suspended; absent once it is lifted.
+    pub kind: Option<control::AbuseKind>,
+    /// When.
+    pub at: Timestamp,
+}

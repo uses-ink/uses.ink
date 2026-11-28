@@ -70,6 +70,11 @@ impl Fields<'_> {
             .transpose()
     }
 
+    /// A nullable text column.
+    pub fn maybe_text(self, column: impl IdenStatic) -> Result<Option<String>, Unreadable> {
+        Ok(self.0.get(column)?)
+    }
+
     /// A nullable id column.
     pub fn maybe_id<K>(self, column: impl IdenStatic) -> Result<Option<Id<K>>, Unreadable> {
         let text: Option<String> = self.0.get(column)?;

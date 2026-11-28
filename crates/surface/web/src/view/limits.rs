@@ -47,6 +47,9 @@ impl View for Limits {
                     }
                 }
             }
+            h2 { "Abuse" }
+            p { "Anyone may report a site, with no account: send the handle, what kind of abuse it is and what you saw to " code { "POST /v1/abuse" } ". Reports from one source are limited, so a flood costs the sender and not the server." }
+            p { "The operator suspends a reported site first and decides about deleting it later. A suspended site answers with a notice that names the reason and serves none of its files, takes no deploys and starts no builds. Lifting the suspension gives the site back as it was. The owner may still export it or remove it." }
         }
         .render(out)
     }

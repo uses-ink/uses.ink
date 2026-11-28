@@ -356,6 +356,24 @@ impl Message<'_> {
             Problem::BudgetSitesOver { count, limit, .. } => {
                 write!(out, "the account has {count} sites, which is its limit of {limit}")
             }
+            Problem::SiteStateSuspended { id, reason, .. } => {
+                write!(out, "the site {id} is suspended for {reason}")
+            }
+            Problem::SiteStateServing { id, .. } => {
+                write!(out, "the site {id} is not suspended")
+            }
+            Problem::AbuseReportLimited { seconds, .. } => {
+                write!(
+                    out,
+                    "this source has sent as many abuse reports as are taken for now; try again in {seconds} seconds"
+                )
+            }
+            Problem::AbuseSiteSuspended { reason, .. } => {
+                write!(out, "this site is suspended for {reason}")
+            }
+            Problem::AuthOperatorRequired => {
+                write!(out, "only the operator's keys may make this call")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -715,6 +733,11 @@ impl Fix<'_> {
             Problem::BudgetStoredOver { .. } => true,
             Problem::BudgetBuildsOver { .. } => true,
             Problem::BudgetSitesOver { .. } => true,
+            Problem::SiteStateSuspended { .. } => true,
+            Problem::SiteStateServing { .. } => true,
+            Problem::AbuseReportLimited { .. } => true,
+            Problem::AbuseSiteSuspended { .. } => true,
+            Problem::AuthOperatorRequired => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -1115,6 +1138,24 @@ impl Fix<'_> {
             }
             Problem::BudgetSitesOver { .. } => {
                 write!(out, "remove a site you do not use, or ask the operator for a higher limit")
+            }
+            Problem::SiteStateSuspended { .. } => {
+                write!(
+                    out,
+                    "write to the operator to ask for a review; a suspended site serves a notice, takes no deploys and starts no builds"
+                )
+            }
+            Problem::SiteStateServing { .. } => {
+                write!(out, "list the suspended sites in the reports and check the id")
+            }
+            Problem::AbuseReportLimited { .. } => {
+                write!(out, "wait, then send the report again; one report with the whole detail is better than several")
+            }
+            Problem::AbuseSiteSuspended { .. } => {
+                write!(out, "if you own the site, write to the operator to ask for a review")
+            }
+            Problem::AuthOperatorRequired => {
+                write!(out, "sign the request with a key from the operator-keys file of the server")
             }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")
