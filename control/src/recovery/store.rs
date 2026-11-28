@@ -89,7 +89,12 @@ impl<D: Db> Codes<D> {
 
     /// Makes a set of codes for `account` and ends the old one, in one batch, so there is never a
     /// moment with two sets or none. The codes are returned here and kept nowhere.
-    pub async fn mint(&self, account: Id<AccountKind>, drawn: Mint, now: Timestamp) -> Result<Vec<Code>, Error<D::Error>> {
+    pub async fn mint(
+        &self,
+        account: Id<AccountKind>,
+        drawn: Mint,
+        now: Timestamp,
+    ) -> Result<Vec<Code>, Error<D::Error>> {
         let mut batch: Vec<Statement> = vec![
             Query::delete()
                 .from_table(table::RecoveryCode::Table)

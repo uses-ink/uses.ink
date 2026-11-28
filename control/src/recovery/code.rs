@@ -38,7 +38,9 @@ impl fmt::Display for CodeError {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Length { found } => write!(out, "a recovery code has {} characters, not {found}", Code::LENGTH),
-            Self::Character { at } => write!(out, "character {at} of the recovery code is not a letter or digit of the alphabet"),
+            Self::Character { at } => {
+                write!(out, "character {at} of the recovery code is not a letter or digit of the alphabet")
+            }
             Self::Tail => out.write_str("the end of the recovery code is not one this server makes"),
             Self::Check => out.write_str("the check character of the recovery code does not match: look for a typo"),
         }
@@ -139,7 +141,11 @@ impl FromStr for Code {
         let bytes: [u8; 16] = bytes.try_into().map_err(|_| CodeError::Length { found: kept.len() })?;
         let check = kept.get(Self::DATA).copied().ok_or(CodeError::Length { found: kept.len() })?;
         if char::from(check) != Self::check(bytes) {
-            return Err(if Self::CHECKS.contains(&check) { CodeError::Check } else { CodeError::Character { at: Self::DATA } });
+            return Err(if Self::CHECKS.contains(&check) {
+                CodeError::Check
+            } else {
+                CodeError::Character { at: Self::DATA }
+            });
         }
         Ok(Self::from_bytes(bytes))
     }

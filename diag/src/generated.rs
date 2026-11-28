@@ -1012,7 +1012,10 @@ impl Fix<'_> {
                 )
             }
             Problem::AuthForwardedRefused => {
-                write!(out, "set the proxy to send X-Forwarded-For and the trusted hops to the number of proxies in front of the server")
+                write!(
+                    out,
+                    "set the proxy to send X-Forwarded-For and the trusted hops to the number of proxies in front of the server"
+                )
             }
             Problem::AuthRecoveryRefused => {
                 write!(out, "check the code, use another, or sign in with a passkey")

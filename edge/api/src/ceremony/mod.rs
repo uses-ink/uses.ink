@@ -174,7 +174,17 @@ impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
     pub fn new(stores: (SignIn<D>, Registry<D>), clocks: (K, R), passkeys: P, config: Passing) -> Self {
         let challenge = Quota::new(Quota::CHALLENGES, Self::TRACKED);
         let (codes, recovery) = (stores.1.codes(), Quota::new(Quota::RECOVERIES, Self::TRACKED));
-        Self { entry: stores.0, registry: stores.1, clock: clocks.0, draw: clocks.1, passkeys, config, challenge, codes, recovery }
+        Self {
+            entry: stores.0,
+            registry: stores.1,
+            clock: clocks.0,
+            draw: clocks.1,
+            passkeys,
+            config,
+            challenge,
+            codes,
+            recovery,
+        }
     }
 
     /// The same routes with a different limit on spending recovery codes, per source. The default

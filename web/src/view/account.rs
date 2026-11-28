@@ -14,7 +14,7 @@ use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Empty, Link, Post, Stamp};
 use crate::view::passkeys::{Kept, Section};
-use crate::view::sessions::{Seen, Section as Sessions};
+use crate::view::sessions::{Section as Sessions, Seen};
 use crate::view::word::Word;
 
 /// One of the person's sites.

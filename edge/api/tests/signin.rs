@@ -492,7 +492,9 @@ fn an_account_lists_its_sessions_and_ends_them_by_id_and_no_one_elses() {
     assert_eq!(fixture.send((Method::Get, "/v1/session"), two, b"").status, Status::Unauthorized);
     assert_eq!(json(&fixture.send((Method::Get, "/v1/sessions"), one, b"")).as_array().unwrap().len(), 1);
     // ended, unknown and malformed ids are one answer
-    for path in [format!("/v1/sessions/{theirs}"), format!("/v1/sessions/{}", "0".repeat(32)), "/v1/sessions/x".to_owned()] {
+    for path in
+        [format!("/v1/sessions/{theirs}"), format!("/v1/sessions/{}", "0".repeat(32)), "/v1/sessions/x".to_owned()]
+    {
         let gone = fixture.send((Method::Delete, &path), one, b"");
         assert_eq!((gone.status, code(&gone)), (Status::NotFound, "auth.session.missing".to_owned()), "{path}");
     }
@@ -547,7 +549,11 @@ fn a_state_change_needs_the_dashboards_origin_or_same_origin() {
             let held = Held { origin, site, ..me };
             let reply = fixture.send((method, path), held, body);
             let shown = (method, origin, site);
-            assert_eq!((reply.status, code(&reply)), (Status::Forbidden, "auth.origin.refused".to_owned()), "{shown:?}");
+            assert_eq!(
+                (reply.status, code(&reply)),
+                (Status::Forbidden, "auth.origin.refused".to_owned()),
+                "{shown:?}"
+            );
             assert!(reply.cookie.is_none(), "a refused request sets nothing");
         }
     }

@@ -590,7 +590,10 @@ fn removing_a_passkey_ends_the_sessions_it_made() {
         body(&fixture.send((Method::Get, "/v1/passkeys"), &link, &Value::Null))[0]["id"].as_str().unwrap().to_owned();
     let theirs = fixture.send((Method::Delete, &format!("/v1/passkeys/{id}")), &other, &Value::Null);
     assert_eq!(theirs.status, Status::NotFound);
-    assert_eq!(fixture.send((Method::Delete, "/v1/passkeys/not-an-id"), &by_key, &Value::Null).status, Status::NotFound);
+    assert_eq!(
+        fixture.send((Method::Delete, "/v1/passkeys/not-an-id"), &by_key, &Value::Null).status,
+        Status::NotFound
+    );
     let events: Vec<String> =
         pollster::block_on(fixture.keys.events(account, 20)).unwrap().into_iter().map(|event| event.name).collect();
     assert!(events.contains(&"passkey.removed".to_owned()), "{events:?}");
@@ -666,7 +669,10 @@ fn adding_or_removing_a_passkey_needs_a_passkey_sign_in_within_the_window() {
     let options = fixture.send((Method::Post, "/v1/passkeys/options"), &link_jar, &json!({"label": "x"}));
     assert_eq!(stale(&options), refused);
     assert!(options.ceremony.is_none(), "nothing was started");
-    let id = body(&fixture.send((Method::Get, "/v1/passkeys"), &link_jar, &Value::Null))[0]["id"].as_str().unwrap().to_owned();
+    let id = body(&fixture.send((Method::Get, "/v1/passkeys"), &link_jar, &Value::Null))[0]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
     let delete = |jar: &str| fixture.send((Method::Delete, &format!("/v1/passkeys/{id}")), jar, &Value::Null);
     assert_eq!(stale(&delete(&link_jar)), refused);
     // a passkey sign-in is the step-up; it replaces the session the browser held
@@ -753,13 +759,15 @@ fn recovery_codes_are_shown_once_kept_as_digests_and_a_new_set_voids_the_old() {
     assert!(first.iter().all(|code| code.len() == 33 && code.split('-').count() == 7), "{first:?}");
     assert_eq!(first.iter().collect::<std::collections::BTreeSet<_>>().len(), 10, "ten different codes");
     // only digests are at rest: the table has 32-byte digests and no code text, and so does the log
-    let rows = pollster::block_on(fixture.db.rows(
-        sea_query::Query::select()
-            .columns([control::table::RecoveryCode::Digest, control::table::RecoveryCode::Id])
-            .from(control::table::RecoveryCode::Table)
-            .to_owned()
-            .into(),
-    ))
+    let rows = pollster::block_on(
+        fixture.db.rows(
+            sea_query::Query::select()
+                .columns([control::table::RecoveryCode::Digest, control::table::RecoveryCode::Id])
+                .from(control::table::RecoveryCode::Table)
+                .to_owned()
+                .into(),
+        ),
+    )
     .unwrap();
     assert_eq!(rows.len(), 10);
     let events = pollster::block_on(fixture.keys.events(account, 50)).unwrap();
@@ -799,13 +807,18 @@ fn a_recovery_code_is_spent_once_to_register_a_passkey_and_a_wrong_one_is_limite
         body(&minted)["codes"].as_array().unwrap().iter().map(|code| code.as_str().unwrap().to_owned()).collect();
     // the phone is lost: with no session at all, a code starts a registration and clears any cookie
     let stale = format!("__Host-ink-session={link}");
-    let started = fixture.send((Method::Post, "/v1/recovery"), &stale, &json!({"code": codes[0], "label": "new phone"}));
+    let started =
+        fixture.send((Method::Post, "/v1/recovery"), &stale, &json!({"code": codes[0], "label": "new phone"}));
     assert_eq!(started.status, Status::Ok, "{}", text(&started));
     assert!(started.cookie.as_ref().unwrap().to_string().contains("Max-Age=0"), "a stale session cookie is dropped");
     let ceremony = pair(started.ceremony.as_ref().unwrap());
     let spare = Authenticator::hardware(5, ORIGIN, HOST);
     let credential = spare.create(&body(&started));
-    let added = fixture.send((Method::Post, "/v1/passkeys"), &ceremony, &json!({"label": "new phone", "credential": credential}));
+    let added = fixture.send(
+        (Method::Post, "/v1/passkeys"),
+        &ceremony,
+        &json!({"label": "new phone", "credential": credential}),
+    );
     assert_eq!(added.status, Status::Created, "{}", text(&added));
     // and the new passkey signs in
     assert_eq!(fixture.sign_in(&spare, account.as_bytes()).status, Status::Ok);
@@ -815,7 +828,10 @@ fn a_recovery_code_is_spent_once_to_register_a_passkey_and_a_wrong_one_is_limite
     assert_eq!(body(&fixture.send((Method::Get, "/v1/recovery/codes"), &jar, &Value::Null))["remaining"], json!(9));
     // the code's case, dashes and look-alike letters do not matter
     let loose = codes[1].to_ascii_lowercase().replace('-', "");
-    assert_eq!(fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": loose, "label": "x"})).status, Status::Ok);
+    assert_eq!(
+        fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": loose, "label": "x"})).status,
+        Status::Ok
+    );
     // a typo is caught before it is counted: any number of them, and then the real code still works
     for _ in 0..20 {
         let typo = fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": "ABCD-EFGH", "label": "x"}));
@@ -839,7 +855,10 @@ fn a_recovery_code_is_spent_once_to_register_a_passkey_and_a_wrong_one_is_limite
     assert_eq!((limited.status, code(&limited)), (Status::TooMany, "auth.rate.limited".to_owned()));
     assert!(limited.retry.is_some());
     fixture.clock.advance(Duration::from_secs(3601));
-    assert_eq!(fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": codes[2], "label": "x"})).status, Status::Ok);
+    assert_eq!(
+        fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": codes[2], "label": "x"})).status,
+        Status::Ok
+    );
     let events: Vec<String> =
         pollster::block_on(fixture.keys.events(account, 50)).unwrap().into_iter().map(|event| event.name).collect();
     assert_eq!(events.iter().filter(|name| *name == "recovery.used").count(), 3, "{events:?}");

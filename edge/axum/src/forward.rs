@@ -80,10 +80,8 @@ impl Forwarded {
         }
         let entries: Vec<&str> = lines.iter().flat_map(|line| line.split(',')).map(str::trim).collect();
         let trusted = trusted.get();
-        let at = entries
-            .len()
-            .checked_sub(usize::from(trusted))
-            .ok_or(Refused::Short { found: entries.len(), trusted })?;
+        let at =
+            entries.len().checked_sub(usize::from(trusted)).ok_or(Refused::Short { found: entries.len(), trusted })?;
         let entry = entries.get(at).ok_or(Refused::Short { found: entries.len(), trusted })?;
         entry
             .parse::<IpAddr>()

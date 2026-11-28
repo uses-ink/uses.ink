@@ -164,7 +164,9 @@ impl<E: std::error::Error + 'static> std::error::Error for Step<E> {
             Self::Draw(source) => Some(source),
             Self::Sign(source) => Some(source),
             Self::Json(source) => Some(source),
-            Self::Route | Self::Large { .. } | Self::Origin | Self::Anonymous | Self::Missing | Self::Stale { .. } => None,
+            Self::Route | Self::Large { .. } | Self::Origin | Self::Anonymous | Self::Missing | Self::Stale { .. } => {
+                None
+            }
         }
     }
 }
@@ -486,14 +488,20 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         let proof = self.held(request).ok_or(Step::Anonymous)?;
         let current = self.entry.resolve(&proof, now).await.map_err(Step::Sign)?.ok_or(Step::Anonymous)?;
         let live = self.entry.sessions(current.account, now).await.map_err(Step::Sign)?;
-        let listed: Vec<Listed> =
-            live.iter().map(|session| Listed { shown: Shown::from(session), current: session.id == current.id }).collect();
+        let listed: Vec<Listed> = live
+            .iter()
+            .map(|session| Listed { shown: Shown::from(session), current: session.id == current.id })
+            .collect();
         Self::json(Status::Ok, &listed)
     }
 
     /// Ends one of the account's sessions. Another account's session, an ended one and an id that
     /// names nothing are one answer. Ending the asking session clears its cookie.
-    async fn revoke(&self, request: &Request, id: Option<control::Id<control::SessionKind>>) -> Result<Reply, Step<D::Error>> {
+    async fn revoke(
+        &self,
+        request: &Request,
+        id: Option<control::Id<control::SessionKind>>,
+    ) -> Result<Reply, Step<D::Error>> {
         let now = self.clock.now();
         let proof = self.held(request).ok_or(Step::Anonymous)?;
         let current = self.entry.resolve(&proof, now).await.map_err(Step::Sign)?.ok_or(Step::Anonymous)?;
