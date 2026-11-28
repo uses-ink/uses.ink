@@ -48,6 +48,7 @@ Each word means one thing everywhere: code, CLI, dashboard copy, docs, diagnosti
 | **build** | one run of the pipeline from a snapshot | a deploy |
 | **deploy** | the hashed manifest a build produced | a build |
 | **live** | the deploy a site serves right now | |
+| **local** | two meanings: on this machine with no hosted service (`ink serve`, the local baseline), and the `secret/local` adapter, whose key file sits beside the database; the queue and builder adapters are named for what they do (`queue/rows`, `build/process`) | hosted, remote |
 | **preview** | a deploy that is not live, reachable by its own URL | a draft |
 | **diagnostic** | a problem: code, severity, cause, fix | a log line |
 | **notice** | an announcement that is not a problem, such as a default being chosen | a diagnostic |
@@ -119,8 +120,8 @@ Config keys name what they set, never their unit; the value carries the unit
 - Banned anywhere: `util`, `utils`, `common`, `core`, `helpers`, `misc`, `base`, `shared`,
   `manager`, `handler`, `service`, `impl`. They collect unrelated code.
 - Abbreviations only from a closed list: `id`, `url`, `tls`, `api`, `cli`, `db`, `wit`, `ui`,
-  `dns`, `did`, `og`, `css`, `html`, `svg`, `toml`, `rgb`, `hex`. A new one is added here first.
-  Ported code keeps its original's names (`prev` in `freehand`'s perfect-freehand port) so it
+  `dns`, `did`, `og`, `css`, `html`, `svg`, `toml`, `rgb`, `hex`, `dir`. A new one is added here
+  first. Ported code keeps its original's names (`prev` in `freehand`'s perfect-freehand port) so it
   reads against the source.
 - Singular everywhere, directories included (`plugin/`, `migration/`, `fixture/`).
 - Do not repeat the module in the item: `deploy::Manifest`, not `deploy::DeployManifest`.
