@@ -69,6 +69,20 @@ impl fmt::Display for StoreError {
     }
 }
 
+impl StoreError {
+    /// What to do about it: each way the store fails has its own thing to say.
+    pub(crate) const fn remedy(&self) -> &'static str {
+        match self {
+            Self::NoHome => "set `HOME` or `XDG_CONFIG_HOME`, or give the key with `INK_KEY_FILE`",
+            Self::Held { .. } => "run `ink logout` to end the key kept for this server, then log in again",
+            Self::Loose { .. } => "run `chmod 600` on the file, or `ink logout` and log in again",
+            Self::Io { .. } | Self::Unreadable { .. } => {
+                "check that the config folder may be written, or give the key with `INK_KEY_FILE`"
+            }
+        }
+    }
+}
+
 impl std::error::Error for StoreError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
@@ -191,5 +205,14 @@ mod test {
         std::fs::write(&path, "not a key").unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
         assert!(matches!(store.load("x"), Err(StoreError::Unreadable { .. })));
+    }
+
+    #[test]
+    fn a_key_that_is_already_kept_says_to_log_out_not_to_check_the_folder() {
+        let (_home, store) = store();
+        store.save("x", &Seed::new([7; 32])).unwrap();
+        let held = store.save("x", &Seed::new([8; 32])).unwrap_err();
+        assert!(held.to_string().contains("`ink logout`"), "{held}");
+        assert!(held.remedy().contains("`ink logout`"), "{}", held.remedy());
     }
 }

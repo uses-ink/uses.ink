@@ -460,9 +460,7 @@ impl Failure {
             Self::Unreadable { .. } => {
                 "this ink and the server may be different versions: update the older one".to_owned()
             }
-            Self::Store { .. } => {
-                "check that the config folder may be written, or give the key with `INK_KEY_FILE`".to_owned()
-            }
+            Self::Store { source } => source.remedy().to_owned(),
             Self::KeyText { .. } => {
                 "run `ink login` to make a key, or fix the text of `INK_KEY` or of the file `INK_KEY_FILE` names"
                     .to_owned()
