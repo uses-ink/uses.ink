@@ -8,7 +8,7 @@ use quote::{ToTokens, format_ident, quote};
 use super::catalog::{Catalog, Entry, Fault, Kind, Part, Piece, Severity, Template};
 
 impl Catalog {
-    /// `model/src/generated.rs`: `Problem` and `Announcement`, with codes, severities and faults.
+    /// `crates/core/model/src/generated.rs`: `Problem` and `Announcement`, with codes, severities and faults.
     pub(crate) fn model(&self) -> TokenStream {
         let kinds = self.diagnostics.iter().flat_map(|e| &e.fields).chain(self.notices.iter().flat_map(|e| &e.fields));
         let mut used: Vec<&str> = vec!["Fault", "Severity"];
@@ -134,7 +134,7 @@ impl Catalog {
         }
     }
 
-    /// `diag/src/generated.rs`: the message and fix of every code.
+    /// `crates/core/diag/src/generated.rs`: the message and fix of every code.
     pub(crate) fn wording(&self) -> TokenStream {
         let (problem, announcement) = (quote! { Problem }, quote! { Announcement });
         let problem_messages = self.diagnostics.iter().map(|e| e.arm(&problem, Part::Message));

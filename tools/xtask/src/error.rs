@@ -122,9 +122,9 @@ pub(crate) enum Error {
 pub(crate) enum Flaw {
     /// Not TOML, or not the shape expected.
     Toml(toml::de::Error),
-    /// An entry of `token/token.toml` that is not a token.
+    /// An entry of `crates/core/token/token.toml` that is not a token.
     Token(crate::generate::token::Refusal),
-    /// Everything wrong with `diag/catalog.toml`.
+    /// Everything wrong with `crates/core/diag/catalog.toml`.
     Catalog(Vec<crate::generate::diag::Flaw>),
     /// A drawing of `brand/figure.toml` that cannot be drawn.
     Brand(crate::generate::brand::Problem),

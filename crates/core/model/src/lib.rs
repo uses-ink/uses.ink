@@ -12,7 +12,7 @@
 //! - Output: [`Manifest`], whose canonical bytes give the [`DeployId`], and the
 //!   [`record`] a build keeps of itself, two of which give the changes between them.
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
-//!   `cargo xtask diag` generates from `diag/catalog.toml`, with their [`coded`] form for the
+//!   `cargo xtask diag` generates from `crates/core/diag/catalog.toml`, with their [`coded`] form for the
 //!   plugin boundary, and the [`Sink`] a plugin says them into.
 //!
 //! Nothing here reads a clock, the environment or a file: these are values. The crate is

@@ -1,4 +1,4 @@
-//! `diag/catalog.toml`, read and checked. Every flaw in the file is reported at once.
+//! `crates/core/diag/catalog.toml`, read and checked. Every flaw in the file is reported at once.
 
 mod field;
 mod flaw;

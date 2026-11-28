@@ -5,7 +5,7 @@ use std::fmt;
 
 use serde::Deserialize;
 
-/// `diag/catalog.toml` as it was at build time.
+/// `crates/core/diag/catalog.toml` as it was at build time.
 const SOURCE: &str = include_str!("../catalog.toml");
 
 /// The catalog's diagnostics and notices by code.

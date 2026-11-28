@@ -1,5 +1,5 @@
-//! `token/token.toml` into `token/src/generated.rs` (the pen's palette and the face stacks) and
-//! `token/token.css` (the same, as custom properties on `:root`).
+//! `crates/core/token/token.toml` into `crates/core/token/src/generated.rs` (the pen's palette and the face stacks) and
+//! `crates/core/token/token.css` (the same, as custom properties on `:root`).
 
 use std::fmt;
 
@@ -77,7 +77,7 @@ impl Tokens {
 }
 
 impl ToTokens for Tokens {
-    /// `token/src/generated.rs`: the `Colour` and `Face` enums.
+    /// `crates/core/token/src/generated.rs`: the `Colour` and `Face` enums.
     fn to_tokens(&self, out: &mut TokenStream) {
         let colours = Palette(&self.colours);
         let faces = Faces(&self.faces);
@@ -89,7 +89,7 @@ impl ToTokens for Tokens {
     }
 }
 
-/// An entry of `token/token.toml` that is not a token: its name and what is wrong.
+/// An entry of `crates/core/token/token.toml` that is not a token: its name and what is wrong.
 #[derive(Debug)]
 pub(crate) struct Refusal {
     name: String,
@@ -108,7 +108,7 @@ impl From<Refusal> for Flaw {
     }
 }
 
-/// What is wrong with an entry of `token/token.toml`.
+/// What is wrong with an entry of `crates/core/token/token.toml`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Fault {
     /// A top-level key other than `colour` and `face`.
@@ -313,7 +313,7 @@ impl ToTokens for Faces<'_> {
     }
 }
 
-/// `token/token.css`: every colour and face as a custom property on `:root`.
+/// `crates/core/token/token.css`: every colour and face as a custom property on `:root`.
 struct Sheet<'a> {
     tokens: &'a Tokens,
     origin: Origin,

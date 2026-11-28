@@ -2,7 +2,7 @@ package ink:model@0.1.0;
 
 /// Problems and notices (`model::Diagnostic`, `model::Notice`). A problem or an announcement
 /// crosses as its code and its fields in catalog order (`model::coded::Coded`), so a new entry in
-/// `diag/catalog.toml` changes no WIT.
+/// `crates/core/diag/catalog.toml` changes no WIT.
 interface diagnostic {
     /// A path in the snapshot, `/`-separated, relative (`model::ContentPath`).
     type path = string;

@@ -1,6 +1,6 @@
 [package]
 name = "uses-ink-diag"
-description = "The wording of every diagnostic and notice, from diag/catalog.toml, and their terminal rendering"
+description = "The wording of every diagnostic and notice, from crates/core/diag/catalog.toml, and their terminal rendering"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

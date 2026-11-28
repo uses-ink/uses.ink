@@ -1,4 +1,4 @@
-//! The words of uses.ink's diagnostics and notices, from `diag/catalog.toml`, and how they read
+//! The words of uses.ink's diagnostics and notices, from `crates/core/diag/catalog.toml`, and how they read
 //! in a terminal.
 //!
 //! [`Message`] and [`Fix`] are the catalog's templates filled with a problem's or a notice's

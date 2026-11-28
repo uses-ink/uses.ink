@@ -5,7 +5,7 @@
 use token::Colour;
 use unspliced::css::Color;
 
-/// A token colour as the stylesheet writes it, so a colour exists once, in `token/token.toml`.
+/// A token colour as the stylesheet writes it, so a colour exists once, in `crates/core/token/token.toml`.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Paint(pub(crate) Colour);
 

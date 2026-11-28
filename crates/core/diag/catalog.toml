@@ -1,6 +1,6 @@
 # Every diagnostic and notice uses.ink can emit: its code, how bad it is, whose move it is, its
 # typed fields and its English wording. `cargo xtask diag` turns this file into the `Problem` and
-# `Announcement` enums (model/src/generated.rs) and their wording (diag/src/generated.rs);
+# `Announcement` enums (crates/core/model/src/generated.rs) and their wording (crates/core/diag/src/generated.rs);
 # `cargo xtask check` fails when either is stale.
 #
 # A code is `noun.noun.reason`: three kebab-case words joined by `.`.

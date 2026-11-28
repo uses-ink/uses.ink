@@ -8,7 +8,7 @@
 //! its diagnostics in the event stream, never an [`Error`]. A git source is read through the
 //! [`Remote`] the builder is given; with none ([`Offline`]) it is [`build::Error::Unsupported`].
 //!
-//! The pipeline repeats what `cli/src/site.rs` does, because the CLI keeps it private; both
+//! The pipeline repeats what `crates/surface/cli/src/site.rs` does, because the CLI keeps it private; both
 //! should call one shared function when the CLI next changes (decision 0045).
 
 mod bundle;

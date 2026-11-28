@@ -1,7 +1,9 @@
 //! Repo tasks, run as `cargo xtask <task>`:
 //!
-//! - `token`: write `token/src/generated.rs` and `token/token.css` from `token/token.toml`.
-//! - `diag`: write `model/src/generated.rs` and `diag/src/generated.rs` from `diag/catalog.toml`.
+//! - `token`: write `crates/core/token/src/generated.rs` and `crates/core/token/token.css` from
+//!   `crates/core/token/token.toml`.
+//! - `diag`: write `crates/core/model/src/generated.rs` and `crates/core/diag/src/generated.rs` from
+//!   `crates/core/diag/catalog.toml`.
 //! - `brand`: draw the logo, mark and favicon into `brand/` from `brand/figure.toml`.
 //! - `layout`: every layout rule over the workspace, and every generated file fresh. Fails with
 //!   every problem listed.

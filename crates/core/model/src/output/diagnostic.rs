@@ -1,4 +1,4 @@
-//! Problems and notices. Their codes, fields and wording come from `diag/catalog.toml`;
+//! Problems and notices. Their codes, fields and wording come from `crates/core/diag/catalog.toml`;
 //! [`Problem`] and [`Announcement`] are generated from it, the words live in `uses-ink-diag`.
 
 use serde::Serialize;
