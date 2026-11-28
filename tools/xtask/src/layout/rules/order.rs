@@ -150,6 +150,8 @@ impl Order {
                 "uses-ink-format-obsidian",
                 "uses-ink-theme-quiet",
                 "uses-ink-host-wasmtime",
+                // The self-host mounts the dashboard on the API host (decision 0092).
+                "uses-ink-web",
                 "uses-ink-logging",
             ],
         ),
