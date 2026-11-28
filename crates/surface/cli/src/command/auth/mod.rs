@@ -361,7 +361,7 @@ impl Keys {
 impl Revoke {
     fn run(self, preferences: &Preferences, io: &mut Io<'_>) -> Result<Exit, Error> {
         let print: Fingerprint =
-            self.fingerprint.parse().map_err(|_| Failure::Unknown { written: self.fingerprint.clone() })?;
+            self.fingerprint.parse().map_err(|_| Failure::NoPrint { written: self.fingerprint.clone() })?;
         let row: Row = self.server.signed(&Process, preferences)?.json(
             Method::DELETE,
             &format!("/v1/keys/{print}"),

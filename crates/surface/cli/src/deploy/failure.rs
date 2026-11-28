@@ -121,6 +121,11 @@ pub enum Failure {
         /// As written.
         written: String,
     },
+    /// The text is no key fingerprint, so no key can be named by it.
+    NoPrint {
+        /// As written.
+        written: String,
+    },
     /// Several deploys of the history start with these characters.
     Ambiguous {
         /// As written.
@@ -320,6 +325,7 @@ impl Failure {
             | Self::Scheme { .. }
             | Self::Site { .. }
             | Self::Unknown { .. }
+            | Self::NoPrint { .. }
             | Self::Ambiguous { .. }
             | Self::Request { .. }
             | Self::Store { .. }
@@ -365,6 +371,7 @@ impl Failure {
             Self::Address { .. } | Self::Scheme { .. } => "deploy.api.invalid",
             Self::Site { .. } => "deploy.site.invalid",
             Self::Unknown { .. } => "deploy.id.unknown",
+            Self::NoPrint { .. } => "auth.key.unknown",
             Self::Ambiguous { .. } => "deploy.id.ambiguous",
             Self::Runtime { .. } => "deploy.runtime.failed",
             Self::Connect { .. } => "deploy.api.unreachable",
@@ -435,6 +442,7 @@ impl Failure {
             Self::Unknown { .. } | Self::Ambiguous { .. } => {
                 "write the start of a deploy id as `ink deploy list` shows it, enough of it to name one".to_owned()
             }
+            Self::NoPrint { .. } => "write the key's fingerprint as `ink key list` shows it".to_owned(),
             Self::Runtime { .. }
             | Self::Request { .. }
             | Self::Target { .. }
@@ -504,6 +512,7 @@ impl fmt::Display for Failure {
             }
             Self::Site { written, .. } => write!(out, "`{written}` is not a site id"),
             Self::Unknown { written } => write!(out, "no deploy of this site starts with `{written}`"),
+            Self::NoPrint { written } => write!(out, "`{written}` is not the fingerprint of a key"),
             Self::Ambiguous { written, count } => {
                 write!(out, "{count} deploys start with `{written}`: write more of it")
             }
@@ -512,10 +521,7 @@ impl fmt::Display for Failure {
             Self::Exchange { .. } => write!(out, "the exchange with the API broke off"),
             Self::Request { .. } => write!(out, "the request could not be built"),
             Self::Timeout { after } => write!(out, "the API did not answer in {} seconds", after.as_secs()),
-            Self::Refused { status, refusal: Some(refusal) } => {
-                write!(out, "the API refused the request ({status}): {}", refusal.message)
-            }
-            Self::Refused { status, refusal: None } => write!(out, "the API refused the request ({status})"),
+            Self::Refused { status, .. } => write!(out, "the API refused the request ({status})"),
             Self::Unreadable { .. } => write!(out, "the API's answer is not what this ink reads"),
             Self::Store { .. } => write!(out, "the private key could not be kept or read"),
             Self::KeyText { from, .. } => write!(out, "{from} does not hold a key"),
@@ -591,12 +597,11 @@ impl std::error::Error for Failure {
             Self::Following { source, .. } => source.source(),
             Self::Archive { source } => Some(source),
             Self::Ended { first: Some(first), .. } => Some(first),
-            Self::Refused { refusal, .. } => {
-                refusal.as_ref().map(|refusal| refusal as &(dyn std::error::Error + 'static))
-            }
+            Self::Refused { refusal, .. } => refusal.as_ref().map(|cause| cause as &(dyn std::error::Error + 'static)),
             Self::Setting { .. }
             | Self::Scheme { .. }
             | Self::Unknown { .. }
+            | Self::NoPrint { .. }
             | Self::Ambiguous { .. }
             | Self::Timeout { .. }
             | Self::Unapproved { .. }
@@ -611,5 +616,33 @@ impl std::error::Error for Failure {
             | Self::Occupied { .. }
             | Self::PrintRefused => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ApiRefusal, Failure};
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn a_refusal_says_its_message_once_and_its_name_as_the_cause() {
+        let refusal = ApiRefusal {
+            problem: "domain.claim.unknown".to_owned(),
+            message: "there is no claim".to_owned(),
+            fields: BTreeMap::new(),
+        };
+        let failure = Failure::Refused { status: 404, refusal: Some(refusal) };
+        let head = failure.to_string();
+        let cause = std::error::Error::source(&failure).map_or_else(String::new, ToString::to_string);
+        assert_eq!(head, "the API refused the request (404)");
+        assert_eq!(cause, "domain.claim.unknown: there is no claim");
+    }
+
+    #[test]
+    fn a_key_that_is_no_fingerprint_is_a_key_not_a_deploy() {
+        let failure = Failure::NoPrint { written: "nosuch".to_owned() };
+        assert_eq!(failure.kind(), "auth.key.unknown");
+        assert!(failure.remedy().contains("ink key list"));
+        assert_eq!(failure.to_string(), "`nosuch` is not the fingerprint of a key");
     }
 }

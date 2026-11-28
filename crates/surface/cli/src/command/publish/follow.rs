@@ -62,7 +62,7 @@ impl Follow<'_> {
             let here = found.ok_or_else(|| Failure::Absent { build: build.to_string() })?;
             if seen != Some(here.state) {
                 io.end()?;
-                io.stage(&StageLine::new(Verb::Followed, format!("build {build} is {}", here.state)))?;
+                io.stage(&StageLine::new(Verb::Followed, format!("build {build}, now {}", here.state)))?;
                 io.begin(Phase::Building, Self::STEPS, "steps");
                 seen = Some(here.state);
             }

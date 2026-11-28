@@ -56,6 +56,7 @@ fn rows() -> Vec<Row> {
         Row { args: &["explain", "--why", "bogus", "-C", "@blog"], env: &[], exit: 2, code: "decision.code.unknown" },
         Row { args: &["pin", "a", "b", "-C", "@blog"], env: &[], exit: 2, code: "decision.code.unknown" },
         Row { args: &["select", "missing.md", "-C", "@vault"], env: &[], exit: 2, code: "explain.path.unknown" },
+        Row { args: &["key", "revoke", "nosuch"], env: &[], exit: 2, code: "auth.key.unknown" },
         Row { args: &["push"], env: &[], exit: 2, code: "link.file.missing" },
         Row { args: &["export"], env: &[], exit: 2, code: "link.file.missing" },
         Row { args: &["status"], env: down, exit: 2, code: "link.file.missing" },
