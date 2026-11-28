@@ -1,4 +1,4 @@
-use engine::Record as _;
+use engine::Sink as _;
 use model::Diagnostic;
 use model::Problem;
 use model::highlight::Highlight as _;

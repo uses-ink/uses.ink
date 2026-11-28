@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use engine::{BaseUrl, Record};
+use engine::BaseUrl;
 use model::highlight::Highlight;
 use model::{Block, Page, PageKind, Site, When};
 use unspliced::{HERE, Halt, Lazy, Render, Sink, Split, Url, html};
@@ -52,7 +52,7 @@ impl<H: Highlight> Layout<'_, H> {
 
     /// Writes the page into `out`, its document where the shell holds [`HERE`], recording what
     /// the document's writer finds worth saying into `record`.
-    pub(crate) fn write<R: Record + ?Sized>(&self, out: &mut dyn Sink, record: &mut R) -> Result<(), Unwritten> {
+    pub(crate) fn write<R: engine::Sink + ?Sized>(&self, out: &mut dyn Sink, record: &mut R) -> Result<(), Unwritten> {
         let (page, identity) = (self.source.page, self.source.site.identity());
         let shell = html! {
             doctype

@@ -35,7 +35,7 @@ pub use interpret::{
 };
 /// What a theme takes and gives that the model holds, named here beside the [`Theme`] that uses
 /// them: the files it serves and where it says what it found.
-pub use model::{File, Record, Said};
+pub use model::{File, Said, Sink};
 pub use render::{
     BaseUrl, BaseUrlError, Generated, Host, Outcome, Reads, RenderSettings, Rendered, Reserved, Step, Unit,
 };

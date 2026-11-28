@@ -1,14 +1,14 @@
 //! What the engine asks of its host: bytes, pins, formats and a theme. Each is a trait the
 //! [`Engine`](crate::Engine) is generic over; the CLI picks native types, tests pick in-memory
 //! ones. The engine mirrors config's API in [`Pins`] so it builds and tests on its own. What a
-//! plugin finds worth saying while it works goes into a [`Record`] the engine gives it; the trait is
+//! plugin finds worth saying while it works goes into a [`Sink`] the engine gives it; the trait is
 //! the model's, so a plugin reaches it without the engine.
 
 use std::borrow::Cow;
 use std::fmt;
 
 use model::code::Code;
-use model::{ContentPath, Diagnostic, File, Hash, Page, Read, Record, Site, Span};
+use model::{ContentPath, Diagnostic, File, Hash, Page, Read, Sink, Site, Span};
 
 use crate::render::Reads;
 
@@ -169,7 +169,7 @@ pub trait Theme {
         target_pointer_width = "64",
         expect(clippy::result_large_err, reason = "the theme contract returns the model's diagnostic as is (0014)")
     )]
-    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>;
+    fn render<R: Sink + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>;
 
     /// A hash of everything about the theme that reaches the bytes of a page besides the page
     /// and what [`Theme::reads`] says: a component's own hash, the tokens it was given, its
@@ -197,7 +197,7 @@ impl<T: Theme + ?Sized> Theme for &T {
         T::assets(self)
     }
 
-    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
+    fn render<R: Sink + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         T::render(self, page, site, record)
     }
 

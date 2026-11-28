@@ -27,7 +27,6 @@ mod picture;
 use std::collections::BTreeMap;
 use std::fmt;
 
-use engine::Record;
 use model::highlight::Highlight;
 use model::{
     Alignment, Block, CalloutKind, Document, Folding, Footnote, FootnoteName, ImageSource, Inline, Item, LinkTarget,
@@ -111,7 +110,7 @@ impl<H, R: ?Sized> fmt::Debug for Writer<'_, H, R> {
     }
 }
 
-impl<'a, H: Highlight, R: Record + ?Sized> Writer<'a, H, R> {
+impl<'a, H: Highlight, R: engine::Sink + ?Sized> Writer<'a, H, R> {
     /// A writer of the source's page.
     pub(crate) fn new(source: Source<'a, H>, out: &'a mut dyn Sink, record: &'a mut R) -> Self {
         let references = BTreeMap::new();
@@ -219,7 +218,7 @@ impl<'a, H: Highlight, R: Record + ?Sized> Writer<'a, H, R> {
     }
 }
 
-impl<H: Highlight, R: Record + ?Sized> Visit for Writer<'_, H, R> {
+impl<H: Highlight, R: engine::Sink + ?Sized> Visit for Writer<'_, H, R> {
     /// The blocks, then the footnotes in a section of their own.
     fn document(&mut self, document: &Document) {
         self.blocks(&document.blocks);

@@ -6,7 +6,7 @@ use std::io;
 
 use model::{ContentPath, Diagnostic, Hash, Manifest, MediaType, Notice, Route, Served, Status};
 
-use crate::Record;
+use crate::Sink;
 use crate::error::Error;
 use crate::render::policy::{Cache, Policy};
 use crate::render::settings::BaseUrl;
@@ -46,7 +46,7 @@ pub(crate) struct Entry {
     pub(crate) cache: Cache,
 }
 
-impl Record for Output<'_> {
+impl Sink for Output<'_> {
     fn diagnose(&mut self, diagnostic: Diagnostic) {
         self.diagnostics.push(diagnostic);
     }

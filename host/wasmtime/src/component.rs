@@ -6,7 +6,7 @@
 
 use std::cell::RefCell;
 
-use engine::{BaseUrl, File, Html, Record, Said};
+use engine::{BaseUrl, File, Html, Said, Sink};
 use model::{ContentPath, Diagnostic, Document, Front, Hash, Page, Read, Site, Subject};
 use wasmtime::Store;
 use wasmtime::component::{Linker, ResourceAny};
@@ -170,7 +170,7 @@ impl engine::Format for Component<Format> {
 impl Component<Theme> {
     /// Makes `slot` the session rendering `site`, unless it already is: a new site, or a session
     /// a failed call ended, gets a fresh instance. What a failed start said goes to `record`.
-    fn start<R: Record + ?Sized>(
+    fn start<R: Sink + ?Sized>(
         &self,
         site: &Site,
         slot: &mut Option<Session>,
@@ -196,13 +196,13 @@ impl Component<Theme> {
     }
 
     /// Everything in `said`, into `record`, in order.
-    fn pass<R: Record + ?Sized>(said: Said, record: &mut R) {
+    fn pass<R: Sink + ?Sized>(said: Said, record: &mut R) {
         said.diagnostics.into_iter().for_each(|diagnostic| record.diagnose(diagnostic));
         said.notices.into_iter().for_each(|notice| record.notice(notice));
     }
 
     /// One page through the session rendering `site`.
-    fn page<R: Record + ?Sized>(
+    fn page<R: Sink + ?Sized>(
         &self,
         page: &Page,
         site: &Site,
@@ -256,7 +256,7 @@ impl engine::Theme for Component<Theme> {
 
     /// The page as the component renders it; a call that fails is the theme's refusal, with
     /// the failure as its diagnostic, about the page's file.
-    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
+    fn render<R: Sink + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         match self.page(page, site, record) {
             Ok(rendered) => rendered.map(Html::from),
             Err(failure) => Err(failure.diagnostic(&self.name).on(Subject::File(page.file.clone()))),

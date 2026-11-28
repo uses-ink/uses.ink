@@ -17,7 +17,7 @@ mod document;
 mod page;
 mod style;
 
-use engine::{BaseUrl, File, Html, Reads, Record, Theme};
+use engine::{BaseUrl, File, Html, Reads, Sink, Theme};
 use model::highlight::Highlight;
 use model::{Diagnostic, Hash, MediaType, Page, PageKind, Problem, Route, Site, Subject};
 
@@ -112,7 +112,7 @@ impl<H: Highlight> Theme for Quiet<H> {
     }
 
     /// A page the theme could not write whole is `render.page.failed`: a bug in the theme.
-    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
+    fn render<R: Sink + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         let mut html = String::new();
         let source = Source { page, site, highlight: &self.highlight };
         let layout = Layout { source, base: &self.base };

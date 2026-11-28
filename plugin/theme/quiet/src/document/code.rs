@@ -5,7 +5,7 @@
 use std::error::Error;
 use std::fmt;
 
-use engine::Record;
+use engine::Sink;
 use model::highlight::{Capture, Highlight, Unhighlighted};
 use model::{Announcement, Diagnostic, Notice, Problem};
 use unspliced::{Class, html};
@@ -54,7 +54,7 @@ impl Shade {
     }
 }
 
-impl<H: Highlight, R: Record + ?Sized> Writer<'_, H, R> {
+impl<H: Highlight, R: Sink + ?Sized> Writer<'_, H, R> {
     /// A code block, highlighted when a grammar knows its language; otherwise as written, with
     /// `code.language.unknown`, or `render.page.failed` when the grammar itself failed.
     pub(super) fn code(&mut self, language: Option<&str>, text: &str) {

@@ -1,7 +1,6 @@
 //! Footnotes: a reference is the footnote's number, linking to it; the footnote links back to
 //! every reference written before it.
 
-use engine::Record;
 use model::highlight::Highlight;
 use model::{Footnote, FootnoteName};
 use unspliced::{HERE, Halt, Id, Lazy, Render, Sink, Url, html};
@@ -25,7 +24,7 @@ impl Note<'_> {
     }
 }
 
-impl<H: Highlight, R: Record + ?Sized> Writer<'_, H, R> {
+impl<H: Highlight, R: engine::Sink + ?Sized> Writer<'_, H, R> {
     /// A reference to `name`: its number, linking to the footnote.
     pub(super) fn reference(&mut self, name: &FootnoteName) {
         let Some(&number) = self.numbers.get(name) else { return self.put(name.to_string()) };

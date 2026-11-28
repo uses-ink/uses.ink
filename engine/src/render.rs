@@ -22,7 +22,7 @@ use model::{Announcement, Diagnostic, Hash, Manifest, Notice, Route, Site};
 use crate::cache::Cache;
 use crate::error::Error;
 use crate::image::Images;
-use crate::{Blobs, Engine, Record, Theme};
+use crate::{Blobs, Engine, Sink, Theme};
 use asset::Assets;
 use feed::{Atom, Feed, Rss};
 use output::Output;

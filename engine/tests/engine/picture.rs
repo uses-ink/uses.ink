@@ -30,7 +30,7 @@ impl Theme for Pictures {
         Vec::new()
     }
 
-    fn render<R: engine::Record + ?Sized>(
+    fn render<R: engine::Sink + ?Sized>(
         &self,
         _page: &Page,
         site: &Site,

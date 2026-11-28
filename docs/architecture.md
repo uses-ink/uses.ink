@@ -221,7 +221,7 @@ the same WIT types, so moving them to components later changes no type.
 | `text` | `measure(font, size, text) -> result<extent, unmeasured>`, later `lines(font, size, text, width)` | real font shaping, so marks fit their words; built: refuses every font until the measurer exists |
 | `highlight` | `highlight(language, code) -> result<list<run>, unhighlighted>` | classed runs from tree-sitter grammars in the host (decision 0039); natively `model::highlight::Highlight`, implemented by `host_native::Grammars`, which `host/wasmtime` links |
 | `asset` | `theme(path)`, `slot(name)` | a theme's bundled files; a slot already rendered from the author's `theme/` override |
-| `diagnostic` | `emit(diagnostic)`, `announce(notice)` | typed; plugins never print; natively `engine::Record` |
+| `diagnostic` | `emit(diagnostic)`, `announce(notice)` | typed; plugins never print; natively `engine::Sink` |
 
 No plugin imports a clock, randomness, environment or filesystem. A plugin's manifest declares
 the capabilities it imports; linking fails with `plugin.capability.undeclared` otherwise.

@@ -250,8 +250,8 @@ every visitor that does not care keeps working.
 pub trait Format { fn handles(&self, path: &ContentPath) -> bool; fn read(&self, path: &ContentPath, bytes: &[u8]) -> Read; }
 pub trait Formats { fn handles(&self, path: &ContentPath) -> bool; fn read(&self, path: &ContentPath, bytes: &[u8]) -> Option<Read>; }
 impl<A: Format, B: Format> Formats for (A, B) { .. }   // tuples up to four: the first that handles it
-pub trait Theme { fn name(&self) -> &str; fn assets(&self) -> Vec<File>; fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>; }
-pub trait Record { fn diagnose(&mut self, diagnostic: Diagnostic); fn notice(&mut self, notice: Notice); }   // model's
+pub trait Theme { fn name(&self) -> &str; fn assets(&self) -> Vec<File>; fn render<R: Sink + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic>; }
+pub trait Sink { fn diagnose(&mut self, diagnostic: Diagnostic); fn notice(&mut self, notice: Notice); }   // model's
 pub trait Blobs { fn read(&self, hash: &Hash) -> Result<Cow<'_, [u8]>, BlobMissing>; }
 pub trait Pins: Patterns { fn pin<C: Code>(&self, subject: &C::Subject) -> Option<Pin<C::Value>>; }
 pub trait Images { type Refusal: Into<Diagnostic>; fn prepare(&self, sources: &[Source<'_>]) -> Vec<Result<Prepared, Self::Refusal>>; }
@@ -262,10 +262,10 @@ blobs and the theme, so a part a call does not use is `()`; `render` also takes 
 `Images` (`host_image::Pixels` natively, a stand-in in tests); the CLI picks native types, the wasmtime host picks
 component adapters implementing the same traits, tests pick in-memory ones. Nothing in the engine
 names a concrete plugin. A theme says what it finds while it renders (math that does not parse,
-code in a language no grammar knows) into the `Record` it is given, the native stand-in for
+code in a language no grammar knows) into the `Sink` it is given, the native stand-in for
 `ink:host/diagnostic`: the render's output records it beside everything else, and a test passes
-a `model::Said`. `Record`, `Said` and a theme's `File` live in the model, which is
-permissive, so the SDK implements `Record` and converts `File` without linking the AGPL engine;
+a `model::Said`. `Sink`, `Said` and a theme's `File` live in the model, which is
+permissive, so the SDK implements `Sink` and converts `File` without linking the AGPL engine;
 the engine re-exports them.
 
 A dialect of markdown is not a second parser. `format_markdown::dialect::Dialect` says which
@@ -558,7 +558,7 @@ let entered = entry.redeem(&proof, None, drawn, now).await?;   // Refused::Unusa
 
 A `Proof` is 256 random bits as 64 hex digits and prints as `Proof(<redacted>)`; the database holds
 `Digest::of(Context, &proof)`. The `Entry` migration makes the tables (apply it after `Domain` and
-`Queued`). `mail` is the port: `Address`, `Base`, `Link`, `Template`, `Message` and `Mailer`;
+`Queued`). `mail` is the port: `Address`, `LinkBase`, `Link`, `Template`, `Message` and `Mailer`;
 `mail::Capture` and `mail::Stdout<W>` are the stand-ins and `mail_smtp::Smtp` is the adapter.
 
 In `edge/api`, `Door<D, K, R>` answers `POST /v1/login`, `GET` and `POST /v1/login/{token}`,

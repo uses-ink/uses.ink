@@ -4,7 +4,7 @@ use std::fmt;
 
 use model::git::{Cloned, Git, Refused, Request};
 use model::highlight::{Highlight, Run, Unhighlighted};
-use model::{Diagnostic, Notice, Problem, Record, Snapshot};
+use model::{Diagnostic, Notice, Problem, Sink, Snapshot};
 
 use crate::bind::ink::host::{diagnostic, git, highlight};
 use crate::bind::ink::model::diagnostic as said;
@@ -51,7 +51,7 @@ impl Host {
     }
 }
 
-impl Record for Host {
+impl Sink for Host {
     /// Sends `diagnostic` to the host; one the boundary cannot carry is sent as
     /// `plugin.value.unmirrored`, so it is never lost unsaid.
     fn diagnose(&mut self, diagnostic: Diagnostic) {

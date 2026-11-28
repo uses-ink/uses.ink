@@ -12,7 +12,7 @@ use crate::render::output::{Body, Entry, Output, Owner};
 use crate::render::policy::Cache;
 use crate::render::unit::{Reason, Units};
 use crate::render::{Artifact, Outcome, Reserved, Unit};
-use crate::{Record, Theme};
+use crate::{Sink, Theme};
 use logging::Field as _;
 
 /// A page the engine makes when the author wrote none, rendered by the theme like any other.

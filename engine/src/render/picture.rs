@@ -13,7 +13,7 @@ use model::{Site, Subject, Variant};
 use crate::error::Error;
 use crate::image::{Encoded, Images, Kept, Prepared, Source};
 use crate::render::output::Output;
-use crate::{Blobs, Record};
+use crate::{Blobs, Sink};
 
 /// The host's image work over the snapshot's bytes.
 #[derive(Debug)]

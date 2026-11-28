@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use engine::cache::{Cache, Key};
-use engine::{Engine, Host, Html, NoPins, Outcome, Reads, Record, Rendered, Theme};
+use engine::{Engine, Host, Html, NoPins, Outcome, Reads, Rendered, Sink, Theme};
 use model::{Announcement, Diagnostic, File, Hash, Notice, Page, PageKind, Site};
 
 use crate::support::{Plain, Stand, Store, Tree, settings};
@@ -73,7 +73,7 @@ impl Theme for Counted {
         self.plain.assets()
     }
 
-    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
+    fn render<R: Sink + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         self.asked.borrow_mut().push(page.title.clone());
         if self.says.contains(&page.title) {
             record.notice(Notice::new(Announcement::CodeLanguageUnknown { language: "said".to_owned() }));

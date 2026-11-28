@@ -8,7 +8,7 @@ mod highlight;
 mod pen;
 mod text;
 
-use engine::{Record as _, Said};
+use engine::{Said, Sink as _};
 use host_native::Grammars;
 use model::{Diagnostic, Problem};
 use wasmtime::ResourceLimiter;

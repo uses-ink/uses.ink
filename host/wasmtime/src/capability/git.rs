@@ -1,7 +1,7 @@
 use std::fmt;
 use std::time::{Duration, Instant};
 
-use engine::Record as _;
+use engine::Sink as _;
 #[cfg(test)]
 use host_native::Grammars;
 use host_native::{Failed, Fetch, Memory, Read};

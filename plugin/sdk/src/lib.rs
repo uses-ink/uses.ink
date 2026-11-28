@@ -10,7 +10,7 @@
 //! - [`Served`]: a format's `ink:format` exports, served from its native core through
 //!   [`Format`].
 //! - [`Host`]: the host's capabilities as the native traits a plugin's core is written against:
-//!   [`Highlight`](model::highlight::Highlight), [`Record`](model::Record) and
+//!   [`Highlight`](model::highlight::Highlight), [`Sink`](model::Sink) and
 //!   [`Git`](model::git::Git).
 
 pub mod bind;

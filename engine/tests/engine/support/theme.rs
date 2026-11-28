@@ -1,6 +1,6 @@
 //! A stand-in theme that writes a few tags.
 
-use engine::{File, Html, Record, Theme};
+use engine::{File, Html, Sink, Theme};
 use model::{Announcement, Block, Diagnostic, ImageSource, Inline, LinkTarget, Notice, Page, Problem, Site};
 use std::fmt::Write as _;
 
@@ -21,7 +21,7 @@ impl Theme for Plain {
         self.files.clone()
     }
 
-    fn render<R: Record + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
+    fn render<R: Sink + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         if self.refuses.contains(&page.title) {
             record.notice(Notice::new(Announcement::CodeLanguageUnknown { language: "refused".to_owned() }));
             return Err(Diagnostic::new(Problem::HtmlElementStripped { element: "refused".to_owned() }));

@@ -9,7 +9,7 @@ use jiff::fmt::rfc2822::DateTimePrinter;
 use jiff::tz::Offset;
 use model::{Announcement, Author, MediaType, Notice, Page, PageKind, Route, Site, Subject, Tag, When};
 
-use crate::Record;
+use crate::Sink;
 use crate::error::Error;
 use crate::render::output::Output;
 use crate::render::xml::Xml;

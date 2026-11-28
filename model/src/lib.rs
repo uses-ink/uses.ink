@@ -13,7 +13,7 @@
 //!   [`record`] a build keeps of itself, two of which give the changes between them.
 //! - Problems: [`Diagnostic`] and [`Notice`], over [`Problem`] and [`Announcement`], which
 //!   `cargo xtask diag` generates from `diag/catalog.toml`, with their [`coded`] form for the
-//!   plugin boundary, and the [`Record`] a plugin says them into.
+//!   plugin boundary, and the [`Sink`] a plugin says them into.
 //!
 //! Nothing here reads a clock, the environment or a file: these are values. The crate is
 //! MIT OR Apache-2.0, unlike the engine, because every plugin speaks it (decision 0026).
@@ -50,7 +50,7 @@ pub use decision::code::{
 pub use decision::subject::Subject;
 pub use decision::{Basis, Decision, DefaultReason, Evidence};
 pub use generated::{Announcement, Problem};
-pub use output::diagnostic::{Diagnostic, Fault, Notice, Record, Said, Severity};
+pub use output::diagnostic::{Diagnostic, Fault, Notice, Said, Severity, Sink};
 pub use output::format::{Front, Read, Spanned};
 pub use output::manifest::{
     Canonical, DeployId, DuplicateRoute, File, Header, HeaderName, HeaderValue, HeaderValueError, Manifest, MediaType,
