@@ -91,6 +91,13 @@ pub enum Failed {
         /// How long it was given.
         after: Duration,
     },
+    /// Two resolvers that must agree gave different records.
+    Disagree {
+        /// How many records the first gave.
+        first: usize,
+        /// How many records the second gave.
+        second: usize,
+    },
     /// Every nameserver failed; the last one's failure is the cause.
     Exhausted {
         /// How many were asked.
@@ -120,6 +127,9 @@ impl fmt::Display for Failed {
             Self::Timeout { server, after } => {
                 write!(out, "the nameserver {server} did not answer in {} ms", after.as_millis())
             }
+            Self::Disagree { first, second } => {
+                write!(out, "the two resolvers disagree: the first gave {first} records, the second {second}")
+            }
             Self::Exhausted { tried, .. } => write!(out, "all {tried} nameservers failed"),
         }
     }
@@ -134,7 +144,7 @@ impl std::error::Error for Failed {
             Self::Question(source) | Self::Malformed { source, .. } => Some(source),
             Self::Io { source, .. } => Some(source),
             Self::Exhausted { last, .. } => Some(last.as_ref()),
-            Self::Rcode { .. } | Self::Timeout { .. } => None,
+            Self::Rcode { .. } | Self::Timeout { .. } | Self::Disagree { .. } => None,
         }
     }
 }

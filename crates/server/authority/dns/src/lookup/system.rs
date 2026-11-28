@@ -1,5 +1,8 @@
 //! The resolver that asks a real DNS server for the TXT records of a host (RFC 1035): a question
-//! over UDP from a random port with a random id, and over TCP when the answer was cut.
+//! over UDP from a random port with a random id and a random case of the name's letters, and over
+//! TCP when the answer was cut. DNSSEC is not checked: an answer is trusted as far as the path to
+//! the nameserver is, so the operator names nameservers it trusts, and may name a second resolver
+//! that must give the same answer ([`Chosen::agreeing`](crate::Chosen)).
 //!
 //! The nameservers are the ones of the system (`/etc/resolv.conf`, read at each lookup so a change
 //! shows) or the operator's own list. A lookup is bounded: each nameserver has its share of the
@@ -108,14 +111,17 @@ impl<D: Draw> System<D> {
         self.limit
     }
 
-    fn id(&self) -> Result<u16, Failed> {
+    /// The question for `host`: a random id and a random case for each letter of its name, from
+    /// one draw.
+    fn question(&self, host: &Host) -> Result<Query, Failed> {
         let bytes = self.draw.bytes().map_err(|source| Failed::Draw(Box::new(source)))?;
-        Ok(u16::from_be_bytes([bytes[0], bytes[1]]))
+        let [first, second, mask @ ..] = bytes;
+        Ok(Query::cased(u16::from_be_bytes([first, second]), &host.to_string(), &mask))
     }
 
     /// One nameserver's answer, within `share`.
     async fn once(&self, server: SocketAddr, host: &Host, share: Duration) -> Result<Vec<String>, Failed> {
-        let query = Query { id: self.id()?, host: host.to_string() };
+        let query = self.question(host)?;
         let asked = async {
             let reply = match Self::datagram(server, &query).await? {
                 reply if reply.cut => Self::stream(server, &query).await?,
@@ -257,6 +263,28 @@ mod test {
         assert_eq!(found, ["uses-ink-domain=real"]);
     }
 
+    /// A source whose every byte after the id is set, so every letter of the name is upper case.
+    #[derive(Debug)]
+    struct Loud;
+
+    impl Draw for Loud {
+        type Error = std::convert::Infallible;
+
+        fn bytes(&self) -> Result<[u8; 16], Self::Error> {
+            Ok([0, 1, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
+        }
+    }
+
+    #[tokio::test]
+    async fn only_an_answer_that_echoes_the_random_case_is_read() {
+        let asked = Query::cased(1, &host().to_string(), &[0xff; 14]);
+        assert_ne!(asked.host, host().to_string(), "the question is not the plain name");
+        let folded = Query { host: host().to_string(), ..asked.clone() }.answered(&[&["uses-ink-domain=forged"]], 0);
+        let server = serving(vec![folded, asked.answered(&[&["uses-ink-domain=real"]], 0)]).await;
+        let loud = System::new(Servers::Listed(vec![server]), Duration::from_millis(500), Loud);
+        assert_eq!(loud.txt(&host()).await.unwrap(), ["uses-ink-domain=real"]);
+    }
+
     #[tokio::test]
     async fn a_name_with_no_records_is_an_empty_answer_and_a_server_failure_is_an_error() {
         let query = first();
@@ -268,6 +296,33 @@ mod test {
         let broken = serving(vec![query.answered(&[], 2)]).await;
         let failed = resolver(vec![broken], Duration::from_millis(500)).txt(&host()).await.unwrap_err();
         assert!(matches!(failed, Failed::Rcode { code: 2, .. }), "{failed:?}");
+    }
+
+    #[tokio::test]
+    async fn two_resolvers_that_must_agree_answer_only_what_both_do() {
+        let same = |records: &'static str| async move {
+            let query = first();
+            serving(vec![query.answered(&[&[records]], 0)]).await
+        };
+        let (a, b) = (same("uses-ink-domain=abc").await, same("uses-ink-domain=abc").await);
+        let both = |first, second| {
+            super::super::Agreeing::new(
+                resolver(vec![first], Duration::from_millis(500)),
+                resolver(vec![second], Duration::from_millis(500)),
+            )
+        };
+        assert_eq!(both(a, b).txt(&host()).await.unwrap(), ["uses-ink-domain=abc"]);
+        let (a, c) = (same("uses-ink-domain=abc").await, same("uses-ink-domain=forged").await);
+        let failed = both(a, c).txt(&host()).await.unwrap_err();
+        assert!(matches!(failed, Failed::Disagree { first: 1, second: 1 }), "{failed:?}");
+        // a second path that is down is not agreement
+        let silent = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let a = same("uses-ink-domain=abc").await;
+        let down = super::super::Agreeing::new(
+            resolver(vec![a], Duration::from_millis(500)),
+            resolver(vec![silent.local_addr().unwrap()], Duration::from_millis(20)),
+        );
+        assert!(matches!(down.txt(&host()).await.unwrap_err(), Failed::Timeout { .. }));
     }
 
     #[tokio::test]

@@ -2,6 +2,8 @@
 //! sends it ([`System`] over [`Servers`]), the failures it has, and [`Chosen`], the one resolver a
 //! server holds.
 
+#[cfg(feature = "system")]
+mod agreeing;
 mod chosen;
 mod failed;
 #[cfg(feature = "system")]
@@ -12,6 +14,8 @@ mod system;
 )]
 mod wire;
 
+#[cfg(feature = "system")]
+pub use agreeing::Agreeing;
 pub use chosen::Chosen;
 pub use failed::{Failed, Unlisted};
 #[cfg(feature = "system")]

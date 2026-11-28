@@ -1,5 +1,7 @@
 //! The DNS message, as much of RFC 1035 as a TXT lookup needs: one question out, the TXT records
-//! of the answer back. Everything read from the network is checked against the message's own
+//! of the answer back. The letters of the question's name take the case of random bits (the 0x20
+//! encoding of draft-vixie-dnsext-dns0x20), and an answer is read only if it echoes the name in
+//! exactly that case and holds exactly one question, so a forged answer has to guess them too. Everything read from the network is checked against the message's own
 //! length, and a compressed name may only point backwards, so a hostile answer ends in a typed
 //! error and never in a loop or a read past the end.
 
@@ -94,6 +96,29 @@ pub(crate) struct Reply {
 }
 
 impl Query {
+    /// How many letters of a name the bits of a mask set: the first byte's lowest bit is the
+    /// first letter's. The letters past it stay lower case.
+    pub(crate) const LETTERS: usize = 112;
+
+    /// The question for `host` with the case of each letter set by a bit of `mask`: a set bit is
+    /// upper case.
+    pub(crate) fn cased(id: u16, host: &str, mask: &[u8]) -> Self {
+        let mut letter = 0_usize;
+        let host = host
+            .chars()
+            .map(|c| {
+                if !c.is_ascii_alphabetic() {
+                    return c;
+                }
+                let upper =
+                    letter < Self::LETTERS && mask.get(letter / 8).is_some_and(|byte| byte >> (letter % 8) & 1 == 1);
+                letter += 1;
+                if upper { c.to_ascii_uppercase() } else { c.to_ascii_lowercase() }
+            })
+            .collect();
+        Self { id, host }
+    }
+
     /// The question as a message.
     pub(crate) fn encode(&self) -> Result<Vec<u8>, Malformed> {
         let bad = || Malformed::Host { host: self.host.clone() };
@@ -151,15 +176,17 @@ impl Query {
             return Err(Malformed::Question);
         }
         let (questions, answers) = (cursor.word(4)?, cursor.word(6)?);
-        let mut at = 12;
-        for _ in 0..questions {
-            let (name, next) = cursor.name(at)?;
-            let (kind, class) = (cursor.word(next)?, cursor.word(next + 2)?);
-            if !name.eq_ignore_ascii_case(self.host.trim_end_matches('.')) || kind != TXT || class != INTERNET {
-                return Err(Malformed::Echo);
-            }
-            at = next + 4;
+        // an answer that holds no question, or two, is not an answer to this one
+        if questions != 1 {
+            return Err(Malformed::Echo);
         }
+        let (name, next) = cursor.name(12)?;
+        let (kind, class) = (cursor.word(next)?, cursor.word(next + 2)?);
+        // the case of the name is part of the question: a forger who cannot see it cannot echo it
+        if name != self.host.trim_end_matches('.') || kind != TXT || class != INTERNET {
+            return Err(Malformed::Echo);
+        }
+        let mut at = next + 4;
         let mut texts = Vec::new();
         for _ in 0..answers {
             let (_, next) = cursor.name(at)?;
@@ -280,6 +307,33 @@ mod test {
         let elsewhere = Query { host: "_uses-ink.example.net".to_owned(), ..query.clone() };
         assert_eq!(elsewhere.read(&message), Err(Malformed::Echo));
         assert_eq!(query.read(&query.encode().unwrap()), Err(Malformed::Question));
+    }
+
+    #[test]
+    fn the_case_of_the_name_is_random_and_an_answer_must_echo_it() {
+        let plain = Query::cased(7, "_uses-ink.example.org", &[0; 14]);
+        assert_eq!(plain.host, "_uses-ink.example.org");
+        let loud = Query::cased(7, "_uses-ink.example.org", &[0b0000_0101, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(loud.host, "_UsEs-ink.eXAMPLE.ORg");
+        let message = loud.answered(&[&["x"]], 0);
+        assert!(loud.read(&message).is_ok());
+        // the same answer with the name folded to lower case is another question's
+        assert_eq!(plain.read(&message), Err(Malformed::Echo));
+        assert_eq!(Query { id: 7, ..plain.clone() }.read(&plain.answered(&[&["x"]], 0)).map(|r| r.texts.len()), Ok(1));
+        // letters past the mask stay lower case
+        let long = Query::cased(7, &"a".repeat(130), &[0xff; 14]);
+        assert_eq!(long.host.chars().filter(char::is_ascii_uppercase).count(), Query::LETTERS);
+    }
+
+    #[test]
+    fn an_answer_with_no_question_or_two_is_refused() {
+        let query = query();
+        let mut none = query.answered(&[&["x"]], 0);
+        none[4..6].copy_from_slice(&0_u16.to_be_bytes());
+        assert_eq!(query.read(&none), Err(Malformed::Echo));
+        let mut two = query.answered(&[&["x"]], 0);
+        two[4..6].copy_from_slice(&2_u16.to_be_bytes());
+        assert_eq!(query.read(&two), Err(Malformed::Echo));
     }
 
     #[test]

@@ -210,6 +210,11 @@ pub struct Hosting {
     /// `nameserver` lines of `--resolver-file`]
     #[arg(long = "resolver-server", value_name = "ADDR", env = "INK_RESOLVER_SERVERS", value_delimiter = ',', help_heading = Heading::HOSTING)]
     pub resolver_servers: Vec<Nameserver>,
+    /// A second set of nameservers, as `ADDRESS` or `ADDRESS:PORT`; repeat for more. When it is set,
+    /// a proof record is trusted only when both sets give the same records, so one forged answer on
+    /// the way to one nameserver proves nothing. DNSSEC is not checked either way. [default: none]
+    #[arg(long = "resolver-confirm", value_name = "ADDR", env = "INK_RESOLVER_CONFIRM", value_delimiter = ',', help_heading = Heading::HOSTING)]
+    pub resolver_confirm: Vec<Nameserver>,
     /// The file the system lists its nameservers in. [default: /etc/resolv.conf]
     #[arg(long, value_name = "PATH", env = "INK_RESOLVER_FILE", help_heading = Heading::HOSTING)]
     pub resolver_file: Option<PathBuf>,
@@ -271,7 +276,13 @@ impl Hosting {
         };
         Ok(match self.resolver.unwrap_or(Resolving::System) {
             Resolving::Offline => Chosen::Offline,
-            Resolving::System => Chosen::system(servers, Duration::from_secs(asked)),
+            Resolving::System if self.resolver_confirm.is_empty() => {
+                Chosen::system(servers, Duration::from_secs(asked))
+            }
+            Resolving::System => {
+                let confirm = Servers::Listed(self.resolver_confirm.iter().map(|server| server.0).collect());
+                Chosen::agreeing(servers, confirm, Duration::from_secs(asked))
+            }
         })
     }
 
