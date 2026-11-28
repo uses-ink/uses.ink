@@ -351,6 +351,20 @@ fn a_wrong_relying_party_id_is_refused() {
 }
 
 #[test]
+fn two_challenges_differ_and_are_32_bytes() {
+    let fixture = Fixture::new();
+    let (first, _) = fixture.challenge();
+    let (second, _) = fixture.challenge();
+    let (first, second) = (first["challenge"].as_str().unwrap(), second["challenge"].as_str().unwrap());
+    assert_ne!(first, second);
+    // 32 bytes as unpadded base64url
+    for challenge in [first, second] {
+        assert_eq!(challenge.len(), 43, "{challenge}");
+        assert!(challenge.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_'));
+    }
+}
+
+#[test]
 fn a_challenge_is_used_once_and_expires() {
     let fixture = Fixture::new();
     let (account, secret) = fixture.person("me@example.org");

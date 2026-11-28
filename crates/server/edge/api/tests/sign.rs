@@ -273,6 +273,31 @@ fn every_component_is_signed_and_what_fails_is_one_answer() {
 }
 
 #[test]
+fn a_skew_window_of_none_or_over_the_ceiling_is_refused() {
+    assert_eq!(Window::new(0), Err(edge_api::WindowError::Zero));
+    assert_eq!(Window::new(301), Err(edge_api::WindowError::Over { asked: 301 }));
+    assert_eq!(Window::new(u64::MAX), Err(edge_api::WindowError::Over { asked: u64::MAX }));
+    assert!(Window::new(1).is_ok());
+    assert!(Window::new(Window::CEILING).is_ok());
+}
+
+#[test]
+fn a_forged_request_does_not_spend_the_nonce_of_the_real_one() {
+    let rig = rig();
+    let route = (Method::Get, "/v1/whoami");
+    let nonce = rig.nonce();
+    let good = Rig::header(&rig.operator, route, b"", (rig.now(), nonce));
+    // the same nonce, a bad signature
+    let forged = changed(&good, "s");
+    let reply = rig.answer(&Rig::unsigned(route, Some(forged), b""));
+    assert_eq!(code(&reply), "auth.signature.refused");
+    // the real one with that nonce is taken, and then only once
+    let real = Rig::unsigned(route, Some(good), b"");
+    assert_eq!(rig.answer(&real).status, Status::Ok);
+    assert_eq!(code(&rig.answer(&real)), "auth.signature.replayed");
+}
+
+#[test]
 fn what_is_not_canonical_or_not_a_signature_is_refused_as_such() {
     let rig = rig();
     let header = Rig::header(&rig.operator, (Method::Get, "/v1/sites"), b"", (rig.now(), rig.nonce()));
