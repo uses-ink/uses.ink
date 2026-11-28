@@ -415,32 +415,73 @@ impl Failure {
         }
     }
 
-    /// What to do about it, when there is one thing to say.
-    pub(crate) fn remedy(&self) -> Option<&'static str> {
-        Some(match self {
-            Self::Unlinked { .. } => "run `ink init --handle NAME` to link this folder, or give `--site ID`",
-            Self::Link { .. } => "fix or remove the file, then run `ink init` again",
-            Self::Linked { .. } => "run `ink init --force` to link it to another site",
-            Self::Nameless => "give `--handle NAME` to make a site, or `--site ID` to link one that exists",
-            Self::Following { source, .. } => {
-                return match source.as_ref() {
-                    Self::Refused { refusal: Some(refusal), .. } if refusal.problem == "auth.right.missing" => Some(
-                        "this key may queue builds and not read them: push with `--no-wait`, or make a key with `ink key add --right read,deploy`",
-                    ),
-                    other => other.remedy(),
-                };
+    /// What to do about it: every way a call fails has one thing to say.
+    #[expect(clippy::too_many_lines, reason = "one arm for each way a call fails")]
+    pub(crate) fn remedy(&self) -> String {
+        match self {
+            Self::Setting { needed } => format!("give {}", needed.given()),
+            Self::Address { .. } | Self::Scheme { .. } | Self::Audience { .. } => {
+                "write the address as `http://host[:port]`, in `--api`, `INK_API` or the config file".to_owned()
             }
-            Self::Incomplete { .. } | Self::Waited { .. } => "run the command again",
+            Self::Site { .. } => "write the site's id as `ink init` prints it, 32 hexadecimal digits".to_owned(),
+            Self::Unknown { .. } | Self::Ambiguous { .. } => {
+                "write the start of a deploy id as `ink deploy list` shows it, enough of it to name one".to_owned()
+            }
+            Self::Runtime { .. }
+            | Self::Request { .. }
+            | Self::Target { .. }
+            | Self::Method { .. }
+            | Self::Tree { .. } => "this is a fault in ink: report it with the text above".to_owned(),
+            Self::Draw { .. } => "check that the system gives random bytes, then run the command again".to_owned(),
+            Self::Connect { .. } | Self::Exchange { .. } => {
+                "check the address and that the server is running, then run the command again".to_owned()
+            }
+            Self::Timeout { .. } => "give a longer `--timeout`, or run the command again".to_owned(),
+            Self::Refused { refusal: Some(refusal), .. } => refusal
+                .fix()
+                .map_or_else(|| "read the server's log for why, then run the command again".to_owned(), str::to_owned),
+            Self::Refused { refusal: None, .. } => "read the server's log for why, then run the command again".to_owned(),
+            Self::Unreadable { .. } => {
+                "this ink and the server may be different versions: update the older one".to_owned()
+            }
+            Self::Store { .. } => {
+                "check that the config folder may be written, or give the key with `INK_KEY_FILE`".to_owned()
+            }
+            Self::KeyText { .. } => {
+                "run `ink login` to make a key, or fix the text of `INK_KEY` or of the file `INK_KEY_FILE` names"
+                    .to_owned()
+            }
+            Self::Operators { .. } => "give the data folder of the server you run, one you may write".to_owned(),
+            Self::Unapproved { .. } => "run `ink login` again and approve the key before it ends".to_owned(),
+            Self::PrintRefused => "send it to a file with `--out`, or redirect stdout".to_owned(),
+            Self::Unlinked { .. } => "run `ink init --handle NAME` to link this folder, or give `--site ID`".to_owned(),
+            Self::Link { .. } => "fix or remove the file, then run `ink init` again".to_owned(),
+            Self::Linked { .. } => "run `ink init --force` to link it to another site".to_owned(),
+            Self::Nameless => {
+                "give `--handle NAME` to make a site, or `--site ID` to link one that exists".to_owned()
+            }
+            Self::Incomplete { .. } | Self::Waited { .. } | Self::Archive { .. } => {
+                "run the command again; if it keeps failing, report it".to_owned()
+            }
             Self::Uploading { source, .. } => {
-                return source.remedy().or(Some("run `ink push` again to send what is left"));
+                let said = source.remedy();
+                format!("{said}; run `ink push` again to send what is left")
             }
-            Self::Ended { state: JobState::Refused, .. } => "fix what the build said, then push again",
-            Self::Ended { .. } => "run `ink push` again; if it keeps failing, report it",
-            Self::Held { .. } => "run `ink deploy resume` to deploy this and new pushes",
-            Self::Occupied { .. } => "give an empty or new folder",
-            Self::Refused { refusal: Some(refusal), .. } => return refusal.fix(),
-            _ => return None,
-        })
+            Self::Following { source, .. } => match source.as_ref() {
+                Self::Refused { refusal: Some(refusal), .. } if refusal.problem == "auth.right.missing" => {
+                    "this key may queue builds and not read them: push with `--no-wait`, or make a key with `ink key add --right read,deploy`".to_owned()
+                }
+                other => other.remedy(),
+            },
+            Self::Ended { state: JobState::Refused, .. } => "fix what the build said, then push again".to_owned(),
+            Self::Ended { .. } => "run `ink push` again; if it keeps failing, report it".to_owned(),
+            Self::Held { .. } => "run `ink deploy resume` to deploy this and new pushes".to_owned(),
+            Self::Absent { .. } => "`ink status` lists the builds the site holds".to_owned(),
+            Self::Occupied { .. } => "give an empty or new folder".to_owned(),
+            Self::Placing { .. } => {
+                "check that the folder may be written and has room, then run the command again".to_owned()
+            }
+        }
     }
 }
 
@@ -448,7 +489,7 @@ impl fmt::Display for Failure {
     #[expect(clippy::too_many_lines, reason = "one arm of prose for each way a call fails")]
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Setting { needed } => write!(out, "no {} is set: give {}", needed.noun(), needed.given()),
+            Self::Setting { needed } => write!(out, "no {} is set", needed.noun()),
             Self::Address { written, .. } => write!(out, "`{written}` is not an address"),
             Self::Scheme { written } => {
                 write!(out, "`{written}` is not `http://host[:port]`: this ink speaks plain http only")
@@ -463,14 +504,13 @@ impl fmt::Display for Failure {
             Self::Exchange { .. } => write!(out, "the exchange with the API broke off"),
             Self::Request { .. } => write!(out, "the request could not be built"),
             Self::Timeout { after } => write!(out, "the API did not answer in {} seconds", after.as_secs()),
-            Self::Refused { status, refusal: Some(refusal) } => match refusal.fix() {
-                Some(fix) => write!(out, "the API refused the request ({status}): {}; {fix}", refusal.message),
-                None => write!(out, "the API refused the request ({status}): {}", refusal.message),
-            },
+            Self::Refused { status, refusal: Some(refusal) } => {
+                write!(out, "the API refused the request ({status}): {}", refusal.message)
+            }
             Self::Refused { status, refusal: None } => write!(out, "the API refused the request ({status})"),
             Self::Unreadable { .. } => write!(out, "the API's answer is not what this ink reads"),
             Self::Store { .. } => write!(out, "the private key could not be kept or read"),
-            Self::KeyText { from, .. } => write!(out, "{from} does not hold a key: run `ink login` to make one"),
+            Self::KeyText { from, .. } => write!(out, "{from} does not hold a key"),
             Self::Audience { written, .. } => {
                 write!(out, "`{written}` is not an authority a request can be signed for")
             }
@@ -478,15 +518,8 @@ impl fmt::Display for Failure {
             Self::Method { .. } => write!(out, "the method is not one a request is signed with"),
             Self::Draw { .. } => write!(out, "no random bytes were available"),
             Self::Operators { .. } => write!(out, "the operator keys of the data folder could not be read or written"),
-            Self::Unapproved { after } => {
-                write!(out, "nobody approved the key in {} seconds: run `ink login` again", after.as_secs())
-            }
-            Self::PrintRefused => {
-                write!(
-                    out,
-                    "the private key would be printed to a terminal: send it to a file with `--out`, or redirect stdout"
-                )
-            }
+            Self::Unapproved { after } => write!(out, "nobody approved the key in {} seconds", after.as_secs()),
+            Self::PrintRefused => write!(out, "the private key would be printed to a terminal"),
             Self::Unlinked { dir } => write!(out, "{} is linked to no site: it has no .uses/site", dir.display()),
             Self::Link { path, .. } => write!(out, "the link file {} cannot be used", path.display()),
             Self::Linked { path, site } => {

@@ -412,8 +412,8 @@ mod test {
         assert_eq!(missing(&bare, &none).exit(), Exit::Usage);
         let no_token = missing(&remote("http://127.0.0.1:1"), &none);
         assert_eq!((no_token.exit(), no_token.kind()), (Exit::Auth, "deploy.setting.missing"));
-        assert!(no_token.to_string().contains("INK_KEY"));
-        assert!(no_token.to_string().contains("ink login"));
+        assert!(no_token.remedy().contains("INK_KEY"));
+        assert!(no_token.remedy().contains("ink login"));
     }
 
     #[test]

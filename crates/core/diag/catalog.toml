@@ -99,6 +99,7 @@ severity = "error"
 fault = "author"
 fields = { key = "text", expected = "text" }
 message = "`{key}` takes {expected}"
+fix = "fix the value in `ink.toml`, or remove the key to use its default"
 
 [diagnostic."frontmatter.syntax.invalid"]
 severity = "warning"
@@ -133,6 +134,7 @@ severity = "warning"
 fault = "author"
 fields = { written = "text" }
 message = "`{written}` points at no file, so it is shown as plain text"
+fix = "point the link at a file of the site, or remove the link"
 
 [diagnostic."link.anchor.missing"]
 severity = "warning"
@@ -167,6 +169,7 @@ severity = "warning"
 fault = "author"
 fields = { element = "text" }
 message = "`<{element}>` is not allowed in a page and was removed"
+fix = "remove the element, or write what it shows in markdown"
 
 [diagnostic."page.nesting.deep"]
 severity = "warning"
@@ -180,6 +183,7 @@ severity = "error"
 fault = "source"
 fields = { path = "path", reason = "text" }
 message = "{path} could not be read: {reason}"
+fix = "check that you may read it, then run the command again"
 
 [diagnostic."source.budget.files"]
 severity = "error"
@@ -193,6 +197,7 @@ severity = "error"
 fault = "author"
 fields = { path = "path", size = "bytes", limit = "bytes" }
 message = "{path} is {size}; a file may be {limit}"
+fix = "make the file smaller, or exclude it in `ink.toml`"
 
 [diagnostic."theme.route.collision"]
 severity = "error"
@@ -206,6 +211,7 @@ severity = "error"
 fault = "ours"
 fields = { reason = "text" }
 message = "the page could not be rendered: {reason}"
+fix = "this is a fault in ink: report it with the text above"
 
 [diagnostic."link.target.asset"]
 severity = "warning"
@@ -233,6 +239,7 @@ severity = "warning"
 fault = "author"
 fields = { path = "path" }
 message = "{path} is a kind of file uses.ink does not serve, so it is left out"
+fix = "convert it to a kind of file the site serves, or exclude it in `ink.toml`"
 
 [diagnostic."theme.route.reserved"]
 severity = "error"
@@ -392,12 +399,14 @@ severity = "error"
 fault = "operator"
 fields = { reason = "text" }
 message = "the folder could not be read: {reason}"
+fix = "check that the folder exists and that you may read it, then run the command again"
 
 [diagnostic."source.blob.unwritable"]
 severity = "error"
 fault = "operator"
 fields = { reason = "text" }
 message = "a file's bytes could not be stored: {reason}"
+fix = "check that the store has room and may be written, then run the command again"
 
 [diagnostic."source.budget.folders"]
 severity = "error"
@@ -845,24 +854,28 @@ severity = "error"
 fault = "ours"
 fields = { plugin = "text", limit = "count" }
 message = "the plugin `{plugin}` ran past its {limit} units of fuel in one call"
+fix = "this is a fault in ink: report it with the page that ran it"
 
 [diagnostic."plugin.budget.time"]
 severity = "error"
 fault = "ours"
 fields = { plugin = "text", limit = "count" }
 message = "the plugin `{plugin}` ran past its {limit} ms in one call"
+fix = "this is a fault in ink: report it with the page that ran it"
 
 [diagnostic."plugin.budget.memory"]
 severity = "error"
 fault = "ours"
 fields = { plugin = "text", limit = "bytes" }
 message = "the plugin `{plugin}` asked for more than its {limit} of memory"
+fix = "this is a fault in ink: report it with the page that ran it"
 
 [diagnostic."plugin.budget.table"]
 severity = "error"
 fault = "ours"
 fields = { plugin = "text", limit = "count" }
 message = "the plugin `{plugin}` asked for a table of more than {limit} elements"
+fix = "this is a fault in ink: report it with the page that ran it"
 
 [diagnostic."build.check.mismatch"]
 severity = "error"

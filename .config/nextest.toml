@@ -101,6 +101,12 @@ slow-timeout = { period = "30s", terminate-after = 2 }
 filter = "binary_id(uses-ink-cli::signin) | binary_id(uses-ink-cli::passkey) | binary_id(uses-ink-cli::vault)"
 slow-timeout = { period = "30s", terminate-after = 2 }
 
+# The help and failure tests run the real `ink` once for every command or every way to fail, so
+# a test is dozens of process starts: a few hundred milliseconds, and a second on a busy host.
+[[profile.default.overrides]]
+filter = "binary_id(uses-ink-cli::help) | binary_id(uses-ink-cli::failure)"
+slow-timeout = { period = "5s", terminate-after = 1 }
+
 # The incremental properties build a site cold and again after each of many edits: every test of
 # the `incremental` binaries (the engine's and the CLI's) has this budget instead.
 [[profile.default.overrides]]

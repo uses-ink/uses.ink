@@ -543,27 +543,27 @@ impl Fix<'_> {
             Problem::ConfigSyntaxInvalid { .. } => true,
             Problem::ConfigKeyUnknown { .. } => true,
             Problem::ConfigKeyMisplaced { .. } => true,
-            Problem::ConfigValueInvalid { .. } => false,
+            Problem::ConfigValueInvalid { .. } => true,
             Problem::FrontmatterSyntaxInvalid { .. } => true,
             Problem::FrontmatterValueInvalid { .. } => true,
             Problem::FrontmatterKeyConflict { .. } => true,
             Problem::SourceFileEncoding { .. } => true,
-            Problem::LinkTargetMissing { .. } => false,
+            Problem::LinkTargetMissing { .. } => true,
             Problem::LinkAnchorMissing { .. } => true,
             Problem::LinkTargetAmbiguous { .. } => true,
             Problem::LinkTargetUnpublished { .. } => true,
             Problem::PageRouteCollision { .. } => true,
-            Problem::HtmlElementStripped { .. } => false,
+            Problem::HtmlElementStripped { .. } => true,
             Problem::PageNestingDeep { .. } => true,
-            Problem::SourceFileUnreadable { .. } => false,
+            Problem::SourceFileUnreadable { .. } => true,
             Problem::SourceBudgetFiles { .. } => true,
-            Problem::SourceBudgetFile { .. } => false,
+            Problem::SourceBudgetFile { .. } => true,
             Problem::ThemeRouteCollision { .. } => true,
-            Problem::RenderPageFailed { .. } => false,
+            Problem::RenderPageFailed { .. } => true,
             Problem::LinkTargetAsset { .. } => true,
             Problem::PinTargetUnpublished { .. } => true,
             Problem::RouteSegmentUnnamed { .. } => true,
-            Problem::AssetMediaUnknown { .. } => false,
+            Problem::AssetMediaUnknown { .. } => true,
             Problem::ThemeRouteReserved { .. } => true,
             Problem::ThemePageRefused { .. } => true,
             Problem::SourceBlobMissing { .. } => true,
@@ -586,8 +586,8 @@ impl Fix<'_> {
             Problem::SourceLinkCycle { .. } => true,
             Problem::SourceNameInvalid { .. } => true,
             Problem::SourceFileSpecial { .. } => true,
-            Problem::SourceRootUnreadable { .. } => false,
-            Problem::SourceBlobUnwritable { .. } => false,
+            Problem::SourceRootUnreadable { .. } => true,
+            Problem::SourceBlobUnwritable { .. } => true,
             Problem::SourceBudgetFolders { .. } => true,
             Problem::SourceRepositoryUnreadable { .. } => true,
             Problem::SourceGitNetwork { .. } => true,
@@ -632,10 +632,10 @@ impl Fix<'_> {
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
-            Problem::PluginBudgetFuel { .. } => false,
-            Problem::PluginBudgetTime { .. } => false,
-            Problem::PluginBudgetMemory { .. } => false,
-            Problem::PluginBudgetTable { .. } => false,
+            Problem::PluginBudgetFuel { .. } => true,
+            Problem::PluginBudgetTime { .. } => true,
+            Problem::PluginBudgetMemory { .. } => true,
+            Problem::PluginBudgetTable { .. } => true,
             Problem::BuildCheckMismatch { .. } => true,
             Problem::AuthOriginRefused => true,
             Problem::AuthPasskeyRefused => true,
@@ -715,7 +715,9 @@ impl Fix<'_> {
             Problem::ConfigKeyMisplaced { table, .. } => {
                 write!(out, "move it under the file it pins, such as `[{table}.\"posts/x.md\"]`")
             }
-            Problem::ConfigValueInvalid { .. } => Ok(()),
+            Problem::ConfigValueInvalid { .. } => {
+                write!(out, "fix the value in `ink.toml`, or remove the key to use its default")
+            }
             Problem::FrontmatterSyntaxInvalid { .. } => {
                 write!(out, "fix the YAML between the `---` lines")
             }
@@ -726,7 +728,9 @@ impl Fix<'_> {
                 write!(out, "keep one of the two keys")
             }
             Problem::SourceFileEncoding { .. } => write!(out, "save the file as UTF-8"),
-            Problem::LinkTargetMissing { .. } => Ok(()),
+            Problem::LinkTargetMissing { .. } => {
+                write!(out, "point the link at a file of the site, or remove the link")
+            }
             Problem::LinkAnchorMissing { .. } => {
                 write!(out, "write the anchor of a heading of the page, or remove the link")
             }
@@ -739,19 +743,27 @@ impl Fix<'_> {
             Problem::PageRouteCollision { .. } => {
                 write!(out, "pin a different `page.slug` on all but one")
             }
-            Problem::HtmlElementStripped { .. } => Ok(()),
+            Problem::HtmlElementStripped { .. } => {
+                write!(out, "remove the element, or write what it shows in markdown")
+            }
             Problem::PageNestingDeep { .. } => {
                 write!(out, "nest lists, quotes and emphasis less deeply")
             }
-            Problem::SourceFileUnreadable { .. } => Ok(()),
+            Problem::SourceFileUnreadable { .. } => {
+                write!(out, "check that you may read it, then run the command again")
+            }
             Problem::SourceBudgetFiles { .. } => {
                 write!(out, "exclude folders that are not part of the site in ink.toml")
             }
-            Problem::SourceBudgetFile { .. } => Ok(()),
+            Problem::SourceBudgetFile { .. } => {
+                write!(out, "make the file smaller, or exclude it in `ink.toml`")
+            }
             Problem::ThemeRouteCollision { file, .. } => {
                 write!(out, "pin a different `page.slug` on {file}")
             }
-            Problem::RenderPageFailed { .. } => Ok(()),
+            Problem::RenderPageFailed { .. } => {
+                write!(out, "this is a fault in ink: report it with the text above")
+            }
             Problem::LinkTargetAsset { target, .. } => {
                 write!(out, "link to a page, or show {target} as an image")
             }
@@ -761,7 +773,9 @@ impl Fix<'_> {
             Problem::RouteSegmentUnnamed { .. } => {
                 write!(out, "rename it, or pin `page.slug`")
             }
-            Problem::AssetMediaUnknown { .. } => Ok(()),
+            Problem::AssetMediaUnknown { .. } => {
+                write!(out, "convert it to a kind of file the site serves, or exclude it in `ink.toml`")
+            }
             Problem::ThemeRouteReserved { .. } => {
                 write!(out, "choose another theme, or ask its author to move the file")
             }
@@ -830,8 +844,12 @@ impl Fix<'_> {
                 write!(out, "rename it: a name is UTF-8 text without `\\`")
             }
             Problem::SourceFileSpecial { .. } => write!(out, "move it out of the folder"),
-            Problem::SourceRootUnreadable { .. } => Ok(()),
-            Problem::SourceBlobUnwritable { .. } => Ok(()),
+            Problem::SourceRootUnreadable { .. } => {
+                write!(out, "check that the folder exists and that you may read it, then run the command again")
+            }
+            Problem::SourceBlobUnwritable { .. } => {
+                write!(out, "check that the store has room and may be written, then run the command again")
+            }
             Problem::SourceBudgetFolders { .. } => {
                 write!(out, "move folders that are not part of the site out of the folder")
             }
@@ -965,10 +983,18 @@ impl Fix<'_> {
             Problem::PluginCallTrapped { .. } => {
                 write!(out, "the plugin has a bug; report it to its author")
             }
-            Problem::PluginBudgetFuel { .. } => Ok(()),
-            Problem::PluginBudgetTime { .. } => Ok(()),
-            Problem::PluginBudgetMemory { .. } => Ok(()),
-            Problem::PluginBudgetTable { .. } => Ok(()),
+            Problem::PluginBudgetFuel { .. } => {
+                write!(out, "this is a fault in ink: report it with the page that ran it")
+            }
+            Problem::PluginBudgetTime { .. } => {
+                write!(out, "this is a fault in ink: report it with the page that ran it")
+            }
+            Problem::PluginBudgetMemory { .. } => {
+                write!(out, "this is a fault in ink: report it with the page that ran it")
+            }
+            Problem::PluginBudgetTable { .. } => {
+                write!(out, "this is a fault in ink: report it with the page that ran it")
+            }
             Problem::BuildCheckMismatch { .. } => {
                 write!(out, "a plugin's component and its native core disagree; `ink build` natively is the reference")
             }

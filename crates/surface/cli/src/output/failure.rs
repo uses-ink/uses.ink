@@ -86,7 +86,7 @@ pub(crate) enum Remedy {
     FixConfig,
     ListTopics,
     /// What a failure of the API says to do: a command in backticks, or a plain instruction.
-    Said(&'static str),
+    Said(String),
 }
 
 impl fmt::Display for Remedy {
@@ -155,7 +155,7 @@ impl Error {
             Self::Folder(source) => source.remedy(),
             Self::Serve(source) => source.remedy(),
             Self::Component(source) => source.remedy(),
-            Self::Deploy { source } => Remedy::Said(source.remedy()?),
+            Self::Deploy { source } => Remedy::Said(source.remedy()),
             Self::Json { .. } | Self::Manual { .. } => Remedy::Report,
             Self::Terminal { .. } => Remedy::Retry,
             Self::Preferences { .. } => Remedy::FixConfig,
@@ -304,8 +304,9 @@ impl Failure {
         let what = lines.next().unwrap_or_default();
         let what = what.strip_prefix("error: ").unwrap_or(what).replace('\'', "`");
         let rest: Vec<&str> = lines.collect();
-        let fix =
+        let tip =
             rest.iter().find_map(|line| line.trim_start().strip_prefix("tip: ")).map(|tip| tip.replace('\'', "`"));
+        let fix = tip.or_else(|| Some("run the command with `--help` to see what it accepts".to_owned()));
         let trailer =
             rest.iter().skip_while(|line| !line.starts_with("Usage:")).map(|line| (*line).to_owned()).collect();
         Self {
