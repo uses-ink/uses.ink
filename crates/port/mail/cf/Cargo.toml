@@ -1,0 +1,18 @@
+[package]
+name = "uses-ink-mail-cf"
+description = "The mail port on Cloudflare: the provider's API call goes through a typed Transport, so the adapter is tested with a fake and the provider stays open"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+mail.workspace = true
+
+[dev-dependencies]
+mail-conformance.workspace = true
+
+[lints]
+workspace = true

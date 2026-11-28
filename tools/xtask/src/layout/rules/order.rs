@@ -244,6 +244,8 @@ impl Order {
         // The mail port (decision 0066): typed messages and a trait, no adapter; the SMTP adapter
         // takes the port and the secret type that holds its password.
         ("uses-ink-mail", &[]),
+        ("uses-ink-mail-conformance", &["uses-ink-mail"]),
+        ("uses-ink-mail-cf", &["uses-ink-mail", "uses-ink-mail-conformance"]),
         ("uses-ink-mail-smtp", &["uses-ink-mail", "uses-ink-secret"]),
         ("uses-ink-secret", &[]),
         ("uses-ink-secret-conformance", &["uses-ink-secret"]),

@@ -2105,6 +2105,9 @@ dependencies = [
  "uses-ink-db",
  "uses-ink-db-conformance",
  "uses-ink-db-d1",
+ "uses-ink-mail",
+ "uses-ink-mail-cf",
+ "uses-ink-mail-conformance",
  "uses-ink-queue-cf",
  "uses-ink-queue-conformance",
  "uses-ink-queue-rows",
@@ -2599,6 +2602,21 @@ dependencies = [
 [[package]]
 name = "uses-ink-mail"
 version = "0.0.0"
+
+[[package]]
+name = "uses-ink-mail-cf"
+version = "0.0.0"
+dependencies = [
+ "uses-ink-mail",
+]
+
+[[package]]
+name = "uses-ink-mail-conformance"
+version = "0.0.0"
+dependencies = [
+ "pollster",
+ "uses-ink-mail",
+]
 
 [[package]]
 name = "uses-ink-model"

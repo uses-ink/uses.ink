@@ -33,6 +33,8 @@ A layer depends only on the layers before it, and `standalone` crates depend on 
 | `uses-ink-db-d1` | `crates/port/db/d1` | The row port on Cloudflare D1 through workers-rs, for the hosted service; empty off wasm32 | `uses-ink-db`, `uses-ink-logging` |
 | `uses-ink-db-sqlite` | `crates/port/db/sqlite` | The row port on a SQLite file or memory, for self-hosting | `uses-ink-db`, `uses-ink-db-conformance`, `uses-ink-logging` |
 | `uses-ink-mail` | `crates/port/mail` | The mail port: typed messages and addresses, a Mailer trait, and the stand-ins that capture or print a message | none |
+| `uses-ink-mail-cf` | `crates/port/mail/cf` | The mail port on Cloudflare: the provider's API call goes through a typed Transport, so the adapter is tested with a fake and the provider stays open | `uses-ink-mail`, `uses-ink-mail-conformance` |
+| `uses-ink-mail-conformance` | `crates/port/mail/conformance` | The conformance suite every mailer runs: a message arrives with its link, in order, a failure is typed and delivers nothing | `uses-ink-mail` |
 | `uses-ink-mail-smtp` | `crates/port/mail/smtp` | The SMTP adapter of the mail port: lettre over rustls, with the password held as a sealed-in-memory secret | `uses-ink-mail`, `uses-ink-secret` |
 | `uses-ink-queue` | `crates/port/queue` | The queue port: at-least-once delivery with a visibility timeout and a dedupe key | `uses-ink-model` |
 | `uses-ink-queue-cf` | `crates/port/queue/cf` | The queue port on Cloudflare: the rows of the database port are the queue, and a Queues message only wakes a consumer | `uses-ink-db`, `uses-ink-db-sqlite`, `uses-ink-model`, `uses-ink-queue`, `uses-ink-queue-conformance`, `uses-ink-queue-rows`, `uses-ink-logging` |

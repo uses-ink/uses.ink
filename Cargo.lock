@@ -6983,6 +6983,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-mail-cf"
+version = "0.0.0"
+dependencies = [
+ "uses-ink-mail",
+ "uses-ink-mail-conformance",
+]
+
+[[package]]
+name = "uses-ink-mail-conformance"
+version = "0.0.0"
+dependencies = [
+ "pollster",
+ "uses-ink-mail",
+]
+
+[[package]]
 name = "uses-ink-mail-smtp"
 version = "0.0.0"
 dependencies = [

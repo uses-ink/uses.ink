@@ -52,6 +52,8 @@ crates = [
     "uses-ink-https",
     "uses-ink-logging",
     "uses-ink-mail",
+    "uses-ink-mail-cf",
+    "uses-ink-mail-conformance",
     "uses-ink-mail-smtp",
     "uses-ink-model",
     "uses-ink-queue",

@@ -1,0 +1,16 @@
+[package]
+name = "uses-ink-mail-conformance"
+description = "The conformance suite every mailer runs: a message arrives with its link, in order, a failure is typed and delivers nothing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+mail.workspace = true
+pollster.workspace = true
+
+[lints]
+workspace = true

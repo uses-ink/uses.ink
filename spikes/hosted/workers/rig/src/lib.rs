@@ -6,6 +6,7 @@
 mod blobs;
 mod jobs;
 mod rows;
+mod post;
 mod suite;
 mod vault;
 

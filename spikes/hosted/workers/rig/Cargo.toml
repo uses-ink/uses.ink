@@ -21,4 +21,7 @@ queue-conformance = { package = "uses-ink-queue-conformance", path = "../../../.
 queue-rows = { package = "uses-ink-queue-rows", path = "../../../../crates/port/queue/rows" }
 secret-conformance = { package = "uses-ink-secret-conformance", path = "../../../../crates/port/secret/conformance" }
 secret-worker = { package = "uses-ink-secret-worker", path = "../../../../crates/port/secret/worker" }
+mail = { package = "uses-ink-mail", path = "../../../../crates/port/mail" }
+mail-cf = { package = "uses-ink-mail-cf", path = "../../../../crates/port/mail/cf" }
+mail-conformance = { package = "uses-ink-mail-conformance", path = "../../../../crates/port/mail/conformance" }
 secret = { package = "uses-ink-secret", path = "../../../../crates/port/secret" }
