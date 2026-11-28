@@ -632,3 +632,17 @@ fn bodies_and_routes_that_are_wrong_say_so() {
     let reply = fixture.send((Method::Post, "/v1/passkeys/session"), &ceremony, &json!({}));
     assert_eq!(reply.status, Status::BadRequest);
 }
+
+#[test]
+fn starting_a_sign_in_is_limited_per_source_and_freed_by_the_clock() {
+    let fixture = Fixture::new();
+    for _ in 0..60 {
+        fixture.challenge();
+    }
+    let over = fixture.send((Method::Post, "/v1/passkeys/challenge"), "", &Value::Null);
+    assert_eq!((over.status, code(&over)), (Status::TooMany, "auth.rate.limited".to_owned()));
+    assert!(over.retry.is_some_and(|retry| retry.as_secs() > 0), "the reply says when to try again");
+    assert!(over.ceremony.is_none(), "a limited request starts nothing");
+    fixture.clock.advance(Duration::from_secs(3601));
+    fixture.challenge();
+}

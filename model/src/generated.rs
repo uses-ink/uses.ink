@@ -686,6 +686,9 @@ pub enum Problem {
         /// How many passkeys are registered.
         passkeys: u64,
     },
+    /// `auth.rate.limited`: too many requests from this source in a short time
+    #[serde(rename = "auth.rate.limited")]
+    AuthRateLimited,
     /// `auth.session.missing`: no session of yours has that id
     #[serde(rename = "auth.session.missing")]
     AuthSessionMissing,
@@ -804,6 +807,7 @@ impl Problem {
         "auth.passkey.missing",
         "auth.passkey.label",
         "auth.relying-party.changed",
+        "auth.rate.limited",
         "auth.session.missing",
     ];
     /// Its dotted code, `noun.noun.reason`.
@@ -920,6 +924,7 @@ impl Problem {
             Self::AuthPasskeyMissing => "auth.passkey.missing",
             Self::AuthPasskeyLabel => "auth.passkey.label",
             Self::AuthRelyingPartyChanged { .. } => "auth.relying-party.changed",
+            Self::AuthRateLimited => "auth.rate.limited",
             Self::AuthSessionMissing => "auth.session.missing",
         }
     }
@@ -1037,6 +1042,7 @@ impl Problem {
             Self::AuthPasskeyMissing => Severity::Error,
             Self::AuthPasskeyLabel => Severity::Error,
             Self::AuthRelyingPartyChanged { .. } => Severity::Error,
+            Self::AuthRateLimited => Severity::Error,
             Self::AuthSessionMissing => Severity::Error,
         }
     }
@@ -1154,6 +1160,7 @@ impl Problem {
             Self::AuthPasskeyMissing => Fault::Author,
             Self::AuthPasskeyLabel => Fault::Author,
             Self::AuthRelyingPartyChanged { .. } => Fault::Operator,
+            Self::AuthRateLimited => Fault::Author,
             Self::AuthSessionMissing => Fault::Author,
         }
     }
@@ -1787,6 +1794,7 @@ impl From<&Problem> for Coded {
                 "auth.relying-party.changed",
                 vec![Field::from(was.clone()), Field::from(now.clone()), Field::from(*passkeys)],
             ),
+            Problem::AuthRateLimited => Coded::new("auth.rate.limited", vec![]),
             Problem::AuthSessionMissing => Coded::new("auth.session.missing", vec![]),
         }
     }
@@ -1928,6 +1936,7 @@ impl TryFrom<Coded> for Problem {
             "auth.relying-party.changed" => {
                 Self::AuthRelyingPartyChanged { was: fields.next()?, now: fields.next()?, passkeys: fields.next()? }
             }
+            "auth.rate.limited" => Self::AuthRateLimited,
             "auth.session.missing" => Self::AuthSessionMissing,
             _ => return fields.unknown(),
         };

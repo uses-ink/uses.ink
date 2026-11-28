@@ -44,7 +44,7 @@ pub use route::Step;
 pub use stop::Stop;
 
 use crate::auth::cookie::Jar;
-use crate::auth::signin::Draws;
+use crate::auth::signin::{Draws, Quota, Rate};
 use crate::body::Unreadable;
 use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::{Answers, Owner};
@@ -69,6 +69,7 @@ pub struct Ceremonies<D, K, R, P> {
     draw: R,
     passkeys: P,
     config: Passing,
+    challenge: Quota,
 }
 
 /// The body of `POST /v1/passkeys/options`.
@@ -142,10 +143,22 @@ struct Removed {
 }
 
 impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
+    /// How many sources are remembered at once.
+    const TRACKED: usize = 10_000;
+
     /// The passkey routes over `stores` (sign-in and passkeys), with the time from `clocks.0` and
     /// randomness from `clocks.1`, verifying with `passkeys`.
     pub fn new(stores: (SignIn<D>, Registry<D>), clocks: (K, R), passkeys: P, config: Passing) -> Self {
-        Self { entry: stores.0, registry: stores.1, clock: clocks.0, draw: clocks.1, passkeys, config }
+        let challenge = Quota::new(Quota::CHALLENGES, Self::TRACKED);
+        Self { entry: stores.0, registry: stores.1, clock: clocks.0, draw: clocks.1, passkeys, config, challenge }
+    }
+
+    /// The same routes with a different limit on starting a sign-in, per source. The default is
+    /// [`Quota::CHALLENGES`].
+    #[must_use]
+    pub fn with_challenges(mut self, rate: Rate) -> Self {
+        self.challenge = Quota::new(rate, Self::TRACKED);
+        self
     }
 
     /// How it is set up.
@@ -181,7 +194,7 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
         match step {
             Step::Options => self.options(request, body, now).await,
             Step::Register => self.register(request, body, now).await,
-            Step::Challenge => self.challenge(now).await,
+            Step::Challenge => self.challenge(request, now).await,
             Step::Assert => self.assert(request, body, now).await,
             Step::List => self.list(request, now).await,
             Step::Remove(id) => self.remove(request, id, now).await,
@@ -276,7 +289,8 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
         Ok(reply)
     }
 
-    async fn challenge(&self, now: Timestamp) -> Result<Reply, Stop> {
+    async fn challenge(&self, request: &Request, now: Timestamp) -> Result<Reply, Stop> {
+        self.challenge.admit(request.source, now).map_err(Stop::Limited)?;
         let (asking, Authenticating(state)) =
             self.passkeys.start_login().map_err(|error| Stop::Verifier(Box::new(error)))?;
         let drawn = self.drawn()?;

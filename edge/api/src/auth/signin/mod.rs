@@ -22,6 +22,11 @@
 //! count every request alike, so they leak nothing either. This is flat enough against a
 //! remote observer, and it is not constant time against one on the same machine.
 //!
+//! **Origin.** Every route here that changes state, which is every one but a `GET`, is taken from
+//! the origin of the link base (and any added with [`Door::with_origin`]) or with
+//! `Sec-Fetch-Site: same-origin`, and refused otherwise as `auth.origin.refused`. A script that is
+//! no browser signs its requests on the API instead.
+//!
 //! **Tokens in logs.** A link's token is in a path. [`Enter::redact`] cuts it from every line the
 //! server logs, [`Request`]'s `Debug` does the same, and no error of this module holds it.
 
@@ -41,16 +46,17 @@ use serde::Serialize;
 
 use crate::Answers;
 use crate::auth::cookie::Jar;
+use crate::auth::origin::Origins;
 use crate::body::{Approve, Ask, Redeem, Unreadable};
 use crate::enrol::{Closed, Enrol};
 use crate::port::{Port, Unnamed};
 use crate::refusal::Turned;
-use crate::reply::{Media, Payload, Reply, Request, Status};
+use crate::reply::{Media, Method, Payload, Reply, Request, Status};
 use crate::view::Problem;
 use control::keys::{Approval, Error as KeyError, Refused as KeyRefused, Rights};
 
 pub use approver::{Approver, Approving, Strength};
-pub use limiter::{Limited, Limiter, Rate, RateError, Rates, Scope, Who};
+pub use limiter::{Limited, Limiter, Quota, Rate, RateError, Rates, Scope, Who};
 pub use outbox::{Courier, Full, Note, Notes, Outbox};
 pub use route::{Enter, EnterError};
 
@@ -79,6 +85,7 @@ pub struct Door<D, K, R> {
     draw: R,
     config: Config,
     limiter: Limiter,
+    origins: Origins,
 }
 
 /// Why a sign-in call was not answered with what it asked for.
@@ -104,6 +111,8 @@ pub enum Step<E> {
     Keys(KeyRefused),
     /// The key store failed.
     Store(KeyError<E>),
+    /// A state-changing request that did not come from one of the dashboard's origins.
+    Origin,
     /// The request holds no usable session.
     Anonymous,
     /// The account has no live session with that id.
@@ -127,6 +136,7 @@ impl<E> std::fmt::Display for Step<E> {
             Self::Closed(error) => error.fmt(out),
             Self::Keys(error) => error.fmt(out),
             Self::Store(_) => out.write_str("the keys could not be read"),
+            Self::Origin => out.write_str("the request did not come from this dashboard"),
             Self::Anonymous => out.write_str("sign in on the dashboard: this route reads the session cookie"),
             Self::Missing => out.write_str("the account has no live session with that id"),
             Self::Draw(_) => out.write_str("no random bytes were available"),
@@ -148,7 +158,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Step<E> {
             Self::Draw(source) => Some(source),
             Self::Sign(source) => Some(source),
             Self::Json(source) => Some(source),
-            Self::Route | Self::Large { .. } | Self::Anonymous | Self::Missing => None,
+            Self::Route | Self::Large { .. } | Self::Origin | Self::Anonymous | Self::Missing => None,
         }
     }
 }
@@ -164,6 +174,7 @@ impl<E: std::error::Error + 'static> Step<E> {
             Self::Closed(_) => "auth.enrolment.limited",
             Self::Keys(refused) => Turned(refused).code(),
             Self::Store(_) => "keys",
+            Self::Origin => "auth.origin.refused",
             Self::Anonymous => "unauthorized",
             Self::Missing => "auth.session.missing",
             Self::Draw(_) => "random",
@@ -186,6 +197,7 @@ impl<E: std::error::Error + 'static> Step<E> {
             Self::Large { .. } => Status::TooLarge,
             Self::Limited(_) | Self::Closed(_) => Status::TooMany,
             Self::Keys(refused) => Turned(refused).status(),
+            Self::Origin => Status::Forbidden,
             Self::Anonymous => Status::Unauthorized,
             Self::Sign(Error::Refused(_)) => Status::Conflict,
             Self::Draw(_) | Self::Json(_) | Self::Sign(_) | Self::Store(_) => Status::Internal,
@@ -306,7 +318,22 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     /// The sign-in routes over `entry`, with the time from `clocks.0` and randomness from
     /// `clocks.1`, and the approval of enrolments over `enrol`.
     pub fn new(entry: SignIn<D>, clocks: (K, R), enrol: Enrol<D>, config: Config) -> Self {
-        Self { entry, enrol, clock: clocks.0, draw: clocks.1, config, limiter: Limiter::new() }
+        let origins = Origins::of(&config.base);
+        Self { entry, enrol, clock: clocks.0, draw: clocks.1, config, limiter: Limiter::new(), origins }
+    }
+
+    /// The same door also taking state-changing requests from `origin`, such as a dashboard served
+    /// on another host than the link base. A request is taken from the link base's origin, and
+    /// from these, and from nowhere else.
+    #[must_use]
+    pub fn with_origin(mut self, origin: impl Into<String>) -> Self {
+        self.origins = self.origins.with(origin);
+        self
+    }
+
+    /// The origins a state-changing request may come from.
+    pub const fn origins(&self) -> &Origins {
+        &self.origins
     }
 
     /// How it is set up.
@@ -334,6 +361,11 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
             Payload::Whole(body) => body.as_slice(),
             Payload::Over { limit } => return Err(Step::Large { limit: *limit }),
         };
+        // a `GET` that signs in (`reveals`) is the operator's choice for an instance with no page
+        // in front, and has no browser to ask: everything else that changes state is checked
+        if request.method != Method::Get {
+            self.origin(request)?;
+        }
         match call {
             Enter::Ask => self.ask(request, body).await,
             Enter::Look(proof) if !self.config.reveals => self.look(proof).await,
@@ -346,6 +378,11 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
             Enter::Approving(code) => self.approving(request, code, body).await,
             Enter::Declining(code) => self.declining(request, code).await,
         }
+    }
+
+    /// The Fetch Metadata defence of the OWASP CSRF cheat sheet, for the routes that change state.
+    fn origin(&self, request: &Request) -> Result<(), Step<D::Error>> {
+        if self.origins.admits(request) { Ok(()) } else { Err(Step::Origin) }
     }
 
     fn json<T: Serialize>(status: Status, value: &T) -> Result<Reply, Step<D::Error>> {

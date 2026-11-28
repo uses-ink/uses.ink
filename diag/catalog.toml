@@ -991,6 +991,12 @@ fault = "author"
 message = "no session of yours has that id"
 fix = "reload the list of sessions"
 
+[diagnostic."auth.rate.limited"]
+severity = "error"
+fault = "author"
+message = "too many requests from this source in a short time"
+fix = "wait the seconds in the Retry-After header, then try again"
+
 [notice."auth.token.retired"]
 fields = { token_file = "text" }
 message = "the owner token in `{token_file}` no longer works"

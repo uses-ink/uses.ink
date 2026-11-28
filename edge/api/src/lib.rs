@@ -43,11 +43,12 @@ pub use api::{Answers, Api};
 /// The old path of [`archive`], kept for the crates that import it.
 pub use archive as tar;
 pub use auth::cookie::{Cookie, Jar, JarError, Name, NameError};
+pub use auth::origin::Origins;
 pub use auth::credential::{Credentials, Offered, Presented, Principal, Verdict, Via};
 /// The old path of [`auth::signin`], kept for the crates that import it.
 pub use auth::signin as door;
 pub use auth::signin::{
-    Approver, Approving, Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Owner, Rate, Rates, Routed,
+    Approver, Approving, Config, Courier, Door, Draws, Enter, Limiter, Note, Notes, Outbox, Owner, Quota, Rate, Rates, Routed,
     Strength,
 };
 pub use ceremony::{Ceremonies, Passing, Step, Stop};

@@ -137,6 +137,8 @@ enum Key {
     Address([u8; 32]),
     V4(u32),
     V6(u64),
+    /// Every request whose source is not known, as one bucket, so a missing address is not a way round.
+    Unknown,
 }
 
 impl Key {
@@ -152,13 +154,47 @@ impl Key {
     }
 }
 
+/// The times of the requests counted for each key, newest last, as milliseconds.
+#[derive(Debug, Default)]
+struct Counts(HashMap<Key, VecDeque<i64>>);
+
+impl Counts {
+    /// Forgets keys whose last request is older than `longest`, when more than `tracked` are held.
+    fn trim(&mut self, tracked: usize, longest: Duration, now: i64) {
+        if self.0.len() >= tracked {
+            let cut = now.saturating_sub(i64::try_from(longest.as_millis()).unwrap_or(i64::MAX));
+            self.0.retain(|_, hits| hits.back().is_some_and(|last| *last > cut));
+        }
+    }
+
+    /// Whether `key` may make another request under `rate`, or how long until it may. The key
+    /// is not counted: [`Counts::record`] does that once every check has passed.
+    fn check(&mut self, key: Key, rate: Rate, now: i64) -> Result<(), Duration> {
+        let window = i64::try_from(rate.window.duration().as_millis()).unwrap_or(i64::MAX);
+        let hits = self.0.entry(key).or_default();
+        while hits.front().is_some_and(|first| first.saturating_add(window) <= now) {
+            hits.pop_front();
+        }
+        if hits.len() < usize::try_from(rate.count).unwrap_or(usize::MAX) {
+            return Ok(());
+        }
+        let first = hits.front().copied().unwrap_or(now);
+        let wait = first.saturating_add(window).saturating_sub(now).max(0);
+        Err(Duration::from_secs(u64::try_from(wait).unwrap_or(0).div_ceil(1000).max(1)))
+    }
+
+    fn record(&mut self, key: Key, now: i64) {
+        self.0.entry(key).or_default().push_back(now);
+    }
+}
+
 /// Counts requests in memory, by address and by source, and turns away those over a limit. It
 /// is told the time and reads no clock. A request that is turned away is not counted, and
 /// nothing is stored for an address except its digest. What it knows is lost on a restart, which
 /// only makes it more generous once.
 #[derive(Debug, Default)]
 pub struct Limiter {
-    seen: Mutex<HashMap<Key, VecDeque<i64>>>,
+    seen: Mutex<Counts>,
 }
 
 impl Limiter {
@@ -173,31 +209,61 @@ impl Limiter {
         let mut checks = vec![(Key::of(who.address), rates.address, Scope::Address)];
         checks.extend(who.source.map(|source| (Key::network(source), rates.source, Scope::Source)));
         let mut seen = self.seen.lock().unwrap_or_else(PoisonError::into_inner);
-        if seen.len() >= rates.tracked {
-            let longest = rates.address.window.duration().max(rates.source.window.duration());
-            let cut = now.saturating_sub(i64::try_from(longest.as_millis()).unwrap_or(i64::MAX));
-            seen.retain(|_, hits| hits.back().is_some_and(|last| *last > cut));
-        }
+        seen.trim(rates.tracked, rates.address.window.duration().max(rates.source.window.duration()), now);
         for (key, rate, scope) in &checks {
-            if !seen.contains_key(key) && seen.len() >= rates.tracked {
+            if !seen.0.contains_key(key) && seen.0.len() >= rates.tracked {
                 let retry = rates.address.window.duration().min(rates.source.window.duration());
                 return Err(Limited { scope: Scope::Full, retry });
             }
-            let window = i64::try_from(rate.window.duration().as_millis()).unwrap_or(i64::MAX);
-            let hits = seen.entry(*key).or_default();
-            while hits.front().is_some_and(|first| first.saturating_add(window) <= now) {
-                hits.pop_front();
-            }
-            if hits.len() >= usize::try_from(rate.count).unwrap_or(usize::MAX) {
-                let first = hits.front().copied().unwrap_or(now);
-                let wait = first.saturating_add(window).saturating_sub(now).max(0);
-                let seconds = u64::try_from(wait).unwrap_or(0).div_ceil(1000).max(1);
-                return Err(Limited { scope: *scope, retry: Duration::from_secs(seconds) });
-            }
+            seen.check(*key, *rate, now).map_err(|retry| Limited { scope: *scope, retry })?;
         }
         for (key, ..) in &checks {
-            seen.entry(*key).or_default().push_back(now);
+            seen.record(*key, now);
         }
+        Ok(())
+    }
+}
+
+/// One limit on one kind of request per source, with the same sources as [`Limiter`] (an IPv4
+/// address, an IPv6 /64) and a bucket of its own for requests whose source is not known. The
+/// passkey challenge uses it: it takes no address, so only the source can be counted. Behind a
+/// reverse proxy every request has the proxy's source until the server is told which forwarded
+/// header to trust, and then the limit is one for everybody.
+#[derive(Debug)]
+pub struct Quota {
+    rate: Rate,
+    tracked: usize,
+    seen: Mutex<Counts>,
+}
+
+impl Quota {
+    /// What starting a passkey sign-in is held to by default: 60 an hour from one source. A
+    /// challenge costs a row and names no one, so the limit bounds rows and noise; it is not a
+    /// guard against guessing.
+    pub const CHALLENGES: Rate = Rate { count: 60, window: Ttl::secs(3600) };
+
+    /// A quota of `rate` for each source, remembering at most `tracked` sources.
+    pub fn new(rate: Rate, tracked: usize) -> Self {
+        Self { rate, tracked, seen: Mutex::default() }
+    }
+
+    /// The rate.
+    pub const fn rate(&self) -> Rate {
+        self.rate
+    }
+
+    /// Lets the request through and counts it, or says when it would be let through. A turned away
+    /// request is not counted.
+    pub fn admit(&self, source: Option<IpAddr>, now: Timestamp) -> Result<(), Limited> {
+        let now = now.as_millisecond();
+        let key = source.map_or(Key::Unknown, Key::network);
+        let mut seen = self.seen.lock().unwrap_or_else(PoisonError::into_inner);
+        seen.trim(self.tracked, self.rate.window.duration(), now);
+        if !seen.0.contains_key(&key) && seen.0.len() >= self.tracked {
+            return Err(Limited { scope: Scope::Full, retry: self.rate.window.duration() });
+        }
+        seen.check(key, self.rate, now).map_err(|retry| Limited { scope: Scope::Source, retry })?;
+        seen.record(key, now);
         Ok(())
     }
 }
@@ -278,5 +344,33 @@ mod test {
         assert_eq!(full.scope, Scope::Full);
         // once the old ones are out of their windows there is room again
         assert!(limiter.admit(&rates, who(&late, "10.0.1.1"), at(4000)).is_ok());
+    }
+
+    #[test]
+    fn a_quota_counts_a_source_and_one_bucket_for_no_source() {
+        let quota = Quota::new("2/10m".parse().unwrap(), 100);
+        let one: Option<IpAddr> = Some("10.0.0.1".parse().unwrap());
+        assert!(quota.admit(one, at(0)).is_ok());
+        assert!(quota.admit(one, at(1)).is_ok());
+        let over = quota.admit(one, at(2)).unwrap_err();
+        assert_eq!(over, Limited { scope: Scope::Source, retry: Duration::from_secs(598) });
+        assert!(quota.admit(Some("10.0.0.2".parse().unwrap()), at(2)).is_ok());
+        // a request with no known source is one bucket, not a way round
+        assert!(quota.admit(None, at(3)).is_ok());
+        assert!(quota.admit(None, at(4)).is_ok());
+        assert_eq!(quota.admit(None, at(5)).unwrap_err().scope, Scope::Source);
+        // the window frees it
+        assert!(quota.admit(one, at(601)).is_ok());
+    }
+
+    #[test]
+    fn a_quota_remembers_a_bounded_number_of_sources() {
+        let quota = Quota::new("5/1h".parse().unwrap(), 2);
+        for n in 1..=2 {
+            assert!(quota.admit(Some(format!("10.0.0.{n}").parse().unwrap()), at(n)).is_ok());
+        }
+        let full = quota.admit(Some("10.0.0.3".parse().unwrap()), at(3)).unwrap_err();
+        assert_eq!(full.scope, Scope::Full);
+        assert!(quota.admit(Some("10.0.0.3".parse().unwrap()), at(4000)).is_ok());
     }
 }

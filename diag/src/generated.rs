@@ -357,6 +357,9 @@ impl Message<'_> {
                     "passkeys were made for `{was}` and the relying party id is now `{now}`; {passkeys} would stop working"
                 )
             }
+            Problem::AuthRateLimited => {
+                write!(out, "too many requests from this source in a short time")
+            }
             Problem::AuthSessionMissing => write!(out, "no session of yours has that id"),
         }
     }
@@ -639,6 +642,7 @@ impl Fix<'_> {
             Problem::AuthPasskeyMissing => true,
             Problem::AuthPasskeyLabel => true,
             Problem::AuthRelyingPartyChanged { .. } => true,
+            Problem::AuthRateLimited => true,
             Problem::AuthSessionMissing => true,
         }
     }
@@ -994,6 +998,9 @@ impl Fix<'_> {
                     out,
                     "set `--rp-id {was}` again, or accept that people sign in with an email link and add passkeys anew"
                 )
+            }
+            Problem::AuthRateLimited => {
+                write!(out, "wait the seconds in the Retry-After header, then try again")
             }
             Problem::AuthSessionMissing => write!(out, "reload the list of sessions"),
         }

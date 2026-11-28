@@ -63,6 +63,7 @@ struct Wanted {
     secure: bool,
     reveals: bool,
     capacity: usize,
+    dashboard: Option<&'static str>,
 }
 
 impl Default for Wanted {
@@ -73,6 +74,7 @@ impl Default for Wanted {
             secure: false,
             reveals: false,
             capacity: 16,
+            dashboard: None,
         }
     }
 }
@@ -127,6 +129,10 @@ impl Fixture {
             reveals: wanted.reveals,
         };
         let door = Door::new(entry.clone(), (clock, Counter::new()), enrol, config);
+        let door = match wanted.dashboard {
+            Some(origin) => door.with_origin(origin),
+            None => door,
+        };
         let courier = Courier::new(outbox.clone(), mail, clock, Duration::from_secs(1));
         Self { front: Routed::new(api, door), clock, mail, courier, entry, outbox, _folder: folder }
     }
@@ -138,8 +144,8 @@ impl Fixture {
             query: None,
             authorization: held.signed.map(|header| header.as_bytes().to_vec()),
             cookie: held.cookie.map(|cookie| cookie.as_bytes().to_vec()),
-            origin: None,
-            site: None,
+            origin: held.origin.map(str::to_owned),
+            site: held.site.map(str::to_owned),
             source: Some(held.source.parse().unwrap()),
             body: Payload::Whole(body.to_vec()),
         };
@@ -178,11 +184,13 @@ struct Held<'a> {
     signed: Option<&'a str>,
     cookie: Option<&'a str>,
     source: &'a str,
+    origin: Option<&'a str>,
+    site: Option<&'a str>,
 }
 
 impl Default for Held<'_> {
     fn default() -> Self {
-        Self { signed: None, cookie: None, source: "10.0.0.1" }
+        Self { signed: None, cookie: None, source: "10.0.0.1", origin: Some("https://ink.example"), site: None }
     }
 }
 
@@ -425,7 +433,7 @@ fn nothing_that_prints_holds_a_secret() {
         query: None,
         authorization: Some(b"Bearer sekrit".to_vec()),
         cookie: Some(b"ink-session=sekrit".to_vec()),
-        origin: None,
+        origin: Some("https://ink.example".to_owned()),
         site: None,
         source: None,
         body: Payload::Whole(vec![]),
@@ -488,12 +496,87 @@ fn an_account_lists_its_sessions_and_ends_them_by_id_and_no_one_elses() {
     }
     // ending the asking one clears its cookie
     let current = json(&fixture.send((Method::Get, "/v1/sessions"), one, b""))[0]["id"].as_str().unwrap().to_owned();
-    let last = fixture.send((Method::Delete, &format!("/v1/sessions/{current}")), one, b"");
-    assert!(last.cookie.unwrap().to_string().contains("Max-Age=0"));
+    let farewell = fixture.send((Method::Delete, &format!("/v1/sessions/{current}")), one, b"");
+    assert!(farewell.cookie.unwrap().to_string().contains("Max-Age=0"));
     assert_eq!(fixture.send((Method::Get, "/v1/sessions"), one, b"").status, Status::Unauthorized);
     // the stranger kept theirs
     assert_eq!(fixture.send((Method::Get, "/v1/sessions"), other, b"").status, Status::Ok);
     // a method the route does not take lists the ones it does
     let wrong = fixture.send((Method::Post, "/v1/sessions"), other, b"");
     assert_eq!((wrong.status, wrong.allow), (Status::MethodNotAllowed, vec![Method::Get]));
+}
+
+#[test]
+fn a_state_change_needs_the_dashboards_origin_or_same_origin() {
+    let fixture = Fixture::new(Wanted::default());
+    let secret = fixture.sign_in("me@example.org");
+    let jar = format!("ink-session={secret}");
+    let me = Held { cookie: Some(&jar), ..Held::default() };
+    let asked = json!({ "address": "me@example.org" }).to_string();
+    assert_eq!(fixture.send((Method::Post, "/v1/login"), Held::default(), asked.as_bytes()).status, Status::Accepted);
+    let token = fixture.token();
+    let link = format!("/v1/login/{token}");
+    let device = sig::Signer::from_seed(&sig::Seed::new([3; 32]));
+    let ask = json!({ "key": device.public().to_string(), "label": "laptop", "purpose": "device" }).to_string();
+    let enrol = fixture.send((Method::Post, "/v1/enrol"), Held::default(), ask.as_bytes());
+    let approve = format!("/v1/approve/{}", json(&enrol)["user_code"].as_str().unwrap());
+    let sessions = json(&fixture.send((Method::Get, "/v1/sessions"), me, b""));
+    let id = format!("/v1/sessions/{}", sessions[0]["id"].as_str().unwrap());
+    let fingerprint = json!({ "fingerprint": device.id().fingerprint().to_string() }).to_string();
+    let routes: [(Method, &str, &[u8]); 6] = [
+        (Method::Post, "/v1/login", asked.as_bytes()),
+        (Method::Post, &link, b""),
+        (Method::Delete, "/v1/session", b""),
+        (Method::Delete, &id, b""),
+        (Method::Post, &approve, fingerprint.as_bytes()),
+        (Method::Delete, &approve, b""),
+    ];
+    let elsewhere = [
+        (Some("https://evil.example"), None),
+        (Some("https://evil.example"), Some("same-origin")),
+        (Some("https://ink.example:8443"), None),
+        (Some("null"), None),
+        (None, Some("cross-site")),
+        (None, Some("same-site")),
+        (None, None),
+    ];
+    for (method, path, body) in routes {
+        for (origin, site) in elsewhere {
+            let held = Held { origin, site, ..me };
+            let reply = fixture.send((method, path), held, body);
+            let shown = (method, origin, site);
+            assert_eq!((reply.status, code(&reply)), (Status::Forbidden, "auth.origin.refused".to_owned()), "{shown:?}");
+            assert!(reply.cookie.is_none(), "a refused request sets nothing");
+        }
+    }
+    // nothing was changed: the link still works, the session is alive and the enrolment is pending
+    assert_eq!(fixture.send((Method::Get, "/v1/session"), me, b"").status, Status::Ok);
+    assert_eq!(fixture.send((Method::Get, &link), Held::default(), b"").status, Status::Ok);
+    assert_eq!(fixture.send((Method::Get, &approve), me, b"").status, Status::Ok);
+    // a read needs no origin, and a browser that says same-origin and no more is taken
+    let bare = Held { origin: None, site: None, ..me };
+    assert_eq!(fixture.send((Method::Get, "/v1/sessions"), bare, b"").status, Status::Ok);
+    let same = Held { origin: None, site: Some("same-origin"), ..me };
+    assert_eq!(fixture.send((Method::Post, &approve), same, fingerprint.as_bytes()).status, Status::Ok);
+    assert_eq!(fixture.send((Method::Delete, "/v1/session"), same, b"").status, Status::Ok);
+}
+
+#[test]
+fn a_dashboard_on_another_host_is_added_by_the_operator_and_a_get_that_signs_in_is_theirs_too() {
+    let dashboard = Some("https://App.Dash.example");
+    let fixture = Fixture::new(Wanted { reveals: true, dashboard, ..Wanted::default() });
+    let ask = json!({ "address": "you@example.org" }).to_string();
+    for (origin, status) in [
+        ("https://app.dash.example", Status::Accepted),
+        ("https://ink.example", Status::Accepted),
+        ("https://dash.example", Status::Forbidden),
+    ] {
+        let held = Held { origin: Some(origin), source: "10.0.0.7", ..Held::default() };
+        assert_eq!(fixture.send((Method::Post, "/v1/login"), held, ask.as_bytes()).status, status, "{origin}");
+    }
+    assert_eq!(fixture.ask("me@example.org", "10.0.0.1").status, Status::Accepted);
+    let token = fixture.token();
+    // `reveals`: a GET signs in, with no browser to ask, so it is not held to an origin
+    let bare = Held { origin: None, site: None, ..Held::default() };
+    assert_eq!(fixture.send((Method::Get, &format!("/v1/login/{token}")), bare, b"").status, Status::Ok);
 }

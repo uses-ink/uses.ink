@@ -9,6 +9,7 @@ use control::passkeys::{Flow, Reason, Refusal, Refused as Stored};
 use control::signin::Error as SignError;
 
 use super::route::StepError;
+use crate::auth::signin::Limited;
 use crate::body::Unreadable;
 use crate::reply::{Media, Reply, Status};
 use crate::view::Problem;
@@ -31,6 +32,8 @@ pub enum Stop {
     },
     /// The request did not come from one of the dashboard's origins.
     Origin,
+    /// A rate limit was reached.
+    Limited(Limited),
     /// The request holds no usable session.
     Anonymous,
     /// There is no ceremony to complete: it ended, was already used, was never started, or is
@@ -78,6 +81,7 @@ impl fmt::Display for Stop {
             Self::Body(error) => error.fmt(out),
             Self::Large { limit } => write!(out, "the body is over the limit of {limit} bytes"),
             Self::Origin => out.write_str("the request did not come from this dashboard"),
+            Self::Limited(error) => error.fmt(out),
             Self::Anonymous => out.write_str("sign in on the dashboard: this route reads the session cookie"),
             Self::Challenge => out.write_str("no passkey ceremony is waiting for this reply"),
             Self::Refused { refusal, .. } => refusal.fmt(out),
@@ -104,6 +108,7 @@ impl Error for Stop {
             Self::Body(source) => Some(source),
             Self::Refused { refusal, .. } => Some(refusal),
             Self::Label(source) => Some(source),
+            Self::Limited(source) => Some(source),
             Self::Store(source) | Self::Verifier(source) | Self::Draw(source) => Some(source.as_ref()),
             Self::Json(source) => Some(source),
             _ => None,
@@ -137,6 +142,7 @@ impl Stop {
             Self::Body(_) => "body",
             Self::Large { .. } => "too-large",
             Self::Origin => "auth.origin.refused",
+            Self::Limited(_) => "auth.rate.limited",
             Self::Anonymous => "unauthorized",
             Self::Challenge => "auth.passkey.challenge",
             Self::Refused { refusal, .. } => match refusal.reason {
@@ -170,6 +176,7 @@ impl Stop {
             Self::Body(_) | Self::Label(_) => Status::BadRequest,
             Self::Large { .. } => Status::TooLarge,
             Self::Origin => Status::Forbidden,
+            Self::Limited(_) => Status::TooMany,
             Self::Anonymous | Self::Raced => Status::Unauthorized,
             Self::Challenge | Self::Taken | Self::Moved { .. } => Status::Conflict,
             Self::Refused { flow, .. } => match flow {
@@ -201,8 +208,10 @@ impl Stop {
         let problem = Problem { problem: self.code(), message: self.to_string(), causes, fields };
         let mut reply = Reply::new(status, Media::Json, serde_json::to_vec(&problem).unwrap_or_default());
         reply.challenge = matches!(self, Self::Anonymous);
-        if let Self::Method(error) = self {
-            reply.allow.clone_from(&error.allowed);
+        match self {
+            Self::Method(error) => reply.allow.clone_from(&error.allowed),
+            Self::Limited(limited) => reply.retry = Some(limited.retry),
+            _ => {}
         }
         reply
     }
