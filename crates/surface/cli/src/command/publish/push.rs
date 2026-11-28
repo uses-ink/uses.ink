@@ -88,9 +88,19 @@ impl Scanned {
                 modified: modified(&entry.path),
             })
             .collect();
+        if let Some(held) = Self::data(&leaves) {
+            return Err(Failure::Holds { path: held.to_string() }.into());
+        }
         let tree = Tree::of(leaves).map_err(|source| Failure::Tree { source })?;
         let sizes = tree.files().iter().map(|leaf| (leaf.hash, leaf.size.count())).collect();
         Ok(Self { tree, store, sizes })
+    }
+
+    /// The first file of an `ink serve` data folder among `leaves`: its database, its signing key
+    /// or its operator keys, at any depth.
+    fn data(leaves: &[Leaf]) -> Option<&ContentPath> {
+        const NAMES: [&str; 3] = ["ink.db", "secret.key", "operator-keys"];
+        leaves.iter().map(|leaf| &leaf.path).find(|path| path.segments().any(|segment| NAMES.contains(&segment)))
     }
 
     /// The archives that carry `wanted`, each within `limit` bytes of files unless one file is

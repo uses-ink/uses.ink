@@ -239,6 +239,11 @@ pub enum Failure {
     },
     /// `ink init` was told no site and no handle.
     Nameless,
+    /// The folder holds the data folder of an `ink serve`, which `ink push` would send whole.
+    Holds {
+        /// The first file of it, as the folder names it.
+        path: String,
+    },
     /// The tree of the folder is not a tree.
     Tree {
         /// Why.
@@ -338,6 +343,7 @@ impl Failure {
             | Self::Link { .. }
             | Self::Linked { .. }
             | Self::Nameless
+            | Self::Holds { .. }
             | Self::Tree { .. }
             | Self::Absent { .. }
             | Self::Occupied { .. }
@@ -391,6 +397,7 @@ impl Failure {
             Self::Link { .. } => "link.file.unusable",
             Self::Linked { .. } => "link.file.exists",
             Self::Nameless => "init.target.missing",
+            Self::Holds { .. } => "push.folder.holds-data",
             Self::Tree { .. } => "push.tree.invalid",
             Self::Incomplete { .. } => "push.upload.incomplete",
             Self::Uploading { source, .. } | Self::Following { source, .. } => source.kind(),
@@ -471,6 +478,9 @@ impl Failure {
             Self::Unlinked { .. } => "run `ink init --handle NAME` to link this folder, or give `--site ID`".to_owned(),
             Self::Link { .. } => "fix or remove the file, then run `ink init` again".to_owned(),
             Self::Linked { .. } => "run `ink init --force` to link it to another site".to_owned(),
+            Self::Holds { .. } => {
+                "keep the data folder of `ink serve` outside the site's folder, for example `--data ../state`".to_owned()
+            }
             Self::Nameless => {
                 "give `--handle NAME` to make a site, or `--site ID` to link one that exists".to_owned()
             }
@@ -538,6 +548,10 @@ impl fmt::Display for Failure {
                 write!(out, "{} links this folder to the site {site} already", path.display())
             }
             Self::Nameless => write!(out, "no site is named: `ink init` links a folder to a site or makes one"),
+            Self::Holds { path } => write!(
+                out,
+                "the folder holds {path}, which belongs to the data folder of an ink server: it holds the database and the signing key, and a push would publish them"
+            ),
             Self::Tree { .. } => write!(out, "the folder's files do not make a tree"),
             Self::Incomplete { missing, rounds } => {
                 write!(out, "the server still lacked {missing} files after {rounds} rounds of sending them")
@@ -606,6 +620,7 @@ impl std::error::Error for Failure {
             | Self::Unlinked { .. }
             | Self::Linked { .. }
             | Self::Nameless
+            | Self::Holds { .. }
             | Self::Incomplete { .. }
             | Self::Ended { first: None, .. }
             | Self::Held { .. }

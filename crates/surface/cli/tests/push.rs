@@ -383,3 +383,16 @@ fn a_tree_over_the_servers_limit_is_refused_and_says_so() {
     assert_ne!(pushed.code, 0, "{}{}", pushed.out, pushed.err);
     assert!(pushed.err.contains("deploy.api.refused"), "{}", pushed.err);
 }
+
+#[test]
+fn a_folder_that_holds_a_data_folder_is_refused_and_nothing_is_sent() {
+    let rig = Rig::start("holds", &[]);
+    rig.write("index.md", "# One\n");
+    rig.write("state/ink.db", "database");
+    rig.write("state/secret.key", "key");
+    rig.init("diary");
+    let pushed = rig.ink(&["push", "--wait", "30"]);
+    assert_eq!(pushed.code, 2, "{}{}", pushed.out, pushed.err);
+    assert!(pushed.err.contains("push.folder.holds-data") && pushed.err.contains("state/ink.db"), "{}", pushed.err);
+    assert!(pushed.err.contains("--data ../state"), "the fix says where the data folder goes: {}", pushed.err);
+}
