@@ -14,6 +14,8 @@ use crate::report::{Line, Report};
 struct Compared {
     native: Option<String>,
     component: Option<String>,
+    errors: usize,
+    warnings: usize,
 }
 
 /// `ink build --check` on every CLI site fixture: each builds the same deploy natively and
@@ -62,8 +64,9 @@ impl Step for Sites {
         for fixture in fixtures {
             let mut command = std::process::Command::new(&ink);
             command
-                .args(["--json", "build", "--check"])
+                .args(["--json", "-C"])
                 .arg(&fixture)
+                .args(["build", "--check"])
                 // kept under target/, never in the fixture
                 .arg("--cache")
                 .arg(root.join(Self::CACHE));
@@ -76,11 +79,85 @@ impl Step for Sites {
                 Err(source) => report.fail(Error::Site { path, source }),
             }
         }
+        Handbook.run(root, report);
     }
 }
 
 impl fmt::Display for Sites {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "{}, then `ink build --check` on every folder of {}", Self::BUILD, Self::DIR)
+        write!(out, "{}, then `ink build --check` on every folder of {} and on {}", Self::BUILD, Self::DIR, Handbook::DIR)
+    }
+}
+
+/// The documentation site, `docs/` built by `ink` (docs/site.md, decision 0120): `ink build
+/// --check` twice, each with a cache of its own, which must say nothing (no error, no warning, so
+/// no broken link), build the same deploy natively and as components, and build the same deploy
+/// both times.
+#[derive(Debug, Clone, Copy)]
+struct Handbook;
+
+impl Handbook {
+    /// The site's folder, relative to the root.
+    const DIR: &'static str = "docs";
+
+    /// The two caches, relative to the root, emptied before each build.
+    const CACHES: [&'static str; 2] = ["target/ink-docs/first", "target/ink-docs/second"];
+
+    /// An empty folder at `cache` under `root`.
+    fn emptied(root: &Path, cache: &str) -> Result<PathBuf, Error> {
+        let path = root.join(cache);
+        match std::fs::remove_dir_all(&path) {
+            Ok(()) => Ok(path),
+            Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(path),
+            Err(source) => Err(Error::Write { path, source }),
+        }
+    }
+
+    /// `ink build --check` of the site with `cache`, its diagnostics on stderr.
+    fn built(root: &Path, cache: &Path) -> Result<Compared, Error> {
+        let mut command = std::process::Command::new(root.join("target/debug/ink"));
+        command
+            .args(["--json", "-C"])
+            .arg(root.join(Self::DIR))
+            .args(["build", "--check", "--source", "folder", "--cache"])
+            .arg(cache);
+        Process::from(command).answer().map_err(|source| Error::Site { path: Self::DIR.into(), source })
+    }
+
+    /// One build, refused unless it is clean and its two deploys agree.
+    fn once(root: &Path, cache: &str) -> Result<Option<String>, Error> {
+        let path = PathBuf::from(Self::DIR);
+        let compared = Self::built(root, &Self::emptied(root, cache)?)?;
+        if compared.errors > 0 || compared.warnings > 0 {
+            return Err(Error::Unclean { path, errors: compared.errors, warnings: compared.warnings });
+        }
+        if compared.native != compared.component {
+            return Err(Error::Mismatch { path, native: compared.native, component: compared.component });
+        }
+        Ok(compared.native)
+    }
+}
+
+impl Step for Handbook {
+    fn run(&self, root: &Path, report: &mut Report) {
+        let path = PathBuf::from(Self::DIR);
+        let mut deploys = Vec::new();
+        for cache in Self::CACHES {
+            match Self::once(root, cache) {
+                Ok(deploy) => deploys.push(deploy),
+                Err(error) => return report.fail(error),
+            }
+        }
+        match deploys.as_slice() {
+            [first, second] if first == second => report.line(Line::Reproduced(path)),
+            [first, second] => report.fail(Error::Unstable { path, first: first.clone(), second: second.clone() }),
+            _ => {}
+        }
+    }
+}
+
+impl fmt::Display for Handbook {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "`ink build --check` of {} twice, with no diagnostic and the same deploy", Self::DIR)
     }
 }

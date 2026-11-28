@@ -16,8 +16,8 @@ declarative command tree that help, completions and the manual all read; help wr
 clap). In short:
 
 - **Grammar.** Verbs for what you do to the folder in front of you (`build`, `check`, `explain`),
-  a noun group where a noun has three or more verbs (`deploy list|show|rollback|resume`). `-C
-  <DIR>` is one global option; the positional `<DIR>` of `build`, `check` and `preview` goes. A
+  a noun group where a noun has three or more verbs (`deploy list|show|rollback|resume`).
+  `-C <DIR>` is one global option; the positional `<DIR>` of `build`, `check` and `preview` goes. A
   decision is addressed `[PATH] CODE`: `ink pin posts/a.md page.title`, `ink explain posts/a.md
   --why page.title`. Help has titled command groups (Write, Understand, Publish, Tools).
 - **Output.** Ten typed blocks (stage line, diagnostic, notice, error, tree, ladder, change set,

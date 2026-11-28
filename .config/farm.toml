@@ -54,8 +54,9 @@ inputs = [
 [job.sites]
 run = "cargo xtask check sites"
 golden = true
-# builds `ink` and every site fixture natively and through the components: nearly every crate.
-inputs = ["**", "!docs/**", "!PRODUCT.md"]
+# builds `ink` and every site fixture natively and through the components: nearly every crate. It
+# also builds the documentation site from `docs/` twice (docs/site.md), so `docs/**` is an input.
+inputs = ["**", "!PRODUCT.md"]
 
 [job.worker]
 run = "cargo xtask check worker"

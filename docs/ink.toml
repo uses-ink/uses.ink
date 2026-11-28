@@ -1,0 +1,25 @@
+# The configuration of the documentation site: `ink build docs` (docs/site.md, decision 0120).
+# The site publishes what is here except the files below: working papers and the contributor and
+# owner pages that are not for a reader of the product. `history/review-fixes.md` stays, since the
+# decisions index links to it, and so does `crates.md`, which the architecture links to.
+exclude = [
+    "research/**",
+    "code.md",
+    "conventions.md",
+    "layout.md",
+    "libraries.md",
+    "open.md",
+    "psl.md",
+    "release.md",
+    "workflow.md",
+    "decisions.md",
+]
+
+[theme]
+use = "ink:theme-quiet"
+
+[site]
+title = "uses.ink docs"
+language = "en"
+home = "index.md"
+nav = ["architecture.md", "cli.md", "auth.md", "hosted.md", "tracing.md", "roadmap.md", "decisions/README.md", "site.md"]

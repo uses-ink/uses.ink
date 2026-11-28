@@ -318,7 +318,13 @@ push is live within the measured time; a custom domain goes live with a valid ce
 ## M5: Launch
 
 - Landing at `uses.ink` from the doodle mock, on the web crate, pen through wasm.
-- Docs site, built by `ink` from `docs/` with a uses.ink theme (dogfood).
+- Docs site, built by `ink` from `docs/` with a uses.ink theme (dogfood). Built with `theme-quiet` as it is
+  (`docs/site.md`, 0120): `cargo xtask check sites` builds it twice and refuses any diagnostic or a second
+  deploy that differs. Gaps, each needing engine or theme work and none worked around: a sidebar and previous
+  and next links (the theme draws only the pinned header `nav`); theme tokens (T3), so the uses.ink look of
+  `crates/core/token/token.toml` cannot reach the theme; an outline of a page; a pin of `page.kind` for a
+  folder, since a dated decision is a post and the home lists it under "Posts"; deploying the site once
+  `uses.ink` is live.
 - `ink:authority-forgejo` with Codeberg pre-registered; `ink:authority-gitlab`.
 - Obsidian plugin and browser upload **(owner: Q18)**.
 - `uses-ink/.github` profile and org description in the new brand.

@@ -119,6 +119,18 @@ pub(crate) enum Error {
         native: Option<String>,
         component: Option<String>,
     },
+    /// The documentation site built with diagnostics.
+    Unclean {
+        path: PathBuf,
+        errors: usize,
+        warnings: usize,
+    },
+    /// The documentation site built two different deploys from the same files.
+    Unstable {
+        path: PathBuf,
+        first: Option<String>,
+        second: Option<String>,
+    },
     /// A site fixture whose `ink build --check` failed.
     Site {
         path: PathBuf,
@@ -182,6 +194,16 @@ impl fmt::Display for Error {
             Self::Bundle { path, .. } => write!(out, "{} could not be written as JSON", path.display()),
             Self::Wrap { path, .. } => write!(out, "{} could not be wrapped into a component", path.display()),
             Self::Site { path, .. } => write!(out, "`ink build --check {}` failed", path.display()),
+            Self::Unclean { path, errors, warnings } => {
+                write!(out, "{}: the site builds with {errors} errors and {warnings} warnings, shown above", path.display())
+            }
+            Self::Unstable { path, first, second } => write!(
+                out,
+                "{}: two builds of the same files made deploy {} and then {}",
+                path.display(),
+                first.as_deref().unwrap_or("none"),
+                second.as_deref().unwrap_or("none")
+            ),
             Self::Mismatch { path, native, component } => write!(
                 out,
                 "{}: the components build deploy {}, natively {}",
@@ -231,6 +253,8 @@ impl std::error::Error for Error {
             | Self::Docs(_)
             | Self::Stale(_)
             | Self::Tool { .. }
+            | Self::Unclean { .. }
+            | Self::Unstable { .. }
             | Self::Mismatch { .. } => None,
         }
     }
