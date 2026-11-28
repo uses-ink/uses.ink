@@ -185,7 +185,8 @@ hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0
 .hand-hero .hand-say { display: flex; align-items: flex-start; gap: 6px; max-width: 30ch; min-height: 2.6em; margin: 22px 0 0 24px; }
 .hand-hero .hand-say::before { content: ""; flex: none; width: 44px; height: 46px; margin-top: -26px; background: url(/marks/note-arrow.svg) center / contain no-repeat; }
 
-/* the intro: the little guy beside the headline */
+/* the intro: the little guy beside the headline; the headline gets two lines, as in the mock */
+.hand-panel:has(> p:first-child > img:only-child) h2 { max-width: 24ch; }
 .hand-panel > p:has(> img:only-child):first-child { float: left; width: 150px; margin-right: 36px; }
 .hand-panel > p:has(> img:only-child):first-child img { width: 150px; height: auto; }
 
