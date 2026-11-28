@@ -20,7 +20,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 
-use super::failure::{Failure, Said};
+use super::failure::{ApiRefusal, Failure};
 use crate::command::auth::Identity;
 
 /// The body of a rollback request.
@@ -205,11 +205,11 @@ impl Wire {
     /// One call, within the budget, and once more when the server has just started and says so.
     pub(crate) async fn call(&self, method: Method, path: &str, body: Vec<u8>) -> Result<Bytes, Failure> {
         let first = self.once(method.clone(), path, body.clone()).await;
-        let Err(Failure::Refused { status: 503, said: Some(said) }) = &first else { return first };
-        if said.problem != "auth.server.restarting" {
+        let Err(Failure::Refused { status: 503, refusal: Some(refusal) }) = &first else { return first };
+        if refusal.problem != "auth.server.restarting" {
             return first;
         }
-        let seconds = said.fields.get("seconds").and_then(|text| text.parse().ok()).unwrap_or(1);
+        let seconds = refusal.fields.get("seconds").and_then(|text| text.parse().ok()).unwrap_or(1);
         tokio::time::sleep(Duration::from_secs(seconds).min(self.budget)).await;
         self.once(method, path, body).await
     }
@@ -256,7 +256,7 @@ impl Wire {
         if (200..300).contains(&status) {
             Ok(body)
         } else {
-            Err(Failure::Refused { status, said: serde_json::from_slice::<Said>(&body).ok() })
+            Err(Failure::Refused { status, refusal: serde_json::from_slice::<ApiRefusal>(&body).ok() })
         }
     }
 }

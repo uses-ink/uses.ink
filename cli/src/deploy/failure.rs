@@ -35,7 +35,7 @@ impl Needed {
 
 /// An error answer of the API: `{problem, message, causes, fields}`.
 #[derive(Clone, Debug, Deserialize)]
-pub struct Said {
+pub struct ApiRefusal {
     /// A stable name for the refusal.
     pub problem: String,
     /// What is wrong, in a sentence.
@@ -45,7 +45,7 @@ pub struct Said {
     pub fields: std::collections::BTreeMap<String, String>,
 }
 
-impl Said {
+impl ApiRefusal {
     /// What to do about it, for the refusals a person can fix.
     pub fn fix(&self) -> Option<&'static str> {
         Some(match self.problem.as_str() {
@@ -60,13 +60,13 @@ impl Said {
     }
 }
 
-impl fmt::Display for Said {
+impl fmt::Display for ApiRefusal {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(out, "{}: {}", self.problem, self.message)
     }
 }
 
-impl std::error::Error for Said {}
+impl std::error::Error for ApiRefusal {}
 
 /// One line of a build's log that names a problem, as the server stored it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -152,7 +152,7 @@ pub enum Failure {
         /// The HTTP status.
         status: u16,
         /// What it said, when it said it in the shape it uses.
-        said: Option<Said>,
+        refusal: Option<ApiRefusal>,
     },
     /// The API's answer is not the JSON this reads.
     Unreadable {
@@ -414,7 +414,7 @@ impl Failure {
             Self::Ended { .. } => "run `ink push` again; if it keeps failing, report it",
             Self::Held { .. } => "run `ink deploy resume` to deploy this and new pushes",
             Self::Occupied { .. } => "give an empty or new folder",
-            Self::Refused { said: Some(said), .. } => return said.fix(),
+            Self::Refused { refusal: Some(refusal), .. } => return refusal.fix(),
             _ => return None,
         })
     }
@@ -439,11 +439,11 @@ impl fmt::Display for Failure {
             Self::Exchange { .. } => write!(out, "the exchange with the API broke off"),
             Self::Request { .. } => write!(out, "the request could not be built"),
             Self::Timeout { after } => write!(out, "the API did not answer in {} seconds", after.as_secs()),
-            Self::Refused { status, said: Some(said) } => match said.fix() {
-                Some(fix) => write!(out, "the API refused the request ({status}): {}; {fix}", said.message),
-                None => write!(out, "the API refused the request ({status}): {}", said.message),
+            Self::Refused { status, refusal: Some(refusal) } => match refusal.fix() {
+                Some(fix) => write!(out, "the API refused the request ({status}): {}; {fix}", refusal.message),
+                None => write!(out, "the API refused the request ({status}): {}", refusal.message),
             },
-            Self::Refused { status, said: None } => write!(out, "the API refused the request ({status})"),
+            Self::Refused { status, refusal: None } => write!(out, "the API refused the request ({status})"),
             Self::Unreadable { .. } => write!(out, "the API's answer is not what this ink reads"),
             Self::Store { .. } => write!(out, "the private key could not be kept or read"),
             Self::KeyText { from, .. } => write!(out, "{from} does not hold a key: run `ink login` to make one"),
@@ -524,7 +524,9 @@ impl std::error::Error for Failure {
             Self::Uploading { source, .. } => Some(source.as_ref()),
             Self::Archive { source } => Some(source),
             Self::Ended { first: Some(first), .. } => Some(first),
-            Self::Refused { said, .. } => said.as_ref().map(|said| said as &(dyn std::error::Error + 'static)),
+            Self::Refused { refusal, .. } => {
+                refusal.as_ref().map(|refusal| refusal as &(dyn std::error::Error + 'static))
+            }
             Self::Setting { .. }
             | Self::Scheme { .. }
             | Self::Unknown { .. }

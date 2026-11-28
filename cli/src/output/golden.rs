@@ -75,9 +75,9 @@ fn decisions() -> Trees {
 }
 
 /// A diagnostic with a snippet of the readme fixture, one without a span, and a notice.
-struct Said;
+struct Reports;
 
-impl Said {
+impl Reports {
     fn block(shot: &Shot) -> String {
         let dir = Path::new("fixture/site/readme");
         let loaded = Source::new(dir, &Origin::default()).load().unwrap();
@@ -172,7 +172,7 @@ impl Cases {
             let meter = shot.text(&tick.live()) + &shot.text(&tick.heartbeat());
             cases.push((format!("meter-{}", shot.name), meter));
 
-            cases.push((format!("diagnostic-{}", shot.name), Said::block(&shot)));
+            cases.push((format!("diagnostic-{}", shot.name), Reports::block(&shot)));
             let errors: String = Stopped::failures().iter().map(|failure| shot.text(failure)).collect();
             cases.push((format!("error-{}", shot.name), errors));
             cases.push((format!("tree-{}", shot.name), shot.text(&decisions())));

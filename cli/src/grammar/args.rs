@@ -76,7 +76,7 @@ pub enum Command {
     /// Show the decisions behind the site, or behind one file.
     Explain(Explain),
     /// Write one decision's value into ink.toml.
-    Pin(Pin),
+    Pin(PinArgs),
     /// List what is published and why, or choose what to publish.
     Select(Select),
     /// Sign in to uses.ink.
@@ -240,7 +240,7 @@ pub struct Explain {
 
 /// `ink pin [path] <code>`.
 #[derive(Debug, Args)]
-pub struct Pin {
+pub struct PinArgs {
     /// A decision, addressed `[PATH] CODE`: a file's path and a code (`posts/a.md page.title`), or
     /// a site code alone (`site.title`).
     #[arg(required = true, num_args = 1..=2, value_names = ["PATH", "CODE"])]

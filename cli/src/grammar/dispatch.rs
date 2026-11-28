@@ -18,7 +18,7 @@ use crate::settings::{Process, Settings};
 
 /// What `ink help --json` prints.
 #[derive(Debug, Serialize)]
-struct Said<'a> {
+struct HelpText<'a> {
     schema: &'static str,
     text: &'a str,
 }
@@ -70,7 +70,7 @@ impl Topic {
         let help = Help::new(Tree::ink(), io.prose(), crate::grammar::help::Columns::of(&Process));
         let text = help.topic(&self.words).map_err(|source| Error::Help { source })?;
         io.painted(text.trim_end())?;
-        io.json(&Said { schema: "uses.help/v1", text: &text })?;
+        io.json(&HelpText { schema: "uses.help/v1", text: &text })?;
         Ok(Exit::Done)
     }
 }

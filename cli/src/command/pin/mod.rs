@@ -11,7 +11,7 @@ use serde::Serialize;
 use crate::command::explain::asked::Asked;
 use crate::command::source::Source;
 use crate::folder::replace::Replacing;
-use crate::grammar::args::Pin;
+use crate::grammar::args::PinArgs;
 use crate::output::error::Error;
 use crate::output::exit::Exit;
 use crate::output::report::Texts;
@@ -52,7 +52,7 @@ impl Render for Patch<'_> {
     }
 }
 
-impl Pin {
+impl PinArgs {
     /// The config file a pin is written into, in the site's folder.
     const FILE: &'static str = "ink.toml";
 
