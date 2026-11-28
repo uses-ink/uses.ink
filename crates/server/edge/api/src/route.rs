@@ -2,12 +2,10 @@
 
 use std::fmt;
 
-use build::BuildId;
+use build::{BuildId, BuildIdError};
 use control::keys::Right;
-use control::{DomainName, EnrolmentKind, Id, IdError, NameError, SiteKind, Slug};
+use control::{DomainName, EnrolmentKind, Id, IdError, NameError, SiteKind, Slug, SlugError};
 use model::DeployId;
-use serde::Deserialize;
-use serde::de::IntoDeserializer;
 use sig::Fingerprint;
 
 use crate::reply::Method;
@@ -140,16 +138,22 @@ pub enum RouteError {
     Fingerprint {
         /// The text.
         written: String,
+        /// Why not.
+        source: sig::FingerprintError,
     },
     /// A part of the path should be a build and is not.
     Build {
         /// The text.
         written: String,
+        /// Why not.
+        source: BuildIdError,
     },
     /// A part of the path should be a preview label and is not.
     Label {
         /// The text.
         written: String,
+        /// Why not.
+        source: SlugError,
     },
     /// A part of the path should be a domain name and is not.
     Domain {
@@ -162,6 +166,8 @@ pub enum RouteError {
     Deploy {
         /// The text.
         written: String,
+        /// Why not.
+        source: model::HashError,
     },
 }
 
@@ -174,10 +180,10 @@ impl fmt::Display for RouteError {
                 write!(out, "{asked} is not taken here, only {}", allowed.join(", "))
             }
             Self::Id { noun, .. } => write!(out, "the {noun} in the path is not an id"),
-            Self::Fingerprint { written } => write!(out, "{written:?} in the path is not a key fingerprint"),
-            Self::Build { written } => write!(out, "{written:?} in the path is not a build id"),
-            Self::Deploy { written } => write!(out, "{written:?} in the path is not a deploy id"),
-            Self::Label { written } => write!(out, "{written:?} in the path is not a preview label"),
+            Self::Fingerprint { written, .. } => write!(out, "{written:?} in the path is not a key fingerprint"),
+            Self::Build { written, .. } => write!(out, "{written:?} in the path is not a build id"),
+            Self::Deploy { written, .. } => write!(out, "{written:?} in the path is not a deploy id"),
+            Self::Label { written, .. } => write!(out, "{written:?} in the path is not a preview label"),
             Self::Domain { written, .. } => write!(out, "{written:?} in the path is not a domain name"),
         }
     }
@@ -187,8 +193,12 @@ impl std::error::Error for RouteError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Id { source, .. } => Some(source),
+            Self::Fingerprint { source, .. } => Some(source),
+            Self::Build { source, .. } => Some(source),
+            Self::Label { source, .. } => Some(source),
+            Self::Deploy { source, .. } => Some(source),
             Self::Domain { source, .. } => Some(source),
-            _ => None,
+            Self::NoRoute { .. } | Self::Method { .. } => None,
         }
     }
 }
@@ -239,7 +249,7 @@ impl Call {
             ("keys", []) => by(&[(Method::Get, Self::Keys)]),
             ("keys", [print]) => match print.parse() {
                 Ok(print) => by(&[(Method::Delete, Self::Revoke(print))]),
-                Err(_) => Err(RouteError::Fingerprint { written: (*print).to_owned() }),
+                Err(source) => Err(RouteError::Fingerprint { written: (*print).to_owned(), source }),
             },
             _ => return None,
         })
@@ -280,13 +290,13 @@ impl Call {
             ["builds"] => by(&[(Method::Get, Self::Builds(site)), (Method::Post, Self::Build(site))]),
             ["builds", build, "log"] => match build.parse::<BuildId>() {
                 Ok(build) => by(&[(Method::Get, Self::Log { site, build })]),
-                Err(_) => Err(RouteError::Build { written: (*build).to_owned() }),
+                Err(source) => Err(RouteError::Build { written: (*build).to_owned(), source }),
             },
             ["domains", rest @ ..] => return Self::domain(site, rest, by),
             ["previews"] => by(&[(Method::Get, Self::Previews(site))]),
             ["previews", slug] => match slug.parse() {
                 Ok(slug) => by(&[(Method::Put, Self::Preview { site, slug })]),
-                Err(_) => Err(RouteError::Label { written: (*slug).to_owned() }),
+                Err(source) => Err(RouteError::Label { written: (*slug).to_owned(), source }),
             },
             ["export"] => by(&[(Method::Get, Self::Export { site, deploy: None })]),
             ["deploy"] => by(&[(Method::Put, Self::Intake(site))]),
@@ -345,8 +355,7 @@ impl Call {
     }
 
     fn deploy(text: &str) -> Result<DeployId, RouteError> {
-        DeployId::deserialize(text.into_deserializer())
-            .map_err(|_: serde::de::value::Error| RouteError::Deploy { written: text.to_owned() })
+        text.parse().map_err(|source| RouteError::Deploy { written: text.to_owned(), source })
     }
 }
 

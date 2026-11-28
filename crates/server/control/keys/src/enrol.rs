@@ -210,18 +210,18 @@ impl TryFrom<&Row> for Enrolment {
         let bytes: Vec<u8> = row.get(table::Enrolment::PublicKey)?;
         let public = <[u8; 32]>::try_from(bytes.as_slice())
             .map(PublicKey::new)
-            .map_err(|_| Unreadable::Digest { column: "public_key" })?;
+            .map_err(|_| Unreadable::Digest { column: "public_key", length: bytes.len() })?;
         let seconds = fields.count(table::Enrolment::Lifetime)?;
         Ok(Self {
             id: fields.id(table::Enrolment::Id)?,
             code: fields
                 .text(table::Enrolment::UserCode)?
                 .parse()
-                .map_err(|_| Unreadable::Text { column: "user_code" })?,
+                .map_err(|source| Unreadable::Parsed { column: "user_code", source: Box::new(source) })?,
             key_type: fields.name(table::Enrolment::KeyType, &KeyType::NAMES)?,
             public,
             label: Label::parse(&fields.text(table::Enrolment::Label)?)
-                .map_err(|_| Unreadable::Text { column: "label" })?,
+                .map_err(|source| Unreadable::Parsed { column: "label", source: Box::new(source) })?,
             purpose: fields.name(table::Enrolment::Purpose, &Kind::NAMES)?,
             site: fields.maybe_id(table::Enrolment::SiteId)?,
             rights: Rights::read(&fields.text(table::Enrolment::Rights)?)

@@ -57,6 +57,8 @@ pub enum Unreadable {
     Digest {
         /// The column.
         column: &'static str,
+        /// How many bytes it holds.
+        length: usize,
     },
     /// The column holds bytes that are not the one spelling or size of a key's value.
     Encoding {
@@ -65,10 +67,19 @@ pub enum Unreadable {
         /// Why.
         source: sig::Undecodable,
     },
-    /// The column holds text that is no longer a valid label, code or date.
+    /// The column holds text or a number that is no longer valid, and no cause is known.
     Text {
         /// The column.
         column: &'static str,
+    },
+    /// The column holds text or a number that its type refuses (a label, a code, a date). The
+    /// cause is the parse error of a type from a crate this one does not depend on, so it is the
+    /// one boxed edge of this type.
+    Parsed {
+        /// The column.
+        column: &'static str,
+        /// Why.
+        source: Box<dyn std::error::Error + Send + Sync>,
     },
 }
 
@@ -84,9 +95,12 @@ impl fmt::Display for Unreadable {
                 write!(out, "column `{column}` holds `{found}`, which this version does not know")
             }
             Self::Address { column, .. } => write!(out, "column `{column}` holds an address that is no longer valid"),
-            Self::Digest { column } => write!(out, "column `{column}` holds a digest that is not 32 bytes"),
+            Self::Digest { column, length } => {
+                write!(out, "column `{column}` holds a digest of {length} bytes, not 32")
+            }
             Self::Encoding { column, .. } => write!(out, "column `{column}` holds a key value that is not valid"),
             Self::Text { column } => write!(out, "column `{column}` holds text that is no longer valid"),
+            Self::Parsed { column, .. } => write!(out, "column `{column}` holds a value that is no longer valid"),
         }
     }
 }
@@ -101,6 +115,7 @@ impl std::error::Error for Unreadable {
             Self::Time { source, .. } => Some(source),
             Self::Address { source, .. } => Some(source),
             Self::Encoding { source, .. } => Some(source),
+            Self::Parsed { source, .. } => Some(source.as_ref()),
             Self::Name { .. } | Self::Digest { .. } | Self::Text { .. } => None,
         }
     }

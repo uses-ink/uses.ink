@@ -286,14 +286,15 @@ impl TryFrom<&Row> for Key {
         let bytes: Vec<u8> = row.get(table::Key::PublicKey)?;
         let public = <[u8; 32]>::try_from(bytes.as_slice())
             .map(PublicKey::new)
-            .map_err(|_| Unreadable::Digest { column: "public_key" })?;
+            .map_err(|_| Unreadable::Digest { column: "public_key", length: bytes.len() })?;
         Ok(Self {
             id,
             account,
             kind: fields.name(table::Key::Kind, &Kind::NAMES)?,
             key_type: fields.name(table::Key::KeyType, &KeyType::NAMES)?,
             public,
-            label: Label::parse(&fields.text(table::Key::Label)?).map_err(|_| Unreadable::Text { column: "label" })?,
+            label: Label::parse(&fields.text(table::Key::Label)?)
+                .map_err(|source| Unreadable::Parsed { column: "label", source: Box::new(source) })?,
             grant: Grant { scope, rights },
             created: fields.time(table::Key::CreatedAt)?,
             approved_by: fields.id(table::Key::ApprovedBy)?,

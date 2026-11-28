@@ -81,10 +81,11 @@ impl TryFrom<&db::Row> for Passkey {
     fn try_from(row: &db::Row) -> Result<Self, Unreadable> {
         let fields = Fields(row);
         let counter = u32::try_from(fields.count(table::Passkey::SignCount)?)
-            .map_err(|_| Unreadable::Text { column: "sign_count" })?;
+            .map_err(|source| Unreadable::Parsed { column: "sign_count", source: Box::new(source) })?;
         let transports = fields.text(table::Passkey::Transports)?;
         let label =
-            Label::parse(&fields.text(table::Passkey::Label)?).map_err(|_| Unreadable::Text { column: "label" })?;
+            Label::parse(&fields.text(table::Passkey::Label)?)
+            .map_err(|source| Unreadable::Parsed { column: "label", source: Box::new(source) })?;
         Ok(Self {
             id: fields.id(table::Passkey::Id)?,
             account: fields.id(table::Passkey::AccountId)?,
