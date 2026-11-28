@@ -195,7 +195,11 @@ impl fmt::Display for Error {
             Self::Wrap { path, .. } => write!(out, "{} could not be wrapped into a component", path.display()),
             Self::Site { path, .. } => write!(out, "`ink build --check {}` failed", path.display()),
             Self::Unclean { path, errors, warnings } => {
-                write!(out, "{}: the site builds with {errors} errors and {warnings} warnings, shown above", path.display())
+                write!(
+                    out,
+                    "{}: the site builds with {errors} errors and {warnings} warnings, shown above",
+                    path.display()
+                )
             }
             Self::Unstable { path, first, second } => write!(
                 out,

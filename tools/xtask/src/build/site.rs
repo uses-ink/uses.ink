@@ -85,7 +85,13 @@ impl Step for Sites {
 
 impl fmt::Display for Sites {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(out, "{}, then `ink build --check` on every folder of {} and on {}", Self::BUILD, Self::DIR, Handbook::DIR)
+        write!(
+            out,
+            "{}, then `ink build --check` on every folder of {} and on {}",
+            Self::BUILD,
+            Self::DIR,
+            Handbook::DIR
+        )
     }
 }
 
