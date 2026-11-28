@@ -26,7 +26,7 @@ use edge_api::{
     Signing, Status,
 };
 use jiff::Timestamp;
-use mail::{Base, Capture};
+use mail::{Capture, LinkBase};
 use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 use serde_json::{Value, json};
@@ -125,7 +125,7 @@ impl Fixture {
         );
         let config = Config {
             jar: Jar::new(None, "/", wanted.secure).unwrap(),
-            base: BASE.parse::<Base>().unwrap(),
+            base: BASE.parse::<LinkBase>().unwrap(),
             rates: wanted.rates,
             outbox: outbox.clone(),
             reveals: wanted.reveals,

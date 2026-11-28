@@ -33,12 +33,12 @@ impl Mailer for Capture {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Base, Template};
+    use crate::{LinkBase, Template};
 
     #[test]
     fn keeps_messages_in_order() {
         let capture = Capture::new();
-        let base: Base = "https://x.example/login".parse().unwrap();
+        let base: LinkBase = "https://x.example/login".parse().unwrap();
         let valid = std::time::Duration::from_mins(15);
         for who in ["a@x.org", "b@x.org"] {
             let message =

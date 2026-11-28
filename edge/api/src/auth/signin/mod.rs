@@ -66,7 +66,7 @@ pub struct Config {
     /// The session cookie.
     pub jar: Jar,
     /// Where the link in a message points; the token is its last segment.
-    pub base: mail::Base,
+    pub base: mail::LinkBase,
     /// The limits on asking for links.
     pub rates: Rates,
     /// Where messages wait for the courier.

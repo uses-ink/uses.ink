@@ -19,7 +19,7 @@ impl Origins {
 
     /// The origin of the address links point at, which is where the page that asks for a link and
     /// spends one is served.
-    pub fn of(base: &mail::Base) -> Self {
+    pub fn of(base: &mail::LinkBase) -> Self {
         let text = base.to_string();
         let (scheme, rest) = text.split_once("://").unwrap_or(("", &text));
         let host = rest.split('/').next().unwrap_or_default();
@@ -72,7 +72,7 @@ mod test {
 
     #[test]
     fn the_origin_of_a_link_base_is_scheme_host_and_port() {
-        let base: mail::Base = "https://Ink.Example:8443/v1/login".parse().unwrap();
+        let base: mail::LinkBase = "https://Ink.Example:8443/v1/login".parse().unwrap();
         assert_eq!(Origins::of(&base).list(), ["https://ink.example:8443"]);
     }
 

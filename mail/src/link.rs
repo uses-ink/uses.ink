@@ -8,7 +8,7 @@ use std::str::FromStr;
 /// `https://ink.example/login/<token>`. Whatever serves that page decides what it does with the
 /// token; the API's own pages are under `/v1/login`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Base(String);
+pub struct LinkBase(String);
 
 /// Text that is no base.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -39,7 +39,7 @@ impl fmt::Display for BaseError {
 
 impl std::error::Error for BaseError {}
 
-impl FromStr for Base {
+impl FromStr for LinkBase {
     type Err = BaseError;
 
     fn from_str(text: &str) -> Result<Self, BaseError> {
@@ -54,13 +54,13 @@ impl FromStr for Base {
     }
 }
 
-impl fmt::Display for Base {
+impl fmt::Display for LinkBase {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         out.write_str(&self.0)
     }
 }
 
-impl Base {
+impl LinkBase {
     /// The link for `token`. The token is a path segment, so it must be made of URL-safe
     /// characters; the control plane's tokens are lower-case hex.
     pub fn link(&self, token: &str) -> Link {
@@ -91,16 +91,16 @@ mod test {
 
     #[test]
     fn a_base_takes_the_token_as_its_last_segment() {
-        let base: Base = "https://ink.example/login/".parse().unwrap();
+        let base: LinkBase = "https://ink.example/login/".parse().unwrap();
         assert_eq!(base.link("abc").to_string(), "https://ink.example/login/abc");
         assert_eq!(format!("{:?}", base.link("abc")), "Link(<redacted>)");
     }
 
     #[test]
     fn a_base_is_a_plain_http_url() {
-        assert_eq!("ftp://x".parse::<Base>(), Err(BaseError::Scheme));
-        assert_eq!("https://".parse::<Base>(), Err(BaseError::Host));
-        assert_eq!("https://x/a?b=1".parse::<Base>(), Err(BaseError::Character { at: 11 }));
-        assert_eq!("https://x/a b".parse::<Base>(), Err(BaseError::Character { at: 11 }));
+        assert_eq!("ftp://x".parse::<LinkBase>(), Err(BaseError::Scheme));
+        assert_eq!("https://".parse::<LinkBase>(), Err(BaseError::Host));
+        assert_eq!("https://x/a?b=1".parse::<LinkBase>(), Err(BaseError::Character { at: 11 }));
+        assert_eq!("https://x/a b".parse::<LinkBase>(), Err(BaseError::Character { at: 11 }));
     }
 }

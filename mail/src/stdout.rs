@@ -34,7 +34,7 @@ mod test {
     use std::sync::Arc;
 
     use super::*;
-    use crate::{Base, Template};
+    use crate::{LinkBase, Template};
 
     #[derive(Clone, Default)]
     struct Sink(Arc<Mutex<Vec<u8>>>);
@@ -54,7 +54,7 @@ mod test {
     fn writes_the_recipient_and_the_link() {
         let sink = Sink::default();
         let mailer = Stdout::new(sink.clone());
-        let base: Base = "https://x.example/login".parse().unwrap();
+        let base: LinkBase = "https://x.example/login".parse().unwrap();
         let template = Template::Login { link: base.link("tok"), valid: std::time::Duration::from_mins(10) };
         pollster::block_on(mailer.send(&Message { to: "me@x.org".parse().unwrap(), template })).unwrap();
         let text = String::from_utf8(sink.0.lock().unwrap().clone()).unwrap();

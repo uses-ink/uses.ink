@@ -21,7 +21,7 @@ mod stdout;
 
 pub use address::{Address, AddressError};
 pub use capture::Capture;
-pub use link::{Base, BaseError, Link};
+pub use link::{BaseError, Link, LinkBase};
 pub use mailer::Mailer;
 pub use message::{Message, Template};
 pub use stdout::Stdout;

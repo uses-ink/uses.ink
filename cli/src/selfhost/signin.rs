@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use clap::{Args, ValueEnum};
 use control::signin::{Expiry, Settings, Signup, Ttl};
 use edge_api::{Note, Notes, Rate, Rates};
-use mail::{Address, Base, Mailer, Message};
+use mail::{Address, LinkBase, Mailer, Message};
 use mail_smtp::{Login, Security, Settings as Smtp, Smtp as Mail};
 use secret::Plain;
 
@@ -272,7 +272,7 @@ impl Flags {
     }
 
     /// Where links point: the flag, or the API's own `/v1/login`.
-    pub(crate) fn base(&self, origin: &str, api_host: &str) -> Result<Base, Unready> {
+    pub(crate) fn base(&self, origin: &str, api_host: &str) -> Result<LinkBase, Unready> {
         let text = self.login_base.clone().unwrap_or_else(|| Self::api_base(origin, api_host));
         text.parse().map_err(Self::setting("--login-base"))
     }

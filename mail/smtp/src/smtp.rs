@@ -116,7 +116,7 @@ mod test {
     #[test]
     fn composes_a_plain_text_message_from_the_template() {
         let smtp = Smtp::new(settings()).unwrap();
-        let base: mail::Base = "https://ink.example/login".parse().unwrap();
+        let base: mail::LinkBase = "https://ink.example/login".parse().unwrap();
         let template = mail::Template::Login { link: base.link("abc"), valid: std::time::Duration::from_mins(15) };
         let composed = smtp.compose(&Message { to: "me@x.org".parse().unwrap(), template }).unwrap();
         let text = String::from_utf8(composed.formatted()).unwrap();

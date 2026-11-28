@@ -23,7 +23,7 @@ use edge_api::{
     Signing, Webauthn,
 };
 use edge_control::{Back, Fronts};
-use mail::{Base, Link};
+use mail::{Link, LinkBase};
 use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 
@@ -105,7 +105,7 @@ pub(crate) struct Mailing {
     pub(crate) told: Told,
     pub(crate) settings: Settings,
     pub(crate) rates: Rates,
-    pub(crate) base: Base,
+    pub(crate) base: LinkBase,
     pub(crate) outbox: usize,
     pub(crate) secure: bool,
     /// Who passkeys are made for.
@@ -280,7 +280,7 @@ impl Product {
 
     /// The first-run link, made once: `None` when one was made before or an account can already
     /// sign in. The link is returned here and held nowhere else; the database has its digest.
-    fn admin(entry: &SignIn<Store>, account: Id<AccountKind>, base: &Base) -> Result<Option<Link>, Unready> {
+    fn admin(entry: &SignIn<Store>, account: Id<AccountKind>, base: &LinkBase) -> Result<Option<Link>, Unready> {
         let drawn = Draws(&System).drawn().map_err(|e| Self::adapter("randomness")(Box::new(e)))?;
         let issued = pollster::block_on(entry.admin(Some(account), drawn, clock::Clock::now(&System)))
             .map_err(|e| Self::adapter("first-run link")(Box::new(e)))?;

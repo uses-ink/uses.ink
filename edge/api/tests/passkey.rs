@@ -33,7 +33,7 @@ use edge_api::{
     Routed, Signatures, Signing, Status, Webauthn,
 };
 use jiff::Timestamp;
-use mail::{Address, Base};
+use mail::{Address, LinkBase};
 use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
 use serde_json::{Value, json};
@@ -108,7 +108,7 @@ impl Fixture {
         );
         let door_config = edge_api::door::Config {
             jar: jar(),
-            base: "https://app.uses.ink/login".parse::<Base>().unwrap(),
+            base: "https://app.uses.ink/login".parse::<LinkBase>().unwrap(),
             rates: edge_api::door::Rates::default(),
             outbox: edge_api::door::Outbox::new(4),
             reveals: false,
