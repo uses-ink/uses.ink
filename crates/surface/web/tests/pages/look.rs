@@ -138,3 +138,50 @@ fn the_served_tokens_set_every_colour_and_face_the_sheet_reads_to_its_own_value(
         assert!(css.contains(&format!("--{}:", face.name())), "--{}", face.name());
     }
 }
+
+/// The sheet as a page carries it, with its spaces squeezed out so a property is found by its text.
+struct Sheet(String);
+
+impl Sheet {
+    fn read() -> Self {
+        let page = SignIn::new().page();
+        let start = page.find("<style>").unwrap() + "<style>".len();
+        let end = page[start..].find("</style>").unwrap() + start;
+        Self(page[start..end].split_whitespace().collect::<Vec<_>>().join(" "))
+    }
+
+    /// The body of the first rule whose selector holds `selector`.
+    fn rule(&self, selector: &str) -> &str {
+        let at = self.0.find(selector).unwrap_or_else(|| panic!("no rule for {selector}"));
+        let open = self.0[at..].find('{').unwrap() + at + 1;
+        &self.0[open..open + self.0[open..].find('}').unwrap()]
+    }
+}
+
+#[test]
+fn the_frames_keep_their_corners_and_stretch_only_their_sides_with_no_gap_in_a_line() {
+    let sheet = Sheet::read();
+    let frame = sheet.rule(".page::after,");
+    // the corners are cut at the width they are drawn at, so they are never scaled
+    assert!(frame.contains("border-image-slice: 12;") && frame.contains("border-image-width: 12px;"), "{frame}");
+    assert!(frame.contains("border-image-repeat: stretch;"), "{frame}");
+    let small = sheet.rule("input[type=\"text\"],");
+    assert!(small.contains("outline-small.svg") && small.contains("border-image-slice: 12;"), "{small}");
+    // a corner of the small frame leaves a side of at least 48 px to stretch, and the big one 400
+    assert!(Asset::LITTLE - 2 * 12 >= 48 && Asset::SQUARE - 2 * 12 >= 400);
+    // a line stretched along its length keeps its pixels only when it is not snapped to the grid
+    for asset in Asset::ALL.into_iter().filter(|asset| asset.medium() == Medium::Image) {
+        let svg = String::from_utf8(asset.bytes().into_owned()).unwrap();
+        assert!(!svg.contains("crispEdges"), "{} would lose rows of a stretched line", asset.path());
+    }
+}
+
+#[test]
+fn the_tabs_and_buttons_are_lowercase_like_the_mocks_and_a_phone_gets_stacked_rows_not_a_table_to_scroll() {
+    let sheet = Sheet::read();
+    let case = sheet.rule(".tab, .open,");
+    assert!(case.contains("text-transform: lowercase;"), "{case}");
+    let phone = &sheet.0[sheet.0.find("@media (max-width: 40rem)").unwrap()..];
+    let phone = &phone[..phone.find("@media (max-width: 61.25rem)").unwrap()];
+    assert!(phone.contains("tr { display: flex;") && phone.contains("table, tbody, tr { display: block;"), "{phone}");
+}

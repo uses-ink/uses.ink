@@ -58,6 +58,7 @@ unspliced::css! {
     .nav li { margin: 0; }
     .tab { display: block; padding: 0.75rem 1.125rem; margin-right: -0.25rem; font-size: 1.4375rem; font-weight: 700; text-decoration: none; }
     .tab:hover { background: transparent; }
+    .tab, .open, .button, button, th, caption, summary { text-transform: lowercase; }
     .tab[aria-current="page"] { margin-right: -1.875rem; padding-right: 3rem; z-index: 2; }
     .nav li:nth-child(1) .tab { --fill: var(--bucket); }
     .nav li:nth-child(2) .tab { --fill: var(--pink); }
@@ -132,7 +133,9 @@ unspliced::css! {
     .fill-mint::before { content: ""; position: absolute; inset: 0; z-index: -1; translate: 5px 4px; background: var(--mint); }
     button.danger::before { background: var(--pink); }
     button:disabled { color: var(--pencil); cursor: not-allowed; }
+    .stack > button, .stack > .button { justify-self: start; }
     form { margin-top: 0.5rem; }
+    .card + form, .card + .stack { margin-top: 1.75rem; }
     form .stack { margin-top: 0.75rem; }
 
     /* what uses.ink says */
@@ -228,6 +231,14 @@ unspliced::css! {
     td details::after { content: none; }
     td details[open] { background: transparent; }
 
+    @media (max-width: 40rem) {
+        .table { overflow-x: visible; }
+        table, tbody, tr { display: block; min-width: 0; }
+        thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+        caption { display: block; }
+        tr { display: flex; flex-wrap: wrap; gap: 0 1rem; padding: 0.5rem 0 0.25rem; }
+        td, th[scope="row"] { display: block; padding: 0.125rem 0; max-width: 100%; overflow-wrap: anywhere; }
+    }
     @media (max-width: 61.25rem) {
         .app { display: block; }
         .rail { position: static; height: auto; padding: 1rem 1rem 0; flex-direction: column; gap: 0.5rem; }

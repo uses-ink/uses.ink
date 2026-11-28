@@ -233,7 +233,7 @@ impl fmt::Display for Sketch {
         let (width, height) = (self.width, self.height);
         write!(
             out,
-            r#"<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="none" shape-rendering="crispEdges">"#
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="none">"#
         )?;
         for stroke in &self.strokes {
             write!(out, r#"<path fill="{}" d="{stroke}"/>"#, self.tone.rgb())?;
