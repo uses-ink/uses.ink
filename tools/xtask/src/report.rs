@@ -66,6 +66,8 @@ pub(crate) enum Line {
     Matched(PathBuf),
     /// A line a Worker run says: what it measured, what the Worker answered.
     Worker { case: crate::worker::Case, text: String },
+    /// A line a release step says: what it planned, built or probed.
+    Released { step: crate::release::Release, text: String },
     /// The documentation site built clean, the same deploy twice.
     Reproduced(PathBuf),
     /// Every step of the gate passed.
@@ -98,6 +100,7 @@ impl fmt::Display for Line {
             Self::Prose => write!(out, "docs fine: links, citations, crate paths and decisions checked"),
             Self::Matched(path) => write!(out, "{}: same deploy natively and as components", path.display()),
             Self::Worker { case, text } => write!(out, "worker {case}: {text}"),
+            Self::Released { step, text } => write!(out, "release {step}: {text}"),
             Self::Reproduced(path) => {
                 write!(out, "{}: built twice with no diagnostic, the same deploy", path.display())
             }

@@ -1,6 +1,6 @@
 [package]
 name = "xtask"
-description = "Repo tasks: cargo xtask token | diag | brand | layout | docs | component | check"
+description = "Repo tasks: cargo xtask token | diag | brand | layout | docs | component | release | check"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

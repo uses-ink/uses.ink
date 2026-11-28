@@ -13,6 +13,8 @@
 //!   into a component under `target/plugin/`.
 //! - `worker <case>`: a Worker run in `workerd` through `wrangler dev --local`, with no Cloudflare
 //!   account: the hosted spikes and the conformance suites (`probe`, `lock`, `api`, `store`, `db`, `blob`, `rig`).
+//! - `release <step>`: the release steps that need no account and publish nothing (`plan`, `build`,
+//!   `image`; decision 0170).
 //! - `check [stage]`: the whole gate, or one of its stages (`lint`, `test`, `docs`, `wasm`,
 //!   `sites`, `worker`), which CI runs as parallel jobs: fmt, clippy (native and wasm32), `cargo deny` and
 //!   `layout`; the components and nextest; the docs checks (links, citations, crate paths and decisions)
@@ -65,6 +67,7 @@ mod error;
 mod generate;
 mod layout;
 mod process;
+mod release;
 mod report;
 mod root;
 mod worker;
@@ -84,13 +87,23 @@ pub(crate) enum Task {
     Docs,
     Component,
     Worker,
+    Release,
     Check,
 }
 
 impl Task {
     /// Every task, in the order they are listed.
-    pub(crate) const ALL: [Self; 8] =
-        [Self::Token, Self::Diag, Self::Brand, Self::Layout, Self::Docs, Self::Component, Self::Worker, Self::Check];
+    pub(crate) const ALL: [Self; 9] = [
+        Self::Token,
+        Self::Diag,
+        Self::Brand,
+        Self::Layout,
+        Self::Docs,
+        Self::Component,
+        Self::Worker,
+        Self::Release,
+        Self::Check,
+    ];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -102,6 +115,7 @@ impl Task {
             Self::Docs => "docs",
             Self::Component => "component",
             Self::Worker => "worker",
+            Self::Release => "release",
             Self::Check => "check",
         }
     }
@@ -122,6 +136,14 @@ impl Task {
                 Err(error) => Report::from(error),
             },
             (Self::Worker, None) => Report::from(Error::Case { given: String::new() }),
+            (Self::Release, given) => match given.unwrap_or_default().parse::<release::Release>() {
+                Ok(step) => {
+                    let mut report = Report::default();
+                    check::Step::run(&step, root, &mut report);
+                    report
+                }
+                Err(error) => Report::from(error),
+            },
             (_, Some(_)) => Report::from(Error::Stageless { task: self }),
             (_, None) => return None,
         })
@@ -151,7 +173,7 @@ impl Task {
                 check::Step::run(&build::component::Components, root, &mut report);
                 return report;
             }
-            Self::Worker | Self::Check => return report,
+            Self::Worker | Self::Release | Self::Check => return report,
         };
         report.take(generated);
         output.settle(&mut report);

@@ -16,6 +16,9 @@ targets = [
     "x86_64-pc-windows-msvc",
 ]
 checksum = "sha256"
+# one `cargo build -p uses-ink-cli` per target, not `--workspace`: the plugin guests are cdylibs for
+# wasm32, and linking them natively fails (found by `cargo xtask release build`)
+precise-builds = true
 pr-run-mode = "skip"
 # release.yml is generated, then checkout is raised to v7 by hand (dist 0.34 emits v6)
 allow-dirty = ["ci"]

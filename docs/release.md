@@ -41,6 +41,9 @@ Every crate has `publish = false` (workspace manifest). Nothing goes to crates.i
 installed from the archives. `dist` ignores unpublished binaries, so the CLI crate sets
 `dist = true` under `[package.metadata.dist]`.
 
+`dist-workspace.toml` sets `precise-builds = true`: without it `dist` builds the whole workspace for each
+target, which links the plugin guests (`cdylib`s for `wasm32`) natively and fails.
+
 ## Changelog
 
 There is no changelog file. `dist` builds release notes from `CHANGELOG.md` or `RELEASES.md` when
@@ -54,8 +57,10 @@ owner decides whether to add a file.
    `Cargo.lock` follows. Commit `chore: release X.Y.Z`.
 2. `cargo --locked xtask check` passes (its layout step runs the release rule, and `sites` builds
    every fixture through the bundled components).
-3. `dist plan` (needs `dist` 0.34.0: `cargo install cargo-dist --version 0.34.0 --locked`) lists
-   the artifacts above and no error.
+3. `cargo xtask release plan` (needs `dist` 0.34.0: `cargo install cargo-dist --version 0.34.0 --locked`)
+   lists the artifacts above and no error; `cargo xtask release build` builds this host's archive and
+   runs its `ink`; `cargo xtask release image` builds and probes the image. Agents run these through
+   the farm, `farm cargo xtask release plan`.
 4. Owner: push `main`, then the tag (create `vX.Y.Z`, push it). The workflow runs.
 5. Owner: when it is green, check the Release page, run the shell installer on a clean machine,
    and edit the notes.
@@ -65,9 +70,9 @@ owner decides whether to add a file.
    docker login ghcr.io
    docker push ghcr.io/uses-ink/uses-ink --all-tags
    ```
-   The registry login and the package's visibility are the owner's. The image runs
-   `ink serve --addr 0.0.0.0:8080` and builds no site: the `/data` volume must hold a deploy
-   (`ink build` output) at `/data/.ink/out`.
+   The registry login and the package's visibility are the owner's. By default the image runs
+   `ink serve --addr 0.0.0.0:8080`, which serves the empty `/data/.ink/out` and builds no site: the guide
+   (`docs/selfhost.md`) gives the command that turns the API on, `--data /data/state`.
 
 ## Hand edits to `release.yml`
 
@@ -103,14 +108,20 @@ while it is on the rule's `PENDING` list (empty: `ink serve` exists).
 
 ## Known gaps
 
-- `github-build-setup` and the hand-added step in `release.yml` were not run through `dist plan`
-  (the installed `dist` is 0.30.3, the pin is 0.34.0) or in CI; the Dockerfile's component step
-  was not built either. Whether runners write byte-identical wasm is unchecked.
+What `cargo xtask release` has run, on a farm host (decision 0170), and what has not run.
 
-- The workflow and the macOS, Windows and aarch64 targets run only in GitHub's CI; they were not
-  run locally. The Linux x86_64 musl build was run through the Dockerfile.
-- The image's `ink serve --addr 0.0.0.0:8080` and healthcheck were not run in a container here.
-- The tag-on-main step, the per-job permissions and the pinned actions were not run: no workflow
-  can run locally. `dist` may need `GH_TOKEN` in a build job (it stays, now read-only there).
+- **Run:** `dist plan` at 0.34.0 (`release plan`) lists the seven archives, both installers and every
+  checksum with no error; `dist build --artifacts=local` for Linux `x86_64` gnu (`release build`) writes
+  the archive and its checksum, and the `ink` in it prints its version; the image builds from the
+  `Dockerfile` on musl, runs read-only as user 65532 with no capability and answers `/healthz`
+  (`release image`, on podman). This found that `dist` built the plugin guests natively
+  (fixed by `precise-builds`), that the healthcheck asked the wrong path, and that the image had no
+  `.ink/out`, so `ink serve --data` would not start.
+- **Not run:** the generated workflow (no workflow can run outside GitHub), including the tag-on-main
+  step, the per-job permissions and the pinned actions; the macOS, Windows and `aarch64` targets and the
+  musl archives; the installers on a clean machine; whether runners write byte-identical wasm.
+  `dist` may need `GH_TOKEN` in a build job (it stays, now read-only there).
+- **Not set up:** signing. The archives have checksums and no signature, and the installers verify
+  the checksum only. A key, or GitHub's build attestations, is the owner's choice (decision 0170).
 - `RUSTSEC-2024-0436` is ignored by id (cargo-deny cannot scope it); `deny.toml` says how to check
   that only `rav1e` uses `paste`.

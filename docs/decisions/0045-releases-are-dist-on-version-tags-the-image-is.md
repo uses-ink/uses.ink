@@ -41,3 +41,7 @@ and a `.dockerignore` that is not an allowlist covering every workspace member. 
 and drift between the three caught by the gate. **Reversal:** a crates.io release would drop
 `publish = false` crate by crate in dependency order (the AGPL crates and the plugin guests first
 need a decision on what is public).
+
+Amended (0170): `dist-workspace.toml` sets `precise-builds = true`, since the default built the plugin guests
+natively and failed; the image's healthcheck asks `/healthz`; and `cargo xtask release plan|build|image` runs the
+plan, the host's archive and the image on a farm host.

@@ -131,6 +131,15 @@ pub(crate) enum Error {
         first: Option<String>,
         second: Option<String>,
     },
+    /// A step of `release` that does not exist.
+    Release {
+        given: String,
+    },
+    /// A step of `release` that failed.
+    Released {
+        step: crate::release::Release,
+        fault: crate::release::Fault,
+    },
     /// A site fixture whose `ink build --check` failed.
     Site {
         path: PathBuf,
@@ -167,6 +176,13 @@ impl fmt::Display for Error {
                 write!(out, "no case `{given}`; the cases are {}", Listed(&crate::worker::Case::ALL))
             }
             Self::Worker { case, .. } => write!(out, "worker {case} failed"),
+            Self::Release { given } if given.is_empty() => {
+                write!(out, "no step given; the steps are {}", Listed(&crate::release::Release::ALL))
+            }
+            Self::Release { given } => {
+                write!(out, "no step `{given}`; the steps are {}", Listed(&crate::release::Release::ALL))
+            }
+            Self::Released { step, .. } => write!(out, "release {step} failed"),
             Self::Read { path, .. } => write!(out, "cannot read {}", path.display()),
             Self::Write { path, .. } => write!(out, "cannot write {}", path.display()),
             Self::Source { path, flaw } => write!(out, "{path}: {flaw}"),
@@ -243,6 +259,7 @@ impl std::error::Error for Error {
             | Self::Site { source, .. } => Some(source),
             Self::Root(lost) => lost.source(),
             Self::Worker { fault, .. } => Some(fault),
+            Self::Released { fault, .. } => Some(fault),
             Self::Wrap { source, .. } => Some(source.as_ref()),
             Self::Bundle { source, .. } => Some(source),
             // Each of these is the whole failure: its data says what is wrong.
@@ -251,6 +268,7 @@ impl std::error::Error for Error {
             | Self::Stage { .. }
             | Self::Stageless { .. }
             | Self::Case { .. }
+            | Self::Release { .. }
             | Self::Source { .. }
             | Self::Module { .. }
             | Self::Layout(_)

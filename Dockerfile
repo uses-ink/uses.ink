@@ -5,8 +5,9 @@
 #   docker build -t uses-ink .
 #   docker run --read-only --tmpfs /tmp -v uses-ink:/data -p 8080:8080 uses-ink
 #
-# The image builds no site: `/data/.ink/out` (the folder `ink serve` reads by default) must hold
-# a deploy that `ink build` wrote.
+# The image builds no site. `ink serve` reads `.ink/out` of its working directory unless told
+# another folder, and refuses to start when it is missing, so the image makes it, empty: an empty
+# folder serves no site, and `--data` turns on the sites of the control plane (docs/selfhost.md).
 #
 # Release builds are the dist ones (dist-workspace.toml); this builds the same `dist`
 # profile from source, on musl, so the binary has no libc to match. `ink` carries its components
@@ -47,7 +48,7 @@ COPY --from=build /out/ink /usr/local/bin/ink
 
 # Everything the process writes is under /data, the only path that has to be writable: the
 # root filesystem can be read-only, and /tmp a tmpfs.
-RUN mkdir /data && chown 65532:65532 /data
+RUN mkdir -p /data/.ink/out && chown -R 65532:65532 /data
 USER 65532:65532
 ENV HOME=/data XDG_CACHE_HOME=/data/cache
 WORKDIR /data
@@ -58,7 +59,7 @@ VOLUME /data
 # and the example above use.
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget -q -O /dev/null "http://127.0.0.1:8080/" || exit 1
+    CMD wget -q -O /dev/null "http://127.0.0.1:8080/healthz" || exit 1
 
 # The command prints every default it chose as a notice (decision 0005), so
 # `docker logs` is where a first run's settings are read.
