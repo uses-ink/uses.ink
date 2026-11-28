@@ -221,7 +221,7 @@ deploys by host (`crates/server/edge/control`), runs the watch and the worker as
 events, remembers the watch's last-seen commit, reads remote heads with `gix` (`crates/server/watch/git`) and
 builds git sources through the `ink:source-git` component. `crates/surface/cli/tests/selfhost.rs` adds a
 `file://` repository, sees it served, pushes, sees the update, rolls back, exports and deletes,
-over the real binary with no network. Not done: `ink push`, streaming intake and export.
+over the real binary with no network. `ink push` and export followed (0077, below); streaming intake is not done.
 Git over HTTPS followed (0072): the watch's head read and the source fetch go through one rustls and
 `ring` client, with a licence exception for `webpki-root-certs` alone, tested against a local TLS server.
 Progress (2026-11-27, 0077): `ink init`, `push`, `status`, `watch` and `export` are built over the
@@ -233,14 +233,14 @@ domains in `status`, streaming intake.
 - `edge` and `crates/server/edge/axum`: serve, API, intake; polling watch; on-demand ACME. **Serving built
   (0051), gate green on the farm:** `edge` (ports, refusals, limits, conditional, range, 404, headers), `crates/server/edge/axum`
   (hyper loop, streaming, budgets, events, `/healthz`, graceful stop), `crates/server/edge/folder` and
-  `ink serve`. Open: API, intake, polling watch, on-demand ACME and TLS, the worker adapter,
-  redirect and variant entries in the manifest.
+  `ink serve`. The API, intake and the polling watch are built (0052, 0066, 0077). Open: on-demand
+  ACME and TLS, the worker adapter, redirect and variant entries in the manifest.
 - `web`: dashboard (Site, What we understood, Deploys, Settings, Account) on the chosen stack,
   pen through wasm, live build log as a streamed page **(owner: dashboard stack, after the frontend
   research)**. **Built (0053):** `web` renders the five screens, the replay of one decision, the
   build log (streamed while it runs) and every failure from typed view models with `unspliced`,
-  goldens and structure checks; the edge mounts it through `Screens`. Open: the edge's mounting,
-  previews and the decisions diff, domains and identities, the pen's wasm loader.
+  goldens and structure checks; `ink serve --data` mounts it on the API host through `Screens` (0092). Open:
+  the decisions diff, identities, the pen's wasm loader (previews are built, 0091; custom domains are being built).
 - Sign-in for self-host: passkeys, a first-run admin link printed once, and an email link that
   starts a delayed recovery (never a login), per the scheme in `auth.md` (0068, accepted). **Built
   (0066):** the magic-link bootstrap, sessions and the mail port. Its three spikes come first for

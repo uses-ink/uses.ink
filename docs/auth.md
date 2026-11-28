@@ -429,13 +429,13 @@ scrollback: `auth.key.print-refused`, new). The private key never reaches the se
   with it queues the build and stops with `auth.right.missing`, saying the build is queued on the
   site. CI pushes with `ink push --no-wait`, or the key is made with `--right read,deploy`.
 - **How CI reads it**: `INK_KEY` (the `ink-ed25519-1:` text) or `INK_KEY_FILE` (a path), plus
-  `INK_SERVER`. Both follow the `INK_*` rule of `cli.md` section 13. A file is better than an
+  `INK_API` (the API address). Both follow the `INK_*` rule of `cli.md` section 13. A file is better than an
   environment variable, which any child process inherits; the docs say so and show the CI step
   that writes the secret to a file.
 - **Lifetime**: required. Default 90 days, maximum 365 (operator setting, 0044: the operator's value
   is the ceiling and a request above it is a diagnostic naming both numbers). A key with no expiry
   does not exist.
-- **Rotation**: `ink key add --site garden --right deploy --replaces 3DSF-7K2M`. The new key is
+- **Rotation** (planned: `--replaces` is not built; today a key is replaced by making a new one and revoking the old): `ink key add --site garden --right deploy --replaces 3DSF-7K2M`. The new key is
   approved with a passkey; the old one stays valid until the new one is first used, or seven days,
   whichever is sooner, then retires. Nothing is renewed silently.
 - **Warning before it breaks**: a signed reply carries a typed notice when the key has 14 days left
@@ -474,7 +474,7 @@ After a passkey login the server makes a session.
 - **The id**: 32 bytes from two `Draw` calls, shown as 43 base64url characters. Only
   `blake3::derive_key("uses.ink 2026-11-27 session id v1", id)` is stored. The cookie is the only
   place the id exists.
-- **The cookie**: `__Host-ink_session=<id>; Path=/; Secure; HttpOnly; SameSite=Lax`, no `Domain`,
+- **The cookie**: `__Host-ink-session=<id>; Path=/; Secure; HttpOnly; SameSite=Lax`, no `Domain`,
   with `Max-Age` equal to the absolute expiry. The `__Host-` prefix makes browsers refuse it unless
   it is `Secure`, has `Path=/` and no `Domain`, so a sibling subdomain cannot set or shadow it
   (with `uses.ink` on the Public Suffix List, author sites at `<handle>.uses.ink` are separate sites
@@ -507,7 +507,7 @@ After a passkey login the server makes a session.
    defence of the OWASP CSRF cheat sheet. Failure is `auth.origin.refused` (new).
 4. No per-form token: Lax plus Origin plus Fetch Metadata covers every browser that can run the
    passkey pages. A token would be a second mechanism to get wrong. (Open choice 8.)
-5. **Ceremonies** (register, login, step-up) are bound to a short-lived `__Host-ink_ceremony` cookie
+5. **Ceremonies** (register, login, step-up) are bound to a short-lived `__Host-ink-ceremony` cookie
    that holds the random id of the server-side state, so a response from another browser or a
    cross-site post of someone else's assertion cannot complete (login CSRF).
 6. The API host never reads a cookie, so none of this reaches the API.
@@ -521,7 +521,7 @@ After a passkey login the server makes a session.
 ```
 No account exists yet. Open this link on this machine to make the first one:
   http://localhost:8080/welcome/<256-bit token, 43 characters>
-It works once, for one hour, and only while there is no account.
+It works once, for 24 hours (`--admin-ttl`), and only while there is no account.
 ```
 
 - The token is 256 random bits; its context-separated BLAKE3 digest is the stored `link` row
@@ -530,10 +530,12 @@ It works once, for one hour, and only while there is no account.
 - Pressing the button starts a passkey registration for the new owner account and then adds a recovery
   code set (section 9, recovery codes). The account is made at the end of registration, so a half-run
   leaves nothing behind.
-- The link is single use, and it is dead once an account exists. Restarting the server before use
-  prints a **new** link and kills the old one. `ink serve --data <folder> --admin-link` prints a new
-  one at any time (the folder's owner is the operator, section 10): this is also the self-host
-  answer to "I lost every passkey and every code", and it needs no email.
+- The link is single use, and it is dead once an account exists. It is made **once** (decision
+  0066): a restart does not make another, and a link that ended unused is not made again; the way
+  back in is the operator's key (`ink login --data <folder>`, section 10). **Planned, not built:**
+  restarting before use printing a new link and killing the old one, and
+  `ink serve --data <folder> --admin-link` printing a new one at any time, which would also be the
+  self-host answer to "I lost every passkey and every code", with no email.
 - The token goes through `Link`'s `Debug` of `Link(<redacted>)` (the `signin` agent's type) and the
   server's access log records the route (`/welcome/..`), not the token. The response sets
   `Referrer-Policy: no-referrer` and `Cache-Control: no-store`.
@@ -606,7 +608,7 @@ For a person who has neither a passkey nor a code, in hosted, or in a self-host 
 **The operator can turn email recovery off per account once a passkey exists** (`recovery.email =
 off` in the account policy, set from the dashboard with a passkey step-up) **and for the whole
 instance** (`[auth] recovery-email = false`). With it off, the paths back are a passkey, a recovery
-code, and (self-host) the operator's `--admin-link`. Hosted gives the same advice: set it off once
+code, and (self-host) the operator's key, and the planned `--admin-link`. Hosted gives the same advice: set it off once
 you have two passkeys or a code set. There is no "ask support" path in hosted, because one is a
 social-engineering path; the page says so.
 
@@ -688,7 +690,7 @@ into an error.
 A passkey is tied to the rp id forever, and an authenticator cannot rewrite it. So a change of id
 means passkeys do not work on the new one, and the honest path is **re-enrolment**:
 
-1. Self-host: `ink serve --data <folder> --admin-link` on the new configuration prints a link that
+1. Self-host (`--admin-link` is planned, not built): `ink serve --data <folder> --admin-link` on the new configuration prints a link that
    registers new passkeys for the owner account (the folder's owner is the operator). Old passkeys
    are listed as orphaned and removed after.
 2. Hosted: recovery codes or email recovery, as in section 9, on the new host.
@@ -1021,11 +1023,11 @@ the folder). Exit codes: sign-in and key failures are **3**; the server restarti
 needs the dashboard and is not given it is **2** (a usage fix).
 
 ```
-ink login [--server URL] [--label TEXT] [--data DIR]
+ink login [--api URL] [--label TEXT] [--data DIR]
 ink logout
 ink whoami
 ink key list
-ink key add    --site SITE --right deploy [--right read] [--expires 90d] [--replaces KEY] [--out FILE]
+ink key add    --site SITE --right deploy,read [--expires 90d] [--out FILE]   # --right takes a comma list; --replaces is planned
 ink key revoke KEY
 ```
 
@@ -1063,27 +1065,27 @@ the catalog. Codes marked (new) do not exist yet.
 | Code | Severity, fault | Fields | Cause | Fix |
 |---|---|---|---|---|
 | `auth.signature.malformed` | error, author | `header` | The `Authorization` header is not an `Ink-Sig-1` value. | Update `ink`; a script that signs its own requests follows the profile in `docs/auth.md`. |
-| `auth.target.not-canonical` | error, author | `target` | The request target is not in canonical form. | Escape with upper-case hex, sort the query, drop empty pairs. `ink` does this itself. |
+| `auth.target.not-canonical` | error, author | `request_target` | The request target is not in canonical form. | Escape with upper-case hex, sort the query, drop empty pairs. `ink` does this itself. |
 | `auth.signature.skewed` | error, source | `skew`, `window` (counts, seconds), `server_time` | The request's time is `skew` seconds away from the server's, over the allowed `window`. | Set this machine's clock (`timedatectl set-ntp true`). |
 | `auth.signature.refused` | error, source | none | The server did not accept the signature. | Run `ink login` to sign in again on this machine. |
 | `auth.key.revoked` | error, source | `since` | This key was revoked. | Run `ink login`; for CI, make a new key with `ink key add`. |
 | `auth.key.expired` | error, source | `since` | This key has expired. | Same. |
-| `auth.key.expiring` | note | `days` | This key has `days` days left. | `ink key add --replaces` before then. |
+| `auth.key.expiring` (new) | note | `days` | This key has `days` days left. | `ink key add` before then. |
 | `auth.signature.replayed` | error, ours | none | A request with the same nonce was already seen. | Send a new request; a client that reuses a nonce has a bug. |
 | `auth.digest.mismatch` | error, author | none | The body is not the one that was signed. | Resend; a proxy that changes bodies must not sit between. |
 | `auth.server.restarting` | error, operator | `seconds` | The server just started and takes signed requests again in `seconds`. | Wait; `ink` retries once. |
 | `auth.right.missing` | error, author | `right`, `scope` | This key may not do this. | Use a key with the right, or approve one in the dashboard. |
-| `auth.session.expired` | error, source | `limit` (`idle` or `absolute`) | The session ended. | Sign in again. |
+| `auth.session.expired` (new) | error, source | `limit` (`idle` or `absolute`) | The session ended. | Sign in again. |
 | `auth.origin.refused` | error, author | none | The request did not come from this dashboard. | Reload the page and try again. |
-| `auth.passkey.refused` | error, source | none | The passkey was not accepted. | Try again, or use another passkey or a recovery code. |
+| `auth.passkey.refused` | error, author | none | The passkey was not accepted. | Try again, or use another passkey or a recovery code. |
 | `auth.enrolment.expired` | error, source | none | That code is unknown or has expired. | Run `ink login` again. |
 | `auth.enrolment.denied` | error, source | none | The request was not approved. | Run `ink login` again if it was a mistake. |
-| `auth.link.refused` | error, source | none | That link is unknown, used or expired. | Ask for a new one. |
-| `auth.recovery.pending` | note | `completes_at` | A recovery of this account completes at that time. | Cancel it in the dashboard if it was not you. |
-| `auth.recovery.disabled` | error, source | none | Email recovery is off for this account. | Use a passkey or a recovery code. |
-| `auth.relying-party.changed` | error, operator | `was`, `now`, `passkeys` | The domain is not the one passkeys were made for; `passkeys` would stop working. | Restore the setting, or run `ink serve --admin-link` and register new passkeys on the new domain. |
+| `auth.link.refused` (new) | error, source | none | That link is unknown, used or expired. | Ask for a new one. |
+| `auth.recovery.pending` (new) | note | `completes_at` | A recovery of this account completes at that time. | Cancel it in the dashboard if it was not you. |
+| `auth.recovery.disabled` (new) | error, source | none | Email recovery is off for this account. | Use a passkey or a recovery code. |
+| `auth.relying-party.changed` | error, operator | `was`, `now`, `passkeys` | The domain is not the one passkeys were made for; `passkeys` would stop working. | Set `--rp-id` back, or accept that people sign in with an email link and add passkeys anew. |
 | `auth.key.print-refused` | error, author | none | The private key would be printed to a terminal. | Send it to a file with `--out`, or redirect stdout. |
-| `auth.token.retired` | note | `file` | The owner token in `file` no longer works. | `ink login --data <folder>`; delete the file. |
+| `auth.token.retired` | note | `token_file` | The owner token in `token_file` no longer works. | `ink login --data <folder>`; delete the file. |
 
 The caller never sees the cause for `auth.signature.refused`; the operator's counters do. A reply's
 `Problem` is as 0052 made it: `problem`, `message`, `causes` (empty for the server's own failures).
@@ -1102,7 +1104,7 @@ The caller never sees the cause for `auth.signature.refused`; the operator's cou
 | CLI approves in the dashboard with a passkey | Same, **plus a key fingerprint shown on both screens and no prefilled code**; polling is signed by the pending key | RFC 8628 5.4 remote phishing |
 | Device keys could be general | A device key **cannot mint any credential**; it can revoke | A stolen key must not make itself permanent |
 | CI deploy keys | Same, expiry required (90 days default), rotation with overlap, an expiry notice; **OIDC trusted publishing** as the later secretless path | Secrets in a CI store still leak |
-| Magic link for bootstrap and recovery | Same, but **never a login**; a GET never spends a link; links are confirmed by POST; the first-run link is also the operator's `--admin-link` | Mail scanners; the mailbox must not be the account |
+| Magic link for bootstrap and recovery | Same, but **never a login**; a GET never spends a link; links are confirmed by POST; the first-run link is also, once built, the operator's `--admin-link` | Mail scanners; the mailbox must not be the account |
 | Recovery codes optional | Same; a code enrols immediately, email recovery waits 48 hours with notices and cancel | A held code is pre-authorised; a mailbox is not |
 | Owner token becomes an operator device key | `Owner` deleted; an **authorized-keys file** `<data>/operator-keys`, with `ink login --data` | Same trust as the token file, nothing secret in `<data>`, no browser needed |
 | rp id and origin config | Plus the **id is stored with the first passkey and checked on start** | Turns a silent breakage into a typed error |

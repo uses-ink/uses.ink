@@ -506,9 +506,9 @@ infrastructure and route names, tombstones on rename and delete.
 | files in snapshot | 20,000 | `source.budget.files` |
 | one file | 25 MiB | `source.budget.file` |
 | one image | 50 million pixels | `image.budget.pixels` |
-| published output | 500 MiB | `render.budget.bytes` |
-| build wall time | 120 s | `build.budget.time` |
-| builds per handle per hour | 30 | `build.budget.rate` |
+| published output | 500 MiB | `render.budget.bytes` (planned, not in the catalog) |
+| build wall time | 120 s | `build.budget.time` (planned, not in the catalog) |
+| builds per handle per hour | 30 | `build.budget.rate` (planned; `budget.builds.over` counts an account's builds in 24 hours) |
 | plugin call | fuel, 64 MiB, 2 s | `plugin.budget.*` |
 
 ## 14. Surfaces
