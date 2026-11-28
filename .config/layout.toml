@@ -348,6 +348,11 @@ first = "0143"
 last = "0149"
 reason = "kept for decisions in flight on other branches; the security review fixes took 0150"
 
+[[decisions.gap]]
+first = "0153"
+last = "0169"
+reason = "kept for decisions in flight on other branches; the release work took 0170"
+
 # The docs checks. A block of prose with a word of `planned` (any case) names what is not built,
 # so the paths in it need not exist.
 [docs]

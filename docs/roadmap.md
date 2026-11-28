@@ -320,7 +320,11 @@ push is live within the measured time; a custom domain goes live with a valid ce
 
 ## M5: Launch
 
-- Landing at `uses.ink` from the doodle mock, on the web crate, pen through wasm.
+- Landing at `uses.ink` from the doodle mock, built (0171): `landing/` is an `ink` site (one page, `theme-quiet`
+  with the docs look, a picture drawn by `cargo xtask brand`, no script), and `check sites` builds it twice like the
+  docs. It replaces the plan to serve it from the web crate with the pen as a wasm module. Left: the doodle look
+  and the mock's hero panel, which need a second look in `token.toml` **(owner: the rebrand)**, and deploying it
+  to `uses.ink` **(owner)**.
 - Docs site, built by `ink` from `docs/` with a uses.ink theme (dogfood), built (`docs/site.md`, 0120):
   `cargo xtask check sites` builds it twice and refuses any diagnostic or a second deploy that differs. The
   gaps it found are closed: folder rules for `page.kind`, weight and order (0140); a sidebar, previous and
@@ -331,7 +335,15 @@ push is live within the measured time; a custom domain goes live with a valid ce
   OAuth per instance and the applications to register **(owner)**, and the webhook route of 0113.
 - Obsidian plugin and browser upload **(owner: Q18)**.
 - `uses-ink/.github` profile and org description in the new brand.
-- `cargo dist` releases of `ink` for Linux, macOS, Windows; container image for self-host.
+- `cargo dist` releases of `ink` for Linux, macOS, Windows; container image for self-host. Built and run
+  (0045, 0170): `dist plan` at 0.34.0 lists the seven archives, installers and checksums; `dist build` of the
+  Linux `x86_64` archive passes and its `ink` runs (it found that `dist` built the plugin guests natively, now
+  `precise-builds`); the image builds on musl, runs read-only as user 65532 and answers `/healthz`
+  (`cargo xtask release plan|build|image` on a farm host). The self-host guide is `docs/selfhost.md` (0172).
+  Left, all **owner**: pushing `main` and the first tag (the workflow and the macOS, Windows and `aarch64`
+  builds run only in GitHub's CI), publishing the image and its registry login, signing keys for the archives
+  and installers (none are configured; `dist` can attest through GitHub), deploying the docs and the landing,
+  and the domain.
 
 **Exit:** a stranger with a repo or a vault publishes without help, and every failure they hit
 shows a code, a cause and a fix.

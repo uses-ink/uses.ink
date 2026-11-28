@@ -9,6 +9,7 @@ itself from the `docs/` folder of the repository ([how](site.md)). Pre-release: 
 
 - [Architecture](architecture.md): what each part does, where it runs and the contracts between parts.
 - [The `ink` command line](cli.md): every command, option, output and exit code.
+- [Self-hosting](selfhost.md): install `ink`, run `ink serve`, back it up, upgrade it and put it behind a proxy.
 - [Roadmap](roadmap.md): the milestones in order, each with an exit check that can fail.
 
 ## Design

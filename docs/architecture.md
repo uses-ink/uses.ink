@@ -533,8 +533,9 @@ is no hand-written or generated JS (the landing's pen loader, `crates/standalone
 is the one exception); colours and sizes from `crates/core/token/`; the dashboard's marks are drawn at render
 time by `freehand`, the landing's by the pen as a wasm module.
 
-**Landing** at `uses.ink`: planned, from the doodle mock (a local file under `.impeccable/mocks/doodle/`, not
-tracked), served by the same web crate. `web` holds only the dashboard today.
+**Landing** at `uses.ink`: `landing/` is an `ink` site (0171), one markdown page in `theme-quiet` with the docs
+look and a picture drawn by `cargo xtask brand`, from the words of the doodle mock (a local file, not tracked).
+It has no script and is not served by the `web` crate, which holds only the dashboard. Not deployed.
 
 **CLI** (`ink`): `init`, `check`, `build`, `preview`, `serve`, `explain`, `pin`, `select`, `login`,
 `logout`, `whoami`, `key`, `push`, `status`, `watch`, `deploy` (`list`, `show`, `rollback`, `resume`),
