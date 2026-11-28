@@ -149,6 +149,11 @@ pub(crate) enum Error {
         step: crate::release::Release,
         fault: crate::release::Fault,
     },
+    /// A stage of `smoke` that failed.
+    Smoked {
+        stage: crate::smoke::Stage,
+        fault: crate::smoke::Fault,
+    },
     /// A site fixture whose `ink build --check` failed.
     Site {
         path: PathBuf,
@@ -199,6 +204,7 @@ impl fmt::Display for Error {
                 write!(out, "no step `{given}`; the steps are {}", Listed(&crate::release::Release::ALL))
             }
             Self::Released { step, .. } => write!(out, "release {step} failed"),
+            Self::Smoked { stage, .. } => write!(out, "smoke {stage} failed"),
             Self::Read { path, .. } => write!(out, "cannot read {}", path.display()),
             Self::Write { path, .. } => write!(out, "cannot write {}", path.display()),
             Self::Source { path, flaw } => write!(out, "{path}: {flaw}"),
@@ -277,6 +283,7 @@ impl std::error::Error for Error {
             Self::Worker { fault, .. } => Some(fault),
             Self::Released { fault, .. } => Some(fault),
             Self::Shot { fault, .. } => Some(fault),
+            Self::Smoked { fault, .. } => Some(fault),
             Self::Wrap { source, .. } => Some(source.as_ref()),
             Self::Bundle { source, .. } => Some(source),
             // Each of these is the whole failure: its data says what is wrong.

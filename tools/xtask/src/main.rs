@@ -17,6 +17,8 @@
 //!   `target/shots/` and as base64 in the log (`site`, `dashboard`, `mock`; decision 0240).
 //! - `release <step>`: the release steps that need no account and publish nothing (`plan`, `build`,
 //!   `image`; decision 0170).
+//! - `smoke`: the self-host guide run end to end with the real `ink` on one machine (decision 0005,
+//!   `docs/selfhost.md`); `smoke <older ink>` also starts the data folder of that older `ink` with the new one.
 //! - `check [stage]`: the whole gate, or one of its stages (`lint`, `test`, `docs`, `wasm`,
 //!   `sites`, `worker`), which CI runs as parallel jobs: fmt, clippy (native and wasm32), `cargo deny` and
 //!   `layout`; the components and nextest; the docs checks (links, citations, crate paths and decisions)
@@ -73,6 +75,7 @@ mod release;
 mod report;
 mod root;
 mod shoot;
+mod smoke;
 mod worker;
 
 use error::Error;
@@ -92,12 +95,13 @@ pub(crate) enum Task {
     Worker,
     Release,
     Shoot,
+    Smoke,
     Check,
 }
 
 impl Task {
     /// Every task, in the order they are listed.
-    pub(crate) const ALL: [Self; 10] = [
+    pub(crate) const ALL: [Self; 11] = [
         Self::Token,
         Self::Diag,
         Self::Brand,
@@ -107,6 +111,7 @@ impl Task {
         Self::Worker,
         Self::Release,
         Self::Shoot,
+        Self::Smoke,
         Self::Check,
     ];
 
@@ -122,6 +127,7 @@ impl Task {
             Self::Worker => "worker",
             Self::Release => "release",
             Self::Shoot => "shoot",
+            Self::Smoke => "smoke",
             Self::Check => "check",
         }
     }
@@ -161,6 +167,11 @@ impl Task {
                 }
                 Err(error) => Report::from(error),
             },
+            (Self::Smoke, older) => {
+                let mut report = Report::default();
+                check::Step::run(&smoke::Smoke(older.map(std::path::PathBuf::from)), root, &mut report);
+                report
+            }
             (_, Some(_)) => Report::from(Error::Stageless { task: self }),
             (_, None) => return None,
         })
@@ -190,7 +201,7 @@ impl Task {
                 check::Step::run(&build::component::Components, root, &mut report);
                 return report;
             }
-            Self::Worker | Self::Release | Self::Shoot | Self::Check => return report,
+            Self::Worker | Self::Release | Self::Shoot | Self::Smoke | Self::Check => return report,
         };
         report.take(generated);
         output.settle(&mut report);

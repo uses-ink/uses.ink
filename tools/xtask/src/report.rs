@@ -70,6 +70,8 @@ pub(crate) enum Line {
     Shoot { text: String },
     /// A line a release step says: what it planned, built or probed.
     Released { step: crate::release::Release, text: String },
+    /// What a stage of the smoke run checked.
+    Smoked { stage: crate::smoke::Stage, text: String },
     /// The documentation site built clean, the same deploy twice.
     Reproduced(PathBuf),
     /// Every step of the gate passed.
@@ -104,6 +106,7 @@ impl fmt::Display for Line {
             Self::Worker { case, text } => write!(out, "worker {case}: {text}"),
             Self::Shoot { text } => write!(out, "shoot: {text}"),
             Self::Released { step, text } => write!(out, "release {step}: {text}"),
+            Self::Smoked { stage, text } => write!(out, "smoke {stage}: {text}"),
             Self::Reproduced(path) => {
                 write!(out, "{}: built twice with no diagnostic, the same deploy", path.display())
             }
