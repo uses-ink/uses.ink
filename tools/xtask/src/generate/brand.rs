@@ -80,11 +80,17 @@ struct Drawing {
     #[serde(default)]
     copies: Vec<String>,
     size: Size,
+    /// Whether the drawing stretches to any box, as a mark drawn along a line or round a frame
+    /// does, instead of keeping its proportions.
+    #[serde(default)]
+    stretch: bool,
     hand: Shake,
     /// How far every fill misses its lines.
     shift: Xy,
     place: Place,
+    #[serde(default)]
     fill: Vec<Fill>,
+    #[serde(default)]
     stroke: Vec<Stroke>,
 }
 
@@ -350,7 +356,7 @@ impl Sheet<'_> {
                 });
             }
         }
-        Ok(Picture { size: drawing.size, fills, strokes })
+        Ok(Picture { size: drawing.size, stretch: drawing.stretch, fills, strokes })
     }
 }
 
@@ -370,6 +376,7 @@ impl Painted {
 /// A drawing painted: its fills under its ink. Its `Display` is the SVG file.
 struct Picture {
     size: Size,
+    stretch: bool,
     fills: Vec<Painted>,
     strokes: Vec<Painted>,
 }
@@ -379,9 +386,16 @@ impl fmt::Display for Picture {
         let Size([w, h]) = self.size;
         let (fills, strokes) = (Painted::shown(&self.fills), Painted::shown(&self.strokes));
         let page = html! {
-            svg xmlns viewBox=(self.size.view()) width=(w) height=(h) {
-                @for (d, colour) in &fills { path d=(*d) fill=(colour.as_str()); }
-                @for (d, colour) in &strokes { path d=(*d) fill=(colour.as_str()) shape-rendering="crispEdges"; }
+            @if self.stretch {
+                svg xmlns viewBox=(self.size.view()) width=(w) height=(h) preserveAspectRatio="none" {
+                    @for (d, colour) in &fills { path d=(*d) fill=(colour.as_str()); }
+                    @for (d, colour) in &strokes { path d=(*d) fill=(colour.as_str()) shape-rendering="crispEdges"; }
+                }
+            } @else {
+                svg xmlns viewBox=(self.size.view()) width=(w) height=(h) {
+                    @for (d, colour) in &fills { path d=(*d) fill=(colour.as_str()); }
+                    @for (d, colour) in &strokes { path d=(*d) fill=(colour.as_str()) shape-rendering="crispEdges"; }
+                }
             }
         };
         writeln!(out, "{}", page.html())
