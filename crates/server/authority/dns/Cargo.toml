@@ -8,11 +8,17 @@ repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+# The resolver that asks real nameservers needs sockets, so it is the `system` feature: the API on
+# a Worker builds this crate without it (decision 0130).
+[features]
+default = ["system"]
+system = ["dep:clock", "dep:tokio", "tokio/net"]
+
 [dependencies]
-clock.workspace = true
+clock = { workspace = true, optional = true }
 control.workspace = true
 jiff.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
 blob-dir.workspace = true

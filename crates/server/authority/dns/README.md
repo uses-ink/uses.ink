@@ -11,6 +11,11 @@ adapter that asks a real DNS server is hosted work (`docs/hosted.md` L2). Its te
 plane over the SQLite and directory adapters with a `Fake` resolver. The full list is in
 [the crate index](../../../../docs/crates.md).
 
+## Features
+
+`system` (on by default) is the resolver that asks real nameservers, which needs sockets. A Worker
+builds the crate without it (decision 0130), and `Chosen` is then `Offline` only.
+
 ## Where things are
 
 - `crates/server/authority/dns/src/resolver.rs` is the `Resolver` port; `fake.rs` is the `Fake`

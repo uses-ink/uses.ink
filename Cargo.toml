@@ -14,7 +14,7 @@ publish = false
 # Every crate of ours by its short name, so code says `token::Colour`.
 [workspace.dependencies]
 authority-forge = { package = "uses-ink-authority-forge", path = "crates/server/authority/forge" }
-authority-dns = { package = "uses-ink-authority-dns", path = "crates/server/authority/dns" }
+authority-dns = { package = "uses-ink-authority-dns", path = "crates/server/authority/dns", default-features = false }
 blob = { package = "uses-ink-blob", path = "crates/port/blob" }
 blob-conformance = { package = "uses-ink-blob-conformance", path = "crates/port/blob/conformance" }
 blob-dir = { package = "uses-ink-blob-dir", path = "crates/port/blob/dir" }
@@ -38,7 +38,7 @@ web = { package = "uses-ink-web", path = "crates/surface/web" }
 edge-api = { package = "uses-ink-edge-api", path = "crates/server/edge/api" }
 edge-control = { package = "uses-ink-edge-control", path = "crates/server/edge/control" }
 edge-axum = { package = "uses-ink-edge-axum", path = "crates/server/edge/axum" }
-edge-folder = { package = "uses-ink-edge-folder", path = "crates/server/edge/folder" }
+edge-folder = { package = "uses-ink-edge-folder", path = "crates/server/edge/folder", default-features = false }
 engine = { package = "uses-ink-engine", path = "crates/core/engine" }
 format-markdown = { package = "uses-ink-format-markdown", path = "crates/runtime/plugin/format/markdown" }
 format-obsidian = { package = "uses-ink-format-obsidian", path = "crates/runtime/plugin/format/obsidian" }
@@ -133,8 +133,9 @@ serde = { version = "1.0.229", features = ["derive"] }
 worker = { version = "=0.9.0", default-features = false, features = ["d1"] }
 serde_json = "1.0.154"
 serde-saphyr = { version = "2.2.0", default-features = false, features = ["deserialize"] }
-# serving (edge): sockets, timers, the folder adapter's reads, the accept loop and Ctrl-C
-tokio = { version = "1.54.1", features = ["fs", "io-util", "macros", "net", "rt", "signal", "sync", "time"] }
+# the base every crate shares builds for wasm32-unknown-unknown (decision 0130): a crate that needs sockets, files or
+# Ctrl-C adds `net`, `fs` or `signal` itself, behind a feature where a Worker also depends on it
+tokio = { version = "1.54.1", features = ["io-util", "macros", "rt", "sync", "time"] }
 toml = "1.2.3"
 tracing = { version = "0.1.44", default-features = false, features = ["std"] }
 # the subscriber behind `logging`: the registry for span data and `filter::Targets` for the filter

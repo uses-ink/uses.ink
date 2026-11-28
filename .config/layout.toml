@@ -322,8 +322,13 @@ reason = "kept for decisions in flight on other branches; the docs site took 012
 
 [[decisions.gap]]
 first = "0121"
-last = "0139"
+last = "0129"
 reason = "kept for decisions in flight on other branches; the docs site navigation took 0140"
+
+[[decisions.gap]]
+first = "0131"
+last = "0139"
+reason = "kept for the hosted adapters, which number from 0130; each decision that lands shrinks this row"
 
 # The docs checks. A block of prose with a word of `planned` (any case) names what is not built,
 # so the paths in it need not exist.

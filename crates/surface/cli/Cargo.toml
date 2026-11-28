@@ -13,7 +13,7 @@ name = "ink"
 path = "src/main.rs"
 
 [dependencies]
-authority-dns.workspace = true
+authority-dns = { workspace = true, features = ["system"] }
 annotate-snippets.workspace = true
 anstream.workspace = true
 anstyle.workspace = true
@@ -38,7 +38,7 @@ config.workspace = true
 diag.workspace = true
 edge.workspace = true
 edge-axum.workspace = true
-edge-folder.workspace = true
+edge-folder = { workspace = true, features = ["files"] }
 engine.workspace = true
 format-markdown.workspace = true
 format-obsidian.workspace = true
@@ -61,7 +61,7 @@ serde.workspace = true
 serde_json.workspace = true
 terminal_size.workspace = true
 theme-quiet.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["net", "signal"] }
 toml.workspace = true
 logging = { workspace = true, features = ["layers"] }
 unicode-width.workspace = true

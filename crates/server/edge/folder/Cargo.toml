@@ -8,18 +8,28 @@ repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+# The folder readers (`Deploys`, `Files`) are the files feature: the intake of the API only reads a
+# manifest, and a Worker has no files, so it builds this crate with no features (decision 0130).
+[features]
+default = ["files"]
+files = ["dep:bytes", "dep:edge", "dep:tokio", "tokio/fs"]
+
+[[test]]
+name = "folder"
+required-features = ["files"]
+
 [dependencies]
-bytes.workspace = true
-edge.workspace = true
+bytes = { workspace = true, optional = true }
+edge = { workspace = true, optional = true }
 model.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, optional = true }
 logging.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["fs"] }
 
 [lints]
 workspace = true

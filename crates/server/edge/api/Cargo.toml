@@ -30,6 +30,8 @@ webauthn-rs-core.workspace = true
 # the Worker target (spikes/passkeys): rand and uuid, under the WebAuthn verifier, need their JavaScript entropy
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }
+# the clock crate's `System` draws through rand_core 0.6, which reads getrandom 0.2: on a Worker that is crypto.getRandomValues
+getrandom02 = { package = "getrandom", version = "0.2", features = ["js"] }
 uuid = { version = "1", features = ["js"] }
 
 [dev-dependencies]

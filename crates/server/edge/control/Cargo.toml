@@ -14,7 +14,7 @@ blob-dir.workspace = true
 clock.workspace = true
 control.workspace = true
 edge.workspace = true
-edge-folder.workspace = true
+edge-folder = { workspace = true, features = ["files"] }
 jiff.workspace = true
 model.workspace = true
 tokio.workspace = true

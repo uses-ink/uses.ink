@@ -3,6 +3,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
+#[cfg(feature = "files")]
 use logging::Field as _;
 use model::{DeployId, DuplicateRoute, PathError, Route};
 
@@ -130,6 +131,7 @@ impl logging::Kind for &Error {
 impl Error {
     /// Says what the folder refused: a `warn` for content the edge will not serve, an `error`
     /// for a file the system would not read or one that changed under a read.
+    #[cfg(feature = "files")]
     pub(crate) fn said(&self) {
         match self {
             Self::Read { .. } | Self::Short { .. } => logging::error!(

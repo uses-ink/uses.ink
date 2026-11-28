@@ -24,6 +24,8 @@ pub use dns::Dns;
 pub use error::Error;
 pub use fake::{Fake, NoResolver, Offline, Unreachable};
 pub use host::Host;
-pub use lookup::{Chosen, Failed, Malformed, Nameserver, Servers, System, Unlisted};
+pub use lookup::{Chosen, Failed, Malformed, Unlisted};
+#[cfg(feature = "system")]
+pub use lookup::{Nameserver, Servers, System};
 pub use record::{Challenge, Record};
 pub use resolver::Resolver;
