@@ -18,6 +18,18 @@ fn a_child_that_outlives_its_job_neither_holds_the_slot_nor_stays_alive() {
 }
 
 #[test]
+fn a_job_touches_the_target_directory_of_its_tree_so_the_next_seed_knows_it_was_used() {
+    let rig = Rig::new("touch");
+    let target = rig.root.join("w").join("target");
+    std::fs::create_dir_all(&target).unwrap();
+    let old = std::time::UNIX_EPOCH + Duration::from_secs(1_000);
+    std::fs::File::open(&target).unwrap().set_modified(old).unwrap();
+    let finished = run_one(&rig, &job("use", "true"), job::Attach::Hold(Duration::from_secs(30)), 1);
+    assert_eq!(finished.verdict.exit(), Exit::Passed);
+    assert!(target.metadata().unwrap().modified().unwrap() > old);
+}
+
+#[test]
 fn a_job_runs_in_a_slot_with_its_environment_and_streams_its_output() {
     let rig = Rig::new("env");
     let finished = run_one(

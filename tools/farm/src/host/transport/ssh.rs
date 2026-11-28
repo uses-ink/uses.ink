@@ -115,7 +115,7 @@ impl Ssh {
 
 impl Transport for Ssh {
     fn call(&self, call: &Call, lines: &mut impl FnMut(&str)) -> Result<Done, Failure> {
-        self.exec.spawn(&self.argv(call), call.stdin.into(), lines)
+        self.exec.spawn(&self.argv(call), call.into(), lines)
     }
 
     fn push(&self, push: &Push<'_>) -> Result<(), Failure> {

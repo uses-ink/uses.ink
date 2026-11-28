@@ -167,7 +167,10 @@ impl<T: Transport> Member<T> {
 
     /// Runs a started job's launcher, each line into `lines`.
     pub(crate) fn run(&self, call: &Call, lines: &mut impl FnMut(&str)) -> Result<Done, Error> {
-        self.transport.call(call, lines).map_err(self.failed("the job"))
+        self.transport.call(call, lines).map_err(|source| match source {
+            Failure::Cancelled => Error::Cancelled { host: self.host.name.clone() },
+            source => Error::Call { host: self.host.name.clone(), what: "the job", source },
+        })
     }
 
     /// Blocks until the job is done or `limit` seconds pass.

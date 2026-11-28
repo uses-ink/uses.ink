@@ -76,3 +76,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0078 | [The farm tests only the crates a change affects, when asked](0078-the-farm-tests-only-the-crates-a-change-affects.md) | accepted | 2026-11-26 | farm |
 | 0079 | [Hosted is adapters of the existing ports: queue rows on D1, blobs through the egress gateway, nonces in a Durable Object](0079-hosted-is-adapters-of-the-existing-ports-queue.md) | proposed | 2026-11-28 | hosting |
 | 0080 | [The farm keeps heavy jobs off a handicapped host and tests only on a quiet one](0080-the-farm-keeps-heavy-jobs-off-a-handicapped-host.md) | accepted | 2026-11-28 | farm |
+| 0081 | [The farm removes the copies it made, seeds from the tree used last, and stops a gate that has failed](0081-the-farm-cleans-up-after-itself-and-keeps-new-work-warm.md) | accepted | 2026-11-28 | farm |

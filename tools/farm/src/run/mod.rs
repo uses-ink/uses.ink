@@ -20,7 +20,7 @@ use crate::cli::{Flags, Usage, Verb};
 use crate::config::jobs::Settings;
 use crate::config::tree::Tree;
 use crate::host::Fleet;
-use crate::host::transport::Transport;
+use crate::host::transport::{Cancel, Transport};
 use crate::job::{Finished, Totals};
 use crate::place::Placement;
 /// What a verb produced: the jobs that ran, the farm's own failures, and the files a bless or a
@@ -57,12 +57,24 @@ pub(crate) struct Farm<T, P> {
     settings: Settings,
     cache: Option<Cache>,
     salt: AtomicU32,
+    /// Set by the first stage of a full check to fail; every call of that check watches it.
+    cancel: Cancel,
 }
 
 impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
     pub(crate) fn new(setup: Setup<T, P>) -> Self {
         let Setup { fleet, placement, console, flags, tree, settings, cache } = setup;
-        Self { fleet, placement, console, flags, tree, settings, cache, salt: AtomicU32::new(0) }
+        Self {
+            fleet,
+            placement,
+            console,
+            flags,
+            tree,
+            settings,
+            cache,
+            salt: AtomicU32::new(0),
+            cancel: Cancel::default(),
+        }
     }
 
     /// Runs a verb, prints its report and returns how it ended.
@@ -76,7 +88,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             Verb::Wait(id) => self.wait(id)?,
             Verb::Status => return self.status(),
             Verb::Log(id) => return self.log(id),
-            Verb::Make(_) | Verb::Forget(_) | Verb::Version => return Err(Usage::NoVerb.into()),
+            Verb::Make(_) | Verb::Forget(_) | Verb::Prune | Verb::Version => return Err(Usage::NoVerb.into()),
         };
         let exit = self.report(&batch);
         if matches!(verb, Verb::Check(_)) {

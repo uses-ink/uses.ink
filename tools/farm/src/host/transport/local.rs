@@ -18,7 +18,7 @@ impl Local {
 
 impl Transport for Local {
     fn call(&self, call: &Call, lines: &mut impl FnMut(&str)) -> Result<Done, Failure> {
-        self.exec.spawn(&call.argv(), call.stdin.into(), lines)
+        self.exec.spawn(&call.argv(), call.into(), lines)
     }
 
     fn push(&self, _: &Push<'_>) -> Result<(), Failure> {

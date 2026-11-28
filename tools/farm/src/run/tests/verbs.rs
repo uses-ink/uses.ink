@@ -119,7 +119,8 @@ fn a_check_runs_the_jobs_of_the_repos_file_and_exits_with_the_worst() {
         "[job.good]\nrun = \"true\"\ngolden = false\n\n[job.bad]\nrun = \"false\"\ngolden = false\n",
     )
     .unwrap();
-    let farm = rig.farm(2, Flags::default());
+    // `bad` would cancel `good` if it were still queued; this test is about the exits
+    let farm = rig.farm(2, Flags { keep_going: true, ..Flags::default() });
     let batch = farm.check(&[]).unwrap();
     let labels: Vec<&str> = batch.done.iter().map(|done| done.label.as_str()).collect();
     assert_eq!(labels, ["good", "bad"]);

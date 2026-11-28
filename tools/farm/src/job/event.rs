@@ -36,6 +36,21 @@ pub(crate) enum Event {
     Seed(Seeded),
     /// Old job state removed.
     Swept(u32),
+    /// What became of a workspace's directory when it was asked to go.
+    Gone(Gone),
+    /// A workspace directory of the repo on the host, and the kibibytes it holds.
+    Copy { name: String, kib: u64 },
+}
+
+/// What became of a workspace's directory on a host when it was asked to go.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Gone {
+    /// It was removed, and held this many kibibytes.
+    Removed { kib: u64 },
+    /// There was none.
+    Absent,
+    /// It was left alone: its path, once resolved, is not directly inside the farm's directory.
+    Refused { path: String },
 }
 
 /// How a workspace's directory came to be on a host.
@@ -49,6 +64,19 @@ pub(crate) enum Seeded {
     Reflink(String),
     /// Copied byte for byte from the sibling named: the filesystem has no reflinks.
     Copy(String),
+}
+
+impl Seeded {
+    /// Reads the two words after `seed`.
+    fn read(words: (Option<&str>, Option<&str>), line: &str) -> Result<Self, Fault> {
+        Ok(match words {
+            (Some("present"), _) => Self::Present,
+            (Some("empty"), _) => Self::Empty,
+            (Some("reflink"), Some(from)) => Self::Reflink(from.to_owned()),
+            (Some("copy"), Some(from)) => Self::Copy(from.to_owned()),
+            _ => return Err(Fault::Unknown { line: line.to_owned() }),
+        })
+    }
 }
 
 /// A line of a program's output.
@@ -118,6 +146,7 @@ impl FromStr for Event {
         let range = |source: TryFromIntError| Fault::Range { line: line.to_owned(), source };
         let seconds = |n: i64| u64::try_from(n).map(Duration::from_secs).map_err(range);
         let count = |n: i64| u32::try_from(n).map_err(range);
+        let kibibytes = |n: i64| u64::try_from(n).map_err(range);
         let first = words.next();
         Ok(match first {
             Some("started") => Self::Started,
@@ -130,6 +159,13 @@ impl FromStr for Event {
             Some("nobody") => Self::NoBody,
             Some("queued") => Self::Queued { behind: count(number(words.next())?)? },
             Some("swept") => Self::Swept(count(number(words.next())?)?),
+            Some("absent") => Self::Gone(Gone::Absent),
+            Some("removed") => Self::Gone(Gone::Removed { kib: kibibytes(number(words.next())?)? }),
+            Some("refused") => Self::Gone(Gone::Refused { path: line["refused".len()..].trim().to_owned() }),
+            Some("copy") => {
+                let name = words.next().ok_or_else(|| Fault::Unknown { line: line.to_owned() })?;
+                Self::Copy { name: name.to_owned(), kib: kibibytes(number(words.next())?)? }
+            }
             Some("slot") => {
                 let slot = count(number(words.next())?)?;
                 Self::Slot { slot, queued: seconds(number(words.next())?)? }
@@ -138,13 +174,7 @@ impl FromStr for Event {
                 let code = i32::try_from(number(words.next())?).map_err(range)?;
                 Self::Done { code, ran: seconds(number(words.next())?)? }
             }
-            Some("seed") => Self::Seed(match (words.next(), words.next()) {
-                (Some("present"), _) => Seeded::Present,
-                (Some("empty"), _) => Seeded::Empty,
-                (Some("reflink"), Some(from)) => Seeded::Reflink(from.to_owned()),
-                (Some("copy"), Some(from)) => Seeded::Copy(from.to_owned()),
-                _ => return Err(Fault::Unknown { line: line.to_owned() }),
-            }),
+            Some("seed") => Self::Seed(Seeded::read((words.next(), words.next()), line)?),
             _ => return Err(Fault::Unknown { line: line.to_owned() }),
         })
     }
@@ -165,6 +195,10 @@ mod tests {
             ("@@farm:seed reflink main", Event::Seed(Seeded::Reflink("main".to_owned()))),
             ("@@farm:seed copy a.b", Event::Seed(Seeded::Copy("a.b".to_owned()))),
             ("@@farm:swept 4", Event::Swept(4)),
+            ("@@farm:removed 2048", Event::Gone(Gone::Removed { kib: 2048 })),
+            ("@@farm:absent", Event::Gone(Gone::Absent)),
+            ("@@farm:refused /srv/other dir", Event::Gone(Gone::Refused { path: "/srv/other dir".to_owned() })),
+            ("@@farm:copy feat.x 12", Event::Copy { name: "feat.x".to_owned(), kib: 12 }),
         ];
         for (text, event) in table {
             assert_eq!(Line::read(text).unwrap(), Line::Event(event), "{text}");
@@ -175,7 +209,15 @@ mod tests {
     fn output_is_not_an_event_and_a_bad_event_is_an_error() {
         assert_eq!(Line::read("   Compiling x").unwrap(), Line::Output("   Compiling x".to_owned()));
         assert_eq!(Line::read("").unwrap(), Line::Output(String::new()));
-        for bad in ["@@farm:", "@@farm:wat", "@@farm:slot x 1", "@@farm:done", "@@farm:seed reflink"] {
+        for bad in [
+            "@@farm:",
+            "@@farm:wat",
+            "@@farm:slot x 1",
+            "@@farm:done",
+            "@@farm:seed reflink",
+            "@@farm:copy a",
+            "@@farm:removed",
+        ] {
             assert!(Line::read(bad).is_err(), "{bad}");
         }
     }

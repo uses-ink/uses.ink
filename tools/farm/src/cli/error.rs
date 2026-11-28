@@ -50,6 +50,10 @@ pub(crate) enum Error {
         what: &'static str,
         source: Failure,
     },
+    /// A job stopped because a sibling stage of the same `farm check` failed.
+    Cancelled {
+        host: HostName,
+    },
     /// A host that could not be woken.
     Wake {
         host: HostName,
@@ -133,6 +137,7 @@ impl Error {
             | Self::Utf8 { .. }
             | Self::Name { .. }
             | Self::Call { .. }
+            | Self::Cancelled { .. }
             | Self::Wake { .. }
             | Self::Probe { .. }
             | Self::Said { .. }
@@ -180,6 +185,7 @@ impl fmt::Display for Error {
             Self::Utf8 { path } => write!(out, "{} is not UTF-8", path.display()),
             Self::Name { path, .. } => write!(out, "{} cannot name a farm directory", path.display()),
             Self::Call { host, what, .. } => write!(out, "{what} on `{host}` failed"),
+            Self::Cancelled { host } => write!(out, "the job on `{host}` was cancelled: another stage failed"),
             Self::Wake { host, .. } => write!(out, "`{host}` could not be woken"),
             Self::Probe { host, .. } => write!(out, "`{host}` answered its probe with something unreadable"),
             Self::Said { host, .. } => write!(out, "`{host}` said something unreadable"),
@@ -237,6 +243,7 @@ impl std::error::Error for Error {
             Self::Changes { source, .. } => Some(source),
             Self::Affected(fault) => std::error::Error::source(fault),
             Self::NoRepo { .. }
+            | Self::Cancelled { .. }
             | Self::Utf8 { .. }
             | Self::Silent { .. }
             | Self::NoHost { .. }

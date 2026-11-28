@@ -67,7 +67,10 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
                     .note(format!("`{host}` has no reflinks: its tree was copied in full from `{from}` (slow once)"));
             }
             Some(Seeded::Reflink(from)) => self.console.note(format!("`{host}`: new tree seeded from `{from}`")),
-            Some(Seeded::Present | Seeded::Empty) | None => {}
+            Some(Seeded::Empty) => self.console.note(format!(
+                "`{host}`: no sibling tree there has built anything, so the first build of this workspace is cold"
+            )),
+            Some(Seeded::Present) | None => {}
         }
     }
 
@@ -106,6 +109,10 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             }
         };
         let done = self.launch(turn, attach)?;
+        if done.verdict == Verdict::Cancelled {
+            // nothing of it is kept: not a pass, not a timing, not a stage that ran
+            return Ok(done);
+        }
         self.record(Tick::Stage, &job.label, (done.ran(), 0));
         match done.verdict {
             Verdict::Running => {
@@ -114,7 +121,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
                 }
             }
             Verdict::Done { code: 0, .. } => self.keep(job, &plan, &done),
-            Verdict::Done { .. } | Verdict::Aborted | Verdict::Lost => {}
+            Verdict::Done { .. } | Verdict::Aborted | Verdict::Lost | Verdict::Cancelled => {}
         }
         Ok(done)
     }
@@ -126,34 +133,62 @@ impl<T: Transport + Sync, P: Placement + Sync> Farm<T, P> {
             .fleet
             .member(&snap.name)
             .ok_or_else(|| Error::NoHost { need: job.need, up: vec![snap.name.clone()] })?;
-        self.announce(job, snap);
-        self.seeded(&snap.name, member.sync(&self.tree, &self.settings.exclude)?);
+        if !self.ready(member, turn)? {
+            return Ok(self.result(turn, Verdict::Cancelled));
+        }
         let log = self.log_path(id);
         let file = LogFile::create(&log).map_err(|source| Error::Io { path: log.clone(), source })?;
         let mut flow = Flow { file: Some(file), ..Flow::default() };
-        let call = member.launch(&Start { tree: &self.tree, snap, job, id }, attach, self.limit(job));
+        let call = member
+            .launch(&Start { tree: &self.tree, snap, job, id }, attach, self.limit(job))
+            .cancelled_by(self.cancel.clone());
         let eta = snap.eta().map_or_else(|| "unknown".to_owned(), |eta| format!("about {} s", eta.as_secs()));
-        member.run(&call, &mut |text| {
+        let ran = member.run(&call, &mut |text| {
             if let Some(Event::Queued { behind }) = flow.feed(text) {
                 self.console.note(format!("{}: queued behind {behind}, host `{}` free in {eta}", job.label, snap.name));
             }
-        })?;
+        });
+        match ran {
+            Err(Error::Cancelled { .. }) => return Ok(self.result(turn, Verdict::Cancelled)),
+            Err(error) => return Err(error),
+            Ok(_) => {}
+        }
         let verdict = flow.settle(&snap.name, id, &log)?;
-        Ok(self.learn(
-            job,
-            Finished {
-                summary: Summary::of(&flow.log),
-                id: id.clone(),
-                label: job.label.clone(),
-                command: job.shown(),
-                host: snap.name.clone(),
-                slot: flow.slot,
-                queued: flow.queued,
-                verdict,
-                log,
-                served: Served::Ran,
-            },
-        ))
+        let done = Finished {
+            summary: Summary::of(&flow.log),
+            slot: flow.slot,
+            queued: flow.queued,
+            ..self.result(turn, verdict)
+        };
+        Ok(self.learn(job, done))
+    }
+
+    /// Announces the job and syncs its tree; false when the check was cancelled before or during.
+    fn ready(&self, member: &crate::host::Member<T>, turn: Turn<'_>) -> Result<bool, Error> {
+        let Turn { job, snap, .. } = turn;
+        if self.cancel.is_set() {
+            return Ok(false);
+        }
+        self.announce(job, snap);
+        self.seeded(&snap.name, member.sync(&self.tree, &self.settings.exclude)?);
+        Ok(!self.cancel.is_set())
+    }
+
+    /// A result of `turn`'s job with no output, slot or wait: what the caller fills in.
+    pub(in crate::run) fn result(&self, turn: Turn<'_>, verdict: Verdict) -> Finished {
+        let Turn { job, snap, id } = turn;
+        Finished {
+            summary: Summary::default(),
+            id: id.clone(),
+            label: job.label.clone(),
+            command: job.shown(),
+            host: snap.name.clone(),
+            slot: None,
+            queued: std::time::Duration::ZERO,
+            verdict,
+            log: self.log_path(id),
+            served: Served::Ran,
+        }
     }
 
     /// Files how long a finished job took on its host, for placement; the job's result as it was.

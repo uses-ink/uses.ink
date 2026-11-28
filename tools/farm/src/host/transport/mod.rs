@@ -3,6 +3,7 @@
 //! tested with a fake. Every process is started from an argument vector; the one shell line,
 //! the remote command of `ssh`, is made of [`Quoted`](crate::job::quote::Quoted) words.
 
+mod cancel;
 mod exec;
 mod local;
 pub(crate) mod process;
@@ -12,6 +13,7 @@ mod ssh;
 use std::path::Path;
 use std::process::ExitStatus;
 
+pub(crate) use cancel::Cancel;
 pub(crate) use exec::Exec;
 pub(crate) use local::Local;
 pub(crate) use ssh::Ssh;

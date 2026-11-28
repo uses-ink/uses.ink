@@ -137,6 +137,12 @@ pub(crate) struct Flags {
     pub(crate) affected: bool,
     /// `--base`: the revision `test` and `check --affected` measure the change from.
     pub(crate) base: Option<Base>,
+    /// `--keep-going`: a full `check` lets the other stages finish when one fails.
+    pub(crate) keep_going: bool,
+    /// `--prune`: `workspace` removes the remote copies no workspace here owns.
+    pub(crate) prune: bool,
+    /// `--yes`: `workspace --prune` removes; without it, it only lists.
+    pub(crate) yes: bool,
 }
 
 impl Default for Flags {
@@ -155,6 +161,9 @@ impl Default for Flags {
             budget: None,
             affected: false,
             base: None,
+            keep_going: false,
+            prune: false,
+            yes: false,
         }
     }
 }
@@ -171,6 +180,9 @@ impl Flags {
             "--forget" => self.forget = true,
             "--fresh" => self.fresh = true,
             "--affected" => self.affected = true,
+            "--keep-going" => self.keep_going = true,
+            "--prune" => self.prune = true,
+            "--yes" => self.yes = true,
             "--base" => {
                 self.base = Some(value(arg)?.parse().map_err(|BadBase { given }| bad(arg, Why::Rev { given }))?);
             }
@@ -193,18 +205,23 @@ impl Flags {
 }
 
 impl Flags {
-    /// Whether the flags suit the verb: `--affected` narrows a `check`, which `test` always is;
-    /// `--base` measures a change, so only those two take it.
+    /// Whether the flags suit the verb: `--affected` and `--base` narrow a run of tests, which
+    /// `check` can be and `test` always is; `--keep-going` is for a whole `check`; `--prune` and
+    /// `--yes` are for `workspace`.
     fn fit(&self, action: Action) -> Result<(), Usage> {
         let narrows = matches!(action, Action::Check | Action::Test);
-        if self.affected && action != Action::Check {
-            return Err(Usage::Flag {
-                flag: "--affected".to_owned(),
-                why: Why::Verb { verb: action, only: Action::Check },
-            });
+        let only = |flag: &str, only| Usage::Flag { flag: flag.to_owned(), why: Why::Verb { verb: action, only } };
+        if self.affected && !narrows {
+            return Err(only("--affected", Action::Check));
         }
         if self.base.is_some() && !narrows {
-            return Err(Usage::Flag { flag: "--base".to_owned(), why: Why::Verb { verb: action, only: Action::Test } });
+            return Err(only("--base", Action::Test));
+        }
+        if self.keep_going && action != Action::Check {
+            return Err(only("--keep-going", Action::Check));
+        }
+        if (self.prune || self.yes) && action != Action::Workspace {
+            return Err(only(if self.prune { "--prune" } else { "--yes" }, Action::Workspace));
         }
         Ok(())
     }
@@ -228,6 +245,8 @@ pub(crate) enum Verb {
     Make(Segment),
     /// Remove the workspace of this name.
     Forget(Segment),
+    /// List, or with `--yes` remove, the remote copies no workspace here owns.
+    Prune,
     Wait(JobId),
     Log(JobId),
     /// `--version`: what the binary was built from.
@@ -301,9 +320,19 @@ impl Command {
             Action::Status => Verb::Status,
             Action::Fmt => Verb::Fmt,
             Action::Workspace => {
-                let name = words.next().ok_or(Usage::Missing { verb: action, what: "a workspace name" })?;
-                let name: Segment = name.parse().map_err(Usage::Name)?;
-                if flags.forget { Verb::Forget(name) } else { Verb::Make(name) }
+                if flags.prune {
+                    if flags.forget {
+                        return Err(Usage::Flag { flag: "--prune".to_owned(), why: Why::Alone { with: "--forget" } });
+                    }
+                    Verb::Prune
+                } else {
+                    if flags.yes {
+                        return Err(Usage::Flag { flag: "--yes".to_owned(), why: Why::Needs { other: "--prune" } });
+                    }
+                    let name = words.next().ok_or(Usage::Missing { verb: action, what: "a workspace name" })?;
+                    let name: Segment = name.parse().map_err(Usage::Name)?;
+                    if flags.forget { Verb::Forget(name) } else { Verb::Make(name) }
+                }
             }
             Action::Wait | Action::Log => {
                 let id = words.next().ok_or(Usage::Missing { verb: action, what: "a job id" })?;
@@ -346,6 +375,14 @@ pub(crate) enum Why {
         verb: Action,
         only: Action,
     },
+    /// A flag that means nothing without another.
+    Needs {
+        other: &'static str,
+    },
+    /// A flag that cannot be combined with another.
+    Alone {
+        with: &'static str,
+    },
 }
 
 impl fmt::Display for Usage {
@@ -362,6 +399,8 @@ impl fmt::Display for Usage {
                 Why::Word(_) => write!(out, "`{flag}` takes a host name"),
                 Why::Rev { given } => write!(out, "`{flag}` takes a revision, not `{given}`"),
                 Why::Verb { verb, only } => write!(out, "`{flag}` goes with `farm {only}`, not `farm {verb}`"),
+                Why::Needs { other } => write!(out, "`{flag}` goes with `{other}`"),
+                Why::Alone { with } => write!(out, "`{flag}` cannot be combined with `{with}`"),
             },
             Self::Name(_) => write!(out, "the workspace name is not allowed"),
             Self::Job(_) => write!(out, "that is not a job id"),

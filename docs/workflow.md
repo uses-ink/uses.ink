@@ -106,6 +106,7 @@ wake = "aws-wake"       # optional; a command that starts the host (see Hosts th
 wake_timeout = 240      # optional, with wake; seconds to wait for the host to answer; default 240
 wake_cost = 120         # optional, with wake; seconds a start adds to placement's estimate; default 120
 handicap = 0            # optional; seconds added to the host's estimate for every job; default 0 (see Where a job goes)
+test_threads = 4        # optional; the most nextest threads one job gets here; default is the slot's share of the cores
 
 [[host]]
 name = "box-b"
@@ -126,6 +127,12 @@ ssh = "local"           # this machine, in the workspace itself, with no copy
 - **golden** says the host may run tests and goldens whose output depends on the architecture.
   The reference architecture is x86_64 (decision 0047), so only x86_64 hosts are golden unless
   the file says otherwise.
+- `test_threads` caps the threads nextest starts for one job, below the slot's share
+  (`cores / slots`). A 16-core host with two slots shares 8 threads per job, and 19% of the
+  runs on such a host still missed the test budgets at a load of 15 (decision 0081). The farm sets
+  `NEXTEST_TEST_THREADS` to the lower of the two, which nextest reads, and which also reaches the
+  nextest that `cargo xtask check test` starts. A cap above the share changes nothing, and zero is
+  an error. `CARGO_BUILD_JOBS` keeps the share.
 - The arch is read on every probe, so there is nothing to cache or to go stale.
 - `wake`, `wake_timeout` and `wake_cost` are for a host that stops itself when idle and costs
   money while it runs. They are only valid together with `wake`, and not on `ssh = "local"`. See
@@ -145,7 +152,7 @@ ssh = "local"           # this machine, in the workspace itself, with no copy
 | `farm test [nextest args]` | Nextest for the crates the change affects and their dependents, on a golden host. `farm check test --affected` is the same for a job that declares `affected = true`. See Testing only what changed. |
 | `farm fmt` | `cargo fmt --all` on a placed host; brings back only the `.rs` files whose bytes changed. |
 | `farm status` | Each host: arch, load, slots used, queue, its running and queued jobs, the median seconds by job that placement uses, and where each declared job would go now. `--json` prints the same. |
-| `farm workspace <name>` | A new jj workspace with a warm `target/`. `--forget <name>` removes one safely. |
+| `farm workspace <name>` | A new jj workspace with a warm `target/`. `--forget <name>` removes one safely, and its copy on every host. `--prune` lists, and with `--yes` removes, the host copies no workspace here owns. |
 | `farm wait <id>` | Blocks until a detached job ends, or the timeout passes. |
 | `farm log <id>` | A job's log from its host; `--tail N` for the end. |
 
@@ -165,8 +172,10 @@ cargo word only ends the farm's flags (`farm cargo -- --json nextest`), and is n
 | `--version` | Print the version and the source hash the binary was built from. |
 | `--fresh` | Run the job although an identical one passed before (the result cache is skipped; the new pass is still recorded). |
 | `--budget N` | `check`: warn after N full checks in 24 hours in this workspace; else the `[budget]` setting. |
-| `--affected` | `check`: run the named jobs that declare `affected = true` as nextest for the affected crates. Never implied; the full `farm check` stays the gate. |
+| `--affected` | `check`, `test`: run the named jobs that declare `affected = true` as nextest for the affected crates. `farm test` always is; the flag is accepted there so the two forms read alike. Never implied for `farm check`; the full `farm check` stays the gate. |
 | `--base REV` | `test`, `check --affected`: measure the change from this revision; else `[affected] base`, else where the workspace left `main`. |
+| `--keep-going` | `check`: let every stage finish when one fails, instead of cancelling the others. |
+| `--prune`, `--yes` | `workspace`: list the host copies no workspace here owns; with `--yes`, remove them. |
 | `--tail N` | `log`: only the last N lines. |
 | `--at REV`, `--forget` | `workspace`: start from a revision; remove instead of make. |
 
@@ -299,6 +308,14 @@ The jobs run at the same time on different slots, so the wall time is the slowes
 sum. The report names each job, its host and its time, and gives detail only for the failures.
 Fix what failed, then run `farm check` again with just the jobs that failed (`farm check lint
 test`) and, if you want the whole gate green once more, once without arguments.
+When a stage of a full `farm check` fails, the stages still running or queued are cancelled, and
+one line says which (`check: lint failed, so test and sites cancelled`). A cancelled stage is
+reported as `CANCELLED` (`outcome: "cancelled"` in `--json`), is neither a failure nor a pass, is
+never cached and adds nothing to the exit: the failed stage sets it. Its client is dropped, which
+makes the host stop the job exactly as a lost connection does. `--keep-going` lets every stage
+finish. A check with job names (`farm check lint test`) and an `--affected` check never cancel,
+and a stage that attached to another call's identical running job waits for it, since that job is
+not this call's to stop.
 One whole `farm check` per commit-worthy state, and the cache serves any stage that already
 passed on the same inputs, so a second one on an unchanged tree runs nothing.
 
@@ -328,6 +345,9 @@ How the crates are found:
 table, under the job's name and limits; `--affected` needs the job names and fails for a job
 that is not marked. Nothing applies it on its own: `farm check` with no arguments is the gate
 and runs every stage in full, and a stage served from the result cache is never narrowed.
+
+`farm test --affected` and `farm test --base REV` are accepted, the first as a no-op, so the
+spelling of `farm check test --affected` works here too.
 
 `farm test` is for the loop while you work. It does not replace the gate: a change a dependency
 graph cannot see (a build script reading a file, a test reading a sibling crate's source) is
@@ -519,8 +539,9 @@ Every farm run of a host uses the same environment, so the host's `target/` stay
   (a pure-logic model test took 118 ms while four agents shared `here`), so a job runs the `ci`
   profile, which keeps a 5 s cap against hangs. A test that is over 100 ms on the farm is
   therefore no longer a failure there; the budgets are checked on a quiet machine.
-- `CARGO_TERM_COLOR=never`, `INSTA_UPDATE=no` (`always` for `bless`), `CARGO_BUILD_JOBS` and
-  `NEXTEST_TEST_THREADS` set to the cores of one slot.
+- `CARGO_TERM_COLOR=never`, `INSTA_UPDATE=no` (`always` for `bless`), `CARGO_BUILD_JOBS` set to
+  the cores of one slot and `NEXTEST_TEST_THREADS` to the same, or to the host's `test_threads`
+  when that is lower.
 - `CARGO_TARGET_<HOST TRIPLE>_RUSTFLAGS=-C link-arg=-fuse-ld=mold` only when the host says
   `mold = true` and `RUSTFLAGS` is not already set there. It names the host's own triple: a plain
   `RUSTFLAGS` would reach `wasm32` too, where the linker is `rust-lld` and the component builds
@@ -536,7 +557,12 @@ workspace.
 ## Syncing
 
 The first job of a workspace on a host seeds its directory (`<dir>/<repo>/<workspace>`) from the
-newest sibling there by a reflink copy, so third-party crates are warm. Then `rsync -a --checksum
+sibling there whose `target/` a job used last, by a reflink copy, so third-party crates are warm.
+Every job touches the `target/` of its tree as it starts; a sibling that has built nothing (no
+`target/debug` or `target/release`) is never the source, and with none the first build is cold and
+the farm says so. The copy is of the whole tree, not of `target/` alone, on purpose: unchanged
+sources keep the times they had beside their artifacts, so the workspace's own crates that did not
+change stay fresh (decision 0081). Then `rsync -a --checksum
 --no-times --delete` makes it equal to the workspace, so cargo rebuilds only the crates that changed.
 Files are compared by content, and a file that was written gets the time of the write, not the
 time it has here. This matters: cargo calls a crate fresh when its artifacts are newer than its
@@ -576,6 +602,25 @@ The refusal names the first five such files. To allow losing a kind of file, suc
 list its name under `disposable` in the `[workspace]` table of `.config/farm.toml` (see The jobs
 file); otherwise move the file out or commit it. `--forget` reads that file from the workspace you
 run it in.
+
+`--forget` also removes the workspace's copy on every host (`<dir>/<repo>/<name>`, by default
+`~/farm/uses.ink/<name>`), once the local removal has succeeded. The hosts are asked at once and
+each says what it did: how much it removed, that it had no copy, or that it was not reached. A
+host that is down keeps its copy; the command still succeeds, says so, and `--prune` removes it
+later. A copy is removed only when its path, with symlinks resolved, is directly inside the
+resolved `<dir>/<repo>` and that is inside the resolved `<dir>`; otherwise the host leaves it
+alone, the command says which path and why, and exits 4. `local` has no copy and is not asked.
+
+```sh
+farm workspace --prune          # lists the copies no workspace here owns, and what they hold
+farm workspace --prune --yes    # removes them
+```
+
+`--prune` lists, on every host, the directories under `<dir>/<repo>` whose name is not one of
+this machine's workspaces (each directory of `uses.ink-ws`, `main`, and the one you run it in).
+By default it removes nothing. It looks at this machine's workspaces only, so copies made by
+another checkout of the repo that shares the hosts count as unowned: run it from the machine that
+owns the farm. Half-made `.seed` copies and names the farm would not create are not listed.
 
 ## Briefing an agent
 

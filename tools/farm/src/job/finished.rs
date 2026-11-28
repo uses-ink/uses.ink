@@ -20,14 +20,24 @@ pub(crate) enum Verdict {
     Aborted,
     /// The connection ended and nothing says how the job did.
     Lost,
+    /// Stopped by the farm because a sibling stage of the same `farm check` failed. It did not
+    /// fail itself, says nothing of the tree, and is never remembered as a pass.
+    Cancelled,
 }
 
 impl Verdict {
+    /// Whether the command ended with a code other than zero.
+    pub(crate) const fn fails(self) -> bool {
+        matches!(self, Self::Done { code, .. } if code != 0)
+    }
+
     pub(crate) const fn exit(self) -> Exit {
         match self {
             Self::Done { code, .. } => Exit::of(code),
             Self::Running => Exit::Running,
             Self::Aborted | Self::Lost => Exit::Farm,
+            // the stage that failed sets the exit of the check; this one is neither a pass nor a failure
+            Self::Cancelled => Exit::Passed,
         }
     }
 }
@@ -56,7 +66,7 @@ impl Finished {
     pub(crate) const fn ran(&self) -> u64 {
         match self.verdict {
             Verdict::Done { ran, .. } => ran.as_secs(),
-            Verdict::Running | Verdict::Aborted | Verdict::Lost => 0,
+            Verdict::Running | Verdict::Aborted | Verdict::Lost | Verdict::Cancelled => 0,
         }
     }
 
@@ -67,6 +77,7 @@ impl Finished {
             Verdict::Running => ("running".to_owned(), None, None),
             Verdict::Aborted => ("aborted".to_owned(), None, None),
             Verdict::Lost => ("lost".to_owned(), None, None),
+            Verdict::Cancelled => ("cancelled".to_owned(), None, None),
         };
         Wire {
             id: self.id.to_string(),
@@ -91,7 +102,7 @@ impl fmt::Display for Finished {
         write!(out, "== {}: {},{slot} queued {} s", self.label, self.host, self.queued.as_secs())?;
         match self.verdict {
             Verdict::Done { ran, .. } => write!(out, ", ran {} s", ran.as_secs())?,
-            Verdict::Running | Verdict::Aborted | Verdict::Lost => {}
+            Verdict::Running | Verdict::Aborted | Verdict::Lost | Verdict::Cancelled => {}
         }
         writeln!(out, "\n   $ {}", self.command)?;
         match self.served {
@@ -109,6 +120,7 @@ impl fmt::Display for Finished {
             Verdict::Running => writeln!(out, "RUNNING as {}; continue with `farm wait {}`", self.id, self.id)?,
             Verdict::Aborted => writeln!(out, "ABORTED on the host")?,
             Verdict::Lost => writeln!(out, "LOST: the connection ended and no result came")?,
+            Verdict::Cancelled => writeln!(out, "CANCELLED: another stage failed, so this one was stopped")?,
         }
         write!(out, "{}", self.summary)
     }
@@ -122,6 +134,8 @@ pub(crate) struct Totals {
     pub(crate) attached: u32,
     /// Seconds the stages that ran spent on their hosts.
     pub(crate) secs: u64,
+    /// Stages stopped because another failed; they are not in `ran`.
+    pub(crate) cancelled: u32,
 }
 
 impl Totals {
@@ -129,6 +143,7 @@ impl Totals {
         let mut totals = Self::default();
         for job in done {
             match job.served {
+                Served::Ran if job.verdict == Verdict::Cancelled => totals.cancelled += 1,
                 Served::Ran => {
                     totals.ran += 1;
                     totals.secs += job.ran();
@@ -147,7 +162,11 @@ impl fmt::Display for Totals {
             out,
             "check: {} stages run, {} served from cache, {} deduped, {} host seconds",
             self.ran, self.cached, self.attached, self.secs
-        )
+        )?;
+        match self.cancelled {
+            0 => Ok(()),
+            n => write!(out, ", {n} cancelled"),
+        }
     }
 }
 

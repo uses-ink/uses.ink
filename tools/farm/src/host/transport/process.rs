@@ -55,6 +55,8 @@ pub(crate) enum Failure {
     Exit { status: ExitStatus, stderr: Vec<u8> },
     /// Its output is not UTF-8.
     Utf8(FromUtf8Error),
+    /// It was stopped on purpose, because the run it belongs to was cancelled.
+    Cancelled,
 }
 
 impl fmt::Display for Failure {
@@ -73,6 +75,7 @@ impl fmt::Display for Failure {
                 }
             }
             Self::Utf8(_) => write!(out, "its output is not UTF-8"),
+            Self::Cancelled => write!(out, "it was cancelled"),
         }
     }
 }
@@ -81,7 +84,7 @@ impl std::error::Error for Failure {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Spawn(source) | Self::Stdin(source) | Self::Wait(source) | Self::Kill(source) => Some(source),
-            Self::Exit { .. } | Self::Panicked { .. } => None,
+            Self::Exit { .. } | Self::Panicked { .. } | Self::Cancelled => None,
             Self::Utf8(source) => Some(source),
         }
     }

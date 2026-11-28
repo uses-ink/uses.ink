@@ -41,6 +41,10 @@ fn the_workflow_doc_names_the_cache_flags_keys_and_the_agent_budget() {
         "--budget",
         "--affected",
         "--base",
+        "--keep-going",
+        "--prune",
+        "--yes",
+        "CANCELLED",
         "affected = true",
         "[affected]",
         "Testing only what changed",
@@ -59,7 +63,7 @@ fn the_workflow_doc_names_the_cache_flags_keys_and_the_agent_budget() {
     ] {
         assert!(doc.contains(word), "{word}");
     }
-    for key in ["name", "ssh", "slots", "arch", "golden", "mold", "dir"] {
+    for key in ["name", "ssh", "slots", "arch", "golden", "mold", "dir", "test_threads"] {
         assert!(doc.contains(&format!("\n{key} = ")), "config key {key}");
     }
 }

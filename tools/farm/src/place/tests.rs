@@ -22,6 +22,7 @@ fn snap(name: &str, [slots, busy, queued, load]: [u32; 4]) -> Snapshot {
         holders: Vec::new(),
         asleep: None,
         handicap: 0,
+        cap: None,
     }
 }
 

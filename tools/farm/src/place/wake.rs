@@ -186,6 +186,7 @@ impl Snapshot {
             holders: Vec::new(),
             asleep: Some(cost.0),
             handicap: host.handicap.0,
+            cap: host.test_threads,
         }
     }
 }

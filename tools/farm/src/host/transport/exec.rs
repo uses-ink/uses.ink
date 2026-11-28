@@ -8,25 +8,29 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::cli::console::Console;
-use crate::host::transport::Done;
 use crate::host::transport::process::Failure;
-use crate::host::transport::program::Stdin;
+use crate::host::transport::program::{Call, Stdin};
+use crate::host::transport::{Cancel, Done};
 use crate::job::quote::Line;
 
 /// What goes to a process's standard input.
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Feed<'a> {
     Nothing,
-    /// Open until the call ends or the time is up, when `detach` is written and it is closed.
-    Open(Duration),
+    /// Open until the call ends or the time is up, when `detach` is written and it is closed; or
+    /// until `cancel` is set, when the call is killed.
+    Open {
+        until: Duration,
+        cancel: Option<&'a Cancel>,
+    },
     Text(&'a str),
 }
 
-impl From<Stdin> for Feed<'_> {
-    fn from(stdin: Stdin) -> Self {
-        match stdin {
+impl<'a> From<&'a Call> for Feed<'a> {
+    fn from(call: &'a Call) -> Self {
+        match call.stdin {
             Stdin::Null => Self::Nothing,
-            Stdin::Held(until) => Self::Open(until),
+            Stdin::Held(until) => Self::Open { until, cancel: call.cancel.as_ref() },
         }
     }
 }
@@ -44,6 +48,9 @@ const GRACE: Duration = Duration::from_secs(10);
 /// wakes once an hour, so a dead one is noticed.
 const UNBOUNDED_WAIT: Duration = Duration::from_secs(3600);
 
+/// How often a call that can be cancelled looks at its flag while the child is quiet.
+const CANCEL_POLL: Duration = Duration::from_millis(100);
+
 impl Exec {
     pub(crate) fn new(console: Arc<Console>) -> Self {
         Self { console }
@@ -58,7 +65,7 @@ impl Exec {
         command.args(rest).stdout(Stdio::piped()).stderr(Stdio::piped());
         command.stdin(match feed {
             Feed::Nothing => Stdio::null(),
-            Feed::Open(_) | Feed::Text(_) => Stdio::piped(),
+            Feed::Open { .. } | Feed::Text(_) => Stdio::piped(),
         });
         let mut child = command.spawn().map_err(Failure::Spawn)?;
         if let Feed::Text(text) = feed {
@@ -71,6 +78,7 @@ impl Exec {
 /// A running child being read until it ends.
 struct Follow<'a> {
     child: &'a mut Child,
+    cancel: Option<&'a Cancel>,
     deadline: Option<Instant>,
     detaching: Option<Instant>,
     /// The first thing that went wrong while following; it ends the call once the child is reaped.
@@ -78,12 +86,12 @@ struct Follow<'a> {
 }
 
 impl<'a> Follow<'a> {
-    fn new(child: &'a mut Child, feed: Feed<'_>) -> Self {
-        let deadline = match feed {
-            Feed::Open(until) => Some(Instant::now() + until),
-            Feed::Nothing | Feed::Text(_) => None,
+    fn new(child: &'a mut Child, feed: Feed<'a>) -> Self {
+        let (deadline, cancel) = match feed {
+            Feed::Open { until, cancel } => (Some(Instant::now() + until), cancel),
+            Feed::Nothing | Feed::Text(_) => (None, None),
         };
-        Self { child, deadline, detaching: None, fault: None }
+        Self { child, cancel, deadline, detaching: None, fault: None }
     }
 
     fn run(mut self, lines: &mut impl FnMut(&str)) -> Result<Done, Failure> {
@@ -101,6 +109,13 @@ impl<'a> Follow<'a> {
                 && let Err(failure) = self.expire(&mut writer)
             {
                 self.fail(failure);
+            }
+            if self.fault.is_none() && self.cancel.is_some_and(Cancel::is_set) {
+                self.fail(Failure::Cancelled);
+            }
+            if self.fault.is_some() {
+                // closed so that whatever the child left behind, reading it, sees the end of its input
+                writer.take();
             }
         }
         let read = reading.join().map_err(|_| Failure::Panicked { thread: "output" });
@@ -140,8 +155,11 @@ impl<'a> Follow<'a> {
     fn fail(&mut self, failure: Failure) {
         self.stop();
         let killed = self.child.kill().map_err(Failure::Kill);
+        // reaped at once: a killed child left as a zombie still answers `kill -0`, so a job that
+        // leases itself to it (a local host's launcher) would never see its client go
+        let reaped = self.child.wait().map(drop).map_err(Failure::Wait);
         self.fault.get_or_insert(failure);
-        if let Err(failure) = killed {
+        if let Err(failure) = killed.and(reaped) {
             self.fault.get_or_insert(failure);
         }
     }
@@ -189,7 +207,9 @@ impl<'a> Follow<'a> {
     /// How long to wait for the next line: until the deadline, or the end of the grace after it.
     fn next_wait(&self) -> Duration {
         let limit = self.detaching.or(self.deadline);
-        limit.map_or(UNBOUNDED_WAIT, |at| at.saturating_duration_since(Instant::now()).max(Duration::from_millis(10)))
+        let wait = limit
+            .map_or(UNBOUNDED_WAIT, |at| at.saturating_duration_since(Instant::now()).max(Duration::from_millis(10)));
+        if self.cancel.is_some() { wait.min(CANCEL_POLL) } else { wait }
     }
 }
 
@@ -207,8 +227,28 @@ mod tests {
 
     #[test]
     fn a_detach_that_cannot_be_written_to_a_live_child_is_a_typed_failure() {
-        let done = exec().spawn(&sh("exec 0<&-; exec sleep 5"), Feed::Open(Duration::from_millis(30)), &mut |_| {});
+        let done = exec().spawn(
+            &sh("exec 0<&-; exec sleep 5"),
+            Feed::Open { until: Duration::from_millis(30), cancel: None },
+            &mut |_| {},
+        );
         assert!(matches!(done, Err(Failure::Stdin(_))), "{done:?}");
+    }
+
+    #[test]
+    fn a_cancelled_call_kills_its_child_at_once_and_says_so() {
+        let cancel = Cancel::default();
+        let flag = cancel.clone();
+        let setter = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(50));
+            flag.set();
+        });
+        let started = Instant::now();
+        let feed = Feed::Open { until: Duration::from_secs(60), cancel: Some(&cancel) };
+        let done = exec().spawn(&sh("sleep 30"), feed, &mut |_| {});
+        setter.join().unwrap();
+        assert!(matches!(done, Err(Failure::Cancelled)), "{done:?}");
+        assert!(started.elapsed() < Duration::from_secs(5), "{:?}", started.elapsed());
     }
 
     #[test]

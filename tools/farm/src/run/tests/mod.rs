@@ -1,5 +1,6 @@
 //! The verbs of [`Farm`] over a real shell and over a scripted fake.
 
+mod cancel;
 mod docs;
 mod fake;
 mod reuse;

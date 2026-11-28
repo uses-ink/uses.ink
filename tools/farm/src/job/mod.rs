@@ -139,12 +139,12 @@ impl Job {
     /// shared, so a job runs the `ci` profile (the 100 ms budgets are for a quiet machine) unless
     /// the caller chose one.
     pub(crate) fn vars_with(&self, snap: &Snapshot, caller: Option<&str>) -> Vec<String> {
-        let share = snap.share();
+        let (share, threads) = (snap.share(), snap.threads());
         let mut vars = vec![
             "CARGO_PROFILE_DEV_DEBUG=line-tables-only".to_owned(),
             "CARGO_TERM_COLOR=never".to_owned(),
             format!("CARGO_BUILD_JOBS={share}"),
-            format!("NEXTEST_TEST_THREADS={share}"),
+            format!("NEXTEST_TEST_THREADS={threads}"),
             "INSTA_UPDATE=no".to_owned(),
         ];
         if caller.is_none_or(str::is_empty) {
@@ -199,5 +199,28 @@ mod tests {
         assert!(vars.contains(&"NEXTEST_PROFILE=ci".to_owned()), "shared hosts run the ci profile");
         let chosen = job.vars_with(&snap, Some("default"));
         assert!(!chosen.iter().any(|var| var.starts_with("NEXTEST_PROFILE")), "the caller's choice is left alone");
+    }
+
+    #[test]
+    fn a_hosts_test_thread_cap_lowers_nextests_threads_and_never_raises_them() {
+        let job = Job {
+            label: "x".to_owned(),
+            words: vec!["cargo".to_owned()],
+            need: Need::Any,
+            env: vec![],
+            limit: None,
+            ceiling: None,
+            key: crate::place::history::Key::stage("x"),
+            reuse: Reuse::Never,
+        };
+        let probe = "now 1\narch x86_64\ncores 16\nload 0.1\nslots 2\nslot 0 free\nslot 1 free\nqueued 0\n";
+        let capped = |cap| {
+            let host = crate::host::Host { test_threads: cap, ..crate::host::Host::local() };
+            job.vars_with(&crate::host::Snapshot::read(&host, probe).unwrap(), Some("ci"))
+        };
+        assert!(capped(Some(4)).contains(&"NEXTEST_TEST_THREADS=4".to_owned()));
+        assert!(capped(Some(12)).contains(&"NEXTEST_TEST_THREADS=8".to_owned()), "never above the share");
+        assert!(capped(None).contains(&"NEXTEST_TEST_THREADS=8".to_owned()));
+        assert!(capped(Some(4)).contains(&"CARGO_BUILD_JOBS=8".to_owned()), "cargo keeps its share");
     }
 }

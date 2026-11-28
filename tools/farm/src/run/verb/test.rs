@@ -32,7 +32,7 @@ impl<T: Transport + Sync, P: Placement + Sync> Layout for OnHost<'_, T, P> {
         match done.verdict {
             Verdict::Done { code: 0, .. } => {}
             Verdict::Done { code, .. } => return Err(Fault::Metadata { code, log: done.log }),
-            Verdict::Running | Verdict::Aborted | Verdict::Lost => return Err(Fault::Running),
+            Verdict::Running | Verdict::Aborted | Verdict::Lost | Verdict::Cancelled => return Err(Fault::Running),
         }
         let text = std::fs::read_to_string(&done.log).map_err(|source| Fault::Log { log: done.log.clone(), source })?;
         text.lines().find(|line| line.starts_with('{')).map(str::to_owned).ok_or(Fault::NoJson { log: done.log })

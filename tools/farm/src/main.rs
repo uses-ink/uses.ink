@@ -19,6 +19,7 @@ mod affected;
 mod cache;
 mod cli;
 mod config;
+mod copies;
 mod host;
 mod job;
 mod place;
@@ -32,11 +33,13 @@ use cache::inputs::{Inputs, Jj};
 use cli::console::Console;
 use cli::error::{Chain, Error};
 use cli::exit::Exit;
+use cli::name::Segment;
 use cli::{Command, Verb};
 use config::hosts::{Config, Environment};
 use config::jobs::Jobs;
 use config::tree::Tree;
 use config::workspace::Workspaces;
+use copies::{Copies, Owners};
 use host::transport::{Exec, Link, Local, Ssh};
 use host::{Fleet, Member};
 use host::{Host, Via};
@@ -77,12 +80,8 @@ impl Entry {
                 console.out(made);
                 return Ok(Exit::Passed);
             }
-            Verb::Forget(name) => {
-                let jobs = Jobs::load(&tree.root)?;
-                let path = Workspaces::new(&tree).forget(name, jobs.disposable())?;
-                console.out(format!("workspace `{name}` forgotten and {} removed", path.display()));
-                return Ok(Exit::Passed);
-            }
+            Verb::Forget(name) => return Self::forget(name, &tree, &console),
+            Verb::Prune => return Self::prune(&tree, &console, flags.yes),
             _ => {}
         }
         let env = Environment::current();
@@ -90,10 +89,57 @@ impl Entry {
         let settings = Jobs::load_optional(&tree.root)?.map_or_default(|jobs| jobs.settings().clone());
         let cache = Self::cache(&env, &tree, &settings)?;
         let placement = Fastest::new(Self::table(cache.as_ref(), &console));
-        let exec = Exec::new(Arc::clone(&console));
-        let members = config.hosts.iter().map(|host| Self::member(host, &exec)).collect();
-        let farm = Farm::new(Setup { fleet: Fleet::new(members), placement, console, flags, tree, settings, cache });
+        let farm = Farm::new(Setup {
+            fleet: Self::fleet(&config, &console),
+            placement,
+            console,
+            flags,
+            tree,
+            settings,
+            cache,
+        });
         farm.go(&verb)
+    }
+
+    /// Removes the workspace here, then its copy on every host that answers; a host that does not
+    /// is said, and `farm workspace --prune` removes what it holds later.
+    fn forget(name: &Segment, tree: &Tree, console: &Arc<Console>) -> Result<Exit, Error> {
+        let jobs = Jobs::load(&tree.root)?;
+        let path = Workspaces::new(tree).forget(name, jobs.disposable())?;
+        console.out(format!("workspace `{name}` forgotten and {} removed", path.display()));
+        let config = Config::load(&Environment::current()).inspect_err(|_| {
+            console.note("the workspace is gone here, but its copies on the hosts were not looked at; `farm workspace --prune` removes them");
+        })?;
+        let removal = Copies::new(&Self::fleet(&config, console), tree).forget(name);
+        if !removal.is_empty() {
+            console.out(&removal);
+        }
+        Ok(removal.exit())
+    }
+
+    /// Lists the copies on the hosts that no workspace here owns, and with `yes` removes them.
+    fn prune(tree: &Tree, console: &Arc<Console>, yes: bool) -> Result<Exit, Error> {
+        let config = Config::load(&Environment::current())?;
+        let fleet = Self::fleet(&config, console);
+        let copies = Copies::new(&fleet, tree);
+        let survey = copies.survey(&Owners::of(tree)?);
+        console.out(&survey);
+        if survey.is_empty() {
+            return Ok(Exit::Passed);
+        }
+        if !yes {
+            console.out("nothing was removed; run `farm workspace --prune --yes` to remove them");
+            return Ok(Exit::Passed);
+        }
+        let removal = copies.prune(&survey);
+        console.out(&removal);
+        Ok(removal.exit())
+    }
+
+    /// The hosts of the config, each with the way to reach it.
+    fn fleet(config: &Config, console: &Arc<Console>) -> Fleet<Link> {
+        let exec = Exec::new(Arc::clone(console));
+        Fleet::new(config.hosts.iter().map(|host| Self::member(host, &exec)).collect())
     }
 
     /// The timings placement uses; a history that cannot be read is said and placement goes on

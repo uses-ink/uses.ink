@@ -26,6 +26,8 @@ pub(crate) struct Snapshot {
     pub(crate) asleep: Option<u64>,
     /// Seconds placement adds to this host's expected finish ([`Host::handicap`]).
     pub(crate) handicap: u64,
+    /// The cap on test threads per job ([`Host::test_threads`]).
+    pub(crate) cap: Option<u32>,
 }
 
 impl Snapshot {
@@ -52,6 +54,12 @@ impl Snapshot {
     /// The cores each slot's job may use: cargo's `-j` and nextest's threads.
     pub(crate) fn share(&self) -> u32 {
         (self.cores / self.slots.max(1)).max(1)
+    }
+
+    /// The threads one job's tests may run on: its share of the cores, or the host's cap when that
+    /// is lower, so a host with many cores does not start more test threads than its tests keep their budgets on.
+    pub(crate) fn threads(&self) -> u32 {
+        self.cap.map_or_else(|| self.share(), |cap| cap.min(self.share()).max(1))
     }
 
     /// About how long until a slot frees, from the jobs this host finished lately: the mean of
@@ -152,6 +160,7 @@ impl Found {
             holders: self.holders,
             asleep: None,
             handicap: host.handicap.0,
+            cap: host.test_threads,
         })
     }
 }

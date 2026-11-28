@@ -109,7 +109,25 @@ fn test_passes_its_arguments_to_nextest_and_affected_and_base_have_their_verbs()
     assert_eq!(command.verb, Verb::Check(vec!["test".parse().unwrap()]));
     assert!(parse("cargo check --affected").is_ok(), "after the cargo words it is cargo's");
     assert!(matches!(parse("--affected cargo check"), Err(Usage::Flag { .. })));
-    assert!(matches!(parse("--affected test"), Err(Usage::Flag { .. })), "test is always affected");
+    let command = parse("test --affected --base main -p x").unwrap();
+    assert!(command.flags.affected, "test accepts what `check test --affected` accepts");
+    assert_eq!(command.verb, Verb::Test(words("-p x")));
+    assert!(parse("--affected test").is_ok());
+    assert!(matches!(parse("--affected status"), Err(Usage::Flag { .. })));
     assert!(matches!(parse("--base main status"), Err(Usage::Flag { .. })));
     assert!(matches!(parse("--base -x test"), Err(Usage::Flag { .. })));
+}
+
+#[test]
+fn keep_going_is_for_check_and_prune_and_yes_are_for_workspace() {
+    assert!(parse("check --keep-going").unwrap().flags.keep_going);
+    assert!(matches!(parse("test --keep-going"), Err(Usage::Flag { .. })));
+    assert_eq!(parse("workspace --prune").unwrap().verb, Verb::Prune);
+    let command = parse("workspace --prune --yes").unwrap();
+    assert!(command.flags.yes && command.verb == Verb::Prune);
+    assert!(matches!(parse("workspace --yes x"), Err(Usage::Flag { .. })), "--yes needs --prune");
+    assert!(matches!(parse("workspace --prune --forget"), Err(Usage::Flag { .. })));
+    assert!(matches!(parse("workspace --prune x"), Err(Usage::Extra { .. })));
+    assert!(matches!(parse("check --prune"), Err(Usage::Flag { .. })));
+    assert!(matches!(parse("status --yes"), Err(Usage::Flag { .. })));
 }

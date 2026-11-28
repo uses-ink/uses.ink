@@ -1,5 +1,6 @@
 //! A host as the config describes it, and as a probe finds it.
 
+mod copies;
 mod dir;
 #[cfg(test)]
 pub(crate) mod fake;
@@ -96,6 +97,8 @@ pub(crate) struct Host {
     /// Seconds added to the host's expected finish for every job, so it is chosen only when it
     /// beats the others by more than this; none is a host like any other.
     pub(crate) handicap: Seconds,
+    /// The most test threads a job may use here, below the slot's share of the cores; none is the share.
+    pub(crate) test_threads: Option<u32>,
 }
 
 impl Host {
@@ -111,6 +114,7 @@ impl Host {
             dir: HostDir::standard(),
             wake: None,
             handicap: Seconds(0),
+            test_threads: None,
         }
     }
 }

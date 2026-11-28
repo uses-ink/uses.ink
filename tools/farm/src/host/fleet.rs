@@ -32,7 +32,6 @@ impl<T: Transport + Sync> Fleet<T> {
         self.members.iter().find(|member| &member.host.name == name)
     }
 
-    #[cfg(test)]
     pub(crate) fn members(&self) -> &[Member<T>] {
         &self.members
     }

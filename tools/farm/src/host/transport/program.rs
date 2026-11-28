@@ -23,6 +23,7 @@
 use std::fmt;
 use std::time::Duration;
 
+use crate::host::transport::Cancel;
 use crate::job::quote::Line;
 
 /// A program that runs on a host.
@@ -38,8 +39,12 @@ pub(crate) enum Program {
     Wait,
     /// Prints a job's log, whole or its tail.
     Log,
-    /// Makes a workspace's directory from the newest sibling by a reflink copy.
+    /// Makes a workspace's directory from the most recently used warm sibling by a reflink copy.
     Seed,
+    /// Removes a workspace's directory, when it is inside the farm's.
+    Remove,
+    /// Lists the workspace directories of one repo and their sizes.
+    List,
     /// Lists the files of one extension a job changed.
     Changed,
     /// Removes the state of jobs older than seven days.
@@ -57,6 +62,8 @@ impl Program {
             Self::Wait => "wait",
             Self::Log => "log",
             Self::Seed => "seed",
+            Self::Remove => "remove",
+            Self::List => "list",
             Self::Changed => "changed",
             Self::Sweep => "sweep",
         }
@@ -71,6 +78,8 @@ impl Program {
             Self::Wait => WAIT,
             Self::Log => LOG,
             Self::Seed => SEED,
+            Self::Remove => REMOVE,
+            Self::List => LIST,
             Self::Changed => CHANGED,
             Self::Sweep => SWEEP,
         }
@@ -95,16 +104,24 @@ pub(crate) struct Call {
     pub(crate) program: Program,
     pub(crate) args: Vec<String>,
     pub(crate) stdin: Stdin,
+    /// When set, the call is stopped and its host side with it.
+    pub(crate) cancel: Option<Cancel>,
 }
 
 impl Call {
     pub(crate) fn new(program: Program, args: Vec<String>) -> Self {
-        Self { program, args, stdin: Stdin::Null }
+        Self { program, args, stdin: Stdin::Null, cancel: None }
     }
 
     /// The same call with its input held open, for at most `until`.
     pub(crate) fn held(self, until: Duration) -> Self {
         Self { stdin: Stdin::Held(until), ..self }
+    }
+
+    /// The same call, stopped when `cancel` is set: the client ends, and the job on the host ends
+    /// with it, as it does for a client that goes away.
+    pub(crate) fn cancelled_by(self, cancel: Cancel) -> Self {
+        Self { cancel: Some(cancel), ..self }
     }
 
     /// The argument vector that runs it with `sh`: `sh -c <text> sh <args>`.
@@ -274,6 +291,7 @@ printf '%s %s\n' "$$" "$began" > "$dir/slots/$slot.holder"
 say "slot $slot $((began - start))"
 echo "$began" > "$job/started"
 cd "$tree" 2>/dev/null || { say nodir; printf '66 0\n' > "$job/done"; exit 66; }
+[ -d target ] && touch target
 PATH=$HOME/.cargo/bin:$PATH
 export PATH
 if [ "$mold" = mold ] && [ -z "${RUSTFLAGS-}" ]; then
@@ -334,7 +352,14 @@ exec 8>"$dir/locks/$ws.lock"
 flock 8
 [ -d "$base/$ws" ] && { echo "@@farm:seed present"; exit 0; }
 rm -rf "$base/${ws:?}.seed"
-newest=$(ls -t "$base" | grep -v '\.seed$' | head -n 1)
+# the sibling whose target/ a job used last (a job touches it as it starts), and only one that has
+# built something: the newest directory by its own time is as often a copy that never built
+newest=
+for t in $(ls -td "$base"/*/target 2>/dev/null); do
+  w=${t%/target}; w=${w##*/}
+  case $w in *.seed) continue ;; esac
+  if [ -d "$t/debug" ] || [ -d "$t/release" ]; then newest=$w; break; fi
+done
 if [ -z "$newest" ]; then mkdir -p "$base/$ws"; echo "@@farm:seed empty"; exit 0; fi
 if cp -a --reflink=always "$base/$newest" "$base/$ws.seed" 2>/dev/null; then how=reflink
 else
@@ -344,6 +369,49 @@ else
 fi
 mv "$base/$ws.seed" "$base/$ws" || exit 74
 echo "@@farm:seed $how $newest"
+"#
+);
+
+/// Removes `D/<repo>/<ws>` and nothing else: the name must be one path segment, the directory a
+/// real one (never a symlink), and its resolved path directly inside the resolved `D/<repo>`,
+/// which is itself inside the resolved `D`. Anything else is refused and left alone. The
+/// workspace's sync lock is held, so a sync in progress finishes first.
+const REMOVE: &str = concat!(
+    "dir=$1 repo=$2 ws=$3\n",
+    home!("dir"),
+    r#"base=$dir/$repo
+target=$base/$ws
+case $ws in ''|.|..|-*|*/*) echo "@@farm:refused $target"; exit 0 ;; esac
+if [ -L "$target" ]; then echo "@@farm:refused $target"; exit 0; fi
+[ -d "$target" ] || { echo "@@farm:absent"; exit 0; }
+farm=$(cd "$dir" 2>/dev/null && pwd -P) || { echo "@@farm:refused $dir"; exit 0; }
+root=$(cd "$base" 2>/dev/null && pwd -P) || { echo "@@farm:refused $base"; exit 0; }
+real=$(cd "$target" 2>/dev/null && pwd -P) || { echo "@@farm:refused $target"; exit 0; }
+case $root in "$farm"/*) ;; *) echo "@@farm:refused $root"; exit 0 ;; esac
+[ "$real" = "$root/$ws" ] || { echo "@@farm:refused $real"; exit 0; }
+mkdir -p "$dir/locks" || exit 70
+exec 8>"$dir/locks/$ws.lock"
+flock 8
+kib=$(du -sk "$real" 2>/dev/null | cut -f1)
+rm -rf "${real:?}" "${root:?}/${ws:?}.seed" || exit 74
+echo "@@farm:removed ${kib:-0}"
+"#
+);
+
+/// Prints a `copy <name> <kib>` line for each workspace directory of the repo whose name is one
+/// the farm would have made, leaving out half-made `.seed` copies.
+const LIST: &str = concat!(
+    "dir=$1 repo=$2\n",
+    home!("dir"),
+    r#"base=$dir/$repo
+[ -d "$base" ] || exit 0
+for d in "$base"/*; do
+  [ -d "$d" ] && [ ! -L "$d" ] || continue
+  name=${d##*/}
+  case $name in *.seed|.*|-*|*[!A-Za-z0-9._-]*) continue ;; esac
+  kib=$(du -sk "$d" 2>/dev/null | cut -f1)
+  echo "@@farm:copy $name ${kib:-0}"
+done
 "#
 );
 
@@ -375,13 +443,15 @@ mod tests {
 
     use super::*;
 
-    const ALL: [Program; 8] = [
+    const ALL: [Program; 10] = [
         Program::Probe,
         Program::Run,
         Program::Body,
         Program::Wait,
         Program::Log,
         Program::Seed,
+        Program::Remove,
+        Program::List,
         Program::Changed,
         Program::Sweep,
     ];
@@ -392,6 +462,75 @@ mod tests {
             let status = Command::new("sh").arg("-n").arg("-c").arg(program.text()).status().unwrap();
             assert!(status.success(), "{}", program.name());
         }
+    }
+
+    /// A scratch farm directory with a repo `r` in it.
+    struct Scratch(std::path::PathBuf);
+
+    impl Scratch {
+        fn new(name: &str) -> Self {
+            let base = std::env::temp_dir().join(format!("farm-seed-{name}-{}", std::process::id()));
+            std::fs::remove_dir_all(&base).ok();
+            std::fs::create_dir_all(base.join("farm").join("r")).unwrap();
+            Self(base)
+        }
+
+        fn ws(&self, name: &str) -> std::path::PathBuf {
+            self.0.join("farm").join("r").join(name)
+        }
+
+        /// A workspace with a source file, and a built `target/` when `built`, used at `used`.
+        fn make(&self, name: &str, built: bool, used: u64) {
+            let ws = self.ws(name);
+            std::fs::create_dir_all(ws.join("src")).unwrap();
+            std::fs::write(ws.join("src").join("lib.rs"), name).unwrap();
+            if built {
+                std::fs::create_dir_all(ws.join("target").join("debug")).unwrap();
+                let at = std::time::UNIX_EPOCH + std::time::Duration::from_secs(used);
+                std::fs::File::open(ws.join("target")).unwrap().set_modified(at).unwrap();
+            }
+        }
+
+        fn seed(&self, name: &str) -> String {
+            let out = Command::new("sh")
+                .args(["-c", Program::Seed.text(), "sh"])
+                .arg(self.0.join("farm"))
+                .args(["r", name])
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+            String::from_utf8(out.stdout).unwrap().trim().to_owned()
+        }
+    }
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).ok();
+        }
+    }
+
+    #[test]
+    fn a_new_workspace_is_seeded_from_the_warm_sibling_used_last_not_the_newest_directory() {
+        let scratch = Scratch::new("pick");
+        scratch.make("old", true, 1_000);
+        scratch.make("recent", true, 5_000);
+        scratch.make("never-built", false, 0); // the newest directory, with nothing to reuse
+        let said = scratch.seed("fresh");
+        assert!(said == "@@farm:seed reflink recent" || said == "@@farm:seed copy recent", "{said}");
+        assert_eq!(std::fs::read_to_string(scratch.ws("fresh").join("src").join("lib.rs")).unwrap(), "recent");
+        assert!(scratch.ws("fresh").join("target").join("debug").is_dir(), "the target came with it");
+        assert!(!scratch.ws("fresh.seed").exists(), "no half-made copy is left");
+        assert_eq!(scratch.seed("fresh"), "@@farm:seed present");
+    }
+
+    #[test]
+    fn with_no_warm_sibling_the_workspace_starts_empty_and_a_half_made_seed_is_never_a_source() {
+        let scratch = Scratch::new("cold");
+        scratch.make("idle", false, 0);
+        scratch.make("half.seed", true, 9_000);
+        assert_eq!(scratch.seed("fresh"), "@@farm:seed empty");
+        assert!(scratch.ws("fresh").is_dir());
+        assert!(!scratch.ws("fresh").join("src").exists());
     }
 
     #[test]
