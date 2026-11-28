@@ -37,6 +37,7 @@ impl Command {
             Self::Abuse(_) => "abuse",
             Self::Org(_) => "org",
             Self::Domain(_) => "domain",
+            Self::Repo(_) => "repo",
             Self::Push(_) => "push",
             Self::Status(_) => "status",
             Self::Watch(_) => "watch",

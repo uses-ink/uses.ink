@@ -2,6 +2,7 @@
 //! tasks and the settings that govern them.
 
 pub(crate) mod dash;
+pub(crate) mod forge;
 pub(crate) mod hosting;
 pub(crate) mod product;
 pub(crate) mod signin;

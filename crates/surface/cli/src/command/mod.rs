@@ -16,6 +16,7 @@ pub(crate) mod pin;
 pub(crate) mod preview;
 pub(crate) mod publish;
 pub(crate) mod remote;
+pub(crate) mod repo;
 pub(crate) mod select;
 pub(crate) mod serve;
 pub(crate) mod source;

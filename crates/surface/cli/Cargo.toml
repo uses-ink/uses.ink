@@ -14,6 +14,9 @@ path = "src/main.rs"
 
 [dependencies]
 authority-dns = { workspace = true, features = ["system"] }
+authority-forge.workspace = true
+authority-forgejo.workspace = true
+authority-repo = { workspace = true, features = ["system"] }
 annotate-snippets.workspace = true
 anstream.workspace = true
 anstyle.workspace = true
@@ -84,6 +87,9 @@ tempfile.workspace = true
 proptest.workspace = true
 # the software authenticator of the passkey test
 p256.workspace = true
+# the fake forge of the repository tests: a certificate authority made in the test
+rcgen.workspace = true
+rustls.workspace = true
 serde_cbor_2.workspace = true
 sha2.workspace = true
 

@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use authority_dns::Chosen;
+use authority_repo::Wire;
 use blob_dir::Directory;
 use clock::System;
 use control::signin::{Settings, SignIn};
@@ -20,8 +21,8 @@ use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::door::Config;
 use edge_api::{
-    Api, Ceremonies, Courier, Door, Draws, Enrol, Limits, OperatorFile, Outbox, Passing, Rates, Routed, Signatures,
-    Signing, Webauthn,
+    Api, Ceremonies, Courier, Door, Draws, Enrol, Hooks, Limits, OperatorFile, Outbox, Passing, Rates,
+    Remembered as Seen, Routed, Signatures, Signing, Webauthn,
 };
 use edge_control::{Back, Fronts};
 use mail::{Link, LinkBase};
@@ -51,7 +52,10 @@ pub(crate) type Callers = Signatures<Store, System, OperatorFile>;
 /// The API as `ink serve` wires it, with the sign-in routes beside it.
 pub(crate) type Wired = Hosted<
     Routed<
-        Routed<Api<Ports, Callers, System, System, Chosen>, Door<Store, System, System>>,
+        Routed<
+            Routed<Api<Ports, Callers, System, System, Chosen, Wire>, Hooks<Ports, Seen, System, System>>,
+            Door<Store, System, System>,
+        >,
         Ceremonies<Store, System, System, Webauthn>,
     >,
 >;
@@ -195,7 +199,12 @@ impl Product {
             .hosting
             .resolving()
             .map_err(|e| Unready::Setting { flag: "--resolver-timeout", source: Box::new(e) })?;
-        let api = api.with_schemes(settings.hosting.schemes()).with_resolver(resolver.clone());
+        let https = Self::https(settings)?;
+        let repos = settings
+            .forging
+            .repos(&https)
+            .map_err(|e| Unready::Setting { flag: "--forge-hooks", source: Box::new(e) })?;
+        let api = api.with_schemes(settings.hosting.schemes()).with_resolver(resolver.clone()).with_repos(repos);
         let api = flags.abuse_limit.into_iter().fold(api, edge_api::Api::with_reports);
         let api = flags.enrol_limit.into_iter().fold(api, edge_api::Api::with_enrolments);
         let (fronts, back) = Self::lookups(&ports, &origin, data, settings)?;
@@ -206,10 +215,21 @@ impl Product {
             |door, origin| door.with_origin(origin.as_str()),
         );
         let origins = door.origins().clone();
-        let api = Routed::new(api, door);
+        let hooks = Hooks::new(
+            Control::new(Arc::clone(&ports), origin.clone()).with_policy(settings.hosting.policy()),
+            Seen::new(),
+            (System, System),
+            (settings.forging.limits(), settings.hosting.previews()),
+        )
+        .enabled(settings.forging.hooks);
+        let api = Routed::new(Routed::new(api, hooks), door);
         let policy = settings.hosting.policy();
         let control = Control::new(Arc::clone(&ports), origin.clone()).with_policy(policy);
-        let pages = Pages::new(control, (origins, resolver), limits);
+        let forges = settings
+            .forging
+            .repos(&https)
+            .map_err(|e| Unready::Setting { flag: "--forge-hooks", source: Box::new(e) })?;
+        let pages = Pages::new(control, (origins, resolver, forges), limits);
         let told = Told(std::sync::Mutex::new(std::io::stderr()));
         let mailing = Mailing {
             courier,
@@ -234,7 +254,7 @@ impl Product {
             origin,
             site: site.to_owned(),
             data: data.to_path_buf(),
-            https: Self::https(settings)?,
+            https,
             fronts,
             back: Some(back),
             retired,
@@ -354,6 +374,7 @@ impl Product {
         limits.tree = settings.upload_tree.unwrap_or(ceiling.tree);
         limits.part = settings.upload_part.unwrap_or(ceiling.part);
         limits.export = settings.export_bytes.unwrap_or(ceiling.export);
+        limits.hook = u64::try_from(settings.forging.limits().body).unwrap_or(ceiling.hook);
         limits.lower(&asked).map_err(|e| Unready::Setting { flag: "the limits", source: Box::new(e) })
     }
 

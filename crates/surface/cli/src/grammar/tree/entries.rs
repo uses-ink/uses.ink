@@ -279,6 +279,42 @@ const DOMAIN_CHILDREN: &[Entry] = &[
     },
 ];
 
+const REPO_CHILDREN: &[Entry] = &[
+    Entry {
+        detail: "Asks to prove the repository (the site's own git source unless one is named) and prints the challenge line to commit to `.well-known/uses-ink` on its default branch, and the webhook secret to give the forge, once. The server must run with `--forge-hooks`. Asking again makes a new challenge and a new secret.",
+        examples: &[Example { line: "ink repo claim", about: "Print the challenge and the webhook secret" }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("claim", Group::Publish, "Ask to prove the site's repository")
+    },
+    Entry {
+        detail: "The server reads `.well-known/uses-ink` through the repository's forge, with no credential, so the repository must be public. A file that is not there yet is `repo.proof.missing`; a forge that did not answer is a failure, not a refusal. A proved repository builds the site when the forge's webhook says it moved.",
+        examples: &[Example { line: "ink repo prove", about: "Let pushes to the repository build the site" }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("prove", Group::Publish, "Read the forge and bind the repository to the site")
+    },
+    Entry {
+        detail: "The old secret stops verifying at once: put the new one in the forge's webhook form before the next push.",
+        examples: &[Example { line: "ink repo rotate", about: "A new webhook secret, shown once" }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("rotate", Group::Publish, "Put a new webhook secret in place of the old")
+    },
+    Entry {
+        examples: &[Example { line: "ink repo list", about: "The repositories the site has claimed" }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("list", Group::Publish, "The site's repositories")
+    },
+    Entry {
+        examples: &[Example { line: "ink repo release", about: "Stop building the site on push" }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("release", Group::Publish, "Let go of a repository and delete its secret")
+    },
+];
+
 const DEPLOY_CHILDREN: &[Entry] = &[
     Entry {
         examples: &[Example { line: "ink deploy list --limit 5", about: "The five newest deploys" }],
@@ -476,6 +512,16 @@ const ENTRIES: &[Entry] = &[
         endings: REMOTE,
         env: SITE_ENV,
         ..Entry::built("domain", Group::Publish, "Claim, prove, list and remove custom domains")
+    },
+    Entry {
+        children: REPO_CHILDREN,
+        examples: &[
+            Example { line: "ink repo claim", about: "Ask to prove the site's repository" },
+            Example { line: "ink repo prove", about: "Build the site when the forge says it moved" },
+        ],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("repo", Group::Publish, "Claim, prove, rotate, list and release the site's repository")
     },
     Entry {
         children: DEPLOY_CHILDREN,

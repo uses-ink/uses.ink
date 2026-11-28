@@ -143,6 +143,9 @@ impl Order {
             "uses-ink-cli",
             &[
                 "uses-ink-authority-dns",
+                "uses-ink-authority-forge",
+                "uses-ink-authority-forgejo",
+                "uses-ink-authority-repo",
                 "uses-ink-model",
                 "uses-ink-config",
                 "uses-ink-diag",

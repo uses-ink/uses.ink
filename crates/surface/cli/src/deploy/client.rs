@@ -6,12 +6,14 @@
 
 use std::time::Duration;
 
+use authority_forge::Repo;
 use build::BuildId;
 use control::{DomainName, Id, SiteKind, Slug};
-use edge_api::Probed;
 use edge_api::view::{
     BuildView, DeployView, DomainView, Listed, Moved, Previewed, Status as Overview, Unclaimed, Unpreviewed,
 };
+use edge_api::view::{RepoGiven, RepoReleased, RepoView};
+use edge_api::{Probed, RepoStep};
 use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
 use hyper::header::{ACCEPT, AUTHORIZATION, CONNECTION, CONTENT_TYPE, HOST};
@@ -207,6 +209,36 @@ impl Api {
     /// `DELETE /v1/sites/{site}/domains/{name}`.
     pub(crate) async fn unclaim(&self, name: &DomainName) -> Result<Unclaimed, Failure> {
         self.read(Method::DELETE, &format!("domains/{name}"), Vec::new()).await
+    }
+
+    /// `GET /v1/sites/{site}/repos`: the repositories the site has claimed.
+    pub(crate) async fn repos(&self) -> Result<Vec<RepoView>, Failure> {
+        let items: Listed<RepoView> = self.look("repos").await?;
+        Ok(items.items)
+    }
+
+    /// `POST /v1/sites/{site}/repos/{claim,rotate}`: the claim and the secret, shown once.
+    pub(crate) async fn repo_given(&self, step: RepoStep, repo: Option<&Repo>) -> Result<RepoGiven, Failure> {
+        self.read(Method::POST, &format!("repos/{}", step.name()), Self::asking(repo)?).await
+    }
+
+    /// `POST /v1/sites/{site}/repos/prove`: the server reads the forge and decides.
+    pub(crate) async fn repo_prove(&self, repo: Option<&Repo>) -> Result<RepoView, Failure> {
+        self.read(Method::POST, "repos/prove", Self::asking(repo)?).await
+    }
+
+    /// `POST /v1/sites/{site}/repos/release`.
+    pub(crate) async fn repo_release(&self, repo: Option<&Repo>) -> Result<RepoReleased, Failure> {
+        self.read(Method::POST, "repos/release", Self::asking(repo)?).await
+    }
+
+    /// The body of a repository call: the repository, or `{}` for the site's own.
+    fn asking(repo: Option<&Repo>) -> Result<Vec<u8>, Failure> {
+        let body = match repo {
+            Some(repo) => serde_json::json!({ "repo": repo.to_string() }),
+            None => serde_json::json!({}),
+        };
+        serde_json::to_vec(&body).map_err(|source| Failure::Unreadable { source })
     }
 
     /// A call whose answer is the JSON `T`.

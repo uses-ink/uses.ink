@@ -104,6 +104,8 @@ pub enum Command {
     Deploys(List),
     /// Claim, prove, list and remove custom domains.
     Domain(crate::command::domain::Domain),
+    /// Claim, prove, rotate, list and release the site's repository.
+    Repo(crate::command::repo::Repo),
     /// Write the whole site, source and history, to a folder.
     Export(crate::command::publish::Export),
     /// Print a completion script for your shell.
@@ -387,4 +389,7 @@ pub struct Serve {
     /// How the lookups and loops behind the API run.
     #[command(flatten)]
     pub hosting: Box<crate::selfhost::hosting::Hosting>,
+    /// Forges: webhooks, and claiming a repository.
+    #[command(flatten)]
+    pub forging: Box<crate::selfhost::forge::Forging>,
 }
