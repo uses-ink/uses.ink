@@ -115,7 +115,7 @@ impl Order {
         ("uses-ink-host-image", &["uses-ink-model", "uses-ink-engine", "uses-ink-logging"]),
         ("uses-ink-host-native", &["uses-ink-https", "uses-ink-model", "uses-ink-engine", "uses-ink-logging"]),
         // A theme's native core implements the engine's Theme trait; its guest crate exports it.
-        ("uses-ink-theme-quiet", &["uses-ink-model", "uses-ink-engine"]),
+        ("uses-ink-theme-quiet", &["uses-ink-model", "uses-ink-engine", "uses-ink-token"]),
         (
             "uses-ink-cli",
             &[

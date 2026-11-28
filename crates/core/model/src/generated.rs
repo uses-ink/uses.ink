@@ -199,6 +199,28 @@ pub enum Problem {
         /// The theme's name.
         theme: String,
     },
+    /// `theme.token.unknown`: the theme `{theme}` has no token `{token}`
+    #[serde(rename = "theme.token.unknown")]
+    ThemeTokenUnknown {
+        /// The theme's name.
+        theme: String,
+        /// The name of the theme token, as written.
+        token: String,
+        /// The tokens the theme has, in backticks.
+        known: String,
+    },
+    /// `theme.token.invalid`: `{value}` is not a value of the token `{token}` of the theme `{theme}`
+    #[serde(rename = "theme.token.invalid")]
+    ThemeTokenInvalid {
+        /// The theme's name.
+        theme: String,
+        /// The name of the theme token, as written.
+        token: String,
+        /// The value taken, in the decision code's words.
+        value: String,
+        /// The values the token takes, in backticks.
+        accepted: String,
+    },
     /// `source.blob.missing`: {path} is in the snapshot, but its bytes are not in the blob store
     #[serde(rename = "source.blob.missing")]
     SourceBlobMissing {
@@ -1097,6 +1119,8 @@ impl Problem {
         "asset.media.unknown",
         "theme.route.reserved",
         "theme.page.refused",
+        "theme.token.unknown",
+        "theme.token.invalid",
         "source.blob.missing",
         "engine.decision.repeated",
         "engine.decision.missing",
@@ -1277,6 +1301,8 @@ impl Problem {
             Self::AssetMediaUnknown { .. } => "asset.media.unknown",
             Self::ThemeRouteReserved { .. } => "theme.route.reserved",
             Self::ThemePageRefused { .. } => "theme.page.refused",
+            Self::ThemeTokenUnknown { .. } => "theme.token.unknown",
+            Self::ThemeTokenInvalid { .. } => "theme.token.invalid",
             Self::SourceBlobMissing { .. } => "source.blob.missing",
             Self::EngineDecisionRepeated { .. } => "engine.decision.repeated",
             Self::EngineDecisionMissing { .. } => "engine.decision.missing",
@@ -1458,6 +1484,8 @@ impl Problem {
             Self::AssetMediaUnknown { .. } => Severity::Warning,
             Self::ThemeRouteReserved { .. } => Severity::Error,
             Self::ThemePageRefused { .. } => Severity::Error,
+            Self::ThemeTokenUnknown { .. } => Severity::Error,
+            Self::ThemeTokenInvalid { .. } => Severity::Error,
             Self::SourceBlobMissing { .. } => Severity::Error,
             Self::EngineDecisionRepeated { .. } => Severity::Error,
             Self::EngineDecisionMissing { .. } => Severity::Error,
@@ -1639,6 +1667,8 @@ impl Problem {
             Self::AssetMediaUnknown { .. } => Fault::Author,
             Self::ThemeRouteReserved { .. } => Fault::Author,
             Self::ThemePageRefused { .. } => Fault::Author,
+            Self::ThemeTokenUnknown { .. } => Fault::Author,
+            Self::ThemeTokenInvalid { .. } => Fault::Author,
             Self::SourceBlobMissing { .. } => Fault::Ours,
             Self::EngineDecisionRepeated { .. } => Fault::Ours,
             Self::EngineDecisionMissing { .. } => Fault::Ours,
@@ -2233,6 +2263,19 @@ impl From<&Problem> for Coded {
             Problem::ThemePageRefused { theme, .. } => {
                 Coded::new("theme.page.refused", vec![Field::from(theme.clone())])
             }
+            Problem::ThemeTokenUnknown { theme, token, known, .. } => Coded::new(
+                "theme.token.unknown",
+                vec![Field::from(theme.clone()), Field::from(token.clone()), Field::from(known.clone())],
+            ),
+            Problem::ThemeTokenInvalid { theme, token, value, accepted, .. } => Coded::new(
+                "theme.token.invalid",
+                vec![
+                    Field::from(theme.clone()),
+                    Field::from(token.clone()),
+                    Field::from(value.clone()),
+                    Field::from(accepted.clone()),
+                ],
+            ),
             Problem::SourceBlobMissing { path, .. } => {
                 Coded::new("source.blob.missing", vec![Field::from(path.clone())])
             }
@@ -2605,6 +2648,15 @@ impl TryFrom<Coded> for Problem {
             "asset.media.unknown" => Self::AssetMediaUnknown { path: fields.next()? },
             "theme.route.reserved" => Self::ThemeRouteReserved { route: fields.next()?, theme: fields.next()? },
             "theme.page.refused" => Self::ThemePageRefused { theme: fields.next()? },
+            "theme.token.unknown" => {
+                Self::ThemeTokenUnknown { theme: fields.next()?, token: fields.next()?, known: fields.next()? }
+            }
+            "theme.token.invalid" => Self::ThemeTokenInvalid {
+                theme: fields.next()?,
+                token: fields.next()?,
+                value: fields.next()?,
+                accepted: fields.next()?,
+            },
             "source.blob.missing" => Self::SourceBlobMissing { path: fields.next()? },
             "engine.decision.repeated" => Self::EngineDecisionRepeated { decision: fields.next()? },
             "engine.decision.missing" => Self::EngineDecisionMissing { decision: fields.next()? },

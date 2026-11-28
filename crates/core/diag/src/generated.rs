@@ -86,6 +86,12 @@ impl Message<'_> {
             Problem::ThemePageRefused { theme, .. } => {
                 write!(out, "the theme `{theme}` could not render the page")
             }
+            Problem::ThemeTokenUnknown { theme, token, .. } => {
+                write!(out, "the theme `{theme}` has no token `{token}`")
+            }
+            Problem::ThemeTokenInvalid { value, token, theme, .. } => {
+                write!(out, "`{value}` is not a value of the token `{token}` of the theme `{theme}`")
+            }
             Problem::SourceBlobMissing { path, .. } => {
                 write!(out, "{path} is in the snapshot, but its bytes are not in the blob store")
             }
@@ -751,6 +757,8 @@ impl Fix<'_> {
             Problem::AssetMediaUnknown { .. } => true,
             Problem::ThemeRouteReserved { .. } => true,
             Problem::ThemePageRefused { .. } => true,
+            Problem::ThemeTokenUnknown { .. } => true,
+            Problem::ThemeTokenInvalid { .. } => true,
             Problem::SourceBlobMissing { .. } => true,
             Problem::EngineDecisionRepeated { .. } => true,
             Problem::EngineDecisionMissing { .. } => true,
@@ -1027,6 +1035,12 @@ impl Fix<'_> {
             }
             Problem::ThemePageRefused { .. } => {
                 write!(out, "see the cause below; choose another theme if it persists")
+            }
+            Problem::ThemeTokenUnknown { known, .. } => {
+                write!(out, "remove it from `[theme]`, or use one of its tokens: {known}")
+            }
+            Problem::ThemeTokenInvalid { accepted, .. } => {
+                write!(out, "write one of: {accepted}")
             }
             Problem::SourceBlobMissing { .. } => {
                 write!(out, "build again; report it if it persists")

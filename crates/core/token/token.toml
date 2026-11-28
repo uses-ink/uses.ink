@@ -19,3 +19,35 @@ cloud = "#e6e6e6"
 hand = ["Gaegu", "system-ui", "sans-serif"]
 mono = ["Monaspace Radon", "ui-monospace", "monospace"]
 reader = ["Literata", "Georgia", "serif"]
+
+# A look is what a theme wears: colours for light and dark, two faces named from `[face]` and five
+# sizes. A site picks one in `[theme]` (`look = "uses-ink"`); the theme's own stylesheet uses
+# the custom properties, so changing a value here changes the look and no stylesheet. A look
+# holds each role of `Role` once per scheme, and a test holds its text colours to WCAG AA (4.5:1)
+# on the paper and on the tint, in light and in dark.
+[look.uses-ink.light]
+ink = "#1c1a17"     # warm near-black, not pure black
+paper = "#fffdf8"
+muted = "#5c5a53"
+line = "#ddd7c8"
+tint = "#f5f1e6"
+accent = "#bf1308"  # the red note pen, darkened to read as text
+
+[look.uses-ink.dark]
+ink = "#ece8de"
+paper = "#161411"
+muted = "#b4ae9f"
+line = "#3b372f"
+tint = "#211e1a"
+accent = "#ff8f84"
+
+[look.uses-ink.face]
+body = "reader"
+mono = "mono"
+
+[look.uses-ink.size]
+small = "0.875rem"
+body = "1.125rem"
+h3 = "1.3rem"
+h2 = "1.6rem"
+h1 = "2.25rem"

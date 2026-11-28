@@ -13,6 +13,9 @@
 
 [field]
 account = "The account of the person, as its id."
+token = "The name of the theme token, as written."
+known = "The tokens the theme has, in backticks."
+accepted = "The values the token takes, in backticks."
 role = "The role the member has, as it is named."
 hash = "The BLAKE3 of its bytes, in hex."
 origin = "Where it came from: `bundled`, or the file it was read from."
@@ -266,6 +269,20 @@ fault = "author"
 fields = { theme = "text" }
 message = "the theme `{theme}` could not render the page"
 fix = "see the cause below; choose another theme if it persists"
+
+[diagnostic."theme.token.unknown"]
+severity = "error"
+fault = "author"
+fields = { theme = "text", token = "text", known = "text" }
+message = "the theme `{theme}` has no token `{token}`"
+fix = "remove it from `[theme]`, or use one of its tokens: {known}"
+
+[diagnostic."theme.token.invalid"]
+severity = "error"
+fault = "author"
+fields = { theme = "text", token = "text", value = "text", accepted = "text" }
+message = "`{value}` is not a value of the token `{token}` of the theme `{theme}`"
+fix = "write one of: {accepted}"
 
 [diagnostic."source.blob.missing"]
 severity = "error"

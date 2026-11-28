@@ -1,12 +1,14 @@
 //! `crates/core/token/token.toml` into `crates/core/token/src/generated.rs` (the pen's palette and the face stacks) and
-//! `crates/core/token/token.css` (the same, as custom properties on `:root`).
+//! `crates/core/token/token.css` (the same, as custom properties on `:root`). A `[look.<name>]` table
+//! is a palette for light and dark, two faces and five sizes a theme wears: it is generated into
+//! `generated.rs` as a `Look` that holds its colours and the stylesheet that declares them.
 
 use std::fmt;
 
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{ToTokens, format_ident, quote};
-use token::Rgb;
+use token::{Rgb, Role, Scheme};
 
 use crate::Task;
 use crate::error::{Error, Flaw};
@@ -37,15 +39,18 @@ impl Generator for Token {
 pub(crate) struct Tokens {
     colours: Vec<Colour>,
     faces: Vec<Face>,
+    looks: Vec<Look>,
 }
 
 impl TryFrom<toml::Table> for Tokens {
     type Error = Refusal;
 
     fn try_from(table: toml::Table) -> Result<Self, Refusal> {
-        let mut tokens = Self { colours: Vec::new(), faces: Vec::new() };
+        let mut tokens = Self { colours: Vec::new(), faces: Vec::new(), looks: Vec::new() };
+        let mut looks = Vec::new();
         for (key, value) in table {
             match (key.as_str(), value) {
+                ("look", toml::Value::Table(entries)) => looks = entries.into_iter().collect(),
                 ("colour", toml::Value::Table(entries)) => {
                     tokens.colours = entries.into_iter().map(Colour::try_from).collect::<Result<_, _>>()?;
                 }
@@ -56,6 +61,7 @@ impl TryFrom<toml::Table> for Tokens {
             }
         }
         tokens.unique()?;
+        tokens.looks = looks.into_iter().map(|entry| Look::read(entry, &tokens.faces)).collect::<Result<_, _>>()?;
         Ok(tokens)
     }
 }
@@ -81,10 +87,12 @@ impl ToTokens for Tokens {
     fn to_tokens(&self, out: &mut TokenStream) {
         let colours = Palette(&self.colours);
         let faces = Faces(&self.faces);
+        let looks = Looks(&self.looks);
         out.extend(quote! {
-            use crate::{Kind, Rgb, Unknown};
+            use crate::{Kind, Rgb, Role, Scheme, Unknown};
             #colours
             #faces
+            #looks
         });
     }
 }
@@ -121,12 +129,20 @@ pub(crate) enum Fault {
     Colour,
     /// A face that is not a list of plain family names.
     Stack,
+    /// A look that is not a table of `light`, `dark`, `face` and `size`.
+    Look,
+    /// A scheme that does not hold each colour role once.
+    Role,
+    /// A size that is not a number of `rem`.
+    Size,
+    /// A look's face that `[face]` does not have.
+    Missing,
 }
 
 impl fmt::Display for Fault {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         out.write_str(match self {
-            Self::Section => "is not a section; the sections are `colour` and `face`",
+            Self::Section => "is not a section; the sections are `colour`, `face` and `look`",
             Self::Taken => {
                 "is taken: a colour and a face, or two names that differ only by `-`, share a CSS name or a Rust variant"
             }
@@ -135,6 +151,12 @@ impl fmt::Display for Fault {
             Self::Stack => {
                 "is not a font stack: write a list of family names, without quotes, backslashes or control characters"
             }
+            Self::Look => "is not a look: write a table with `light`, `dark`, `face` and `size`",
+            Self::Role => {
+                "is not the colours of a scheme: write each of `ink`, `paper`, `muted`, `line`, `tint` and `accent` once, as `#rrggbb`"
+            }
+            Self::Size => "is not a size: write a number of `rem`, such as `1.125rem`",
+            Self::Missing => "is not a face of `[face]`; a look has a `body` and a `mono` face, named there",
         })
     }
 }
@@ -383,5 +405,184 @@ impl Family<'_> {
 impl fmt::Display for Family<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         if Self::GENERIC.contains(&self.0) { out.write_str(self.0) } else { write!(out, "\"{}\"", self.0) }
+    }
+}
+
+/// One look: the colours of a theme in light and dark, its two faces and its sizes.
+#[derive(Debug)]
+struct Look {
+    name: Name,
+    light: Shades,
+    dark: Shades,
+    body: Vec<String>,
+    mono: Vec<String>,
+    sizes: Vec<String>,
+}
+
+/// The colour of each [`Role`] in one scheme, in the order of [`Role::ALL`].
+#[derive(Debug)]
+struct Shades(Vec<Rgb>);
+
+impl Look {
+    /// The colours of the look in `scheme`.
+    const fn shades(&self, scheme: Scheme) -> &Shades {
+        if matches!(scheme, Scheme::Light) { &self.light } else { &self.dark }
+    }
+
+    /// The sizes every look gives, as custom properties: `--size-small` and so on.
+    const SIZES: [&'static str; 5] = ["small", "body", "h3", "h2", "h1"];
+
+    /// The look `entry` is, its faces taken from `faces`.
+    fn read((name, value): (String, toml::Value), faces: &[Face]) -> Result<Self, Refusal> {
+        let name = Name::try_from(name)?;
+        let toml::Value::Table(mut table) = value else { return Err(name.refuse(Fault::Look)) };
+        let mut part = |key: &str| match table.remove(key) {
+            Some(toml::Value::Table(part)) => Ok(part),
+            _ => Err(Refusal { name: format!("{name}.{key}"), flaw: Fault::Look }),
+        };
+        let (light, dark, face, size) = (part("light")?, part("dark")?, part("face")?, part("size")?);
+        if let Some(extra) = table.keys().next() {
+            return Err(Refusal { name: format!("{name}.{extra}"), flaw: Fault::Look });
+        }
+        let stack = |face: &toml::Table, key: &str| {
+            let at = || Refusal { name: format!("{name}.face.{key}"), flaw: Fault::Missing };
+            let wanted = face.get(key).and_then(toml::Value::as_str).ok_or_else(at)?;
+            faces.iter().find(|face| face.name.0 == wanted).map(|face| face.stack.clone()).ok_or_else(at)
+        };
+        let (body, mono) = (stack(&face, "body")?, stack(&face, "mono")?);
+        if let Some(extra) = face.keys().find(|key| !["body", "mono"].contains(&key.as_str())) {
+            return Err(Refusal { name: format!("{name}.face.{extra}"), flaw: Fault::Missing });
+        }
+        Ok(Self {
+            light: Shades::read(&light, &format!("{name}.light"))?,
+            dark: Shades::read(&dark, &format!("{name}.dark"))?,
+            sizes: Self::sizes(&size, &name)?,
+            body,
+            mono,
+            name,
+        })
+    }
+
+    /// Each of [`Look::SIZES`] as written, a number of `rem`.
+    fn sizes(table: &toml::Table, name: &Name) -> Result<Vec<String>, Refusal> {
+        let at = |key: &str| Refusal { name: format!("{name}.size.{key}"), flaw: Fault::Size };
+        if let Some(extra) = table.keys().find(|key| !Self::SIZES.contains(&key.as_str())) {
+            return Err(at(extra));
+        }
+        Self::SIZES
+            .iter()
+            .map(|key| {
+                let written = table.get(*key).and_then(toml::Value::as_str).ok_or_else(|| at(key))?;
+                let number = written.strip_suffix("rem").ok_or_else(|| at(key))?;
+                let digits = |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit());
+                let whole = number.split_once('.').map_or_else(|| digits(number), |(i, f)| digits(i) && digits(f));
+                if whole { Ok(written.to_owned()) } else { Err(at(key)) }
+            })
+            .collect()
+    }
+}
+
+impl Shades {
+    /// One colour for each role of `table`, none more; `at` names the table in a refusal.
+    fn read(table: &toml::Table, at: &str) -> Result<Self, Refusal> {
+        let refuse = |role: &str| Refusal { name: format!("{at}.{role}"), flaw: Fault::Role };
+        if let Some(extra) = table.keys().find(|key| !Role::ALL.iter().any(|role| role.name() == key.as_str())) {
+            return Err(refuse(extra));
+        }
+        let colours = Role::ALL.iter().map(|role| {
+            let value = table.get(role.name()).cloned().ok_or_else(|| refuse(role.name()))?;
+            Colour::try_from((role.name().to_owned(), value)).map(|colour| colour.rgb).map_err(|_| refuse(role.name()))
+        });
+        colours.collect::<Result<_, _>>().map(Self)
+    }
+}
+
+/// The `Look` enum of every look.
+struct Looks<'a>(&'a [Look]);
+
+impl Looks<'_> {
+    /// The match arms giving each look's colour of a role in `scheme`.
+    fn arms(&self, scheme: Scheme) -> TokenStream {
+        let arms = self.0.iter().map(|look| {
+            let variant = look.name.variant();
+            let roles = Role::ALL.iter().map(|role| format_ident!("{}", role.name().to_upper_camel_case()));
+            let rgbs = look.shades(scheme).0.iter().map(|Rgb(r, g, b)| quote! { Rgb(#r, #g, #b) });
+            quote! { Self::#variant => match role { #(Role::#roles => #rgbs,)* } }
+        });
+        quote! { #(#arms,)* }
+    }
+}
+
+impl ToTokens for Looks<'_> {
+    fn to_tokens(&self, out: &mut TokenStream) {
+        let names: Vec<&str> = self.0.iter().map(|l| l.name.0.as_str()).collect();
+        let variants: Vec<Ident> = self.0.iter().map(|l| l.name.variant()).collect();
+        let docs = self.0.iter().map(|l| format!(" `{}`", l.name));
+        let sheets = self.0.iter().map(|l| LookSheet(l).to_string());
+        let [light, dark] = [Scheme::Light, Scheme::Dark].map(|scheme| self.arms(scheme));
+        out.extend(quote! {
+            /// A look a theme can wear: its colours in light and dark, its faces and its sizes.
+            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+            pub enum Look { #( #[doc = #docs] #variants, )* }
+
+            impl Look {
+                /// Every look, in the order `token.toml` gives them.
+                pub const ALL: &'static [Self] = &[#(Self::#variants),*];
+                /// Every look's name, in the same order.
+                pub const NAMES: &'static [&'static str] = &[#(#names),*];
+
+                /// Its name.
+                pub const fn name(self) -> &'static str {
+                    match self { #(Self::#variants => #names,)* }
+                }
+
+                /// The colour of `role` in `scheme`.
+                pub const fn colour(self, scheme: Scheme, role: Role) -> Rgb {
+                    match scheme {
+                        Scheme::Light => match self { #light },
+                        Scheme::Dark => match self { #dark },
+                    }
+                }
+
+                /// The stylesheet that declares the look's custom properties on `:root`, the dark
+                /// ones under `prefers-color-scheme`.
+                pub const fn css(self) -> &'static str {
+                    match self { #(Self::#variants => #sheets,)* }
+                }
+
+                /// The look named `name`.
+                pub fn named(name: &str) -> Result<Self, Unknown<'_>> {
+                    match name {
+                        #(#names => Ok(Self::#variants),)*
+                        _ => Err(Unknown { kind: Kind::Look, name, known: Self::NAMES }),
+                    }
+                }
+            }
+        });
+    }
+}
+
+/// A look as a stylesheet: light colours, faces and sizes on `:root`, then the dark colours.
+struct LookSheet<'a>(&'a Look);
+
+impl fmt::Display for LookSheet<'_> {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let look = self.0;
+        let shades = |out: &mut fmt::Formatter<'_>, shades: &Shades, indent: &str| {
+            Role::ALL
+                .iter()
+                .zip(&shades.0)
+                .try_for_each(|(role, rgb)| writeln!(out, "{indent}--{}: {rgb};", role.name()))
+        };
+        writeln!(out, ":root {{")?;
+        shades(out, &look.light, "  ")?;
+        writeln!(out, "  --face-body: {};", Stack(&look.body))?;
+        writeln!(out, "  --face-mono: {};", Stack(&look.mono))?;
+        for (key, size) in Look::SIZES.iter().zip(&look.sizes) {
+            writeln!(out, "  --size-{key}: {size};")?;
+        }
+        writeln!(out, "}}\n\n@media (prefers-color-scheme: dark) {{\n  :root {{")?;
+        shades(out, &look.dark, "    ")?;
+        writeln!(out, "  }}\n}}")
     }
 }
