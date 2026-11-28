@@ -350,6 +350,8 @@ theme are one change in one table. The set of roles is closed: adding one is a d
 | `Id` | magenta | Things named to be found again: deploy ids, commit ids, pins |
 | `Place` | blue | Where something is: `--> file:line:col`, the snippet gutter |
 | `Code` | blue | A catalog code in a list (`page.title`) |
+| `Link` | cyan, underlined | An address to open: a URL in the start report of `ink serve` |
+| `Figure` | magenta | A number, a size or a length of time in a settings listing (decision 0210) |
 | `Quiet` | dim (SGR 2) | Evidence, units, tree rails, table headers, the second half of a line |
 | `Plain` | default | Everything else |
 
@@ -439,7 +441,7 @@ design makes that the rule for every block and names the pair.
 - **Headers appear on a terminal only.** A table on a pipe has no header and one row per line, so
   `ink deploy list | grep failed` works. A machine reads `--json`.
 - **Times are UTC, ISO 8601 without seconds** (`2026-11-27 14:03Z`), as `flow.md` section 7 says;
-  There is no local-time option yet. No relative times ("2 hours ago"): they change between two
+  The log of `ink serve` has `--log-time local`; nothing else has a local-time option yet. No relative times ("2 hours ago"): they change between two
   runs of the same command (open choice 9).
 - **Paths are written as the person gave them**, relative to the folder, `/`-separated. Routes
   start with `/`. Ids are written whole.
@@ -755,6 +757,69 @@ the first problem of the build's log when the site does not build (exit 1), and 
 N files of this push: run it again` when the upload was cut off. `watch` prints the same stages and
 the same stdout. A folder with no `.uses/site` is exit 2 with the fix `ink init`.
 
+### `ink serve`: the start report and the log
+
+Built (decision 0210). The result is the address, alone on stdout. Everything else is on stderr: the start
+report, which is one typed `Startup` value written as text here and as `uses.serve/v2` with `--json`
+(and by `--print-config`, which prints it from the flags alone and starts nothing), then the log.
+
+```text
+$ ink serve --data ./state --upload-bytes 536870912
+http://127.0.0.1:8080
+ink 0.1.0  serve  listening on 127.0.0.1:8080
+
+  site       http://localhost:8080
+  dashboard  http://api.localhost:8080
+  api        http://api.localhost:8080/v1/sites
+
+╭─ admin link  works for 1d, shown once and kept nowhere
+│
+│ http://api.localhost:8080/login/Zx3kQ9vT2mLp7RwB4nHd6YcAeF8gJs1U
+╰─ opening it signs you in as the owner
+
+Addresses
+  listen     127.0.0.1:8080           default
+  origin     http://localhost:8080    derived (--origin)
+  api host   api.localhost            default
+  sites      <handle>.localhost:8080  computed
+
+Sign-in
+  login link     15m                              default
+  cookie secure  no                               derived (--origin)
+  ~ cookie secure: plain http: the session cookie is not Secure
+    fix: end TLS in a proxy and give `--origin https://<your name>`; plain http is for this machine only
+
+Limits
+  json body       64 KiB   default
+  upload archive  512 MiB  --upload-bytes
+  export archive  256 MiB  default
+
+press ctrl-c to stop
+2026-11-28T10:30:00Z info  worker  started
+2026-11-28T10:30:02Z info  watch   queued build build=7a1f09c2e4b8 site=q3x9m2 head=9f3c2a1b4d7e
+2026-11-28T10:30:09Z info  worker  built build=7a1f09c2e4b8 state=live
+2026-11-28T10:31:40Z error watch   crashed attempt=2
+  ╰─ caused by: panicked: poll failed
+```
+
+The report is sections (Addresses, Sign-in, Data, Limits, Background work, Security, Mail) of aligned key,
+value and source rows. A value is typed and painted by what it is: an address is `Link` (cyan, underlined),
+a number, a size or a length of time is `Figure` (magenta) with its unit dim, a path is `Place`, a thing to
+type is `Literal`. A size is `512 MiB`, not a byte count, and a length is `10m` or `1h 30m`. The source is
+dim `default`, or the flag that changed the default in the `Literal` role, so a person sees what they set
+and what to type to change the rest. A caution is a row property in the `Warn` role with its fix. The
+first-run link is a rail of its own and is never cut: the cut mark is used only on the source column, and
+only on a terminal that is narrower than the row.
+
+The log is one line for each event: a dim RFC 3339 time (UTC with a `Z`, or the machine's zone with
+`--log-time local`), a level (`error` red and bold, `warn` yellow, `info` green), a short component (`http`,
+`api`, `watch`, `worker`, `domains`, `mail`), the message and its facts as dim `key=value`. A cause is a
+`caused by` line under it and a fix is a `fix:` line. A request line is `GET /tea 200 3ms` with its status
+coloured by class. Ordinary requests are shown only with `-v`; a refused or failed request, a build, a
+watch event and mail are always shown. `--log-level error|warn|info`, `-q` and `-qq` say how much;
+`--log-format json` (and `--json`) write one object a line with stable names, `time`, `level`, `component`,
+`event`, `message`, `fields`, and `causes` and `fix` when there are any, and no colour.
+
 ### `ink status` and `ink deploy list`
 
 `status` is a record; `deploy list` is a table. Both are results, so both are on stdout.
@@ -878,7 +943,8 @@ Unchanged in shape; extended in coverage. The contract:
 - A command that writes nothing to stdout with `--json` has a bug.
 
 Schemas, kept exactly: `uses.build/v2`, `uses.check/v1`, `uses.explain/v2`, `uses.trace/v1`,
-`uses.select/v1`, `uses.error/v1`, `uses.event/v1`. New: `uses.progress/v1`, `uses.push/v1`,
+`uses.select/v1`, `uses.error/v1`, `uses.event/v1`. `ink serve` prints `uses.serve/v2` (decision 0210; v1 was the
+address and the mode, which v2 keeps). New: `uses.progress/v1`, `uses.push/v1`,
 `uses.watch/v1`, `uses.status/v1`, `uses.link/v1` (init) and `uses.export/v1`. A command not yet
 built names its schema when it is built, as `uses.<command>/v1`.
 

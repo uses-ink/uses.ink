@@ -379,6 +379,11 @@ reason = "kept for decisions in flight on other branches; the dashboard look too
 
 [[decisions.gap]]
 first = "0191"
+last = "0209"
+reason = "kept for decisions in flight on other branches; the start report and log of `ink serve` took 0210"
+
+[[decisions.gap]]
+first = "0211"
 last = "0229"
 reason = "kept for decisions in flight on other branches; the workflow file fix took 0230"
 

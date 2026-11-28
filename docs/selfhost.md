@@ -30,7 +30,7 @@ $ ink serve
 ```
 
 `ink build` writes `.ink/out`, and `ink serve` serves it on `127.0.0.1:8080`, through the same edge
-code production runs. That serves one folder and nothing else: the start says `api: off`.
+code production runs. That serves one folder and nothing else: the start lists `api` as `off`.
 
 To run the product, give it a data folder. The folder `.ink/out` is still read, which here is the
 one `ink build` just wrote:
@@ -39,14 +39,47 @@ one `ink build` just wrote:
 $ ink serve --data ./state
 ```
 
-The start prints every setting it runs with and the default it chose, since nothing is silent
-(decision 0005). Read two lines of it:
+The start prints every setting it runs with, since nothing is silent (decision 0005), in this order
+(decision 0210):
 
-- `admin link`: the first-run link, shown once, kept nowhere, valid for 24 hours (`--admin-ttl`).
-  Opening it signs you in as the owner. A later start makes no second link, so on a data
-  folder you have not used yet, a lost link means removing the folder and starting again.
+```
+ink 0.1.0  serve  listening on 127.0.0.1:8080
+
+  site       http://localhost:8080
+  dashboard  http://api.localhost:8080
+  api        http://api.localhost:8080/v1/sites
+
+╭─ admin link  works for 1d, shown once and kept nowhere
+│
+│ http://api.localhost:8080/login/Zx3kQ9vT2mLp7RwB4nHd6YcAeF8gJs1U
+╰─ opening it signs you in as the owner
+
+Addresses
+  listen     127.0.0.1:8080           default
+  origin     http://localhost:8080    derived (--origin)
+  ...
+press ctrl-c to stop
+```
+
+Read three things in it:
+
+- The `admin link` block: the first-run link, shown once, kept nowhere, valid for 24 hours
+  (`--admin-ttl`). Opening it signs you in as the owner. A later start makes no second link and says
+  `not made`, so on a data folder you have not used yet, a lost link means removing the folder and
+  starting again.
 - `dashboard`: `http://api.localhost:8080`, the API host. Register a passkey there. A passkey is
   made for one origin, so move to a real name before you make one you want to keep.
+- The sections below it (Addresses, Sign-in, Data, Limits, Background work, Security, Mail) list every
+  setting with its value and where it came from: `default`, or the flag that changed it. A setting
+  that is a warning, such as a cookie that is not `Secure` on plain http, says so with its fix.
+
+`ink serve --print-config --data ./state` prints the same report from the flags alone and exits. It
+binds nothing and makes nothing, so it does not use up the first-run link of a new folder. With
+`--json` the start is one document (`uses.serve/v2`) with the addresses, the link and every setting
+as typed fields. After the start, the server logs one line for each thing it does: builds, the
+watch, mail and failures always, and each request with `-v`. `--log-format json` writes them as one
+JSON object a line, `--log-level` and `-q` say how much, and `--log-time local` writes times in the
+machine's zone.
 
 Then, from another terminal, enrol the command line as the operator of this server and publish:
 
