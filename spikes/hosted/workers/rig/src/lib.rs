@@ -3,16 +3,12 @@
 //! adapter. A case that passes answers `ok <suite>/<case>`; one that fails panics, and the panic
 //! text is workerd's output.
 
-mod blobs;
-mod jobs;
-mod rows;
-mod ledger;
-mod post;
 mod suite;
-mod vault;
+mod suites;
 
-pub use ledger::NonceObject;
+pub use suites::NonceObject;
 use suite::Suite;
+use watch_worker::Forge;
 use worker::{Context, Env, Method, Request, Response, Result, event};
 
 #[event(fetch)]
@@ -24,6 +20,10 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         (Method::Post, ["__conformance", suite, case]) => match Suite::named(suite) {
             Some(found) => found.run(&env, case).await,
             None => Response::error(format!("no suite {suite}"), 404),
+        },
+        (Method::Get, ["__fixture", name]) => match Forge::named(name) {
+            Some(forge) => Response::from_bytes(forge.body().to_vec()),
+            None => Response::error(format!("no fixture {name}"), 404),
         },
         _ => Response::error("not found", 404),
     }

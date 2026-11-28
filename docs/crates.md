@@ -69,6 +69,7 @@ A layer depends only on the layers before it, and `standalone` crates depend on 
 | `uses-ink-edge-worker` | `crates/server/edge/worker` | The Worker shell of the edge: the nonce store as a Durable Object's logic and the client that reaches it | `uses-ink-edge-api`, `uses-ink-edge-object-nonce`, `uses-ink-sig` |
 | `uses-ink-watch` | `crates/server/watch` | The polling watch: asks where a git source is now, and queues a build when it moved, on an interval that backs off | `uses-ink-blob-dir`, `uses-ink-build`, `uses-ink-clock`, `uses-ink-control`, `uses-ink-db`, `uses-ink-db-sqlite`, `uses-ink-model`, `uses-ink-queue`, `uses-ink-queue-rows`, `uses-ink-secret`, `uses-ink-secret-local`, `uses-ink-logging` |
 | `uses-ink-watch-git` | `crates/server/watch/git` | The watch's Heads port over git's own protocol: a remote's branch or tag read from its reference list, with no objects fetched | `uses-ink-build`, `uses-ink-https`, `uses-ink-model`, `uses-ink-secret`, `uses-ink-logging`, `uses-ink-watch` |
+| `uses-ink-watch-worker` | `crates/server/watch/worker` | Where a git repository's branch is now, read on a Worker: the smart-HTTP reference advertisement over fetch, with no git library | `uses-ink-build`, `uses-ink-logging`, `uses-ink-model`, `uses-ink-secret`, `uses-ink-watch`, `uses-ink-watch-git` |
 
 ## runtime
 

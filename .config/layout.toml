@@ -76,6 +76,7 @@ crates = [
     "uses-ink-token",
     "uses-ink-watch",
     "uses-ink-watch-git",
+    "uses-ink-watch-worker",
     "uses-ink-web",
     "xtask",
 ]
@@ -338,7 +339,7 @@ last = "0129"
 reason = "kept for decisions in flight on other branches; the docs site navigation took 0140"
 
 [[decisions.gap]]
-first = "0131"
+first = "0137"
 last = "0139"
 reason = "kept for the hosted adapters, which number from 0130; each decision that lands shrinks this row"
 

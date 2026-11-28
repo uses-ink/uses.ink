@@ -27,5 +27,6 @@ mail-conformance = { package = "uses-ink-mail-conformance", path = "../../../../
 edge-api = { package = "uses-ink-edge-api", path = "../../../../crates/server/edge/api" }
 edge-worker = { package = "uses-ink-edge-worker", path = "../../../../crates/server/edge/worker" }
 sig = { package = "uses-ink-sig", path = "../../../../crates/core/sig" }
+watch-worker = { package = "uses-ink-watch-worker", path = "../../../../crates/server/watch/worker" }
 secret = { package = "uses-ink-secret", path = "../../../../crates/port/secret" }
 wasm-bindgen = "=0.2.130"

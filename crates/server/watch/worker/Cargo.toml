@@ -1,0 +1,31 @@
+[package]
+name = "uses-ink-watch-worker"
+description = "Where a git repository's branch is now, read on a Worker: the smart-HTTP reference advertisement over fetch, with no git library"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+build.workspace = true
+logging.workspace = true
+model.workspace = true
+secret.workspace = true
+watch.workspace = true
+
+# a Worker's `fetch` exists only inside a Worker
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+worker.workspace = true
+# the control plane draws ids through rand_core 0.6, which reads getrandom 0.2: on a Worker that is crypto.getRandomValues
+getrandom = { version = "0.2", features = ["js"] }
+
+[dev-dependencies]
+pollster.workspace = true
+tempfile.workspace = true
+watch-git.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

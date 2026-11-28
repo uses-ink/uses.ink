@@ -7241,6 +7241,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "uses-ink-watch-worker"
+version = "0.0.0"
+dependencies = [
+ "getrandom 0.2.17",
+ "pollster",
+ "tempfile",
+ "tokio",
+ "uses-ink-build",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "uses-ink-secret",
+ "uses-ink-watch",
+ "uses-ink-watch-git",
+ "worker",
+]
+
+[[package]]
 name = "uses-ink-web"
 version = "0.0.0"
 dependencies = [

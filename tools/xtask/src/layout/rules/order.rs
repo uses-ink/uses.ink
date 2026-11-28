@@ -92,6 +92,19 @@ impl Order {
                 "uses-ink-watch",
             ],
         ),
+        // The same port on a Worker (decision 0136): the advertisement over fetch, no git library; its
+        // tests read one repository both ways, so they take the gix adapter.
+        (
+            "uses-ink-watch-worker",
+            &[
+                "uses-ink-build",
+                "uses-ink-logging",
+                "uses-ink-model",
+                "uses-ink-secret",
+                "uses-ink-watch",
+                "uses-ink-watch-git",
+            ],
+        ),
         // How git reaches an https remote (decision 0072): gix, rustls and reqwest; no crate of ours.
         ("uses-ink-https", &[]),
         (

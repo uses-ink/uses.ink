@@ -2,12 +2,7 @@
 
 use worker::{Env, Response, Result};
 
-use crate::blobs::Blobs;
-use crate::jobs::Jobs;
-use crate::ledger::Ledgers;
-use crate::post::Post;
-use crate::vault::Vault;
-use crate::rows::Rows;
+use crate::suites::{Blobs, Jobs, Ledgers, Post, Rows, Tips, Vault};
 
 /// One conformance suite, by the port it tests.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,11 +19,14 @@ pub(crate) enum Suite {
     Mail,
     /// The nonce store, through a Durable Object.
     Nonce,
+    /// The watch's head reader over recorded forge advertisements.
+    Watch,
 }
 
 impl Suite {
     /// Every suite, in the order they are listed.
-    const ALL: [Self; 6] = [Self::Db, Self::Blob, Self::Queue, Self::Secret, Self::Mail, Self::Nonce];
+    const ALL: [Self; 7] =
+        [Self::Db, Self::Blob, Self::Queue, Self::Secret, Self::Mail, Self::Nonce, Self::Watch];
 
     /// Its name in the paths.
     const fn name(self) -> &'static str {
@@ -39,6 +37,7 @@ impl Suite {
             Self::Secret => "secret",
             Self::Mail => "mail",
             Self::Nonce => "nonce",
+            Self::Watch => "watch",
         }
     }
 
@@ -56,6 +55,7 @@ impl Suite {
             Self::Secret => Vault::names(),
             Self::Mail => Post::names(),
             Self::Nonce => Ledgers::names(),
+            Self::Watch => Tips::names(),
         }
     }
 
@@ -79,6 +79,7 @@ impl Suite {
             Self::Secret => Vault { env }.run(case).await?,
             Self::Mail => Post.run(case).await?,
             Self::Nonce => Ledgers { env }.run(case).await?,
+            Self::Watch => Tips { env }.run(case).await?,
         };
         if ran { Response::ok(format!("ok {}/{case}\n", self.name())) } else { Response::error(format!("no case {case}"), 404) }
     }

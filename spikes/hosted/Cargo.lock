@@ -2117,6 +2117,7 @@ dependencies = [
  "uses-ink-secret-conformance",
  "uses-ink-secret-worker",
  "uses-ink-sig",
+ "uses-ink-watch-worker",
  "wasm-bindgen",
  "worker",
 ]
@@ -2797,6 +2798,33 @@ dependencies = [
  "blake3",
  "ed25519-dalek",
  "zeroize",
+]
+
+[[package]]
+name = "uses-ink-watch"
+version = "0.0.0"
+dependencies = [
+ "jiff 1.0.3",
+ "uses-ink-build",
+ "uses-ink-clock",
+ "uses-ink-control",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "uses-ink-queue",
+ "uses-ink-secret",
+]
+
+[[package]]
+name = "uses-ink-watch-worker"
+version = "0.0.0"
+dependencies = [
+ "getrandom 0.2.17",
+ "uses-ink-build",
+ "uses-ink-logging",
+ "uses-ink-model",
+ "uses-ink-secret",
+ "uses-ink-watch",
+ "worker",
 ]
 
 [[package]]
