@@ -203,6 +203,13 @@ screen. Open: the email recovery with a delay, the mail notice on a recovery cod
 session, and the edge's mounting of `Screens` (nothing implements it yet, so `end_session` has no
 implementation to write).
 
+Progress (2026-11-28, 0092): `ink serve --data` serves the dashboard on the API host. `Screens` is implemented over the
+control plane (`crates/surface/cli/src/selfhost/dash`): sign-in by email link and passkey, the site list, a site, its
+deploys, builds and stored logs, rollback and rebuild, settings, export, and the account with sessions, passkeys and
+recovery codes, every change a `POST` behind the Origin check. `--origin` is derived from the listen address when not
+given, and `--site-ttl` defaults to 0. `crates/surface/cli/tests/dashboard.rs` runs it through the real binary. Not done:
+live logs for a running build, the email recovery, a replay for `why`.
+
 Progress (2026-11-27, 0052): the API and intake are built (`crates/server/edge/api`, mounted by `crates/server/edge/axum` on
 its own host, `ink serve --data`), with the `Credentials` port and a single-owner token adapter,
 bounded tar intake of a built folder, and the polling `watch` and in-process `worker` over `clock`

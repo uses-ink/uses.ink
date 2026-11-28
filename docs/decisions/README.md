@@ -87,3 +87,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0089 | [A reported site is suspended first, as a row of its own, and anyone may report with no account](0089-a-reported-site-is-suspended-first-as-a-row-of-its-own.md) | built | 2026-11-28 | control |
 | 0090 | [A removal runs in bounded steps and keeps its totals in a row, so a resume gives a whole receipt](0090-a-removal-runs-in-bounded-steps-and-keeps-its-totals-in-a-row.md) | built | 2026-11-28 | control |
 | 0091 | [A branch preview is a labelled manifest with an end and no deploy, served at label--handle](0091-a-branch-preview-is-a-labelled-manifest-with-an-end-and-no-deploy.md) | built | 2026-11-28 | control |
+| 0092 | [The dashboard is served on the API host by ink serve, with a derived origin and a per-request site lookup](0092-the-dashboard-is-served-on-the-api-host-by-ink-serve.md) | built | 2026-11-28 | control |
