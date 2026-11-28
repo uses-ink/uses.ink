@@ -113,7 +113,7 @@ impl Changes {
         let dir = scratch(&format!("changes-{}/site", look.name));
         let out = scratch(&format!("changes-{}/out", look.name));
         copy(&fixtures().join("readme"), &dir);
-        let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-cache");
+        let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-cache").join("blocks");
         let args = |extra: &[&'static str]| -> Vec<String> {
             let mut args = vec!["build".to_owned(), "-C".to_owned(), dir.to_str().unwrap().to_owned()];
             args.extend(

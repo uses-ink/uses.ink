@@ -110,8 +110,9 @@ impl Tree {
     }
 
     /// Builds it through the quiet theme, taking and keeping pages in `cache` when there is one.
-    /// `None` when the site did not interpret: an edit may break a fixture on purpose or not.
-    fn build(&self, cache: Option<&Memorized>) -> Option<Built> {
+    /// The diagnostics, as text, when the site did not interpret: an edit may break a fixture on
+    /// purpose or not, and a cache must not change what is refused or why.
+    fn build(&self, cache: Option<&Memorized>) -> Result<Built, Vec<String>> {
         let mut store = Memory::default();
         let tree = self
             .0
@@ -123,7 +124,10 @@ impl Tree {
             .collect();
         let version = Version::Folder { hash: Hash::of(b"incremental") };
         let snapshot = Snapshot::new(version, tree, vec![], Observed::default()).unwrap();
-        let site = Engine::new(&store, NoPins, (Markdown,), ()).interpret(&snapshot).site?;
+        let understood = Engine::new(&store, NoPins, (Markdown,), ()).interpret(&snapshot);
+        let Some(site) = understood.site else {
+            return Err(understood.diagnostics.iter().map(|diagnostic| format!("{diagnostic:?}")).collect());
+        };
         let base: engine::BaseUrl = "https://ink.example".parse().unwrap();
         let theme = Quiet::new(base.clone(), Grammars::default());
         let engine = Engine::new(&store, NoPins, (), &theme);
@@ -132,7 +136,7 @@ impl Tree {
             Some(cache) => engine.render_with(&site, &settings, Host::new(&Asis).cached(cache)),
             None => engine.render(&site, &settings, &Asis),
         };
-        Some(Built { rendered })
+        Ok(Built { rendered })
     }
 }
 
@@ -285,9 +289,11 @@ proptest! {
         let edited = kind.apply(tree, &Aim { file: &file, other: &other, n });
         let cold = edited.build(None);
         let warm = edited.build(Some(&cache));
-        prop_assert_eq!(cold.is_some(), warm.is_some(), "{} {:?} {}", name, kind, file);
-        if let (Some(cold), Some(warm)) = (cold, warm) {
-            warm.assert_same(&cold);
+        match (cold, warm) {
+            (Ok(cold), Ok(warm)) => warm.assert_same(&cold),
+            // the cache is of rendering: it must not change what interpreting refuses, or why
+            (Err(cold), Err(warm)) => prop_assert_eq!(cold, warm, "{} {:?} {}", name, kind, file),
+            (cold, warm) => prop_assert!(false, "{} {:?} {}: cold {:?}, warm {:?}", name, kind, file, cold.is_ok(), warm.is_ok()),
         }
     }
 }

@@ -47,7 +47,7 @@ fn scratch(name: &str) -> PathBuf {
 /// The cache every build here shares, under target/ so it outlives the run and never lands in
 /// a fixture: after the first run the blog's photos are taken from it, not encoded.
 fn cache() -> String {
-    Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-cache").to_str().unwrap().to_owned()
+    Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-cache").join("site").to_str().unwrap().to_owned()
 }
 
 /// `ink <args>`: the exit, stdout and stderr.
