@@ -108,7 +108,7 @@ impl View for Why {
                         }
                     }
                 }
-                p { "To pin it: " code.look::PATH { (Escaped(diag::Pin(&self.code, &self.subject))) } }
+                p { "To pin it: " code.look::PATH { (Escaped(diag::PinCommand(&self.code, &self.subject))) } }
             }
             p { (Link(&back, "Back to What we understood")) }
         }

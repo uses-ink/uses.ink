@@ -17,63 +17,63 @@ mod plain;
 mod terminal;
 
 pub use catalog::{Catalog, Unreadable, Wording};
-pub use evidence::{Because, Pin, Short, Value};
+pub use evidence::{Because, PinCommand, Short, Value};
 pub use plain::Plain;
 pub use terminal::Terminal;
 
 /// What a message or fix is about.
 #[derive(Clone, Copy, Debug)]
-enum Said<'a> {
+enum Topic<'a> {
     Problem(&'a Problem),
     Announcement(&'a Announcement),
 }
 
 /// The catalog's message for a problem or a notice.
 #[derive(Clone, Copy, Debug)]
-pub struct Message<'a>(Said<'a>);
+pub struct Message<'a>(Topic<'a>);
 
 impl<'a> From<&'a Problem> for Message<'a> {
     fn from(problem: &'a Problem) -> Self {
-        Self(Said::Problem(problem))
+        Self(Topic::Problem(problem))
     }
 }
 
 impl<'a> From<&'a Announcement> for Message<'a> {
     fn from(announcement: &'a Announcement) -> Self {
-        Self(Said::Announcement(announcement))
+        Self(Topic::Announcement(announcement))
     }
 }
 
 impl fmt::Display for Message<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Said::Problem(problem) => Self::problem(problem, out),
-            Said::Announcement(announcement) => Self::announcement(announcement, out),
+            Topic::Problem(problem) => Self::problem(problem, out),
+            Topic::Announcement(announcement) => Self::announcement(announcement, out),
         }
     }
 }
 
 /// The catalog's fix for a problem or a notice, when it has one.
 #[derive(Clone, Copy, Debug)]
-pub struct Fix<'a>(Said<'a>);
+pub struct Fix<'a>(Topic<'a>);
 
 impl<'a> Fix<'a> {
     /// The fix for `problem`, when the catalog gives one.
     pub fn of_problem(problem: &'a Problem) -> Option<Self> {
-        Self::problem_has(problem).then_some(Self(Said::Problem(problem)))
+        Self::problem_has(problem).then_some(Self(Topic::Problem(problem)))
     }
 
     /// The fix for `announcement`, when the catalog gives one.
     pub fn of_announcement(announcement: &'a Announcement) -> Option<Self> {
-        Self::announcement_has(announcement).then_some(Self(Said::Announcement(announcement)))
+        Self::announcement_has(announcement).then_some(Self(Topic::Announcement(announcement)))
     }
 }
 
 impl fmt::Display for Fix<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Said::Problem(problem) => Self::problem(problem, out),
-            Said::Announcement(announcement) => Self::announcement(announcement, out),
+            Topic::Problem(problem) => Self::problem(problem, out),
+            Topic::Announcement(announcement) => Self::announcement(announcement, out),
         }
     }
 }

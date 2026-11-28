@@ -195,7 +195,7 @@ impl Render for Row<'_> {
         let asked = Asked { code, subject: subject.clone() };
         let replay = Path::why(self.handle, &asked);
         let because = diag::Because(decision.evidence());
-        let pin = diag::Pin(&code, &subject);
+        let pin = diag::PinCommand(&code, &subject);
         let about = Escaped(&subject);
         let say = html! {
             td { code.look::PATH { (about) } }

@@ -11,7 +11,7 @@ use engine::{Rung, Standing, Trace};
 use model::{Ability, AnyDecision, ContentPath, Evidence, Gap, Lack, Observed, Subject, Version};
 use serde::Serialize;
 
-use diag::{Because, Pin, Short, Value};
+use diag::{Because, PinCommand, Short, Value};
 
 use crate::command::explain::asked::Asked;
 use crate::command::source::Source;
@@ -143,7 +143,7 @@ impl Ladder<'_> {
 
     /// The last line: how to pin the value.
     fn foot(&self) -> Line {
-        let command = Pin(&self.asked.code, &self.asked.subject).to_string();
+        let command = PinCommand(&self.asked.code, &self.asked.subject).to_string();
         Line::new().with(Role::Quiet, "to pin it: ").with(Role::Literal, command)
     }
 }

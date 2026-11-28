@@ -54,9 +54,9 @@ impl fmt::Display for Short<'_> {
 /// The command that pins a decision: `ink pin posts/x.md page.title`, or `ink pin site.home` for
 /// the site's own.
 #[derive(Clone, Copy, Debug)]
-pub struct Pin<'a>(pub &'a AnyCode, pub &'a Subject);
+pub struct PinCommand<'a>(pub &'a AnyCode, pub &'a Subject);
 
-impl fmt::Display for Pin<'_> {
+impl fmt::Display for PinCommand<'_> {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.1 {
             Subject::File(path) => write!(out, "ink pin {path} {}", self.0),
