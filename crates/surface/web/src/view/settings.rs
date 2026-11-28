@@ -87,7 +87,7 @@ impl Settings {
 }
 
 impl Settings {
-    fn custom(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+    fn named(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         html! {
             @if self.domains.is_empty() {
                 (Empty { title: "No custom domain", what: "The site is served at its address above. Custom domains are added with `ink domain add`; they show up here once verified." })
@@ -130,7 +130,7 @@ impl View for Settings {
             h2 { "Address" }
             p { (Outside(&address)) }
             h2 { "Domains" }
-            (Lazy(|out: &mut dyn Sink| self.custom(out)))
+            (Lazy(|out: &mut dyn Sink| self.named(out)))
             h2 { "Theme" }
             p { "The theme is read from your source. To change it, commit this to " code.look::PATH { "ink.toml" } ":" }
             pre { code { "[theme]\nname = \"quiet\"" } }

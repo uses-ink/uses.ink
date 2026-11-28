@@ -7,6 +7,8 @@ use model::{Bytes, DeployId, Hash, Route};
 
 use crate::hold::Why;
 use crate::id::{Account, Credential, Id, Site};
+use crate::keys::Right;
+use crate::org::Role;
 use crate::{DomainName, Handle, Reservation, Spent};
 
 /// A request the control plane refuses, and the fact that makes it wrong. Nothing was changed.
@@ -95,6 +97,39 @@ pub enum Refusal {
         site: Id<Site>,
         /// The limit.
         limit: u64,
+    },
+    /// There is no organization with this account.
+    NoOrg {
+        /// The account.
+        org: Id<Account>,
+    },
+    /// The account is a member of the organization already.
+    Member {
+        /// The organization.
+        org: Id<Account>,
+        /// The person.
+        account: Id<Account>,
+    },
+    /// The account is no member of the organization.
+    NotMember {
+        /// The organization.
+        org: Id<Account>,
+        /// The person.
+        account: Id<Account>,
+    },
+    /// The change would leave the organization with no owner.
+    LastOwner {
+        /// The organization.
+        org: Id<Account>,
+    },
+    /// The member's role does not let them do this.
+    Role {
+        /// The organization.
+        org: Id<Account>,
+        /// The role they have.
+        role: Role,
+        /// The right it lacks.
+        needs: Right,
     },
     /// A row with this id exists already.
     Exists {
@@ -199,11 +234,35 @@ impl fmt::Display for Refusal {
             | Self::NoClaim { .. }
             | Self::Unproven { .. }
             | Self::NoDomain { .. }
-            | Self::DomainRoom { .. } => self.domain(out),
+            | Self::DomainRoom { .. }
+            | Self::NoOrg { .. }
+            | Self::Member { .. }
+            | Self::NotMember { .. }
+            | Self::LastOwner { .. }
+            | Self::Role { .. } => self.domain(out).and_then(|()| self.org(out)),
             Self::Exists { id } => write!(out, "a row with the id {id} exists already"),
             Self::NoAccount { account } => write!(out, "there is no account {account}"),
             Self::NoSite { site } => write!(out, "there is no site {site}"),
             Self::Removing { site } => write!(out, "the site {site} is being removed"),
+            Self::MissingBlob { .. }
+            | Self::NoDeploy { .. }
+            | Self::NotLive { .. }
+            | Self::AlreadyLive { .. }
+            | Self::NoCredential { .. }
+            | Self::NoManifest { .. }
+            | Self::NoBuild { .. }
+            | Self::MissingLog { .. } => self.stored(out),
+            Self::Over { spent, value, limit } => Self::over(out, *spent, (*value, *limit)),
+            Self::Unstorable => out.write_str("a folder path that is not text cannot be stored"),
+            Self::Tenant(_) => out.write_str("the site's id is not a valid tenant"),
+        }
+    }
+}
+
+impl Refusal {
+    /// Words a refusal about a deploy, a build, a credential or a blob.
+    fn stored(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             Self::MissingBlob { route, blob } => {
                 write!(out, "{route} is served from {blob}, which the store does not hold")
             }
@@ -216,9 +275,23 @@ impl fmt::Display for Refusal {
             Self::MissingLog { build, blob } => {
                 write!(out, "the log of build {build} is {blob}, which the store does not hold")
             }
-            Self::Over { spent, value, limit } => Self::over(out, *spent, (*value, *limit)),
-            Self::Unstorable => out.write_str("a folder path that is not text cannot be stored"),
-            Self::Tenant(_) => out.write_str("the site's id is not a valid tenant"),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl Refusal {
+    /// Words a refusal about an organization.
+    fn org(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoOrg { org } => write!(out, "there is no organization {org}"),
+            Self::Member { org, account } => write!(out, "{account} is a member of {org} already"),
+            Self::NotMember { org, account } => write!(out, "{account} is not a member of {org}"),
+            Self::LastOwner { org } => write!(out, "{org} would have no owner left"),
+            Self::Role { org, role, needs } => {
+                write!(out, "a {role} of {org} cannot do this: it needs the {needs} right over that member")
+            }
+            _ => Ok(()),
         }
     }
 }
@@ -292,6 +365,11 @@ impl Refusal {
             Self::Unproven { .. } => "domain.proof.missing",
             Self::NoDomain { .. } => "domain.name.unknown",
             Self::DomainRoom { .. } => "domain.site.full",
+            Self::NoOrg { .. } => "org.id.unknown",
+            Self::Member { .. } => "org.member.exists",
+            Self::NotMember { .. } => "org.member.unknown",
+            Self::LastOwner { .. } => "org.owner.last",
+            Self::Role { .. } => "org.role.denied",
             Self::Exists { .. } => "row.id.exists",
             Self::NoAccount { .. } => "account.id.unknown",
             Self::NoSite { .. } => "site.id.unknown",
@@ -322,12 +400,6 @@ impl Refusal {
                 fields
             }
             Self::Suspended { site, kind } => vec![("id", site.to_string()), ("reason", kind.to_string())],
-            Self::DomainOurs { name } | Self::DomainTaken { name } => vec![("name", name.to_string())],
-            Self::NoClaim { site, name } | Self::NoDomain { site, name } => {
-                vec![("id", site.to_string()), ("name", name.to_string())]
-            }
-            Self::Unproven { name, records } => vec![("name", name.to_string()), ("count", records.to_string())],
-            Self::DomainRoom { site, limit } => vec![("id", site.to_string()), ("limit", limit.to_string())],
             Self::Exists { id } => vec![("id", id.clone())],
             Self::NoAccount { account } => vec![("id", account.to_string())],
             Self::NoSite { site }
@@ -338,6 +410,33 @@ impl Refusal {
             | Self::Private { site } => {
                 vec![("id", site.to_string())]
             }
+            Self::Over { spent, value, limit } => {
+                let name = if *spent == Spent::Stored { "size" } else { "count" };
+                vec![(name, value.to_string()), ("limit", limit.to_string())]
+            }
+            Self::Unstorable | Self::Tenant(_) => Vec::new(),
+            _ => self.named(),
+        }
+    }
+}
+
+impl Refusal {
+    /// The data of a refusal about a custom domain or an organization.
+    fn named(&self) -> Vec<(&'static str, String)> {
+        match self {
+            Self::DomainOurs { name } | Self::DomainTaken { name } => vec![("name", name.to_string())],
+            Self::NoClaim { site, name } | Self::NoDomain { site, name } => {
+                vec![("id", site.to_string()), ("name", name.to_string())]
+            }
+            Self::Unproven { name, records } => vec![("name", name.to_string()), ("count", records.to_string())],
+            Self::DomainRoom { site, limit } => vec![("id", site.to_string()), ("limit", limit.to_string())],
+            Self::NoOrg { org } | Self::LastOwner { org } => vec![("id", org.to_string())],
+            Self::Member { org, account } | Self::NotMember { org, account } => {
+                vec![("id", org.to_string()), ("account", account.to_string())]
+            }
+            Self::Role { org, role, needs } => {
+                vec![("id", org.to_string()), ("role", role.to_string()), ("right", needs.to_string())]
+            }
             Self::NoDeploy { site, deploy } | Self::AlreadyLive { site, deploy } => {
                 vec![("id", site.to_string()), ("deploy", deploy.to_string())]
             }
@@ -346,11 +445,7 @@ impl Refusal {
             Self::NoManifest { deploy } => vec![("deploy", deploy.to_string())],
             Self::NoBuild { site, build } => vec![("id", site.to_string()), ("build", build.to_string())],
             Self::MissingLog { build, blob } => vec![("build", build.to_string()), ("hash", blob.to_string())],
-            Self::Over { spent, value, limit } => {
-                let name = if *spent == Spent::Stored { "size" } else { "count" };
-                vec![(name, value.to_string()), ("limit", limit.to_string())]
-            }
-            Self::Unstorable | Self::Tenant(_) => Vec::new(),
+            _ => Vec::new(),
         }
     }
 }

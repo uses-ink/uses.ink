@@ -415,6 +415,8 @@ impl<P: Ports> Fault<P> {
             | Refusal::Removing { .. }
             | Refusal::NotLive { .. }
             | Refusal::Serving { .. }
+            | Refusal::Member { .. }
+            | Refusal::LastOwner { .. }
             | Refusal::AlreadyLive { .. } => Status::Conflict,
             Refusal::NoSite { .. }
             | Refusal::NoDeploy { .. }
@@ -422,6 +424,8 @@ impl<P: Ports> Fault<P> {
             | Refusal::NoManifest { .. }
             | Refusal::NoClaim { .. }
             | Refusal::NoDomain { .. }
+            | Refusal::NoOrg { .. }
+            | Refusal::NotMember { .. }
             | Refusal::NoCredential { .. } => Status::NotFound,
             Refusal::NoAccount { .. }
             | Refusal::NoPreview { .. }
@@ -430,9 +434,11 @@ impl<P: Ports> Fault<P> {
             | Refusal::MissingBlob { .. } => Status::Unprocessable,
             Refusal::Over { spent: Spent::Stored, .. } => Status::TooLarge,
             Refusal::Over { spent: Spent::Builds, .. } => Status::TooMany,
-            Refusal::Suspended { .. } | Refusal::Private { .. } | Refusal::DomainRoom { .. } | Refusal::Over { .. } => {
-                Status::Forbidden
-            }
+            Refusal::Suspended { .. }
+            | Refusal::Private { .. }
+            | Refusal::DomainRoom { .. }
+            | Refusal::Role { .. }
+            | Refusal::Over { .. } => Status::Forbidden,
             _ => Status::Internal,
         }
     }

@@ -404,6 +404,21 @@ impl Message<'_> {
             Problem::DomainSiteFull { id, limit, .. } => {
                 write!(out, "the site {id} has as many custom domains as it may, {limit}")
             }
+            Problem::OrgIdUnknown { id, .. } => {
+                write!(out, "there is no organization {id}")
+            }
+            Problem::OrgMemberExists { account, id, .. } => {
+                write!(out, "{account} is a member of {id} already")
+            }
+            Problem::OrgMemberUnknown { account, id, .. } => {
+                write!(out, "{account} is not a member of {id}")
+            }
+            Problem::OrgOwnerLast { id, .. } => {
+                write!(out, "{id} would have no owner left")
+            }
+            Problem::OrgRoleDenied { role, id, right, .. } => {
+                write!(out, "a {role} of {id} cannot do this: it needs the {right} right over that member")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -777,6 +792,11 @@ impl Fix<'_> {
             Problem::DomainNameUnknown { .. } => true,
             Problem::DomainLookupFailed => true,
             Problem::DomainSiteFull { .. } => true,
+            Problem::OrgIdUnknown { .. } => true,
+            Problem::OrgMemberExists { .. } => true,
+            Problem::OrgMemberUnknown { .. } => true,
+            Problem::OrgOwnerLast { .. } => true,
+            Problem::OrgRoleDenied { .. } => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -1234,6 +1254,21 @@ impl Fix<'_> {
             }
             Problem::DomainSiteFull { .. } => {
                 write!(out, "remove a domain the site does not use, or ask the operator for a higher limit")
+            }
+            Problem::OrgIdUnknown { .. } => {
+                write!(out, "list your organizations and use one of their ids")
+            }
+            Problem::OrgMemberExists { .. } => {
+                write!(out, "change their role instead of adding them again")
+            }
+            Problem::OrgMemberUnknown { .. } => {
+                write!(out, "add the person to the organization first, or check the account id")
+            }
+            Problem::OrgOwnerLast { .. } => {
+                write!(out, "make another member an owner first, then change or remove this one")
+            }
+            Problem::OrgRoleDenied { .. } => {
+                write!(out, "ask an owner of the organization, or an admin when the member is not an owner")
             }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")

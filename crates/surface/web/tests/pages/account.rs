@@ -3,7 +3,7 @@
 use super::{Fixtures, Pages};
 use control::SiteState;
 use uses_ink_web::Document;
-use uses_ink_web::view::{Account, Owned};
+use uses_ink_web::view::{Account, Joined, Owned};
 
 impl Fixtures {
     pub(crate) fn account_pages(pages: &mut Pages) {
@@ -25,6 +25,13 @@ impl Fixtures {
                     },
                 ],
             ),
+        );
+        pages.put(
+            "account_orgs",
+            &Account::new(Self::at("2026-11-01T12:00:00Z"), vec![]).with_orgs(vec![
+                Joined { name: "Garden club".to_owned(), role: control::Role::Admin, members: 4 },
+                Joined { name: "<b>Press</b>".to_owned(), role: control::Role::Reader, members: 1 },
+            ]),
         );
         pages.put("account_empty", &Account::new(Self::at("2026-11-01T12:00:00Z"), vec![]));
     }

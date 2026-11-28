@@ -8,6 +8,7 @@ pub(crate) mod domain;
 pub(crate) mod export;
 mod hold;
 mod job;
+pub(crate) mod org;
 pub(crate) mod preview;
 mod read;
 mod remove;

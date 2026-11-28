@@ -12,6 +12,8 @@
 # and the generated field carries that doc; a name without one, or a doc no entry uses, fails.
 
 [field]
+account = "The account of the person, as its id."
+role = "The role the member has, as it is named."
 hash = "The BLAKE3 of its bytes, in hex."
 origin = "Where it came from: `bundled`, or the file it was read from."
 address = "The address used, as written."
@@ -61,7 +63,7 @@ value = "The value taken, in the decision code's words."
 width = "Its width in pixels."
 written = "The text, as written."
 request_target = "The request target as it was sent: the path and the query."
-right = "The right the call needs: `read`, `deploy`, `edit`, `destroy`, `keys` or `members`."
+right = "The right it needs or lacks: `read`, `deploy`, `edit`, `destroy`, `keys` or `members`."
 scope = "Where the right was needed: `account`, or `site`."
 seconds = "How many seconds."
 server_time = "What time the server thinks it is, as an RFC 3339 timestamp (UTC)."
@@ -936,6 +938,41 @@ fault = "author"
 fields = { id = "text", limit = "count" }
 message = "the site {id} has as many custom domains as it may, {limit}"
 fix = "remove a domain the site does not use, or ask the operator for a higher limit"
+
+[diagnostic."org.id.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "there is no organization {id}"
+fix = "list your organizations and use one of their ids"
+
+[diagnostic."org.member.exists"]
+severity = "error"
+fault = "author"
+fields = { id = "text", account = "text" }
+message = "{account} is a member of {id} already"
+fix = "change their role instead of adding them again"
+
+[diagnostic."org.member.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text", account = "text" }
+message = "{account} is not a member of {id}"
+fix = "add the person to the organization first, or check the account id"
+
+[diagnostic."org.owner.last"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "{id} would have no owner left"
+fix = "make another member an owner first, then change or remove this one"
+
+[diagnostic."org.role.denied"]
+severity = "error"
+fault = "author"
+fields = { id = "text", role = "text", right = "text" }
+message = "a {role} of {id} cannot do this: it needs the {right} right over that member"
+fix = "ask an owner of the organization, or an admin when the member is not an owner"
 
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }

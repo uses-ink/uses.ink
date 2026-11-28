@@ -389,6 +389,27 @@ pub enum Claim {
     CreatedAt,
 }
 
+/// `org`: an account that is an organization, with a name for people to read.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "org"]
+pub enum Org {
+    Table,
+    Id,
+    Name,
+    CreatedAt,
+}
+
+/// `member`: a person's role in an organization.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "member"]
+pub enum Member {
+    Table,
+    OrgId,
+    AccountId,
+    Role,
+    CreatedAt,
+}
+
 /// SQLite's row number, which orders rows that tie on a column.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 pub enum Row {
@@ -429,6 +450,7 @@ pub enum Named {
     RecoveryAccount,
     DomainSite,
     ClaimSite,
+    MemberAccount,
 }
 
 /// The values a text column may hold, as a `CHECK`: the schema is built from the names the code

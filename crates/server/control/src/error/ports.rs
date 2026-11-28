@@ -35,6 +35,8 @@ pub enum Error<P: Ports> {
     Origin(model::UrlError),
     /// The brand list this build carries does not read.
     Brand(crate::BrandError),
+    /// The keys store failed or refused: an organization's key.
+    Keys(crate::keys::Error<<P::Db as Db>::Error>),
 }
 
 impl<P: Ports> fmt::Debug for Error<P> {
@@ -51,6 +53,7 @@ impl<P: Ports> fmt::Debug for Error<P> {
             Self::Manifest(error) => out.debug_tuple("Manifest").field(error).finish(),
             Self::Origin(error) => out.debug_tuple("Origin").field(error).finish(),
             Self::Brand(error) => out.debug_tuple("Brand").field(error).finish(),
+            Self::Keys(error) => out.debug_tuple("Keys").field(error).finish(),
         }
     }
 }
@@ -69,6 +72,7 @@ impl<P: Ports> fmt::Display for Error<P> {
             Self::Manifest(_) => out.write_str("a stored manifest is not in the canonical form"),
             Self::Origin(_) => out.write_str("a site's address could not be made from the origin"),
             Self::Brand(_) => out.write_str("the brand list of this build does not read"),
+            Self::Keys(_) => out.write_str("the keys store failed or refused"),
         }
     }
 }
@@ -87,7 +91,14 @@ impl<P: Ports> std::error::Error for Error<P> {
             Self::Manifest(source) => Some(source),
             Self::Origin(source) => Some(source),
             Self::Brand(source) => Some(source),
+            Self::Keys(source) => Some(source),
         }
+    }
+}
+
+impl<P: Ports> From<crate::keys::Error<<P::Db as Db>::Error>> for Error<P> {
+    fn from(error: crate::keys::Error<<P::Db as Db>::Error>) -> Self {
+        Self::Keys(error)
     }
 }
 

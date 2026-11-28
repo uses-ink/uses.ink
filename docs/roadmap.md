@@ -287,7 +287,8 @@ freeze.
   never touch the deploys (0091), pushed by archive until the watch can build a branch; C7, custom domains as
   rows proved by a TXT token that binds the name to a site, with a `Resolver` port and a fake, served at
   once by the edge and released with the site (0093); C8, the email authority, the magic link spent as a
-  proof of an address under its own digest key and with no session (0094).
+  proof of an address under its own digest key and with no session (0094); C5, organizations as accounts with members whose roles
+  are code, the last owner held by one statement, and deploy keys that outlive their approver (0095).
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`

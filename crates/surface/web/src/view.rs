@@ -17,7 +17,7 @@ pub(crate) mod understood;
 pub(crate) mod why;
 pub(crate) mod word;
 
-pub use account::{Account, Owned};
+pub use account::{Account, Joined, Owned};
 pub use block::{Attempt, Deploy, Pointer, Serving};
 pub use build::{Build, Ended, Live, Outcome};
 pub use deploys::{Branch, Deploys};

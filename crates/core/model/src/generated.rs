@@ -526,7 +526,7 @@ pub enum Problem {
     /// `auth.right.missing`: this key may not do this: it has no `{right}` on the {scope}
     #[serde(rename = "auth.right.missing")]
     AuthRightMissing {
-        /// The right the call needs: `read`, `deploy`, `edit`, `destroy`, `keys` or `members`.
+        /// The right it needs or lacks: `read`, `deploy`, `edit`, `destroy`, `keys` or `members`.
         right: String,
         /// Where the right was needed: `account`, or `site`.
         scope: String,
@@ -807,6 +807,44 @@ pub enum Problem {
         /// The most that is allowed.
         limit: u64,
     },
+    /// `org.id.unknown`: there is no organization {id}
+    #[serde(rename = "org.id.unknown")]
+    OrgIdUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `org.member.exists`: {account} is a member of {id} already
+    #[serde(rename = "org.member.exists")]
+    OrgMemberExists {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The account of the person, as its id.
+        account: String,
+    },
+    /// `org.member.unknown`: {account} is not a member of {id}
+    #[serde(rename = "org.member.unknown")]
+    OrgMemberUnknown {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The account of the person, as its id.
+        account: String,
+    },
+    /// `org.owner.last`: {id} would have no owner left
+    #[serde(rename = "org.owner.last")]
+    OrgOwnerLast {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `org.role.denied`: a {role} of {id} cannot do this: it needs the {right} right over that member
+    #[serde(rename = "org.role.denied")]
+    OrgRoleDenied {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+        /// The role the member has, as it is named.
+        role: String,
+        /// The right it needs or lacks: `read`, `deploy`, `edit`, `destroy`, `keys` or `members`.
+        right: String,
+    },
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -1062,6 +1100,11 @@ impl Problem {
         "domain.name.unknown",
         "domain.lookup.failed",
         "domain.site.full",
+        "org.id.unknown",
+        "org.member.exists",
+        "org.member.unknown",
+        "org.owner.last",
+        "org.role.denied",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -1218,6 +1261,11 @@ impl Problem {
             Self::DomainNameUnknown { .. } => "domain.name.unknown",
             Self::DomainLookupFailed => "domain.lookup.failed",
             Self::DomainSiteFull { .. } => "domain.site.full",
+            Self::OrgIdUnknown { .. } => "org.id.unknown",
+            Self::OrgMemberExists { .. } => "org.member.exists",
+            Self::OrgMemberUnknown { .. } => "org.member.unknown",
+            Self::OrgOwnerLast { .. } => "org.owner.last",
+            Self::OrgRoleDenied { .. } => "org.role.denied",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -1375,6 +1423,11 @@ impl Problem {
             Self::DomainNameUnknown { .. } => Severity::Error,
             Self::DomainLookupFailed => Severity::Error,
             Self::DomainSiteFull { .. } => Severity::Error,
+            Self::OrgIdUnknown { .. } => Severity::Error,
+            Self::OrgMemberExists { .. } => Severity::Error,
+            Self::OrgMemberUnknown { .. } => Severity::Error,
+            Self::OrgOwnerLast { .. } => Severity::Error,
+            Self::OrgRoleDenied { .. } => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -1532,6 +1585,11 @@ impl Problem {
             Self::DomainNameUnknown { .. } => Fault::Author,
             Self::DomainLookupFailed => Fault::Ours,
             Self::DomainSiteFull { .. } => Fault::Author,
+            Self::OrgIdUnknown { .. } => Fault::Author,
+            Self::OrgMemberExists { .. } => Fault::Author,
+            Self::OrgMemberUnknown { .. } => Fault::Author,
+            Self::OrgOwnerLast { .. } => Fault::Author,
+            Self::OrgRoleDenied { .. } => Fault::Author,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -2230,6 +2288,18 @@ impl From<&Problem> for Coded {
             Problem::DomainSiteFull { id, limit, .. } => {
                 Coded::new("domain.site.full", vec![Field::from(id.clone()), Field::from(*limit)])
             }
+            Problem::OrgIdUnknown { id, .. } => Coded::new("org.id.unknown", vec![Field::from(id.clone())]),
+            Problem::OrgMemberExists { id, account, .. } => {
+                Coded::new("org.member.exists", vec![Field::from(id.clone()), Field::from(account.clone())])
+            }
+            Problem::OrgMemberUnknown { id, account, .. } => {
+                Coded::new("org.member.unknown", vec![Field::from(id.clone()), Field::from(account.clone())])
+            }
+            Problem::OrgOwnerLast { id, .. } => Coded::new("org.owner.last", vec![Field::from(id.clone())]),
+            Problem::OrgRoleDenied { id, role, right, .. } => Coded::new(
+                "org.role.denied",
+                vec![Field::from(id.clone()), Field::from(role.clone()), Field::from(right.clone())],
+            ),
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -2428,6 +2498,13 @@ impl TryFrom<Coded> for Problem {
             "domain.name.unknown" => Self::DomainNameUnknown { id: fields.next()?, name: fields.next()? },
             "domain.lookup.failed" => Self::DomainLookupFailed,
             "domain.site.full" => Self::DomainSiteFull { id: fields.next()?, limit: fields.next()? },
+            "org.id.unknown" => Self::OrgIdUnknown { id: fields.next()? },
+            "org.member.exists" => Self::OrgMemberExists { id: fields.next()?, account: fields.next()? },
+            "org.member.unknown" => Self::OrgMemberUnknown { id: fields.next()?, account: fields.next()? },
+            "org.owner.last" => Self::OrgOwnerLast { id: fields.next()? },
+            "org.role.denied" => {
+                Self::OrgRoleDenied { id: fields.next()?, role: fields.next()?, right: fields.next()? }
+            }
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },

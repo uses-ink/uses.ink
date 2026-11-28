@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use control::{Handle, SiteState};
+use control::{Handle, Role, SiteState};
 use jiff::Timestamp;
 use unspliced::keyword::{ButtonType, InputType};
 use unspliced::{Halt, Lazy, Render, Sink, html};
@@ -29,6 +29,17 @@ pub struct Owned {
     pub created: Timestamp,
 }
 
+/// An organization the person is a member of (decision 0095).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Joined {
+    /// What people call it.
+    pub name: String,
+    /// What the person may do there.
+    pub role: Role,
+    /// How many members it has.
+    pub members: u64,
+}
+
 /// What the Account screen shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Account {
@@ -44,12 +55,22 @@ pub struct Account {
     pub sessions: Vec<Seen>,
     /// How many recovery codes are unspent, when the instance has them.
     pub recovery: Option<u64>,
+    /// The organizations the person is a member of.
+    pub orgs: Vec<Joined>,
 }
 
 impl Account {
     /// An Account screen.
     pub fn new(created: Timestamp, sites: Vec<Owned>) -> Self {
-        Self { frame: Frame::account(), created, sites, passkeys: Vec::new(), sessions: Vec::new(), recovery: None }
+        Self {
+            frame: Frame::account(),
+            created,
+            sites,
+            passkeys: Vec::new(),
+            sessions: Vec::new(),
+            recovery: None,
+            orgs: Vec::new(),
+        }
     }
 
     /// The same screen listing `passkeys`.
@@ -62,6 +83,12 @@ impl Account {
     #[must_use]
     pub fn with_recovery(self, left: u64) -> Self {
         Self { recovery: Some(left), ..self }
+    }
+
+    /// The same screen listing the `orgs` the person belongs to.
+    #[must_use]
+    pub fn with_orgs(self, orgs: Vec<Joined>) -> Self {
+        Self { orgs, ..self }
     }
 
     /// The same screen listing `sessions`.
@@ -90,6 +117,9 @@ impl View for Account {
             } @else {
                 @for owned in &self.sites { (Lazy(move |out: &mut dyn Sink| Self::site(owned, out))) }
             }
+            @if !self.orgs.is_empty() {
+                (Lazy(|out: &mut dyn Sink| self.organizations(out)))
+            }
             h2 { "Sign-in" }
             p { "You can sign in with an email link or with a passkey." }
             (Section(&self.passkeys))
@@ -106,6 +136,19 @@ impl View for Account {
 }
 
 impl Account {
+    /// The organizations the person belongs to, with their role in each.
+    fn organizations(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        html! {
+            h2 { "Organizations" }
+            ul {
+                @for joined in &self.orgs {
+                    li { strong { (Escaped(&joined.name)) } ", you are " (Escaped(joined.role)) ", " (joined.members) " members" }
+                }
+            }
+        }
+        .render(out)
+    }
+
     /// One site: a link to it, its export, and its removal behind a typed confirmation.
     fn site(owned: &Owned, out: &mut dyn Sink) -> Result<(), Halt> {
         let handle = &owned.handle;

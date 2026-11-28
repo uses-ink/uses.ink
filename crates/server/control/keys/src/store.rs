@@ -252,8 +252,22 @@ impl<D: Db> Keys<D> {
 
     /// Approves the enrolment under the code: the key goes live and an event is written, or
     /// nothing changes.
-    #[expect(clippy::too_many_lines, reason = "one transaction, its statements read top to bottom")]
     pub async fn approve(&self, approval: Approval, now: Timestamp) -> Result<Key, Error<D::Error>> {
+        let owner = approval.by;
+        self.approve_as(approval, owner, now).await
+    }
+
+    /// Approves the enrolment under the code for `owner`, an account other than the approver's:
+    /// the organization whose site the key deploys. Only a deploy key can belong to another
+    /// account, and the key records who approved it, so it outlives them. Whether the approver
+    /// may do this for `owner` is the caller's to decide; `approval.within` is what they may give.
+    #[expect(clippy::too_many_lines, reason = "one transaction, its statements read top to bottom")]
+    pub async fn approve_as(
+        &self,
+        approval: Approval,
+        owner: Id<AccountKind>,
+        now: Timestamp,
+    ) -> Result<Key, Error<D::Error>> {
         let found = self.by_code(&approval.code).await?;
         let found =
             found.filter(|found| found.state == State::Pending && found.expires > now).ok_or(Refused::NoEnrolment)?;
@@ -264,16 +278,17 @@ impl<D: Db> Keys<D> {
             return Err(Refused::Rights.into());
         }
         let scope = match (found.purpose, found.site) {
+            (Kind::Device, _) if owner != approval.by => return Err(Refused::Site.into()),
             (Kind::Device, _) => Scope::Account(approval.by),
             (Kind::Deploy, Some(site)) => {
-                self.owns(approval.by, site).await?;
+                self.owns(owner, site).await?;
                 Scope::Site(site)
             }
             (Kind::Deploy, None) => return Err(Refused::Site.into()),
         };
         let key = Key {
             id: found.key(),
-            account: approval.by,
+            account: owner,
             kind: found.purpose,
             key_type: found.key_type,
             public: found.public,
@@ -306,7 +321,7 @@ impl<D: Db> Keys<D> {
         let statements = vec![
             decide.into(),
             Self::insert_key(&key, &decided)?,
-            Self::guarded(approval.by, &audit, now, Expr::exists(decided))?,
+            Self::guarded(owner, &audit, now, Expr::exists(decided))?,
         ];
         let outcomes = self.db.batch(statements).await?;
         if outcomes.first().map(|outcome| outcome.changes) != Some(1) {
