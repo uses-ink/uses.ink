@@ -53,6 +53,48 @@ pub struct Custom {
     pub standing: Standing,
 }
 
+/// Where the site's repository stands (decision 0160).
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Followed {
+    /// Pushes to it build the site, since this time.
+    Proven(Timestamp),
+    /// It waits for the challenge to be committed.
+    Pending {
+        /// The line to commit.
+        challenge: String,
+        /// The file it goes in.
+        file: String,
+    },
+}
+
+/// A repository the site claimed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Repository {
+    /// `host/owner/name`.
+    pub repo: String,
+    /// Where it stands.
+    pub standing: Followed,
+    /// The path of the webhook to give the forge, on the API host, when the server reaches the
+    /// forge.
+    pub hook: Option<String>,
+}
+
+/// A webhook secret just made, shown on the page the change answers with and on no other.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Given {
+    /// The repository.
+    pub repo: String,
+    /// The secret, in hex.
+    pub secret: String,
+}
+
+impl fmt::Debug for Given {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.debug_struct("Given").field("repo", &self.repo).field("secret", &"<redacted>").finish()
+    }
+}
+
 /// What the Settings screen shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
@@ -70,6 +112,10 @@ pub struct Settings {
     pub credentials: Vec<Held>,
     /// The custom domains it serves or has still to prove.
     pub domains: Vec<Custom>,
+    /// The repositories it claimed, proved and not.
+    pub repos: Vec<Repository>,
+    /// A webhook secret made by the change this page answers.
+    pub given: Option<Given>,
 }
 
 impl Settings {
@@ -83,7 +129,15 @@ impl Settings {
             serving,
             credentials: Vec::new(),
             domains: Vec::new(),
+            repos: Vec::new(),
+            given: None,
         }
+    }
+
+    /// The same screen showing a secret that was just made.
+    #[must_use]
+    pub fn with_given(self, given: Given) -> Self {
+        Self { given: Some(given), ..self }
     }
 }
 
@@ -112,6 +166,46 @@ impl Settings {
                 button type=(ButtonType::Submit) { (label) }
             },
         })
+        .render(out)
+    }
+
+    /// One form that posts to the repository `action` and has no fields.
+    fn step(&self, action: &'static str, label: &'static str, out: &mut dyn Sink) -> Result<(), Halt> {
+        let to = Path::act(&self.handle, action);
+        (Post { to: &to, name: label, body: html! { button type=(ButtonType::Submit) { (label) } } }).render(out)
+    }
+
+    fn repos(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        html! {
+            @if let Some(given) = &self.given {
+                p { "The webhook secret of " code { (Escaped(&given.repo)) } " is " code { (Escaped(&given.secret)) } ". It is shown here once and is kept sealed: give it to the forge now, or rotate it later." }
+            }
+            @if self.repos.is_empty() {
+                (Empty { title: "No repository claimed", what: "Claim the site's repository to build it when its forge says it moved, or with `ink repo claim`." })
+                (Lazy(|out: &mut dyn Sink| self.step("repo-claim", "Claim the repository", out)))
+            } @else {
+                ul {
+                    @for repo in &self.repos {
+                        li {
+                            code { (Escaped(&repo.repo)) }
+                            @match &repo.standing {
+                                Followed::Proven(at) => {
+                                    " builds the site on every push since " (Stamp(*at)) "."
+                                    @if let Some(hook) = &repo.hook { " The forge posts to " code { (Escaped(hook)) } " on the API host." }
+                                    (Lazy(|out: &mut dyn Sink| self.step("repo-rotate", "Rotate the webhook secret", out)))
+                                },
+                                Followed::Pending { challenge, file } => {
+                                    " is waiting for proof. Commit " code { (Escaped(challenge)) } " as a line of " code { (Escaped(file)) } " on its default branch, then ask for the proof."
+                                    (Lazy(|out: &mut dyn Sink| self.step("repo-prove", "Check the repository", out)))
+                                    (Lazy(|out: &mut dyn Sink| self.step("repo-claim", "Ask again", out)))
+                                },
+                            }
+                            (Lazy(|out: &mut dyn Sink| self.step("repo-release", "Let go of the repository", out)))
+                        }
+                    }
+                }
+            }
+        }
         .render(out)
     }
 
@@ -171,6 +265,8 @@ impl View for Settings {
             p { (Outside(&address)) }
             h2 { "Domains" }
             (Lazy(|out: &mut dyn Sink| self.domains(out)))
+            h2 { "Repository" }
+            (Lazy(|out: &mut dyn Sink| self.repos(out)))
             h2 { "Theme" }
             p { "The theme is read from your source. To change it, commit this to " code.look::PATH { "ink.toml" } ":" }
             pre { code { "[theme]\nname = \"quiet\"" } }

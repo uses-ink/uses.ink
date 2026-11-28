@@ -43,6 +43,8 @@ pub enum Code {
     SourceUpload,
     /// `domain.lookup.failed`.
     LookupFailed,
+    /// `repo.forge.failed`.
+    ForgeFailed,
     /// `page.replay.unserved`.
     ReplayUnserved,
 }
@@ -67,6 +69,7 @@ impl Code {
             Self::AuthRefused => "auth.request.refused",
             Self::SourceUpload => "site.source.upload",
             Self::LookupFailed => "domain.lookup.failed",
+            Self::ForgeFailed => "repo.forge.failed",
             Self::ReplayUnserved => "page.replay.unserved",
         }
     }
@@ -98,6 +101,7 @@ impl Failure {
             Self::Auth { .. } => Code::AuthRefused,
             Self::Upload { .. } => Code::SourceUpload,
             Self::Lookup { .. } => Code::LookupFailed,
+            Self::Forge { .. } => Code::ForgeFailed,
             Self::NoReplay => Code::ReplayUnserved,
         }
     }
@@ -111,7 +115,7 @@ impl Failure {
             Self::SignedOut => Status::Unauthorized,
             Self::Foreign { .. } => Status::Forbidden,
             Self::Missing { .. } | Self::Invalid { .. } | Self::Confirm { .. } => Status::BadRequest,
-            Self::Refused { .. } | Self::Upload { .. } => Status::Conflict,
+            Self::Refused { .. } | Self::Upload { .. } | Self::Forge { .. } => Status::Conflict,
             Self::Lookup { .. } => Status::Unavailable,
             Self::Store { .. } | Self::Cut { .. } | Self::Render { .. } => Status::Internal,
         }
@@ -150,6 +154,7 @@ impl fmt::Display for Fix<'_> {
             Failure::Auth { .. } => out.write_str("check what you typed and try again; if it repeats, give the operator this code and the cause below"),
             Failure::Upload { .. } => out.write_str("change the folder and run `ink push` again"),
             Failure::Lookup { .. } => out.write_str("check that the server can reach a nameserver, then ask for the proof again; the cause is below"),
+            Failure::Forge { .. } => out.write_str("commit the challenge shown under Repository to the file it names, wait for the forge to carry it, then check again; the cause is below"),
             Failure::NoReplay => out.write_str("run `ink explain` in the site's folder, which holds the source this page would replay"),
         }
     }

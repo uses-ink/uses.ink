@@ -111,10 +111,25 @@ pub trait Screens {
     fn seat(&self, who: Id<AccountKind>, change: &Seating) -> impl Future<Output = Result<(), Failure>>;
 
     /// Makes the change a form asked for.
-    fn act(&self, who: Id<AccountKind>, handle: &Handle, action: &Action) -> impl Future<Output = Result<(), Failure>>;
+    fn act(
+        &self,
+        who: Id<AccountKind>,
+        handle: &Handle,
+        action: &Action,
+    ) -> impl Future<Output = Result<Acted, Failure>>;
 
     /// The site as a download.
     fn export(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Download, Failure>>;
+}
+
+/// What a change did: nothing to show, or a secret to show once.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Acted {
+    /// The change was made: the person is sent to the page it changed.
+    Done,
+    /// The change made a webhook secret, which is on the next page and is not kept anywhere.
+    Given(crate::view::Given),
 }
 
 /// What a reply carries.
@@ -266,10 +281,14 @@ impl<S: Screens> Dashboard<S> {
                 screens.seat(who, change).await?;
                 Ok(Reply::see(Path::account()))
             }
-            Route::Act(handle, action) => {
-                screens.act(who, handle, action).await?;
-                Ok(Reply::see(Self::after(handle, action)))
-            }
+            Route::Act(handle, action) => match screens.act(who, handle, action).await? {
+                Acted::Done => Ok(Reply::see(Self::after(handle, action))),
+                // the secret is on this one page and nowhere else: not a redirect, not a stored row
+                Acted::Given(given) => {
+                    let page = screens.settings(who, handle).await?.with_given(given);
+                    Reply::page(Status::Ok, &page)
+                }
+            },
         }
     }
 
@@ -279,7 +298,13 @@ impl<S: Screens> Dashboard<S> {
             Action::Build | Action::Rollback { .. } => Path::of(Screen::Deploys, handle),
             Action::Resume => Path::of(Screen::Site, handle),
             Action::Remove { .. } => Path::account(),
-            Action::Claim { .. } | Action::Prove { .. } | Action::Unclaim { .. } => Path::of(Screen::Settings, handle),
+            Action::Claim { .. }
+            | Action::Prove { .. }
+            | Action::Unclaim { .. }
+            | Action::RepoClaim
+            | Action::RepoProve
+            | Action::RepoRotate
+            | Action::RepoRelease => Path::of(Screen::Settings, handle),
         }
     }
 }

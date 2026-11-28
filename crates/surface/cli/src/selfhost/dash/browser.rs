@@ -18,11 +18,14 @@ use model::ExternalUrl;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use web::view;
-use web::{Action, Asked, Cause, Download, Failure, Follow, Logged, Only, Part, Screens, Seating, Token, Unrouted};
+use web::{
+    Acted, Action, Asked, Cause, Download, Failure, Follow, Logged, Only, Part, Screens, Seating, Token, Unrouted,
+};
 
 use crate::selfhost::dash::Pages;
 use crate::selfhost::dash::replay::Replay;
 use crate::selfhost::dash::said::Said;
+use crate::selfhost::product::Ports;
 
 /// Where a running build's events would come from. A self-host stores a log when the build ends,
 /// so a running build's page is the stored one and refreshes, and this is never asked.
@@ -224,6 +227,66 @@ impl<A: Answers> Browser<'_, A> {
         Ok(proven.chain(pending).collect())
     }
 
+    /// The repositories a site claimed, with where each stands.
+    async fn repositories(&self, site: Id<control::SiteKind>) -> Result<Vec<view::Repository>, Failure> {
+        let claims = self.pages.control.repos(site).await?;
+        let repos = self.pages.repos.as_ref();
+        Ok(claims
+            .iter()
+            .map(|claim| view::Repository {
+                repo: claim.repo.to_string(),
+                standing: claim.proven.map_or_else(
+                    || view::Followed::Pending {
+                        challenge: claim.challenge.to_string(),
+                        file: authority_forge::Challenge::FILE.to_owned(),
+                    },
+                    view::Followed::Proven,
+                ),
+                hook: repos.and_then(|repos| repos.forge(&claim.repo)).map(|forge| format!("/v1/hooks/{forge}")),
+            })
+            .collect())
+    }
+
+    /// One step of the site's repository, as `ink repo` takes it: the repository is the site's own
+    /// git source. A claim or a rotation answers with the secret to show once.
+    async fn repository(&self, site: &control::Site, action: &Action) -> Result<Acted, Failure> {
+        let forged = |error: edge_api::Forged| Failure::Forge { problem: error.code(), source: Cause::of(&error) };
+        let repos = self.pages.repos.as_ref().ok_or_else(|| forged(edge_api::Forged::off()))?;
+        let repo = match &site.source {
+            build::Source::Git { url, .. } => {
+                authority_forge::Repo::at(&url.to_string()).map_err(|error| forged(edge_api::Forged::name(error)))?
+            }
+            _ => return Err(Failure::Upload { handle: site.handle.clone() }),
+        };
+        let asking = (site.id, repo.clone(), System.now());
+        let given = |claimed: authority_repo::Claimed| {
+            Acted::Given(view::Given {
+                repo: claimed.claim.repo.to_string(),
+                secret: claimed.secret.text().unwrap_or_default().to_owned(),
+            })
+        };
+        let control = &self.pages.control;
+        match action {
+            Action::RepoClaim => repos.claim(control, &System, asking).await.map(given).map_err(Self::repoed),
+            Action::RepoRotate => repos.rotate(control, &System, asking).await.map(given).map_err(Self::repoed),
+            Action::RepoProve => repos.prove(control, asking).await.map(|_| Acted::Done).map_err(Self::repoed),
+            _ => repos.release(control, asking).await.map(|()| Acted::Done).map_err(Self::repoed),
+        }
+    }
+
+    /// The failure of a repository step, whichever transport and random source it ran on.
+    fn repoed<E: std::error::Error + 'static, G: std::error::Error + 'static>(
+        error: authority_repo::Error<Ports, E, G>,
+    ) -> Failure {
+        match error {
+            authority_repo::Error::Draw(source) => Failure::Store { part: Part::Records, source: Cause::of(&source) },
+            authority_repo::Error::Unproven(source) => {
+                Failure::Forge { problem: source.code(), source: Cause::of(&source) }
+            }
+            authority_repo::Error::Control(source) => Failure::from(source),
+        }
+    }
+
     /// Reads the record of `name` and makes it serve `site`, or says why it does not.
     async fn prove(&self, site: Id<control::SiteKind>, name: &control::DomainName) -> Result<(), Failure> {
         let dns = authority_dns::Dns::new(self.pages.resolver.clone());
@@ -359,6 +422,7 @@ impl<A: Answers> Screens for Browser<'_, A> {
             .map(|credential| view::Held { purpose: credential.purpose, created: credential.created })
             .collect();
         page.domains = self.domains(site.id).await?;
+        page.repos = self.repositories(site.id).await?;
         Ok(page)
     }
 
@@ -450,7 +514,7 @@ impl<A: Answers> Screens for Browser<'_, A> {
         Ok(Logged::Stored(view::Stored::new(handle.clone(), build, lines, ended)))
     }
 
-    async fn act(&self, who: Id<AccountKind>, handle: &Handle, action: &Action) -> Result<(), Failure> {
+    async fn act(&self, who: Id<AccountKind>, handle: &Handle, action: &Action) -> Result<Acted, Failure> {
         let site = self.owned(who, handle).await?;
         let (control, now) = (&self.pages.control, System.now());
         match action {
@@ -481,9 +545,12 @@ impl<A: Answers> Screens for Browser<'_, A> {
             }
             Action::Prove { name } => self.prove(site.id, name).await?,
             Action::Unclaim { name } => control.remove_domain(site.id, name, now).await?,
+            Action::RepoClaim | Action::RepoProve | Action::RepoRotate | Action::RepoRelease => {
+                return self.repository(&site, action).await;
+            }
             _ => return Err(Failure::Unrouted { source: Unrouted::Path }),
         }
-        Ok(())
+        Ok(Acted::Done)
     }
 
     async fn export(&self, who: Id<AccountKind>, handle: &Handle) -> Result<Download, Failure> {

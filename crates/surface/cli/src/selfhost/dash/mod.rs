@@ -16,6 +16,7 @@ mod said;
 use std::cell::RefCell;
 
 use authority_dns::Chosen;
+use authority_repo::{Repos, Wire};
 use control::Control;
 use edge_api::{Answers, Cookie, Header, Limits, Media, Method, Origins, Payload, Reply, Request, Status};
 use web::{Body, Cause, Dashboard, Failure, Form, Frame};
@@ -31,14 +32,15 @@ pub(crate) struct Pages {
     control: Control<Ports>,
     origins: Origins,
     resolver: Chosen,
+    repos: Option<Repos<Wire>>,
     limits: Limits,
 }
 
 impl Pages {
-    /// The pages over `control`, which post only from `origins` and read proof records through
-    /// `resolver`, within `limits`.
-    pub(crate) fn new(control: Control<Ports>, trust: (Origins, Chosen), limits: Limits) -> Self {
-        Self { control, origins: trust.0, resolver: trust.1, limits }
+    /// The pages over `control`, which post only from `origins`, read proof records through
+    /// `resolver` and claim repositories through `repos` when forges are on, within `limits`.
+    pub(crate) fn new(control: Control<Ports>, trust: (Origins, Chosen, Option<Repos<Wire>>), limits: Limits) -> Self {
+        Self { control, origins: trust.0, resolver: trust.1, repos: trust.2, limits }
     }
 }
 

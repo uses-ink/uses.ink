@@ -198,6 +198,13 @@ pub enum Failure {
         /// Why, as a chain.
         source: Cause,
     },
+    /// A repository could not be proved or reached, or this server reaches no forge.
+    Forge {
+        /// The catalog code of what went wrong, such as `repo.proof.missing`.
+        problem: &'static str,
+        /// Why, as a chain.
+        source: Cause,
+    },
     /// The replay of a decision runs where the source is, which this server does not hold.
     NoReplay,
 }
@@ -267,6 +274,7 @@ impl fmt::Display for Failure {
                 write!(out, "{handle} is built from an upload, so there is nothing to read again")
             }
             Self::Lookup { name, .. } => write!(out, "the proof record of {name} could not be looked up"),
+            Self::Forge { problem, .. } => write!(out, "the repository could not be proved ({problem})"),
             Self::NoReplay => out.write_str("this server cannot replay a decision"),
         }
     }
@@ -281,6 +289,7 @@ impl Error for Failure {
             Self::Store { source, .. }
             | Self::Render { source }
             | Self::Auth { source, .. }
+            | Self::Forge { source, .. }
             | Self::Lookup { source, .. } => Some(source),
             _ => None,
         }

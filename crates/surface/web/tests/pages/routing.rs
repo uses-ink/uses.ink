@@ -6,8 +6,8 @@ use build::{BuildId, Event};
 use control::{AccountKind, Handle, Id};
 use uses_ink_web::view::{Account, Deploys, Live, Serving, Settings, Site, Understood, Why};
 use uses_ink_web::{
-    Action, Asked, Body, Dashboard, Download, Failure, Follow, Form, Logged, Method, Only, Reply, Request, Screens,
-    Seating, Status, Token,
+    Acted, Action, Asked, Body, Dashboard, Download, Failure, Follow, Form, Logged, Method, Only, Reply, Request,
+    Screens, Seating, Status, Token,
 };
 
 /// What the edge provides, over fixtures.
@@ -112,8 +112,8 @@ impl Screens for Fake {
         )))
     }
 
-    fn act(&self, _: Id<AccountKind>, _: &Handle, _: &Action) -> impl Future<Output = Result<(), Failure>> {
-        std::future::ready(Ok(()))
+    fn act(&self, _: Id<AccountKind>, _: &Handle, _: &Action) -> impl Future<Output = Result<Acted, Failure>> {
+        std::future::ready(Ok(Acted::Done))
     }
 
     fn export(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Download, Failure>> {

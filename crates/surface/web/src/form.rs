@@ -191,6 +191,14 @@ pub enum Action {
         /// The name.
         name: DomainName,
     },
+    /// Ask to prove the site's repository: the answer is the challenge and the webhook secret.
+    RepoClaim,
+    /// Read the forge for the challenge and bind the repository to the site.
+    RepoProve,
+    /// Put a new webhook secret in place of the old one.
+    RepoRotate,
+    /// Let go of the repository and delete its secret.
+    RepoRelease,
 }
 
 impl Action {
@@ -216,6 +224,10 @@ impl Action {
             "claim" => Ok(Self::Claim { name: Self::domain(body)? }),
             "prove" => Ok(Self::Prove { name: Self::domain(body)? }),
             "unclaim" => Ok(Self::Unclaim { name: Self::domain(body)? }),
+            "repo-claim" => Ok(Self::RepoClaim),
+            "repo-prove" => Ok(Self::RepoProve),
+            "repo-rotate" => Ok(Self::RepoRotate),
+            "repo-release" => Ok(Self::RepoRelease),
             _ => Err(Failure::Unrouted { source: Unrouted::Path }),
         }
     }

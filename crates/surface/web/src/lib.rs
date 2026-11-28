@@ -21,7 +21,7 @@ mod stream;
 mod style;
 pub mod view;
 
-pub use dashboard::{Body, Dashboard, Download, Logged, Reply, Screens};
+pub use dashboard::{Acted, Body, Dashboard, Download, Logged, Reply, Screens};
 pub use failure::{Cause, Code, Failure, FieldError, Fix, Part, Unrouted};
 pub use form::{Action, Asked, Field, Form, Method, Request, Seating, Token};
 pub use mark::{Ink, Rule};
