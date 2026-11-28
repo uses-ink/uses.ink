@@ -13,7 +13,7 @@ Built (2026-11-28). The start of `ink serve` was a flat list of `label  sentence
 the prose, and its log was `<timestamp> <Display>` with no level, no component and no colour. Both are now typed
 data that goes through the terminal layer of decision 0061.
 
-- **One `Startup` value, two forms.** `crates/surface/cli/src/selfhost/startup` builds a `Startup`: the program and
+- **One `Startup` value, two forms.** `crates/surface/cli/src/selfhost/report/startup` builds a `Startup`: the program and
   version, the listen address, the three addresses a person opens (site, dashboard, API), the first-run link, and
   sections of rows. A row is a key, a typed `Value` (a URL, a path, a count, a size in bytes, a length of time, a
   rate, a flag, a secret, a list), a `Source` and an optional `Caution`. The human report (`Render`) and the JSON
@@ -41,7 +41,7 @@ data that goes through the terminal layer of decision 0061.
   plane is set up, at the default verbosity, and the end-to-end tests wait for it instead of the old `backing off`
   that sat inside the poll row. Stdout still holds the bare address as its first line.
 
-The log is a second `Entry` type in `crates/surface/cli/src/selfhost/log`. What happens is a `Happens`: a level, a
+The log is a second `Entry` type in `crates/surface/cli/src/selfhost/report/log`. What happens is a `Happens`: a level, a
 component (`http`, `api`, `watch`, `worker`, `domains`, `mail`), a stable name such as `worker.built`, a message and
 typed facts, and the server's events, the loops' events and the mail sender's notes each implement it, so the three
 writers that were three formats are one.
