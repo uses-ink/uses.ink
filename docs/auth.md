@@ -621,8 +621,9 @@ above is the strict setting. Residual risk, stated in section 14.
 
 ## 10. The operator and the existing token
 
-`crates/server/edge/api` today has `Owner`: one bearer token, kept as a BLAKE3 digest, compared in constant time,
-made by `ink serve --data` into `<data>/owner-token` (0600), shown once (0052). In the new model:
+`crates/server/edge/api` once had one bearer token, kept as a BLAKE3 digest, compared in constant time,
+made by `ink serve --data` into `<data>/owner-token` (0600), shown once (0052). It is retired (0068): the operator
+keys of `crates/server/edge/api/src/operator.rs` replace it. In the model as built:
 
 - **`Owner` is deleted, not deprecated.** Nothing is released, so the only holder of such a token is
   the owner's own machines. The server's first start on a folder that has an `owner-token` file
@@ -775,7 +776,7 @@ set of rights in code, not a row (no custom roles in v1):
 A member's grant is `Account(org)` with the role's rights, or `Site(s)` for a member who works on
 one site. A deploy key of an org outlives the member who made it (it belongs to the org) and shows
 "creator removed" in the list; the org's owner decides whether to revoke it. An org's last owner
-cannot be removed. Roles and the org tables arrive with M4; self-host M3 has one account and the
+cannot be removed. The roles and the org tables are built (0095, 0103, `crates/server/control/src/org`); self-host M3 had one account and the
 `Owner` role only, so nothing in sections 4 to 11 waits on orgs.
 
 ## 13. Audit and "last used"
@@ -974,8 +975,9 @@ passkey's approval on the dashboard. Sessions and passkeys are managed on the da
 
 ### The `Credentials` port, extended
 
-Today: `Credentials::verify(&Bearer) -> Option<Principal>`, with `Request` carrying only the
-`Authorization` bytes. A signature needs the method, target, body digest, audience and a clock, so
+Before 0068 the port was `Credentials::verify(&Bearer) -> Option<Principal>`, with `Request` carrying only the
+`Authorization` bytes. The built port is in `crates/server/edge/api/src/auth/credential.rs`:
+`verify(&self, offered: &Offered, at: &Presented<'_>) -> Result<Verdict, Self::Error>`. A signature needs the method, target, body digest, audience and a clock, so
 the port takes a typed credential and a request context. This must be reconciled with the `signin`
 agent's work in progress (a `Credential` enum with `Link` first, an open `Credentials` adapter),
 which had not landed when this was written; the sketch below is the shape this design needs, not a
@@ -1027,7 +1029,7 @@ ink login [--api URL] [--label TEXT] [--data DIR]
 ink logout
 ink whoami
 ink key list
-ink key add    --site SITE --right deploy,read [--expires 90d] [--out FILE]   # --right takes a comma list; --replaces is planned
+ink key add    [--site SITE] [--label TEXT] [--right deploy,read] [--expires 90d] [--out FILE] [--wait SECONDS] [--poll SECONDS]   # --right takes a comma list; --replaces is planned
 ink key revoke KEY
 ```
 

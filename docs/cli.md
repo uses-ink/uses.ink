@@ -157,8 +157,9 @@ accepted before or after the command (`ink -q build` and `ink build -q` are the 
 | `-h`, `--help` | `-h` short, `--help` long | | yes |
 | `-V`, `--version` | Version | | yes |
 
-`--width <COLUMNS>` is not in the list. Width is read from the terminal, then `COLUMNS`, then
-`INK_WIDTH`; tests and screenshots set `INK_WIDTH`. A flag for it would be a global option nobody
+`--width <COLUMNS>` is not in the list. Width is `INK_WIDTH` when it is set (`0` for no limit), else
+the terminal's size when the stream is a terminal, else `COLUMNS` on a terminal that reports no size; off a
+terminal nothing is cut. Tests and screenshots set `INK_WIDTH`. A flag for it would be a global option nobody
 types (open choice 12 asks whether to add one).
 
 ### Verbosity levels
@@ -977,6 +978,11 @@ plain, as baudelaire's `Color::declared` does.
 | `INK_LOG`, `INK_LOG_FILE`, `INK_LOG_FORMAT`, `INK_LOG_SPANS`, `INK_LOG_TIMINGS` | The log (`docs/tracing.md`): `--log`, `--log-file`, and the `[log]` keys `filter`, `file`, `format`. `RUST_LOG` is not read |
 | `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE` | Colour, as above |
 | `TERM`, `COLUMNS`, `LANG`, `LC_ALL` | Dumb terminal, width, whether the locale is UTF-8 |
+| `INK_API`, `INK_SITE`, `INK_ORG` | The API's address (`--api`, no default), the site's id (`--site`, no default) and the organization to act as (`--org`, none: the person's own account); each also has a key under `[account]` in the config file |
+| `INK_KEY`, `INK_KEY_FILE` | The private key that signs requests, as text or as a file that holds it. `INK_KEY` wins, then `INK_KEY_FILE`, then the key `ink login` kept. Never a flag, so it stays out of process lists |
+| `INK_TIMEOUT`, `INK_RETRIES` | Seconds one call may take (default `30`) and how many more times a call that is safe to repeat is tried when the network fails (default `2`) |
+| `INK_SMTP_PASSWORD` | The SMTP password for `ink serve --mail smtp`; never a flag |
+| `INK_PREVIEW_DAYS` | Days a branch preview is served before it ends, for `ink serve` (default `7`) |
 | `INK_COMPONENTS` | The folder the build script reads components from (0054) |
 | `EDITOR`, `VISUAL` | What `ink login` or a future prompt opens, if one ever does |
 

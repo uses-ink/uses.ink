@@ -272,9 +272,9 @@ freeze.
   known length, so the gateway hashes while streaming and uploads in 8 MiB parts; the container start needs the account.
   H1: `db-conformance` is a list of async cases, and `crates/port/db/d1` passes all 14 in `workerd`. H1b: the typed
   migrations are rendered to wrangler files and applied with `wrangler d1 migrations apply --local` to the same schema as SQLite.
-- Planned adapters, in parallel after H1: `crates/port/blob/r2`, `crates/port/queue/cf` (the rows of `crates/port/queue/rows` over D1 plus a
+- Built, the adapters after H1 (0130 to 0136): `crates/port/blob/r2`, `crates/port/queue/cf` (the rows of `crates/port/queue/rows` over D1 plus a
   wake-up, since Cloudflare Queues has no lease or dedupe key), `crates/port/secret/worker`, `crates/port/mail/cf`,
-  `crates/server/watch/worker`, the nonce store as a per-account Durable Object (`auth.md` section 5).
+  `crates/server/watch/worker`, and the nonce store as a trait with a per-account Durable Object store (`auth.md` section 5).
 - Planned: `crates/server/edge/worker` (serve, API, dashboard, sign-in) over the `Send` twin of the edge traits (0051);
   the per-handle build Durable Object and `crates/port/build/container`, with the container's blobs written
   through the egress handler (0037); deploy pipeline from CI with `wrangler`.
