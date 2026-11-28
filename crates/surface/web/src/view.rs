@@ -18,7 +18,7 @@ pub(crate) mod word;
 pub use account::{Account, Owned};
 pub use block::{Attempt, Deploy, Pointer, Serving};
 pub use build::{Build, Ended, Live, Outcome};
-pub use deploys::Deploys;
+pub use deploys::{Branch, Deploys};
 pub use failed::Failed;
 pub use limits::Limits;
 pub use passkeys::{Kept, SignIn};

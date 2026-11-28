@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use build::Build;
 use clock::{Clock, Slept};
-use control::{Control, Ports, Worked};
+use control::{Control, Ports, Swept, Worked};
 
 use crate::Report;
 
@@ -17,6 +17,8 @@ pub enum Done {
     Worked(Worked),
     /// The control plane or the builder failed; the request goes back to the queue for later.
     Failed(Box<dyn Error>),
+    /// The queue was empty and previews that had ended were swept (decision 0091).
+    Expired(Swept),
 }
 
 /// The in-process worker: takes one request at a time and builds it.
@@ -61,6 +63,16 @@ where
         }
     }
 
+    /// Sweeps the previews that have ended, and says so when there were any. The queue is empty,
+    /// so this is the quiet part of the loop, at most once a rest.
+    async fn tidy(&self, report: &impl Report<Done>) {
+        match self.control.expire(self.clock.now()).await {
+            Ok(swept) if swept.previews > 0 => report.report(&Done::Expired(swept)),
+            Ok(_) => {}
+            Err(error) => report.report(&Done::Failed(Box::new(error))),
+        }
+    }
+
     /// Works requests until the queue is empty, rests, and looks again, until the clock says it
     /// is stopped. A failure rests too, so a broken builder is not a busy loop.
     pub async fn run(&self, report: &impl Report<Done>) {
@@ -68,8 +80,11 @@ where
             let done = self.step().await;
             report.report(&done);
             let busy = matches!(&done, Done::Worked(worked) if *worked != Worked::Idle);
-            if !busy && self.clock.sleep(self.idle).await == Slept::Stopped {
-                return;
+            if !busy {
+                self.tidy(report).await;
+                if self.clock.sleep(self.idle).await == Slept::Stopped {
+                    return;
+                }
             }
         }
     }

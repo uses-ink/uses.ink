@@ -28,7 +28,7 @@ use model::ExternalUrl;
 use model::git::Locator;
 use queue_rows::{Local as Queue, Queued};
 use secret_local::Local as Sealer;
-use watch::{Head, Heads, Interval, IntervalError, Outcome, Report, Round, Watch};
+use watch::{Done, Head, Heads, Interval, IntervalError, Outcome, Report, Round, Watch, Worker};
 
 type Ports = (Arc<Sqlite>, Directory, Queue<Arc<Sqlite>>, Sealer);
 
@@ -243,4 +243,58 @@ fn an_interval_has_a_floor_and_a_direction() {
     ));
     let interval = Interval::default();
     assert_eq!(interval.backed(Duration::from_mins(40)), Duration::from_secs(3600));
+}
+
+/// A builder that is never asked: the queue is empty in the test that uses it.
+struct Idle;
+
+#[derive(Debug)]
+struct Never;
+
+impl fmt::Display for Never {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str("the idle builder was asked to build")
+    }
+}
+
+impl std::error::Error for Never {}
+
+impl build::Build for Idle {
+    type Error = Never;
+
+    fn run(
+        &self,
+        _: &build::Request,
+        _: &mut impl build::Events,
+    ) -> impl Future<Output = Result<build::Outcome, build::Error<Never>>> {
+        std::future::ready(Err(build::Error::Backend { source: Never }))
+    }
+}
+
+/// What the worker reported.
+struct Told(RefCell<Vec<u64>>);
+
+impl Report<Done> for Told {
+    fn report(&self, done: &Done) {
+        if let Done::Expired(swept) = done {
+            self.0.borrow_mut().push(swept.previews);
+        }
+    }
+}
+
+#[test]
+fn an_idle_worker_sweeps_the_previews_that_ended() {
+    let world = World::new();
+    // a preview of nothing: the preview needs a manifest, not files
+    let manifest = model::Manifest::default();
+    let new = control::NewPreview { site: world.site, slug: "main".parse().unwrap(), manifest, at: start() };
+    pollster::block_on(world.control.preview(new)).unwrap();
+    // the clock is a week and a day on from the push when the worker rests for the first time
+    let clock = Manual::new(start() + Duration::from_hours(8 * 24), 1);
+    let told = Told(RefCell::default());
+    pollster::block_on(
+        Worker::new(&world.control, Idle, &clock, (Duration::from_secs(60), Duration::from_secs(1))).run(&told),
+    );
+    assert_eq!(*told.0.borrow(), [1], "swept once, and not again");
+    assert_eq!(pollster::block_on(world.control.previews(world.site, clock.now())).unwrap(), []);
 }

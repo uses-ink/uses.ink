@@ -47,6 +47,17 @@ pub enum Refusal {
         /// The site.
         site: Id<Site>,
     },
+    /// The site has no git source, so it has no branches to preview.
+    NoPreview {
+        /// The site.
+        site: Id<Site>,
+    },
+    /// The site's repository is private: its branches are never served at an address anyone can
+    /// open (decision 0091).
+    Private {
+        /// The site.
+        site: Id<Site>,
+    },
     /// A row with this id exists already.
     Exists {
         /// The id, as text.
@@ -148,6 +159,12 @@ impl fmt::Display for Refusal {
             }
             Self::Suspended { site, kind } => write!(out, "the site {site} is suspended for {kind}"),
             Self::Serving { site } => write!(out, "the site {site} is not suspended"),
+            Self::NoPreview { site } => {
+                write!(out, "the site {site} has no git source, so it has no branches to preview")
+            }
+            Self::Private { site } => {
+                write!(out, "the repository of site {site} is private, so its branches are not previewed")
+            }
             Self::Exists { id } => write!(out, "a row with the id {id} exists already"),
             Self::NoAccount { account } => write!(out, "there is no account {account}"),
             Self::NoSite { site } => write!(out, "there is no site {site}"),
@@ -194,6 +211,8 @@ impl Refusal {
             Self::Held { .. } => "handle.name.held",
             Self::Suspended { .. } => "site.state.suspended",
             Self::Serving { .. } => "site.state.serving",
+            Self::NoPreview { .. } => "preview.site.unsupported",
+            Self::Private { .. } => "preview.site.private",
             Self::Exists { .. } => "row.id.exists",
             Self::NoAccount { .. } => "account.id.unknown",
             Self::NoSite { .. } => "site.id.unknown",
@@ -226,7 +245,12 @@ impl Refusal {
             Self::Suspended { site, kind } => vec![("id", site.to_string()), ("reason", kind.to_string())],
             Self::Exists { id } => vec![("id", id.clone())],
             Self::NoAccount { account } => vec![("id", account.to_string())],
-            Self::NoSite { site } | Self::Removing { site } | Self::NotLive { site } | Self::Serving { site } => {
+            Self::NoSite { site }
+            | Self::Removing { site }
+            | Self::NotLive { site }
+            | Self::Serving { site }
+            | Self::NoPreview { site }
+            | Self::Private { site } => {
                 vec![("id", site.to_string())]
             }
             Self::NoDeploy { site, deploy } | Self::AlreadyLive { site, deploy } => {

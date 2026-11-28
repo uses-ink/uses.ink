@@ -246,3 +246,36 @@ fn a_suspended_site_answers_the_notice_and_none_of_its_bytes() {
         assert!(matches!(answer.response.body, edge::Body::Text(ref text) if text.contains("suspended for malware") && !text.contains("tea<")));
     });
 }
+
+#[test]
+fn a_preview_is_served_at_its_label_until_it_ends() {
+    let mut world = World::new(Settings::default());
+    let account: Id<AccountKind> = Id::from_bytes([1; 16]);
+    pollster::block_on(world.control.add_account(NewAccount { id: account, at: start() })).unwrap();
+    let source = Source::Git { url: "https://codeberg.org/cstef/tea".parse().unwrap(), revision: None };
+    let id = Id::from_bytes([2; 16]);
+    let new = NewSite { id, account, handle: "tea".parse::<Handle>().unwrap(), source, at: start() };
+    pollster::block_on(world.control.add_site(new)).unwrap();
+    // the site has nothing live; only its preview serves
+    let tenant = Tenant::try_from(id).unwrap();
+    let hash = Hash::of("<h1>branch</h1>");
+    pollster::block_on(world.control.ports().blob().put(&tenant, hash, [b"<h1>branch</h1>".as_slice()])).unwrap();
+    let served = Served::new(Route::parse("/tea").unwrap(), hash, MediaType::Html, vec![]);
+    let manifest = Manifest::new(vec![served]).unwrap();
+    let new = control::NewPreview { site: id, slug: "main".parse().unwrap(), manifest: manifest.clone(), at: start() };
+    pollster::block_on(world.control.preview(new)).unwrap();
+    let clock = Arc::clone(&world.clock);
+    world.run(|fronts| async move {
+        let resolved = fronts.resolve(&host("main--tea.uses.ink")).await.unwrap().unwrap();
+        assert_eq!(resolved.deploy.manifest.id(), manifest.id());
+        let entry = resolved.deploy.manifest.entry(&Route::parse("/tea").unwrap()).unwrap();
+        assert_eq!(read(&resolved.scope, entry.blob()).await, b"<h1>");
+        // the preview is no site, and a label nobody pushed serves nothing
+        assert!(fronts.resolve(&host("tea.uses.ink")).await.unwrap().is_none());
+        assert!(fronts.resolve(&host("other--tea.uses.ink")).await.unwrap().is_none());
+        assert!(fronts.resolve(&host("main--nobody.uses.ink")).await.unwrap().is_none());
+        // seven days and a moment later it has ended, with no cache to wait out
+        clock.advance(Duration::from_secs(7 * 24 * 3600 + 1));
+        assert!(fronts.resolve(&host("main--tea.uses.ink")).await.unwrap().is_none());
+    });
+}

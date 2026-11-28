@@ -748,6 +748,18 @@ pub enum Problem {
     /// `auth.operator.required`: only the operator's keys may make this call
     #[serde(rename = "auth.operator.required")]
     AuthOperatorRequired,
+    /// `preview.site.unsupported`: the site {id} has no git source, so it has no branches to preview
+    #[serde(rename = "preview.site.unsupported")]
+    PreviewSiteUnsupported {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
+    /// `preview.site.private`: the repository of site {id} is private, so its branches are not previewed
+    #[serde(rename = "preview.site.private")]
+    PreviewSitePrivate {
+        /// The id of the row, as 32 hex digits.
+        id: String,
+    },
     /// `plugin.value.unmirrored`: a value has no case at the plugin boundary: {reason}
     #[serde(rename = "plugin.value.unmirrored")]
     PluginValueUnmirrored {
@@ -994,6 +1006,8 @@ impl Problem {
         "abuse.report.limited",
         "abuse.site.suspended",
         "auth.operator.required",
+        "preview.site.unsupported",
+        "preview.site.private",
         "plugin.value.unmirrored",
         "plugin.value.malformed",
         "plugin.call.trapped",
@@ -1141,6 +1155,8 @@ impl Problem {
             Self::AbuseReportLimited { .. } => "abuse.report.limited",
             Self::AbuseSiteSuspended { .. } => "abuse.site.suspended",
             Self::AuthOperatorRequired => "auth.operator.required",
+            Self::PreviewSiteUnsupported { .. } => "preview.site.unsupported",
+            Self::PreviewSitePrivate { .. } => "preview.site.private",
             Self::PluginValueUnmirrored { .. } => "plugin.value.unmirrored",
             Self::PluginValueMalformed { .. } => "plugin.value.malformed",
             Self::PluginCallTrapped { .. } => "plugin.call.trapped",
@@ -1289,6 +1305,8 @@ impl Problem {
             Self::AbuseReportLimited { .. } => Severity::Error,
             Self::AbuseSiteSuspended { .. } => Severity::Error,
             Self::AuthOperatorRequired => Severity::Error,
+            Self::PreviewSiteUnsupported { .. } => Severity::Error,
+            Self::PreviewSitePrivate { .. } => Severity::Error,
             Self::PluginValueUnmirrored { .. } => Severity::Error,
             Self::PluginValueMalformed { .. } => Severity::Error,
             Self::PluginCallTrapped { .. } => Severity::Error,
@@ -1437,6 +1455,8 @@ impl Problem {
             Self::AbuseReportLimited { .. } => Fault::Source,
             Self::AbuseSiteSuspended { .. } => Fault::Source,
             Self::AuthOperatorRequired => Fault::Author,
+            Self::PreviewSiteUnsupported { .. } => Fault::Author,
+            Self::PreviewSitePrivate { .. } => Fault::Author,
             Self::PluginValueUnmirrored { .. } => Fault::Ours,
             Self::PluginValueMalformed { .. } => Fault::Ours,
             Self::PluginCallTrapped { .. } => Fault::Ours,
@@ -2116,6 +2136,10 @@ impl From<&Problem> for Coded {
                 Coded::new("abuse.site.suspended", vec![Field::from(reason.clone())])
             }
             Problem::AuthOperatorRequired => Coded::new("auth.operator.required", vec![]),
+            Problem::PreviewSiteUnsupported { id, .. } => {
+                Coded::new("preview.site.unsupported", vec![Field::from(id.clone())])
+            }
+            Problem::PreviewSitePrivate { id, .. } => Coded::new("preview.site.private", vec![Field::from(id.clone())]),
             Problem::PluginValueUnmirrored { reason, .. } => {
                 Coded::new("plugin.value.unmirrored", vec![Field::from(reason.clone())])
             }
@@ -2305,6 +2329,8 @@ impl TryFrom<Coded> for Problem {
             "abuse.report.limited" => Self::AbuseReportLimited { seconds: fields.next()? },
             "abuse.site.suspended" => Self::AbuseSiteSuspended { reason: fields.next()? },
             "auth.operator.required" => Self::AuthOperatorRequired,
+            "preview.site.unsupported" => Self::PreviewSiteUnsupported { id: fields.next()? },
+            "preview.site.private" => Self::PreviewSitePrivate { id: fields.next()? },
             "plugin.value.unmirrored" => Self::PluginValueUnmirrored { reason: fields.next()? },
             "plugin.value.malformed" => Self::PluginValueMalformed { plugin: fields.next()?, reason: fields.next()? },
             "plugin.call.trapped" => Self::PluginCallTrapped { plugin: fields.next()?, reason: fields.next()? },

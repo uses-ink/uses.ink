@@ -874,6 +874,20 @@ fields = {}
 message = "only the operator's keys may make this call"
 fix = "sign the request with a key from the operator-keys file of the server"
 
+[diagnostic."preview.site.unsupported"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "the site {id} has no git source, so it has no branches to preview"
+fix = "previews are for sites built from a git repository; upload sites have one address"
+
+[diagnostic."preview.site.private"]
+severity = "error"
+fault = "author"
+fields = { id = "text" }
+message = "the repository of site {id} is private, so its branches are not previewed"
+fix = "a preview is public to anyone with its address; remove the site's git token if the repository is public"
+
 [notice."notice.default.chosen"]
 fields = { decision = "decision", value = "text" }
 message = "nothing decided `{decision}`, so it is {value}"

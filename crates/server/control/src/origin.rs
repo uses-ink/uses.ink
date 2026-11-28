@@ -4,7 +4,7 @@ use std::fmt;
 
 use model::{ExternalUrl, UrlError};
 
-use crate::Handle;
+use crate::{Handle, Slug};
 
 /// The address the operator serves sites under: `https://uses.ink` hosted, so the handle `cstef`
 /// is served at `https://cstef.uses.ink`; `http://localhost:4000` for a trial, which gives
@@ -75,6 +75,20 @@ impl Origin {
         label.parse().ok()
     }
 
+    /// The preview a host name is under this origin: `main` and `cstef` for `main--cstef.uses.ink`.
+    /// A name that is a handle, or whose first label is not a label and a handle joined by `--`,
+    /// is no preview, so a name is never both (decision 0091).
+    pub fn preview(&self, hostname: &str) -> Option<(Slug, Handle)> {
+        let label = hostname.strip_suffix(self.name())?.strip_suffix('.')?;
+        let (slug, handle) = label.split_once("--")?;
+        Some((slug.parse().ok()?, handle.parse().ok()?))
+    }
+
+    /// The address of `slug`'s preview of `handle`'s site.
+    pub fn previewed(&self, slug: &Slug, handle: &Handle) -> Result<ExternalUrl, UrlError> {
+        ExternalUrl::parse(format!("{}{}--{}.{}", self.scheme, slug, handle, self.host))
+    }
+
     /// The address `handle`'s site is served at.
     pub fn site(&self, handle: &Handle) -> Result<ExternalUrl, UrlError> {
         ExternalUrl::parse(format!("{}{}.{}", self.scheme, handle, self.host))
@@ -99,6 +113,17 @@ mod test {
         assert_eq!(local.handle("localhost"), None);
         assert_eq!(local.handle("a.b.localhost"), None);
         assert_eq!(local.handle("cstef.example.com"), None);
+        let (slug, owner) = local.preview("main--cstef.localhost").unwrap();
+        assert_eq!((slug.as_str(), owner.as_str()), ("main", "cstef"));
+        assert_eq!(local.handle("main--cstef.localhost"), None, "a preview host is no site");
+        assert_eq!(local.preview("cstef.localhost"), None);
+        assert_eq!(local.preview("a--b--cstef.localhost"), None);
+        assert_eq!(local.preview("--cstef.localhost"), None);
+        assert_eq!(local.preview("Main--cstef.localhost"), None);
+        assert_eq!(
+            origin("https://uses.ink").unwrap().previewed(&slug, &owner).unwrap().as_str(),
+            "https://main--cstef.uses.ink"
+        );
         assert_eq!(origin("mailto:a@b.c").unwrap_err(), OriginError::Scheme);
         assert_eq!(origin("https://uses.ink/blog").unwrap_err(), OriginError::Path);
     }

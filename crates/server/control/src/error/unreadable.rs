@@ -17,6 +17,11 @@ pub enum Unreadable {
         /// Why.
         source: HandleError,
     },
+    /// The column holds a bad preview label.
+    Slug {
+        /// Why.
+        source: crate::SlugError,
+    },
     /// The column holds a bad build id.
     Build {
         /// Why.
@@ -53,6 +58,7 @@ impl fmt::Display for Unreadable {
         match self {
             Self::Cell(cell) => cell.fmt(out),
             Self::Handle { .. } => out.write_str("column `handle` holds a bad handle"),
+            Self::Slug { .. } => out.write_str("column `slug` holds a bad preview label"),
             Self::Build { .. } => out.write_str("a stored build id is bad"),
             Self::Locator { column } => {
                 write!(out, "column `{column}` holds a kind of source this version does not know")
@@ -71,6 +77,7 @@ impl std::error::Error for Unreadable {
         match self {
             Self::Cell(source) => source.source(),
             Self::Handle { source } => Some(source),
+            Self::Slug { source } => Some(source),
             Self::Build { source } => Some(source),
             Self::Url { source, .. } => Some(source),
             Self::Revision { source, .. } => Some(source),

@@ -4,7 +4,7 @@ use std::fmt;
 
 use build::BuildId;
 use control::keys::Right;
-use control::{EnrolmentKind, Id, IdError, SiteKind};
+use control::{EnrolmentKind, Id, IdError, SiteKind, Slug};
 use model::DeployId;
 use serde::Deserialize;
 use serde::de::IntoDeserializer;
@@ -49,6 +49,16 @@ pub enum Call {
         site: Id<SiteKind>,
         /// A deploy that is not the live one.
         deploy: Option<DeployId>,
+    },
+    /// `GET /v1/sites/{site}/previews`: the previews that have not ended.
+    Previews(Id<SiteKind>),
+    /// `PUT /v1/sites/{site}/previews/{label}`: a built folder as a tar archive, made the preview
+    /// of a branch.
+    Preview {
+        /// The site.
+        site: Id<SiteKind>,
+        /// The label.
+        slug: Slug,
     },
     /// `POST /v1/sites/{site}/source`: a tree of files, answered with the blobs it is missing or
     /// a build of it.
@@ -112,6 +122,11 @@ pub enum RouteError {
         /// The text.
         written: String,
     },
+    /// A part of the path should be a preview label and is not.
+    Label {
+        /// The text.
+        written: String,
+    },
     /// A part of the path should be a deploy and is not.
     Deploy {
         /// The text.
@@ -131,6 +146,7 @@ impl fmt::Display for RouteError {
             Self::Fingerprint { written } => write!(out, "{written:?} in the path is not a key fingerprint"),
             Self::Build { written } => write!(out, "{written:?} in the path is not a build id"),
             Self::Deploy { written } => write!(out, "{written:?} in the path is not a deploy id"),
+            Self::Label { written } => write!(out, "{written:?} in the path is not a preview label"),
         }
     }
 }
@@ -213,6 +229,11 @@ impl Call {
                 Ok(build) => by(&[(Method::Get, Self::Log { site, build })]),
                 Err(_) => Err(RouteError::Build { written: (*build).to_owned() }),
             },
+            ["previews"] => by(&[(Method::Get, Self::Previews(site))]),
+            ["previews", slug] => match slug.parse() {
+                Ok(slug) => by(&[(Method::Put, Self::Preview { site, slug })]),
+                Err(_) => Err(RouteError::Label { written: (*slug).to_owned() }),
+            },
             ["export"] => by(&[(Method::Get, Self::Export { site, deploy: None })]),
             ["deploy"] => by(&[(Method::Put, Self::Intake(site))]),
             ["source"] => by(&[
@@ -235,12 +256,14 @@ impl Call {
             | Self::Builds(site)
             | Self::Log { site, .. }
             | Self::Bundle(site)
+            | Self::Previews(site)
             | Self::Export { site, .. } => (Right::Read, Some(*site)),
             Self::Remove(site) => (Right::Destroy, Some(*site)),
             Self::Rollback(site)
             | Self::Resume(site)
             | Self::Build(site)
             | Self::Intake(site)
+            | Self::Preview { site, .. }
             | Self::Source(site)
             | Self::Parts(site) => (Right::Deploy, Some(*site)),
             Self::Keys | Self::Revoke(_) => (Right::Keys, None),
@@ -285,6 +308,8 @@ impl logging::Kind for &Call {
             Call::Log { .. } => "log",
             Call::Export { .. } => "export",
             Call::Intake(_) => "intake",
+            Call::Previews(_) => "previews",
+            Call::Preview { .. } => "preview",
             Call::Source(_) => "source",
             Call::Parts(_) => "parts",
             Call::Bundle(_) => "bundle",

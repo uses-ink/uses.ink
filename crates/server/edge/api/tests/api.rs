@@ -333,3 +333,35 @@ fn only_the_operator_reads_reports_and_suspends() {
     let (unlifted, problem) = fixture.call(Method::Post, &format!("/v1/sites/{}/reinstate", theirs.id), b"");
     assert_eq!((unlifted.status, problem["problem"].as_str()), (Status::Conflict, Some("site.state.serving")));
 }
+
+#[test]
+fn a_branch_preview_is_pushed_listed_and_never_a_deploy() {
+    let fixture = Fixture::new(Limits::default());
+    let git = fixture.site("diary", &json!({ "kind": "git", "url": "https://codeberg.org/cstef/diary" }));
+    let upload = fixture.upload("folder");
+    let archive = built(&[("/", "<h1>branch</h1>")]);
+    let path = format!("/v1/sites/{git}/previews/new-design");
+    let (made, value) = fixture.call(Method::Put, &path, &archive);
+    assert_eq!(made.status, Status::Created, "{value}");
+    assert_eq!(value["slug"], "new-design");
+    assert_eq!(value["url"], "https://new-design--diary.uses.ink");
+    let (listed, value) = fixture.call(Method::Get, &format!("/v1/sites/{git}/previews"), b"");
+    assert_eq!((listed.status, value["items"].as_array().map(Vec::len)), (Status::Ok, Some(1)));
+    // it is no deploy: the site has none, and nothing is live
+    let (_, deploys) = fixture.call(Method::Get, &format!("/v1/sites/{git}/deploys"), b"");
+    assert_eq!(deploys["items"].as_array().map(Vec::len), Some(0));
+    let (_, status) = fixture.call(Method::Get, &format!("/v1/sites/{git}"), b"");
+    assert_eq!(status["live"], Value::Null);
+    // an upload site has no branches, and a label that is no label is no route
+    let (refused, problem) = fixture.call(Method::Put, &format!("/v1/sites/{upload}/previews/main"), &archive);
+    assert_eq!(
+        (refused.status, problem["problem"].as_str()),
+        (Status::Unprocessable, Some("preview.site.unsupported"))
+    );
+    let (bad, _) = fixture.call(Method::Put, &format!("/v1/sites/{git}/previews/a--b"), &archive);
+    assert_eq!(bad.status, Status::BadRequest);
+    // a preview lasts seven days, and then it is not listed
+    fixture.clock.advance(std::time::Duration::from_secs(7 * 24 * 3600 + 1));
+    let (_, gone) = fixture.call(Method::Get, &format!("/v1/sites/{git}/previews"), b"");
+    assert_eq!(gone["items"].as_array().map(Vec::len), Some(0));
+}

@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 
 use blob::{Blob, Tenant};
 use clock::{Clock, Draw};
-use control::{Ports, Site};
+use control::{Ports, Site, Slug};
 use edge_folder::{MANIFEST, Unchecked};
 use model::{ContentPath, Hash};
 
@@ -19,7 +19,7 @@ use crate::Api;
 use crate::archive::{self, Tree};
 use crate::auth::credential::Credentials;
 use crate::fault::{Fault, Intake};
-use crate::view::Deployed;
+use crate::view::{Deployed, Previewed};
 
 /// An archive taken apart: the files it holds and the deploy its manifest describes.
 struct Parts {
@@ -33,16 +33,31 @@ impl<P: Ports + 'static, C: Credentials, K: Clock, D: Draw> Api<P, C, K, D> {
     /// Reads `body` as a built folder and makes it a deploy of `site`, live unless publishing is
     /// paused.
     pub(crate) async fn deploy(&self, site: &Site, body: &[u8]) -> Result<Deployed, Fault<P>> {
+        let (manifest, files) = self.staged(site, body).await?;
+        let new = control::NewDeploy { site: site.id, manifest, build: None, at: self.clock.now() };
+        let recorded = self.control.deploy(new).await?;
+        Ok(Deployed::of(&recorded, files))
+    }
+
+    /// Reads `body` as a built folder and makes it the preview `slug` of `site`: served at its
+    /// own address until it ends, and no deploy.
+    pub(crate) async fn previewing(&self, site: &Site, slug: Slug, body: &[u8]) -> Result<Previewed, Fault<P>> {
+        let (manifest, _) = self.staged(site, body).await?;
+        let new = control::NewPreview { site: site.id, slug, manifest, at: self.clock.now() };
+        let preview = self.control.preview(new).await?;
+        Ok(Previewed::of(&preview, self.control.origin().previewed(&preview.slug, &site.handle).ok()))
+    }
+
+    /// The archive's blobs stored under the site's tenant, and the manifest that serves them with
+    /// the number of files the archive held.
+    async fn staged(&self, site: &Site, body: &[u8]) -> Result<(model::Manifest, u64), Fault<P>> {
         let parts = Self::open(body, &self.limits.archives())?;
         let tenant = Tenant::try_from(site.id).map_err(control::Refusal::Tenant)?;
         for entry in parts.checked.manifest.entries() {
             self.store(&tenant, &parts, entry.blob()).await?;
         }
         let files = parts.tree.len() as u64;
-        let new =
-            control::NewDeploy { site: site.id, manifest: parts.checked.manifest, build: None, at: self.clock.now() };
-        let recorded = self.control.deploy(new).await?;
-        Ok(Deployed::of(&recorded, files))
+        Ok((parts.checked.manifest, files))
     }
 
     /// The archive read, its manifest checked, and every listed file found and hashed.

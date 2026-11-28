@@ -433,3 +433,31 @@ pub struct Suspended {
     /// When.
     pub at: Timestamp,
 }
+
+/// A preview, as its owner reads it.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Previewed {
+    /// The label.
+    pub slug: String,
+    /// Where it is served, anyone with the address can open it.
+    pub url: Option<String>,
+    /// The deploy it serves.
+    pub deploy: DeployId,
+    /// How many files.
+    pub files: u64,
+    /// When it ends.
+    pub expires: Timestamp,
+}
+
+impl Previewed {
+    /// `preview`, served at `url`.
+    pub fn of(preview: &control::Preview, url: Option<ExternalUrl>) -> Self {
+        Self {
+            slug: preview.slug.to_string(),
+            url: url.map(|url| url.as_str().to_owned()),
+            deploy: preview.deploy,
+            files: preview.files,
+            expires: preview.expires,
+        }
+    }
+}

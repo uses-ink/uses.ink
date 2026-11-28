@@ -353,6 +353,21 @@ pub enum Removal {
     Bytes,
 }
 
+/// `preview`: a labelled deploy of a branch that is not the site's, served at its own address
+/// until it expires.
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "preview"]
+pub enum Preview {
+    Table,
+    SiteId,
+    Slug,
+    DeployId,
+    Files,
+    Bytes,
+    CreatedAt,
+    ExpiresAt,
+}
+
 /// SQLite's row number, which orders rows that tie on a column.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 pub enum Row {

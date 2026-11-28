@@ -15,11 +15,17 @@ pub struct Policy {
     pub limits: Limits,
     /// The most blobs one step of a removal deletes (`--remove-step`).
     pub removal: u64,
+    /// How long a preview of a branch is served (`--preview-days`).
+    pub preview: Duration,
 }
 
 impl Policy {
     /// The defaults: a hold of twelve months and the default [`Limits`].
-    pub const DEFAULT: Self = Self { hold: Hold::DEFAULT, limits: Limits::DEFAULT, removal: Self::STEP };
+    pub const DEFAULT: Self =
+        Self { hold: Hold::DEFAULT, limits: Limits::DEFAULT, removal: Self::STEP, preview: Self::PREVIEW };
+
+    /// How long a preview lasts unless the operator says: seven days (`docs/hosted.md` HQ12).
+    pub const PREVIEW: Duration = Duration::from_hours(7 * 24);
 
     /// How many blobs a step of a removal deletes unless the operator says.
     pub const STEP: u64 = 500;
@@ -35,6 +41,13 @@ impl Policy {
     #[must_use]
     pub const fn stepping(mut self, blobs: u64) -> Self {
         self.removal = blobs;
+        self
+    }
+
+    /// The same policy serving a preview for `preview`.
+    #[must_use]
+    pub const fn previewing(mut self, preview: Duration) -> Self {
+        self.preview = preview;
         self
     }
 

@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use blob::Tenant;
 use clock::Clock;
-use control::{Control, Handle, Id, Ports, SiteKind};
+use control::{Control, Handle, Id, Ports, SiteKind, Slug};
 use edge::{Deploy, Hostname, Notice, Resolved};
 use edge_folder::Placed;
 use jiff::{SignedDuration, Timestamp};
@@ -91,10 +91,14 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
 
     /// What `hostname` serves now.
     async fn answer(&self, hostname: &Hostname) -> Answer {
-        let Some(handle) = hostname.name().and_then(|name| self.control.origin().handle(name)) else {
-            return Ok(None);
+        let Some(name) = hostname.name() else { return Ok(None) };
+        let origin = self.control.origin();
+        let pointer = match (origin.handle(name), origin.preview(name)) {
+            (Some(handle), _) => self.pointer(&handle).await?,
+            (None, Some((slug, handle))) => self.previewed(&slug, &handle).await?,
+            (None, None) => return Ok(None),
         };
-        let Some(pointer) = self.pointer(&handle).await? else { return Ok(None) };
+        let Some(pointer) = pointer else { return Ok(None) };
         let loaded = self.loaded(&pointer).await?;
         Ok(Some(Resolved { deploy: loaded.deploy, scope: loaded.placed }))
     }
@@ -133,6 +137,16 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
         let pointer = Pointer { site: serving.site, deploy: serving.live.deploy, at: now };
         self.pointers.borrow_mut().put(handle.clone(), pointer);
         Ok(Some(pointer))
+    }
+
+    /// The deploy `slug`'s preview of `handle`'s site serves, or none once it has ended. Never
+    /// remembered: a preview lives for days and is asked of the control plane at each request, so
+    /// the end of one and the removal of its site apply at once.
+    async fn previewed(&self, slug: &Slug, handle: &Handle) -> Result<Option<Pointer>, Failure> {
+        let now = self.clock.now();
+        let showing =
+            self.control.previewed((slug, handle), now).await.map_err(|error| Failure::Lookup(Chain::of(&error)))?;
+        Ok(showing.map(|showing| Pointer { site: showing.site, deploy: showing.deploy, at: now }))
     }
 
     /// The deploy of a pointer, its manifest read back and its blobs placed in the store's files.

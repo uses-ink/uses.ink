@@ -107,6 +107,8 @@ pub(crate) enum Event {
     Dropped(Dropped),
     /// The worker failed on a request and left it on the queue.
     Failed { cause: Chain },
+    /// The worker swept previews that had ended.
+    Expired { previews: u64, blobs: u64 },
     /// A loop ended without being stopped.
     Crashed { task: Task, attempt: u32, cause: Cause },
     /// A crashed loop starts again after this long.
@@ -136,6 +138,9 @@ impl fmt::Display for Event {
             Self::Refused { build } => write!(out, "worker: build {build} refused: the site does not build"),
             Self::Dropped(reason) => write!(out, "worker: dropped a request: {reason:?}"),
             Self::Failed { cause } => write!(out, "worker: failed: {}", Self::chain(cause)),
+            Self::Expired { previews, blobs } => {
+                write!(out, "worker: swept {previews} ended previews and {blobs} blobs")
+            }
             Self::Crashed { task, attempt, cause } => write!(out, "{task}: crashed ({attempt}): {cause}"),
             Self::Restarting { task, after } => write!(out, "{task}: restarting in {}s", after.as_secs()),
             Self::GaveUp { task, attempts } => write!(out, "{task}: stopped for good after {attempts} crashes"),
@@ -227,6 +232,7 @@ impl Report<Done> for Events {
             Done::Worked(Worked::Dropped(reason)) => self.tell(Event::Dropped(*reason)),
             Done::Worked(_) => {}
             Done::Failed(error) => self.tell(Event::Failed { cause: Chain::of(&**error) }),
+            Done::Expired(swept) => self.tell(Event::Expired { previews: swept.previews, blobs: swept.blobs }),
         }
     }
 }

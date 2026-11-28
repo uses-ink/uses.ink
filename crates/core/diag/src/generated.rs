@@ -374,6 +374,12 @@ impl Message<'_> {
             Problem::AuthOperatorRequired => {
                 write!(out, "only the operator's keys may make this call")
             }
+            Problem::PreviewSiteUnsupported { id, .. } => {
+                write!(out, "the site {id} has no git source, so it has no branches to preview")
+            }
+            Problem::PreviewSitePrivate { id, .. } => {
+                write!(out, "the repository of site {id} is private, so its branches are not previewed")
+            }
             Problem::PluginValueUnmirrored { reason, .. } => {
                 write!(out, "a value has no case at the plugin boundary: {reason}")
             }
@@ -738,6 +744,8 @@ impl Fix<'_> {
             Problem::AbuseReportLimited { .. } => true,
             Problem::AbuseSiteSuspended { .. } => true,
             Problem::AuthOperatorRequired => true,
+            Problem::PreviewSiteUnsupported { .. } => true,
+            Problem::PreviewSitePrivate { .. } => true,
             Problem::PluginValueUnmirrored { .. } => true,
             Problem::PluginValueMalformed { .. } => true,
             Problem::PluginCallTrapped { .. } => true,
@@ -1156,6 +1164,15 @@ impl Fix<'_> {
             }
             Problem::AuthOperatorRequired => {
                 write!(out, "sign the request with a key from the operator-keys file of the server")
+            }
+            Problem::PreviewSiteUnsupported { .. } => {
+                write!(out, "previews are for sites built from a git repository; upload sites have one address")
+            }
+            Problem::PreviewSitePrivate { .. } => {
+                write!(
+                    out,
+                    "a preview is public to anyone with its address; remove the site's git token if the repository is public"
+                )
             }
             Problem::PluginValueUnmirrored { .. } => {
                 write!(out, "build the plugin against the same WIT as the host")

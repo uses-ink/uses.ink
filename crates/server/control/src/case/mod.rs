@@ -7,6 +7,7 @@ mod deploy;
 pub(crate) mod export;
 mod hold;
 mod job;
+pub(crate) mod preview;
 mod read;
 mod remove;
 mod seen;

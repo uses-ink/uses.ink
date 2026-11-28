@@ -22,8 +22,8 @@ use crate::port::{Port, Unnamed};
 use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::route::Call;
 use crate::view::{
-    BuildView, DeployView, Enrolled, GrantView, KeyView, Listed, LiveView, Moved, Polled, Removed, ReportView,
-    Reported, Requested as Asked, SiteView, Status as Overview, Suspended, Whoami,
+    BuildView, DeployView, Enrolled, GrantView, KeyView, Listed, LiveView, Moved, Polled, Previewed, Removed,
+    ReportView, Reported, Requested as Asked, SiteView, Status as Overview, Suspended, Whoami,
 };
 
 /// Who a request is, once its signature checked: someone, or a key waiting to be enrolled.
@@ -173,6 +173,8 @@ where
             Call::Log { site, build } => self.log(principal, site, build).await,
             Call::Export { site, deploy } => self.export(principal, Route { site, deploy }).await,
             Call::Intake(site) => self.intake(principal, site, body).await,
+            Call::Previews(site) => self.previews(principal, site).await,
+            Call::Preview { site, slug } => self.preview(principal, (site, slug), body).await,
             Call::Source(site) => self.probe(principal, site, body).await,
             Call::Parts(site) => self.parts(principal, site, body).await,
             Call::Bundle(site) => self.bundle(principal, site).await,
@@ -458,6 +460,26 @@ where
             Some(refused) => Fault::Keys(refused.clone()),
             None => Fault::Store(error),
         }
+    }
+
+    async fn previews(&self, principal: Principal, id: Id<SiteKind>) -> Result<Reply, Fault<P>> {
+        let site = self.owned(principal, id).await?;
+        let listed = self.control.previews(id, self.clock.now()).await?;
+        let origin = self.control.origin();
+        let items = listed.iter().map(|found| Previewed::of(found, origin.previewed(&found.slug, &site.handle).ok()));
+        Self::json(Status::Ok, &Listed { items: items.collect() })
+    }
+
+    async fn preview(
+        &self,
+        principal: Principal,
+        target: (Id<SiteKind>, control::Slug),
+        body: &[u8],
+    ) -> Result<Reply, Fault<P>> {
+        let (id, slug) = target;
+        let site = self.owned(principal, id).await?;
+        let made = self.previewing(&site, slug, body).await?;
+        Self::json(Status::Created, &made)
     }
 
     async fn intake(&self, principal: Principal, id: Id<SiteKind>, body: &[u8]) -> Result<Reply, Fault<P>> {

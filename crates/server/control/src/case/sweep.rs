@@ -24,6 +24,8 @@ const CHUNK: usize = 40;
 pub struct Swept {
     /// How many deploys were dropped.
     pub deploys: u64,
+    /// How many previews ended and were removed.
+    pub previews: u64,
     /// How many blobs were deleted.
     pub blobs: u64,
     /// The bytes those blobs held.
@@ -78,8 +80,8 @@ impl<P: Ports> Control<P> {
     ) -> Result<Swept, Error<P>> {
         let (dropped, mut protected) = dropped;
         let tenant = Self::tenant(site)?;
-        for deploy in kept {
-            protected.extend(self.reach(site, *deploy).await?);
+        for deploy in kept.iter().copied().chain(self.preview_ids(site, &[]).await?) {
+            protected.extend(self.reach(site, deploy).await?);
         }
         let mut goners = BTreeSet::new();
         for deploy in dropped {
@@ -125,7 +127,7 @@ impl<P: Ports> Control<P> {
     pub(crate) async fn discard(&self, site: Id<SiteKind>, manifest: &Manifest) -> Result<(), Error<P>> {
         let tenant = Self::tenant(site)?;
         let mut held = BTreeSet::new();
-        for deploy in self.deploy_ids(site).await? {
+        for deploy in self.deploy_ids(site).await?.into_iter().chain(self.preview_ids(site, &[]).await?) {
             held.extend(self.reach(site, deploy).await?);
         }
         for entry in manifest.entries() {
@@ -137,7 +139,7 @@ impl<P: Ports> Control<P> {
     }
 
     /// The ids of `site`'s deploys, newest first.
-    async fn deploy_ids(&self, site: Id<SiteKind>) -> Result<Vec<DeployId>, Error<P>> {
+    pub(crate) async fn deploy_ids(&self, site: Id<SiteKind>) -> Result<Vec<DeployId>, Error<P>> {
         let select = Query::select()
             .column(table::Deploy::Id)
             .from(table::Deploy::Table)
@@ -151,7 +153,7 @@ impl<P: Ports> Control<P> {
 
     /// The manifest of a deploy, and every blob it names. A manifest the store no longer holds
     /// reaches nothing; one that is not canonical stops the sweep.
-    async fn reach(&self, site: Id<SiteKind>, deploy: DeployId) -> Result<BTreeSet<Hash>, Error<P>> {
+    pub(crate) async fn reach(&self, site: Id<SiteKind>, deploy: DeployId) -> Result<BTreeSet<Hash>, Error<P>> {
         let tenant = Self::tenant(site)?;
         let mut reached = BTreeSet::new();
         let Some(stored) = self.ports.blob().get(&tenant, deploy.hash()).await? else { return Ok(reached) };

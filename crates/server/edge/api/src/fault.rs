@@ -418,10 +418,12 @@ impl<P: Ports> Fault<P> {
             | Refusal::NoBuild { .. }
             | Refusal::NoManifest { .. }
             | Refusal::NoCredential { .. } => Status::NotFound,
-            Refusal::NoAccount { .. } | Refusal::MissingBlob { .. } => Status::Unprocessable,
+            Refusal::NoAccount { .. } | Refusal::NoPreview { .. } | Refusal::MissingBlob { .. } => {
+                Status::Unprocessable
+            }
             Refusal::Over { spent: Spent::Stored, .. } => Status::TooLarge,
             Refusal::Over { spent: Spent::Builds, .. } => Status::TooMany,
-            Refusal::Suspended { .. } | Refusal::Over { .. } => Status::Forbidden,
+            Refusal::Suspended { .. } | Refusal::Private { .. } | Refusal::Over { .. } => Status::Forbidden,
             _ => Status::Internal,
         }
     }

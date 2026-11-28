@@ -61,6 +61,18 @@ pub enum Event {
     },
     /// The operator lifted the suspension.
     SiteReinstated,
+    /// A preview of a branch was made or replaced.
+    PreviewPushed {
+        /// Its label.
+        slug: crate::Slug,
+        /// The deploy it serves.
+        deploy: DeployId,
+    },
+    /// A preview ended and was swept.
+    PreviewExpired {
+        /// Its label.
+        slug: crate::Slug,
+    },
     /// The site took another handle, and the old one is held.
     SiteRenamed {
         /// The handle it had.
@@ -82,6 +94,8 @@ impl Event {
             Self::BuildRequested { .. } => "build.requested",
             Self::HandleVerified { .. } => "handle.verified",
             Self::SiteRenamed { .. } => "site.renamed",
+            Self::PreviewPushed { .. } => "preview.pushed",
+            Self::PreviewExpired { .. } => "preview.expired",
             Self::SiteSuspended { .. } => "site.suspended",
             Self::SiteReinstated => "site.reinstated",
         }

@@ -170,7 +170,7 @@ impl<P: Ports> Control<P> {
     }
 
     /// The size of every blob the manifest names, or the refusal for the first one missing.
-    async fn stat(&self, tenant: &blob::Tenant, manifest: &model::Manifest) -> Result<Bytes, Error<P>> {
+    pub(crate) async fn stat(&self, tenant: &blob::Tenant, manifest: &model::Manifest) -> Result<Bytes, Error<P>> {
         let mut bytes = Bytes(0);
         for entry in manifest.entries() {
             let size = self.ports.blob().stat(tenant, entry.blob()).await?;

@@ -276,7 +276,8 @@ freeze.
   `Limits` (1 GiB, 60 builds a day, 10 minutes a build, 20 deploys kept) that the refusals and the public `/limits`
   page both read, with a retention sweep (0088); C4, unsigned abuse reports limited per source and operator
   suspension that serves a notice and no bytes (0089); C3, removal in bounded steps with a receipt that
-  stays whole across a resume (0090).
+  stays whole across a resume (0090); C6, branch previews at `label--handle` that expire, are swept and
+  never touch the deploys (0091), pushed by archive until the watch can build a branch.
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`
