@@ -49,16 +49,6 @@ pub(crate) enum Glyphs {
     Ascii,
 }
 
-/// How times in listings are written.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub(crate) enum Times {
-    /// UTC, ISO.
-    Utc,
-    /// The machine's own zone.
-    Local,
-}
-
 /// The `[ui]` table of the config file: the person's terminal preferences.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -66,7 +56,6 @@ pub(crate) struct Ui {
     pub(crate) color: Option<When>,
     pub(crate) glyphs: Option<Glyphs>,
     pub(crate) progress: Option<Progress>,
-    pub(crate) times: Option<Times>,
     pub(crate) width: Option<u16>,
 }
 

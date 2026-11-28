@@ -432,8 +432,8 @@ design makes that the rule for every block and names the pair.
 - **Headers appear on a terminal only.** A table on a pipe has no header and one row per line, so
   `ink deploy list | grep failed` works. A machine reads `--json`.
 - **Times are UTC, ISO 8601 without seconds** (`2026-11-27 14:03Z`), as `flow.md` section 7 says;
-  `--local` writes the local time with its offset. No relative times ("2 hours ago"): they change
-  between two runs of the same command (open choice 9).
+  There is no local-time option yet. No relative times ("2 hours ago"): they change between two
+  runs of the same command (open choice 9).
 - **Paths are written as the person gave them**, relative to the folder, `/`-separated. Routes
   start with `/`. Ids are written whole.
 - **Prose wraps at the terminal width, at most 100; code and snippets never wrap.**
@@ -526,8 +526,8 @@ A clean run:
 A notice (shown with `-v`; one line of wording, `fix:` when there is one):
 
 ```text
-note[source.git.default]: reading the git repository, since .git exists
-  fix: pass --source folder to read the files on disk, uncommitted changes included
+note[source.git.chosen]: the folder is a git repository, so the site is read from its commit 3f9a2c1e, not from the files on disk
+  fix: pass `--source folder` to read the files as they are, uncommitted changes included
 ```
 
 ### An error with a cause chain and a fix
@@ -944,7 +944,6 @@ bucket 2) are flags and the host's own config, not `ink.toml`.
 | `color` | `--color` | `INK_COLOR` | `auto`, `always`, `never` |
 | `glyphs` | | `INK_GLYPHS` | `unicode`, `ascii` |
 | `progress` | `--no-progress` | `INK_NO_PROGRESS` | `live`, `plain` |
-| `times` | `--local` on listings | `INK_TIMES` | `utc`, `local` |
 | `width` | | `INK_WIDTH` | a number, `0` for no limit |
 
 ### Colour decision
@@ -968,7 +967,7 @@ plain, as baudelaire's `Color::declared` does.
 
 | Variable | Decides |
 |---|---|
-| `INK_COLOR`, `INK_GLYPHS`, `INK_NO_PROGRESS`, `INK_TIMES`, `INK_WIDTH` | The `[ui]` keys above |
+| `INK_COLOR`, `INK_GLYPHS`, `INK_NO_PROGRESS`, `INK_WIDTH` | The `[ui]` keys above |
 | `INK_DIR` | `-C` |
 | `INK_LOG`, `INK_LOG_FILE`, `INK_LOG_FORMAT`, `INK_LOG_SPANS`, `INK_LOG_TIMINGS` | The log (`docs/tracing.md`): `--log`, `--log-file`, and the `[log]` keys `filter`, `file`, `format`. `RUST_LOG` is not read |
 | `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE` | Colour, as above |
