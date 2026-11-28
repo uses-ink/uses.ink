@@ -22,6 +22,8 @@ pub enum Unrouted {
     Code(model::UnknownDecision),
     /// A file path that is none.
     File(model::PathError),
+    /// A session segment that is no session id.
+    Session(control::IdError),
 }
 
 impl fmt::Display for Unrouted {
@@ -32,6 +34,7 @@ impl fmt::Display for Unrouted {
             Self::Build(_) => out.write_str("the build in the address is not a build id"),
             Self::Code(_) => out.write_str("the decision in the address is not a decision code"),
             Self::File(_) => out.write_str("the file in the address is not a path"),
+            Self::Session(_) => out.write_str("the session in the address is not a session id"),
         }
     }
 }
@@ -44,6 +47,7 @@ impl Error for Unrouted {
             Self::Build(source) => Some(source),
             Self::Code(source) => Some(source),
             Self::File(source) => Some(source),
+            Self::Session(source) => Some(source),
         }
     }
 }

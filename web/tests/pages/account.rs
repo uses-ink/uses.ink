@@ -48,3 +48,21 @@ fn the_account_screen_lists_passkeys_with_a_remove_button() {
             && text.contains(r#"data-passkey="register""#)
     );
 }
+
+#[test]
+fn the_account_screen_lists_sessions_and_ends_all_but_this_one_by_a_form() {
+    use control::{Id, SessionKind};
+    use uses_ink_web::view::Seen;
+    let (this, other): (Id<SessionKind>, Id<SessionKind>) = (Id::from_bytes([1; 16]), Id::from_bytes([2; 16]));
+    let at = Fixtures::at("2026-11-27T09:30:00Z");
+    let sessions = vec![
+        Seen { id: this, created: at, seen: at, current: true },
+        Seen { id: other, created: at, seen: at, current: false },
+    ];
+    let account = Account::new(Fixtures::at("2026-11-01T00:00:00Z"), Vec::new()).with_sessions(sessions);
+    let text = Document(&account).write().unwrap();
+    assert!(text.contains("This session."), "{text}");
+    assert!(text.contains(&format!(r#"action="/account/sessions/{other}""#)), "{text}");
+    assert!(!text.contains(&format!("/account/sessions/{this}")), "the asking session has no end button");
+    assert!(!text.contains("<script>"), "no script beyond the passkey one");
+}

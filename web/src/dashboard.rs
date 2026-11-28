@@ -77,6 +77,14 @@ pub trait Screens: Send + Sync {
     /// The Account screen.
     fn account(&self, who: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>> + Send;
 
+    /// Ends one of the account's sessions. A session that is another account's, has ended or
+    /// never was is answered as an address that names nothing, [`Failure::Unrouted`].
+    fn end_session(
+        &self,
+        who: Id<AccountKind>,
+        id: Id<control::SessionKind>,
+    ) -> impl Future<Output = Result<(), Failure>> + Send;
+
     /// A build's log.
     fn log(
         &self,
@@ -206,6 +214,10 @@ impl<S: Screens> Dashboard<S> {
                 location: None,
                 body: Body::Download(screens.export(who, handle).await?),
             }),
+            Route::EndSession(id) => {
+                screens.end_session(who, *id).await?;
+                Ok(Reply::see(Path::account()))
+            }
             Route::Act(handle, action) => {
                 screens.act(who, handle, action).await?;
                 Ok(Reply::see(Self::after(handle, action)))

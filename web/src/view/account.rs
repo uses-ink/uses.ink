@@ -14,6 +14,7 @@ use crate::shell::{Frame, View};
 use crate::style::look;
 use crate::view::block::{Empty, Link, Post, Stamp};
 use crate::view::passkeys::{Kept, Section};
+use crate::view::sessions::{Seen, Section as Sessions};
 use crate::view::word::Word;
 
 /// One of the person's sites.
@@ -38,18 +39,26 @@ pub struct Account {
     pub sites: Vec<Owned>,
     /// The person's passkeys.
     pub passkeys: Vec<Kept>,
+    /// The person's signed-in sessions.
+    pub sessions: Vec<Seen>,
 }
 
 impl Account {
     /// An Account screen.
     pub fn new(created: Timestamp, sites: Vec<Owned>) -> Self {
-        Self { frame: Frame::account(), created, sites, passkeys: Vec::new() }
+        Self { frame: Frame::account(), created, sites, passkeys: Vec::new(), sessions: Vec::new() }
     }
 
     /// The same screen listing `passkeys`.
     #[must_use]
     pub fn with_passkeys(self, passkeys: Vec<Kept>) -> Self {
         Self { passkeys, ..self }
+    }
+
+    /// The same screen listing `sessions`.
+    #[must_use]
+    pub fn with_sessions(self, sessions: Vec<Seen>) -> Self {
+        Self { sessions, ..self }
     }
 }
 
@@ -74,6 +83,7 @@ impl View for Account {
             h2 { "Sign-in" }
             p { "You can sign in with an email link or with a passkey." }
             (Section(&self.passkeys))
+            (Sessions(&self.sessions))
             h2 { "Notifications" }
             p { "Failure notices are sent by email: the first failure and its fix only." }
         }

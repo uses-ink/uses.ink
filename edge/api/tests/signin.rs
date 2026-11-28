@@ -443,3 +443,57 @@ fn nothing_that_prints_holds_a_secret() {
     let message = fixture.mail.sent();
     assert!(!format!("{:?}", message[0]).contains(&token), "a message prints its link");
 }
+
+fn code(reply: &Reply) -> String {
+    json(reply)["problem"].as_str().unwrap_or_default().to_owned()
+}
+
+#[test]
+fn an_account_lists_its_sessions_and_ends_them_by_id_and_no_one_elses() {
+    let settings = Settings { signup: Signup::Open, ..Settings::default() };
+    let fixture = Fixture::new(Wanted { settings, ..Wanted::default() });
+    let (first, second) = (fixture.sign_in("me@example.org"), fixture.sign_in("me@example.org"));
+    let stranger = fixture.sign_in("you@example.org");
+    let (one, two, other) =
+        (format!("ink-session={first}"), format!("ink-session={second}"), format!("ink-session={stranger}"));
+    let (one, two, other) = (
+        Held { cookie: Some(&one), ..Held::default() },
+        Held { cookie: Some(&two), ..Held::default() },
+        Held { cookie: Some(&other), ..Held::default() },
+    );
+    // anonymous: no list, and the cookie is not required to be sent for the answer to be a 401
+    assert_eq!(fixture.send((Method::Get, "/v1/sessions"), Held::default(), b"").status, Status::Unauthorized);
+    let listed = fixture.send((Method::Get, "/v1/sessions"), one, b"");
+    assert_eq!(listed.status, Status::Ok);
+    let list = json(&listed);
+    let rows = list.as_array().unwrap();
+    assert_eq!(rows.len(), 2, "the stranger's session is not listed");
+    assert_eq!(rows.iter().filter(|row| row["current"] == json!(true)).count(), 1);
+    let text = String::from_utf8_lossy(&listed.body).into_owned();
+    assert!(!text.contains(&first) && !text.contains(&second), "a list has no secret: {text}");
+    let theirs = rows.iter().find(|row| row["current"] == json!(false)).unwrap()["id"].as_str().unwrap().to_owned();
+    // the stranger cannot end it, and gets the answer of an id that names nothing
+    let denied = fixture.send((Method::Delete, &format!("/v1/sessions/{theirs}")), other, b"");
+    assert_eq!((denied.status, code(&denied)), (Status::NotFound, "auth.session.missing".to_owned()));
+    assert_eq!(fixture.send((Method::Get, "/v1/session"), two, b"").status, Status::Ok);
+    // the owner ends the other one, and it stops working at once
+    let ended = fixture.send((Method::Delete, &format!("/v1/sessions/{theirs}")), one, b"");
+    assert_eq!((ended.status, ended.cookie.is_none()), (Status::Ok, true));
+    assert_eq!(fixture.send((Method::Get, "/v1/session"), two, b"").status, Status::Unauthorized);
+    assert_eq!(json(&fixture.send((Method::Get, "/v1/sessions"), one, b"")).as_array().unwrap().len(), 1);
+    // ended, unknown and malformed ids are one answer
+    for path in [format!("/v1/sessions/{theirs}"), format!("/v1/sessions/{}", "0".repeat(32)), "/v1/sessions/x".to_owned()] {
+        let gone = fixture.send((Method::Delete, &path), one, b"");
+        assert_eq!((gone.status, code(&gone)), (Status::NotFound, "auth.session.missing".to_owned()), "{path}");
+    }
+    // ending the asking one clears its cookie
+    let current = json(&fixture.send((Method::Get, "/v1/sessions"), one, b""))[0]["id"].as_str().unwrap().to_owned();
+    let last = fixture.send((Method::Delete, &format!("/v1/sessions/{current}")), one, b"");
+    assert!(last.cookie.unwrap().to_string().contains("Max-Age=0"));
+    assert_eq!(fixture.send((Method::Get, "/v1/sessions"), one, b"").status, Status::Unauthorized);
+    // the stranger kept theirs
+    assert_eq!(fixture.send((Method::Get, "/v1/sessions"), other, b"").status, Status::Ok);
+    // a method the route does not take lists the ones it does
+    let wrong = fixture.send((Method::Post, "/v1/sessions"), other, b"");
+    assert_eq!((wrong.status, wrong.allow), (Status::MethodNotAllowed, vec![Method::Get]));
+}

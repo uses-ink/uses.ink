@@ -4,6 +4,7 @@ use std::fmt;
 
 use control::keys::UserCode;
 use control::signin::Proof;
+use control::{Id, SessionKind};
 
 use crate::reply::Method;
 
@@ -23,6 +24,11 @@ pub enum Enter {
     Show,
     /// `DELETE /v1/session`: end it.
     End,
+    /// `GET /v1/sessions`: the account's live sessions, with the one asking marked.
+    Sessions,
+    /// `DELETE /v1/sessions/{id}`: end one of the account's sessions. An id that is no id is
+    /// `None`, and is answered as an id that names nothing.
+    Revoke(Option<Id<SessionKind>>),
     /// `GET /v1/approve/{code}`: what a person is asked to approve: the fingerprint, the label
     /// and the rights. The code is the 8 letters the requester shows.
     Seeing(Option<UserCode>),
@@ -55,16 +61,18 @@ impl Enter {
     const LOGIN: &'static str = "/v1/login";
     /// The session's path.
     const SESSION: &'static str = "/v1/session";
+    /// The path of the account's sessions, under which a session's id is the last segment.
+    const SESSIONS: &'static str = "/v1/sessions";
     /// The path under which an enrolment's code is the last segment.
     const APPROVE: &'static str = "/v1/approve";
 
     /// The parts of a path of these routes: `None` when the path is not one of them.
     fn parts(path: &str) -> Option<(&str, Option<&str>)> {
         let path = path.trim_end_matches('/');
-        if path == Self::LOGIN || path == Self::SESSION {
+        if path == Self::LOGIN || path == Self::SESSION || path == Self::SESSIONS {
             return Some((path, None));
         }
-        let (base, token) = [Self::LOGIN, Self::APPROVE]
+        let (base, token) = [Self::LOGIN, Self::APPROVE, Self::SESSIONS]
             .into_iter()
             .find_map(|base| Some((base, path.strip_prefix(base)?.strip_prefix('/')?)))?;
         (!token.contains('/') && !token.is_empty()).then_some((base, Some(token)))
@@ -80,12 +88,15 @@ impl Enter {
         let (base, token) = Self::parts(path)?;
         let proof = || token.and_then(|text| text.parse::<Proof>().ok());
         let code = || token.and_then(|text| text.parse::<UserCode>().ok());
+        let id = || token.and_then(|text| text.parse::<Id<SessionKind>>().ok());
         let table: Vec<(Method, Self)> = match (base, token) {
             (Self::APPROVE, _) => vec![
                 (Method::Get, Self::Seeing(code())),
                 (Method::Post, Self::Approving(code())),
                 (Method::Delete, Self::Declining(code())),
             ],
+            (Self::SESSIONS, None) => vec![(Method::Get, Self::Sessions)],
+            (Self::SESSIONS, Some(_)) => vec![(Method::Delete, Self::Revoke(id()))],
             (Self::LOGIN, None) => vec![(Method::Post, Self::Ask)],
             (Self::LOGIN, Some(_)) => vec![(Method::Get, Self::Look(proof())), (Method::Post, Self::Redeem(proof()))],
             _ => vec![(Method::Get, Self::Show), (Method::Delete, Self::End)],
@@ -126,6 +137,13 @@ mod test {
         assert!(matches!(Enter::parse(Method::Post, &format!("/v1/login/{TOKEN}")), Some(Ok(Enter::Redeem(Some(_))))));
         assert!(matches!(Enter::parse(Method::Get, "/v1/session"), Some(Ok(Enter::Show))));
         assert!(matches!(Enter::parse(Method::Delete, "/v1/session"), Some(Ok(Enter::End))));
+        assert!(matches!(Enter::parse(Method::Get, "/v1/sessions"), Some(Ok(Enter::Sessions))));
+        let id = "0a".repeat(16);
+        assert!(matches!(
+            Enter::parse(Method::Delete, &format!("/v1/sessions/{id}")),
+            Some(Ok(Enter::Revoke(Some(_))))
+        ));
+        assert!(matches!(Enter::parse(Method::Delete, "/v1/sessions/nope"), Some(Ok(Enter::Revoke(None)))));
     }
 
     #[test]
@@ -141,7 +159,7 @@ mod test {
 
     #[test]
     fn other_paths_are_not_ours() {
-        for path in ["/v1/sites", "/v1/login/a/b", "/v1/logins", "/v1/sessions", "/"] {
+        for path in ["/v1/sites", "/v1/login/a/b", "/v1/logins", "/v1/sessionsx", "/v1/sessions/a/b", "/"] {
             assert!(Enter::parse(Method::Get, path).is_none(), "{path}");
             assert!(!Enter::owns(path), "{path}");
         }

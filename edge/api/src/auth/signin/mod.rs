@@ -12,6 +12,8 @@
 //! | `POST /v1/login/{token}` | Uses the link. `200` with the session secret in the body (a bearer token) and in `Set-Cookie`. The first-run link also takes `{"address"}` to give the owner's account. |
 //! | `GET /v1/session` | The session of the bearer token or the cookie. `401` otherwise. |
 //! | `DELETE /v1/session` | Ends it and clears the cookie. |
+//! | `GET /v1/sessions` | The account's live sessions, newest first, with the asking one marked `current`. No secret is in it. |
+//! | `DELETE /v1/sessions/{id}` | Ends one of the account's sessions by its id. `404` for an id that is another account's, ended or never made. Ending the asking one clears the cookie. |
 //!
 //! **Enumeration.** The answer to `POST /v1/login` is one value of one type, built before the
 //! outcome is known. The work differs by one local row write, and no mail is sent in the request:
@@ -104,6 +106,8 @@ pub enum Step<E> {
     Store(KeyError<E>),
     /// The request holds no usable session.
     Anonymous,
+    /// The account has no live session with that id.
+    Missing,
     /// The random source gave nothing.
     Draw(Unnamed),
     /// Signing in refused or failed.
@@ -124,6 +128,7 @@ impl<E> std::fmt::Display for Step<E> {
             Self::Keys(error) => error.fmt(out),
             Self::Store(_) => out.write_str("the keys could not be read"),
             Self::Anonymous => out.write_str("sign in on the dashboard: this route reads the session cookie"),
+            Self::Missing => out.write_str("the account has no live session with that id"),
             Self::Draw(_) => out.write_str("no random bytes were available"),
             Self::Sign(error) => error.fmt(out),
             Self::Json(_) => out.write_str("the answer could not be written"),
@@ -143,7 +148,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Step<E> {
             Self::Draw(source) => Some(source),
             Self::Sign(source) => Some(source),
             Self::Json(source) => Some(source),
-            Self::Route | Self::Large { .. } | Self::Anonymous => None,
+            Self::Route | Self::Large { .. } | Self::Anonymous | Self::Missing => None,
         }
     }
 }
@@ -160,6 +165,7 @@ impl<E: std::error::Error + 'static> Step<E> {
             Self::Keys(refused) => Turned(refused).code(),
             Self::Store(_) => "keys",
             Self::Anonymous => "unauthorized",
+            Self::Missing => "auth.session.missing",
             Self::Draw(_) => "random",
             Self::Json(_) => "json",
             Self::Sign(error) => match error {
@@ -174,7 +180,7 @@ impl<E: std::error::Error + 'static> Step<E> {
     /// reason, so the answer is one shape.
     pub fn status(&self) -> Status {
         match self {
-            Self::Route | Self::Sign(Error::Refused(Refused::Unusable)) => Status::NotFound,
+            Self::Route | Self::Missing | Self::Sign(Error::Refused(Refused::Unusable)) => Status::NotFound,
             Self::Method(_) => Status::MethodNotAllowed,
             Self::Body(_) => Status::BadRequest,
             Self::Large { .. } => Status::TooLarge,
@@ -281,6 +287,14 @@ struct Ended {
     ended: bool,
 }
 
+/// A session of the account's list: what [`Shown`] says, and whether it is the one asking.
+#[derive(Debug, Serialize)]
+struct Listed {
+    #[serde(flatten)]
+    shown: Shown,
+    current: bool,
+}
+
 impl<E> Step<E> {
     /// The refusal for a link that cannot be used, which is one answer for every reason.
     const fn unusable() -> Self {
@@ -326,6 +340,8 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
             Enter::Look(proof) | Enter::Redeem(proof) => self.redeem(proof, body).await,
             Enter::Show => self.show(request).await,
             Enter::End => self.end(request).await,
+            Enter::Sessions => self.sessions(request).await,
+            Enter::Revoke(id) => self.revoke(request, id).await,
             Enter::Seeing(code) => self.seeing(request, code).await,
             Enter::Approving(code) => self.approving(request, code, body).await,
             Enter::Declining(code) => self.declining(request, code).await,
@@ -404,6 +420,37 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         }
         let mut reply = Self::json(Status::Ok, &Ended { ended: true })?;
         reply.cookie = Some(self.config.jar.clear());
+        Ok(reply)
+    }
+}
+
+impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
+    /// The live sessions of the account the request is signed in as, newest first, the asking one
+    /// marked. No secret is in the list: an id names a session in a revoke and signs nothing.
+    async fn sessions(&self, request: &Request) -> Result<Reply, Step<D::Error>> {
+        let now = self.clock.now();
+        let proof = self.held(request).ok_or(Step::Anonymous)?;
+        let current = self.entry.resolve(&proof, now).await.map_err(Step::Sign)?.ok_or(Step::Anonymous)?;
+        let live = self.entry.sessions(current.account, now).await.map_err(Step::Sign)?;
+        let listed: Vec<Listed> =
+            live.iter().map(|session| Listed { shown: Shown::from(session), current: session.id == current.id }).collect();
+        Self::json(Status::Ok, &listed)
+    }
+
+    /// Ends one of the account's sessions. Another account's session, an ended one and an id that
+    /// names nothing are one answer. Ending the asking session clears its cookie.
+    async fn revoke(&self, request: &Request, id: Option<control::Id<control::SessionKind>>) -> Result<Reply, Step<D::Error>> {
+        let now = self.clock.now();
+        let proof = self.held(request).ok_or(Step::Anonymous)?;
+        let current = self.entry.resolve(&proof, now).await.map_err(Step::Sign)?.ok_or(Step::Anonymous)?;
+        let id = id.ok_or(Step::Missing)?;
+        if !self.entry.revoke(current.account, id, now).await.map_err(Step::Sign)? {
+            return Err(Step::Missing);
+        }
+        let mut reply = Self::json(Status::Ok, &Ended { ended: true })?;
+        if id == current.id {
+            reply.cookie = Some(self.config.jar.clear());
+        }
         Ok(reply)
     }
 }

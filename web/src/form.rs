@@ -222,6 +222,11 @@ impl Segment<'_> {
         self.0.parse().map_err(|source| Failure::Unrouted { source: Unrouted::Handle(source) })
     }
 
+    /// The segment as a session id.
+    pub(crate) fn session(self) -> Result<control::Id<control::SessionKind>, Failure> {
+        self.0.parse().map_err(|source| Failure::Unrouted { source: Unrouted::Session(source) })
+    }
+
     /// The segment as a build id.
     pub(crate) fn build(self) -> Result<BuildId, Failure> {
         self.0.parse().map_err(|source| Failure::Unrouted { source: Unrouted::Build(source) })

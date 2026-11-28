@@ -357,6 +357,7 @@ impl Message<'_> {
                     "passkeys were made for `{was}` and the relying party id is now `{now}`; {passkeys} would stop working"
                 )
             }
+            Problem::AuthSessionMissing => write!(out, "no session of yours has that id"),
         }
     }
     pub(crate) fn announcement(announcement: &Announcement, out: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -638,6 +639,7 @@ impl Fix<'_> {
             Problem::AuthPasskeyMissing => true,
             Problem::AuthPasskeyLabel => true,
             Problem::AuthRelyingPartyChanged { .. } => true,
+            Problem::AuthSessionMissing => true,
         }
     }
     pub(crate) const fn announcement_has(announcement: &Announcement) -> bool {
@@ -993,6 +995,7 @@ impl Fix<'_> {
                     "set `--rp-id {was}` again, or accept that people sign in with an email link and add passkeys anew"
                 )
             }
+            Problem::AuthSessionMissing => write!(out, "reload the list of sessions"),
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.

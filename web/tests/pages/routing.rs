@@ -49,6 +49,18 @@ impl Screens for Fake {
         std::future::ready(Err(Failure::NoSite { handle: Fixtures::handle() }))
     }
 
+    fn end_session(
+        &self,
+        _: Id<AccountKind>,
+        id: Id<control::SessionKind>,
+    ) -> impl Future<Output = Result<(), Failure>> + Send {
+        std::future::ready(if id.to_string() == "0a".repeat(16) {
+            Ok(())
+        } else {
+            Err(Failure::Unrouted { source: uses_ink_web::Unrouted::Path })
+        })
+    }
+
     fn account(&self, _: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>> + Send {
         std::future::ready(Ok(Account::new(Fixtures::at("2026-11-01T12:00:00Z"), vec![])))
     }
@@ -107,6 +119,21 @@ fn a_form_is_answered_by_a_redirect_to_the_page_it_changed() {
         assert_eq!(reply.location.unwrap().as_str(), goes, "{body_path}");
         assert!(matches!(reply.body, Body::Empty));
     }
+}
+
+#[test]
+fn ending_a_session_is_a_post_that_goes_back_to_the_account() {
+    let path = format!("/account/sessions/{}", "0a".repeat(16));
+    let done = reply(&Ask::post(&path, ""), Some(Ask::who()));
+    assert_eq!((done.status, done.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/account".to_owned()));
+    // a get changes nothing: it is refused
+    assert_eq!(reply(&Ask::get(&path), Some(Ask::who())).status, Status::MethodNotAllowed);
+    // an id that is no id, and one that names nothing, are an address of no page
+    for bad in ["/account/sessions/nope".to_owned(), format!("/account/sessions/{}", "0b".repeat(16))] {
+        assert_eq!(reply(&Ask::post(&bad, ""), Some(Ask::who())).status, Status::NotFound, "{bad}");
+    }
+    // and signed out is signed out
+    assert_eq!(reply(&Ask::post(&path, ""), None).status, Status::Unauthorized);
 }
 
 #[test]

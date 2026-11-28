@@ -4,7 +4,7 @@
 use std::fmt::{self, Write as _};
 
 use build::BuildId;
-use control::Handle;
+use control::{Handle, Id, SessionKind};
 
 use crate::failure::Unrouted;
 use crate::form::{Action, Asked, Form, Method, Request, Segment};
@@ -79,6 +79,8 @@ pub enum Route {
     Export(Handle),
     /// A form posted to `/<handle>/<action>`; answered by a redirect to the page it changed.
     Act(Handle, Action),
+    /// A form posted to `/account/sessions/<id>`: end one of the person's sessions.
+    EndSession(Id<SessionKind>),
 }
 
 impl Route {
@@ -100,6 +102,10 @@ impl Route {
         };
         match (first, second, third) {
             (Some("account"), None, None) => get(Self::Account),
+            (Some("account"), Some("sessions"), Some(id)) => match request.method {
+                Method::Post => Segment(id).session().map(Self::EndSession),
+                Method::Get => Err(Failure::Method { used: Method::Get }),
+            },
             (Some("signin"), None, None) => get(Self::SignIn),
             (Some("passkey.js"), None, None) => get(Self::Script),
             (None, ..) => Err(Failure::SignedOut),
@@ -124,7 +130,7 @@ impl Route {
     /// The site the address is about, when it is about one.
     pub const fn handle(&self) -> Option<&Handle> {
         match self {
-            Self::Account | Self::SignIn | Self::Script => None,
+            Self::Account | Self::SignIn | Self::Script | Self::EndSession(_) => None,
             Self::Site(handle)
             | Self::Understood(handle, _)
             | Self::Why(handle, _)
@@ -143,7 +149,7 @@ impl Route {
             Self::Understood(..) | Self::Why(..) => Some(Screen::Understood),
             Self::Deploys(_) | Self::Build(..) => Some(Screen::Deploys),
             Self::Settings(_) => Some(Screen::Settings),
-            Self::Account => Some(Screen::Account),
+            Self::Account | Self::EndSession(_) => Some(Screen::Account),
             Self::Export(_) | Self::Act(..) | Self::SignIn | Self::Script => None,
         }
     }
@@ -168,6 +174,11 @@ impl Path {
     /// The path of the Account screen.
     pub fn account() -> Self {
         Self("/account".to_owned())
+    }
+
+    /// The path a form posts to end the session `id`.
+    pub fn session(id: Id<SessionKind>) -> Self {
+        Self(format!("/account/sessions/{id}"))
     }
 
     /// The path of one build's log.

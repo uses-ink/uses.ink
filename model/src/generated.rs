@@ -686,6 +686,9 @@ pub enum Problem {
         /// How many passkeys are registered.
         passkeys: u64,
     },
+    /// `auth.session.missing`: no session of yours has that id
+    #[serde(rename = "auth.session.missing")]
+    AuthSessionMissing,
 }
 impl Problem {
     /// Every code, in catalog order.
@@ -801,6 +804,7 @@ impl Problem {
         "auth.passkey.missing",
         "auth.passkey.label",
         "auth.relying-party.changed",
+        "auth.session.missing",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -916,6 +920,7 @@ impl Problem {
             Self::AuthPasskeyMissing => "auth.passkey.missing",
             Self::AuthPasskeyLabel => "auth.passkey.label",
             Self::AuthRelyingPartyChanged { .. } => "auth.relying-party.changed",
+            Self::AuthSessionMissing => "auth.session.missing",
         }
     }
     /// How bad it is.
@@ -1032,6 +1037,7 @@ impl Problem {
             Self::AuthPasskeyMissing => Severity::Error,
             Self::AuthPasskeyLabel => Severity::Error,
             Self::AuthRelyingPartyChanged { .. } => Severity::Error,
+            Self::AuthSessionMissing => Severity::Error,
         }
     }
     /// Whose move it is to fix it.
@@ -1148,6 +1154,7 @@ impl Problem {
             Self::AuthPasskeyMissing => Fault::Author,
             Self::AuthPasskeyLabel => Fault::Author,
             Self::AuthRelyingPartyChanged { .. } => Fault::Operator,
+            Self::AuthSessionMissing => Fault::Author,
         }
     }
 }
@@ -1780,6 +1787,7 @@ impl From<&Problem> for Coded {
                 "auth.relying-party.changed",
                 vec![Field::from(was.clone()), Field::from(now.clone()), Field::from(*passkeys)],
             ),
+            Problem::AuthSessionMissing => Coded::new("auth.session.missing", vec![]),
         }
     }
 }
@@ -1920,6 +1928,7 @@ impl TryFrom<Coded> for Problem {
             "auth.relying-party.changed" => {
                 Self::AuthRelyingPartyChanged { was: fields.next()?, now: fields.next()?, passkeys: fields.next()? }
             }
+            "auth.session.missing" => Self::AuthSessionMissing,
             _ => return fields.unknown(),
         };
         fields.end(made)
