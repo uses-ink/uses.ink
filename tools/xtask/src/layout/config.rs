@@ -275,7 +275,7 @@ mod tests {
     use super::*;
 
     /// Every crate the rule list held in code before it became data, sorted.
-    const ENFORCED: [&str; 66] = [
+    const ENFORCED: [&str; 68] = [
         "farm",
         "freehand",
         "freehand-web",
@@ -332,6 +332,8 @@ mod tests {
         "uses-ink-secret",
         "uses-ink-secret-conformance",
         "uses-ink-secret-local",
+        "uses-ink-secret-seal",
+        "uses-ink-secret-worker",
         "uses-ink-sig",
         "uses-ink-source-git",
         "uses-ink-source-git-guest",

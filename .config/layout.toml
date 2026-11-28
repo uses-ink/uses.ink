@@ -62,6 +62,8 @@ crates = [
     "uses-ink-secret",
     "uses-ink-secret-conformance",
     "uses-ink-secret-local",
+    "uses-ink-secret-seal",
+    "uses-ink-secret-worker",
     "uses-ink-sig",
     "uses-ink-source-git",
     "uses-ink-source-git-guest",

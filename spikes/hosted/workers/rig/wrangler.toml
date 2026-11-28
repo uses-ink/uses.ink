@@ -3,6 +3,12 @@ name = "spike-hosted-rig"
 main = "build/index.js"
 compatibility_date = "2026-11-01"
 
+# test keys, for the conformance run only: nothing is sealed under them that is worth keeping
+[vars]
+SEALING_KEY = "6a09e667f3bcc908b2fb1366ea957d3e3adec17512775099da2f59b4e9e8b3a5"
+SEALING_KEY_PREVIOUS = "bb67ae8584caa73b2c6e1f9ad1f1f2a1a54ff53a5f1d36f1510e527fade682d1"
+BAD_KEY = "not a key"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "rig"

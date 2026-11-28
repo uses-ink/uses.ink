@@ -56,6 +56,8 @@ impl Gate {
                     "uses-ink-db-d1",
                     "uses-ink-blob-r2",
                     "uses-ink-queue-cf",
+                    "uses-ink-secret-seal",
+                    "uses-ink-secret-worker",
                     "uses-ink-edge-api",
                 ],
                 flags: &[],

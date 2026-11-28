@@ -29,6 +29,8 @@ pub(crate) enum Case {
     Blob,
     /// The queue port's conformance suite, run through the D1 rows and a Queues wake-up in workerd.
     Queue,
+    /// The secret port's conformance suite, run through a Workers secret binding in workerd.
+    Secret,
     /// Every conformance suite of the rig, in one Worker: what the gate runs.
     Rig,
     /// H1b: the generated migrations applied by wrangler, compared with SQLite's schema.
@@ -37,8 +39,18 @@ pub(crate) enum Case {
 
 impl Case {
     /// Every case, in the order they are listed.
-    pub(crate) const ALL: [Self; 9] =
-        [Self::Probe, Self::Lock, Self::Api, Self::Store, Self::Db, Self::Blob, Self::Queue, Self::Rig, Self::Migrate];
+    pub(crate) const ALL: [Self; 10] = [
+        Self::Probe,
+        Self::Lock,
+        Self::Api,
+        Self::Store,
+        Self::Db,
+        Self::Blob,
+        Self::Queue,
+        Self::Secret,
+        Self::Rig,
+        Self::Migrate,
+    ];
 
     /// The cases the gate's stage `worker` runs: tests, not spikes.
     pub(crate) const GATE: [Self; 2] = [Self::Rig, Self::Migrate];
@@ -53,6 +65,7 @@ impl Case {
             Self::Db => "db",
             Self::Blob => "blob",
             Self::Queue => "queue",
+            Self::Secret => "secret",
             Self::Rig => "rig",
             Self::Migrate => "migrate",
         }
@@ -65,7 +78,7 @@ impl Case {
             Self::Migrate => "spikes/hosted/workers/migrate",
             Self::Api => "spikes/hosted/workers/api",
             Self::Store => "spikes/hosted/workers/store",
-            Self::Db | Self::Blob | Self::Queue | Self::Rig => "spikes/hosted/workers/rig",
+            Self::Db | Self::Blob | Self::Queue | Self::Secret | Self::Rig => "spikes/hosted/workers/rig",
         }
     }
 
@@ -75,7 +88,7 @@ impl Case {
             Self::Probe | Self::Lock | Self::Migrate => 0,
             Self::Api => 8731,
             Self::Store => 8732,
-            Self::Db | Self::Blob | Self::Queue | Self::Rig => 8733,
+            Self::Db | Self::Blob | Self::Queue | Self::Secret | Self::Rig => 8733,
         }
     }
 
@@ -85,6 +98,7 @@ impl Case {
             Self::Db => Some("db"),
             Self::Blob => Some("blob"),
             Self::Queue => Some("queue"),
+            Self::Secret => Some("secret"),
             Self::Probe | Self::Lock | Self::Api | Self::Store | Self::Rig | Self::Migrate => None,
         }
     }
@@ -98,7 +112,7 @@ impl Case {
             }
             Self::Lock => Self::lock(shell, report),
             Self::Migrate => Migrated { shell }.run(report),
-            Self::Api | Self::Store | Self::Db | Self::Blob | Self::Queue | Self::Rig => {
+            Self::Api | Self::Store | Self::Db | Self::Blob | Self::Queue | Self::Secret | Self::Rig => {
                 Served { case: self, shell }.run(report)
             }
         }

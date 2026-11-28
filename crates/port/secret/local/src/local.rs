@@ -3,20 +3,18 @@
 use std::fmt;
 use std::path::Path;
 
-use chacha20poly1305::aead::rand_core::RngCore;
-use chacha20poly1305::aead::{OsRng, Payload};
-use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce, aead::Aead};
 use logging::Field as _;
 use secret::{Binding, Plain, Sealed, Secret};
+use secret_seal::{Opening, Seal, Sealing};
 
 use crate::Error;
-use crate::key::{Key, Origin};
+use crate::key::{KeyFile, Origin};
 
 type Failure = secret::Error<Error>;
 
 /// Seals credentials under a key kept in a file.
 pub struct Local {
-    key: Key,
+    seal: Seal,
 }
 
 impl fmt::Debug for Local {
@@ -29,22 +27,17 @@ impl Local {
     /// The key file's name, beside the database.
     pub const KEY: &'static str = "secret.key";
 
-    /// The format version byte a sealed value starts with.
-    const VERSION: u8 = 1;
-    const NONCE: usize = 24;
-    const TAG: usize = 16;
-
     /// The adapter keyed by the file `path`, which is made with a new key if it is missing.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
-        match Key::open(path) {
+        match KeyFile::open(path) {
             Ok((key, origin)) => {
                 logging::info!(
                     name: logging::event::KEY_OPENED,
                     key_file = logging::Located(path).field(),
                     outcome = if origin == Origin::Made { "made" } else { "read" },
                 );
-                Ok(Self { key })
+                Ok(Self { seal: Seal::new(key) })
             }
             Err(error) => {
                 logging::error!(
@@ -65,17 +58,7 @@ impl Local {
 
     /// An adapter with a new key that is kept nowhere, so what it seals dies with it. For tests.
     pub fn ephemeral() -> Result<Self, Error> {
-        Key::generate().map(|key| Self { key })
-    }
-
-    /// A sealed value that is not one: said, and the error to return.
-    fn malformed() -> Failure {
-        logging::warn!(name: logging::event::SECRET_OPENED, outcome = "malformed");
-        Failure::Malformed
-    }
-
-    fn cipher(&self) -> XChaCha20Poly1305 {
-        XChaCha20Poly1305::new(self.key.bytes().into())
+        KeyFile::generate().map(|key| Self { seal: Seal::new(key) })
     }
 }
 
@@ -84,38 +67,29 @@ impl Secret for Local {
 
     #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn seal(&self, plain: &Plain, binding: &Binding) -> Result<Sealed, Failure> {
-        let mut nonce = [0_u8; Self::NONCE];
-        OsRng.try_fill_bytes(&mut nonce).map_err(|source| Failure::Backend { source: Error::Random { source } })?;
-        let payload = Payload { msg: plain.expose(), aad: binding.as_ref() };
-        // the cipher only fails on a message far past any credential's size; that is a backend
-        // failure, not a value that will not open
-        let sealed = self
-            .cipher()
-            .encrypt(XNonce::from_slice(&nonce), payload)
-            .map_err(|_| Failure::Backend { source: Error::Seal })?;
-        let mut bytes = Vec::with_capacity(1 + Self::NONCE + sealed.len());
-        bytes.push(Self::VERSION);
-        bytes.extend_from_slice(&nonce);
-        bytes.extend_from_slice(&sealed);
-        logging::debug!(name: logging::event::SECRET_SEALED, bytes = logging::Size::from(bytes.len()).field());
-        Ok(Sealed::from(bytes))
+        let sealed = self.seal.seal(plain, binding).map_err(|error| match error {
+            Sealing::Random { source } => Failure::Backend { source: Error::Random { source } },
+            // the cipher only fails on a message far past any credential's size; that is a backend
+            // failure, not a value that will not open
+            Sealing::Cipher => Failure::Backend { source: Error::Seal },
+        })?;
+        logging::debug!(name: logging::event::SECRET_SEALED, bytes = logging::Size::from(sealed.as_ref().len()).field());
+        Ok(sealed)
     }
 
     #[allow(clippy::unused_async_trait_impl, reason = "the port is async for D1; this adapter does no waiting")]
     async fn open(&self, sealed: &Sealed, binding: &Binding) -> Result<Plain, Failure> {
-        let bytes = sealed.as_ref();
-        let (&version, rest) = bytes.split_first().ok_or_else(Self::malformed)?;
-        if version != Self::VERSION || rest.len() < Self::NONCE + Self::TAG {
-            return Err(Self::malformed());
+        match self.seal.open(sealed, binding) {
+            Ok(plain) => {
+                logging::debug!(name: logging::event::SECRET_OPENED, outcome = "opened");
+                Ok(plain)
+            }
+            Err(opening) => {
+                // altered, or bound to another row: said by outcome only, never by what it held
+                let outcome = if opening == Opening::Malformed { "malformed" } else { "refused" };
+                logging::warn!(name: logging::event::SECRET_OPENED, outcome);
+                Err(opening.into())
+            }
         }
-        let (nonce, ciphertext) = rest.split_at(Self::NONCE);
-        let payload = Payload { msg: ciphertext, aad: binding.as_ref() };
-        let opened = self.cipher().decrypt(XNonce::from_slice(nonce), payload).map_err(|_| {
-            // altered, or bound to another row: said by outcome only, never by what it held
-            logging::warn!(name: logging::event::SECRET_OPENED, outcome = "refused");
-            Failure::Refused
-        })?;
-        logging::debug!(name: logging::event::SECRET_OPENED, outcome = "opened");
-        Ok(Plain::from(opened))
     }
 }

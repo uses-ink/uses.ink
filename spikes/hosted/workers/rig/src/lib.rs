@@ -7,6 +7,7 @@ mod blobs;
 mod jobs;
 mod rows;
 mod suite;
+mod vault;
 
 use suite::Suite;
 use worker::{Context, Env, Method, Request, Response, Result, event};

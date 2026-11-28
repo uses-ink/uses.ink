@@ -40,7 +40,9 @@ A layer depends only on the layers before it, and `standalone` crates depend on 
 | `uses-ink-queue-rows` | `crates/port/queue/rows` | The queue port in rows of the database port, with the claim as one statement | `uses-ink-db`, `uses-ink-db-sqlite`, `uses-ink-model`, `uses-ink-queue`, `uses-ink-queue-conformance`, `uses-ink-logging` |
 | `uses-ink-secret` | `crates/port/secret` | The secret port: sealing credentials at rest, with the key kept inside the adapter | none |
 | `uses-ink-secret-conformance` | `crates/port/secret/conformance` | The conformance suite every secret port adapter runs | `uses-ink-secret` |
-| `uses-ink-secret-local` | `crates/port/secret/local` | The secret port with a key file beside the database, sealing with XChaCha20-Poly1305 | `uses-ink-secret`, `uses-ink-secret-conformance`, `uses-ink-logging` |
+| `uses-ink-secret-local` | `crates/port/secret/local` | The secret port with a key file beside the database, sealing with XChaCha20-Poly1305 | `uses-ink-secret`, `uses-ink-secret-conformance`, `uses-ink-secret-seal`, `uses-ink-logging` |
+| `uses-ink-secret-seal` | `crates/port/secret/seal` | The sealing every secret adapter shares: XChaCha20-Poly1305 with the row as associated data, over a key the adapter brings | `uses-ink-secret` |
+| `uses-ink-secret-worker` | `crates/port/secret/worker` | The secret port on a Worker: the key is a secret binding, the sealing is the shared one, and a rotation reads the old key beside the new | `uses-ink-secret`, `uses-ink-secret-conformance`, `uses-ink-secret-seal`, `uses-ink-logging` |
 
 ## server
 

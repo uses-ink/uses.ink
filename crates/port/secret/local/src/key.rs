@@ -4,10 +4,11 @@ use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 
-use chacha20poly1305::aead::OsRng;
-use chacha20poly1305::aead::rand_core::RngCore;
 use logging::Field as _;
+use rand_core::{OsRng, RngCore};
 use zeroize::Zeroizing;
+
+use secret_seal::Key;
 
 use crate::Error;
 
@@ -20,22 +21,13 @@ pub(crate) enum Origin {
     Made,
 }
 
-/// The 32-byte key, zeroed when dropped. It has no `Debug`, no `Clone` and no accessor outside
-/// this crate.
-pub(crate) struct Key(Zeroizing<[u8; Self::LEN]>);
+/// The key's file: where the key is read from and made.
+pub(crate) struct KeyFile;
 
-impl Key {
-    pub(crate) const LEN: usize = 32;
-
+impl KeyFile {
     /// A key from the operating system's randomness.
-    pub(crate) fn generate() -> Result<Self, Error> {
-        let mut bytes = Zeroizing::new([0_u8; Self::LEN]);
-        OsRng.try_fill_bytes(bytes.as_mut()).map_err(|source| Error::Random { source })?;
-        Ok(Self(bytes))
-    }
-
-    pub(crate) fn bytes(&self) -> &[u8; Self::LEN] {
-        &self.0
+    pub(crate) fn generate() -> Result<Key, Error> {
+        Key::generate().map_err(|entropy| Error::Random { source: entropy.source })
     }
 
     /// The key in `path`, made there if the file is missing. An existing file must be a plain
@@ -45,7 +37,7 @@ impl Key {
     /// linked to `path`, so `path` is never seen holding part of a key, and a crash in between
     /// leaves a stray file and no key. A link refuses to replace a file, so of two processes that
     /// start together the first key stays and the other reads it.
-    pub(crate) fn open(path: &Path) -> Result<(Self, Origin), Error> {
+    pub(crate) fn open(path: &Path) -> Result<(Key, Origin), Error> {
         match fs::symlink_metadata(path) {
             Ok(meta) if meta.is_file() => Self::read(path, &meta).map(|key| (key, Origin::Read)),
             Ok(_) => Err(Error::NotFile { path: path.to_path_buf() }),
@@ -55,7 +47,7 @@ impl Key {
     }
 
     /// A new key, kept in `path`; the one another process kept there first, if one did.
-    fn create(path: &Path) -> Result<(Self, Origin), Error> {
+    fn create(path: &Path) -> Result<(Key, Origin), Error> {
         let made = Self::generate()?;
         let folder = path.parent().filter(|folder| !folder.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
         let mut tag = [0_u8; 8];
@@ -71,7 +63,7 @@ impl Key {
         Self::private(&mut options);
         let written = options
             .open(&temp)
-            .and_then(|mut file| file.write_all(made.bytes()).and_then(|()| file.sync_all()))
+            .and_then(|mut file| file.write_all(made.expose()).and_then(|()| file.sync_all()))
             .map_err(key(&temp));
         let linked = written.and_then(|()| match fs::hard_link(&temp, path) {
             Ok(()) => Ok(true),
@@ -113,15 +105,15 @@ impl Key {
         Ok(())
     }
 
-    fn read(path: &Path, meta: &fs::Metadata) -> Result<Self, Error> {
+    fn read(path: &Path, meta: &fs::Metadata) -> Result<Key, Error> {
         Self::check(path, meta)?;
-        if meta.len() != Self::LEN as u64 {
+        if meta.len() != Key::LEN as u64 {
             return Err(Error::Length { path: path.to_path_buf(), found: meta.len() });
         }
         let key = |source| Error::Key { path: path.to_path_buf(), source };
-        let mut bytes = Zeroizing::new([0_u8; Self::LEN]);
+        let mut bytes = Zeroizing::new([0_u8; Key::LEN]);
         fs::File::open(path).map_err(key)?.read_exact(bytes.as_mut()).map_err(key)?;
-        Ok(Self(bytes))
+        Ok(Key::new(bytes))
     }
 
     /// A file made for the key is readable by its owner only.

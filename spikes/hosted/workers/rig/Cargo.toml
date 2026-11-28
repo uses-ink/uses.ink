@@ -19,3 +19,6 @@ blob-r2 = { package = "uses-ink-blob-r2", path = "../../../../crates/port/blob/r
 queue-cf = { package = "uses-ink-queue-cf", path = "../../../../crates/port/queue/cf" }
 queue-conformance = { package = "uses-ink-queue-conformance", path = "../../../../crates/port/queue/conformance" }
 queue-rows = { package = "uses-ink-queue-rows", path = "../../../../crates/port/queue/rows" }
+secret-conformance = { package = "uses-ink-secret-conformance", path = "../../../../crates/port/secret/conformance" }
+secret-worker = { package = "uses-ink-secret-worker", path = "../../../../crates/port/secret/worker" }
+secret = { package = "uses-ink-secret", path = "../../../../crates/port/secret" }

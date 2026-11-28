@@ -247,7 +247,16 @@ impl Order {
         ("uses-ink-mail-smtp", &["uses-ink-mail", "uses-ink-secret"]),
         ("uses-ink-secret", &[]),
         ("uses-ink-secret-conformance", &["uses-ink-secret"]),
-        ("uses-ink-secret-local", &["uses-ink-secret", "uses-ink-secret-conformance", "uses-ink-logging"]),
+        // the sealing is shared: an adapter brings a key and says what happened (decision 0133)
+        ("uses-ink-secret-seal", &["uses-ink-secret"]),
+        (
+            "uses-ink-secret-local",
+            &["uses-ink-secret", "uses-ink-secret-conformance", "uses-ink-secret-seal", "uses-ink-logging"],
+        ),
+        (
+            "uses-ink-secret-worker",
+            &["uses-ink-secret", "uses-ink-secret-conformance", "uses-ink-secret-seal", "uses-ink-logging"],
+        ),
         // The floor the control plane's tables share (decision 0074): the database port, the model,
         // and the address and key types a stored column reads back as.
         ("uses-ink-control-rows", &["uses-ink-blob", "uses-ink-db", "uses-ink-mail", "uses-ink-model", "uses-ink-sig"]),

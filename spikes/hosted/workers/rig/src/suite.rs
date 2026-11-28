@@ -4,6 +4,7 @@ use worker::{Env, Response, Result};
 
 use crate::blobs::Blobs;
 use crate::jobs::Jobs;
+use crate::vault::Vault;
 use crate::rows::Rows;
 
 /// One conformance suite, by the port it tests.
@@ -15,11 +16,13 @@ pub(crate) enum Suite {
     Blob,
     /// The queue port on the rows of D1, woken through Queues.
     Queue,
+    /// The secret port on a Workers secret binding.
+    Secret,
 }
 
 impl Suite {
     /// Every suite, in the order they are listed.
-    const ALL: [Self; 3] = [Self::Db, Self::Blob, Self::Queue];
+    const ALL: [Self; 4] = [Self::Db, Self::Blob, Self::Queue, Self::Secret];
 
     /// Its name in the paths.
     const fn name(self) -> &'static str {
@@ -27,6 +30,7 @@ impl Suite {
             Self::Db => "db",
             Self::Blob => "blob",
             Self::Queue => "queue",
+            Self::Secret => "secret",
         }
     }
 
@@ -41,6 +45,7 @@ impl Suite {
             Self::Db => Rows::names(),
             Self::Blob => Blobs::names(),
             Self::Queue => Jobs::names(),
+            Self::Secret => Vault::names(),
         }
     }
 
@@ -61,6 +66,7 @@ impl Suite {
             Self::Db => Rows { env }.run(case).await?,
             Self::Blob => Blobs { env }.run(case).await?,
             Self::Queue => Jobs { env }.run(case).await?,
+            Self::Secret => Vault { env }.run(case).await?,
         };
         if ran { Response::ok(format!("ok {}/{case}\n", self.name())) } else { Response::error(format!("no case {case}"), 404) }
     }

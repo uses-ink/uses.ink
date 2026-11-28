@@ -85,7 +85,9 @@ impl Served<'_> {
         let outcome = match self.case {
             Case::Api => Self::api(&mut exchange),
             Case::Store => Self::store(&mut exchange),
-            Case::Db | Case::Blob | Case::Queue | Case::Rig => Self::cases(&mut exchange, self.case.suite()),
+            Case::Db | Case::Blob | Case::Queue | Case::Secret | Case::Rig => {
+                Self::cases(&mut exchange, self.case.suite())
+            }
             Case::Probe | Case::Lock | Case::Migrate => Ok(()),
         };
         if outcome.is_err() {
