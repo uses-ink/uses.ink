@@ -103,7 +103,8 @@ mod test {
             "error[link.target.ambiguous]: `[[Note]]` could be any of a/Note.md and b/Note.md\n  \
              at posts/x.md, bytes 12..20\n  \
              fix: write the path of the one you mean\n  \
-             caused by error[source.file.unreadable]: b.md could not be read: denied"
+             caused by error[source.file.unreadable]: b.md could not be read: denied\n  \
+             fix: check that you may read it, then run the command again"
         );
     }
 

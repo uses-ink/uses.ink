@@ -73,7 +73,7 @@ inherits = "default"
 
 # The self-host loop comes first: the first override that matches a test wins.
 [[profile.ci.overrides]]
-filter = "binary_id(uses-ink-cli::selfhost) | binary_id(uses-ink-cli::push) | binary_id(uses-ink-cli::signin) | binary_id(uses-ink-cli::passkey) | binary_id(uses-ink-cli::vault)"
+filter = "binary_id(uses-ink-cli::selfhost) | binary_id(uses-ink-cli::push) | binary_id(uses-ink-cli::signin) | binary_id(uses-ink-cli::passkey) | binary_id(uses-ink-cli::vault) | binary_id(uses-ink-cli::bundle) | binary_id(uses-ink-cli::git)"
 slow-timeout = { period = "60s", terminate-after = 2 }
 
 [[profile.ci.overrides]]

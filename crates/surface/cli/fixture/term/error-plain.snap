@@ -1,5 +1,5 @@
 ---
-source: fixture/src/lib.rs
+source: crates/standalone/fixture/src/lib.rs
 ---
 error[output.manifest.invalid]: the earlier build's manifest .ink/out/.ink-manifest.json does not parse
   caused by
@@ -22,7 +22,7 @@ error[link.file.missing]: /home/me/garden is linked to no site: it has no .uses/
 error[deploy.api.slow]: the upload stopped after the server took 212 files
   caused by
   ╰─ the API did not answer in 30 seconds
-  fix: run `ink push` again to send what is left
+  fix: give a longer `--timeout`, or run the command again; run `ink push` again to send what is left
   the site holds 212 files of this push: run it again to send the rest
 error[push.build.refused]: the build 4mq8c1d0wz5e was refused: 2 problems stop the site
   caused by

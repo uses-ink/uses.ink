@@ -1,5 +1,5 @@
 ---
-source: fixture/src/lib.rs
+source: crates/standalone/fixture/src/lib.rs
 ---
 {
   "schema": "uses.error/v1",
@@ -64,7 +64,7 @@ source: fixture/src/lib.rs
   "causes": [
     "the API did not answer in 30 seconds"
   ],
-  "fix": "run `ink push` again to send what is left",
+  "fix": "give a longer `--timeout`, or run the command again; run `ink push` again to send what is left",
   "state": {
     "kind": "uploaded",
     "sent": 212
@@ -117,7 +117,7 @@ source: fixture/src/lib.rs
   "line": 1,
   "what": "b/Note.md could not be read: denied",
   "why": null,
-  "fix": null
+  "fix": "check that you may read it, then run the command again"
 }
 {
   "schema": "uses.event/v1",

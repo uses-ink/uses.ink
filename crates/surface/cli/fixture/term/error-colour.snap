@@ -1,5 +1,5 @@
 ---
-source: fixture/src/lib.rs
+source: crates/standalone/fixture/src/lib.rs
 ---
 \e[1m\e[31merror[output.manifest.invalid]\e[0m: \e[1mthe earlier build's manifest .ink/out/.ink-manifest.json does not parse\e[0m
   caused by
@@ -22,7 +22,7 @@ source: fixture/src/lib.rs
 \e[1m\e[31merror[deploy.api.slow]\e[0m: \e[1mthe upload stopped after the server took 212 files\e[0m
   caused by
   \e[2m╰─\e[0m the API did not answer in 30 seconds
-  \e[1m\e[36mfix:\e[0m run `\e[1m\e[36mink push\e[0m` again to send what is left
+  \e[1m\e[36mfix:\e[0m give a longer `\e[1m\e[36m--timeout\e[0m`, or run the command again; run `\e[1m\e[36mink push\e[0m` again to send what is left
   \e[2mthe site holds 212 files of this push: run it again to send the rest\e[0m
 \e[1m\e[31merror[push.build.refused]\e[0m: \e[1mthe build 4mq8c1d0wz5e was refused: 2 problems stop the site\e[0m
   caused by

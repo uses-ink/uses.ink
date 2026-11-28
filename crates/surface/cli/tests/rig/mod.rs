@@ -152,7 +152,7 @@ impl Server {
             .args(["serve", self.root.join("served").to_str().unwrap()])
             .args(["--addr", &format!("127.0.0.1:{}", self.port)])
             .args(["--data", self.data.to_str().unwrap()])
-            .args(["--audience", &self.audience, "--auth-skew", "1"])
+            .args(["--audience", &self.audience, "--auth-skew", "3"])
             // the dashboard's origin is what passkeys are made for: this server's own port
             .args(["--origin", &format!("http://localhost:{}", self.port)])
             .args(&self.extra)
