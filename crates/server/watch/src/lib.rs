@@ -19,5 +19,5 @@ mod worker;
 pub use access::{Access, AccessError};
 pub use head::{Branches, Head, HeadError, Heads, Skipped, Tip};
 pub use interval::{Interval, IntervalError};
-pub use watch::{Branched, Outcome, Polled, Previews, Report, Round, Watch};
+pub use watch::{Branched, Outcome, Polled, Previews, Pushed, Report, Round, Unplaced, Watch};
 pub use worker::{Done, Worker};

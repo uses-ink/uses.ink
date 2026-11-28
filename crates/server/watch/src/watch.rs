@@ -41,6 +41,67 @@ pub enum Outcome {
         /// How many.
         left: usize,
     },
+    /// A push that queues nothing, and why (decision 0161).
+    Left(Unplaced),
+}
+
+/// Why a push to a site's repository queues no build.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Unplaced {
+    /// The site has no git source: nothing a push could build.
+    Source {
+        /// The site.
+        site: Id<SiteKind>,
+    },
+    /// The site names no branch and the event named no default, so the push cannot be told from
+    /// a push to a branch that is only previewed.
+    Default {
+        /// The site.
+        site: Id<SiteKind>,
+        /// The branch pushed to.
+        branch: Branch,
+    },
+    /// The push is to a branch the site does not build, and previews are off.
+    Previews {
+        /// The site.
+        site: Id<SiteKind>,
+        /// The branch pushed to.
+        branch: Branch,
+    },
+}
+
+impl std::fmt::Display for Unplaced {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Source { site } => write!(out, "the site {site} has no git source, so a push builds nothing"),
+            Self::Default { site, branch } => write!(
+                out,
+                "the site {site} follows the default branch and the push to `{branch}` did not say which it is",
+                branch = branch.as_str()
+            ),
+            Self::Previews { site, branch } => {
+                write!(
+                    out,
+                    "the push to `{}` is not the branch of the site {site} and previews are off",
+                    branch.as_str()
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for Unplaced {}
+
+/// A push to a branch of a site's repository, as a forge told the watch of it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Pushed {
+    /// The branch.
+    pub branch: Branch,
+    /// The commit it is at now.
+    pub head: Head,
+    /// The repository's default branch, when the event named one.
+    pub default: Option<Branch>,
 }
 
 /// One site's poll.
@@ -193,9 +254,14 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
         let (outcome, moved) = match head {
             Err(error) => (Outcome::Failed(error), None),
             Ok(head) if seen.as_ref() == Some(&head) => (Outcome::Unchanged, None),
-            Ok(head) => match self.queue(site, &head, now).await {
-                Ok(outcome) => (outcome, Some(head)),
-                Err(outcome) => (outcome, None),
+            // a push may have queued this commit since this loop last looked: the row says so
+            Ok(head) => match self.control.seen(site).await {
+                Ok(Some(stored)) if stored.as_str() == head.as_str() => (Outcome::Unchanged, Some(head)),
+                Ok(_) => match self.queue(site, &head, (now, Trigger::Poll)).await {
+                    Ok(outcome) => (outcome, Some(head)),
+                    Err(outcome) => (outcome, None),
+                },
+                Err(error) => (Outcome::Failed(Box::new(error)), None),
             },
         };
         match &outcome {
@@ -244,7 +310,7 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
         tips.truncate(self.previews.0);
         let mut done = Vec::new();
         for tip in tips {
-            if let Some(outcome) = self.preview(site.id, tip, now).await {
+            if let Some(outcome) = self.preview(site.id, tip, (now, Trigger::Poll)).await {
                 done.push(said(Some(tip.branch.clone()), outcome));
             }
         }
@@ -265,7 +331,8 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
     }
 
     /// Queues the preview build of one branch at its commit, unless one was queued before.
-    async fn preview(&self, site: Id<SiteKind>, tip: &Tip, now: Timestamp) -> Option<Outcome> {
+    async fn preview(&self, site: Id<SiteKind>, tip: &Tip, when: (Timestamp, Trigger)) -> Option<Outcome> {
+        let (now, trigger) = when;
         let failed = |error: Box<dyn Error>| Some(Outcome::Failed(error));
         let revision: Revision = match tip.head.as_str().parse() {
             Ok(revision) => revision,
@@ -290,8 +357,7 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
             Ok(dedupe) => dedupe,
             Err(error) => return failed(Box::new(error)),
         };
-        let new =
-            NewJob { id: BuildId::from_bytes(bytes), site, trigger: Trigger::Poll, dedupe: Some(dedupe), at: now };
+        let new = NewJob { id: BuildId::from_bytes(bytes), site, trigger, dedupe: Some(dedupe), at: now };
         match self.control.request_branch(new, pin).await {
             Ok(Requested::Queued(build)) => Some(Outcome::Queued { build, head: tip.head.clone() }),
             Ok(_) => Some(Outcome::Duplicate { head: tip.head.clone() }),
@@ -300,19 +366,93 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
     }
 
     /// Queues the build of a new commit.
-    async fn queue(&self, site: Id<SiteKind>, head: &Head, now: Timestamp) -> Result<Outcome, Outcome> {
+    async fn queue(&self, site: Id<SiteKind>, head: &Head, when: (Timestamp, Trigger)) -> Result<Outcome, Outcome> {
+        let (now, trigger) = when;
         let failed = |error: Box<dyn Error>| Outcome::Failed(error);
         let oid = Oid::parse(head.as_str()).map_err(|error| failed(Box::new(error)))?;
         let bytes = self.draw.bytes().map_err(|error| failed(Box::new(error)))?;
         let dedupe: Dedupe = format!("poll-{site}-{head}").parse().map_err(|error| failed(Box::new(error)))?;
-        let new =
-            NewJob { id: BuildId::from_bytes(bytes), site, trigger: Trigger::Poll, dedupe: Some(dedupe), at: now };
+        let new = NewJob { id: BuildId::from_bytes(bytes), site, trigger, dedupe: Some(dedupe), at: now };
         let requested = self.control.request_build(new).await.map_err(|error| failed(Box::new(error)))?;
         self.control.see(site, &oid, now).await.map_err(|error| failed(Box::new(error)))?;
         match requested {
             Requested::Queued(build) => Ok(Outcome::Queued { build, head: head.clone() }),
             _ => Ok(Outcome::Duplicate { head: head.clone() }),
         }
+    }
+
+    /// Queues what a push to a repository the site proved comes to, now and not at the next poll
+    /// (decision 0161).
+    ///
+    /// A push to the branch the site builds queues a build of the commit with the trigger `push`
+    /// and the dedupe key the poll uses, and records the commit as seen, so a push and the poll that
+    /// follows it queue one build, even when the first is built before the poll looks. The branch
+    /// is the one the site's revision names, else the repository's default branch as the event
+    /// says it. A push to any other branch is a preview of it through the pin table, under the
+    /// same cap and public-source rule as the poll's, and when previews are off it is
+    /// [`Outcome::Left`], not a failure.
+    ///
+    /// This takes `&self`: it reads and writes only the control plane, so the API can answer a
+    /// delivery with a watch of its own while the poll loop runs on another task.
+    pub async fn pushed(&self, site: Id<SiteKind>, push: &Pushed) -> Outcome {
+        let now = self.clock.now();
+        let outcome = self.landed(site, push, now).await;
+        match &outcome {
+            Outcome::Failed(error) => logging::warn!(
+                name: logging::event::WATCH_PUSHED,
+                site = logging::Shown(site).field(),
+                outcome = "failed",
+                error = logging::Failure(error.as_ref()).field(),
+            ),
+            Outcome::Left(why) => logging::debug!(
+                name: logging::event::WATCH_PUSHED,
+                site = logging::Shown(site).field(),
+                outcome = "left",
+                error = logging::Failure(why).field(),
+            ),
+            Outcome::Queued { build, .. } => logging::info!(
+                name: logging::event::WATCH_PUSHED,
+                site = logging::Shown(site).field(),
+                outcome = "queued",
+                build = logging::Shown(build).field(),
+            ),
+            _ => logging::debug!(
+                name: logging::event::WATCH_PUSHED,
+                site = logging::Shown(site).field(),
+                outcome = "duplicate",
+            ),
+        }
+        outcome
+    }
+
+    /// What a push comes to, before it is told.
+    async fn landed(&self, site: Id<SiteKind>, push: &Pushed, now: Timestamp) -> Outcome {
+        let found = match self.control.site(site).await {
+            Ok(found) => found,
+            Err(error) => return Outcome::Failed(Box::new(error)),
+        };
+        let Source::Git { revision, .. } = &found.source else { return Outcome::Left(Unplaced::Source { site }) };
+        let followed = match revision {
+            Some(named) => named.as_str(),
+            None => match &push.default {
+                Some(default) => default.as_str(),
+                None => return Outcome::Left(Unplaced::Default { site, branch: push.branch.clone() }),
+            },
+        };
+        if followed == push.branch.as_str() {
+            return match self.control.seen(site).await {
+                Ok(Some(stored)) if stored.as_str() == push.head.as_str() => {
+                    Outcome::Duplicate { head: push.head.clone() }
+                }
+                Ok(_) => self.queue(site, &push.head, (now, Trigger::Push)).await.unwrap_or_else(|outcome| outcome),
+                Err(error) => Outcome::Failed(Box::new(error)),
+            };
+        }
+        if self.previews.0 == 0 {
+            return Outcome::Left(Unplaced::Previews { site, branch: push.branch.clone() });
+        }
+        let tip = Tip { branch: push.branch.clone(), head: push.head.clone() };
+        self.preview(site, &tip, (now, Trigger::Push)).await.unwrap_or(Outcome::Duplicate { head: push.head.clone() })
     }
 
     /// How long to rest before the next round: until the first site is due, never less than

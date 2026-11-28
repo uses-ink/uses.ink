@@ -159,7 +159,7 @@ Events have constant names. The main ones, by area:
 | control | `job.claimed`, `job.dropped`, `job.settled`, `job.failed` (retry or last), `deploy.published`, `deploy.rolled` |
 | db | `db.migrated`, `db.statement`, `db.batch` |
 | blob | `blob.io` |
-| watch, worker | `watch.polled`, `watch.queued`, `worker.tick`, `git.head` (the head read), `task.started`, `task.crashed`, `task.restarting`, `task.gave_up`, `task.stopped` (supervision) |
+| watch, worker | `watch.polled`, `watch.queued`, `watch.pushed`, `hook.received`, `worker.tick`, `git.head` (the head read), `task.started`, `task.crashed`, `task.restarting`, `task.gave_up`, `task.stopped` (supervision) |
 | edge lookup, folder | `sites.serving`, `sites.asked`, `sites.placed`, `sites.failed`, `sites.stopped`; `folder.opened`, `folder.loaded`, `folder.refused` |
 | queue, secret, cache | `queue.sent`, `queue.received`, `queue.settled`, `queue.woken` (hosted: whether the wake-up was sent); `key.opened`, `key.refused`, `secret.sealed`, `secret.opened`; `cache.stayed` |
 

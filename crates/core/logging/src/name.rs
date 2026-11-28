@@ -121,6 +121,10 @@ pub mod event {
     pub const WATCH_POLLED: &str = "watch.polled";
     /// The watch queued a build.
     pub const WATCH_QUEUED: &str = "watch.queued";
+    /// The watch was told of a push by a forge's webhook.
+    pub const WATCH_PUSHED: &str = "watch.pushed";
+    /// A forge's webhook delivery was received, and what it came to.
+    pub const HOOK_RECEIVED: &str = "hook.received";
     /// The worker looked for a job.
     pub const WORKER_TICK: &str = "worker.tick";
     /// A command ended.

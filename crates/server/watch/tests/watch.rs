@@ -354,3 +354,87 @@ fn an_idle_worker_sweeps_the_previews_that_ended() {
     assert_eq!(*told.0.borrow(), [1], "swept once, and not again");
     assert_eq!(pollster::block_on(world.control.previews(world.site, clock.now())).unwrap(), []);
 }
+
+fn push(branch: &str, digit: char, default: Option<&str>) -> watch::Pushed {
+    watch::Pushed {
+        branch: branch.parse().unwrap(),
+        head: digit.to_string().repeat(40).parse().unwrap(),
+        default: default.map(|name| name.parse().unwrap()),
+    }
+}
+
+/// Takes the one queued request off the queue and settles it, as a worker that built it would.
+fn dequeue(world: &World, now: Timestamp) {
+    use queue::Queue as _;
+    let queue = world.control.ports().queue();
+    let delivery = pollster::block_on(queue.receive(now, Duration::from_secs(60))).unwrap().unwrap();
+    pollster::block_on(queue.ack(&delivery)).unwrap();
+}
+
+#[test]
+fn a_push_to_the_default_branch_queues_a_build_that_the_poll_does_not_double() {
+    let world = World::new();
+    let remote = Remote::default();
+    remote.move_to('a');
+    let clock = Manual::new(start(), 100);
+    let mut watch = Watch::new(&world.control, &remote, (&clock, Counter::new()), Interval::default());
+    let outcome = pollster::block_on(watch.pushed(world.site, &push("main", 'a', Some("main"))));
+    assert!(matches!(outcome, Outcome::Queued { .. }), "{outcome:?}");
+    let jobs = pollster::block_on(world.control.jobs(world.site, 5)).unwrap();
+    assert_eq!((jobs[0].trigger, jobs[0].state), (build::Trigger::Push, JobState::Queued));
+    // the same delivery again, and a redelivery of the same commit, queue nothing
+    let again = pollster::block_on(watch.pushed(world.site, &push("main", 'a', Some("main"))));
+    assert!(matches!(again, Outcome::Duplicate { .. }), "{again:?}");
+    // the build is worked and gone from the queue before the poll first looks: the queue's own
+    // dedupe no longer knows the commit, the row of what was seen does
+    dequeue(&world, clock.now());
+    let round = pollster::block_on(watch.step());
+    assert!(matches!(round.polled[0].outcome, Outcome::Unchanged), "{round:?}");
+    assert_eq!(world.builds(), 1, "one push and the poll that follows it make one build");
+    // a new commit pushed after the poll's memory holds the old one is a second build
+    remote.move_to('b');
+    let outcome = pollster::block_on(watch.pushed(world.site, &push("main", 'b', Some("main"))));
+    assert!(matches!(outcome, Outcome::Queued { .. }), "{outcome:?}");
+    dequeue(&world, clock.now());
+    clock.advance(Duration::from_secs(3600));
+    let round = pollster::block_on(watch.step());
+    assert!(matches!(round.polled[0].outcome, Outcome::Unchanged), "{round:?}");
+    assert_eq!(world.builds(), 2);
+}
+
+#[test]
+fn a_push_to_another_branch_is_a_preview_through_the_pin_table_or_is_left_with_a_reason() {
+    let world = World::new();
+    let remote = Remote::default();
+    let clock = Manual::new(start(), 100);
+    let off = Watch::new(&world.control, &remote, (&clock, Counter::new()), Interval::default());
+    let left = pollster::block_on(off.pushed(world.site, &push("feature", 'c', Some("main"))));
+    assert!(matches!(left, Outcome::Left(watch::Unplaced::Previews { .. })), "{left:?}");
+    let nameless = pollster::block_on(off.pushed(world.site, &push("main", 'c', None)));
+    assert!(matches!(nameless, Outcome::Left(watch::Unplaced::Default { .. })), "{nameless:?}");
+    assert_eq!(world.builds(), 0);
+    let watch =
+        Watch::new(&world.control, &remote, (&clock, Counter::new()), Interval::default()).with_previews(Previews(5));
+    let queued = pollster::block_on(watch.pushed(world.site, &push("feature/login", 'c', Some("main"))));
+    assert!(matches!(queued, Outcome::Queued { .. }), "{queued:?}");
+    let jobs = pollster::block_on(world.control.jobs(world.site, 5)).unwrap();
+    assert_eq!(jobs[0].pin.as_ref().map(|pin| pin.branch.to_string()).as_deref(), Some("feature/login"));
+    assert_eq!(jobs[0].trigger, build::Trigger::Push);
+    // the same branch at the same commit is built once, and a commit that moved builds again
+    let again = pollster::block_on(watch.pushed(world.site, &push("feature/login", 'c', Some("main"))));
+    assert!(matches!(again, Outcome::Duplicate { .. }), "{again:?}");
+    let moved = pollster::block_on(watch.pushed(world.site, &push("feature/login", 'd', Some("main"))));
+    assert!(matches!(moved, Outcome::Queued { .. }), "{moved:?}");
+    assert_eq!(world.builds(), 2);
+}
+
+#[test]
+fn a_push_to_a_site_that_does_not_exist_is_a_failure_with_its_cause() {
+    let world = World::new();
+    let remote = Remote::default();
+    let clock = Manual::new(start(), 100);
+    let watch = Watch::new(&world.control, &remote, (&clock, Counter::new()), Interval::default());
+    let ghost: Id<SiteKind> = Id::from_bytes([77; 16]);
+    let outcome = pollster::block_on(watch.pushed(ghost, &push("main", 'a', Some("main"))));
+    assert!(matches!(outcome, Outcome::Failed(_)), "{outcome:?}");
+}
