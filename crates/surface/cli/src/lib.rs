@@ -19,6 +19,7 @@ mod folder;
 mod grammar;
 mod logging;
 mod output;
+mod panic;
 mod selfhost;
 mod settings;
 
@@ -28,6 +29,7 @@ pub use grammar::completions::Shell;
 pub use output::error::Error;
 pub use output::exit::Exit;
 pub use output::term::Surroundings;
+pub use panic::Panicked;
 pub use settings::{Progress, Settings};
 
 use grammar::{help, tree};

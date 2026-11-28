@@ -2,9 +2,10 @@
 
 use std::process::ExitCode;
 
-use uses_ink_cli::{Cli, Surroundings};
+use uses_ink_cli::{Cli, Panicked, Surroundings};
 
 fn main() -> ExitCode {
+    Panicked::install();
     let surroundings = Surroundings::process();
     match Cli::start_in(
         &surroundings,

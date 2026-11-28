@@ -463,10 +463,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
             self.entry.end(&old, now).await.map_err(Step::Sign)?;
         }
         let age = Duration::try_from(entered.session.limit.duration_since(now)).unwrap_or_default();
-        let signed = Signed {
-            shown: Shown::from(&entered.session),
-            created_account: entered.created,
-        };
+        let signed = Signed { shown: Shown::from(&entered.session), created_account: entered.created };
         let mut reply = Self::json(Status::Ok, &signed)?;
         reply.cookie = Some(self.config.jar.set(&entered.secret, age));
         Ok(reply)

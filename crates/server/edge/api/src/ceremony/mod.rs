@@ -324,8 +324,10 @@ impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
             .map(|passkey| passkey.stored.credential)
             .collect();
         let who = Person { account, label };
-        let (creation, Registering(state)) =
-            self.passkeys.start_registration(&who, &existing).map_err(|error| Stop::Verifier(Unnamed::new(Port::Verifier, error)))?;
+        let (creation, Registering(state)) = self
+            .passkeys
+            .start_registration(&who, &existing)
+            .map_err(|error| Stop::Verifier(Unnamed::new(Port::Verifier, error)))?;
         let drawn = self.drawn()?;
         let mut reply = Self::json(Status::Ok, &creation)?;
         let begin = Begin { flow: Flow::Register, account: Some(account), state: &state, proof: &drawn.proof };
