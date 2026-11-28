@@ -76,7 +76,10 @@ pub use job::{Dropped, Job, New as NewJob, Requested, State as JobState, Worked}
 pub use limits::{Amount, Budget, Limits, Spent};
 pub use listed::{Canonical, Listed};
 pub use migration::{Domain, Remembered, Treed};
-pub use org::{Member, NewOrg, Org, OrgKey, Orged, Role, UnknownRole};
+pub use org::{
+    Member, Name as OrgName, NameError as OrgNameError, NewOrg, Org, OrgKey, Orged, Role, Roster, Seated, Standing,
+    UnknownRole,
+};
 pub use origin::{Origin, OriginError};
 pub use policy::Policy;
 pub use ports::Ports;

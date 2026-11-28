@@ -194,7 +194,7 @@ impl Rig {
         id
     }
 
-    fn clock_now(&self) -> Timestamp {
+    pub fn clock_now(&self) -> Timestamp {
         use clock::Clock as _;
         self.clock.now()
     }

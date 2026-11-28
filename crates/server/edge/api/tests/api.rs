@@ -18,7 +18,7 @@ use edge_api::tar::Writer;
 use edge_api::{Limits, Method, Payload, Status};
 use model::{Hash, Manifest, MediaType, Route, Served};
 use serde_json::{Value, json};
-use support::{Ports, Rig, start};
+use support::{Ports, Rig, signer, start};
 
 /// The rig, as the operator calls it.
 struct Fixture(Rig);
@@ -396,4 +396,111 @@ fn a_custom_domain_is_claimed_listed_and_removed_and_its_proof_needs_a_resolver(
     assert_eq!((removed.status, value["name"].as_str()), (Status::Ok, Some("www.example.com")));
     let (again, problem) = fixture.call(Method::Delete, &path, b"");
     assert_eq!((again.status, problem["problem"].as_str()), (Status::NotFound, Some("domain.name.unknown")));
+}
+
+impl Fixture {
+    /// A second person, with an account and no site.
+    fn person(&self, byte: u8) -> Id<AccountKind> {
+        let id = Id::from_bytes([byte; 16]);
+        pollster::block_on(self.api_control().add_account(NewAccount { id, at: start() })).unwrap();
+        id
+    }
+
+    /// An organization made by the operator.
+    fn org(&self, name: &str) -> String {
+        let (reply, org) = self.call(Method::Post, "/v1/orgs", json!({ "name": name }).to_string().as_bytes());
+        assert_eq!(reply.status, Status::Created, "{org}");
+        org["id"].as_str().unwrap().to_owned()
+    }
+}
+
+#[test]
+fn an_organization_is_made_listed_and_has_its_maker_as_owner() {
+    let fixture = Fixture::new(Limits::default());
+    let org = fixture.org("Garden club");
+    let (listed, orgs) = fixture.call(Method::Get, "/v1/orgs", b"");
+    assert_eq!(listed.status, Status::Ok);
+    assert_eq!(
+        (orgs["items"][0]["name"].as_str(), orgs["items"][0]["role"].as_str()),
+        (Some("Garden club"), Some("owner"))
+    );
+    let (_, shown) = fixture.call(Method::Get, &format!("/v1/orgs/{org}"), b"");
+    assert_eq!(shown["members"].as_array().unwrap().len(), 1);
+    assert_eq!(shown["members"][0]["role"], "owner");
+    let (bad, problem) = fixture.call(Method::Post, "/v1/orgs", br#"{"name":""}"#);
+    assert_eq!(bad.status, Status::BadRequest, "{problem}");
+    let unknown = format!("/v1/orgs/{}", "ab".repeat(16));
+    assert_eq!(fixture.call(Method::Get, &unknown, b"").0.status, Status::NotFound);
+}
+
+#[test]
+fn members_are_added_regraded_and_removed_and_the_last_owner_stays() {
+    let fixture = Fixture::new(Limits::default());
+    let org = fixture.org("Garden club");
+    let friend = fixture.person(5);
+    let members = format!("/v1/orgs/{org}/members");
+    let add = json!({ "account": friend.to_string(), "role": "writer" }).to_string();
+    let (added, member) = fixture.call(Method::Post, &members, add.as_bytes());
+    assert_eq!((added.status, member["role"].as_str()), (Status::Created, Some("writer")), "{member}");
+    let (again, problem) = fixture.call(Method::Post, &members, add.as_bytes());
+    assert_eq!((again.status, problem["problem"].as_str()), (Status::Conflict, Some("org.member.exists")));
+    let one = format!("{members}/{friend}");
+    let (set, member) = fixture.call(Method::Put, &one, br#"{"role":"admin"}"#);
+    assert_eq!((set.status, member["role"].as_str()), (Status::Ok, Some("admin")));
+    let (bad, _) = fixture.call(Method::Put, &one, br#"{"role":"boss"}"#);
+    assert_eq!(bad.status, Status::BadRequest);
+
+    let me = format!("{members}/{}", fixture.account);
+    let (last, problem) = fixture.call(Method::Delete, &me, b"");
+    assert_eq!((last.status, problem["problem"].as_str()), (Status::Conflict, Some("org.owner.last")), "{problem}");
+    let (demoted, problem) = fixture.call(Method::Put, &me, br#"{"role":"admin"}"#);
+    assert_eq!((demoted.status, problem["problem"].as_str()), (Status::Conflict, Some("org.owner.last")));
+
+    assert_eq!(fixture.call(Method::Delete, &one, b"").0.status, Status::Ok);
+    let (_, shown) = fixture.call(Method::Get, &format!("/v1/orgs/{org}"), b"");
+    assert_eq!(shown["members"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn a_site_made_as_an_organization_belongs_to_it_and_not_to_the_member() {
+    let fixture = Fixture::new(Limits::default());
+    let org = fixture.org("Garden club");
+    let body = json!({ "handle": "club", "source": { "kind": "upload" } }).to_string();
+    let (made, site) = fixture.call(Method::Post, &format!("/v1/orgs/{org}/sites"), body.as_bytes());
+    assert_eq!(made.status, Status::Created, "{site}");
+    let id = site["id"].as_str().unwrap().to_owned();
+    let (mine, mine_items) = fixture.call(Method::Get, "/v1/sites", b"");
+    assert_eq!((mine.status, mine_items["items"].as_array().unwrap().len()), (Status::Ok, 0));
+    let (theirs, items) = fixture.call(Method::Get, &format!("/v1/orgs/{org}/sites"), b"");
+    assert_eq!((theirs.status, items["items"][0]["handle"].as_str()), (Status::Ok, Some("club")));
+    // the member's own path does not reach it, and a stranger finds no organization
+    assert_eq!(fixture.call(Method::Get, &format!("/v1/sites/{id}"), b"").0.status, Status::NotFound);
+    let other = fixture.org("Other");
+    let (foreign, _) = fixture.call(Method::Get, &format!("/v1/orgs/{other}/sites/{id}"), b"");
+    assert_eq!(foreign.status, Status::NotFound);
+    let nobody = format!("/v1/orgs/{}/sites", "cd".repeat(16));
+    let (none, problem) = fixture.call(Method::Get, &nobody, b"");
+    assert_eq!((none.status, problem["problem"].as_str()), (Status::NotFound, Some("org.id.unknown")), "{problem}");
+}
+
+#[test]
+fn a_device_key_without_the_members_right_cannot_change_members() {
+    let fixture = Fixture::new(Limits::default());
+    let org = fixture.org("Garden club");
+    let friend = fixture.person(5);
+    let device = signer(7);
+    let (_, code) = fixture.ask(&device, &json!({}));
+    let approval = control::keys::Approval {
+        code: code.parse().unwrap(),
+        fingerprint: device.id().fingerprint(),
+        by: fixture.account,
+        within: control::keys::Rights::DEVICE,
+    };
+    pollster::block_on(fixture.enrol.keys().approve(approval, fixture.clock_now())).unwrap();
+    let add = json!({ "account": friend.to_string(), "role": "reader" }).to_string();
+    let (denied, problem) = fixture.call_as(&device, Method::Post, &format!("/v1/orgs/{org}/members"), add.as_bytes());
+    assert_eq!(denied.status, Status::Forbidden, "{problem}");
+    // the same key reads the organization's sites, because it reaches it with Read
+    let (read, _) = fixture.call_as(&device, Method::Get, &format!("/v1/orgs/{org}/sites"), b"");
+    assert_eq!(read.status, Status::Ok);
 }

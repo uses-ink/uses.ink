@@ -42,14 +42,19 @@ impl Init {
                 let id = id
                     .parse::<control::Id<control::SiteKind>>()
                     .map_err(|source| Failure::Site { written: id.to_owned(), source })?;
-                let body = reach.block(reach.wire.repeat(Method::GET, &format!("/v1/sites/{id}"), Vec::new()))?;
+                let body = reach.block(reach.wire.repeat(
+                    Method::GET,
+                    &format!("/v1{}/sites/{id}", self.remote.scope()),
+                    Vec::new(),
+                ))?;
                 let overview: Overview = serde_json::from_slice(&body).map_err(unreadable)?;
                 Ok((overview.site, false))
             }
             (None, Some(handle)) => {
                 let body = serde_json::json!({ "handle": handle, "source": { "kind": "upload" } });
                 let body = serde_json::to_vec(&body).map_err(unreadable)?;
-                let made = reach.block(reach.wire.call(Method::POST, "/v1/sites", body))?;
+                let made =
+                    reach.block(reach.wire.call(Method::POST, &format!("/v1{}/sites", self.remote.scope()), body))?;
                 Ok((serde_json::from_slice(&made).map_err(unreadable)?, true))
             }
             (None, None) => Err(Failure::Nameless),

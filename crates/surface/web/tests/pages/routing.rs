@@ -7,7 +7,7 @@ use control::{AccountKind, Handle, Id};
 use uses_ink_web::view::{Account, Deploys, Live, Serving, Settings, Site, Understood, Why};
 use uses_ink_web::{
     Action, Asked, Body, Dashboard, Download, Failure, Follow, Form, Logged, Method, Only, Reply, Request, Screens,
-    Status, Token,
+    Seating, Status, Token,
 };
 
 /// What the edge provides, over fixtures.
@@ -62,6 +62,10 @@ impl Screens for Fake {
         } else {
             Err(Failure::Unrouted { source: uses_ink_web::Unrouted::Path })
         })
+    }
+
+    fn seat(&self, _: Id<AccountKind>, _: &Seating) -> impl Future<Output = Result<(), Failure>> {
+        std::future::ready(Ok(()))
     }
 
     fn account(&self, _: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>> {
@@ -147,6 +151,10 @@ fn a_form_is_answered_by_a_redirect_to_the_page_it_changed() {
         ("/ada-notes/claim", "name=www.example.org", "/ada-notes/settings"),
         ("/ada-notes/prove", "name=www.example.org", "/ada-notes/settings"),
         ("/ada-notes/unclaim", "name=+www.example.org+", "/ada-notes/settings"),
+        ("/account/orgs", "name=Garden+club", "/account"),
+        ("/account/members", &format!("org={0}&account={1}&role=writer", "07".repeat(16), "03".repeat(16)), "/account"),
+        ("/account/roles", &format!("org={0}&account={1}&role=admin", "07".repeat(16), "03".repeat(16)), "/account"),
+        ("/account/removals", &format!("org={0}&account={1}", "07".repeat(16), "03".repeat(16)), "/account"),
     ] {
         let reply = reply(&Ask::post(body_path, body), Some(Ask::who()));
         assert_eq!(reply.status, Status::SeeOther, "{body_path}");
@@ -182,6 +190,20 @@ fn a_failure_is_a_page_with_its_code_and_status() {
         (Ask::get("/ada-notes/settings"), Some(Ask::who()), Status::NotFound, "site.handle.unknown"),
         (Ask::post("/ada-notes/claim", ""), Some(Ask::who()), Status::BadRequest, "form.field.missing"),
         (Ask::post("/ada-notes/claim", "name=not+a+name"), Some(Ask::who()), Status::BadRequest, "form.field.invalid"),
+        (Ask::post("/account/orgs", "name="), Some(Ask::who()), Status::BadRequest, "form.field.invalid"),
+        (
+            Ask::post("/account/members", "org=x&account=y&role=reader"),
+            Some(Ask::who()),
+            Status::BadRequest,
+            "form.field.invalid",
+        ),
+        (
+            Ask::post("/account/roles", &format!("org={0}&account={0}&role=boss", "07".repeat(16))),
+            Some(Ask::who()),
+            Status::BadRequest,
+            "form.field.invalid",
+        ),
+        (Ask::get("/account/orgs"), Some(Ask::who()), Status::MethodNotAllowed, "page.method.refused"),
     ];
     for (request, who, status, code) in cases {
         let reply = reply(&request, who);

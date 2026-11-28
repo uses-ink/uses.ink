@@ -361,6 +361,10 @@ pub struct KeyView {
     pub last_used: Option<String>,
     /// When and why it was revoked, if it was.
     pub revoked: Option<Revoked>,
+    /// For a key of an organization: whether the member who approved it has left. The key stays
+    /// until an owner revokes it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub creator_removed: Option<bool>,
 }
 
 /// A key's end by revocation.
@@ -383,6 +387,7 @@ impl From<&control::keys::Key> for KeyView {
             expires: key.expires,
             last_used: key.last_used.map(|day| day.to_string()),
             revoked: key.revoked.map(|(at, why)| Revoked { at, why: why.name() }),
+            creator_removed: None,
         }
     }
 }
@@ -520,4 +525,66 @@ impl DomainView {
 pub struct Unclaimed {
     /// The name.
     pub name: String,
+}
+
+/// An organization, with the caller's place in it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrgView {
+    /// Its account id.
+    pub id: Id<AccountKind>,
+    /// What it is called.
+    pub name: String,
+    /// The caller's role there.
+    pub role: String,
+    /// How many members it has.
+    pub members: u64,
+    /// When it was made.
+    pub created: Timestamp,
+}
+
+impl From<&control::Standing> for OrgView {
+    fn from(standing: &control::Standing) -> Self {
+        Self {
+            id: standing.org.id,
+            name: standing.org.name.clone(),
+            role: standing.role.name().to_owned(),
+            members: standing.members,
+            created: standing.org.created,
+        }
+    }
+}
+
+/// A member of an organization.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemberView {
+    /// The person's account id.
+    pub account: Id<AccountKind>,
+    /// What they may do there.
+    pub role: String,
+    /// When they joined.
+    pub since: Timestamp,
+}
+
+impl From<&control::Member> for MemberView {
+    fn from(member: &control::Member) -> Self {
+        Self { account: member.account, role: member.role.name().to_owned(), since: member.since }
+    }
+}
+
+/// `GET /v1/orgs/{org}`: the organization and everyone in it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrgMembers {
+    /// The organization, as the caller sees it.
+    pub org: OrgView,
+    /// Its members, owners first.
+    pub members: Vec<MemberView>,
+}
+
+/// A member that was removed.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Unmembered {
+    /// The organization.
+    pub org: Id<AccountKind>,
+    /// The person who is no longer in it.
+    pub account: Id<AccountKind>,
 }

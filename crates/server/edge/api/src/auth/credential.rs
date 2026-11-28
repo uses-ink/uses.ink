@@ -75,8 +75,12 @@ impl Via {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Principal {
-    /// The account.
+    /// The account the call acts for: the person's own, or an organization's when the call is made
+    /// as one (`/v1/orgs/{org}/...`).
     pub account: Id<AccountKind>,
+    /// The person the credential speaks for, which is [`Principal::account`] unless the call acts
+    /// for an organization.
+    pub person: Id<AccountKind>,
     /// How it was proved.
     pub via: Via,
     /// What it may do: its own grants, narrowed by the person's for a device key.

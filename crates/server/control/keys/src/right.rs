@@ -268,6 +268,21 @@ impl Effective {
         Self { own, bound: Some(person) }
     }
 
+    /// The same principal acting for the organizations of `orgs` as well as for `person`, whose
+    /// account it speaks for: its own grants reach each of them with what it has on `person`'s
+    /// account, and what it may do there is bound by `person`'s own rights and the roles in `orgs`
+    /// (decision 0095). A key of a person may therefore do in an organization what both the key
+    /// and the person's role allow, and demoting or removing the person narrows the key at once.
+    #[must_use]
+    pub fn joined(self, person: Id<AccountKind>, orgs: &Grants) -> Self {
+        let base = self.own.on(&Target { account: person, site: None });
+        let mut own = self.own.0;
+        own.extend(orgs.list().iter().map(|grant| Grant { scope: grant.scope, rights: base }));
+        let mut bound = self.bound.unwrap_or_else(|| Grants::owner(person)).0;
+        bound.extend(orgs.list().iter().copied());
+        Self { own: Grants(own), bound: Some(Grants(bound)) }
+    }
+
     /// The rights on `target`.
     pub fn on(&self, target: &Target) -> Rights {
         let own = self.own.on(target);
@@ -314,6 +329,39 @@ mod test {
         assert_eq!(Rights::DEVICE.stored(), "read,deploy,edit,keys");
         assert!(!Rights::DEVICE.has(Right::Destroy) && !Rights::DEVICE.has(Right::Members));
         assert_eq!(Rights::DEPLOY.stored(), "deploy");
+    }
+
+    #[test]
+    fn a_person_s_key_acts_in_an_org_with_what_both_the_key_and_the_role_allow() {
+        let (person, org) = (account(1), account(9));
+        let target = Target { account: org, site: Some(site(1)) };
+        let writer = Grants::new(vec![Grant {
+            scope: Scope::Account(org),
+            rights: Rights::of(&[Right::Read, Right::Deploy, Right::Edit]),
+        }]);
+        let key = Effective::within(
+            Grants::new(vec![Grant { scope: Scope::Account(person), rights: Rights::DEVICE }]),
+            Grants::owner(person),
+        );
+        let joined = key.clone().joined(person, &writer);
+        assert!(joined.allows(Right::Deploy, &target), "the role gives it and the key has it");
+        assert!(!joined.allows(Right::Keys, &target), "the key has it and the role does not");
+        assert!(!joined.allows(Right::Members, &target), "a device key has no members right");
+        assert!(!key.allows(Right::Read, &target), "without joining, the key reaches no org");
+        // the same key, enrolled with the members right, still needs a role that holds it
+        let managing = Effective::within(
+            Grants::new(vec![Grant { scope: Scope::Account(person), rights: Rights::EVERY }]),
+            Grants::owner(person),
+        );
+        assert!(!managing.clone().joined(person, &writer).allows(Right::Members, &target));
+        let owner = Grants::new(vec![Grant { scope: Scope::Account(org), rights: Rights::EVERY }]);
+        assert!(managing.joined(person, &owner).allows(Right::Members, &target));
+        // a person's own account is untouched
+        let own = Target { account: person, site: None };
+        assert!(key.joined(person, &writer).allows(Right::Edit, &own));
+        // an operator key, which stands alone, is bound by the person's roles once it joins
+        let operator = Effective::own(Grants::owner(person)).joined(person, &writer);
+        assert!(operator.allows(Right::Deploy, &target) && !operator.allows(Right::Destroy, &target));
     }
 
     #[test]

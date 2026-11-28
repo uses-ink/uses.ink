@@ -24,6 +24,9 @@ pub enum Enter {
     Show,
     /// `DELETE /v1/session`: end it.
     End,
+    /// `GET /v1/session/fresh`: whether a passkey signed this session in recently enough to change
+    /// credentials, members or keys; the dashboard asks before it makes such a change.
+    Fresh,
     /// `GET /v1/sessions`: the account's live sessions, with the one asking marked.
     Sessions,
     /// `DELETE /v1/sessions/{id}`: end one of the account's sessions. An id that is no id is
@@ -63,6 +66,8 @@ impl Enter {
     const PAGE: &'static str = "/login";
     /// The session's path.
     const SESSION: &'static str = "/v1/session";
+    /// Whether the session was proved with a passkey within the step-up window.
+    const FRESH: &'static str = "/v1/session/fresh";
     /// The path of the account's sessions, under which a session's id is the last segment.
     const SESSIONS: &'static str = "/v1/sessions";
     /// The path under which an enrolment's code is the last segment.
@@ -71,7 +76,7 @@ impl Enter {
     /// The parts of a path of these routes: `None` when the path is not one of them.
     fn parts(path: &str) -> Option<(&str, Option<&str>)> {
         let path = path.trim_end_matches('/');
-        if path == Self::LOGIN || path == Self::SESSION || path == Self::SESSIONS {
+        if path == Self::LOGIN || path == Self::SESSION || path == Self::SESSIONS || path == Self::FRESH {
             return Some((path, None));
         }
         let (base, token) = [Self::LOGIN, Self::APPROVE, Self::SESSIONS]
@@ -97,6 +102,7 @@ impl Enter {
                 (Method::Post, Self::Approving(code())),
                 (Method::Delete, Self::Declining(code())),
             ],
+            (Self::FRESH, _) => vec![(Method::Get, Self::Fresh)],
             (Self::SESSIONS, None) => vec![(Method::Get, Self::Sessions)],
             (Self::SESSIONS, Some(_)) => vec![(Method::Delete, Self::Revoke(id()))],
             (Self::LOGIN, None) => vec![(Method::Post, Self::Ask)],

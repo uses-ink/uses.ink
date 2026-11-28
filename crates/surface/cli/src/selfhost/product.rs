@@ -176,6 +176,7 @@ impl Product {
         let (sign, rates) = (flags.settings(), flags.rates());
         let (courier, outbox, capacity) = Self::courier(flags)?;
         let db_for_keys = Arc::clone(&db);
+        let db_for_roster = Arc::clone(&db);
         let entry = flags.step_up_window.into_iter().fold(SignIn::new(db, sign), SignIn::with_window);
         let relying = flags.relying(site, &settings.api_host)?;
         let passkeys = Webauthn::new(relying.clone())
@@ -200,10 +201,10 @@ impl Product {
         let (fronts, back) = Self::lookups(&ports, &origin, data, settings)?;
         let config =
             Config { jar: flags.jar(secure)?, base: base.clone(), rates, outbox, reveals: flags.login_get_signs_in };
-        let door = flags
-            .allow_origin
-            .iter()
-            .fold(Door::new(entry, (System, System), enrol, config), |door, origin| door.with_origin(origin.as_str()));
+        let door = flags.allow_origin.iter().fold(
+            Door::new(entry, (System, System), enrol, config).with_roster(control::Roster::new(db_for_roster)),
+            |door, origin| door.with_origin(origin.as_str()),
+        );
         let origins = door.origins().clone();
         let api = Routed::new(api, door);
         let policy = settings.hosting.policy();

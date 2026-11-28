@@ -294,7 +294,10 @@ freeze.
   record through a small typed DNS client (`--resolver`, `--resolver-timeout`; 0101). The watch lists the
   branches of a public git site and queues a preview build of each, up to `--preview-branches` (default 10, `0` is
   off), through a `pin` table that keeps the branch and the commit seen (migration 308); `ink preview list|remove`
-  and `DELETE /v1/sites/{site}/previews/{label}` read and end them (0102).
+  and `DELETE /v1/sites/{site}/previews/{label}` read and end them (0102). Organizations are reachable: `ink org
+  create|list|member add|remove|role|list`, `--org` on the site verbs, `/v1/orgs` routes that act as the organization
+  (0103), a typed name and a roster for org deploy keys (0104), and four forms on the Account screen (0105). Left: a
+  leave verb, and an org choice on the dashboard's approve page.
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`

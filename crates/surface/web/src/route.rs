@@ -7,7 +7,7 @@ use build::BuildId;
 use control::{Handle, Id, SessionKind};
 
 use crate::failure::Unrouted;
-use crate::form::{Action, Asked, Form, Method, Request, Segment, Token};
+use crate::form::{Action, Asked, Form, Method, Request, Seating, Segment, Token};
 use crate::{Failure, Field};
 
 /// The five screens, in the order the navigation lists them.
@@ -96,6 +96,9 @@ pub enum Route {
     Act(Handle, Action),
     /// A form posted to `/account/sessions/<id>`: end one of the person's sessions.
     EndSession(Id<SessionKind>),
+    /// A form posted to `/account/orgs`, `members`, `roles` or `removals`: make an organization or
+    /// change who is in one.
+    Seat(Seating),
 }
 
 impl Route {
@@ -118,6 +121,10 @@ impl Route {
         };
         match (first, second, third) {
             (Some("account"), None, None) => get(Self::Account),
+            (Some("account"), Some(name @ ("orgs" | "members" | "roles" | "removals")), None) => match request.method {
+                Method::Post => Seating::read(name, &request.body).map(Self::Seat),
+                Method::Get => Err(Failure::Method { used: Method::Get }),
+            },
             (Some("account"), Some("sessions"), Some(id)) => match request.method {
                 Method::Post => Segment(id).session().map(Self::EndSession),
                 Method::Get => Err(Failure::Method { used: Method::Get }),
@@ -171,6 +178,7 @@ impl Route {
             | Self::Limits
             | Self::Script
             | Self::EndSession(_)
+            | Self::Seat(_)
             | Self::Home
             | Self::Ask(_)
             | Self::Sent
@@ -195,7 +203,7 @@ impl Route {
             Self::Understood(..) | Self::Why(..) => Some(Screen::Understood),
             Self::Deploys(_) | Self::Build(..) => Some(Screen::Deploys),
             Self::Settings(_) => Some(Screen::Settings),
-            Self::Account | Self::EndSession(_) => Some(Screen::Account),
+            Self::Account | Self::EndSession(_) | Self::Seat(_) => Some(Screen::Account),
             Self::Export(_)
             | Self::Act(..)
             | Self::SignIn
@@ -250,6 +258,11 @@ impl Path {
     /// The path a form posts to end the session it holds.
     pub fn logout() -> Self {
         Self("/logout".to_owned())
+    }
+
+    /// The path a form posts to `/account/<change>`: `orgs`, `members`, `roles` or `removals`.
+    pub fn seat(change: &'static str) -> Self {
+        Self(format!("/account/{change}"))
     }
 
     /// The path a form posts to end the session `id`.

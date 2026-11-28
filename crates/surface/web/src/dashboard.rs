@@ -7,7 +7,7 @@ use std::future::Future;
 
 use control::{AccountKind, Handle, Id};
 
-use crate::form::{Action, Asked, Token};
+use crate::form::{Action, Asked, Seating, Token};
 use crate::route::{Only, Path, Route, Screen};
 use crate::shell::{Document, Frame, View};
 use crate::stream::{Follow, Streamed};
@@ -105,6 +105,10 @@ pub trait Screens {
         handle: &Handle,
         build: build::BuildId,
     ) -> impl Future<Output = Result<Logged<Self::Follow>, Failure>>;
+
+    /// Makes an organization, or changes who is in one, as a form on the Account screen asked.
+    /// Changing members needs a passkey sign-in within the step-up window.
+    fn seat(&self, who: Id<AccountKind>, change: &Seating) -> impl Future<Output = Result<(), Failure>>;
 
     /// Makes the change a form asked for.
     fn act(&self, who: Id<AccountKind>, handle: &Handle, action: &Action) -> impl Future<Output = Result<(), Failure>>;
@@ -256,6 +260,10 @@ impl<S: Screens> Dashboard<S> {
             }),
             Route::EndSession(id) => {
                 screens.end_session(who, *id).await?;
+                Ok(Reply::see(Path::account()))
+            }
+            Route::Seat(change) => {
+                screens.seat(who, change).await?;
                 Ok(Reply::see(Path::account()))
             }
             Route::Act(handle, action) => {

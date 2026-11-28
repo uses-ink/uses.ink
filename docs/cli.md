@@ -85,6 +85,7 @@ ink
 │  ├─ key                    a group: list, add, revoke
 │  ├─ abuse                  the operator's group: list reports, suspend, reinstate
 │  ├─ domain                 a group: add, list, prove, remove custom domains
+│  ├─ org                    a group: create, list, and member list|add|remove|role
 │  ├─ preview list|remove    the previews of branches a server built (bare `preview` serves locally)
 │  ├─ push                   send the folder, start a deploy
 │  ├─ status                 what is live, what is building

@@ -212,6 +212,12 @@ pub enum FieldError {
     Handle(control::HandleError),
     /// Not a domain name.
     Domain(control::NameError),
+    /// Not an organization's name.
+    Org(control::OrgNameError),
+    /// Not an account id.
+    Account(control::IdError),
+    /// Not a role.
+    Role(control::UnknownRole),
 }
 
 impl fmt::Display for FieldError {
@@ -220,6 +226,9 @@ impl fmt::Display for FieldError {
             Self::Deploy(_) => out.write_str("not a deploy id"),
             Self::Handle(_) => out.write_str("not a handle"),
             Self::Domain(_) => out.write_str("not a domain name"),
+            Self::Org(_) => out.write_str("not an organization's name"),
+            Self::Account(_) => out.write_str("not an account id"),
+            Self::Role(_) => out.write_str("not a role"),
         }
     }
 }
@@ -230,6 +239,9 @@ impl Error for FieldError {
             Self::Deploy(source) => Some(source),
             Self::Handle(source) => Some(source),
             Self::Domain(source) => Some(source),
+            Self::Org(source) => Some(source),
+            Self::Account(source) => Some(source),
+            Self::Role(source) => Some(source),
         }
     }
 }

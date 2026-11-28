@@ -21,7 +21,7 @@ impl World {
     fn org(&self, name: &str) -> (Id<AccountKind>, Id<AccountKind>) {
         let owner = self.person();
         let id = self.id::<AccountKind>();
-        self.run(self.control.add_org(NewOrg { id, owner, name: name.to_owned(), at: at(1) })).unwrap();
+        self.run(self.control.add_org(NewOrg { id, owner, name: name.parse().unwrap(), at: at(1) })).unwrap();
         (id, owner)
     }
 
@@ -60,7 +60,7 @@ fn an_organization_has_its_maker_as_the_only_owner() {
         World::refusal(world.run(world.control.add_org(NewOrg {
             id: world.id(),
             owner: stranger,
-            name: "x".into(),
+            name: "x".parse().unwrap(),
             at: at(3)
         }))),
         Refusal::NoAccount { account: stranger }
@@ -213,4 +213,39 @@ fn an_org_deploy_key_outlives_the_member_who_approved_it_and_is_listed_as_orphan
     let wrong = world.run(keys.approve_as(approval(&device, owner), org, at(22)));
     assert_eq!(wrong.unwrap_err().refusal(), Some(&KeyRefused::Site));
     let _ = theirs;
+}
+
+#[test]
+fn a_person_lists_their_organizations_by_name_with_their_role_and_its_size() {
+    let world = World::new();
+    let (zoo, owner) = world.org("Zoo");
+    let (alpha, other) = world.org("Alpha");
+    world.join(alpha, other, Role::Reader);
+    world.run(world.control.add_member(Seat { org: alpha, by: other, whom: owner }, Role::Writer, at(3))).unwrap();
+    let standing = world.run(world.control.orgs_of(owner)).unwrap();
+    let seen: Vec<(String, Role, u64)> = standing.iter().map(|s| (s.org.name.clone(), s.role, s.members)).collect();
+    assert_eq!(seen, [("Alpha".to_owned(), Role::Writer, 3), ("Zoo".to_owned(), Role::Owner, 1)]);
+    assert_eq!((standing[0].org.id, standing[1].org.id), (alpha, zoo));
+    assert!(world.run(world.control.orgs_of(world.person())).unwrap().is_empty());
+}
+
+#[test]
+fn a_roster_says_what_a_member_may_give_a_key_and_refuses_the_rest() {
+    let world = World::new();
+    let (org, owner) = world.org("Garden club");
+    let reader = world.join(org, owner, Role::Reader);
+    let writer = world.join(org, owner, Role::Writer);
+    let roster = control::Roster::new(world.control.ports().db());
+    let allowed = |person| world.run(roster.allowed(org, person));
+    assert_eq!(allowed(owner).unwrap(), Rights::EVERY);
+    assert_eq!(allowed(writer).unwrap(), Role::Writer.rights());
+    assert!(matches!(allowed(reader), Err(control::Seated::Role { role: Role::Reader, needs: Right::Deploy, .. })));
+    let stranger = world.person();
+    assert!(matches!(allowed(stranger), Err(control::Seated::NotMember { .. })));
+}
+
+#[test]
+fn an_organization_name_is_one_line() {
+    assert!("Garden club".parse::<control::OrgName>().is_ok());
+    assert!(matches!("".parse::<control::OrgName>(), Err(control::OrgNameError::Empty)));
 }

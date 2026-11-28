@@ -18,7 +18,7 @@ use model::ExternalUrl;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use web::view;
-use web::{Action, Asked, Cause, Download, Failure, Follow, Logged, Only, Part, Screens, Token, Unrouted};
+use web::{Action, Asked, Cause, Download, Failure, Follow, Logged, Only, Part, Screens, Seating, Token, Unrouted};
 
 use crate::selfhost::dash::Pages;
 use crate::selfhost::dash::replay::Replay;
@@ -241,6 +241,52 @@ impl<A: Answers> Browser<'_, A> {
     }
 }
 
+impl<A: Answers> Browser<'_, A> {
+    /// The organizations `who` is a member of, with who is in each.
+    async fn joined(&self, who: Id<AccountKind>) -> Result<Vec<view::Joined>, Failure> {
+        let control = &self.pages.control;
+        let mut joined = Vec::new();
+        for standing in control.orgs_of(who).await? {
+            let people = control.members(standing.org.id).await?;
+            let people = people.iter().map(|member| (member.account, member.role)).collect();
+            joined.push(view::Joined { id: standing.org.id, name: standing.org.name, role: standing.role, people });
+        }
+        Ok(joined)
+    }
+
+    /// Refuses a session that no passkey signed in within the step-up window, as the API's own
+    /// routes do for a change of credentials (`docs/auth.md` section 8).
+    async fn stepped(&self) -> Result<(), Failure> {
+        let reply = self.call(Method::Get, "/v1/session/fresh", Vec::new()).await;
+        if reply.status == Status::Ok { Ok(()) } else { Err(Said::failure(&reply)) }
+    }
+
+    /// Makes an organization, or changes who is in one, for `who`.
+    async fn seated(&self, who: Id<AccountKind>, change: &Seating) -> Result<(), Failure> {
+        let (control, now) = (&self.pages.control, System.now());
+        let role = |org, whom| control::Seat { org, by: who, whom };
+        match change {
+            Seating::Create { name } => {
+                let id = Id::from_bytes(Self::draw()?);
+                control.add_org(control::NewOrg { id, owner: who, name: name.clone(), at: now }).await?;
+            }
+            Seating::Add { org, account, role: given } => {
+                self.stepped().await?;
+                control.add_member(role(*org, *account), *given, now).await?;
+            }
+            Seating::Regrade { org, account, role: given } => {
+                self.stepped().await?;
+                control.set_role(role(*org, *account), *given).await?;
+            }
+            Seating::Remove { org, account } => {
+                self.stepped().await?;
+                control.remove_member(role(*org, *account)).await?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl<A: Answers> Screens for Browser<'_, A> {
     type Follow = Idle;
 
@@ -341,10 +387,16 @@ impl<A: Answers> Screens for Browser<'_, A> {
             })
             .collect();
         let left: Left = self.json("/v1/recovery/codes").await?;
+        let orgs = self.joined(who).await?;
         Ok(view::Account::new(created, sites)
             .with_passkeys(passkeys)
             .with_recovery(left.remaining)
-            .with_sessions(sessions))
+            .with_sessions(sessions)
+            .with_orgs(orgs))
+    }
+
+    async fn seat(&self, who: Id<AccountKind>, change: &Seating) -> Result<(), Failure> {
+        self.seated(who, change).await
     }
 
     async fn end_session(&self, _who: Id<AccountKind>, id: Id<SessionKind>) -> Result<(), Failure> {

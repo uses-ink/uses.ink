@@ -181,6 +181,12 @@ impl fmt::Display for Refused<'_> {
             Refusal::MissingBlob { .. } | Refusal::NoManifest { .. } => {
                 "build the site again; its stored files are incomplete"
             }
+            Refusal::Member { .. } => "change their role instead: they are in the organization already",
+            Refusal::NotMember { .. } | Refusal::NoOrg { .. } | Refusal::NoAccount { .. } => {
+                "check the ids: they are the ones the organization's card and `ink org member list` show"
+            }
+            Refusal::LastOwner { .. } => "make another member an owner first, then change this one",
+            Refusal::Role { .. } => "ask an owner or an admin of the organization to make this change",
             _ => "reload the page and try again; if it repeats, give the operator this code",
         })
     }

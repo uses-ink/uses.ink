@@ -144,6 +144,60 @@ const KEY_CHILDREN: &[Entry] = &[
     },
 ];
 
+const ORG_MEMBER_CHILDREN: &[Entry] = &[
+    Entry {
+        examples: &[Example { line: "ink org member list 0123abcd", about: "The people in an organization" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("list", Group::Publish, "The people in an organization")
+    },
+    Entry {
+        detail: "Needs a key with the `members` right, which only a key approved with a passkey sign-in can have: `ink login --rights read,deploy,edit,keys,members`. Your own role must manage the one you give: only an owner makes an owner.",
+        examples: &[Example {
+            line: "ink org member add 0123abcd 4f5a6b7c --role writer",
+            about: "Let a person read, deploy and edit the organization's sites",
+        }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("add", Group::Publish, "Add a person to an organization")
+    },
+    Entry {
+        examples: &[Example { line: "ink org member remove 0123abcd 4f5a6b7c", about: "Take the person out" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("remove", Group::Publish, "Remove a person from an organization")
+    },
+    Entry {
+        detail: "An organization's last owner cannot be given a lower role or removed.",
+        examples: &[Example { line: "ink org member role 0123abcd 4f5a6b7c admin", about: "Make a member an admin" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("role", Group::Publish, "Give a member another role")
+    },
+];
+
+const ORG_CHILDREN: &[Entry] = &[
+    Entry {
+        examples: &[Example { line: "ink org create \"Garden club\"", about: "Make an organization you own" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("create", Group::Publish, "Make an organization, with you as its owner")
+    },
+    Entry {
+        examples: &[Example { line: "ink org list", about: "Your organizations and your role in each" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("list", Group::Publish, "The organizations you are a member of")
+    },
+    Entry {
+        children: ORG_MEMBER_CHILDREN,
+        examples: &[Example { line: "ink org member list 0123abcd", about: "The people in an organization" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("member", Group::Publish, "Who is in an organization")
+    },
+];
+
 const ABUSE_CHILDREN: &[Entry] = &[
     Entry {
         examples: &[Example { line: "ink abuse list", about: "The reports of strangers, newest first" }],
@@ -370,6 +424,14 @@ const ENTRIES: &[Entry] = &[
         endings: AUTH,
         env: SITE_ENV,
         ..Entry::built("key", Group::Publish, "List, make and end keys")
+    },
+    Entry {
+        children: ORG_CHILDREN,
+        detail: "An organization owns sites and deploy keys of its own, so they outlive any member. Roles: owner (everything), admin (everything but destroying), writer (read, deploy, edit), reader (read). Run another command as an organization with `--org <ID>`.",
+        examples: &[Example { line: "ink org list", about: "Your organizations and your role in each" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("org", Group::Publish, "Make organizations and manage who is in them")
     },
     Entry {
         children: ABUSE_CHILDREN,

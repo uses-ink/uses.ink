@@ -185,6 +185,12 @@ where
         if call.operator() && !matches!(principal.via, Via::Operator { .. }) {
             return Err(Fault::Denied(Denied::Operator));
         }
+        // the call may be made as an organization: the account, the key's reach and the owner a
+        // site is checked against all become the organization's together
+        let principal = match Call::acting(&request.path).or(call.org()) {
+            Some(org) => self.acting(principal, org).await?,
+            None => principal,
+        };
         if let Some((right, site)) = call.needs() {
             let target = Target { account: principal.account, site };
             if !principal.effective.allows(right, &target) {
@@ -196,6 +202,7 @@ where
     }
 
     /// The call, for a caller who may make it.
+    #[expect(clippy::too_many_lines, reason = "one arm for each call")]
     async fn dispatch(&self, principal: Principal, call: Call, body: &[u8]) -> Result<Reply, Fault<P>> {
         match call {
             Call::Sites => self.sites(principal).await,
@@ -224,7 +231,14 @@ where
             Call::Parts(site) => self.parts(principal, site, body).await,
             Call::Bundle(site) => self.bundle(principal, site).await,
             Call::Whoami => Self::whoami(&principal),
+            Call::Keys if principal.account != principal.person => self.org_keys(&principal).await,
             Call::Keys => self.keys(&principal).await,
+            Call::Orgs
+            | Call::OrgAdd
+            | Call::OrgShow(_)
+            | Call::MemberAdd(_)
+            | Call::MemberRole { .. }
+            | Call::MemberOut { .. } => self.members(&principal, call, body).await,
             Call::Revoke(print) => self.revoke(&principal, &print).await,
             Call::Polled(id) => match principal.via.key() {
                 Some(key) => self.polled(id, key).await,

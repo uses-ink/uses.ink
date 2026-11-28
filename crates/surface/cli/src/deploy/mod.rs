@@ -39,6 +39,10 @@ pub struct Remote {
     /// The site's id; `account.site` in the config file.
     #[arg(long, value_name = "ID", env = "INK_SITE")]
     pub site: Option<String>,
+    /// Act as this organization, by its id: the site is one of its sites, and the key's role there
+    /// is what is checked. See `ink org list`.
+    #[arg(long, value_name = "ID", env = "INK_ORG")]
+    pub org: Option<Id<control::AccountKind>>,
     /// Seconds one call may take.
     #[arg(long, value_name = "SECONDS", env = "INK_TIMEOUT", default_value_t = 30)]
     pub timeout: u64,
@@ -127,6 +131,11 @@ pub(crate) enum Scope<'a> {
 }
 
 impl Remote {
+    /// The path the account routes are under: the organization's when `--org` is given.
+    pub(crate) fn scope(&self) -> String {
+        self.org.map_or_else(String::new, |org| format!("/orgs/{org}"))
+    }
+
     /// The calls this asks for, with the environment, the link file and the config file under the
     /// flags, in that order.
     pub(crate) fn open(
@@ -150,7 +159,7 @@ impl Remote {
         })?;
         let site = site.parse::<Id<_>>().map_err(|source| Failure::Site { written: site, source })?;
         let reach = self.reach(linked, env, preferences)?;
-        Ok(Calls { api: Api { wire: reach.wire, site }, runtime: reach.runtime })
+        Ok(Calls { api: Api { wire: reach.wire, site, org: self.org }, runtime: reach.runtime })
     }
 
     /// The way to the API, with the link's address under the flag and over the config file's.
@@ -348,7 +357,14 @@ mod test {
     }
 
     fn remote(api: &str) -> Remote {
-        Remote { api: Some(api.to_owned()), site: Some(SITE.to_owned()), timeout: 5, retries: 0, retry_wait: 0 }
+        Remote {
+            api: Some(api.to_owned()),
+            site: Some(SITE.to_owned()),
+            timeout: 5,
+            retries: 0,
+            retry_wait: 0,
+            org: None,
+        }
     }
 
     fn env() -> Fixed {
@@ -407,7 +423,7 @@ mod test {
     #[test]
     fn a_missing_setting_names_where_to_give_it() {
         let none = Fixed(BTreeMap::new());
-        let bare = Remote { api: None, site: None, timeout: 5, retries: 0, retry_wait: 0 };
+        let bare = Remote { api: None, site: None, timeout: 5, retries: 0, retry_wait: 0, org: None };
         let missing = |remote: &Remote, env: &Fixed| remote.connect(env, &Preferences::default()).unwrap_err();
         assert_eq!(missing(&bare, &none).exit(), Exit::Usage);
         let no_token = missing(&remote("http://127.0.0.1:1"), &none);
@@ -420,7 +436,7 @@ mod test {
     fn the_config_file_fills_what_the_flags_leave_out() {
         let preferences: Preferences =
             toml::from_str(&format!("[account]\napi = \"http://127.0.0.1:1\"\nsite = \"{SITE}\"\n")).unwrap();
-        let bare = Remote { api: None, site: None, timeout: 5, retries: 0, retry_wait: 0 };
+        let bare = Remote { api: None, site: None, timeout: 5, retries: 0, retry_wait: 0, org: None };
         assert!(bare.connect(&env(), &preferences).is_ok());
     }
 

@@ -177,6 +177,36 @@ pub struct Enrolling {
 pub struct Approve {
     /// The fingerprint they read on both screens.
     pub fingerprint: Parsed<sig::Fingerprint>,
+    /// The organization the key is given to, when it is not the person's own: a deploy key that
+    /// belongs to the organization and outlives them.
+    #[serde(default)]
+    pub org: Option<Parsed<control::Id<control::AccountKind>>>,
+}
+
+/// `POST /v1/orgs`.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AddOrg {
+    /// What the organization is called.
+    pub name: Parsed<control::OrgName>,
+}
+
+/// `POST /v1/orgs/{org}/members`.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AddMember {
+    /// The person's account.
+    pub account: Parsed<control::Id<control::AccountKind>>,
+    /// What they may do there.
+    pub role: Parsed<control::Role>,
+}
+
+/// `PUT /v1/orgs/{org}/members/{account}`.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChangeRole {
+    /// What they may do from now on.
+    pub role: Parsed<control::Role>,
 }
 
 /// `POST /v1/abuse`: a stranger reports a site. Nobody signs it.

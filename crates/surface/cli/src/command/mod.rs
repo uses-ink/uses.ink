@@ -11,6 +11,7 @@ pub(crate) mod domain;
 pub(crate) mod explain;
 pub(crate) mod format;
 pub(crate) mod images;
+pub(crate) mod org;
 pub(crate) mod pin;
 pub(crate) mod preview;
 pub(crate) mod publish;

@@ -4,7 +4,7 @@ use std::fmt;
 
 use build::{BuildId, BuildIdError};
 use control::keys::Right;
-use control::{DomainName, EnrolmentKind, Id, IdError, NameError, SiteKind, Slug, SlugError};
+use control::{AccountKind, DomainName, EnrolmentKind, Id, IdError, NameError, SiteKind, Slug, SlugError};
 use model::DeployId;
 use sig::Fingerprint;
 
@@ -106,6 +106,28 @@ pub enum Call {
     Suspend(Id<SiteKind>),
     /// `POST /v1/sites/{site}/reinstate`: the operator lifts a suspension.
     Reinstate(Id<SiteKind>),
+    /// `GET /v1/orgs`: the organizations the caller is a member of.
+    Orgs,
+    /// `POST /v1/orgs`: make an organization with the caller as its owner.
+    OrgAdd,
+    /// `GET /v1/orgs/{org}`: the organization and its members.
+    OrgShow(Id<AccountKind>),
+    /// `POST /v1/orgs/{org}/members`: add a member.
+    MemberAdd(Id<AccountKind>),
+    /// `PUT /v1/orgs/{org}/members/{account}`: change a member's role.
+    MemberRole {
+        /// The organization.
+        org: Id<AccountKind>,
+        /// The member.
+        account: Id<AccountKind>,
+    },
+    /// `DELETE /v1/orgs/{org}/members/{account}`: remove a member.
+    MemberOut {
+        /// The organization.
+        org: Id<AccountKind>,
+        /// The member.
+        account: Id<AccountKind>,
+    },
     /// `POST /v1/enrol`: a key asks to be enrolled. The one call that is not signed.
     Enrol,
     /// `GET /v1/enrol/{id}`: the outcome of an ask, signed by the key that asked.
@@ -230,6 +252,7 @@ impl Call {
             (Some(&"v1"), Some(&"abuse")) if rest.is_empty() => {
                 return by(&[(Method::Post, Self::Report), (Method::Get, Self::Reports)]);
             }
+            (Some(&"v1"), Some(&"orgs")) => return Self::orgs(method, rest, &by),
             (Some(&"v1"), Some(&noun @ ("enrol" | "keys"))) => {
                 return Self::credentials(noun, rest, &by).ok_or_else(no_route)?;
             }
@@ -242,6 +265,51 @@ impl Call {
                 by(&[(Method::Get, Self::Status(site)), (Method::Delete, Self::Remove(site))])
             }
             [site, tail @ ..] => Self::nested(Self::site(site)?, tail, &by).ok_or_else(no_route)?,
+        }
+    }
+
+    /// The routes under `/v1/orgs`: the organizations, their members, and any call of the
+    /// account routes made as the organization (`/v1/orgs/{org}/sites`, `keys`, `whoami`).
+    fn orgs(method: Method, rest: &[&str], by: &Pick<'_>) -> Result<Self, RouteError> {
+        let org = |text: &str| text.parse().map_err(|source| RouteError::Id { noun: "organization", source });
+        let member = |text: &str| text.parse().map_err(|source| RouteError::Id { noun: "member", source });
+        match rest {
+            [] => by(&[(Method::Get, Self::Orgs), (Method::Post, Self::OrgAdd)]),
+            [id] => by(&[(Method::Get, Self::OrgShow(org(id)?))]),
+            [id, "members"] => by(&[(Method::Post, Self::MemberAdd(org(id)?))]),
+            [id, "members", account] => {
+                let (org, account) = (org(id)?, member(account)?);
+                by(&[
+                    (Method::Put, Self::MemberRole { org, account }),
+                    (Method::Delete, Self::MemberOut { org, account }),
+                ])
+            }
+            [id, noun @ ("sites" | "keys" | "whoami"), tail @ ..] => {
+                org(id)?;
+                let inner = format!("/v1/{noun}/{}", tail.join("/"));
+                Self::parse(method, &inner)
+            }
+            _ => Err(RouteError::NoRoute { path: format!("/v1/orgs/{}", rest.join("/")).chars().take(200).collect() }),
+        }
+    }
+
+    /// The organization a path acts as, when it is one of the account routes under
+    /// `/v1/orgs/{org}`: the sites, keys and `whoami` of the organization.
+    pub fn acting(path: &str) -> Option<Id<AccountKind>> {
+        let parts: Vec<&str> = path.trim_end_matches('/').split('/').skip(1).collect();
+        match parts.as_slice() {
+            ["v1", "orgs", org, "sites" | "keys" | "whoami", ..] => org.parse().ok(),
+            _ => None,
+        }
+    }
+
+    /// The organization a call is about by its own path: the one whose members it reads or changes.
+    pub const fn org(&self) -> Option<Id<AccountKind>> {
+        match self {
+            Self::OrgShow(org) | Self::MemberAdd(org) | Self::MemberRole { org, .. } | Self::MemberOut { org, .. } => {
+                Some(*org)
+            }
+            _ => None,
         }
     }
 
@@ -323,8 +391,8 @@ impl Call {
     /// calls that need none: asking to enrol, polling one's own ask, and knowing who one is.
     pub const fn needs(&self) -> Option<(Right, Option<Id<SiteKind>>)> {
         Some(match self {
-            Self::Sites => (Right::Read, None),
-            Self::Add => (Right::Edit, None),
+            Self::Sites | Self::Orgs | Self::OrgShow(_) => (Right::Read, None),
+            Self::Add | Self::OrgAdd => (Right::Edit, None),
             Self::Status(site)
             | Self::Deploys(site)
             | Self::Builds(site)
@@ -346,6 +414,7 @@ impl Call {
             | Self::Source(site)
             | Self::Parts(site) => (Right::Deploy, Some(*site)),
             Self::Keys | Self::Revoke(_) => (Right::Keys, None),
+            Self::MemberAdd(_) | Self::MemberRole { .. } | Self::MemberOut { .. } => (Right::Members, None),
             Self::Enrol
             | Self::Polled(_)
             | Self::Whoami
@@ -405,6 +474,12 @@ impl logging::Kind for &Call {
             Call::Whoami => "whoami",
             Call::Keys => "keys",
             Call::Revoke(_) => "revoke",
+            Call::Orgs => "orgs",
+            Call::OrgAdd => "org-add",
+            Call::OrgShow(_) => "org",
+            Call::MemberAdd(_) => "member-add",
+            Call::MemberRole { .. } => "member-role",
+            Call::MemberOut { .. } => "member-out",
         }
     }
 }
@@ -424,6 +499,28 @@ mod test {
         assert_eq!(call(Method::Delete, &format!("/v1/sites/{SITE}")), Ok(Call::Remove(site)));
         assert_eq!(call(Method::Put, &format!("/v1/sites/{SITE}/deploy")), Ok(Call::Intake(site)));
         assert_eq!(call(Method::Get, &format!("/v1/sites/{SITE}/export")), Ok(Call::Export { site, deploy: None }));
+    }
+
+    #[test]
+    fn organizations_have_routes_and_act_for_the_account_routes() {
+        let org: Id<AccountKind> = Id::from_bytes([9; 16]);
+        let (id, person) = ("09".repeat(16), "03".repeat(16));
+        let at = |method, path: &str| Call::parse(method, path);
+        assert_eq!(at(Method::Post, "/v1/orgs"), Ok(Call::OrgAdd));
+        assert_eq!(at(Method::Get, &format!("/v1/orgs/{id}")), Ok(Call::OrgShow(org)));
+        assert_eq!(at(Method::Post, &format!("/v1/orgs/{id}/members")), Ok(Call::MemberAdd(org)));
+        let account = Id::from_bytes([3; 16]);
+        assert_eq!(
+            at(Method::Delete, &format!("/v1/orgs/{id}/members/{person}")),
+            Ok(Call::MemberOut { org, account })
+        );
+        assert_eq!(at(Method::Get, &format!("/v1/orgs/{id}/sites/{SITE}")), Ok(Call::Status(Id::from_bytes([1; 16]))));
+        assert_eq!(Call::acting(&format!("/v1/orgs/{id}/sites")), Some(org));
+        assert_eq!(Call::acting("/v1/sites"), None);
+        assert_eq!(Call::acting(&format!("/v1/orgs/{id}/members")), None, "members are managed by their own routes");
+        assert!(matches!(at(Method::Get, "/v1/orgs/zz/sites"), Err(RouteError::Id { noun: "organization", .. })));
+        assert_eq!(Call::MemberAdd(org).needs(), Some((Right::Members, None)));
+        assert_eq!(Call::MemberAdd(org).org(), Some(org));
     }
 
     #[test]

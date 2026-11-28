@@ -4,7 +4,7 @@
 use std::fmt;
 
 use build::BuildId;
-use control::{DomainName, Handle};
+use control::{AccountKind, DomainName, Handle, Id, OrgName, Role};
 use model::{AnyCode, ContentPath, DeployId, Subject};
 
 use crate::Failure;
@@ -45,8 +45,14 @@ pub enum Field {
     On,
     /// The email address a sign-in link is asked for, or given to the first-run link.
     Address,
-    /// The custom domain a form is about.
+    /// The custom domain a form is about, or the name of an organization to make.
     Name,
+    /// The organization a form is about, by its account id.
+    Org,
+    /// The person a form is about, by their account id.
+    Account,
+    /// The role a member is given.
+    Role,
 }
 
 impl Field {
@@ -60,6 +66,9 @@ impl Field {
             Self::On => "on",
             Self::Address => "address",
             Self::Name => "name",
+            Self::Org => "org",
+            Self::Account => "account",
+            Self::Role => "role",
         }
     }
 }
@@ -218,6 +227,72 @@ impl Action {
             .trim()
             .parse()
             .map_err(|source| Failure::Invalid { field: Field::Name, source: FieldError::Domain(source) })
+    }
+}
+
+/// A change to an organization or its members that a form on the Account screen asks for.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Seating {
+    /// Make an organization, with the person as its owner.
+    Create {
+        /// What it is called.
+        name: OrgName,
+    },
+    /// Add a person to an organization.
+    Add {
+        /// The organization.
+        org: Id<AccountKind>,
+        /// The person.
+        account: Id<AccountKind>,
+        /// What they may do there.
+        role: Role,
+    },
+    /// Give a member another role.
+    Regrade {
+        /// The organization.
+        org: Id<AccountKind>,
+        /// The member.
+        account: Id<AccountKind>,
+        /// The role they get.
+        role: Role,
+    },
+    /// Remove a member.
+    Remove {
+        /// The organization.
+        org: Id<AccountKind>,
+        /// The member.
+        account: Id<AccountKind>,
+    },
+}
+
+impl Seating {
+    /// The change a post to `/account/<name>` asks for, read from `body`.
+    pub fn read(name: &str, body: &Form) -> Result<Self, Failure> {
+        let id = |field| -> Result<Id<AccountKind>, Failure> {
+            body.need(field)?
+                .trim()
+                .parse()
+                .map_err(|source| Failure::Invalid { field, source: FieldError::Account(source) })
+        };
+        let role = || -> Result<Role, Failure> {
+            body.need(Field::Role)?
+                .trim()
+                .parse()
+                .map_err(|source| Failure::Invalid { field: Field::Role, source: FieldError::Role(source) })
+        };
+        match name {
+            "orgs" => {
+                let name = body
+                    .need(Field::Name)?
+                    .parse()
+                    .map_err(|source| Failure::Invalid { field: Field::Name, source: FieldError::Org(source) })?;
+                Ok(Self::Create { name })
+            }
+            "members" => Ok(Self::Add { org: id(Field::Org)?, account: id(Field::Account)?, role: role()? }),
+            "roles" => Ok(Self::Regrade { org: id(Field::Org)?, account: id(Field::Account)?, role: role()? }),
+            "removals" => Ok(Self::Remove { org: id(Field::Org)?, account: id(Field::Account)? }),
+            _ => Err(Failure::Unrouted { source: Unrouted::Path }),
+        }
     }
 }
 

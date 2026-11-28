@@ -131,6 +131,7 @@ impl Command {
                 domain.command.run(&domain.dir, io)
             }
             Self::Abuse(abuse) => abuse.command.run(io),
+            Self::Org(org) => org.command.run(io),
             Self::Push(mut push) => {
                 push.dir = site;
                 push.run(io)

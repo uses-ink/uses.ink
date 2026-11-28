@@ -89,6 +89,8 @@ pub enum Command {
     Key(crate::command::auth::Key),
     /// Read abuse reports, suspend sites and lift suspensions.
     Abuse(crate::command::abuse::Abuse),
+    /// `ink org`.
+    Org(crate::command::org::Org),
     /// Send the folder to its site and start a deploy.
     Push(crate::command::publish::Push),
     /// Show what is live and what is building.

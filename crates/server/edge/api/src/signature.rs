@@ -244,6 +244,7 @@ impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
                 let via = Via::Operator { label: key.label.to_string() };
                 Verdict::Granted(Principal {
                     account,
+                    person: account,
                     via,
                     effective: Effective::own(Grants::owner(account)),
                     expires: None,
@@ -257,7 +258,13 @@ impl<D: Db, K: Clock, O: Operators> Signatures<D, K, O> {
                     _ => Effective::own(key.grants()),
                 };
                 let via = Via::Key { id: key.id, kind: key.kind, label: key.label.to_string() };
-                Verdict::Granted(Principal { account: key.account, via, effective, expires: Some(key.expires) })
+                Verdict::Granted(Principal {
+                    account: key.account,
+                    person: key.account,
+                    via,
+                    effective,
+                    expires: Some(key.expires),
+                })
             }
             Found::Pending(enrolment) => Verdict::Enrolling(enrolment.key()),
         }

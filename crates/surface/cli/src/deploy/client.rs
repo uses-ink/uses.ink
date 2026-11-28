@@ -98,12 +98,14 @@ pub(crate) struct Wire {
 pub(crate) struct Api {
     pub(crate) wire: Wire,
     pub(crate) site: Id<SiteKind>,
+    /// The organization the calls are made as, when they are not a person's own.
+    pub(crate) org: Option<Id<control::AccountKind>>,
 }
 
 impl Api {
     /// `GET /v1/sites/{site}`: the site, what is live, the latest build and the pending ones.
     pub(crate) async fn overview(&self) -> Result<Overview, Failure> {
-        let body = self.wire.repeat(Method::GET, &format!("/v1/sites/{}", self.site), Vec::new()).await?;
+        let body = self.wire.repeat(Method::GET, &self.path(""), Vec::new()).await?;
         serde_json::from_slice(&body).map_err(|source| Failure::Unreadable { source })
     }
 
@@ -144,7 +146,9 @@ impl Api {
 
     /// The path of `tail` under the site.
     fn path(&self, tail: &str) -> String {
-        format!("/v1/sites/{}/{tail}", self.site)
+        let as_org = self.org.map_or_else(String::new, |org| format!("/orgs/{org}"));
+        let site = self.site;
+        if tail.is_empty() { format!("/v1{as_org}/sites/{site}") } else { format!("/v1{as_org}/sites/{site}/{tail}") }
     }
 
     /// A read of the site's `tail`, repeated when the network fails.

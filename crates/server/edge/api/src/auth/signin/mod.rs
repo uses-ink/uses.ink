@@ -87,6 +87,7 @@ pub struct Door<D, K, R> {
     config: Config,
     limiter: Limiter,
     origins: Origins,
+    roster: Option<control::Roster<D>>,
 }
 
 /// Why a sign-in call was not answered with what it asked for.
@@ -129,6 +130,10 @@ pub enum Step<E> {
     Sign(Error<E>),
     /// The answer could not be written as JSON.
     Json(serde_json::Error),
+    /// The person may not give a key to the organization.
+    Seat(control::Seated<E>),
+    /// This door does not know organizations.
+    Orgless,
 }
 
 impl<E> std::fmt::Display for Step<E> {
@@ -149,6 +154,8 @@ impl<E> std::fmt::Display for Step<E> {
             Self::Draw(_) => out.write_str("no random bytes were available"),
             Self::Sign(error) => error.fmt(out),
             Self::Json(_) => out.write_str("the answer could not be written"),
+            Self::Seat(error) => error.fmt(out),
+            Self::Orgless => out.write_str("this server does not give keys to organizations"),
         }
     }
 }
@@ -165,9 +172,14 @@ impl<E: std::error::Error + 'static> std::error::Error for Step<E> {
             Self::Draw(source) => Some(source),
             Self::Sign(source) => Some(source),
             Self::Json(source) => Some(source),
-            Self::Route | Self::Large { .. } | Self::Origin | Self::Anonymous | Self::Missing | Self::Stale { .. } => {
-                None
-            }
+            Self::Seat(source) => Some(source),
+            Self::Route
+            | Self::Orgless
+            | Self::Large { .. }
+            | Self::Origin
+            | Self::Anonymous
+            | Self::Missing
+            | Self::Stale { .. } => None,
         }
     }
 }
@@ -189,6 +201,10 @@ impl<E: std::error::Error + 'static> Step<E> {
             Self::Stale { .. } => "auth.step-up.required",
             Self::Draw(_) => "random",
             Self::Json(_) => "json",
+            Self::Seat(control::Seated::NotMember { .. }) => "org.member.unknown",
+            Self::Seat(control::Seated::Role { .. }) => "org.role.refused",
+            Self::Seat(_) => "orgs",
+            Self::Orgless => "org.approval.off",
             Self::Sign(error) => match error {
                 Error::Refused(Refused::Unusable) => "login",
                 Error::Refused(_) => "refused",
@@ -201,16 +217,20 @@ impl<E: std::error::Error + 'static> Step<E> {
     /// reason, so the answer is one shape.
     pub fn status(&self) -> Status {
         match self {
-            Self::Route | Self::Missing | Self::Sign(Error::Refused(Refused::Unusable)) => Status::NotFound,
+            Self::Route
+            | Self::Missing
+            | Self::Orgless
+            | Self::Seat(control::Seated::NotMember { .. })
+            | Self::Sign(Error::Refused(Refused::Unusable)) => Status::NotFound,
             Self::Method(_) => Status::MethodNotAllowed,
             Self::Body(_) => Status::BadRequest,
             Self::Large { .. } => Status::TooLarge,
             Self::Limited(_) | Self::Closed(_) => Status::TooMany,
             Self::Keys(refused) => Turned(refused).status(),
-            Self::Origin | Self::Stale { .. } => Status::Forbidden,
+            Self::Origin | Self::Stale { .. } | Self::Seat(control::Seated::Role { .. }) => Status::Forbidden,
             Self::Anonymous => Status::Unauthorized,
             Self::Sign(Error::Refused(_)) => Status::Conflict,
-            Self::Draw(_) | Self::Json(_) | Self::Sign(_) | Self::Store(_) => Status::Internal,
+            Self::Draw(_) | Self::Json(_) | Self::Sign(_) | Self::Store(_) | Self::Seat(_) => Status::Internal,
         }
     }
 
@@ -313,6 +333,12 @@ struct Signed {
     created_account: bool,
 }
 
+/// A session that is fresh enough to change members, keys and credentials.
+#[derive(Debug, Serialize)]
+struct Stepped {
+    fresh: bool,
+}
+
 /// A session ended.
 #[derive(Debug, Serialize)]
 struct Ended {
@@ -339,7 +365,15 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
     /// `clocks.1`, and the approval of enrolments over `enrol`.
     pub fn new(entry: SignIn<D>, clocks: (K, R), enrol: Enrol<D>, config: Config) -> Self {
         let origins = Origins::of(&config.base);
-        Self { entry, enrol, clock: clocks.0, draw: clocks.1, config, limiter: Limiter::new(), origins }
+        Self { entry, enrol, clock: clocks.0, draw: clocks.1, config, limiter: Limiter::new(), origins, roster: None }
+    }
+
+    /// The same door, giving keys to organizations whose members `roster` reads: a key approved
+    /// as an organization's belongs to it and outlives the person who approved it (decision 0095).
+    #[must_use]
+    pub fn with_roster(mut self, roster: control::Roster<D>) -> Self {
+        self.roster = Some(roster);
+        self
     }
 
     /// The same door also taking state-changing requests from `origin`, such as a dashboard served
@@ -392,6 +426,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
             Enter::Look(proof) | Enter::Redeem(proof) => self.redeem(request, proof, body).await,
             Enter::Show => self.show(request).await,
             Enter::End => self.end(request).await,
+            Enter::Fresh => self.stepped(request).await,
             Enter::Sessions => self.sessions(request).await,
             Enter::Revoke(id) => self.revoke(request, id).await,
             Enter::Seeing(code) => self.seeing(request, code).await,
@@ -633,7 +668,18 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         let Some(code) = code else { return Err(self.missed(now)) };
         let fingerprint = asked.fingerprint.0;
         let approval = Approval { code, fingerprint: fingerprint.clone(), by: who.account, within: who.rights };
-        match self.enrol.keys().approve(approval, now).await {
+        let approved = match asked.org {
+            None => self.enrol.keys().approve(approval, now).await,
+            Some(org) => {
+                // a key given to an organization belongs to it and outlives the person who gave it
+                // (decision 0095), with no more than their role holds
+                let roster = self.roster.as_ref().ok_or(Step::Orgless)?;
+                let allowed = roster.allowed(org.0, who.account).await.map_err(Step::Seat)?;
+                let within = approval.within.both(allowed);
+                self.enrol.keys().approve_as(Approval { within, ..approval }, org.0, now).await
+            }
+        };
+        match approved {
             Ok(key) => Self::json(Status::Ok, &Approved { fingerprint: fingerprint.to_string(), expires: key.expires }),
             Err(error) => {
                 if matches!(error.refusal(), Some(KeyRefused::NoEnrolment)) {
@@ -642,6 +688,13 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
                 Err(Self::store(error))
             }
         }
+    }
+
+    /// `GET /v1/session/fresh`: `200` when a passkey signed the session in within the step-up
+    /// window, and the step-up refusal when it did not.
+    async fn stepped(&self, request: &Request) -> Result<Reply, Step<D::Error>> {
+        self.fresh(request, self.clock.now()).await?;
+        Self::json(Status::Ok, &Stepped { fresh: true })
     }
 
     async fn declining(

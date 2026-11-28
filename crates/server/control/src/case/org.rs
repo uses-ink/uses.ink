@@ -8,7 +8,7 @@ use sea_query::{Expr, ExprTrait, Order, Query, SelectStatement};
 
 use crate::id::{Account as AccountKind, Id};
 use crate::keys::{Approval, Grant, Grants, Key, Keys, Right, Scope};
-use crate::org::{Member, NewOrg, Org, OrgKey, Role};
+use crate::org::{Member, NewOrg, Org, OrgKey, Role, Standing};
 use crate::{Control, Error, Ports, Refusal, table};
 
 /// A change to a member: who asks, whose seat, and what it becomes (none removes it).
@@ -34,11 +34,11 @@ impl<P: Ports> Control<P> {
         let org = Query::insert()
             .into_table(table::Org::Table)
             .columns(Org::COLUMNS)
-            .values([Expr::val(new.id.to_string()), Expr::val(new.name.clone()), Expr::val(new.at.as_millisecond())])?
+            .values([Expr::val(new.id.to_string()), Expr::val(new.name.as_str()), Expr::val(new.at.as_millisecond())])?
             .to_owned();
         let owner = Member { org: new.id, account: new.owner, role: Role::Owner, since: new.at };
         match self.ports.db().batch(vec![account.into(), org.into(), owner.insert(None)?]).await {
-            Ok(_) => Ok(Org { id: new.id, name: new.name, created: new.at }),
+            Ok(_) => Ok(Org { id: new.id, name: new.name.to_string(), created: new.at }),
             Err(error) if error.constraint() == Some(Constraint::Unique) => {
                 Err(Refusal::Exists { id: new.id.to_string() }.into())
             }
@@ -96,6 +96,25 @@ impl<P: Ports> Control<P> {
             .map(|row| Member::read(row).map(|m| Grant { scope: Scope::Account(m.org), rights: m.role.rights() }))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Grants::new(list))
+    }
+
+    /// The organizations `person` is a member of, each with their role and its member count,
+    /// by name.
+    pub async fn orgs_of(&self, person: Id<AccountKind>) -> Result<Vec<Standing>, Error<P>> {
+        let mine = Query::select()
+            .columns(Member::COLUMNS)
+            .from(table::Member::Table)
+            .and_where(Expr::col(table::Member::AccountId).eq(person.to_string()))
+            .to_owned();
+        let seats = self.ports.db().rows(mine.into()).await?;
+        let mut found = Vec::new();
+        for seat in seats.iter().map(Member::read).collect::<Result<Vec<_>, _>>()? {
+            let org = self.org(seat.org).await?.ok_or(Refusal::NoOrg { org: seat.org })?;
+            let members = u64::try_from(self.members(seat.org).await?.len()).unwrap_or(u64::MAX);
+            found.push(Standing { org, role: seat.role, members });
+        }
+        found.sort_by(|left, right| left.org.name.cmp(&right.org.name));
+        Ok(found)
     }
 
     /// Adds `whom` to the organization with `role`, when `by` is a member who may give it. A

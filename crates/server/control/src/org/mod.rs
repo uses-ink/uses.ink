@@ -2,7 +2,9 @@
 //! is an account that people are members of, each with a [`Role`].
 
 mod migration;
+mod name;
 mod role;
+mod roster;
 
 use db::{Row, Statement};
 use jiff::Timestamp;
@@ -13,7 +15,9 @@ use crate::id::{Account as AccountKind, Id};
 use crate::{Unreadable, table};
 
 pub use migration::Orged;
+pub use name::{Name, NameError};
 pub use role::{Role, UnknownRole};
+pub use roster::{Roster, Seated};
 
 /// An organization: an account with a name.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -50,7 +54,7 @@ pub struct NewOrg {
     /// The person who makes it, and is its first owner.
     pub owner: Id<AccountKind>,
     /// Its name.
-    pub name: String,
+    pub name: Name,
     /// When it is made.
     pub at: Timestamp,
 }
@@ -107,6 +111,17 @@ impl Member {
             .to_owned()
             .into())
     }
+}
+
+/// An organization as one of its members sees it: the role they have and how many people are in it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Standing {
+    /// The organization.
+    pub org: Org,
+    /// The person's role in it.
+    pub role: Role,
+    /// How many members it has.
+    pub members: u64,
 }
 
 /// A key of an organization, with whether the member who approved it is still one.

@@ -29,8 +29,21 @@ impl Fixtures {
         pages.put(
             "account_orgs",
             &Account::new(Self::at("2026-11-01T12:00:00Z"), vec![]).with_orgs(vec![
-                Joined { name: "Garden club".to_owned(), role: control::Role::Admin, members: 4 },
-                Joined { name: "<b>Press</b>".to_owned(), role: control::Role::Reader, members: 1 },
+                Joined {
+                    id: control::Id::from_bytes([7; 16]),
+                    name: "Garden club".to_owned(),
+                    role: control::Role::Admin,
+                    people: vec![
+                        (control::Id::from_bytes([1; 16]), control::Role::Owner),
+                        (control::Id::from_bytes([2; 16]), control::Role::Admin),
+                    ],
+                },
+                Joined {
+                    id: control::Id::from_bytes([8; 16]),
+                    name: "<b>Press</b>".to_owned(),
+                    role: control::Role::Reader,
+                    people: vec![(control::Id::from_bytes([3; 16]), control::Role::Reader)],
+                },
             ]),
         );
         pages.put("account_empty", &Account::new(Self::at("2026-11-01T12:00:00Z"), vec![]));

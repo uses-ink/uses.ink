@@ -23,7 +23,7 @@ pub mod view;
 
 pub use dashboard::{Body, Dashboard, Download, Logged, Reply, Screens};
 pub use failure::{Cause, Code, Failure, FieldError, Fix, Part, Unrouted};
-pub use form::{Action, Asked, Field, Form, Method, Request, Token};
+pub use form::{Action, Asked, Field, Form, Method, Request, Seating, Token};
 pub use mark::{Ink, Rule};
 pub use route::{Only, Path, Route, Screen};
 pub use shell::{Document, Frame, View};
