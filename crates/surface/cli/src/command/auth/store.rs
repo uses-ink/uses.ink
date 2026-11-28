@@ -8,7 +8,7 @@
 
 use std::fmt;
 use std::io::Write as _;
-use std::os::unix::fs::{DirBuilderExt as _, OpenOptionsExt as _};
+use std::os::unix::fs::{DirBuilderExt as _, OpenOptionsExt as _, PermissionsExt as _};
 use std::path::PathBuf;
 
 use sig::{KeyError, Seed};
@@ -40,6 +40,13 @@ pub enum StoreError {
         /// Where.
         path: PathBuf,
     },
+    /// A key file that others can read: its group or the world could have copied the key.
+    Loose {
+        /// Where.
+        path: PathBuf,
+        /// Its permission bits.
+        mode: u32,
+    },
 }
 
 impl fmt::Display for StoreError {
@@ -53,6 +60,11 @@ impl fmt::Display for StoreError {
             Self::Held { path } => {
                 write!(out, "{} already holds a key for this server: run `ink logout` first", path.display())
             }
+            Self::Loose { path, mode } => write!(
+                out,
+                "{} has mode {mode:03o} and holds a private key: run `chmod 600` on it, or `ink logout` and log in again",
+                path.display()
+            ),
         }
     }
 }
@@ -62,7 +74,7 @@ impl std::error::Error for StoreError {
         match self {
             Self::Io { source, .. } => Some(source),
             Self::Unreadable { source, .. } => Some(source),
-            Self::NoHome | Self::Held { .. } => None,
+            Self::NoHome | Self::Held { .. } | Self::Loose { .. } => None,
         }
     }
 }
@@ -93,6 +105,14 @@ impl Keystore {
     /// The key kept for `authority`, when there is one.
     pub(crate) fn load(&self, authority: &str) -> Result<Option<Seed>, StoreError> {
         let path = self.file(authority);
+        let mode = match std::fs::metadata(&path) {
+            Ok(metadata) => Some(metadata.permissions().mode() & 0o777),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(source) => return Err(StoreError::Io { path, source }),
+        };
+        if let Some(mode) = mode.filter(|mode| mode & 0o077 != 0) {
+            return Err(StoreError::Loose { path, mode });
+        }
         match std::fs::read_to_string(&path) {
             Ok(text) => text.trim().parse().map(Some).map_err(|source| StoreError::Unreadable { path, source }),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
@@ -127,8 +147,6 @@ impl Keystore {
 
 #[cfg(test)]
 mod test {
-    use std::os::unix::fs::PermissionsExt as _;
-
     use super::*;
 
     fn store() -> (tempfile::TempDir, Keystore) {
@@ -154,11 +172,24 @@ mod test {
     }
 
     #[test]
+    fn a_key_file_that_the_group_or_world_can_read_is_refused() {
+        let (_home, store) = store();
+        let path = store.save("x", &Seed::new([7; 32])).unwrap();
+        for mode in [0o640, 0o604, 0o644, 0o660] {
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
+            assert!(matches!(store.load("x"), Err(StoreError::Loose { mode: found, .. }) if found == mode), "{mode:o}");
+        }
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o400)).unwrap();
+        assert!(store.load("x").unwrap().is_some());
+    }
+
+    #[test]
     fn a_file_that_holds_no_key_says_which() {
         let (_home, store) = store();
         let path = store.file("x");
         std::fs::create_dir_all(&store.folder).unwrap();
         std::fs::write(&path, "not a key").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
         assert!(matches!(store.load("x"), Err(StoreError::Unreadable { .. })));
     }
 }
