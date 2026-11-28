@@ -35,7 +35,7 @@ use control::passkeys::{
     Asserted, Audit, Authenticating, Begin, Created, Flow, Fresh, Passkey, Passkeys, Person, Reason, Refusal,
     Registering, Registry, Relying,
 };
-use control::signin::{Passed, Proof, Session, SignIn};
+use control::signin::{Entered, Passed, Proof, Session, SignIn};
 use db::Db;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
@@ -248,8 +248,19 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
         self.registry.spend(&proof, flow, now).await.map_err(Stop::stored)?.ok_or(Stop::Challenge)
     }
 
+    /// Refuses a session that may not change credentials now: one no passkey signed in within the
+    /// step-up window, on an account that has a passkey.
+    async fn fresh(&self, session: &Session, now: Timestamp) -> Result<(), Stop> {
+        if self.entry.stepped(session, now).await.map_err(Stop::signed)? {
+            Ok(())
+        } else {
+            Err(Stop::Step { window: self.entry.step_up() })
+        }
+    }
+
     async fn options(&self, request: &Request, body: &[u8], now: Timestamp) -> Result<Reply, Stop> {
         let session = self.session(request, now).await?;
+        self.fresh(&session, now).await?;
         let naming: Naming = Unreadable::read(body).map_err(Stop::Body)?;
         let label = Label::parse(&naming.label).map_err(Stop::Label)?;
         let existing: Vec<_> = self
@@ -272,6 +283,7 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
 
     async fn register(&self, request: &Request, body: &[u8], now: Timestamp) -> Result<Reply, Stop> {
         let session = self.session(request, now).await?;
+        self.fresh(&session, now).await?;
         let registered: Registered = Unreadable::read(body).map_err(Stop::Body)?;
         let label = Label::parse(&registered.label).map_err(Stop::Label)?;
         let spent = self.spent(request, Flow::Register, now).await?;
@@ -322,11 +334,19 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
             }
         };
         self.registry.used(&passkey, &verified, now).await.map_err(Stop::stored)?;
-        let entered = self
-            .entry
-            .enter(Passed { account: passkey.account, passkey: passkey.id }, self.drawn()?, now)
-            .await
-            .map_err(Stop::signed)?;
+        // a passkey sign-in is also the step-up, and it replaces the session the browser held: the
+        // old secret stops working, so a session id is never kept across a proof of presence
+        let replaced = request.cookie.as_deref().and_then(|header| self.config.session.read(header));
+        let passed = Passed { account: passkey.account, passkey: passkey.id };
+        let entered = self.entry.enter(passed, self.drawn()?, now).await.map_err(Stop::signed)?;
+        if let Some(old) = replaced {
+            self.entry.end(&old, now).await.map_err(Stop::signed)?;
+        }
+        self.began(&entered, now)
+    }
+
+    /// The reply of a sign-in: when the session ends, and its cookie. No secret is in the body.
+    fn began(&self, entered: &Entered, now: Timestamp) -> Result<Reply, Stop> {
         let age = Duration::try_from(entered.session.limit.duration_since(now)).unwrap_or_default();
         let began = Began {
             account: entered.account,
@@ -353,6 +373,7 @@ impl<D: Db, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
         now: Timestamp,
     ) -> Result<Reply, Stop> {
         let session = self.session(request, now).await?;
+        self.fresh(&session, now).await?;
         let id = id.ok_or(Stop::Missing)?;
         self.registry.remove(session.account, id, now).await.map_err(Stop::stored)?;
         let mut reply = Self::json(Status::Ok, &Removed { removed: true })?;

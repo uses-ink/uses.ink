@@ -13,7 +13,11 @@ async function call(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await reply.json().catch(() => ({}));
-  if (!reply.ok) throw new Error((json.problem ? json.problem + ": " : "") + (json.message || reply.statusText));
+  if (!reply.ok) {
+    const error = new Error((json.problem ? json.problem + ": " : "") + (json.message || reply.statusText));
+    error.code = json.problem;
+    throw error;
+  }
   return json;
 }
 
@@ -36,7 +40,9 @@ async function register() {
   location.reload();
 }
 
-async function login() {
+// A passkey sign-in: it makes a new session, which is also the proof of presence that adding or
+// removing a credential asks for (`auth.step-up.required`).
+async function signIn() {
   const options = await call("POST", "/v1/passkeys/challenge");
   options.challenge = bytes(options.challenge);
   const got = await navigator.credentials.get({ publicKey: options });
@@ -49,6 +55,10 @@ async function login() {
       handle: got.response.userHandle ? text(got.response.userHandle) : null,
     },
   });
+}
+
+async function login() {
+  await signIn();
   location.assign("/account");
 }
 
@@ -64,7 +74,14 @@ document.addEventListener("click", (event) => {
   event.preventDefault();
   button.disabled = true;
   say("Waiting for your authenticator...");
-  actions[button.dataset.passkey](button)
+  const act = actions[button.dataset.passkey];
+  act(button)
+    .catch(async (error) => {
+      if (error.code !== "auth.step-up.required") throw error;
+      say("Confirm it is you with your passkey...");
+      await signIn();
+      await act(button);
+    })
     .catch((error) => say(error.message))
     .finally(() => { button.disabled = false; });
 });

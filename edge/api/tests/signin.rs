@@ -98,6 +98,8 @@ impl Fixture {
             .with::<Entry>()
             .unwrap()
             .with::<control::keys::Entry>()
+            .unwrap()
+            .with::<control::passkeys::Entry>()
             .unwrap();
         pollster::block_on(steps.apply(&db)).unwrap();
         let ports = (

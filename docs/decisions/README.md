@@ -79,3 +79,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0081 | [The farm removes the copies it made, seeds from the tree used last, and stops a gate that has failed](0081-the-farm-cleans-up-after-itself-and-keeps-new-work-warm.md) | accepted | 2026-11-28 | farm |
 | 0081 | [Sessions are listed and ended by id on the Door, and the dashboard ends one with a form post](0081-sessions-are-listed-and-ended-by-id-on-the-door.md) | built | 2026-11-28 | security |
 | 0082 | [Every cookie route that changes state checks its origin, and starting a passkey sign-in is limited per source](0082-every-cookie-route-that-changes-state-checks-its.md) | built | 2026-11-28 | security |
+| 0083 | [Step-up is a passkey sign-in within a window; adding or removing a passkey and approving a key need it](0083-step-up-is-a-passkey-sign-in-within-a-window.md) | built | 2026-11-28 | security |

@@ -34,6 +34,11 @@ pub enum Stop {
     Origin,
     /// A rate limit was reached.
     Limited(Limited),
+    /// The session has not been proved with a passkey recently enough to change credentials.
+    Step {
+        /// How recent a passkey sign-in must be.
+        window: control::signin::Ttl,
+    },
     /// The request holds no usable session.
     Anonymous,
     /// There is no ceremony to complete: it ended, was already used, was never started, or is
@@ -82,6 +87,9 @@ impl fmt::Display for Stop {
             Self::Large { limit } => write!(out, "the body is over the limit of {limit} bytes"),
             Self::Origin => out.write_str("the request did not come from this dashboard"),
             Self::Limited(error) => error.fmt(out),
+            Self::Step { window } => {
+                write!(out, "this change needs a passkey sign-in within the last {window}")
+            }
             Self::Anonymous => out.write_str("sign in on the dashboard: this route reads the session cookie"),
             Self::Challenge => out.write_str("no passkey ceremony is waiting for this reply"),
             Self::Refused { refusal, .. } => refusal.fmt(out),
@@ -143,6 +151,7 @@ impl Stop {
             Self::Large { .. } => "too-large",
             Self::Origin => "auth.origin.refused",
             Self::Limited(_) => "auth.rate.limited",
+            Self::Step { .. } => "auth.step-up.required",
             Self::Anonymous => "unauthorized",
             Self::Challenge => "auth.passkey.challenge",
             Self::Refused { refusal, .. } => match refusal.reason {
@@ -175,7 +184,7 @@ impl Stop {
             Self::Method(_) => Status::MethodNotAllowed,
             Self::Body(_) | Self::Label(_) => Status::BadRequest,
             Self::Large { .. } => Status::TooLarge,
-            Self::Origin => Status::Forbidden,
+            Self::Origin | Self::Step { .. } => Status::Forbidden,
             Self::Limited(_) => Status::TooMany,
             Self::Anonymous | Self::Raced => Status::Unauthorized,
             Self::Challenge | Self::Taken | Self::Moved { .. } => Status::Conflict,

@@ -195,6 +195,7 @@ fn the_sign_in_page_and_the_script_need_no_session_and_nothing_else_is_scripted(
     let script = reply(&Ask::get("/passkey.js"), None);
     let Body::Script(source) = script.body else { panic!("a script") };
     assert!(source.contains("/v1/passkeys/challenge") && !source.contains("localStorage"));
+    assert!(source.contains("auth.step-up.required"), "an action that needs a fresh passkey asks for one and retries");
     // the policy allows the one script and the fetches to this host, and no inline script
     let csp = Reply::<Replay>::HEADERS.iter().find(|(name, _)| *name == "content-security-policy").unwrap().1;
     assert!(csp.contains("script-src 'self'") && csp.contains("connect-src 'self'"), "{csp}");

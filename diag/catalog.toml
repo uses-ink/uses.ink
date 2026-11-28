@@ -997,6 +997,12 @@ fault = "author"
 message = "too many requests from this source in a short time"
 fix = "wait the seconds in the Retry-After header, then try again"
 
+[diagnostic."auth.step-up.required"]
+severity = "error"
+fault = "author"
+message = "this change needs a passkey sign-in within the last few minutes"
+fix = "sign in with a passkey again, then repeat the change"
+
 [notice."auth.token.retired"]
 fields = { token_file = "text" }
 message = "the owner token in `{token_file}` no longer works"

@@ -117,6 +117,11 @@ pub enum Step<E> {
     Anonymous,
     /// The account has no live session with that id.
     Missing,
+    /// The session has not been proved with a passkey recently enough to approve a key.
+    Stale {
+        /// How recent a passkey sign-in must be.
+        window: control::signin::Ttl,
+    },
     /// The random source gave nothing.
     Draw(Unnamed),
     /// Signing in refused or failed.
@@ -139,6 +144,7 @@ impl<E> std::fmt::Display for Step<E> {
             Self::Origin => out.write_str("the request did not come from this dashboard"),
             Self::Anonymous => out.write_str("sign in on the dashboard: this route reads the session cookie"),
             Self::Missing => out.write_str("the account has no live session with that id"),
+            Self::Stale { window } => write!(out, "this change needs a passkey sign-in within the last {window}"),
             Self::Draw(_) => out.write_str("no random bytes were available"),
             Self::Sign(error) => error.fmt(out),
             Self::Json(_) => out.write_str("the answer could not be written"),
@@ -158,7 +164,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Step<E> {
             Self::Draw(source) => Some(source),
             Self::Sign(source) => Some(source),
             Self::Json(source) => Some(source),
-            Self::Route | Self::Large { .. } | Self::Origin | Self::Anonymous | Self::Missing => None,
+            Self::Route | Self::Large { .. } | Self::Origin | Self::Anonymous | Self::Missing | Self::Stale { .. } => None,
         }
     }
 }
@@ -177,6 +183,7 @@ impl<E: std::error::Error + 'static> Step<E> {
             Self::Origin => "auth.origin.refused",
             Self::Anonymous => "unauthorized",
             Self::Missing => "auth.session.missing",
+            Self::Stale { .. } => "auth.step-up.required",
             Self::Draw(_) => "random",
             Self::Json(_) => "json",
             Self::Sign(error) => match error {
@@ -197,7 +204,7 @@ impl<E: std::error::Error + 'static> Step<E> {
             Self::Large { .. } => Status::TooLarge,
             Self::Limited(_) | Self::Closed(_) => Status::TooMany,
             Self::Keys(refused) => Turned(refused).status(),
-            Self::Origin => Status::Forbidden,
+            Self::Origin | Self::Stale { .. } => Status::Forbidden,
             Self::Anonymous => Status::Unauthorized,
             Self::Sign(Error::Refused(_)) => Status::Conflict,
             Self::Draw(_) | Self::Json(_) | Self::Sign(_) | Self::Store(_) => Status::Internal,
@@ -578,6 +585,18 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         Self::json(Status::Ok, &asking)
     }
 
+    /// Refuses a session that may not approve a key now: one no passkey signed in within the
+    /// step-up window, on an account that has a passkey (`docs/auth.md` section 8).
+    async fn fresh(&self, request: &Request, now: Timestamp) -> Result<(), Step<D::Error>> {
+        let proof = self.held(request).ok_or(Step::Anonymous)?;
+        let session = self.entry.resolve(&proof, now).await.map_err(Step::Sign)?.ok_or(Step::Anonymous)?;
+        if self.entry.stepped(&session, now).await.map_err(Step::Sign)? {
+            Ok(())
+        } else {
+            Err(Step::Stale { window: self.entry.step_up() })
+        }
+    }
+
     async fn approving(
         &self,
         request: &Request,
@@ -585,6 +604,7 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         body: &[u8],
     ) -> Result<Reply, Step<D::Error>> {
         let (who, now) = self.gated(request).await?;
+        self.fresh(request, now).await?;
         let asked: Approve = Unreadable::read(body).map_err(Step::Body)?;
         let Some(code) = code else { return Err(self.missed(now)) };
         let fingerprint = asked.fingerprint.0;

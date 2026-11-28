@@ -357,6 +357,9 @@ impl Message<'_> {
                     "passkeys were made for `{was}` and the relying party id is now `{now}`; {passkeys} would stop working"
                 )
             }
+            Problem::AuthStepUpRequired => {
+                write!(out, "this change needs a passkey sign-in within the last few minutes")
+            }
             Problem::AuthRateLimited => {
                 write!(out, "too many requests from this source in a short time")
             }
@@ -642,6 +645,7 @@ impl Fix<'_> {
             Problem::AuthPasskeyMissing => true,
             Problem::AuthPasskeyLabel => true,
             Problem::AuthRelyingPartyChanged { .. } => true,
+            Problem::AuthStepUpRequired => true,
             Problem::AuthRateLimited => true,
             Problem::AuthSessionMissing => true,
         }
@@ -998,6 +1002,9 @@ impl Fix<'_> {
                     out,
                     "set `--rp-id {was}` again, or accept that people sign in with an email link and add passkeys anew"
                 )
+            }
+            Problem::AuthStepUpRequired => {
+                write!(out, "sign in with a passkey again, then repeat the change")
             }
             Problem::AuthRateLimited => {
                 write!(out, "wait the seconds in the Retry-After header, then try again")

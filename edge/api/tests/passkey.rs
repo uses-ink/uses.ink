@@ -393,7 +393,8 @@ fn a_challenge_is_used_once_and_expires() {
     let reply = fixture.send((Method::Post, "/v1/passkeys/session"), &ceremony, &json!({"credential": credential}));
     assert_eq!((reply.status, code(&reply)), (Status::Conflict, "auth.passkey.challenge".to_owned()));
     // and a registration ceremony does not complete a sign-in
-    let jar = format!("__Host-ink-session={secret}");
+    let fresh = pair(fixture.sign_in(&phone, account.as_bytes()).cookie.as_ref().unwrap());
+    let jar = fresh;
     let options = fixture.send((Method::Post, "/v1/passkeys/options"), &jar, &json!({"label": "second"}));
     let ceremony = pair(options.ceremony.as_ref().unwrap());
     let credential = phone.get(&body(&options), account.as_bytes());
@@ -500,11 +501,11 @@ fn backup_eligibility_may_not_change_after_registration() {
 #[test]
 fn one_authenticator_makes_one_passkey() {
     let fixture = Fixture::new();
-    let (_, secret) = fixture.person("me@example.org");
+    let (account, secret) = fixture.person("me@example.org");
     let phone = Authenticator::synced(1, ORIGIN, HOST);
     assert_eq!(fixture.register(&secret, &phone).status, Status::Created);
     // the options name the passkey so the authenticator skips it, and a reply for it anyway is refused
-    let jar = format!("__Host-ink-session={secret}");
+    let jar = pair(fixture.sign_in(&phone, account.as_bytes()).cookie.as_ref().unwrap());
     let options = fixture.send((Method::Post, "/v1/passkeys/options"), &jar, &json!({"label": "again"}));
     assert_eq!(body(&options)["excludeCredentials"].as_array().unwrap().len(), 1);
     let both = format!("{jar}; {}", pair(options.ceremony.as_ref().unwrap()));
@@ -559,9 +560,10 @@ fn removing_a_passkey_ends_the_sessions_it_made() {
     let (account, link_session) = fixture.person("me@example.org");
     let phone = Authenticator::synced(1, ORIGIN, HOST);
     assert_eq!(fixture.register(&link_session, &phone).status, Status::Created);
-    let key = Authenticator::hardware(2, ORIGIN, HOST);
-    assert_eq!(fixture.register(&link_session, &key).status, Status::Created);
     let by_phone = pair(fixture.sign_in(&phone, account.as_bytes()).cookie.as_ref().unwrap());
+    let key = Authenticator::hardware(2, ORIGIN, HOST);
+    // a second passkey is added by a session a passkey just made, not by the link's
+    assert_eq!(fixture.register(by_phone.split_once('=').unwrap().1, &key).status, Status::Created);
     let by_key = pair(fixture.sign_in(&key, account.as_bytes()).cookie.as_ref().unwrap());
     let link = format!("__Host-ink-session={link_session}");
     let listed = body(&fixture.send((Method::Get, "/v1/passkeys"), &link, &Value::Null));
@@ -569,7 +571,7 @@ fn removing_a_passkey_ends_the_sessions_it_made() {
         .as_str()
         .unwrap()
         .to_owned();
-    let removed = fixture.send((Method::Delete, &format!("/v1/passkeys/{phone_id}")), &link, &Value::Null);
+    let removed = fixture.send((Method::Delete, &format!("/v1/passkeys/{phone_id}")), &by_key, &Value::Null);
     assert_eq!(removed.status, Status::Ok, "{}", text(&removed));
     // the phone's session is gone, the key's and the link's are not
     assert_eq!(fixture.send((Method::Get, "/v1/passkeys"), &by_phone, &Value::Null).status, Status::Unauthorized);
@@ -577,7 +579,7 @@ fn removing_a_passkey_ends_the_sessions_it_made() {
     assert_eq!(fixture.send((Method::Get, "/v1/passkeys"), &link, &Value::Null).status, Status::Ok);
     // the removed passkey signs in no more, and removing it again finds nothing
     assert_eq!(code(&fixture.sign_in(&phone, account.as_bytes())), "auth.passkey.refused");
-    let again = fixture.send((Method::Delete, &format!("/v1/passkeys/{phone_id}")), &link, &Value::Null);
+    let again = fixture.send((Method::Delete, &format!("/v1/passkeys/{phone_id}")), &by_key, &Value::Null);
     assert_eq!((again.status, code(&again)), (Status::NotFound, "auth.passkey.missing".to_owned()));
     // another account cannot remove it either
     let (_, other) = fixture.person("you@example.org");
@@ -586,7 +588,7 @@ fn removing_a_passkey_ends_the_sessions_it_made() {
         body(&fixture.send((Method::Get, "/v1/passkeys"), &link, &Value::Null))[0]["id"].as_str().unwrap().to_owned();
     let theirs = fixture.send((Method::Delete, &format!("/v1/passkeys/{id}")), &other, &Value::Null);
     assert_eq!(theirs.status, Status::NotFound);
-    assert_eq!(fixture.send((Method::Delete, "/v1/passkeys/not-an-id"), &link, &Value::Null).status, Status::NotFound);
+    assert_eq!(fixture.send((Method::Delete, "/v1/passkeys/not-an-id"), &by_key, &Value::Null).status, Status::NotFound);
     let events: Vec<String> =
         pollster::block_on(fixture.keys.events(account, 20)).unwrap().into_iter().map(|event| event.name).collect();
     assert!(events.contains(&"passkey.removed".to_owned()), "{events:?}");
@@ -645,4 +647,86 @@ fn starting_a_sign_in_is_limited_per_source_and_freed_by_the_clock() {
     assert!(over.ceremony.is_none(), "a limited request starts nothing");
     fixture.clock.advance(Duration::from_secs(3601));
     fixture.challenge();
+}
+
+#[test]
+fn adding_or_removing_a_passkey_needs_a_passkey_sign_in_within_the_window() {
+    let fixture = Fixture::new();
+    let (account, link) = fixture.person("me@example.org");
+    let phone = Authenticator::synced(1, ORIGIN, HOST);
+    // no passkey yet: nothing to prove it with, so the link's session adds the first
+    assert_eq!(fixture.register(&link, &phone).status, Status::Created);
+    let link_jar = format!("__Host-ink-session={link}");
+    let laptop = Authenticator::hardware(2, ORIGIN, HOST);
+    let stale = |reply: &Reply| (reply.status, code(reply));
+    let refused = (Status::Forbidden, "auth.step-up.required".to_owned());
+    // now the link's session is no step-up, at the first step and at the last
+    let options = fixture.send((Method::Post, "/v1/passkeys/options"), &link_jar, &json!({"label": "x"}));
+    assert_eq!(stale(&options), refused);
+    assert!(options.ceremony.is_none(), "nothing was started");
+    let id = body(&fixture.send((Method::Get, "/v1/passkeys"), &link_jar, &Value::Null))[0]["id"].as_str().unwrap().to_owned();
+    let delete = |jar: &str| fixture.send((Method::Delete, &format!("/v1/passkeys/{id}")), jar, &Value::Null);
+    assert_eq!(stale(&delete(&link_jar)), refused);
+    // a passkey sign-in is the step-up; it replaces the session the browser held
+    let (options, ceremony) = fixture.challenge();
+    let credential = phone.get(&options, account.as_bytes());
+    let both = format!("{link_jar}; {ceremony}");
+    let signed = fixture.send((Method::Post, "/v1/passkeys/session"), &both, &json!({"credential": credential}));
+    assert_eq!(signed.status, Status::Ok, "{}", text(&signed));
+    let fresh = pair(signed.cookie.as_ref().unwrap());
+    assert_eq!(fixture.send((Method::Get, "/v1/passkeys"), &link_jar, &Value::Null).status, Status::Unauthorized);
+    let secret = fresh.split_once('=').unwrap().1.to_owned();
+    assert_eq!(fixture.register(&secret, &laptop).status, Status::Created);
+    // the window ends five minutes after the passkey made the session, and then every step is refused
+    fixture.clock.advance(Duration::from_secs(299));
+    let still = fixture.send((Method::Post, "/v1/passkeys/options"), &fresh, &json!({"label": "x"}));
+    assert_eq!(still.status, Status::Ok);
+    let started = format!("{fresh}; {}", pair(still.ceremony.as_ref().unwrap()));
+    let credential = laptop.create(&body(&still));
+    fixture.clock.advance(Duration::from_secs(2));
+    let late = fixture.send((Method::Post, "/v1/passkeys/options"), &fresh, &json!({"label": "x"}));
+    assert_eq!(stale(&late), refused);
+    // a ceremony started in time is not finished late, and the answer is the step-up, not a dead ceremony
+    let finish = json!({"label": "x", "credential": credential});
+    assert_eq!(stale(&fixture.send((Method::Post, "/v1/passkeys"), &started, &finish)), refused);
+    assert_eq!(stale(&delete(&fresh)), refused);
+    // reading needs no step-up, and signing in again makes the session fresh
+    assert_eq!(fixture.send((Method::Get, "/v1/passkeys"), &fresh, &Value::Null).status, Status::Ok);
+    let again = pair(fixture.sign_in(&phone, account.as_bytes()).cookie.as_ref().unwrap());
+    assert_eq!(delete(&again).status, Status::Ok);
+}
+
+#[test]
+fn approving_a_key_needs_the_same_step_up() {
+    let fixture = Fixture::new();
+    let (account, link) = fixture.person("me@example.org");
+    let phone = Authenticator::synced(1, ORIGIN, HOST);
+    let link_jar = format!("__Host-ink-session={link}");
+    let device = sig::Signer::from_seed(&sig::Seed::new([3; 32]));
+    let ask = json!({ "key": device.public().to_string(), "label": "laptop", "purpose": "device" });
+    let fingerprint = json!({ "fingerprint": device.id().fingerprint().to_string() });
+    let spare = sig::Signer::from_seed(&sig::Seed::new([4; 32]));
+    let spare_ask = json!({ "key": spare.public().to_string(), "label": "spare", "purpose": "device" });
+    let spare_fingerprint = json!({ "fingerprint": spare.id().fingerprint().to_string() });
+    let enrol = |fixture: &Fixture, ask: &Value| {
+        let asked = fixture.send((Method::Post, "/v1/enrol"), "", ask);
+        assert_eq!(asked.status, Status::Created, "{}", text(&asked));
+        format!("/v1/approve/{}", body(&asked)["user_code"].as_str().unwrap())
+    };
+    // with no passkey on the account the session is as strong as it gets, and approves
+    let first = enrol(&fixture, &ask);
+    assert_eq!(fixture.send((Method::Post, &first), &link_jar, &fingerprint).status, Status::Ok);
+    // with a passkey, a session an email link made does not
+    assert_eq!(fixture.register(&link, &phone).status, Status::Created);
+    let second = enrol(&fixture, &spare_ask);
+    let refused = fixture.send((Method::Post, &second), &link_jar, &spare_fingerprint);
+    assert_eq!((refused.status, code(&refused)), (Status::Forbidden, "auth.step-up.required".to_owned()));
+    assert_eq!(fixture.send((Method::Get, &second), &link_jar, &Value::Null).status, Status::Ok, "looking is free");
+    // a passkey session does, until its window ends
+    let fresh = pair(fixture.sign_in(&phone, account.as_bytes()).cookie.as_ref().unwrap());
+    fixture.clock.advance(Duration::from_secs(301));
+    let late = fixture.send((Method::Post, &second), &fresh, &spare_fingerprint);
+    assert_eq!(code(&late), "auth.step-up.required");
+    let fresh = pair(fixture.sign_in(&phone, account.as_bytes()).cookie.as_ref().unwrap());
+    assert_eq!(fixture.send((Method::Post, &second), &fresh, &spare_fingerprint).status, Status::Ok);
 }

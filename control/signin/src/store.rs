@@ -7,7 +7,7 @@ use sea_query::{Expr, ExprTrait, IntoTableRef, Order, Query};
 
 use super::{
     Audit, Context, Digest, Drawn, Entered, Error, Factor, Issued, Passed, Pending, Presented, Proof, Purpose, Refused,
-    Requested, Session, Settings, Sort,
+    Requested, Session, Settings, Sort, Ttl,
 };
 use control_rows::fields::Fields;
 use control_rows::id::{Account as AccountKind, Id, Session as SessionKind};
@@ -28,6 +28,7 @@ use control_rows::table;
 pub struct SignIn<D> {
     db: D,
     settings: Settings,
+    step_up: Ttl,
 }
 
 /// A one-time token to store.
@@ -62,9 +63,25 @@ impl<D: Db> SignIn<D> {
     /// The slot the first-run link takes, which only one row can.
     const SLOT: &'static str = "admin";
 
+    /// How long after a passkey sign-in a session may add or remove a credential: five minutes.
+    pub const STEP_UP: Ttl = Ttl::secs(300);
+
     /// Sign-in on `db`, under `settings`.
     pub const fn new(db: D, settings: Settings) -> Self {
-        Self { db, settings }
+        Self { db, settings, step_up: Self::STEP_UP }
+    }
+
+    /// The same sign-in with another step-up window: how recent a passkey sign-in must be for a
+    /// session to add or remove a credential or approve a key.
+    #[must_use]
+    pub const fn with_step_up(mut self, window: Ttl) -> Self {
+        self.step_up = window;
+        self
+    }
+
+    /// The step-up window.
+    pub const fn step_up(&self) -> Ttl {
+        self.step_up
     }
 
     /// The settings it runs under.
@@ -75,6 +92,23 @@ impl<D: Db> SignIn<D> {
     async fn found(&self, table: impl IntoTableRef, filter: Expr) -> Result<bool, Error<D::Error>> {
         let select = Query::select().expr(Expr::val(1_i64)).from(table).and_where(filter).limit(1).to_owned();
         Ok(self.db.first(select.into()).await?.is_some())
+    }
+
+    /// Whether `session` may add or remove a credential now (`docs/auth.md` section 8, step-up).
+    /// It may when its account has no passkey yet, because there is nothing to prove it with and the
+    /// session is as strong as the link that made it, or when a passkey made the session within the
+    /// step-up window. A session made by an email link is no step-up once a passkey exists: the
+    /// person signs in with the passkey again, which makes a fresh session.
+    pub async fn stepped(&self, session: &Session, now: Timestamp) -> Result<bool, Error<D::Error>> {
+        let mine = Expr::col(table::Passkey::AccountId).eq(session.account.to_string());
+        if !self.found(table::Passkey::Table, mine).await? {
+            return Ok(true);
+        }
+        if self.step_up.after(session.created)? <= now {
+            return Ok(false);
+        }
+        self.found(table::PasskeySession::Table, Expr::col(table::PasskeySession::SessionId).eq(session.id.to_string()))
+            .await
     }
 
     /// The account that holds a link credential at `address`.

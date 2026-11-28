@@ -28,7 +28,7 @@ Built (2026-11-28). It closes two "not done" items of 0068 (slice 2): the Origin
   limited per source: 60 an hour by default, `Quota` (the sliding window of the sign-in limiter, now
   shared), `429` with `Retry-After` and the new code `auth.rate.limited`. A request with no known source
   shares one bucket, so a missing address is no way round. `Ceremonies::with_challenges` sets another
-  rate. Behind a reverse proxy every request has the proxy's source until 0084's forwarded-header setting
+  rate. Behind a reverse proxy every request has the proxy's source until 0085's forwarded-header setting
   is on, and then the limit is one for everybody behind it: 60 an hour is enough for a household and a
   reason to turn that setting on.
 
