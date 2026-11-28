@@ -26,6 +26,8 @@ pub(crate) enum Task {
     Watch,
     /// Builds what the queue holds.
     Worker,
+    /// Reads the proof record of each custom domain again (decision 0151).
+    Domains,
 }
 
 impl logging::Kind for Task {
@@ -33,6 +35,7 @@ impl logging::Kind for Task {
         match self {
             Self::Watch => "watch",
             Self::Worker => "worker",
+            Self::Domains => "domains",
         }
     }
 }
@@ -42,6 +45,7 @@ impl fmt::Display for Task {
         out.write_str(match self {
             Self::Watch => "watch",
             Self::Worker => "worker",
+            Self::Domains => "domains",
         })
     }
 }
@@ -117,6 +121,8 @@ pub(crate) enum Event {
     Failed { cause: Chain },
     /// The worker swept previews that had ended.
     Expired { previews: u64, blobs: u64 },
+    /// The domain loop read proof records again and something changed or could not be read.
+    Rechecked(authority_dns::Rechecked),
     /// A loop ended without being stopped.
     Crashed { task: Task, attempt: u32, cause: Cause },
     /// A crashed loop starts again after this long.
@@ -162,6 +168,7 @@ impl fmt::Display for Event {
             Self::Expired { previews, blobs } => {
                 write!(out, "worker: swept {previews} ended previews and {blobs} blobs")
             }
+            Self::Rechecked(found) => write!(out, "domains: {found}"),
             Self::Crashed { task, attempt, cause } => write!(out, "{task}: crashed ({attempt}): {cause}"),
             Self::Restarting { task, after } => write!(out, "{task}: restarting in {}s", after.as_secs()),
             Self::GaveUp { task, attempts } => write!(out, "{task}: stopped for good after {attempts} crashes"),

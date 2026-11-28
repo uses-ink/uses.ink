@@ -26,6 +26,12 @@ pub struct Policy {
     /// How long a blob that nothing names any more stays before it is deleted (`--blob-grace`).
     /// It must outlast the time between a build's upload and its recorded deploy.
     pub grace: Duration,
+    /// How long a proved custom domain goes without its TXT record being read again
+    /// (`--domain-recheck-days`).
+    pub reproof: Duration,
+    /// How long a custom domain whose record no longer proves it keeps its name before any site
+    /// may claim it (`--domain-lapse-days`).
+    pub lapse: Duration,
 }
 
 impl Policy {
@@ -38,6 +44,8 @@ impl Policy {
         domains: Self::DOMAINS,
         reports: Self::REPORTS,
         grace: Self::GRACE,
+        reproof: Self::REPROOF,
+        lapse: Self::LAPSE,
     };
 
     /// How long a preview lasts unless the operator says: seven days (`docs/hosted.md` HQ12).
@@ -45,6 +53,12 @@ impl Policy {
 
     /// How many custom domains a site has, proved and not, unless the operator says: ten.
     pub const DOMAINS: u64 = 10;
+
+    /// How long a proved custom domain goes unchecked unless the operator says: thirty days.
+    pub const REPROOF: Duration = Duration::from_hours(30 * 24);
+
+    /// How long a lapsed custom domain keeps its name unless the operator says: fourteen days.
+    pub const LAPSE: Duration = Duration::from_hours(14 * 24);
 
     /// How long an unnamed blob stays unless the operator says: fifteen minutes, longer than the
     /// default build time of ten (decision 0150).
@@ -95,6 +109,15 @@ impl Policy {
     #[must_use]
     pub const fn graced(mut self, grace: Duration) -> Self {
         self.grace = grace;
+        self
+    }
+
+    /// The same policy reading the proof of a custom domain again every `reproof`, and freeing a
+    /// name that has lapsed for `lapse`.
+    #[must_use]
+    pub const fn rechecking(mut self, reproof: Duration, lapse: Duration) -> Self {
+        self.reproof = reproof;
+        self.lapse = lapse;
         self
     }
 

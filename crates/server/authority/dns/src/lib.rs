@@ -20,7 +20,7 @@ mod lookup;
 mod record;
 mod resolver;
 
-pub use dns::Dns;
+pub use dns::{Dns, Rechecked};
 pub use error::Error;
 pub use fake::{Fake, NoResolver, Offline, Unreachable};
 pub use host::Host;

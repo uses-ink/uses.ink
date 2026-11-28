@@ -3,7 +3,9 @@
 
 use db::{StepError, Steps};
 
-use crate::{Condemned, Domained, Erasing, Held, Orged, Pinned, Previewed, Reported, keys, passkeys, recovery, signin};
+use crate::{
+    Condemned, Domained, Erasing, Held, Orged, Pinned, Previewed, Reported, Reproved, keys, passkeys, recovery, signin,
+};
 
 /// What the control plane adds to a database after the queue's migration (number 100): the
 /// sign-in's, the keys', the passkeys', the recovery codes' (numbers 200 to 203) and the
@@ -27,6 +29,7 @@ impl Schema {
             .with::<Domained>()?
             .with::<Orged>()?
             .with::<Pinned>()?
-            .with::<Condemned>()
+            .with::<Condemned>()?
+            .with::<Reproved>()
     }
 }

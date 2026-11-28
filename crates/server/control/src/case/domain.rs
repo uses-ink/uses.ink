@@ -5,7 +5,7 @@ use db::{Constraint, Db, Statement};
 use jiff::Timestamp;
 use sea_query::{Asterisk, Expr, ExprTrait, Func, Order, Query};
 
-use crate::domain::{Claim, Domains, Found, NewClaim, Proven};
+use crate::domain::{Claim, Domains, Found, NewClaim, Proof, Proven};
 use crate::id::{Id, Site as SiteKind};
 use crate::table::{self, Computed};
 use crate::{Control, DomainName, Error, Event, Ports, Refusal, Site, SiteState};
@@ -32,6 +32,7 @@ impl<P: Ports> Control<P> {
     /// makes a name serve, and any number of sites may hold a claim of one name until one proves it.
     pub async fn claim_domain(&self, new: NewClaim) -> Result<Claim, Error<P>> {
         let site = self.active(new.site).await?;
+        self.free_name(&new.name, new.at).await?;
         if self.origin.covers(&new.name) {
             return Err(Refusal::DomainOurs { name: new.name }.into());
         }
@@ -69,30 +70,58 @@ impl<P: Ports> Control<P> {
     ///
     /// The name's row is its primary key, so of two sites that prove at once the database lets
     /// one. Every claim of the name is dropped in the same batch. Proving a name the site already
-    /// serves answers the row it has.
+    /// serves answers the row it has. A name that lapsed (decision 0151) is proved with the token
+    /// it was proved with, and serves again.
     pub async fn prove_domain(&self, proving: Proving) -> Result<Proven, Error<P>> {
         let Proving { site, name, found, at } = proving;
         let site = self.active(site).await?;
+        self.free_name(&name, at).await?;
+        let mut lapsed = None;
         if let Some(held) = self.proven(&name).await? {
-            return if held.site == site.id { Ok(held) } else { Err(Refusal::DomainTaken { name }.into()) };
+            if held.site != site.id {
+                return Err(Refusal::DomainTaken { name }.into());
+            }
+            lapsed = self.proof_of(&name).await?.filter(|proof| proof.lapsed.is_some());
+            if lapsed.is_none() {
+                return Ok(held);
+            }
         }
-        let claim = self
-            .claim_of(site.id, &name)
-            .await?
-            .ok_or_else(|| Refusal::NoClaim { site: site.id, name: name.clone() })?;
-        if !found.has(&claim.token) {
+        let token = match &lapsed {
+            Some(proof) => proof.token,
+            None => self.claim_of(site.id, &name).await?.map(|claim| claim.token),
+        };
+        let token = token.ok_or_else(|| Refusal::NoClaim { site: site.id, name: name.clone() })?;
+        if !found.has(&token) {
             return Err(Refusal::Unproven { name, records: found.records }.into());
         }
         let domain = Proven { site: site.id, name, at };
+        let proof = Proof { site: site.id, name: domain.name.clone(), token: Some(token), checked: at, lapsed: None };
+        self.record_proof(&domain, &proof, lapsed.is_some()).await?;
+        Ok(domain)
+    }
+
+    /// Records the proof of `domain`: a new row, or the row of a name that lapsed.
+    async fn record_proof(&self, domain: &Proven, proof: &Proof, restored: bool) -> Result<(), Error<P>> {
         let drop = Query::delete()
             .from_table(table::Claim::Table)
             .and_where(Expr::col(table::Claim::Name).eq(domain.name.as_str()))
             .to_owned();
-        let event = Event::DomainProven { name: domain.name.clone() }.insert(site.id, at)?;
-        match self.ports.db().batch(vec![domain.insert()?, drop.into(), event]).await {
-            Ok(_) => Ok(domain),
+        let batch = if restored {
+            let again = Query::update()
+                .table(table::Domain::Table)
+                .value(table::Domain::ProvenAt, domain.at.as_millisecond())
+                .and_where(Expr::col(table::Domain::Name).eq(domain.name.as_str()))
+                .to_owned();
+            let event = Event::DomainRestored { name: domain.name.clone() }.insert(domain.site, domain.at)?;
+            vec![again.into(), proof.replace()?, drop.into(), event]
+        } else {
+            let event = Event::DomainProven { name: domain.name.clone() }.insert(domain.site, domain.at)?;
+            vec![domain.insert()?, proof.replace()?, drop.into(), event]
+        };
+        match self.ports.db().batch(batch).await {
+            Ok(_) => Ok(()),
             Err(error) if error.constraint() == Some(Constraint::Unique) => {
-                Err(Refusal::DomainTaken { name: domain.name }.into())
+                Err(Refusal::DomainTaken { name: domain.name.clone() }.into())
             }
             Err(error) => Err(error.into()),
         }
@@ -118,7 +147,13 @@ impl<P: Ports> Control<P> {
             Query::delete()
                 .from_table(table::Claim::Table)
                 .and_where(Expr::col(table::Claim::Name).eq(name.as_str()))
-                .and_where(Expr::col(table::Claim::SiteId).eq(key))
+                .and_where(Expr::col(table::Claim::SiteId).eq(key.clone()))
+                .to_owned()
+                .into(),
+            Query::delete()
+                .from_table(table::Proof::Table)
+                .and_where(Expr::col(table::Proof::Name).eq(name.as_str()))
+                .and_where(Expr::col(table::Proof::SiteId).eq(key))
                 .to_owned()
                 .into(),
         ];
@@ -143,10 +178,19 @@ impl<P: Ports> Control<P> {
             .order_by(table::Claim::Name, Order::Asc)
             .to_owned();
         let db = self.ports.db();
-        Ok(Domains {
-            proven: db.rows(proven.into()).await?.iter().map(Proven::read).collect::<Result<_, _>>()?,
-            pending: db.rows(pending.into()).await?.iter().map(Claim::read).collect::<Result<_, _>>()?,
-        })
+        let lapsed = self.lapsed(site).await?;
+        let mut proven: Vec<Proven> =
+            db.rows(proven.into()).await?.iter().map(Proven::read).collect::<Result<_, _>>()?;
+        let mut pending: Vec<Claim> =
+            db.rows(pending.into()).await?.iter().map(Claim::read).collect::<Result<_, _>>()?;
+        // a name that lapsed serves nothing: it is waiting for its record, which is the one it was proved with
+        proven.retain(|held| lapsed.iter().all(|proof| proof.name != held.name));
+        pending.extend(lapsed.iter().filter_map(|proof| {
+            let created = proof.lapsed?;
+            Some(Claim { site, name: proof.name.clone(), token: proof.token?, created })
+        }));
+        pending.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
+        Ok(Domains { proven, pending })
     }
 
     /// The site that serves `name` as a custom domain, when it takes changes: what the edge asks
@@ -154,11 +198,14 @@ impl<P: Ports> Control<P> {
     /// no answer.
     pub async fn domained(&self, name: &DomainName) -> Result<Option<Site>, Error<P>> {
         let Some(held) = self.proven(name).await? else { return Ok(None) };
+        if self.proof_of(name).await?.is_some_and(|proof| proof.lapsed.is_some()) {
+            return Ok(None);
+        }
         Ok(Some(self.site(held.site).await?).filter(|site| site.state == SiteState::Active))
     }
 
     /// The row of a proved name, if there is one.
-    async fn proven(&self, name: &DomainName) -> Result<Option<Proven>, Error<P>> {
+    pub(crate) async fn proven(&self, name: &DomainName) -> Result<Option<Proven>, Error<P>> {
         let select = Query::select()
             .columns(Proven::COLUMNS)
             .from(table::Domain::Table)

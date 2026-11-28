@@ -64,7 +64,10 @@ pub use case::sweep::Swept;
 pub use control::Control;
 pub use credential::{Credential, New as NewCredential, Use as Purpose};
 pub use deploy::{Deploy, Live, New as NewDeploy, Published, Recorded, Resumed};
-pub use domain::{Claim, DomainName, Domained, Domains, Found, NameError, NewClaim, Proven, Token, TokenError};
+pub use domain::{
+    Checking, Claim, DomainName, Domained, Domains, Due, Found, NameError, NewClaim, Proven, Reproved, Token,
+    TokenError, Verdict,
+};
 pub use doomed::Condemned;
 pub use error::{Error, Failed, Refusal, Unreadable};
 pub use event::{Event, Unwritten};

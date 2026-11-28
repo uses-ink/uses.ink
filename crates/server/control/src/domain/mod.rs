@@ -13,7 +13,7 @@ use crate::fields::Fields;
 use crate::id::{Id, Site};
 use crate::{Unreadable, table};
 
-pub use migration::Domained;
+pub use migration::{Domained, Reproved};
 pub use name::{DomainName, NameError};
 pub use token::{Found, Token, TokenError};
 
@@ -125,4 +125,108 @@ pub struct Domains {
     pub proven: Vec<Proven>,
     /// Names asked and not proved, by name.
     pub pending: Vec<Claim>,
+}
+
+/// A proved name whose proof is due for another look.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Due {
+    /// The site that serves the name.
+    pub site: Id<Site>,
+    /// The name.
+    pub name: DomainName,
+    /// The token the name was proved with, or none for a name proved before it was kept.
+    pub token: Option<Token>,
+}
+
+/// A look at the proof of a name: what the authority read now.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Checking {
+    /// The site that serves the name.
+    pub site: Id<Site>,
+    /// The name.
+    pub name: DomainName,
+    /// What the authority read from DNS.
+    pub found: Found,
+    /// When it was read.
+    pub at: Timestamp,
+}
+
+/// What a look at a proof found.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Verdict {
+    /// The record still carries the token: the name serves on.
+    Held,
+    /// The record carries the token again after a lapse: the name serves again.
+    Restored,
+    /// The record does not carry the token: the name does not serve, since this time.
+    Lapsed {
+        /// When the proof was first found missing.
+        since: Timestamp,
+    },
+}
+
+/// What the control plane remembers of the proof of a name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Proof {
+    pub(crate) site: Id<Site>,
+    pub(crate) name: DomainName,
+    pub(crate) token: Option<Token>,
+    pub(crate) checked: Timestamp,
+    pub(crate) lapsed: Option<Timestamp>,
+}
+
+impl Proof {
+    /// The columns, in the order [`Proof::read`] reads them.
+    pub(crate) const COLUMNS: [table::Proof; 5] = [
+        table::Proof::Name,
+        table::Proof::SiteId,
+        table::Proof::Token,
+        table::Proof::CheckedAt,
+        table::Proof::LapsedAt,
+    ];
+
+    /// A proof from its row.
+    pub(crate) fn read(row: &Row) -> Result<Self, Unreadable> {
+        let fields = Fields(row);
+        let name = fields.text(table::Proof::Name)?.parse().map_err(|source| Unreadable::Domain { source })?;
+        let token = fields
+            .maybe_text(table::Proof::Token)?
+            .map(|text| text.parse().map_err(|source| Unreadable::Token { source }))
+            .transpose()?;
+        Ok(Self {
+            site: fields.id(table::Proof::SiteId)?,
+            name,
+            token,
+            checked: fields.time(table::Proof::CheckedAt)?,
+            lapsed: fields.when(table::Proof::LapsedAt)?,
+        })
+    }
+
+    /// The statement that records this proof, in place of the name's earlier one.
+    pub(crate) fn replace(&self) -> Result<Statement, sea_query::error::Error> {
+        Ok(Query::insert()
+            .into_table(table::Proof::Table)
+            .columns(Self::COLUMNS)
+            .values([
+                Expr::val(self.name.as_str()),
+                Expr::val(self.site.to_string()),
+                Expr::val(self.token.map(|token| token.to_string())),
+                Expr::val(self.checked.as_millisecond()),
+                Expr::val(self.lapsed.map(Timestamp::as_millisecond)),
+            ])?
+            .on_conflict(
+                OnConflict::column(table::Proof::Name)
+                    .update_columns([
+                        table::Proof::SiteId,
+                        table::Proof::Token,
+                        table::Proof::CheckedAt,
+                        table::Proof::LapsedAt,
+                    ])
+                    .to_owned(),
+            )
+            .to_owned()
+            .into())
+    }
 }

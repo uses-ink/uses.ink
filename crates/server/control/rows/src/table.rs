@@ -402,6 +402,18 @@ pub enum Domain {
     ProvenAt,
 }
 
+/// `domain_proof`: what a proved name was proved with, and whether it still is (decision 0151).
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "domain_proof"]
+pub enum Proof {
+    Table,
+    Name,
+    SiteId,
+    Token,
+    CheckedAt,
+    LapsedAt,
+}
+
 /// `domain_claim`: a name a site has asked to prove, with the token its TXT record must carry.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 #[iden = "domain_claim"]

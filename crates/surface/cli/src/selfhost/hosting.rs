@@ -194,6 +194,14 @@ pub struct Hosting {
     /// this must outlast that gap. [default: 900]
     #[arg(long, value_name = "SECONDS", env = "INK_BLOB_GRACE", help_heading = Heading::LIMITS)]
     pub blob_grace: Option<u64>,
+    /// Days between two reads of the TXT record that proves a custom domain. A name whose record
+    /// no longer carries its token stops resolving at once. [default: 30]
+    #[arg(long, value_name = "DAYS", env = "INK_DOMAIN_RECHECK_DAYS", help_heading = Heading::LIMITS)]
+    pub domain_recheck_days: Option<u64>,
+    /// Days a custom domain that failed its check keeps its name before any site may claim it. The
+    /// owner may publish the record again in that time and the name serves again. [default: 14]
+    #[arg(long, value_name = "DAYS", env = "INK_DOMAIN_LAPSE_DAYS", help_heading = Heading::LIMITS)]
+    pub domain_lapse_days: Option<u64>,
     /// How the TXT records that prove a custom domain are read: `system` asks nameservers, `offline`
     /// asks none, so a claim is made and a proof says why it cannot be checked. [default: system]
     #[arg(long, value_enum, env = "INK_RESOLVER", help_heading = Heading::HOSTING)]
@@ -233,7 +241,11 @@ impl Hosting {
             .previewing(preview)
             .domained(self.limit_domains.unwrap_or(Policy::DOMAINS))
             .reported(self.limit_reports.unwrap_or(Policy::REPORTS))
-            .graced(self.blob_grace.map_or(Policy::GRACE, Duration::from_secs));
+            .graced(self.blob_grace.map_or(Policy::GRACE, Duration::from_secs))
+            .rechecking(
+                self.domain_recheck_days.map_or(Policy::REPROOF, |days| Duration::from_hours(days.saturating_mul(24))),
+                self.domain_lapse_days.map_or(Policy::LAPSE, |days| Duration::from_hours(days.saturating_mul(24))),
+            );
         self.handle_hold.map_or(policy, |days| policy.holding(Duration::from_hours(days.saturating_mul(24))))
     }
 

@@ -83,6 +83,16 @@ pub enum Event {
         /// The name.
         name: crate::DomainName,
     },
+    /// A custom domain's record no longer carries its token: the name stopped serving the site.
+    DomainLapsed {
+        /// The name.
+        name: crate::DomainName,
+    },
+    /// A lapsed custom domain's record carries its token again: the name serves the site again.
+    DomainRestored {
+        /// The name.
+        name: crate::DomainName,
+    },
     /// The site stopped serving a custom domain, or a claim of one was dropped.
     DomainRemoved {
         /// The name.
@@ -113,6 +123,8 @@ impl Event {
             Self::PreviewExpired { .. } => "preview.expired",
             Self::DomainClaimed { .. } => "domain.claimed",
             Self::DomainProven { .. } => "domain.proven",
+            Self::DomainLapsed { .. } => "domain.lapsed",
+            Self::DomainRestored { .. } => "domain.restored",
             Self::DomainRemoved { .. } => "domain.removed",
             Self::SiteSuspended { .. } => "site.suspended",
             Self::SiteReinstated => "site.reinstated",

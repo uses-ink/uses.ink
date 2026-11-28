@@ -212,7 +212,37 @@ impl args::Serve {
         let mut tasks = Tasks::new();
         self.start_watch(&mut tasks, product, events);
         self.start_worker(&mut tasks, product, events);
+        self.start_domains(&mut tasks, product, events);
         tasks
+    }
+
+    /// Reads the proof record of every custom domain that is due, once an hour (decision 0151).
+    fn start_domains(&self, tasks: &mut Tasks, product: &Product, events: &Events) {
+        let (ports, origin, policy) = (Arc::clone(&product.ports), product.origin.clone(), self.hosting.policy());
+        let resolver = match self.hosting.resolving() {
+            Ok(resolver) => resolver,
+            Err(error) => {
+                events.tell(Tasked::Failed { cause: edge_control::Chain::of(&error) });
+                return;
+            }
+        };
+        tasks.start(Task::Domains, (self.hosting.restart(), events), move |clock: Stoppable, events: Events| {
+            let (ports, origin, resolver) = (Arc::clone(&ports), origin.clone(), resolver.clone());
+            Box::pin(async move {
+                let control = control::Control::new(ports, origin).with_policy(policy);
+                let dns = authority_dns::Dns::new(resolver);
+                loop {
+                    match dns.recheck(&control, clock::Clock::now(&clock), 100).await {
+                        Ok(found) if found.quiet() => {}
+                        Ok(found) => events.tell(Tasked::Rechecked(found)),
+                        Err(error) => events.tell(Tasked::Failed { cause: edge_control::Chain::of(&error) }),
+                    }
+                    if clock::Clock::sleep(&clock, std::time::Duration::from_hours(1)).await == clock::Slept::Stopped {
+                        return;
+                    }
+                }
+            })
+        });
     }
 
     fn start_watch(&self, tasks: &mut Tasks, product: &Product, events: &Events) {

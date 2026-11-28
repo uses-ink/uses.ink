@@ -269,3 +269,53 @@ fn a_claim_made_again_has_a_new_token_that_the_old_record_does_not_prove() {
     world.publish(&second);
     world.prove(&tea, "tea.example.com", 21).unwrap();
 }
+
+const DAY: i64 = 24 * 60 * 60;
+
+#[test]
+fn a_proof_is_read_again_and_a_name_whose_record_is_gone_stops_resolving_then_frees() {
+    let mut world = World::new();
+    // looked at every day, and freed three days after it lapsed
+    world.control = world.control.with_policy(
+        control::Policy::DEFAULT.rechecking(std::time::Duration::from_hours(24), std::time::Duration::from_hours(72)),
+    );
+    let (tea, jam) = (world.site("tea"), world.site("jam"));
+    let claim = world.claim(&tea, "tea.example.com").unwrap();
+    world.publish(&claim);
+    world.prove(&tea, "tea.example.com", 20).unwrap();
+    let recheck = |n: i64| pollster::block_on(world.dns.recheck(&world.control, at(n), 10)).unwrap();
+    // nothing is due before a day has passed since the proof
+    assert_eq!(recheck(DAY), authority_dns::Rechecked::default());
+    // the record is there: the name serves on, and the next look is a day later
+    assert_eq!(recheck(DAY + 20).held, 1);
+    assert!(world.served("tea.example.com").is_some());
+    assert_eq!(recheck(DAY + 21), authority_dns::Rechecked::default());
+    // the record goes: at the next look the name stops resolving, at once
+    world.dns_fake().withdraw(&Host::of(&claim.name));
+    assert_eq!(recheck(2 * DAY + 30).lapsed, 1);
+    assert!(world.served("tea.example.com").is_none());
+    let listed = pollster::block_on(world.control.domains(tea.id)).unwrap();
+    assert_eq!((listed.proven.len(), listed.pending.len()), (0, 1), "it waits for its record");
+    assert_eq!(listed.pending[0].token, claim.token);
+    // another site cannot take it while it waits
+    let name: DomainName = "tea.example.com".parse().unwrap();
+    assert_eq!(world.claim(&jam, "tea.example.com").unwrap_err().refusal(), Some(&Refusal::DomainTaken { name }));
+    // a lookup that fails says nothing about the name, and records nothing
+    world.dns_fake().fail(true);
+    assert_eq!(recheck(3 * DAY + 40).unread, 1);
+    world.dns_fake().fail(false);
+    // the record comes back inside the grace: the name serves again
+    world.publish(&claim);
+    assert_eq!(recheck(3 * DAY + 50).restored, 1);
+    assert_eq!(world.served("tea.example.com").unwrap().id, tea.id);
+    // it goes again, and stays gone past the grace: the name is free for any site
+    world.dns_fake().withdraw(&Host::of(&claim.name));
+    assert_eq!(recheck(4 * DAY + 60).lapsed, 1);
+    assert_eq!(recheck(5 * DAY + 70).freed, 0);
+    assert_eq!(recheck(7 * DAY + 70).freed, 1);
+    assert!(world.served("tea.example.com").is_none());
+    let theirs = world.claim(&jam, "tea.example.com").unwrap();
+    world.publish(&theirs);
+    world.prove(&jam, "tea.example.com", 7 * DAY + 80).unwrap();
+    assert_eq!(world.served("tea.example.com").unwrap().id, jam.id);
+}
