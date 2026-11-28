@@ -87,6 +87,8 @@ pub enum Command {
     Whoami(crate::command::auth::Server),
     /// List, make and end keys.
     Key(crate::command::auth::Key),
+    /// Read abuse reports, suspend sites and lift suspensions.
+    Abuse(crate::command::abuse::Abuse),
     /// Send the folder to its site and start a deploy.
     Push(crate::command::publish::Push),
     /// Show what is live and what is building.

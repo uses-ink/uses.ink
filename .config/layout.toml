@@ -255,7 +255,7 @@ reason = "one file per layout rule"
 # The areas of the front matter are free labels (a lowercase slug), not a list here: they follow the
 # work, and a typo shows in the index.
 [decisions]
-ceiling = 99
+ceiling = 199
 home = "../history/review-fixes.md"
 
 [[decisions.reserved]]
@@ -295,6 +295,11 @@ reason = "never written: absent from decisions.md when it was split"
 first = "0073"
 last = "0073"
 reason = "never written: absent from decisions.md when it was split"
+
+[[decisions.gap]]
+first = "0096"
+last = "0099"
+reason = "kept for the hosted work that runs beside the control-plane wiring"
 
 # The docs checks. A block of prose with a word of `planned` (any case) names what is not built,
 # so the paths in it need not exist.

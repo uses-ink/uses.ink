@@ -50,6 +50,7 @@ pub use control_signin as signin;
 
 pub use abuse::{
     Abuse as AbuseKind, Contact, Detail, NewReport, Report, ReportError, ReportState, Reported, Suspension,
+    UnknownAbuse,
 };
 pub use account::{Account, New as NewAccount};
 pub use brand::{BrandError, Brands};

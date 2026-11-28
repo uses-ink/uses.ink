@@ -123,6 +123,7 @@ impl Command {
             Self::Logout(server) => server.logout(io),
             Self::Whoami(server) => server.whoami(io),
             Self::Key(key) => key.command.run(io),
+            Self::Abuse(abuse) => abuse.command.run(io),
             Self::Push(mut push) => {
                 push.dir = site;
                 push.run(io)

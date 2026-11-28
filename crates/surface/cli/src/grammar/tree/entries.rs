@@ -144,6 +144,31 @@ const KEY_CHILDREN: &[Entry] = &[
     },
 ];
 
+const ABUSE_CHILDREN: &[Entry] = &[
+    Entry {
+        examples: &[Example { line: "ink abuse list", about: "The reports of strangers, newest first" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("list", Group::Publish, "The reports of strangers, newest first")
+    },
+    Entry {
+        detail: "A suspended site serves a notice and takes no deploy, build or change; its files stay and come back whole when the suspension is lifted. Only the operator's key may do this: it is the key `ink login --data` made.",
+        examples: &[Example {
+            line: "ink abuse suspend 0123abcd --kind phishing --report 4f5a",
+            about: "Take the site down, naming the report that led to it",
+        }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("suspend", Group::Publish, "Take a site down")
+    },
+    Entry {
+        examples: &[Example { line: "ink abuse reinstate 0123abcd", about: "Serve the site again" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("reinstate", Group::Publish, "Lift a suspension")
+    },
+];
+
 const DEPLOY_CHILDREN: &[Entry] = &[
     Entry {
         examples: &[Example { line: "ink deploy list --limit 5", about: "The five newest deploys" }],
@@ -287,6 +312,14 @@ const ENTRIES: &[Entry] = &[
         endings: AUTH,
         env: SITE_ENV,
         ..Entry::built("key", Group::Publish, "List, make and end keys")
+    },
+    Entry {
+        children: ABUSE_CHILDREN,
+        detail: "For the operator of a server: every call is signed with the operator's key, which only whoever owns the server's data folder can make. A person who is not the operator is refused.",
+        examples: &[Example { line: "ink abuse list", about: "What strangers reported, and what was done" }],
+        endings: AUTH,
+        env: SITE_ENV,
+        ..Entry::built("abuse", Group::Publish, "Read reports, suspend sites and lift suspensions")
     },
     Entry {
         detail: "Sends only the files the site does not hold, so an interrupted push is resumed by running it again. Waits for the build and prints the deploy id; --no-wait prints the build id. A key that may deploy and not read (a CI deploy key made with no `--right`) can only push with --no-wait. A deploy that is recorded and not live exits 5.",

@@ -136,10 +136,10 @@ pub struct Revoke {
 
 /// A connection ready to make calls: the wire and the runtime they run on.
 #[derive(Debug)]
-struct Calls {
-    wire: Wire,
+pub(crate) struct Calls {
+    pub(crate) wire: Wire,
     runtime: tokio::runtime::Runtime,
-    api: String,
+    pub(crate) api: String,
 }
 
 impl Server {
@@ -166,14 +166,19 @@ impl Server {
     }
 
     /// The calls signed as the key this machine holds.
-    fn signed(&self, env: &impl Environment, preferences: &Preferences) -> Result<Calls, Failure> {
+    pub(crate) fn signed(&self, env: &impl Environment, preferences: &Preferences) -> Result<Calls, Failure> {
         self.calls(preferences, |authority| Identity::find(env, authority).map(Some))
     }
 }
 
 impl Calls {
     /// A JSON call.
-    fn json<T: serde::de::DeserializeOwned>(&self, method: Method, path: &str, body: Vec<u8>) -> Result<T, Failure> {
+    pub(crate) fn json<T: serde::de::DeserializeOwned>(
+        &self,
+        method: Method,
+        path: &str,
+        body: Vec<u8>,
+    ) -> Result<T, Failure> {
         let bytes = self.runtime.block_on(self.wire.call(method, path, body))?;
         serde_json::from_slice(&bytes).map_err(|source| Failure::Unreadable { source })
     }

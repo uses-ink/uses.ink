@@ -57,6 +57,34 @@ impl fmt::Display for Abuse {
     }
 }
 
+/// A name that is no kind of abuse.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UnknownAbuse {
+    /// What was written, cut at 40 characters.
+    pub written: String,
+}
+
+impl fmt::Display for UnknownAbuse {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let names: Vec<&str> = Abuse::NAMES.iter().map(|(name, _)| *name).collect();
+        write!(out, "`{}` is no kind of abuse: the kinds are {}", self.written, names.join(", "))
+    }
+}
+
+impl std::error::Error for UnknownAbuse {}
+
+impl std::str::FromStr for Abuse {
+    type Err = UnknownAbuse;
+
+    fn from_str(text: &str) -> Result<Self, UnknownAbuse> {
+        Self::NAMES
+            .iter()
+            .find(|(name, _)| *name == text)
+            .map(|(_, kind)| *kind)
+            .ok_or_else(|| UnknownAbuse { written: text.chars().take(40).collect() })
+    }
+}
+
 /// Where a report stands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]

@@ -1,6 +1,7 @@
 //! One module per command, or per family of commands: what each does once its arguments are
 //! parsed, and the pieces of the build they share.
 
+pub(crate) mod abuse;
 pub(crate) mod auth;
 pub(crate) mod build;
 pub(crate) mod bundle;
