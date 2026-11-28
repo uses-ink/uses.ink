@@ -64,7 +64,7 @@ impl Https {
 
     /// The TLS client: ring, the safe protocol versions, the bundled roots and the extra ones,
     /// HTTP/1.1 only.
-    fn client(&self) -> Result<rustls::ClientConfig, Misconfigured> {
+    pub(crate) fn client(&self) -> Result<rustls::ClientConfig, Misconfigured> {
         let mut roots = RootCertStore::empty();
         roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
         for root in &self.roots {

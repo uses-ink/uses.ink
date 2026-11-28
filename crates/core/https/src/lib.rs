@@ -11,11 +11,17 @@
 //! with the TLS error among its sources. A proxy is
 //! never used: `gix`'s reqwest backend ignores `http.proxy`, and the client is built without a
 //! system proxy.
+//!
+//! [`Fetch`] is the same client for an API that answers JSON or text (a forge's): one request, one
+//! bounded answer, no redirect followed, the same roots and the same refusal of anything but https
+//! (decision 0162).
 
 mod error;
+mod fetch;
 mod follow;
 mod https;
 
 pub use error::Misconfigured;
+pub use fetch::{Answer, Call, Failed, Fetch, Route, Verb};
 pub use follow::Follow;
 pub use https::Https;
