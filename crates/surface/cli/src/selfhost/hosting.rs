@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+use authority_dns::{Chosen, Nameserver, Servers};
 use clap::{Args, ValueEnum};
 use control::{Limits, Policy};
 use https::{Follow, Https, Misconfigured};
@@ -52,6 +53,45 @@ impl From<Redirects> for Follow {
         }
     }
 }
+
+/// Which resolver reads the proof records of custom domains (`--resolver`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum Resolving {
+    /// None: claiming and listing work and a proof says why it cannot be checked.
+    Offline,
+    /// The nameservers of the system, or the ones `--resolver-server` names.
+    System,
+}
+
+/// A resolver setting that is out of range.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub(crate) enum Misset {
+    /// The limit of a lookup is not between the floor and the ceiling.
+    Timeout {
+        /// What was asked, in seconds.
+        asked: u64,
+    },
+}
+
+impl Misset {
+    /// The least a lookup may be given, in seconds.
+    pub(crate) const FLOOR: u64 = 1;
+    /// The most a lookup may be given, in seconds.
+    pub(crate) const CEILING: u64 = 60;
+}
+
+impl std::fmt::Display for Misset {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Timeout { asked } => {
+                write!(out, "a DNS lookup may be given {} to {} seconds, not {asked}", Self::FLOOR, Self::CEILING)
+            }
+        }
+    }
+}
+
+impl std::error::Error for Misset {}
 
 /// The settings of the loops and lookups `ink serve --data` runs. Each flag says its default.
 #[derive(Clone, Debug, Args)]
@@ -140,6 +180,21 @@ pub struct Hosting {
     /// the number bounds what one site can ask for. [default: 10]
     #[arg(long, value_name = "N", env = "INK_LIMIT_DOMAINS", help_heading = Heading::LIMITS)]
     pub limit_domains: Option<u64>,
+    /// How the TXT records that prove a custom domain are read: `system` asks nameservers, `offline`
+    /// asks none, so a claim is made and a proof says why it cannot be checked. [default: system]
+    #[arg(long, value_enum, env = "INK_RESOLVER", help_heading = Heading::HOSTING)]
+    pub resolver: Option<Resolving>,
+    /// A nameserver to ask, as `ADDRESS` or `ADDRESS:PORT`, in order; repeat for more. [default: the
+    /// `nameserver` lines of `--resolver-file`]
+    #[arg(long = "resolver-server", value_name = "ADDR", env = "INK_RESOLVER_SERVERS", value_delimiter = ',', help_heading = Heading::HOSTING)]
+    pub resolver_servers: Vec<Nameserver>,
+    /// The file the system lists its nameservers in. [default: /etc/resolv.conf]
+    #[arg(long, value_name = "PATH", env = "INK_RESOLVER_FILE", help_heading = Heading::HOSTING)]
+    pub resolver_file: Option<PathBuf>,
+    /// Seconds one lookup of a proof record may take in all, shared by the nameservers in turn.
+    /// 1 to 60. [default: 5]
+    #[arg(long, value_name = "SECONDS", env = "INK_RESOLVER_TIMEOUT", help_heading = Heading::HOSTING)]
+    pub resolver_timeout: Option<u64>,
     /// Seconds one build may take: a worker holds a request for no longer than this, so a build
     /// that runs past it is given to another. [default: 600]
     #[arg(long, value_name = "SECONDS", env = "INK_LIMIT_BUILD_TIME", help_heading = Heading::LIMITS)]
@@ -164,6 +219,27 @@ impl Hosting {
             .previewing(preview)
             .domained(self.limit_domains.unwrap_or(Policy::DOMAINS));
         self.handle_hold.map_or(policy, |days| policy.holding(Duration::from_hours(days.saturating_mul(24))))
+    }
+
+    /// The resolver of proof records: the flags over the defaults.
+    ///
+    /// # Errors
+    ///
+    /// [`Misset`] when the timeout is outside what a lookup may be given.
+    pub(crate) fn resolving(&self) -> Result<Chosen, Misset> {
+        let asked = self.resolver_timeout.unwrap_or(Misset::FLOOR.max(5));
+        if !(Misset::FLOOR..=Misset::CEILING).contains(&asked) {
+            return Err(Misset::Timeout { asked });
+        }
+        let servers = if self.resolver_servers.is_empty() {
+            self.resolver_file.clone().map_or_else(Servers::system, Servers::File)
+        } else {
+            Servers::Listed(self.resolver_servers.iter().map(|server| server.0).collect())
+        };
+        Ok(match self.resolver.unwrap_or(Resolving::System) {
+            Resolving::Offline => Chosen::Offline,
+            Resolving::System => Chosen::system(servers, Duration::from_secs(asked)),
+        })
     }
 
     /// The lookup's settings: the flags over the defaults.

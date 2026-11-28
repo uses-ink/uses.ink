@@ -9,8 +9,10 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+clock.workspace = true
 control.workspace = true
 jiff.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 blob-dir.workspace = true

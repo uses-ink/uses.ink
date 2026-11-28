@@ -54,6 +54,13 @@ impl ApiRefusal {
             "auth.key.revoked" | "auth.key.expired" => "run `ink login`; for CI, make a new key with `ink key add`",
             "auth.right.missing" => "use a key with that right, or approve one with `ink key add`",
             "auth.enrolment.expired" | "auth.enrolment.denied" | "auth.enrolment.limited" => "run `ink login` again",
+            "domain.proof.missing" => {
+                "publish the TXT record `ink domain add` showed, wait for your DNS to answer it, then run `ink domain prove` again"
+            }
+            "domain.lookup.failed" => {
+                "the name was not refused, only unchecked: run `ink domain prove` again in a minute"
+            }
+            "domain.claim.unknown" => "run `ink domain add <NAME>` first; it prints the record to publish",
             "auth.server.restarting" => "wait a few seconds and run the command again",
             _ => return None,
         })

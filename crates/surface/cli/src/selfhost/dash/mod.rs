@@ -15,6 +15,7 @@ mod said;
 
 use std::cell::RefCell;
 
+use authority_dns::Chosen;
 use control::Control;
 use edge_api::{Answers, Cookie, Header, Limits, Media, Method, Origins, Payload, Reply, Request, Status};
 use web::{Body, Cause, Dashboard, Failure, Form, Frame};
@@ -29,13 +30,15 @@ use crate::selfhost::product::Ports;
 pub(crate) struct Pages {
     control: Control<Ports>,
     origins: Origins,
+    resolver: Chosen,
     limits: Limits,
 }
 
 impl Pages {
-    /// The pages over `control`, which post only from `origins`, within `limits`.
-    pub(crate) const fn new(control: Control<Ports>, origins: Origins, limits: Limits) -> Self {
-        Self { control, origins, limits }
+    /// The pages over `control`, which post only from `origins` and read proof records through
+    /// `resolver`, within `limits`.
+    pub(crate) fn new(control: Control<Ports>, trust: (Origins, Chosen), limits: Limits) -> Self {
+        Self { control, origins: trust.0, resolver: trust.1, limits }
     }
 }
 

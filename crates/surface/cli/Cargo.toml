@@ -13,6 +13,7 @@ name = "ink"
 path = "src/main.rs"
 
 [dependencies]
+authority-dns.workspace = true
 annotate-snippets.workspace = true
 anstream.workspace = true
 anstyle.workspace = true

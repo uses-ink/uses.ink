@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
+use authority_dns::Chosen;
 use blob_dir::Directory;
 use clock::System;
 use control::signin::{Settings, SignIn};
@@ -50,7 +51,7 @@ pub(crate) type Callers = Signatures<Store, System, OperatorFile>;
 /// The API as `ink serve` wires it, with the sign-in routes beside it.
 pub(crate) type Wired = Hosted<
     Routed<
-        Routed<Api<Ports, Callers, System, System>, Door<Store, System, System>>,
+        Routed<Api<Ports, Callers, System, System, Chosen>, Door<Store, System, System>>,
         Ceremonies<Store, System, System, Webauthn>,
     >,
 >;
@@ -189,7 +190,11 @@ impl Product {
         let gates = flags.recovery_limit.into_iter().fold(gates, Ceremonies::with_recoveries);
         let admin = Self::admin(&entry, account, &base)?;
         let (api, enrol) = Self::api(control, &keys, (account, &operators), (db_for_keys, limits));
-        let api = api.with_schemes(settings.hosting.schemes());
+        let resolver = settings
+            .hosting
+            .resolving()
+            .map_err(|e| Unready::Setting { flag: "--resolver-timeout", source: Box::new(e) })?;
+        let api = api.with_schemes(settings.hosting.schemes()).with_resolver(resolver.clone());
         let api = flags.abuse_limit.into_iter().fold(api, edge_api::Api::with_reports);
         let api = flags.enrol_limit.into_iter().fold(api, edge_api::Api::with_enrolments);
         let (fronts, back) = Self::lookups(&ports, &origin, data, settings)?;
@@ -202,7 +207,8 @@ impl Product {
         let origins = door.origins().clone();
         let api = Routed::new(api, door);
         let policy = settings.hosting.policy();
-        let pages = Pages::new(Control::new(Arc::clone(&ports), origin.clone()).with_policy(policy), origins, limits);
+        let control = Control::new(Arc::clone(&ports), origin.clone()).with_policy(policy);
+        let pages = Pages::new(control, (origins, resolver), limits);
         let told = Told(std::sync::Mutex::new(std::io::stderr()));
         let mailing = Mailing {
             courier,

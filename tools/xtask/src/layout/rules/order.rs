@@ -119,6 +119,7 @@ impl Order {
         (
             "uses-ink-cli",
             &[
+                "uses-ink-authority-dns",
                 "uses-ink-model",
                 "uses-ink-config",
                 "uses-ink-diag",
@@ -255,6 +256,7 @@ impl Order {
             &[
                 "uses-ink-blob-dir",
                 "uses-ink-build",
+                "uses-ink-clock",
                 "uses-ink-control",
                 "uses-ink-db",
                 "uses-ink-db-sqlite",

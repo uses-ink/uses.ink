@@ -26,6 +26,8 @@ pub enum Status {
     TooMany,
     /// Something of ours failed.
     Internal,
+    /// A service the page depends on did not answer.
+    Unavailable,
 }
 
 impl Status {
@@ -42,6 +44,7 @@ impl Status {
             Self::Conflict => 409,
             Self::TooMany => 429,
             Self::Internal => 500,
+            Self::Unavailable => 503,
         }
     }
 }

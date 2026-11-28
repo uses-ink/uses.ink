@@ -203,6 +203,36 @@ impl<A: Answers> Browser<'_, A> {
         view::Outcome { status, deploy: job.deploy, wall }
     }
 
+    /// The custom domains of a site: the names it serves, then the ones it has still to prove with
+    /// the record each needs.
+    async fn domains(&self, site: Id<control::SiteKind>) -> Result<Vec<view::Custom>, Failure> {
+        let listed = self.pages.control.domains(site).await?;
+        let proven = listed
+            .proven
+            .iter()
+            .map(|domain| view::Custom { name: domain.name.to_string(), standing: view::Standing::Proven(domain.at) });
+        let pending = listed.pending.iter().map(|claim| {
+            let challenge = authority_dns::Challenge::of(claim);
+            view::Custom {
+                name: claim.name.to_string(),
+                standing: view::Standing::Pending { host: challenge.host.to_string(), value: challenge.value },
+            }
+        });
+        Ok(proven.chain(pending).collect())
+    }
+
+    /// Reads the record of `name` and makes it serve `site`, or says why it does not.
+    async fn prove(&self, site: Id<control::SiteKind>, name: &control::DomainName) -> Result<(), Failure> {
+        let dns = authority_dns::Dns::new(self.pages.resolver.clone());
+        match dns.prove(&self.pages.control, (site, name.clone()), System.now()).await {
+            Ok(_) => Ok(()),
+            Err(authority_dns::Error::Lookup(error)) => {
+                Err(Failure::Lookup { name: name.to_string(), source: Cause::of(&error) })
+            }
+            Err(authority_dns::Error::Control(error)) => Err(Failure::from(error)),
+        }
+    }
+
     /// Sixteen bytes nobody has been given before.
     fn draw() -> Result<[u8; 16], Failure> {
         System.bytes().map_err(|source| Failure::Store { part: Part::Records, source: Cause::of(&source) })
@@ -279,6 +309,7 @@ impl<A: Answers> Screens for Browser<'_, A> {
             .iter()
             .map(|credential| view::Held { purpose: credential.purpose, created: credential.created })
             .collect();
+        page.domains = self.domains(site.id).await?;
         Ok(page)
     }
 
@@ -389,6 +420,12 @@ impl<A: Answers> Screens for Browser<'_, A> {
                 }
                 control.remove_site(site.id, now).await?;
             }
+            Action::Claim { name } => {
+                let token = control::Token::from_bytes(Self::draw()?);
+                control.claim_domain(control::NewClaim { site: site.id, name: name.clone(), token, at: now }).await?;
+            }
+            Action::Prove { name } => self.prove(site.id, name).await?,
+            Action::Unclaim { name } => control.remove_domain(site.id, name, now).await?,
             _ => return Err(Failure::Unrouted { source: Unrouted::Path }),
         }
         Ok(())

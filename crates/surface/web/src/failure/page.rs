@@ -41,6 +41,8 @@ pub enum Code {
     AuthRefused,
     /// `site.source.upload`.
     SourceUpload,
+    /// `domain.lookup.failed`.
+    LookupFailed,
     /// `page.replay.unserved`.
     ReplayUnserved,
 }
@@ -64,6 +66,7 @@ impl Code {
             Self::RenderFailed => "page.render.failed",
             Self::AuthRefused => "auth.request.refused",
             Self::SourceUpload => "site.source.upload",
+            Self::LookupFailed => "domain.lookup.failed",
             Self::ReplayUnserved => "page.replay.unserved",
         }
     }
@@ -94,6 +97,7 @@ impl Failure {
             Self::Render { .. } => Code::RenderFailed,
             Self::Auth { .. } => Code::AuthRefused,
             Self::Upload { .. } => Code::SourceUpload,
+            Self::Lookup { .. } => Code::LookupFailed,
             Self::NoReplay => Code::ReplayUnserved,
         }
     }
@@ -108,6 +112,7 @@ impl Failure {
             Self::Foreign { .. } => Status::Forbidden,
             Self::Missing { .. } | Self::Invalid { .. } | Self::Confirm { .. } => Status::BadRequest,
             Self::Refused { .. } | Self::Upload { .. } => Status::Conflict,
+            Self::Lookup { .. } => Status::Unavailable,
             Self::Store { .. } | Self::Cut { .. } | Self::Render { .. } => Status::Internal,
         }
     }
@@ -144,6 +149,7 @@ impl fmt::Display for Fix<'_> {
             Failure::Auth { status: Status::NotFound, .. } => out.write_str("the link was used, has ended or never was: ask for a new one on the sign-in page"),
             Failure::Auth { .. } => out.write_str("check what you typed and try again; if it repeats, give the operator this code and the cause below"),
             Failure::Upload { .. } => out.write_str("change the folder and run `ink push` again"),
+            Failure::Lookup { .. } => out.write_str("check that the server can reach a nameserver, then ask for the proof again; the cause is below"),
             Failure::NoReplay => out.write_str("run `ink explain` in the site's folder, which holds the source this page would replay"),
         }
     }
@@ -159,6 +165,16 @@ impl fmt::Display for Refused<'_> {
             Refusal::Reserved { .. } | Refusal::Taken { .. } | Refusal::Held { .. } => "choose another handle",
             Refusal::AlreadyLive { .. } => "nothing to do: this deploy is the one being served",
             Refusal::NoDeploy { .. } | Refusal::NotLive { .. } => "open Deploys and pick a deploy the site has",
+            Refusal::Unproven { .. } => {
+                "publish the record shown under Domains, wait for DNS to carry it, then ask again"
+            }
+            Refusal::DomainTaken { .. } | Refusal::DomainOurs { .. } => {
+                "use a name of your own that no other site proved"
+            }
+            Refusal::DomainRoom { .. } => "remove a domain you no longer use, then claim this one",
+            Refusal::NoClaim { .. } | Refusal::NoDomain { .. } => {
+                "claim the name again, then publish the record it shows"
+            }
             Refusal::NoSite { .. } | Refusal::Removing { .. } => {
                 "the site is gone or going; open Account to see your sites"
             }

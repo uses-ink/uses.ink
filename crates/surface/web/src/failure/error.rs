@@ -191,6 +191,13 @@ pub enum Failure {
         /// The site's handle.
         handle: Handle,
     },
+    /// The DNS lookup of a proof record got no answer.
+    Lookup {
+        /// The name being proved.
+        name: String,
+        /// Why, as a chain.
+        source: Cause,
+    },
     /// The replay of a decision runs where the source is, which this server does not hold.
     NoReplay,
 }
@@ -203,6 +210,8 @@ pub enum FieldError {
     Deploy(model::HashError),
     /// Not a handle.
     Handle(control::HandleError),
+    /// Not a domain name.
+    Domain(control::NameError),
 }
 
 impl fmt::Display for FieldError {
@@ -210,6 +219,7 @@ impl fmt::Display for FieldError {
         match self {
             Self::Deploy(_) => out.write_str("not a deploy id"),
             Self::Handle(_) => out.write_str("not a handle"),
+            Self::Domain(_) => out.write_str("not a domain name"),
         }
     }
 }
@@ -219,6 +229,7 @@ impl Error for FieldError {
         match self {
             Self::Deploy(source) => Some(source),
             Self::Handle(source) => Some(source),
+            Self::Domain(source) => Some(source),
         }
     }
 }
@@ -243,6 +254,7 @@ impl fmt::Display for Failure {
             Self::Upload { handle } => {
                 write!(out, "{handle} is built from an upload, so there is nothing to read again")
             }
+            Self::Lookup { name, .. } => write!(out, "the proof record of {name} could not be looked up"),
             Self::NoReplay => out.write_str("this server cannot replay a decision"),
         }
     }
@@ -254,7 +266,10 @@ impl Error for Failure {
             Self::Unrouted { source } => Some(source),
             Self::Invalid { source, .. } => Some(source),
             Self::Refused { refusal } => Some(refusal),
-            Self::Store { source, .. } | Self::Render { source } | Self::Auth { source, .. } => Some(source),
+            Self::Store { source, .. }
+            | Self::Render { source }
+            | Self::Auth { source, .. }
+            | Self::Lookup { source, .. } => Some(source),
             _ => None,
         }
     }

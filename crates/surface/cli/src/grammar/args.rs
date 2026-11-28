@@ -100,6 +100,8 @@ pub enum Command {
     /// `ink deploy list`, as `research/flow.md` spells it.
     #[command(hide = true)]
     Deploys(List),
+    /// Claim, prove, list and remove custom domains.
+    Domain(crate::command::domain::Domain),
     /// Write the whole site, source and history, to a folder.
     Export(crate::command::publish::Export),
     /// Print a completion script for your shell.

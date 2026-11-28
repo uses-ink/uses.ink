@@ -7,9 +7,9 @@
 use std::time::Duration;
 
 use build::BuildId;
-use control::{Id, SiteKind};
+use control::{DomainName, Id, SiteKind};
 use edge_api::Probed;
-use edge_api::view::{BuildView, DeployView, Listed, Moved, Status as Overview};
+use edge_api::view::{BuildView, DeployView, DomainView, Listed, Moved, Status as Overview, Unclaimed};
 use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
 use hyper::header::{ACCEPT, AUTHORIZATION, CONNECTION, CONTENT_TYPE, HOST};
@@ -169,6 +169,27 @@ impl Api {
     /// `POST /v1/sites/{site}/resume`.
     pub(crate) async fn resume(&self) -> Result<Moved, Failure> {
         self.read(Method::POST, "resume", b"{}".to_vec()).await
+    }
+
+    /// `GET /v1/sites/{site}/domains`: the names that serve the site, then the ones to prove.
+    pub(crate) async fn domains(&self) -> Result<Vec<DomainView>, Failure> {
+        let items: Listed<DomainView> = self.look("domains").await?;
+        Ok(items.items)
+    }
+
+    /// `PUT /v1/sites/{site}/domains/{name}`: asks to prove the name; the answer is the record.
+    pub(crate) async fn claim(&self, name: &DomainName) -> Result<DomainView, Failure> {
+        self.read(Method::PUT, &format!("domains/{name}"), b"{}".to_vec()).await
+    }
+
+    /// `POST /v1/sites/{site}/domains/{name}/proof`: the server reads the record and decides.
+    pub(crate) async fn prove(&self, name: &DomainName) -> Result<DomainView, Failure> {
+        self.read(Method::POST, &format!("domains/{name}/proof"), b"{}".to_vec()).await
+    }
+
+    /// `DELETE /v1/sites/{site}/domains/{name}`.
+    pub(crate) async fn unclaim(&self, name: &DomainName) -> Result<Unclaimed, Failure> {
+        self.read(Method::DELETE, &format!("domains/{name}"), Vec::new()).await
     }
 
     /// A call whose answer is the JSON `T`.

@@ -193,7 +193,7 @@ impl Remote {
     }
 
     /// The calls, reading the process environment and the user's config file.
-    fn calls(&self) -> Result<Calls, Error> {
+    pub(crate) fn calls(&self) -> Result<Calls, Error> {
         let preferences = Preferences::load(&Process).map_err(|source| Error::Preferences { source })?;
         self.connect(&Process, &preferences).map_err(|source| Error::Deploy { source })
     }

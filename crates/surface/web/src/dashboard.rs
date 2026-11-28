@@ -271,6 +271,7 @@ impl<S: Screens> Dashboard<S> {
             Action::Build | Action::Rollback { .. } => Path::of(Screen::Deploys, handle),
             Action::Resume => Path::of(Screen::Site, handle),
             Action::Remove { .. } => Path::account(),
+            Action::Claim { .. } | Action::Prove { .. } | Action::Unclaim { .. } => Path::of(Screen::Settings, handle),
         }
     }
 }

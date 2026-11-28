@@ -4,7 +4,7 @@
 use std::fmt;
 
 use build::BuildId;
-use control::Handle;
+use control::{DomainName, Handle};
 use model::{AnyCode, ContentPath, DeployId, Subject};
 
 use crate::Failure;
@@ -45,6 +45,8 @@ pub enum Field {
     On,
     /// The email address a sign-in link is asked for, or given to the first-run link.
     Address,
+    /// The custom domain a form is about.
+    Name,
 }
 
 impl Field {
@@ -57,6 +59,7 @@ impl Field {
             Self::Code => "code",
             Self::On => "on",
             Self::Address => "address",
+            Self::Name => "name",
         }
     }
 }
@@ -164,6 +167,21 @@ pub enum Action {
         /// What they typed.
         confirmed: Handle,
     },
+    /// Ask to prove a custom domain: the answer is the record to publish.
+    Claim {
+        /// The name.
+        name: DomainName,
+    },
+    /// Read the domain's record and, when it proves the claim, serve the site at the name.
+    Prove {
+        /// The name.
+        name: DomainName,
+    },
+    /// Stop serving a custom domain, or drop its claim.
+    Unclaim {
+        /// The name.
+        name: DomainName,
+    },
 }
 
 impl Action {
@@ -186,8 +204,20 @@ impl Action {
                     .map_err(|source| Failure::Invalid { field: Field::Confirm, source: FieldError::Handle(source) })?;
                 Ok(Self::Remove { confirmed })
             }
+            "claim" => Ok(Self::Claim { name: Self::domain(body)? }),
+            "prove" => Ok(Self::Prove { name: Self::domain(body)? }),
+            "unclaim" => Ok(Self::Unclaim { name: Self::domain(body)? }),
             _ => Err(Failure::Unrouted { source: Unrouted::Path }),
         }
+    }
+
+    /// The domain a form names.
+    fn domain(body: &Form) -> Result<DomainName, Failure> {
+        let typed = body.need(Field::Name)?;
+        typed
+            .trim()
+            .parse()
+            .map_err(|source| Failure::Invalid { field: Field::Name, source: FieldError::Domain(source) })
     }
 }
 

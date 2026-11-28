@@ -7,6 +7,7 @@ pub(crate) mod build;
 pub(crate) mod bundle;
 pub(crate) mod change;
 pub(crate) mod component;
+pub(crate) mod domain;
 pub(crate) mod explain;
 pub(crate) mod format;
 pub(crate) mod images;

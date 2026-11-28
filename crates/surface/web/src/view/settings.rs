@@ -8,6 +8,7 @@ use build::Source;
 use control::{Handle, Purpose};
 use jiff::Timestamp;
 use model::ExternalUrl;
+use unspliced::keyword::{ButtonType, InputType};
 use unspliced::{Halt, Lazy, Render, Sink, html};
 
 use crate::escaped::Escaped;
@@ -86,26 +87,65 @@ impl Settings {
     }
 }
 
+/// What a domain's form does: the action it posts to and the words on its button.
+#[derive(Clone, Copy, Debug)]
+struct Button {
+    action: &'static str,
+    label: &'static str,
+}
+
+impl Button {
+    const STOP: Self = Self { action: "unclaim", label: "Stop serving this name" };
+    const PROVE: Self = Self { action: "prove", label: "Check the record" };
+    const DROP: Self = Self { action: "unclaim", label: "Drop this claim" };
+}
+
 impl Settings {
-    fn named(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+    /// One form that posts the name of a domain to `action`.
+    fn named(&self, button: Button, name: &str, out: &mut dyn Sink) -> Result<(), Halt> {
+        let (to, label) = (Path::act(&self.handle, button.action), button.label);
+        (Post {
+            to: &to,
+            name: label,
+            body: html! {
+                input type=(InputType::Hidden) name="name" value=(Escaped(name));
+                button type=(ButtonType::Submit) { (label) }
+            },
+        })
+        .render(out)
+    }
+
+    fn domains(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        let claim = Path::act(&self.handle, "claim");
         html! {
             @if self.domains.is_empty() {
-                (Empty { title: "No custom domain", what: "The site is served at its address above. Custom domains are added with `ink domain add`; they show up here once verified." })
+                (Empty { title: "No custom domain", what: "The site is served at its address above. Claim a name below, or with `ink domain add`, and publish the record it shows." })
             } @else {
                 ul {
                     @for custom in &self.domains {
                         li {
                             code { (Escaped(&custom.name)) }
                             @match &custom.standing {
-                                Standing::Proven(at) => { " serves this site since " (Stamp(*at)) "." },
+                                Standing::Proven(at) => {
+                                    " serves this site since " (Stamp(*at)) "."
+                                    (Lazy(|out: &mut dyn Sink| self.named(Button::STOP, &custom.name, out)))
+                                },
                                 Standing::Pending { host, value } => {
-                                    " is waiting for proof. Publish a TXT record at " code { (Escaped(host)) } " with the value " code { (Escaped(value)) } ", then ask for the proof again."
+                                    " is waiting for proof. Publish a TXT record at " code { (Escaped(host)) } " with the value " code { (Escaped(value)) } ", then ask for the proof."
+                                    (Lazy(|out: &mut dyn Sink| self.named(Button::PROVE, &custom.name, out)))
+                                    (Lazy(|out: &mut dyn Sink| self.named(Button::DROP, &custom.name, out)))
                                 },
                             }
                         }
                     }
                 }
             }
+            (Post { to: &claim, name: "Claim a domain", body: html! {
+                div.look::STACK {
+                    label { "Domain name " input type=(InputType::Text) name="name" autocomplete="off" placeholder="www.example.org" required; }
+                    button.look::MAIN type=(ButtonType::Submit) { "Claim the name" }
+                }
+            } })
         }
         .render(out)
     }
@@ -130,7 +170,7 @@ impl View for Settings {
             h2 { "Address" }
             p { (Outside(&address)) }
             h2 { "Domains" }
-            (Lazy(|out: &mut dyn Sink| self.named(out)))
+            (Lazy(|out: &mut dyn Sink| self.domains(out)))
             h2 { "Theme" }
             p { "The theme is read from your source. To change it, commit this to " code.look::PATH { "ink.toml" } ":" }
             pre { code { "[theme]\nname = \"quiet\"" } }
@@ -139,7 +179,7 @@ impl View for Settings {
                 Serving::Paused(_) => {
                     p { "Paused after a rollback. New builds are kept as previews." }
                     (Post { to: &resume, name: "Resume publishing", body: html! {
-                        button.look::MAIN type=(unspliced::keyword::ButtonType::Submit) { "Resume publishing" }
+                        button.look::MAIN type=(ButtonType::Submit) { "Resume publishing" }
                     } })
                 },
                 Serving::Live(_) => { p { "Automatic: every build that changes the site is published." } },

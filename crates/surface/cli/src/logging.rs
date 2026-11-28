@@ -35,6 +35,7 @@ impl Command {
             Self::Whoami(_) => "whoami",
             Self::Key(_) => "key",
             Self::Abuse(_) => "abuse",
+            Self::Domain(_) => "domain",
             Self::Push(_) => "push",
             Self::Status(_) => "status",
             Self::Watch(_) => "watch",

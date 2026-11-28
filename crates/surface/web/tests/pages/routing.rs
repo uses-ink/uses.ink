@@ -144,6 +144,9 @@ fn a_form_is_answered_by_a_redirect_to_the_page_it_changed() {
         ("/ada-notes/resume", "", "/ada-notes"),
         ("/ada-notes/rollback", &format!("deploy={}", "a".repeat(64)), "/ada-notes/deploys"),
         ("/ada-notes/remove", "confirm=ada-notes", "/account"),
+        ("/ada-notes/claim", "name=www.example.org", "/ada-notes/settings"),
+        ("/ada-notes/prove", "name=www.example.org", "/ada-notes/settings"),
+        ("/ada-notes/unclaim", "name=+www.example.org+", "/ada-notes/settings"),
     ] {
         let reply = reply(&Ask::post(body_path, body), Some(Ask::who()));
         assert_eq!(reply.status, Status::SeeOther, "{body_path}");
@@ -177,6 +180,8 @@ fn a_failure_is_a_page_with_its_code_and_status() {
         (Ask::post("/ada-notes/rollback", ""), Some(Ask::who()), Status::BadRequest, "form.field.missing"),
         (Ask::post("/ada-notes/rollback", "deploy=zz"), Some(Ask::who()), Status::BadRequest, "form.field.invalid"),
         (Ask::get("/ada-notes/settings"), Some(Ask::who()), Status::NotFound, "site.handle.unknown"),
+        (Ask::post("/ada-notes/claim", ""), Some(Ask::who()), Status::BadRequest, "form.field.missing"),
+        (Ask::post("/ada-notes/claim", "name=not+a+name"), Some(Ask::who()), Status::BadRequest, "form.field.invalid"),
     ];
     for (request, who, status, code) in cases {
         let reply = reply(&request, who);

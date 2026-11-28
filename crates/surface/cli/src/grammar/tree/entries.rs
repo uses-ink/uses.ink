@@ -169,6 +169,44 @@ const ABUSE_CHILDREN: &[Entry] = &[
     },
 ];
 
+const DOMAIN_CHILDREN: &[Entry] = &[
+    Entry {
+        detail: "Asks to prove the name and prints the TXT record to publish at `_uses-ink.<name>`. Asking again makes a new token, which the old record does not prove. The name serves nothing until `ink domain prove` has seen the record.",
+        examples: &[Example { line: "ink domain add www.example.org", about: "Print the record that proves the name" }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("add", Group::Publish, "Ask to prove a custom domain")
+    },
+    Entry {
+        examples: &[Example {
+            line: "ink domain list",
+            about: "The names that serve the site and the ones still to prove",
+        }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("list", Group::Publish, "The site's custom domains")
+    },
+    Entry {
+        detail: "The server reads the TXT record through its resolver (`--resolver` and `--resolver-timeout` of `ink serve`). A record that is not there yet is `domain.proof.missing`; a lookup that got no answer is `domain.lookup.failed`, which is not a refusal of the name.",
+        examples: &[Example {
+            line: "ink domain prove www.example.org",
+            about: "Serve the site at the name once its record is published",
+        }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("prove", Group::Publish, "Check the record and serve the site at the name")
+    },
+    Entry {
+        examples: &[Example {
+            line: "ink domain remove www.example.org",
+            about: "Stop serving the name, or drop its claim",
+        }],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("remove", Group::Publish, "Stop serving a name, or drop its claim")
+    },
+];
+
 const DEPLOY_CHILDREN: &[Entry] = &[
     Entry {
         examples: &[Example { line: "ink deploy list --limit 5", about: "The five newest deploys" }],
@@ -343,6 +381,19 @@ const ENTRIES: &[Entry] = &[
         endings: PUSH,
         env: SITE_ENV,
         ..Entry::built("watch", Group::Publish, "Follow a build of this site to its end")
+    },
+    Entry {
+        children: DOMAIN_CHILDREN,
+        examples: &[
+            Example { line: "ink domain add www.example.org", about: "Ask to prove a name" },
+            Example {
+                line: "ink domain prove www.example.org",
+                about: "Serve the site at it once the record is published",
+            },
+        ],
+        endings: REMOTE,
+        env: SITE_ENV,
+        ..Entry::built("domain", Group::Publish, "Claim, prove, list and remove custom domains")
     },
     Entry {
         children: DEPLOY_CHILDREN,

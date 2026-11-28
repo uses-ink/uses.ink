@@ -72,6 +72,7 @@ impl Said {
             web::Status::MethodNotAllowed => Status::MethodNotAllowed,
             web::Status::Conflict => Status::Conflict,
             web::Status::TooMany => Status::TooMany,
+            web::Status::Unavailable => Status::Unavailable,
             _ => Status::Internal,
         }
     }
@@ -102,6 +103,7 @@ impl Said {
             Status::MethodNotAllowed => web::Status::MethodNotAllowed,
             Status::Conflict => web::Status::Conflict,
             Status::TooMany => web::Status::TooMany,
+            Status::Unavailable => web::Status::Unavailable,
             _ => web::Status::Internal,
         }
     }

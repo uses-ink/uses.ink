@@ -240,7 +240,7 @@ domains in `status`, streaming intake.
   research)**. **Built (0053):** `web` renders the five screens, the replay of one decision, the
   build log (streamed while it runs) and every failure from typed view models with `unspliced`,
   goldens and structure checks; `ink serve --data` mounts it on the API host through `Screens` (0092). Open:
-  the decisions diff, identities, the pen's wasm loader (previews are built, 0091; custom domains are being built).
+  the decisions diff, identities, the pen's wasm loader (previews are built, 0091; custom domains are built, 0093 and 0101).
 - Sign-in for self-host: passkeys, a first-run admin link printed once, and an email link that
   starts a delayed recovery (never a login), per the scheme in `auth.md` (0068, accepted). **Built
   (0066):** the magic-link bootstrap, sessions and the mail port. Its three spikes come first for
@@ -289,7 +289,9 @@ freeze.
   once by the edge and released with the site (0093); C8, the email authority, the magic link spent as a
   proof of an address under its own digest key and with no session (0094); C5, organizations as accounts with members whose roles
   are code, the last owner held by one statement, and deploy keys that outlive their approver (0095). `ink abuse
-  list|suspend|reinstate` calls the operator routes of C4 with the operator key (0100).
+  list|suspend|reinstate` calls the operator routes of C4 with the operator key (0100). `ink domain
+  add|list|prove|remove` and the Settings forms are built, and `ink serve` asks a real nameserver for the proof
+  record through a small typed DNS client (`--resolver`, `--resolver-timeout`; 0101).
 - `ink:authority-github` (GitHub App, webhooks, commit statuses), `ink:authority-email`,
   `ink:authority-dns`.
 - Versioned inference rules per 0042: `site.rules`, amendments, pending changes, `ink update`

@@ -84,6 +84,7 @@ ink
 │  ├─ login, logout, whoami
 │  ├─ key                    a group: list, add, revoke
 │  ├─ abuse                  the operator's group: list reports, suspend, reinstate
+│  ├─ domain                 a group: add, list, prove, remove custom domains
 │  ├─ push                   send the folder, start a deploy
 │  ├─ status                 what is live, what is building
 │  ├─ watch [BUILD]          follow a build to its end
@@ -765,7 +766,7 @@ garden  https://garden.uses.ink
   live     4d4d4d4d4d4d  since 2026-11-20 10:30Z
   latest   7a1f  running  upload, requested 2026-11-27 08:00Z
   pending  7a1f  running  upload, requested 2026-11-27 08:00Z
-  domains  not listed: this API has no domains yet
+  domains  not listed here: `ink domain list` shows them
 ```
 
 What is built today is the block above (`uses.status/v1`); the warnings row and a stage in the build

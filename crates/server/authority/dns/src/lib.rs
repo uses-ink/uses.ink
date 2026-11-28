@@ -4,8 +4,8 @@
 //!
 //! - [`Resolver`] is the port: it reads the TXT records of a [`Host`] and nothing else. [`Fake`]
 //!   answers from a table for tests, [`Offline`] answers that there is none (a self-host that has
-//!   not been given one); the adapter that asks a real DNS server is the last piece of the hosted
-//!   work.
+//!   not been given one); [`System`] asks real nameservers over UDP and TCP within a limit, and
+//!   [`Chosen`] is the one concrete type a server holds, whichever the operator picked.
 //! - [`Record`] is the one spelling of what a record says, written for a person to publish
 //!   ([`Challenge`]) and read back from what a lookup found.
 //! - [`Dns`] runs the proof: it reads the records, hands what it found to the control plane
@@ -16,6 +16,7 @@ mod dns;
 mod error;
 mod fake;
 mod host;
+mod lookup;
 mod record;
 mod resolver;
 
@@ -23,5 +24,6 @@ pub use dns::Dns;
 pub use error::Error;
 pub use fake::{Fake, NoResolver, Offline, Unreachable};
 pub use host::Host;
+pub use lookup::{Chosen, Failed, Malformed, Nameserver, Servers, System, Unlisted};
 pub use record::{Challenge, Record};
 pub use resolver::Resolver;
