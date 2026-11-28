@@ -143,6 +143,9 @@ fn the_served_tokens_set_every_colour_and_face_the_sheet_reads_to_its_own_value(
     }
 }
 
+// a corner of the small frame leaves a side of at least 48 px to stretch, and the big one 400
+const _: () = assert!(Asset::LITTLE - 2 * 12 >= 48 && Asset::SQUARE - 2 * 12 >= 400);
+
 /// The sheet as a page carries it, with every space squeezed out so a property is found by its text.
 struct Sheet(String);
 
@@ -156,7 +159,7 @@ impl Sheet {
 
     /// The body of the first rule whose selector holds `selector`.
     fn rule(&self, selector: &str) -> &str {
-        let at = self.0.find(selector).unwrap_or_else(|| panic!("no rule for {selector}"));
+        let at = self.0.find(selector).unwrap();
         let open = self.0[at..].find('{').unwrap() + at + 1;
         &self.0[open..open + self.0[open..].find('}').unwrap()]
     }
@@ -171,8 +174,6 @@ fn the_frames_keep_their_corners_and_stretch_only_their_sides_with_no_gap_in_a_l
     assert!(frame.contains("border-image-repeat:stretch"), "{frame}");
     let small = sheet.rule("input[type=\"text\"],");
     assert!(small.contains("outline-small.svg") && small.contains("border-image-slice:12;"), "{small}");
-    // a corner of the small frame leaves a side of at least 48 px to stretch, and the big one 400
-    assert!(Asset::LITTLE - 2 * 12 >= 48 && Asset::SQUARE - 2 * 12 >= 400);
     // a line stretched along its length keeps its pixels only when it is not snapped to the grid
     for asset in Asset::ALL.into_iter().filter(|asset| asset.medium() == Medium::Image && *asset != Asset::Mark) {
         let svg = String::from_utf8(asset.bytes().into_owned()).unwrap();
