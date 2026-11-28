@@ -837,6 +837,12 @@ pub enum Problem {
         /// The most that is allowed.
         limit: u64,
     },
+    /// `abuse.reports.full`: the control plane holds as many open abuse reports as it may, {limit}
+    #[serde(rename = "abuse.reports.full")]
+    AbuseReportsFull {
+        /// The most that is allowed.
+        limit: u64,
+    },
     /// `org.id.unknown`: there is no organization {id}
     #[serde(rename = "org.id.unknown")]
     OrgIdUnknown {
@@ -1221,6 +1227,7 @@ impl Problem {
         "domain.name.unknown",
         "domain.lookup.failed",
         "domain.site.full",
+        "abuse.reports.full",
         "org.id.unknown",
         "org.member.exists",
         "org.member.unknown",
@@ -1403,6 +1410,7 @@ impl Problem {
             Self::DomainNameUnknown { .. } => "domain.name.unknown",
             Self::DomainLookupFailed => "domain.lookup.failed",
             Self::DomainSiteFull { .. } => "domain.site.full",
+            Self::AbuseReportsFull { .. } => "abuse.reports.full",
             Self::OrgIdUnknown { .. } => "org.id.unknown",
             Self::OrgMemberExists { .. } => "org.member.exists",
             Self::OrgMemberUnknown { .. } => "org.member.unknown",
@@ -1586,6 +1594,7 @@ impl Problem {
             Self::DomainNameUnknown { .. } => Severity::Error,
             Self::DomainLookupFailed => Severity::Error,
             Self::DomainSiteFull { .. } => Severity::Error,
+            Self::AbuseReportsFull { .. } => Severity::Error,
             Self::OrgIdUnknown { .. } => Severity::Error,
             Self::OrgMemberExists { .. } => Severity::Error,
             Self::OrgMemberUnknown { .. } => Severity::Error,
@@ -1769,6 +1778,7 @@ impl Problem {
             Self::DomainNameUnknown { .. } => Fault::Author,
             Self::DomainLookupFailed => Fault::Ours,
             Self::DomainSiteFull { .. } => Fault::Author,
+            Self::AbuseReportsFull { .. } => Fault::Operator,
             Self::OrgIdUnknown { .. } => Fault::Author,
             Self::OrgMemberExists { .. } => Fault::Author,
             Self::OrgMemberUnknown { .. } => Fault::Author,
@@ -2514,6 +2524,7 @@ impl From<&Problem> for Coded {
             Problem::DomainSiteFull { id, limit, .. } => {
                 Coded::new("domain.site.full", vec![Field::from(id.clone()), Field::from(*limit)])
             }
+            Problem::AbuseReportsFull { limit, .. } => Coded::new("abuse.reports.full", vec![Field::from(*limit)]),
             Problem::OrgIdUnknown { id, .. } => Coded::new("org.id.unknown", vec![Field::from(id.clone())]),
             Problem::OrgMemberExists { id, account, .. } => {
                 Coded::new("org.member.exists", vec![Field::from(id.clone()), Field::from(account.clone())])
@@ -2766,6 +2777,7 @@ impl TryFrom<Coded> for Problem {
             "domain.name.unknown" => Self::DomainNameUnknown { id: fields.next()?, name: fields.next()? },
             "domain.lookup.failed" => Self::DomainLookupFailed,
             "domain.site.full" => Self::DomainSiteFull { id: fields.next()?, limit: fields.next()? },
+            "abuse.reports.full" => Self::AbuseReportsFull { limit: fields.next()? },
             "org.id.unknown" => Self::OrgIdUnknown { id: fields.next()? },
             "org.member.exists" => Self::OrgMemberExists { id: fields.next()?, account: fields.next()? },
             "org.member.unknown" => Self::OrgMemberUnknown { id: fields.next()?, account: fields.next()? },

@@ -184,6 +184,11 @@ pub struct Hosting {
     /// the number bounds what one site can ask for. [default: 10]
     #[arg(long, value_name = "N", env = "INK_LIMIT_DOMAINS", help_heading = Heading::LIMITS)]
     pub limit_domains: Option<u64>,
+    /// The most abuse reports open at once, over every source. Anyone may send one, so the number
+    /// bounds what many sources together can store; a report the operator actioned by suspending a
+    /// site stops counting, and raising this is the only other way to make room. [default: 10000]
+    #[arg(long, value_name = "N", env = "INK_LIMIT_REPORTS", help_heading = Heading::LIMITS)]
+    pub limit_reports: Option<u64>,
     /// How the TXT records that prove a custom domain are read: `system` asks nameservers, `offline`
     /// asks none, so a claim is made and a proof says why it cannot be checked. [default: system]
     #[arg(long, value_enum, env = "INK_RESOLVER", help_heading = Heading::HOSTING)]
@@ -221,7 +226,8 @@ impl Hosting {
             .limited(limits)
             .stepping(self.remove_step.unwrap_or(Policy::STEP))
             .previewing(preview)
-            .domained(self.limit_domains.unwrap_or(Policy::DOMAINS));
+            .domained(self.limit_domains.unwrap_or(Policy::DOMAINS))
+            .reported(self.limit_reports.unwrap_or(Policy::REPORTS));
         self.handle_hold.map_or(policy, |days| policy.holding(Duration::from_hours(days.saturating_mul(24))))
     }
 

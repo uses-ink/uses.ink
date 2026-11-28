@@ -6,7 +6,7 @@ use std::fmt;
 
 use db::{Row, Statement};
 use jiff::Timestamp;
-use sea_query::{Expr, Query};
+use sea_query::{Asterisk, Expr, ExprTrait, Func, Query, SubQueryStatement};
 use serde::{Deserialize, Serialize};
 
 use crate::fields::Fields;
@@ -273,22 +273,32 @@ impl Report {
         })
     }
 
-    /// The statement that records a new report, open.
-    pub(crate) fn insert(new: &NewReport) -> Result<Statement, sea_query::error::Error> {
-        Ok(Query::insert()
+    /// The statement that records a new report, open, unless `limit` reports are open already:
+    /// an actioned report no longer counts.
+    /// It changes no row then, which the caller reads as [`Refusal::ReportsFull`]: the count and the
+    /// insert are one statement, so two reports at once cannot both take the last place.
+    pub(crate) fn insert(new: &NewReport, limit: u64) -> Result<Statement, sea_query::error::Error> {
+        let stored = Query::select()
+            .expr(Func::count(Expr::col(Asterisk)))
+            .from(table::Report::Table)
+            .and_where(Expr::col(table::Report::State).eq(ReportState::Open.name()))
+            .to_owned();
+        let room = Expr::from(SubQueryStatement::SelectStatement(stored)).lt(i64::try_from(limit).unwrap_or(i64::MAX));
+        let values = [
+            Expr::val(new.id.to_string()),
+            Expr::val(new.handle.as_str()),
+            Expr::val(new.kind.name()),
+            Expr::val(new.detail.as_str()),
+            Expr::val(new.contact.as_ref().map(|contact| contact.as_str().to_owned())),
+            Expr::val(ReportState::Open.name()),
+            Expr::val(new.at.as_millisecond()),
+        ];
+        let mut insert = Query::insert();
+        insert
             .into_table(table::Report::Table)
             .columns(Self::COLUMNS)
-            .values([
-                Expr::val(new.id.to_string()),
-                Expr::val(new.handle.as_str()),
-                Expr::val(new.kind.name()),
-                Expr::val(new.detail.as_str()),
-                Expr::val(new.contact.as_ref().map(|contact| contact.as_str().to_owned())),
-                Expr::val(ReportState::Open.name()),
-                Expr::val(new.at.as_millisecond()),
-            ])?
-            .to_owned()
-            .into())
+            .select_from(Query::select().exprs(values).and_where(room).to_owned())?;
+        Ok(insert.into())
     }
 }
 

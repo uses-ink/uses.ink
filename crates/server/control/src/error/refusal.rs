@@ -105,6 +105,11 @@ pub enum Refusal {
         /// The limit.
         limit: u64,
     },
+    /// The control plane holds as many open abuse reports as the operator allows.
+    ReportsFull {
+        /// The limit.
+        limit: u64,
+    },
     /// There is no organization with this account.
     NoOrg {
         /// The account.
@@ -237,6 +242,7 @@ impl fmt::Display for Refusal {
                 write!(out, "the repository of site {site} is private, so its branches are not previewed")
             }
             Self::NoLabel { site, label } => write!(out, "the site {site} has no preview labelled {label}"),
+            Self::ReportsFull { limit } => write!(out, "the control plane holds as many open abuse reports as it may, {limit}"),
             Self::DomainOurs { .. }
             | Self::DomainTaken { .. }
             | Self::NoClaim { .. }
@@ -374,6 +380,7 @@ impl Refusal {
             Self::Unproven { .. } => "domain.proof.missing",
             Self::NoDomain { .. } => "domain.name.unknown",
             Self::DomainRoom { .. } => "domain.site.full",
+            Self::ReportsFull { .. } => "abuse.reports.full",
             Self::NoOrg { .. } => "org.id.unknown",
             Self::Member { .. } => "org.member.exists",
             Self::NotMember { .. } => "org.member.unknown",
@@ -440,6 +447,7 @@ impl Refusal {
             }
             Self::Unproven { name, records } => vec![("name", name.to_string()), ("count", records.to_string())],
             Self::DomainRoom { site, limit } => vec![("id", site.to_string()), ("limit", limit.to_string())],
+            Self::ReportsFull { limit } => vec![("limit", limit.to_string())],
             Self::NoOrg { org } | Self::LastOwner { org } => vec![("id", org.to_string())],
             Self::Member { org, account } | Self::NotMember { org, account } => {
                 vec![("id", org.to_string()), ("account", account.to_string())]

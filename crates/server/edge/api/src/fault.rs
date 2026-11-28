@@ -433,6 +433,7 @@ impl<P: Ports> Fault<P> {
             | Refusal::DomainOurs { .. }
             | Refusal::Unproven { .. }
             | Refusal::MissingBlob { .. } => Status::Unprocessable,
+            Refusal::ReportsFull { .. } => Status::Unavailable,
             Refusal::Over { spent: Spent::Stored, .. } => Status::TooLarge,
             Refusal::Over { spent: Spent::Builds, .. } => Status::TooMany,
             Refusal::Suspended { .. }

@@ -11,8 +11,18 @@ use crate::{Control, Error, Event, NewReport, Ports, Refusal, Report, ReportStat
 impl<P: Ports> Control<P> {
     /// Records a report, open, and returns it. A report names a handle and not a site, so what it
     /// says is kept even when the site has gone, and nothing answers whether the handle is one.
+    ///
+    /// Anyone may report, so the open reports are bounded over every source: with as many as
+    /// [`Policy::reports`](crate::Policy) already, the report is refused whole with
+    /// [`Refusal::ReportsFull`] until the operator has actioned some. Only a suspension
+    /// actions a report, so a flood of reports that name no site holds the cap until the limit is
+    /// raised (decision 0150).
     pub async fn report(&self, new: NewReport) -> Result<Report, Error<P>> {
-        self.ports.db().batch(vec![Report::insert(&new)?]).await?;
+        let limit = self.policy.reports;
+        let outcomes = self.ports.db().batch(vec![Report::insert(&new, limit)?]).await?;
+        if outcomes.first().is_some_and(|outcome| outcome.changes == 0) {
+            return Err(Refusal::ReportsFull { limit }.into());
+        }
         Ok(Report {
             id: new.id,
             handle: new.handle,

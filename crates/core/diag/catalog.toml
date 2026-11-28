@@ -968,6 +968,13 @@ fields = { id = "text", limit = "count" }
 message = "the site {id} has as many custom domains as it may, {limit}"
 fix = "remove a domain the site does not use, or ask the operator for a higher limit"
 
+[diagnostic."abuse.reports.full"]
+severity = "error"
+fault = "operator"
+fields = { limit = "count" }
+message = "the control plane holds as many open abuse reports as it may, {limit}"
+fix = "try again later, or write to the operator; the operator may handle stored reports or raise --limit-reports"
+
 [diagnostic."org.id.unknown"]
 severity = "error"
 fault = "author"

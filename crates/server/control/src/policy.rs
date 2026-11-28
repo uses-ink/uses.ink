@@ -19,6 +19,10 @@ pub struct Policy {
     pub preview: Duration,
     /// The most custom domains a site has, proved and not (`--limit-domains`).
     pub domains: u64,
+    /// The most abuse reports open at once, over every source (`--limit-reports`). A report is
+    /// taken from anyone, and the per-source rate bounds only one source at a time, so this bounds
+    /// what many sources together can store. A report the operator actioned no longer counts.
+    pub reports: u64,
 }
 
 impl Policy {
@@ -29,6 +33,7 @@ impl Policy {
         removal: Self::STEP,
         preview: Self::PREVIEW,
         domains: Self::DOMAINS,
+        reports: Self::REPORTS,
     };
 
     /// How long a preview lasts unless the operator says: seven days (`docs/hosted.md` HQ12).
@@ -36,6 +41,9 @@ impl Policy {
 
     /// How many custom domains a site has, proved and not, unless the operator says: ten.
     pub const DOMAINS: u64 = 10;
+
+    /// How many abuse reports are open at once unless the operator says: ten thousand.
+    pub const REPORTS: u64 = 10_000;
 
     /// How many blobs a step of a removal deletes unless the operator says.
     pub const STEP: u64 = 500;
@@ -65,6 +73,13 @@ impl Policy {
     #[must_use]
     pub const fn domained(mut self, domains: u64) -> Self {
         self.domains = domains;
+        self
+    }
+
+    /// The same policy keeping at most `reports` abuse reports open.
+    #[must_use]
+    pub const fn reported(mut self, reports: u64) -> Self {
+        self.reports = reports;
         self
     }
 

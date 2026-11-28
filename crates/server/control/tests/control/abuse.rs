@@ -39,6 +39,32 @@ fn a_report_is_recorded_open_and_listed_newest_first() {
 }
 
 #[test]
+fn reports_stop_at_the_limit_over_every_source() {
+    let world = World::new().under(control::Policy::DEFAULT.reported(2));
+    let (first, second, third) = (report(&world, "one", 10), report(&world, "two", 20), report(&world, "three", 30));
+    world.run(world.control.report(first)).unwrap();
+    world.run(world.control.report(second)).unwrap();
+    let full = world.run(world.control.report(third)).unwrap_err();
+    assert_eq!(full.refusal(), Some(&Refusal::ReportsFull { limit: 2 }));
+    assert_eq!(full.refusal().map(Refusal::code), Some("abuse.reports.full"));
+    assert_eq!(world.count(ReportTable::Table), 2, "a refused report stores nothing");
+    assert_eq!(world.run(world.control.reports(10)).unwrap().len(), 2);
+}
+
+#[test]
+fn an_actioned_report_stops_counting_toward_the_limit() {
+    let world = World::new().under(control::Policy::DEFAULT.reported(1));
+    let site = world.site("cstef");
+    let first = report(&world, "cstef", 10);
+    world.run(world.control.report(first.clone())).unwrap();
+    let full = world.run(world.control.report(report(&world, "cstef", 20))).unwrap_err();
+    assert_eq!(full.refusal(), Some(&Refusal::ReportsFull { limit: 1 }));
+    world.run(world.control.suspend(suspension(&site, Some(first.id), 30))).unwrap();
+    world.run(world.control.report(report(&world, "cstef", 40))).unwrap();
+    assert_eq!(world.count(ReportTable::Table), 2, "the actioned report is kept, and no longer counts");
+}
+
+#[test]
 fn the_text_of_a_report_is_bounded() {
     let long = "x".repeat(Detail::LONGEST + 1);
     assert_eq!(

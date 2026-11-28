@@ -45,6 +45,7 @@ fn every_refusal_is_worded_by_the_catalog() {
         Refusal::Unproven { name: name.clone(), records: 2 },
         Refusal::NoDomain { site, name },
         Refusal::DomainRoom { site, limit: 1 },
+        Refusal::ReportsFull { limit: 1 },
         Refusal::NoOrg { org: account },
         Refusal::Member { org: account, account },
         Refusal::NotMember { org: account, account },

@@ -172,6 +172,7 @@ impl fmt::Display for Refused<'_> {
                 "use a name of your own that no other site proved"
             }
             Refusal::DomainRoom { .. } => "remove a domain you no longer use, then claim this one",
+            Refusal::ReportsFull { .. } => "try again later, or write to the operator of this service",
             Refusal::NoClaim { .. } | Refusal::NoDomain { .. } => {
                 "claim the name again, then publish the record it shows"
             }

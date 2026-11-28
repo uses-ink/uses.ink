@@ -413,6 +413,9 @@ impl Message<'_> {
             Problem::DomainSiteFull { id, limit, .. } => {
                 write!(out, "the site {id} has as many custom domains as it may, {limit}")
             }
+            Problem::AbuseReportsFull { limit, .. } => {
+                write!(out, "the control plane holds as many open abuse reports as it may, {limit}")
+            }
             Problem::OrgIdUnknown { id, .. } => {
                 write!(out, "there is no organization {id}")
             }
@@ -859,6 +862,7 @@ impl Fix<'_> {
             Problem::DomainNameUnknown { .. } => true,
             Problem::DomainLookupFailed => true,
             Problem::DomainSiteFull { .. } => true,
+            Problem::AbuseReportsFull { .. } => true,
             Problem::OrgIdUnknown { .. } => true,
             Problem::OrgMemberExists { .. } => true,
             Problem::OrgMemberUnknown { .. } => true,
@@ -1349,6 +1353,12 @@ impl Fix<'_> {
             }
             Problem::DomainSiteFull { .. } => {
                 write!(out, "remove a domain the site does not use, or ask the operator for a higher limit")
+            }
+            Problem::AbuseReportsFull { .. } => {
+                write!(
+                    out,
+                    "try again later, or write to the operator; the operator may handle stored reports or raise --limit-reports"
+                )
             }
             Problem::OrgIdUnknown { .. } => {
                 write!(out, "list your organizations and use one of their ids")
