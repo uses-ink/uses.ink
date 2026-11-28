@@ -164,9 +164,8 @@ draws through `Draw`.
 
 WebAuthn is a browser API, so the sign-in, registration and step-up pages need JavaScript: about
 120 lines (base64url, `navigator.credentials.create` and `.get`, `fetch`), in one file served
-from the dashboard host and covered by its CSP (`script-src 'self'`, no inline). Reader pages stay
-free of JavaScript (architecture section 13); this is the dashboard, which already loads the pen
-as wasm. A browser without JavaScript gets a page that says so and names `ink login` and the
+from the dashboard host and covered by its CSP (`script-src 'self'`, no inline; faces, strokes and the tokens come from the same host, 0190). Reader pages stay
+free of JavaScript (architecture section 13); this is the dashboard. A browser without JavaScript gets a page that says so and names `ink login` and the
 recovery codes as the ways in (a recovery code still needs a passkey registration at its end, so
 no-JavaScript access is not a goal).
 
