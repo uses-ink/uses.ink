@@ -32,4 +32,4 @@ navigation = "docs"
 title = "uses.ink docs"
 language = "en"
 home = "index.md"
-nav = ["architecture.md", "cli.md", "selfhost.md", "auth.md", "hosted.md", "tracing.md", "roadmap.md", "decisions/README.md", "site.md"]
+nav = ["architecture.md", "cli.md", "selfhost.md", "roadmap.md", "decisions/README.md"]

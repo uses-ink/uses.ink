@@ -157,7 +157,7 @@ hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0
 .hand-show article a:hover { background-size: 100% 6px, 100% 60%; }
 
 .hand-panel { display: flow-root; padding-block: 96px; }
-.hand-panel h2 { max-width: 15ch; font: 700 clamp(2.75rem, 4.8vw, 4.25rem) / .98 var(--face-hand); letter-spacing: -.015em; word-spacing: -.12em; text-wrap: balance; }
+.hand-panel h2 { max-width: 22ch; font: 700 clamp(2.75rem, 4.8vw, 4.25rem) / .98 var(--face-hand); letter-spacing: -.015em; word-spacing: -.12em; text-wrap: balance; }
 .hand-panel h2 + p { margin-top: 16px; max-width: 44ch; font-size: 1.4375rem; line-height: 1.35; }
 
 /* the hero: one drawn comic panel, the words on the left and the picture on the right */
@@ -195,14 +195,15 @@ hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0
 .hand-panel ul:has(img) > li + li { margin-top: 0; }
 .hand-panel li > img { width: min(150px, 100%); height: auto; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
 .hand-panel li:hover > img { transform: translateY(-3px) rotate(-2deg); }
-.hand-panel li > code { margin-top: 12px; font-size: 1.0625rem; line-height: 1.2; }
+.hand-panel li > img + code { margin-top: 12px; font-size: 1.0625rem; line-height: 1.2; }
 .hand-panel li > em:first-child { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; max-width: 15ch; min-height: 2.5em; color: var(--accent); font: 700 1.3125rem/1.18 var(--face-hand); font-style: normal; rotate: -2deg; }
 .hand-panel li:nth-child(even) > em:first-child { rotate: 2deg; }
 .hand-panel li > em:first-child::after { content: ""; display: block; width: 30px; height: 40px; margin-block: 6px 4px; background: url(/marks/arrow-down.svg) center / contain no-repeat; }
 
 /* the sources: a picture, a name, a line, a red note */
 .hand-panel ul:has(> li > strong) { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-flow: row; gap: 56px; margin-top: 40px; }
-.hand-panel ul:has(> li > strong) > li { align-items: flex-start; text-align: left; font-size: 1.4375rem; }
+.hand-panel ul:has(> li > strong) > li { display: block; text-align: left; font-size: 1.4375rem; }
+.hand-panel ul:has(> li > strong) > li > img { display: block; }
 .hand-panel li > img:first-child { width: 180px; margin-left: -8px; }
 .hand-panel li > strong { margin: 14px 0 10px; font: 700 2.375rem/1 var(--face-hand); letter-spacing: -.05em; word-spacing: -.14em; }
 .hand-panel li > em:not(:first-child) { display: block; margin-top: 12px; color: var(--accent); font: 700 1.3125rem/1.2 var(--face-hand); font-style: normal; rotate: -1.5deg; }
@@ -261,7 +262,8 @@ hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0
   .hand-panel > p:has(> img:only-child):first-child img { width: 110px; }
   .hand-panel ul:has(img) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 18px; margin-top: 40px; }
   .hand-panel li > em:first-child { font-size: 1.25rem; min-height: 3.7em; }
-  .hand-panel blockquote { margin: 44px auto 0; rotate: -1deg; }
+  .hand-panel blockquote { width: auto; margin: 44px 0 0; rotate: -1deg; }
+  .hand-panel blockquote pre { white-space: pre-wrap; overflow-wrap: anywhere; }
   .hand-panel ul:has(> li > strong) { grid-template-columns: 1fr; gap: 48px; }
   .hand-panel:has(> .quiet-callout) { grid-template-columns: 1fr; row-gap: 40px; padding-block: 64px; }
   .hand-panel:has(> .quiet-callout) > .quiet-callout { grid-column: 1; grid-row: auto; }
