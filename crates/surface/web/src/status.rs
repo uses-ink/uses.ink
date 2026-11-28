@@ -22,6 +22,8 @@ pub enum Status {
     MethodNotAllowed,
     /// The change collides with the state of the site.
     Conflict,
+    /// Too many requests from this source; try again later.
+    TooMany,
     /// Something of ours failed.
     Internal,
 }
@@ -38,6 +40,7 @@ impl Status {
             Self::NotFound => 404,
             Self::MethodNotAllowed => 405,
             Self::Conflict => 409,
+            Self::TooMany => 429,
             Self::Internal => 500,
         }
     }

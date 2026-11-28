@@ -177,6 +177,22 @@ pub enum Failure {
         /// What the sink or the split said.
         source: Cause,
     },
+    /// The sign-in routes of the server refused, and said why.
+    Auth {
+        /// The status they answered with.
+        status: crate::Status,
+        /// Their stable code, such as `auth.origin.refused`.
+        problem: String,
+        /// What they said, and why.
+        source: Cause,
+    },
+    /// The site's source is an upload, which only `ink push` can change.
+    Upload {
+        /// The site's handle.
+        handle: Handle,
+    },
+    /// The replay of a decision runs where the source is, which this server does not hold.
+    NoReplay,
 }
 
 /// Why a form field does not hold what it should.
@@ -223,6 +239,9 @@ impl fmt::Display for Failure {
             Self::Store { part, .. } => write!(out, "{part} failed"),
             Self::Cut { build } => write!(out, "the live log of build {build} ended before the build did"),
             Self::Render { .. } => out.write_str("a page could not be written out"),
+            Self::Auth { problem, .. } => write!(out, "signing in was refused: {problem}"),
+            Self::Upload { handle } => write!(out, "{handle} is built from an upload, so there is nothing to read again"),
+            Self::NoReplay => out.write_str("this server cannot replay a decision"),
         }
     }
 }
@@ -233,7 +252,7 @@ impl Error for Failure {
             Self::Unrouted { source } => Some(source),
             Self::Invalid { source, .. } => Some(source),
             Self::Refused { refusal } => Some(refusal),
-            Self::Store { source, .. } | Self::Render { source } => Some(source),
+            Self::Store { source, .. } | Self::Render { source } | Self::Auth { source, .. } => Some(source),
             _ => None,
         }
     }

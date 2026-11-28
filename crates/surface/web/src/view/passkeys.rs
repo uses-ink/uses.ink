@@ -8,9 +8,10 @@ use jiff::Timestamp;
 use unspliced::keyword::{ButtonType, InputType};
 use unspliced::{Halt, Lazy, Render, Sink, Url, html};
 
+use crate::route::Path;
 use crate::shell::{Frame, View};
 use crate::style::look;
-use crate::view::block::Stamp;
+use crate::view::block::{Post, Stamp};
 
 /// One passkey of the person, as the Account screen lists it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -97,6 +98,7 @@ impl View for SignIn {
     }
 
     fn body(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        let asking = Path::signin();
         html! {
             p.look::LEDE { "Use a passkey from this device, your phone or a security key. No username is asked for." }
             div.look::STACK {
@@ -104,6 +106,14 @@ impl View for SignIn {
                 p data-passkey-status="" role="status" {}
             }
             noscript { p { "Passkeys need JavaScript. Without it, use the sign-in link in your email, or `ink login` from a terminal." } }
+            h2 { "Or get a link by email" }
+            p { "The link signs you in once, from this browser. The page answers the same whether or not the address has an account." }
+            (Post { to: &asking, name: "Email me a sign-in link", body: html! {
+                div.look::STACK {
+                    label { "Email address " input type=(InputType::Email) name="address" autocomplete="email" required; }
+                    button.look::MAIN type=(ButtonType::Submit) { "Email me a link" }
+                }
+            } })
             script src=(Url::new("/passkey.js")) {}
         }
         .render(out)

@@ -43,6 +43,8 @@ pub enum Field {
     Code,
     /// The file a decision is about; absent for the site.
     On,
+    /// The email address a sign-in link is asked for, or given to the first-run link.
+    Address,
 }
 
 impl Field {
@@ -54,6 +56,7 @@ impl Field {
             Self::Only => "only",
             Self::Code => "code",
             Self::On => "on",
+            Self::Address => "address",
         }
     }
 }
@@ -212,6 +215,36 @@ impl Asked {
     }
 }
 
+/// The secret segment of a sign-in link's path. The dashboard checks only its shape, so that it
+/// can be written back into a form's address; the sign-in routes decide whether it is a link.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Token(String);
+
+impl Token {
+    /// The most characters a token has: an address that long is no link.
+    pub const LONGEST: usize = 128;
+
+    /// The token `text` is, when it has the shape of one: 1 to [`Self::LONGEST`] characters of
+    /// letters, digits, `-` and `_`.
+    pub fn parse(text: &str) -> Option<Self> {
+        let shaped = !text.is_empty()
+            && text.len() <= Self::LONGEST
+            && text.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'));
+        shaped.then(|| Self(text.to_owned()))
+    }
+
+    /// As text.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        out.write_str(&self.0)
+    }
+}
+
 /// A build in a path.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Segment<'a>(pub(crate) &'a str);
@@ -220,6 +253,11 @@ impl Segment<'_> {
     /// The segment as a handle.
     pub(crate) fn handle(self) -> Result<Handle, Failure> {
         self.0.parse().map_err(|source| Failure::Unrouted { source: Unrouted::Handle(source) })
+    }
+
+    /// The segment as a link's token.
+    pub(crate) fn token(self) -> Result<Token, Failure> {
+        Token::parse(self.0).ok_or(Failure::Unrouted { source: Unrouted::Path })
     }
 
     /// The segment as a session id.

@@ -118,6 +118,7 @@ impl Fixtures {
         Self::build_pages(&mut pages);
         Self::failure_pages(&mut pages);
         Self::limit_pages(&mut pages);
+        Self::sign_pages(&mut pages);
         pages.0
     }
 }

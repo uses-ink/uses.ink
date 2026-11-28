@@ -37,6 +37,12 @@ pub enum Code {
     LogCut,
     /// `page.render.failed`.
     RenderFailed,
+    /// `auth.request.refused`.
+    AuthRefused,
+    /// `site.source.upload`.
+    SourceUpload,
+    /// `page.replay.unserved`.
+    ReplayUnserved,
 }
 
 impl Code {
@@ -56,6 +62,9 @@ impl Code {
             Self::StoreFailed => "control.store.failed",
             Self::LogCut => "build.log.cut",
             Self::RenderFailed => "page.render.failed",
+            Self::AuthRefused => "auth.request.refused",
+            Self::SourceUpload => "site.source.upload",
+            Self::ReplayUnserved => "page.replay.unserved",
         }
     }
 }
@@ -83,18 +92,22 @@ impl Failure {
             Self::Store { .. } => Code::StoreFailed,
             Self::Cut { .. } => Code::LogCut,
             Self::Render { .. } => Code::RenderFailed,
+            Self::Auth { .. } => Code::AuthRefused,
+            Self::Upload { .. } => Code::SourceUpload,
+            Self::NoReplay => Code::ReplayUnserved,
         }
     }
 
     /// The status its page is sent with.
     pub const fn status(&self) -> Status {
         match self {
-            Self::Unrouted { .. } | Self::NoSite { .. } | Self::NoBuild { .. } => Status::NotFound,
+            Self::Unrouted { .. } | Self::NoSite { .. } | Self::NoBuild { .. } | Self::NoReplay => Status::NotFound,
+            Self::Auth { status, .. } => *status,
             Self::Method { .. } => Status::MethodNotAllowed,
             Self::SignedOut => Status::Unauthorized,
             Self::Foreign { .. } => Status::Forbidden,
             Self::Missing { .. } | Self::Invalid { .. } | Self::Confirm { .. } => Status::BadRequest,
-            Self::Refused { .. } => Status::Conflict,
+            Self::Refused { .. } | Self::Upload { .. } => Status::Conflict,
             Self::Store { .. } | Self::Cut { .. } | Self::Render { .. } => Status::Internal,
         }
     }
@@ -126,6 +139,12 @@ impl fmt::Display for Fix<'_> {
             Failure::Store { .. } => out.write_str("try again in a minute; if it fails again, give the operator this code and the cause below"),
             Failure::Cut { .. } => out.write_str("reload the page: a finished build shows its whole log"),
             Failure::Render { .. } => out.write_str("reload the page; if it fails again, give the operator this code and the cause below"),
+            Failure::Auth { status: Status::TooMany, .. } => out.write_str("wait a while, then ask again: the server limits how often a link may be asked for"),
+            Failure::Auth { status: Status::Forbidden, .. } => out.write_str("open this page from the address the server was started with, not from another site"),
+            Failure::Auth { status: Status::NotFound, .. } => out.write_str("the link was used, has ended or never was: ask for a new one on the sign-in page"),
+            Failure::Auth { .. } => out.write_str("check what you typed and try again; if it repeats, give the operator this code and the cause below"),
+            Failure::Upload { .. } => out.write_str("change the folder and run `ink push` again"),
+            Failure::NoReplay => out.write_str("run `ink explain` in the site's folder, which holds the source this page would replay"),
         }
     }
 }

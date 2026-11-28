@@ -89,7 +89,7 @@ unspliced::css! {
     .button:hover, button:hover { background: (BUCKET); }
     .stack { display: grid; gap: 0.75rem; max-width: 34rem; margin: 0.75rem 0; }
     label { font-weight: 700; display: block; }
-    input[type="text"], input[type="search"], select, textarea { font: inherit; width: 100%; padding: 0.25rem 0.5rem; border: 3px solid (INK); background: (PAPER); color: (INK); }
+    input[type="text"], input[type="search"], input[type="email"], select, textarea { font: inherit; width: 100%; padding: 0.25rem 0.5rem; border: 3px solid (INK); background: (PAPER); color: (INK); }
     .hint { color: (PENCIL); font-size: 1.05rem; margin: 0.125rem 0 0; }
 
     .table { width: 100%; overflow-x: auto; margin: 0.5rem 0 1rem; }

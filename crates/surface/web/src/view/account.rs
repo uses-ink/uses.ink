@@ -81,6 +81,7 @@ impl View for Account {
     }
 
     fn body(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        let logout = Path::logout();
         html! {
             p.look::LEDE { "Account made " (Stamp(self.created)) "." }
             h2 { "Your sites" }
@@ -94,6 +95,9 @@ impl View for Account {
             (Section(&self.passkeys))
             @if let Some(left) = self.recovery { (Recovery(left)) }
             (Sessions(&self.sessions))
+            (Post { to: &logout, name: "Sign out", body: html! {
+                p { button type=(ButtonType::Submit) { "Sign out of this session" } }
+            } })
             h2 { "Notifications" }
             p { "Failure notices are sent by email: the first failure and its fix only." }
         }

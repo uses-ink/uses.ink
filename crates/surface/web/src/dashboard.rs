@@ -7,11 +7,13 @@ use std::future::Future;
 
 use control::{AccountKind, Handle, Id};
 
-use crate::form::{Action, Asked};
+use crate::form::{Action, Asked, Token};
 use crate::route::{Only, Path, Route, Screen};
 use crate::shell::{Document, Frame, View};
 use crate::stream::{Follow, Streamed};
-use crate::view::{Account, Build, Deploys, Failed, Limits, Live, Settings, SignIn, Site, Understood, Why};
+use crate::view::{
+    Account, Build, Deploys, Entering, Failed, Limits, Live, Sent, Settings, SignIn, Site, Stored, Understood, Why,
+};
 use crate::{Failure, Request, Status};
 
 /// What a request for a build's log finds.
@@ -20,6 +22,8 @@ use crate::{Failure, Request, Status};
 pub enum Logged<F> {
     /// The build ended: its whole log.
     Done(Build),
+    /// The build's log as stored, which an edge that holds no typed events shows, ended or not.
+    Stored(Stored),
     /// The build is running: the head of its page and the events to follow.
     Running(Live, F),
 }
@@ -42,9 +46,10 @@ impl fmt::Display for Download {
 
 /// What the edge provides: each screen's data from the control plane, for the account that is
 /// signed in, and the changes forms ask for. An implementation checks that the site belongs to
-/// the account and answers [`Failure::Foreign`] when it does not. Its futures are `Send`, as the
-/// edge's ports are.
-pub trait Screens: Send + Sync {
+/// the account and answers [`Failure::Foreign`] when it does not. Its futures need not be `Send`: the
+/// control plane's ports are not on every host, so an edge that holds them awaits these on the task
+/// that owns them.
+pub trait Screens {
     /// Where a running build's events come from.
     type Follow: Follow;
 
@@ -52,7 +57,7 @@ pub trait Screens: Send + Sync {
     fn limits(&self) -> control::Limits;
 
     /// The Site screen.
-    fn site(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Site, Failure>> + Send;
+    fn site(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Site, Failure>>;
 
     /// The What we understood screen.
     fn understood(
@@ -60,7 +65,7 @@ pub trait Screens: Send + Sync {
         who: Id<AccountKind>,
         handle: &Handle,
         only: Only,
-    ) -> impl Future<Output = Result<Understood, Failure>> + Send;
+    ) -> impl Future<Output = Result<Understood, Failure>>;
 
     /// The replay of one decision.
     fn why(
@@ -68,17 +73,17 @@ pub trait Screens: Send + Sync {
         who: Id<AccountKind>,
         handle: &Handle,
         asked: &Asked,
-    ) -> impl Future<Output = Result<Why, Failure>> + Send;
+    ) -> impl Future<Output = Result<Why, Failure>>;
 
     /// The Deploys screen.
-    fn deploys(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Deploys, Failure>> + Send;
+    fn deploys(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Deploys, Failure>>;
 
     /// The Settings screen.
     fn settings(&self, who: Id<AccountKind>, handle: &Handle)
-    -> impl Future<Output = Result<Settings, Failure>> + Send;
+    -> impl Future<Output = Result<Settings, Failure>>;
 
     /// The Account screen.
-    fn account(&self, who: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>> + Send;
+    fn account(&self, who: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>>;
 
     /// Ends one of the account's sessions. A session that is another account's, has ended or
     /// never was is answered as an address that names nothing, [`Failure::Unrouted`].
@@ -86,7 +91,18 @@ pub trait Screens: Send + Sync {
         &self,
         who: Id<AccountKind>,
         id: Id<control::SessionKind>,
-    ) -> impl Future<Output = Result<(), Failure>> + Send;
+    ) -> impl Future<Output = Result<(), Failure>>;
+
+    /// Asks for a sign-in link to be sent to `address`. The answer is the same whether or not the
+    /// address has an account.
+    fn ask(&self, address: &str) -> impl Future<Output = Result<(), Failure>>;
+
+    /// Uses the sign-in link `token`, which the first-run link gives `address`. The session it
+    /// begins is the edge's to hand to the browser.
+    fn enter(&self, token: &Token, address: Option<&str>) -> impl Future<Output = Result<(), Failure>>;
+
+    /// Ends the session the request holds.
+    fn sign_out(&self, who: Id<AccountKind>) -> impl Future<Output = Result<(), Failure>>;
 
     /// A build's log.
     fn log(
@@ -94,7 +110,7 @@ pub trait Screens: Send + Sync {
         who: Id<AccountKind>,
         handle: &Handle,
         build: build::BuildId,
-    ) -> impl Future<Output = Result<Logged<Self::Follow>, Failure>> + Send;
+    ) -> impl Future<Output = Result<Logged<Self::Follow>, Failure>>;
 
     /// Makes the change a form asked for.
     fn act(
@@ -102,10 +118,10 @@ pub trait Screens: Send + Sync {
         who: Id<AccountKind>,
         handle: &Handle,
         action: &Action,
-    ) -> impl Future<Output = Result<(), Failure>> + Send;
+    ) -> impl Future<Output = Result<(), Failure>>;
 
     /// The site as a download.
-    fn export(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Download, Failure>> + Send;
+    fn export(&self, who: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Download, Failure>>;
 }
 
 /// What a reply carries.
@@ -190,8 +206,22 @@ impl<S: Screens> Dashboard<S> {
 
     async fn serve(&self, who: Option<Id<AccountKind>>, route: &Route) -> Result<Reply<S::Follow>, Failure> {
         match route {
+            Route::Home => {
+                let to = if who.is_some() { Path::account() } else { Path::signin() };
+                return Ok(Reply::see(to));
+            }
             Route::SignIn => return Reply::page(Status::Ok, &SignIn::new()),
             Route::Limits => return Reply::page(Status::Ok, &Limits::new(self.0.limits())),
+            Route::Sent => return Reply::page(Status::Ok, &Sent::new()),
+            Route::Link(token) => return Reply::page(Status::Ok, &Entering::new(token.clone())),
+            Route::Ask(address) => {
+                self.0.ask(address).await?;
+                return Ok(Reply::see(Path::sent()));
+            }
+            Route::Enter(token, address) => {
+                self.0.enter(token, address.as_deref()).await?;
+                return Ok(Reply::see(Path::account()));
+            }
             Route::Script => {
                 return Ok(Reply { status: Status::Ok, location: None, body: Body::Script(Self::SCRIPT) });
             }
@@ -206,9 +236,21 @@ impl<S: Screens> Dashboard<S> {
             Route::Deploys(handle) => Reply::page(Status::Ok, &screens.deploys(who, handle).await?),
             Route::Settings(handle) => Reply::page(Status::Ok, &screens.settings(who, handle).await?),
             Route::Account => Reply::page(Status::Ok, &screens.account(who).await?),
-            Route::SignIn | Route::Limits | Route::Script => Err(Failure::Unrouted { source: crate::Unrouted::Path }),
+            Route::SignOut => {
+                screens.sign_out(who).await?;
+                Ok(Reply::see(Path::signin()))
+            }
+            Route::Home
+            | Route::SignIn
+            | Route::Limits
+            | Route::Script
+            | Route::Sent
+            | Route::Link(_)
+            | Route::Ask(_)
+            | Route::Enter(..) => Err(Failure::Unrouted { source: crate::Unrouted::Path }),
             Route::Build(handle, build) => match screens.log(who, handle, *build).await? {
                 Logged::Done(page) => Reply::page(Status::Ok, &page),
+                Logged::Stored(page) => Reply::page(Status::Ok, &page),
                 Logged::Running(live, follow) => {
                     Ok(Reply { status: Status::Ok, location: None, body: Body::Streamed(Streamed::new(live, follow)) })
                 }

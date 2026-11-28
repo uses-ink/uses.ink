@@ -13,6 +13,7 @@ mod fixtures;
 mod limits;
 mod routing;
 mod settings;
+mod sign;
 mod site;
 mod structure;
 

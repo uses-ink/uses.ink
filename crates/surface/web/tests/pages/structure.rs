@@ -63,7 +63,7 @@ fn a_refresh_is_sent_only_while_a_build_runs() {
     let pages: std::collections::BTreeMap<String, String> = Fixtures::pages().into_iter().collect();
     for (name, page) in &pages {
         let refreshes = page.contains("http-equiv=\"refresh\"");
-        assert_eq!(refreshes, name == "site_paused_building", "{name}");
+        assert_eq!(refreshes, matches!(name.as_str(), "site_paused_building" | "stored_running"), "{name}");
     }
 }
 

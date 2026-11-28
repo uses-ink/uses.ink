@@ -7,7 +7,7 @@ use control::{AccountKind, Handle, Id};
 use uses_ink_web::view::{Account, Deploys, Live, Serving, Settings, Site, Understood, Why};
 use uses_ink_web::{
     Action, Asked, Body, Dashboard, Download, Failure, Follow, Form, Logged, Method, Only, Reply, Request, Screens,
-    Status,
+    Status, Token,
 };
 
 /// What the edge provides, over fixtures.
@@ -16,7 +16,7 @@ struct Fake;
 struct Replay(std::vec::IntoIter<Event>);
 
 impl Follow for Replay {
-    fn next(&mut self) -> impl Future<Output = Result<Option<Event>, Failure>> + Send {
+    fn next(&mut self) -> impl Future<Output = Result<Option<Event>, Failure>> {
         std::future::ready(Ok(self.0.next()))
     }
 }
@@ -27,8 +27,7 @@ impl Screens for Fake {
     fn limits(&self) -> control::Limits {
         control::Limits::DEFAULT
     }
-
-    fn site(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Site, Failure>> + Send {
+    fn site(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Site, Failure>> {
         std::future::ready(Ok(Site::new(handle.clone(), Fixtures::address(), Serving::Nothing)))
     }
 
@@ -37,19 +36,19 @@ impl Screens for Fake {
         _: Id<AccountKind>,
         handle: &Handle,
         _: Only,
-    ) -> impl Future<Output = Result<Understood, Failure>> + Send {
+    ) -> impl Future<Output = Result<Understood, Failure>> {
         std::future::ready(Ok(Understood::new(handle.clone(), Fixtures::source(), vec![])))
     }
 
-    fn why(&self, _: Id<AccountKind>, _: &Handle, _: &Asked) -> impl Future<Output = Result<Why, Failure>> + Send {
+    fn why(&self, _: Id<AccountKind>, _: &Handle, _: &Asked) -> impl Future<Output = Result<Why, Failure>> {
         std::future::ready(Ok(Fixtures::why()))
     }
 
-    fn deploys(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Deploys, Failure>> + Send {
+    fn deploys(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Deploys, Failure>> {
         std::future::ready(Ok(Deploys::new(handle.clone(), Serving::Nothing, vec![])))
     }
 
-    fn settings(&self, _: Id<AccountKind>, _: &Handle) -> impl Future<Output = Result<Settings, Failure>> + Send {
+    fn settings(&self, _: Id<AccountKind>, _: &Handle) -> impl Future<Output = Result<Settings, Failure>> {
         std::future::ready(Err(Failure::NoSite { handle: Fixtures::handle() }))
     }
 
@@ -57,7 +56,7 @@ impl Screens for Fake {
         &self,
         _: Id<AccountKind>,
         id: Id<control::SessionKind>,
-    ) -> impl Future<Output = Result<(), Failure>> + Send {
+    ) -> impl Future<Output = Result<(), Failure>> {
         std::future::ready(if id.to_string() == "0a".repeat(16) {
             Ok(())
         } else {
@@ -65,8 +64,36 @@ impl Screens for Fake {
         })
     }
 
-    fn account(&self, _: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>> + Send {
+    fn account(&self, _: Id<AccountKind>) -> impl Future<Output = Result<Account, Failure>> {
         std::future::ready(Ok(Account::new(Fixtures::at("2026-11-01T12:00:00Z"), vec![])))
+    }
+
+    fn ask(&self, address: &str) -> impl Future<Output = Result<(), Failure>> {
+        std::future::ready(if address.contains('@') {
+            Ok(())
+        } else {
+            Err(Failure::Auth {
+                status: Status::BadRequest,
+                problem: "body".to_owned(),
+                source: uses_ink_web::Cause::of(&std::io::Error::other("not an address")),
+            })
+        })
+    }
+
+    fn enter(&self, token: &Token, _: Option<&str>) -> impl Future<Output = Result<(), Failure>> {
+        std::future::ready(if token.as_str() == "good" {
+            Ok(())
+        } else {
+            Err(Failure::Auth {
+                status: Status::NotFound,
+                problem: "login".to_owned(),
+                source: uses_ink_web::Cause::of(&std::io::Error::other("no such link")),
+            })
+        })
+    }
+
+    fn sign_out(&self, _: Id<AccountKind>) -> impl Future<Output = Result<(), Failure>> {
+        std::future::ready(Ok(()))
     }
 
     fn log(
@@ -74,18 +101,18 @@ impl Screens for Fake {
         _: Id<AccountKind>,
         handle: &Handle,
         build: BuildId,
-    ) -> impl Future<Output = Result<Logged<Replay>, Failure>> + Send {
+    ) -> impl Future<Output = Result<Logged<Replay>, Failure>> {
         std::future::ready(Ok(Logged::Running(
             Live::new(handle.clone(), build),
             Replay(Fixtures::events().into_iter()),
         )))
     }
 
-    fn act(&self, _: Id<AccountKind>, _: &Handle, _: &Action) -> impl Future<Output = Result<(), Failure>> + Send {
+    fn act(&self, _: Id<AccountKind>, _: &Handle, _: &Action) -> impl Future<Output = Result<(), Failure>> {
         std::future::ready(Ok(()))
     }
 
-    fn export(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Download, Failure>> + Send {
+    fn export(&self, _: Id<AccountKind>, handle: &Handle) -> impl Future<Output = Result<Download, Failure>> {
         std::future::ready(Ok(Download { of: handle.clone(), bytes: vec![1, 2, 3] }))
     }
 }
@@ -215,4 +242,37 @@ fn the_limits_page_needs_no_session() {
     assert_eq!(page.status, Status::Ok);
     let Body::Page(text) = page.body else { panic!("a page") };
     assert!(text.contains("<h1") && text.contains("Limits") && text.contains("1 GiB"), "{text}");
+}
+
+#[test]
+fn the_home_page_sends_each_person_where_they_start() {
+    let signed_in = reply(&Ask::get("/"), Some(Ask::who()));
+    assert_eq!((signed_in.status, signed_in.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/account".to_owned()));
+    let signed_out = reply(&Ask::get("/"), None);
+    assert_eq!((signed_out.status, signed_out.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/signin".to_owned()));
+}
+
+#[test]
+fn asking_for_a_link_and_using_one_need_no_session_and_are_posts() {
+    let asked = reply(&Ask::post("/signin", "address=ann%40example.org"), None);
+    assert_eq!((asked.status, asked.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/signin/sent".to_owned()));
+    assert_eq!(reply(&Ask::post("/signin", ""), None).status, Status::BadRequest, "no address, no ask");
+    assert_eq!(reply(&Ask::post("/signin", "address=nobody"), None).status, Status::BadRequest);
+    // opening a link only shows a page; a GET spends nothing and the page posts to the same path
+    let page = reply(&Ask::get("/login/good"), None);
+    let Body::Page(text) = page.body else { panic!("a page") };
+    assert!(text.contains(r#"action="/login/good""#) && text.contains(r#"name="address""#), "{text}");
+    let entered = reply(&Ask::post("/login/good", ""), None);
+    assert_eq!((entered.status, entered.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/account".to_owned()));
+    assert_eq!(reply(&Ask::post("/login/bad", ""), None).status, Status::NotFound);
+    assert_eq!(reply(&Ask::get("/login/a.b"), None).status, Status::NotFound, "a token has a shape");
+    assert_eq!(reply(&Ask::get("/signin/sent"), None).status, Status::Ok);
+}
+
+#[test]
+fn signing_out_is_a_post_that_needs_a_session() {
+    let done = reply(&Ask::post("/logout", ""), Some(Ask::who()));
+    assert_eq!((done.status, done.location.unwrap().as_str().to_owned()), (Status::SeeOther, "/signin".to_owned()));
+    assert_eq!(reply(&Ask::get("/logout"), Some(Ask::who())).status, Status::MethodNotAllowed);
+    assert_eq!(reply(&Ask::post("/logout", ""), None).status, Status::Unauthorized);
 }

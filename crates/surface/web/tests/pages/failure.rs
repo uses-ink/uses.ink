@@ -20,6 +20,15 @@ impl Fixtures {
                 },
             ),
             (
+                "failure_auth",
+                Failure::Auth {
+                    status: uses_ink_web::Status::TooMany,
+                    problem: "auth.rate.limited".to_owned(),
+                    source: Cause::of(&std::io::Error::other("5 requests for this address in the last hour")),
+                },
+            ),
+            ("failure_upload", Failure::Upload { handle: Self::handle() }),
+            (
                 "failure_form",
                 Failure::Invalid {
                     field: Field::Deploy,

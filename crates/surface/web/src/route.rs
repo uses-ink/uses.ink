@@ -7,7 +7,7 @@ use build::BuildId;
 use control::{Handle, Id, SessionKind};
 
 use crate::failure::Unrouted;
-use crate::form::{Action, Asked, Form, Method, Request, Segment};
+use crate::form::{Action, Asked, Form, Method, Request, Segment, Token};
 use crate::{Failure, Field};
 
 /// The five screens, in the order the navigation lists them.
@@ -71,10 +71,23 @@ pub enum Route {
     Settings(Handle),
     /// `/account`.
     Account,
-    /// `/signin`: the passkey sign-in page, for someone who is not signed in.
+    /// `/signin`: the sign-in page, for someone who is not signed in: a passkey, or an email link.
     SignIn,
     /// `/limits`: what the server limits, public.
     Limits,
+    /// `/`: the Account screen for someone signed in, the sign-in page for someone who is not.
+    Home,
+    /// A form posted to `/signin`: a sign-in link is asked for an address.
+    Ask(String),
+    /// `/signin/sent`: what is said after asking, the same for every address.
+    Sent,
+    /// `/login/<token>`: the page a sign-in link opens. It spends nothing until it is posted, so
+    /// a mail scanner that opens every link cannot use one up.
+    Link(Token),
+    /// A form posted to `/login/<token>`: use the link; the first-run link is given an address.
+    Enter(Token, Option<String>),
+    /// A form posted to `/logout`: end the session the request holds.
+    SignOut,
     /// `/passkey.js`: the dashboard's one script, static text.
     Script,
     /// `/<handle>/export`: the site as a download.
@@ -108,10 +121,29 @@ impl Route {
                 Method::Post => Segment(id).session().map(Self::EndSession),
                 Method::Get => Err(Failure::Method { used: Method::Get }),
             },
-            (Some("signin"), None, None) => get(Self::SignIn),
+            (Some("signin"), None, None) => match request.method {
+                Method::Get => Ok(Self::SignIn),
+                Method::Post => Ok(Self::Ask(request.body.need(Field::Address)?.trim().to_owned())),
+            },
+            (Some("signin"), Some("sent"), None) => get(Self::Sent),
+            (Some("login"), Some(token), None) => {
+                let token = Segment(token).token()?;
+                match request.method {
+                    Method::Get => Ok(Self::Link(token)),
+                    Method::Post => {
+                        let given = request.body.value(Field::Address).map(str::trim).filter(|text| !text.is_empty());
+                        Ok(Self::Enter(token, given.map(str::to_owned)))
+                    }
+                }
+            }
+            (Some("logout"), None, None) => match request.method {
+                Method::Post => Ok(Self::SignOut),
+                Method::Get => Err(Failure::Method { used: Method::Get }),
+            },
+
             (Some("limits"), None, None) => get(Self::Limits),
             (Some("passkey.js"), None, None) => get(Self::Script),
-            (None, ..) => Err(Failure::SignedOut),
+            (None, ..) => get(Self::Home),
             (Some(handle), None, None) => get(Self::Site(Segment(handle).handle()?)),
             (Some(handle), Some("understood"), None) => {
                 get(Self::Understood(Segment(handle).handle()?, Only::from(&request.query)))
@@ -133,7 +165,17 @@ impl Route {
     /// The site the address is about, when it is about one.
     pub const fn handle(&self) -> Option<&Handle> {
         match self {
-            Self::Account | Self::SignIn | Self::Limits | Self::Script | Self::EndSession(_) => None,
+            Self::Account
+            | Self::SignIn
+            | Self::Limits
+            | Self::Script
+            | Self::EndSession(_)
+            | Self::Home
+            | Self::Ask(_)
+            | Self::Sent
+            | Self::Link(_)
+            | Self::Enter(..)
+            | Self::SignOut => None,
             Self::Site(handle)
             | Self::Understood(handle, _)
             | Self::Why(handle, _)
@@ -153,7 +195,17 @@ impl Route {
             Self::Deploys(_) | Self::Build(..) => Some(Screen::Deploys),
             Self::Settings(_) => Some(Screen::Settings),
             Self::Account | Self::EndSession(_) => Some(Screen::Account),
-            Self::Export(_) | Self::Act(..) | Self::SignIn | Self::Limits | Self::Script => None,
+            Self::Export(_)
+            | Self::Act(..)
+            | Self::SignIn
+            | Self::Limits
+            | Self::Script
+            | Self::Home
+            | Self::Ask(_)
+            | Self::Sent
+            | Self::Link(_)
+            | Self::Enter(..)
+            | Self::SignOut => None,
         }
     }
 }
@@ -177,6 +229,26 @@ impl Path {
     /// The path of the Account screen.
     pub fn account() -> Self {
         Self("/account".to_owned())
+    }
+
+    /// The path of the sign-in page, which a form posts to for a link.
+    pub fn signin() -> Self {
+        Self("/signin".to_owned())
+    }
+
+    /// The path of the page said after a link was asked for.
+    pub fn sent() -> Self {
+        Self("/signin/sent".to_owned())
+    }
+
+    /// The path of the page a sign-in link opens, which a form posts to use the link.
+    pub fn login(token: &Token) -> Self {
+        Self(format!("/login/{token}"))
+    }
+
+    /// The path a form posts to end the session it holds.
+    pub fn logout() -> Self {
+        Self("/logout".to_owned())
     }
 
     /// The path a form posts to end the session `id`.
