@@ -74,7 +74,7 @@ impl<D: Db> SignIn<D> {
     /// The same sign-in with another step-up window: how recent a passkey sign-in must be for a
     /// session to add or remove a credential or approve a key.
     #[must_use]
-    pub const fn with_step_up(mut self, window: Ttl) -> Self {
+    pub const fn with_window(mut self, window: Ttl) -> Self {
         self.step_up = window;
         self
     }

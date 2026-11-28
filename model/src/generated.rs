@@ -686,21 +686,21 @@ pub enum Problem {
         /// How many passkeys are registered.
         passkeys: u64,
     },
-    /// `auth.forwarded.refused`: the forwarded client address could not be read
-    #[serde(rename = "auth.forwarded.refused")]
-    AuthForwardedRefused,
-    /// `auth.recovery.refused`: that recovery code is unknown, was used, or has a typo
-    #[serde(rename = "auth.recovery.refused")]
-    AuthRecoveryRefused,
-    /// `auth.step-up.required`: this change needs a passkey sign-in within the last few minutes
-    #[serde(rename = "auth.step-up.required")]
-    AuthStepUpRequired,
-    /// `auth.rate.limited`: too many requests from this source in a short time
-    #[serde(rename = "auth.rate.limited")]
-    AuthRateLimited,
     /// `auth.session.missing`: no session of yours has that id
     #[serde(rename = "auth.session.missing")]
     AuthSessionMissing,
+    /// `auth.rate.limited`: too many requests from this source in a short time
+    #[serde(rename = "auth.rate.limited")]
+    AuthRateLimited,
+    /// `auth.step-up.required`: this change needs a passkey sign-in within the last few minutes
+    #[serde(rename = "auth.step-up.required")]
+    AuthStepUpRequired,
+    /// `auth.recovery.refused`: that recovery code is unknown, was used, or has a typo
+    #[serde(rename = "auth.recovery.refused")]
+    AuthRecoveryRefused,
+    /// `auth.forwarded.refused`: the forwarded client address could not be read
+    #[serde(rename = "auth.forwarded.refused")]
+    AuthForwardedRefused,
 }
 impl Problem {
     /// Every code, in catalog order.
@@ -816,11 +816,11 @@ impl Problem {
         "auth.passkey.missing",
         "auth.passkey.label",
         "auth.relying-party.changed",
-        "auth.forwarded.refused",
-        "auth.recovery.refused",
-        "auth.step-up.required",
-        "auth.rate.limited",
         "auth.session.missing",
+        "auth.rate.limited",
+        "auth.step-up.required",
+        "auth.recovery.refused",
+        "auth.forwarded.refused",
     ];
     /// Its dotted code, `noun.noun.reason`.
     pub const fn code(&self) -> &'static str {
@@ -936,11 +936,11 @@ impl Problem {
             Self::AuthPasskeyMissing => "auth.passkey.missing",
             Self::AuthPasskeyLabel => "auth.passkey.label",
             Self::AuthRelyingPartyChanged { .. } => "auth.relying-party.changed",
-            Self::AuthForwardedRefused => "auth.forwarded.refused",
-            Self::AuthRecoveryRefused => "auth.recovery.refused",
-            Self::AuthStepUpRequired => "auth.step-up.required",
-            Self::AuthRateLimited => "auth.rate.limited",
             Self::AuthSessionMissing => "auth.session.missing",
+            Self::AuthRateLimited => "auth.rate.limited",
+            Self::AuthStepUpRequired => "auth.step-up.required",
+            Self::AuthRecoveryRefused => "auth.recovery.refused",
+            Self::AuthForwardedRefused => "auth.forwarded.refused",
         }
     }
     /// How bad it is.
@@ -1057,11 +1057,11 @@ impl Problem {
             Self::AuthPasskeyMissing => Severity::Error,
             Self::AuthPasskeyLabel => Severity::Error,
             Self::AuthRelyingPartyChanged { .. } => Severity::Error,
-            Self::AuthForwardedRefused => Severity::Error,
-            Self::AuthRecoveryRefused => Severity::Error,
-            Self::AuthStepUpRequired => Severity::Error,
-            Self::AuthRateLimited => Severity::Error,
             Self::AuthSessionMissing => Severity::Error,
+            Self::AuthRateLimited => Severity::Error,
+            Self::AuthStepUpRequired => Severity::Error,
+            Self::AuthRecoveryRefused => Severity::Error,
+            Self::AuthForwardedRefused => Severity::Error,
         }
     }
     /// Whose move it is to fix it.
@@ -1178,11 +1178,11 @@ impl Problem {
             Self::AuthPasskeyMissing => Fault::Author,
             Self::AuthPasskeyLabel => Fault::Author,
             Self::AuthRelyingPartyChanged { .. } => Fault::Operator,
-            Self::AuthForwardedRefused => Fault::Operator,
-            Self::AuthRecoveryRefused => Fault::Source,
-            Self::AuthStepUpRequired => Fault::Author,
-            Self::AuthRateLimited => Fault::Author,
             Self::AuthSessionMissing => Fault::Author,
+            Self::AuthRateLimited => Fault::Author,
+            Self::AuthStepUpRequired => Fault::Author,
+            Self::AuthRecoveryRefused => Fault::Source,
+            Self::AuthForwardedRefused => Fault::Operator,
         }
     }
 }
@@ -1815,11 +1815,11 @@ impl From<&Problem> for Coded {
                 "auth.relying-party.changed",
                 vec![Field::from(was.clone()), Field::from(now.clone()), Field::from(*passkeys)],
             ),
-            Problem::AuthForwardedRefused => Coded::new("auth.forwarded.refused", vec![]),
-            Problem::AuthRecoveryRefused => Coded::new("auth.recovery.refused", vec![]),
-            Problem::AuthStepUpRequired => Coded::new("auth.step-up.required", vec![]),
-            Problem::AuthRateLimited => Coded::new("auth.rate.limited", vec![]),
             Problem::AuthSessionMissing => Coded::new("auth.session.missing", vec![]),
+            Problem::AuthRateLimited => Coded::new("auth.rate.limited", vec![]),
+            Problem::AuthStepUpRequired => Coded::new("auth.step-up.required", vec![]),
+            Problem::AuthRecoveryRefused => Coded::new("auth.recovery.refused", vec![]),
+            Problem::AuthForwardedRefused => Coded::new("auth.forwarded.refused", vec![]),
         }
     }
 }
@@ -1960,11 +1960,11 @@ impl TryFrom<Coded> for Problem {
             "auth.relying-party.changed" => {
                 Self::AuthRelyingPartyChanged { was: fields.next()?, now: fields.next()?, passkeys: fields.next()? }
             }
-            "auth.forwarded.refused" => Self::AuthForwardedRefused,
-            "auth.recovery.refused" => Self::AuthRecoveryRefused,
-            "auth.step-up.required" => Self::AuthStepUpRequired,
-            "auth.rate.limited" => Self::AuthRateLimited,
             "auth.session.missing" => Self::AuthSessionMissing,
+            "auth.rate.limited" => Self::AuthRateLimited,
+            "auth.step-up.required" => Self::AuthStepUpRequired,
+            "auth.recovery.refused" => Self::AuthRecoveryRefused,
+            "auth.forwarded.refused" => Self::AuthForwardedRefused,
             _ => return fields.unknown(),
         };
         fields.end(made)

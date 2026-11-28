@@ -357,19 +357,19 @@ impl Message<'_> {
                     "passkeys were made for `{was}` and the relying party id is now `{now}`; {passkeys} would stop working"
                 )
             }
-            Problem::AuthForwardedRefused => {
-                write!(out, "the forwarded client address could not be read")
-            }
-            Problem::AuthRecoveryRefused => {
-                write!(out, "that recovery code is unknown, was used, or has a typo")
+            Problem::AuthSessionMissing => write!(out, "no session of yours has that id"),
+            Problem::AuthRateLimited => {
+                write!(out, "too many requests from this source in a short time")
             }
             Problem::AuthStepUpRequired => {
                 write!(out, "this change needs a passkey sign-in within the last few minutes")
             }
-            Problem::AuthRateLimited => {
-                write!(out, "too many requests from this source in a short time")
+            Problem::AuthRecoveryRefused => {
+                write!(out, "that recovery code is unknown, was used, or has a typo")
             }
-            Problem::AuthSessionMissing => write!(out, "no session of yours has that id"),
+            Problem::AuthForwardedRefused => {
+                write!(out, "the forwarded client address could not be read")
+            }
         }
     }
     pub(crate) fn announcement(announcement: &Announcement, out: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -651,11 +651,11 @@ impl Fix<'_> {
             Problem::AuthPasskeyMissing => true,
             Problem::AuthPasskeyLabel => true,
             Problem::AuthRelyingPartyChanged { .. } => true,
-            Problem::AuthForwardedRefused => true,
-            Problem::AuthRecoveryRefused => true,
-            Problem::AuthStepUpRequired => true,
-            Problem::AuthRateLimited => true,
             Problem::AuthSessionMissing => true,
+            Problem::AuthRateLimited => true,
+            Problem::AuthStepUpRequired => true,
+            Problem::AuthRecoveryRefused => true,
+            Problem::AuthForwardedRefused => true,
         }
     }
     pub(crate) const fn announcement_has(announcement: &Announcement) -> bool {
@@ -1011,22 +1011,19 @@ impl Fix<'_> {
                     "set `--rp-id {was}` again, or accept that people sign in with an email link and add passkeys anew"
                 )
             }
-            Problem::AuthForwardedRefused => {
-                write!(
-                    out,
-                    "set the proxy to send X-Forwarded-For and the trusted hops to the number of proxies in front of the server"
-                )
-            }
-            Problem::AuthRecoveryRefused => {
-                write!(out, "check the code, use another, or sign in with a passkey")
+            Problem::AuthSessionMissing => write!(out, "reload the list of sessions"),
+            Problem::AuthRateLimited => {
+                write!(out, "wait the seconds in the Retry-After header, then try again")
             }
             Problem::AuthStepUpRequired => {
                 write!(out, "sign in with a passkey again, then repeat the change")
             }
-            Problem::AuthRateLimited => {
-                write!(out, "wait the seconds in the Retry-After header, then try again")
+            Problem::AuthRecoveryRefused => {
+                write!(out, "check the code, use another, or sign in with a passkey")
             }
-            Problem::AuthSessionMissing => write!(out, "reload the list of sessions"),
+            Problem::AuthForwardedRefused => {
+                write!(out, "make the proxy send X-Forwarded-For and set the trusted hops to the proxy count")
+            }
         }
     }
     /// Writes nothing for a code without a fix; `Fix` is only made for one that has.

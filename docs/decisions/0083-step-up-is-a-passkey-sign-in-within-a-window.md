@@ -17,7 +17,7 @@ replaces the session id.
   `POST /v1/passkeys/session` already make a session from a passkey assertion with user verification.
   That session is the proof of presence: `SignIn::stepped` is true when the account has a passkey and a
   passkey made the session (its `passkey_session` row) no more than the step-up window ago. The window
-  is `SignIn::STEP_UP`, five minutes; `SignIn::with_step_up` sets another (a `Ttl`, one second to 366 days).
+  is `SignIn::STEP_UP`, five minutes; `SignIn::with_window` sets another (a `Ttl`, one second to 366 days).
 - **The session id is replaced, as auth.md asks.** A passkey sign-in that carries a session cookie ends
   that session, so the old secret stops working the moment the new one is set. `docs/auth.md` names a
   `stepped_up_at` column for the same fact; `db` has no `ALTER`, and `created_at` of a passkey session
