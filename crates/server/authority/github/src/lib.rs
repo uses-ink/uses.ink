@@ -10,6 +10,8 @@
 //!   exchanged for that call. Nothing holds a token: it is a [`authority_forge::Secret`], which
 //!   prints as `Secret(<redacted>)` and is zeroed when dropped.
 //! - [`Signer`] signs RS256; [`Key`] is the one over `ring` that reads the PEM GitHub issues.
+//! - [`Open`] proves a public repository by the repo challenge with no App and no credential, for a
+//!   server that has registered none (decision 0161).
 //!   Every call goes through [`authority_forge::Transport`], which has a fake, so none of this
 //!   reaches GitHub in its tests.
 
@@ -19,6 +21,7 @@ mod hooks;
 mod id;
 mod jwt;
 mod key;
+mod open;
 
 pub use app::{App, Covered, Grant, Target};
 pub use error::Error;
@@ -26,3 +29,4 @@ pub use hooks::Hooks;
 pub use id::{AppId, InstallationId};
 pub use jwt::{Jwt, Unsigned};
 pub use key::{Armor, Key, KeyError, Signer};
+pub use open::Open;

@@ -71,6 +71,9 @@ pub struct Push {
     pub branch: Branch,
     /// The commit it is at now.
     pub revision: Revision,
+    /// The repository's default branch, as the event says it, or none when it says none or one
+    /// this does not read. A site that follows no branch by name follows this one.
+    pub default: Option<Branch>,
 }
 
 /// A commit of a repository: where a status is posted.
@@ -157,9 +160,10 @@ impl Push {
     pub const HEADS: &'static str = "refs/heads/";
 
     /// What a push to `repo` that moved `reference` to `after` comes to, for a `roster`. A commit
-    /// of zeros is the forge's way to say the reference was deleted.
-    pub fn read(repo: Repo, tip: (&str, &str), roster: &Roster) -> Result<Received, Refused> {
-        let (reference, after) = tip;
+    /// of zeros is the forge's way to say the reference was deleted. `tip` is the reference, the
+    /// commit it moved to and the repository's default branch as the event writes it.
+    pub fn read(repo: Repo, tip: (&str, &str, Option<&str>), roster: &Roster) -> Result<Received, Refused> {
+        let (reference, after, default) = tip;
         if !roster.follows(&repo) {
             return Ok(Received::Ignored(Ignored::Unfollowed { repo }));
         }
@@ -174,7 +178,15 @@ impl Push {
             return Ok(Received::Ignored(Ignored::Deleted { branch }));
         }
         let revision = Commit::read(after).map_err(Refused::Commit)?;
-        Ok(Received::Push(Self { repo, branch, revision }))
+        let default = default.and_then(|written| written.parse::<Branch>().ok());
+        Ok(Received::Push(Self { repo, branch, revision, default }))
+    }
+
+    /// The host of the forge that sent an event, from the `https` address of the repository it
+    /// names. A forge that names none, or one that is no DNS name, is a malformed event.
+    pub fn host(address: &str) -> Result<crate::Host, Refused> {
+        let url = url::Url::parse(address).map_err(|_| Refused::Name(NameError::Empty))?;
+        url.host_str().ok_or(Refused::Name(NameError::Empty))?.parse().map_err(Refused::Name)
     }
 
     /// The repository a forge's `full_name` names, on `host`.
@@ -217,9 +229,28 @@ mod test {
     #[test]
     fn a_push_to_a_followed_branch_is_a_push() {
         let roster: Roster = [repo()].into_iter().collect();
-        let got = Push::read(repo(), ("refs/heads/main", SHA), &roster).unwrap();
+        let got = Push::read(repo(), ("refs/heads/main", SHA, None), &roster).unwrap();
         let Received::Push(push) = got else { panic!("{got:?}") };
         assert_eq!((push.branch.as_str(), push.revision.as_str()), ("main", SHA));
+    }
+
+    #[test]
+    fn a_push_carries_the_default_branch_the_event_names() {
+        let roster: Roster = [repo()].into_iter().collect();
+        let read = |default| match Push::read(repo(), ("refs/heads/dev", SHA, default), &roster).unwrap() {
+            Received::Push(push) => push.default.map(|branch| branch.as_str().to_owned()),
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(read(Some("main")).as_deref(), Some("main"));
+        assert_eq!(read(None), None);
+        assert_eq!(read(Some("-bad")), None, "a default this does not read is none, not a refusal of the push");
+    }
+
+    #[test]
+    fn the_host_of_an_event_is_read_from_its_address() {
+        assert_eq!(Push::host("https://Codeberg.org/octo/docs").unwrap().as_str(), "codeberg.org");
+        assert!(Push::host("not a url").is_err());
+        assert!(Push::host("").is_err());
     }
 
     #[test]
@@ -228,23 +259,23 @@ mod test {
         let zeros = "0".repeat(40);
         let other = Repo::new(Host::GITHUB, "x/y".parse().unwrap());
         assert!(matches!(
-            Push::read(other, ("refs/heads/a", SHA), &roster),
+            Push::read(other, ("refs/heads/a", SHA, None), &roster),
             Ok(Received::Ignored(Ignored::Unfollowed { .. }))
         ));
         assert!(matches!(
-            Push::read(repo(), ("refs/tags/v1", SHA), &roster),
+            Push::read(repo(), ("refs/tags/v1", SHA, None), &roster),
             Ok(Received::Ignored(Ignored::Ref { .. }))
         ));
         assert!(matches!(
-            Push::read(repo(), ("refs/heads/a", &zeros), &roster),
+            Push::read(repo(), ("refs/heads/a", &zeros, None), &roster),
             Ok(Received::Ignored(Ignored::Deleted { .. }))
         ));
         assert!(matches!(
-            Push::read(repo(), ("refs/heads/-x", SHA), &roster),
+            Push::read(repo(), ("refs/heads/-x", SHA, None), &roster),
             Ok(Received::Ignored(Ignored::Branch { .. }))
         ));
         assert!(matches!(
-            Push::read(repo(), ("refs/heads/a", "abc"), &roster),
+            Push::read(repo(), ("refs/heads/a", "abc", None), &roster),
             Err(Refused::Commit(CommitError::Length { found: 3 }))
         ));
     }

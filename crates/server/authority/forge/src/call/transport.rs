@@ -1,9 +1,10 @@
 //! The port that talks to a forge's API, and its stand-in.
 
-use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
 use std::fmt;
 use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use serde::Serialize;
@@ -211,12 +212,13 @@ struct Route {
     replies: VecDeque<Response>,
 }
 
-/// A [`Transport`] that answers from replies it was given, and keeps what it was asked.
+/// A [`Transport`] that answers from replies it was given, and keeps what it was asked. It is
+/// `Send` and `Sync`, so a server can hold it behind a pointer as it holds the real one.
 #[derive(Debug, Default)]
 pub struct Fake {
-    routes: RefCell<Vec<Route>>,
-    sent: RefCell<Vec<Request>>,
-    down: Cell<bool>,
+    routes: Mutex<Vec<Route>>,
+    sent: Mutex<Vec<Request>>,
+    down: AtomicBool,
 }
 
 impl Fake {
@@ -225,9 +227,14 @@ impl Fake {
         Self::default()
     }
 
+    /// The guard of a lock; a panic elsewhere in a test does not hide what was asked.
+    fn held<T>(lock: &Mutex<T>) -> MutexGuard<'_, T> {
+        lock.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
     /// Answers `method` `url` with `reply` from now on, in place of any reply given before.
     pub fn reply(&self, method: Method, url: &str, reply: Response) {
-        let mut routes = self.routes.borrow_mut();
+        let mut routes = Self::held(&self.routes);
         match routes.iter_mut().find(|route| route.method == method && route.url == url) {
             Some(route) => route.replies = VecDeque::from([reply]),
             None => routes.push(Route { method, url: url.to_owned(), replies: VecDeque::from([reply]) }),
@@ -237,7 +244,7 @@ impl Fake {
     /// Answers `method` `url` with `reply` after the replies given before have been used once
     /// each. The last reply repeats.
     pub fn then(&self, method: Method, url: &str, reply: Response) {
-        let mut routes = self.routes.borrow_mut();
+        let mut routes = Self::held(&self.routes);
         match routes.iter_mut().find(|route| route.method == method && route.url == url) {
             Some(route) => route.replies.push_back(reply),
             None => routes.push(Route { method, url: url.to_owned(), replies: VecDeque::from([reply]) }),
@@ -246,12 +253,12 @@ impl Fake {
 
     /// Makes every call fail, or answer again.
     pub fn fail(&self, down: bool) {
-        self.down.set(down);
+        self.down.store(down, Ordering::SeqCst);
     }
 
     /// Takes the requests sent so far, oldest first.
     pub fn taken(&self) -> Vec<Request> {
-        std::mem::take(&mut self.sent.borrow_mut())
+        std::mem::take(&mut *Self::held(&self.sent))
     }
 }
 
@@ -259,10 +266,10 @@ impl Transport for Fake {
     type Error = Faked;
 
     fn send(&self, request: Request) -> impl Future<Output = Result<Response, Faked>> {
-        let answer = if self.down.get() {
+        let answer = if self.down.load(Ordering::SeqCst) {
             Err(Faked::Down)
         } else {
-            let mut routes = self.routes.borrow_mut();
+            let mut routes = Self::held(&self.routes);
             let route =
                 routes.iter_mut().find(|route| route.method == request.method && route.url == request.url.as_str());
             match route {
@@ -271,7 +278,7 @@ impl Transport for Fake {
                 None => Err(Faked::Unrouted { method: request.method, url: request.url.to_string() }),
             }
         };
-        self.sent.borrow_mut().push(request);
+        Self::held(&self.sent).push(request);
         std::future::ready(answer)
     }
 }

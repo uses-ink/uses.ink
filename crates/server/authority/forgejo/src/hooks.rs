@@ -3,7 +3,7 @@
 use jiff::Timestamp;
 use serde::Deserialize;
 
-use authority_forge::{Headers, Host, Ignored, Intake, Limits, Push, Received, Refused, Roster, Secret};
+use authority_forge::{Headers, Host, Ignored, Intake, Limits, Push, Received, Refused, Repo, Roster, Secret};
 
 /// The part of a push event this reads. Every other field is left unread.
 #[derive(Debug, Deserialize)]
@@ -17,6 +17,16 @@ struct Event {
 #[derive(Debug, Deserialize)]
 struct Named {
     full_name: String,
+    #[serde(default)]
+    html_url: String,
+    #[serde(default)]
+    default_branch: Option<String>,
+}
+
+/// What `Hooks::named` reads: the repository alone.
+#[derive(Debug, Deserialize)]
+struct Naming {
+    repository: Named,
 }
 
 /// The webhook of one instance: the secret that instance signs with.
@@ -35,6 +45,14 @@ impl Hooks {
     pub const EVENT: (&'static str, &'static str) = ("X-Forgejo-Event", "X-Gitea-Event");
     /// The headers with the delivery id, which the signature does not cover.
     pub const DELIVERY: (&'static str, &'static str) = ("X-Forgejo-Delivery", "X-Gitea-Delivery");
+
+    /// The repository a delivery names, with the instance read from its `html_url`, before the
+    /// delivery is trusted: it finds the secret the delivery must be signed with. Nothing it
+    /// returns is acted on until the signature held.
+    pub fn named(body: &[u8]) -> Result<Repo, Refused> {
+        let naming: Naming = serde_json::from_slice(body).map_err(Refused::Json)?;
+        Push::repo(Push::host(&naming.repository.html_url)?, &naming.repository.full_name)
+    }
 
     /// A webhook of the instance at `host` that checks deliveries against `secret` within `limits`.
     pub fn new(host: Host, secret: Secret, limits: Limits) -> Self {
@@ -56,6 +74,6 @@ impl Hooks {
         }
         let pushed: Event = serde_json::from_slice(body).map_err(Refused::Json)?;
         let repo = Push::repo(self.host.clone(), &pushed.repository.full_name)?;
-        Push::read(repo, (&pushed.reference, &pushed.after), roster)
+        Push::read(repo, (&pushed.reference, &pushed.after, pushed.repository.default_branch.as_deref()), roster)
     }
 }

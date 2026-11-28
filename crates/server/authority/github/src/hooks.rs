@@ -3,7 +3,7 @@
 use jiff::Timestamp;
 use serde::Deserialize;
 
-use authority_forge::{Headers, Host, Ignored, Intake, Limits, Push, Received, Refused, Roster, Secret};
+use authority_forge::{Headers, Host, Ignored, Intake, Limits, Push, Received, Refused, Repo, Roster, Secret};
 
 /// The part of a push event this reads. Every other field is left unread.
 #[derive(Debug, Deserialize)]
@@ -17,6 +17,14 @@ struct Event {
 #[derive(Debug, Deserialize)]
 struct Named {
     full_name: String,
+    #[serde(default)]
+    default_branch: Option<String>,
+}
+
+/// What `Hooks::named` reads: the repository alone.
+#[derive(Debug, Deserialize)]
+struct Naming {
+    repository: Named,
 }
 
 /// The webhook of the App: one secret for every delivery.
@@ -33,6 +41,13 @@ impl Hooks {
     pub const EVENT: &'static str = "X-GitHub-Event";
     /// The header with the delivery id, which the signature does not cover.
     pub const DELIVERY: &'static str = "X-GitHub-Delivery";
+
+    /// The repository a delivery names, read before the delivery is trusted, to find the secret
+    /// it must be signed with. Nothing it returns is acted on until the signature held.
+    pub fn named(body: &[u8]) -> Result<Repo, Refused> {
+        let naming: Naming = serde_json::from_slice(body).map_err(Refused::Json)?;
+        Push::repo(Host::GITHUB, &naming.repository.full_name)
+    }
 
     /// A webhook that checks deliveries against `secret` within `limits`.
     pub fn new(secret: Secret, limits: Limits) -> Self {
@@ -56,6 +71,6 @@ impl Hooks {
         }
         let pushed: Event = serde_json::from_slice(body).map_err(Refused::Json)?;
         let repo = Push::repo(Host::GITHUB, &pushed.repository.full_name)?;
-        Push::read(repo, (&pushed.reference, &pushed.after), roster)
+        Push::read(repo, (&pushed.reference, &pushed.after, pushed.repository.default_branch.as_deref()), roster)
     }
 }

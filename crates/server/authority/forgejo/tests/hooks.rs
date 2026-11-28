@@ -95,3 +95,11 @@ fn a_missing_header_and_an_oversize_body_are_typed() {
     let got = small.receive((&forgejo("push", "f-9", PUSH_SIG), PUSH), &roster(), now());
     assert!(matches!(got, Err(Refused::Oversize { limit: 8, .. })), "{got:?}");
 }
+
+#[test]
+fn a_delivery_names_its_repository_and_instance_before_it_is_trusted() {
+    let body = br#"{"repository":{"full_name":"Octo/Docs","html_url":"https://Codeberg.org/Octo/Docs"}}"#;
+    assert_eq!(Hooks::named(body).unwrap().to_string(), "codeberg.org/octo/docs");
+    assert!(matches!(Hooks::named(br#"{"repository":{"full_name":"octo/docs"}}"#), Err(Refused::Name(_))));
+    assert!(matches!(Hooks::named(b"[]"), Err(Refused::Json(_))));
+}
