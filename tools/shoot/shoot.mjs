@@ -47,9 +47,9 @@ class Folder {
 const say = (text) => console.log(`shoot: ${text}`);
 
 /** The most bytes of one picture printed in the log, before the palette gets smaller. */
-const BUDGET = 350_000;
-/** The tallest page cut, in pixels: Chromium's texture limit is 16384. */
-const TALLEST = 15_000;
+const BUDGET = 500_000;
+/** The tallest picture, in pixels: a longer page is cut, which keeps the log small. */
+const TALLEST = 9_000;
 
 class Engines {
   /** The ways to start a Chromium, in order: what each is and how it launches. */
@@ -163,7 +163,10 @@ class Page {
   async take() {
     const height = await this.page.evaluate(() => document.documentElement.scrollHeight);
     const clip = height > TALLEST ? { x: 0, y: 0, width: this.width, height: TALLEST } : undefined;
-    if (clip) say(`${this.name}: cut at ${TALLEST}px of ${height}px`);
+    if (clip) {
+      say(`${this.name}: cut at ${TALLEST}px of ${height}px`);
+      await this.page.setViewportSize({ width: this.width, height: TALLEST });
+    }
     const png = await this.page.screenshot({ fullPage: clip === undefined, clip, type: "png" });
     const picture = Picture.pack(png);
     say(`${this.name}: ${picture.width}x${picture.height}, ${picture.bytes.length} bytes in ${picture.colours} colours`);

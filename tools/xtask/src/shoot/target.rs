@@ -35,7 +35,7 @@ impl Folder {
 
     /// The pages of the documentation site that are pictured: the home page, the longest page, a
     /// decision page, and the decisions index; each as its name and its route.
-    const DOCS: [(&'static str, &'static str); 3] = [("home", "/"), ("cli", "/cli"), ("decisions", "/decisions/README")];
+    const DOCS: [(&'static str, &'static str); 3] = [("home", "/"), ("cli", "/cli"), ("decisions", "/decisions")];
 
     /// The decision pictured, by its number.
     const DECISION: &'static str = "0180";
