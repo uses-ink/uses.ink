@@ -67,12 +67,15 @@ What a documentation site still lacks, written into the roadmap's M5:
 - **No search.** Reader search is in the roadmap's later list.
 - **No fold of the sidebar on a phone.** The three columns stack in reading order below 64rem, which
   works without script and is long on a page with many folders.
+- **Titles with code show their backticks.** A page whose front matter title holds backticks (several decisions)
+  shows them as written in its heading.
 - **Not deployed.** Nothing publishes the site until `uses.ink` is live.
 
 The look of the site is the design pass, not a second tool's: white paper, black pencil, Gaegu for names and
 headings, Literata for the text, the red pen for uses.ink speaking. It has no dark scheme, since the design
-has none. Nobody has looked at it in a browser on a farm host (none has one), so the stylesheet is checked
-against the mock's CSS and the built HTML, and the owner's eye is the open check.
+has none. It is looked at in a browser: `cargo xtask shoot site` draws the landing page and the docs in headless
+Chromium on a farm host at 1440 and 390 pixels wide (decision 0240, `docs/workflow.md`), and the stylesheet was
+corrected against the mock's own pictures. The owner's eye is still the last check.
 
 Closed by 0140 to 0142, and by 0180 to 0182 for the look: the sidebar and previous and next links, the uses.ink look through theme
 tokens (T3), the outline of a page, the `page.kind` of a whole folder and the order of listings.

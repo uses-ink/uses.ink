@@ -199,6 +199,37 @@ anywhere.
 A call that has several jobs (`farm check`) exits with the worst of them: 3 over 2 over 4 over
 124 over 1 over 75 over 0.
 
+## Looking at the built pages
+
+`cargo xtask shoot` draws the pages `ink` builds in a real headless Chromium and brings the pictures back
+(decision 0240). It is not a stage of the gate and not a job of `.config/farm.toml` (every job there runs in
+`farm check`); run it by name on a host with node and network, which the x86_64 build hosts have:
+
+```sh
+farm --detach cargo xtask shoot site --width 1440,390   # landing and docs, built and served by ink
+farm wait <id>
+```
+
+| Target | What it takes pictures of |
+| --- | --- |
+| `site` | `landing/` and `docs/` (home, `cli`, the decisions index, decision 0180), each built with `ink build` and served with `ink serve` on loopback |
+| `dashboard` | `ink serve --data` with an empty data folder, signed out |
+| `mock` | the design mock, from `--from <folder>` (default `tools/shoot/mock`), for a reference from the same engine |
+| `probe` | nothing: whether a browser starts here, and which |
+| `lock` | nothing: prints `tools/shoot/package-lock.json` between markers, to be committed |
+
+`--width` takes up to eight widths (default `1440,390`). The PNGs are written under `target/shots/` on the
+host and printed into the farm's log as base64 between `=====SHOT <name> <bytes> <width>x<height>=====` and
+`=====END <name>=====` lines, since the log is the only way back; a page taller than 9000 pixels is cut there.
+The log also says, per page and width, which fonts loaded, the page's height, any horizontal overflow with the
+elements past the edge, and the browser's console messages and failed requests. Decode the log with a small
+script of your own: the blocks are plain base64 of a PNG.
+
+The browser is Playwright's `chromium-headless-shell`, downloaded into `~/.cache/uses-ink/browsers/` of the
+host by the packages pinned in `tools/shoot/` and installed with `npm ci` under `target/shoot/node/`. It needs
+no system package and no sudo on the hosts tried; `@sparticuz/chromium` is the fallback when it does not
+start. The mock is not in the repository: put it in the workspace under an ignored path and pass `--from`.
+
 ## The inner loop
 
 While you work, run the narrowest command that answers the question, scoped to a package:
