@@ -96,9 +96,9 @@ are not. What differs from the text above, or was left out:
   routes; the stored key is the JSON of the library's COSE key; the credential link to a session is
   a `passkey_session` table, because `db` has no ALTER. Operator registration goes through the
   admin-link session.
-- **Not done.** Step-up approval of enrolments by passkey, recovery codes and the delayed email
-  recovery, a per-source limit on `POST /v1/passkeys/challenge`, a run in `workerd`, and the browser
-  matrix (spike 2) stay open.
+- **Not done.** The delayed email recovery, a run in `workerd`, and the browser matrix (spike 2) stay
+  open. Built since (2026-11-28): the challenge limit and the Origin check (0082), step-up (0083) and
+  recovery codes (0084).
 - **Tests.** `edge/api/tests/passkey.rs` drives the real handlers with a software authenticator
   (`tests/support/authenticator.rs`, p256 ECDSA): the full ceremony, wrong origin, wrong rp id,
   replayed and expired challenge, counter rollback, unknown credential, user verification missing.

@@ -193,8 +193,12 @@ absolute sessions with revocation, the once-only first-run link, the sign-up pol
 port with `Capture`, `Stdout` and the SMTP adapter `mail/smtp`, rate limits, and the API routes
 `POST /v1/login`, `GET` and `POST /v1/login/{token}`, `GET` and `DELETE /v1/session` in
 `edge/api`'s `Door`, beside the owner token. `ink serve --data` prints the first-run link once
-and takes the `--mail`, `--smtp-*`, TTL, policy and rate flags. Not done: the dashboard screens
-(`web`), a route to list and revoke sessions, a forwarded-header source, passkeys.
+and takes the `--mail`, `--smtp-*`, TTL, policy and rate flags. Not done then: the dashboard screens
+(`web`), a route to list and revoke sessions, a forwarded-header source, passkeys. Built since
+(2026-11-28): sessions are listed and ended by id with an Account screen (0081), the Origin check and
+the challenge limit (0082), step-up (0083), recovery codes (0084) and the forwarded-header source
+(0085). Open: the CLI flags and migration line for those, the email recovery with a delay, the mail
+notice on a recovery code's use, and a dashboard screen for recovery codes.
 
 Progress (2026-11-27, 0052): the API and intake are built (`edge/api`, mounted by `edge/axum` on
 its own host, `ink serve --data`), with the `Credentials` port and a single-owner token adapter,
@@ -234,7 +238,7 @@ domains in `status`, streaming intake.
   list. **Built (0068, slice 1):** `ink login`, `logout`, `whoami`, `key`, the `Ink-Sig-1` profile and
   device-code enrolment replace the owner token. **Built (0068, slice 2):** passkeys behind the
   `Passkeys` port (`webauthn-rs-core`, builds for wasm32), the dashboard sign-in and list; step-up
-  approval, recovery and the browser matrix are open.
+  (0083) and recovery codes (0084) are built; the delayed email recovery and the browser matrix are open.
 - `ink push` and `ink:source-upload`; `ink status`, `watch`, `deploys`, `rollback`, `resume`,
   `export`.
 - CLI redesign (0061, Accepted; `docs/cli.md`): the typed output grammar and one renderer, then the

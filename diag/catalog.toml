@@ -1009,6 +1009,12 @@ fault = "source"
 message = "that recovery code is unknown, was used, or has a typo"
 fix = "check the code, use another, or sign in with a passkey"
 
+[diagnostic."auth.forwarded.refused"]
+severity = "error"
+fault = "operator"
+message = "the forwarded client address could not be read"
+fix = "set the proxy to send X-Forwarded-For and the trusted hops to the number of proxies in front of the server"
+
 [notice."auth.token.retired"]
 fields = { token_file = "text" }
 message = "the owner token in `{token_file}` no longer works"

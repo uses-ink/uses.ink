@@ -81,3 +81,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0082 | [Every cookie route that changes state checks its origin, and starting a passkey sign-in is limited per source](0082-every-cookie-route-that-changes-state-checks-its.md) | built | 2026-11-28 | security |
 | 0083 | [Step-up is a passkey sign-in within a window; adding or removing a passkey and approving a key need it](0083-step-up-is-a-passkey-sign-in-within-a-window.md) | built | 2026-11-28 | security |
 | 0084 | [Recovery codes are minted once, kept as digests, and each is spent once to register a new passkey](0084-recovery-codes-are-minted-once-and-spent-once-on-a-new-passkey.md) | built | 2026-11-28 | security |
+| 0085 | [The client address behind a proxy is read from X-Forwarded-For by trusted hop count, off by default](0085-the-client-address-behind-a-proxy-is-read-from-x-forwarded.md) | built | 2026-11-28 | security |
