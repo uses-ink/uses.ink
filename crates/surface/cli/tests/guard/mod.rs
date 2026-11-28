@@ -30,6 +30,16 @@ impl Guard {
         Self { child }
     }
 
+    /// Waits until something accepts connections on `port`, so a line that was printed is not
+    /// taken for a listener that is up: 20 ms steps, at most 30 s.
+    pub fn ready(port: u16) {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
+            assert!(std::time::Instant::now() < deadline, "nothing accepted connections on port {port} in 30 s");
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+    }
+
     /// Whether the child has already ended.
     pub fn ended(&mut self) -> bool {
         !matches!(self.child.try_wait(), Ok(None))

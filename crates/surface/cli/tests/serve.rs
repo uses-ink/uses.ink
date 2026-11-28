@@ -6,6 +6,7 @@
 
 extern crate uses_ink_cli as cli;
 
+mod guard;
 mod keyed;
 
 use std::io::{Read, Write};
@@ -357,15 +358,16 @@ fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
         let part = received.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
         printed.push_str(std::str::from_utf8(&part).unwrap());
     }
-    // the API is up once its last setting line is written (to stderr): the operator keys file is
+    // the API is up once the report's last line is written (to stderr): the operator keys file is
     // made before
     let mut settings = String::new();
-    while !settings.contains("backing off") {
+    while !settings.contains("ctrl-c to stop") {
         let part = heard.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
         settings.push_str(std::str::from_utf8(&part).unwrap());
     }
     let first = printed.lines().next().unwrap();
     let site = Site { port: first.strip_prefix("http://127.0.0.1:").unwrap().parse().unwrap(), _stdout: received };
+    guard::Guard::ready(site.port);
     assert!(!handle.is_finished(), "ink serve ended before the API was used");
     let key = keyed::Keyed::operator(&data, "api.localhost:8080");
     let denied = site.call(("GET", "/v1/sites"), "Bearer wrong", b"");
@@ -383,4 +385,73 @@ fn the_api_takes_a_site_and_a_built_folder_when_given_a_data_folder() {
     assert_eq!((exported.status(), exported.header("content-type")), ("200", Some("application/x-tar")));
     // the folder is still served on every other host
     assert_eq!(site.get("/tea", &[]).status(), "200");
+}
+
+/// `--print-config` says what a start would run with, from the flags alone: no data folder is
+/// made, so the first-run link of a fresh folder is not used up.
+#[test]
+fn print_config_says_what_a_start_would_run_with_and_makes_nothing() {
+    let root = scratch("print-config");
+    let data = root.join("data");
+    let args = ["serve", "--print-config", "--data", data.to_str().unwrap(), "--upload-bytes", "536870912"];
+    let (exit, out, err) = ink(&args);
+    assert_eq!(exit, cli::Exit::Done, "{err}");
+    assert!(out.contains("would listen on"), "{out}");
+    assert!(out.contains("512 MiB") && out.contains("--upload-bytes"), "a changed default names its flag: {out}");
+    assert!(out.contains("not made by --print-config"), "{out}");
+    assert!(!data.exists(), "nothing is made by a print of the config");
+
+    let mut json_args = vec!["--json"];
+    json_args.extend(args);
+    let (exit, out, err) = ink(&json_args);
+    assert_eq!(exit, cli::Exit::Done, "{err}");
+    let document: serde_json::Value = serde_json::from_str(out.trim()).unwrap();
+    assert_eq!((document["schema"].as_str(), document["stage"].as_str()), (Some("uses.serve/v2"), Some("planned")));
+    assert_eq!(document["admin"]["state"], "unminted");
+    let rows = document["sections"].as_array().unwrap().iter().flat_map(|section| section["rows"].as_array().unwrap());
+    let archive = rows.into_iter().find(|row| row["key"] == "upload_archive").unwrap();
+    assert_eq!(
+        (archive["value"]["unit"].as_str(), archive["value"]["amount"].as_u64()),
+        (Some("bytes"), Some(536_870_912))
+    );
+    assert_eq!(archive["source"]["flag"], "--upload-bytes");
+    assert!(!data.exists(), "nothing is made by a print of the config");
+}
+
+/// A killed child, so a failed assertion does not leave a server running.
+struct Killed(std::process::Child);
+
+impl Drop for Killed {
+    fn drop(&mut self) {
+        self.0.kill().ok();
+        self.0.wait().ok();
+    }
+}
+
+/// The contract a script reads: with `--json` the first and only line of stdout is the start
+/// report, with the addresses and the first-run link as typed fields.
+#[test]
+fn the_start_is_one_json_document_with_the_addresses_and_the_first_run_link() {
+    use std::io::BufRead as _;
+    let root = scratch("json-start");
+    let out = build(&root);
+    let data = root.join("data");
+    let mut child = Killed(
+        std::process::Command::new(env!("CARGO_BIN_EXE_ink"))
+            .args(["--json", "serve", out.to_str().unwrap(), "--addr", "127.0.0.1:0", "--data", data.to_str().unwrap()])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .unwrap(),
+    );
+    let mut line = String::new();
+    std::io::BufReader::new(child.0.stdout.take().unwrap()).read_line(&mut line).unwrap();
+    let document: serde_json::Value = serde_json::from_str(&line).unwrap();
+    assert_eq!((document["schema"].as_str(), document["stage"].as_str()), (Some("uses.serve/v2"), Some("serving")));
+    assert!(document["address"].as_str().unwrap().starts_with("http://127.0.0.1:"), "{document}");
+    assert!(document["urls"]["api"].as_str().unwrap().ends_with("/v1/sites"), "{document}");
+    assert_eq!(document["admin"]["state"], "issued");
+    assert!(document["admin"]["link"].as_str().unwrap().contains("/login/"), "{document}");
+    assert_eq!(document["admin"]["valid"], 86_400);
 }

@@ -90,13 +90,14 @@ impl Rig {
                         .unwrap(),
                 );
                 let started = std::time::Instant::now();
-                while !std::fs::read_to_string(&log).unwrap_or_default().contains("backing off") {
+                while !std::fs::read_to_string(&log).unwrap_or_default().contains("ctrl-c to stop") {
                     assert!(started.elapsed() < Duration::from_secs(60), "the server did not start");
                     if child.ended() {
                         return None;
                     }
                     std::thread::sleep(Duration::from_millis(100));
                 }
+                guard::Guard::ready(port);
                 Some((child, port))
             })
             .unwrap_or_else(|| panic!("the server ended five times before it started"));

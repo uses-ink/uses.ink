@@ -68,7 +68,8 @@ fn a_key_made_by_login_deploys_is_not_replayable_and_ends_when_removed() {
             loop {
                 // the lines end when the child does, which is a start that did not happen
                 let line = received.recv_timeout(deadline.saturating_duration_since(Instant::now())).ok()?;
-                if line.contains("backing off") {
+                if line.contains("ctrl-c to stop") {
+                    guard::Guard::ready(port);
                     return Some((running, port));
                 }
             }

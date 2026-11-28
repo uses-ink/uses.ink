@@ -179,9 +179,14 @@ impl Server {
             .unwrap();
         *self.child.lock().unwrap() = Some(child);
         let started = Instant::now();
-        while !self.said()[before..].contains("backing off") {
+        while !self.said()[before..].contains("ctrl-c to stop") {
             assert!(started.elapsed() < Self::PATIENCE, "the server did not start: {}", self.said());
             std::thread::sleep(Duration::from_millis(100));
+        }
+        // the line is printed after the bind, but a test must wait for accept, not for a line
+        while TcpStream::connect(("127.0.0.1", self.port)).is_err() {
+            assert!(started.elapsed() < Self::PATIENCE, "nothing accepted on port {}: {}", self.port, self.said());
+            std::thread::sleep(Duration::from_millis(20));
         }
     }
 
