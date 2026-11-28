@@ -4,6 +4,7 @@ use std::error::Error;
 use std::fmt;
 use std::path::PathBuf;
 
+use super::catalog::Lack;
 use super::front::Defect;
 use super::number::Number;
 
@@ -40,8 +41,10 @@ pub(crate) enum Fault {
     Replaced { number: Number },
     /// A decision with status `superseded` that no other supersedes.
     Orphan { number: Number },
-    /// The decisions index that is not what the front matter generates.
+    /// A generated index that is not what its sources generate.
     Stale { path: PathBuf },
+    /// A workspace member the crate index cannot list.
+    Crate { file: PathBuf, lack: Lack },
 }
 
 #[expect(clippy::too_many_lines, reason = "one arm per fault, each a sentence")]
@@ -91,14 +94,19 @@ impl fmt::Display for Fault {
             }
             Self::Orphan { number } => write!(out, "{number} has status superseded but no decision supersedes it"),
             Self::Stale { path } => {
-                write!(out, "{} is not what the front matter generates (run `cargo xtask docs`)", path.display())
+                write!(out, "{} is not what its sources generate (run `cargo xtask docs`)", path.display())
             }
+            Self::Crate { file, lack } => write!(out, "{}: {lack}", file.display()),
         }
     }
 }
 
 impl Error for Fault {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        if let Self::Front { defect, .. } = self { Some(defect) } else { None }
+        match self {
+            Self::Front { defect, .. } => Some(defect),
+            Self::Crate { lack, .. } => Some(lack),
+            _ => None,
+        }
     }
 }

@@ -10,7 +10,6 @@ use super::fault::Fault;
 use super::number::Number;
 use crate::error::Error;
 use crate::layout::config::Numbering;
-use crate::report::{Line, Report};
 
 /// The index: what it holds, and the check that the file on disk holds it.
 #[derive(Debug, Clone, Copy)]
@@ -69,17 +68,8 @@ impl Index {
         }
     }
 
-    /// Writes the index from the files under `root`, as `cargo xtask docs` does.
-    pub(crate) fn write(root: &Path, report: &mut Report) {
-        match Self::update(root) {
-            Ok(Some(path)) => report.line(Line::Wrote(path)),
-            Ok(None) => report.line(Line::Unchanged),
-            Err(error) => report.fail(error),
-        }
-    }
-
     /// The path written, or none when the index was already current.
-    fn update(root: &Path) -> Result<Option<PathBuf>, Error> {
+    pub(super) fn update(root: &Path) -> Result<Option<PathBuf>, Error> {
         let corpus = Corpus::read(root)?;
         let decisions = Decisions::read(&corpus);
         if !decisions.faults.is_empty() {

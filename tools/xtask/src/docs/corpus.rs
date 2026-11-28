@@ -42,18 +42,27 @@ impl Row<'_> {
 }
 
 impl Doc {
-    /// Whether it is Markdown the repository's readers open first: the docs, the README and the
-    /// product brief.
+    /// Whether it is Markdown the repository's readers open first: the docs, the README, the
+    /// product brief and the README of a crate.
     pub(crate) fn is_prose(&self) -> bool {
         self.path.extension().is_some_and(|extension| extension == "md")
             && (self.path.starts_with("docs")
                 || self.path == Path::new("README.md")
-                || self.path == Path::new("PRODUCT.md"))
+                || self.path == Path::new("PRODUCT.md")
+                || self.is_readme())
     }
 
-    /// Whether it is Markdown under `docs/`.
+    /// Whether it is the `README.md` of a crate: one under `crates/` or `tools/` that is not a
+    /// site a fixture builds.
+    pub(crate) fn is_readme(&self) -> bool {
+        self.path.file_name().is_some_and(|name| name == "README.md")
+            && (self.path.starts_with("crates") || self.path.starts_with("tools"))
+            && !self.path.components().any(|part| part.as_os_str() == "fixture")
+    }
+
+    /// Whether it is Markdown under `docs/`, or the README of a crate.
     pub(crate) fn is_doc(&self) -> bool {
-        self.is_prose() && self.path.starts_with("docs")
+        (self.is_prose() && self.path.starts_with("docs")) || self.is_readme()
     }
 
     /// Its lines outside fenced code blocks.

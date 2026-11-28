@@ -283,6 +283,13 @@ impl Order {
     ];
 }
 
+impl Order {
+    /// The crates of ours that the crate named `name` may depend on; none when its row is missing.
+    pub(crate) fn allowed(name: &str) -> Option<&'static [&'static str]> {
+        Self::MAY_USE.iter().find(|(known, _)| *known == name).map(|&(_, allowed)| allowed)
+    }
+}
+
 impl Rule for Order {
     const NAME: &'static str = "order";
 

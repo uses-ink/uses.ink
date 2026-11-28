@@ -8,7 +8,7 @@
 //! - `layout`: every layout rule over the workspace, and every generated file fresh. Fails with
 //!   every problem listed.
 //! - `docs`: write the decisions index, `docs/decisions/README.md`, from the front matter of the
-//!   decision files.
+//!   decision files, and the crate index, `docs/crates.md`, from the manifests.
 //! - `component`: build the plugins' guest crates for `wasm32-unknown-unknown` and wrap each
 //!   into a component under `target/plugin/`.
 //! - `check [stage]`: the whole gate, or one of its stages (`lint`, `test`, `docs`, `wasm`,
@@ -117,7 +117,7 @@ impl Task {
                 return report;
             }
             Self::Docs => {
-                docs::Index::write(root, &mut report);
+                docs::Generated::write(root, &mut report);
                 return report;
             }
             Self::Component => {

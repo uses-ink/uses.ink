@@ -1,4 +1,4 @@
-//! Every backticked path of a crate or directory in `docs/` exists, unless its block (a
+//! Every backticked path of a crate or directory in `docs/` and in a crate's README exists, unless its block (a
 //! paragraph, list item, heading or table row) says it is planned. A path is one that has a `/`
 //! and starts with a directory of the root; globs, placeholders, URLs and `..` parts are not.
 
@@ -132,9 +132,16 @@ mod tests {
     }
 
     #[test]
-    fn only_markdown_under_docs_is_read() {
+    fn only_markdown_under_docs_and_crate_readmes_is_read() {
         let mut corpus = Corpus::sample(&[("README.md", "`edge/worker`\n"), ("edge/a.rs", "// `edge/worker`\n")]);
         corpus.config.docs.planned = vec![];
         assert_eq!(found(&corpus), Vec::<String>::new());
+        let mut corpus = Corpus::sample(&[
+            ("crates/edge/README.md", "`edge/worker`\n"),
+            ("crates/edge/fixture/site/README.md", "`edge/worker`\n"),
+            ("edge/a.rs", ""),
+        ]);
+        corpus.config.docs.planned = vec![];
+        assert_eq!(found(&corpus).len(), 1);
     }
 }
