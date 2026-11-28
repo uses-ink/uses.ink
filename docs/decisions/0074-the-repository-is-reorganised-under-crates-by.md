@@ -16,7 +16,7 @@ In short:
 - Every workspace crate moves under `crates/<layer>/` (`core`, `port`, `server`, `runtime`,
   `surface`, `standalone`), families whole (`crates/port/blob/dir`). `xtask` moves to `tools/`.
   Crate names do not change; the `Names` rule reads the path below the layer. `trace` is renamed
-  `logging` and `queue/local` and `build/local` get mechanism names.
+  `logging`, and the queue and build adapters named `local` become `queue/rows` and `build/process`.
 - `cli`, `control`, `model`, `farm`, `xtask` and `edge` are split into directories first. Only
   `control` gains crates (`rows`, `signin`, `keys`), because its subsystems share its rows.
 - Duplicated facts get one home: the output-folder layout in `model`, the API views in `edge/api`,
