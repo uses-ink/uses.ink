@@ -364,6 +364,25 @@ fn enrolling_is_closed_when_too_many_wait_and_the_ask_is_checked() {
 }
 
 #[test]
+fn one_source_asking_to_enrol_cannot_close_the_gate_for_the_others() {
+    let rig = Rig::strict();
+    let ask = |n: u8, from: &str| {
+        let body = json!({ "key": signer(n).public().to_string(), "label": "k", "purpose": "device" }).to_string();
+        let mut request = Rig::unsigned((Method::Post, "/v1/enrol"), None, body.as_bytes());
+        request.source = Some(from.parse().unwrap());
+        rig.answer(&request)
+    };
+    // the flood is turned away by its own source's limit, long before 20 keys wait
+    let outcomes: Vec<(Status, String)> =
+        (0..30).map(|n| ask(100 + n, "203.0.113.9")).map(|reply| (reply.status, code(&reply))).collect();
+    let made = outcomes.iter().filter(|(status, _)| *status == Status::Created).count();
+    assert_eq!(made, 5);
+    assert!(outcomes.iter().skip(5).all(|outcome| *outcome == (Status::TooMany, "auth.enrolment.limited".to_owned())));
+    // and everyone else is still taken
+    assert_eq!(ask(200, "198.51.100.1").status, Status::Created);
+}
+
+#[test]
 fn each_shape_of_refusal_is_a_golden() {
     let rig = rig();
     let route = (Method::Get, "/v1/whoami");

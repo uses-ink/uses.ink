@@ -15,7 +15,7 @@ use control::{AccountKind, Control, Domain, Id, NewAccount, Origin, Remembered, 
 use db::Steps;
 use db_sqlite::Sqlite;
 use edge_api::{
-    Api, Closing, Enrol, Limits, Method, OperatorFile, OperatorKey, Payload, Reply, Request, Signatures, Signing,
+    Api, Closing, Enrol, Limits, Method, OperatorFile, OperatorKey, Payload, Rate, Reply, Request, Signatures, Signing,
     Window,
 };
 use jiff::Timestamp;
@@ -53,7 +53,17 @@ pub struct Rig {
 }
 
 impl Rig {
+    /// A rig whose per-source limit on asking to enrol is out of the way of tests that ask often.
     pub fn new(limits: Limits) -> Self {
+        Self::build(limits, Some("1000/1h".parse().unwrap()))
+    }
+
+    /// A rig with the default per-source limit on asking to enrol.
+    pub fn strict() -> Self {
+        Self::build(Limits::default(), None)
+    }
+
+    fn build(limits: Limits, enrolments: Option<Rate>) -> Self {
         let folder = tempfile::tempdir().unwrap();
         let db: Store = Arc::new(Sqlite::memory().unwrap());
         let steps = control::Schema::after(
@@ -89,6 +99,7 @@ impl Rig {
         config.window = Window::new(SKEW).unwrap();
         let signatures = Signatures::new(enrol.keys().clone(), (clock, file), config);
         let api = Api::new(control, (signatures, enrol.clone()), (clock, System), limits);
+        let api = enrolments.into_iter().fold(api, Api::with_enrolments);
         let rig = Self { api, clock, enrol, db, operator, account, folder, nonces: AtomicU64::new(1) };
         // the boot barrier: no signed request is taken until a request made inside the window can have been made after the barrier
         rig.clock.advance(Duration::from_secs(2 * SKEW + 1));

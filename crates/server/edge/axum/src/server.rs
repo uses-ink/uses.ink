@@ -242,7 +242,7 @@ where
         let method = request.method().as_str().to_owned();
         // a sign-in link's token is in its path and never in an event
         let path: String = edge_api::Enter::redact(request.uri().path()).chars().take(200).collect();
-        let response = mount.bridge.call(request).await;
+        let response = mount.bridge.call(request, self.edge.limits().body).await;
         let status = response.status().as_u16();
         self.observe.say(Event::Called(Called { method, path, status, took: started.elapsed() }));
         response

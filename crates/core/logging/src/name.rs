@@ -87,6 +87,14 @@ pub mod event {
     pub const API_ANSWERED: &str = "api.answered";
     /// The API decided who is calling, without saying the token.
     pub const API_AUTH: &str = "api.auth";
+    /// The address of a site or preview could not be built, so its view has none.
+    pub const API_UNLINKED: &str = "api.unlinked";
+    /// A sign-in message was not queued for the courier.
+    pub const SIGNIN_UNSENT: &str = "signin.unsent";
+    /// A caller left before its answer was ready, so the answer was dropped.
+    pub const REPLY_DROPPED: &str = "reply.dropped";
+    /// The body of an API request could not be read to its end.
+    pub const REQUEST_UNREAD: &str = "request.unread";
     /// A job was claimed.
     pub const JOB_CLAIMED: &str = "job.claimed";
     /// A job was dropped without running.

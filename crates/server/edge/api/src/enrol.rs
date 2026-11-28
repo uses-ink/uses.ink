@@ -72,7 +72,8 @@ impl Gate {
 
     fn close(&self, count: &mut Count, now: Timestamp) {
         count.wrong = 0;
-        count.until = self.rules.closed.after(now).ok();
+        // a time that cannot be added is a gate that does not open again: it fails closed
+        count.until = Some(self.rules.closed.after(now).unwrap_or(Timestamp::MAX));
     }
 
     /// Whether it is open at `now`.

@@ -47,6 +47,7 @@ pub struct Api<P: Ports, C, K, D, R = Offline> {
     pub(crate) limits: Limits,
     schemes: Vec<Scheme>,
     reports: Quota,
+    enrolments: Quota,
     pub(crate) dns: Dns<R>,
 }
 
@@ -68,6 +69,7 @@ where
             limits,
             schemes: vec![Scheme::Https],
             reports: Quota::new(Self::REPORTS, Self::TRACKED),
+            enrolments: Quota::new(Self::ENROLMENTS, Self::TRACKED),
             dns: Dns::new(Offline),
         }
     }
@@ -88,9 +90,15 @@ where
             limits: self.limits,
             schemes: self.schemes,
             reports: self.reports,
+            enrolments: self.enrolments,
             dns: Dns::new(resolver),
         }
     }
+
+    /// What asking to enrol is held to by default: five an hour from one source. It is charged
+    /// before the global gate, so one source cannot fill the queue of waiting keys and close
+    /// enrolment for everybody; it is under the gate's default of 20 waiting keys for that reason.
+    pub const ENROLMENTS: Rate = Rate { count: 5, window: control::signin::Ttl::secs(3600) };
 
     /// What abuse reports are held to by default: five an hour from one source (decision 0089).
     /// A report costs a row and names a stranger's site, so the limit bounds rows and noise.
@@ -103,6 +111,13 @@ where
     #[must_use]
     pub fn with_reports(mut self, rate: Rate) -> Self {
         self.reports = Quota::new(rate, Self::TRACKED);
+        self
+    }
+
+    /// The same API, taking asks to enrol at `rate` for each source.
+    #[must_use]
+    pub fn with_enrolments(mut self, rate: Rate) -> Self {
+        self.enrolments = Quota::new(rate, Self::TRACKED);
         self
     }
 
@@ -156,7 +171,7 @@ where
         let Some((caller, signed)) = caller else {
             return match call {
                 Call::Report => self.report(request.source, body).await,
-                _ => self.enrol(body).await,
+                _ => self.enrol(request.source, body).await,
             };
         };
         // the digest is checked once the body is read, before anything is done with it
@@ -266,7 +281,18 @@ where
     }
 
     fn view(&self, site: &Site) -> SiteView {
-        SiteView::of(site, self.control.origin().site(&site.handle).ok())
+        SiteView::of(site, Self::linked(self.control.origin().site(&site.handle)))
+    }
+
+    /// The address `built` made, or none, told as an event when it could not be built.
+    pub(crate) fn linked(built: Result<model::ExternalUrl, model::UrlError>) -> Option<model::ExternalUrl> {
+        match built {
+            Ok(url) => Some(url),
+            Err(error) => {
+                logging::warn!(name: logging::event::API_UNLINKED, error = logging::Failure(&error).field());
+                None
+            }
+        }
     }
 
     async fn sites(&self, principal: Principal) -> Result<Reply, Fault<P>> {
@@ -364,9 +390,11 @@ where
     }
 
     /// `POST /v1/enrol`: an unsigned ask, answered with the code to type and the fingerprint to
-    /// compare. The gate has already turned away a flood.
-    async fn enrol(&self, body: &[u8]) -> Result<Reply, Fault<P>> {
+    /// compare. The source's limit and then the gate turn away a flood.
+    async fn enrol(&self, source: Option<std::net::IpAddr>, body: &[u8]) -> Result<Reply, Fault<P>> {
         let now = self.clock.now();
+        // the source's own limit comes first, so what a flood from one source spends is its own
+        self.enrolments.admit(source, now).map_err(|limited| Closed { seconds: limited.retry.as_secs() })?;
         self.enrol.gate().open(now)?;
         let waiting = self.enrol.keys().waiting(now).await.map_err(Self::keys_failed)?;
         self.enrol.gate().full(waiting, now)?;
@@ -495,7 +523,8 @@ where
         let site = self.owned(principal, id).await?;
         let listed = self.control.previews(id, self.clock.now()).await?;
         let origin = self.control.origin();
-        let items = listed.iter().map(|found| Previewed::of(found, origin.previewed(&found.slug, &site.handle).ok()));
+        let items =
+            listed.iter().map(|found| Previewed::of(found, Self::linked(origin.previewed(&found.slug, &site.handle))));
         Self::json(Status::Ok, &Listed { items: items.collect() })
     }
 

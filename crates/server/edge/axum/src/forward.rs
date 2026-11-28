@@ -13,6 +13,8 @@ use std::num::NonZeroU8;
 
 use axum::http::HeaderMap;
 
+use crate::problem::Problem;
+
 /// How the client's address is found.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
@@ -65,7 +67,7 @@ impl Refused {
     /// of the header, which a client wrote.
     pub fn body(self) -> Vec<u8> {
         let fix = "check that the proxy sets X-Forwarded-For and that the trusted hops count matches the proxies in front of the server";
-        format!(r#"{{"problem":"auth.forwarded.refused","message":"{self}","causes":[],"fix":"{fix}"}}"#).into_bytes()
+        Problem::new("auth.forwarded.refused", self.to_string(), fix).body()
     }
 }
 

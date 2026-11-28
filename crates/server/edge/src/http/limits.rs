@@ -29,6 +29,8 @@ pub struct Limits {
     pub open: Duration,
     /// Time a response may wait for its reader to take the next chunk.
     pub idle: Duration,
+    /// Time for a client to send the body of an API request, which a push makes large.
+    pub body: Duration,
     /// Time for one whole response, from the request head to its last byte.
     pub send: Duration,
     /// Time open connections get to finish when the server is told to stop.
@@ -56,6 +58,7 @@ impl Default for Limits {
             read: Duration::from_secs(10),
             open: Duration::from_secs(5),
             idle: Duration::from_secs(30),
+            body: Duration::from_secs(600),
             send: Duration::from_secs(600),
             drain: Duration::from_secs(30),
             requests: 1024,

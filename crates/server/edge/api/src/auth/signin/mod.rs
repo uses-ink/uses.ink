@@ -41,6 +41,7 @@ use clock::{Clock, Draw};
 use control::signin::{Drawn, Error, Presented, Proof, Refused, Requested, Session, SignIn};
 use db::Db;
 use jiff::Timestamp;
+use logging::Field as _;
 use mail::{Message, Template};
 use serde::Serialize;
 
@@ -428,8 +429,12 @@ impl<D: Db, K: Clock, R: Draw> Door<D, K, R> {
         if let Requested::Issued(issued) = requested {
             let link = self.config.base.link(issued.proof.reveal());
             let valid = self.entry.settings().login.duration();
-            // a full box is counted by the outbox and told by the courier; the answer is the same
-            self.config.outbox.push(Message { to: address, template: Template::Login { link, valid } }).ok();
+            // a full box is counted by the outbox; the answer stays the same, or it would tell who has an account
+            if let Err(full) =
+                self.config.outbox.push(Message { to: address, template: Template::Login { link, valid } })
+            {
+                logging::warn!(name: logging::event::SIGNIN_UNSENT, error = logging::Failure(&full).field());
+            }
         }
         Self::json(Status::Accepted, &Asked { requested: true })
     }

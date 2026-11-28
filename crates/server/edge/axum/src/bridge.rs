@@ -8,13 +8,16 @@
 //! beside the server).
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::body::Body;
 use axum::http::{HeaderName, HeaderValue, Request as Incoming, Response};
 use edge_api::{Answers, Limits, Method, Payload, Reply, Request, Status};
+use logging::Field as _;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::forward::Forwarded;
+use crate::problem::Problem;
 
 /// Where a connection came from, put in the request's extensions by the server so the API can
 /// limit by source.
@@ -70,8 +73,8 @@ impl Bridge {
         self
     }
 
-    /// Answers one HTTP request to the API.
-    pub async fn call(&self, incoming: Incoming<Body>) -> Response<Body> {
+    /// Answers one HTTP request to the API, giving the client `wait` to send its body.
+    pub async fn call(&self, incoming: Incoming<Body>, wait: Duration) -> Response<Body> {
         let (head, body) = incoming.into_parts();
         let method = head.method.as_str().parse::<Method>();
         let Ok(method) = method else { return Self::plain(Status::MethodNotAllowed) };
@@ -89,21 +92,51 @@ impl Bridge {
                 return Self::response(&Reply::new(Status::BadRequest, edge_api::Media::Json, refused.body()));
             }
         };
-        let read = axum::body::to_bytes(body, usize::try_from(limit).unwrap_or(usize::MAX));
-        let body = match tokio::time::timeout(std::time::Duration::from_secs(600), read).await {
-            Err(_) => return Self::plain(Status::Timeout),
-            Ok(Ok(bytes)) => Payload::Whole(bytes.to_vec()),
-            Ok(Err(_)) => Payload::Over { limit },
+        let body = match Self::read(body, limit, wait).await {
+            Ok(body) => body,
+            Err(reply) => return Self::response(&reply),
         };
         let (reply, answered) = oneshot::channel();
         let request = Request { method, path, query, authorization, cookie, origin, site, source, body };
         if self.calls.try_send(Call { request, reply }).is_err() {
+            logging::warn!(name: logging::event::REQUEST_FAILED, cause = "the API is busy or stopped");
             return Self::plain(Status::Internal);
         }
-        match answered.await {
-            Ok(reply) => Self::response(&reply),
-            Err(_) => Self::plain(Status::Internal),
+        if let Ok(reply) = answered.await {
+            Self::response(&reply)
+        } else {
+            logging::warn!(name: logging::event::REQUEST_FAILED, cause = "the API dropped the call");
+            Self::plain(Status::Internal)
         }
+    }
+
+    /// The body, up to `limit` bytes, within `wait`; or the reply that says why it was not read.
+    async fn read(body: Body, limit: u64, wait: Duration) -> Result<Payload, Box<Reply>> {
+        let read = axum::body::to_bytes(body, usize::try_from(limit).unwrap_or(usize::MAX));
+        match tokio::time::timeout(wait, read).await {
+            Err(_) => Err(Box::new(Reply::empty(Status::Timeout))),
+            Ok(Ok(bytes)) => Ok(Payload::Whole(bytes.to_vec())),
+            Ok(Err(error)) if Self::over(&error) => Ok(Payload::Over { limit }),
+            Ok(Err(error)) => {
+                logging::debug!(name: logging::event::REQUEST_UNREAD, error = logging::Failure(&error).field());
+                let problem = Problem::new("body", "the request body could not be read".to_owned(), "send it again")
+                    .caused_by(&error);
+                Err(Box::new(Reply::new(Status::BadRequest, edge_api::Media::Json, problem.body())))
+            }
+        }
+    }
+
+    /// Whether reading the body stopped because it went over its limit, as against a read that
+    /// failed (a client that reset the connection).
+    fn over(error: &axum::Error) -> bool {
+        let mut next = std::error::Error::source(error);
+        while let Some(cause) = next {
+            if cause.is::<http_body_util::LengthLimitError>() {
+                return true;
+            }
+            next = cause.source();
+        }
+        false
     }
 
     fn plain(status: Status) -> Response<Body> {
@@ -154,7 +187,9 @@ impl<A: Answers> Local<A> {
     pub async fn run(mut self) {
         while let Some(Call { request, reply }) = self.calls.recv().await {
             // a caller that went away no longer wants its answer
-            reply.send(self.api.answer(&request).await).ok();
+            if reply.send(self.api.answer(&request).await).is_err() {
+                logging::debug!(name: logging::event::REPLY_DROPPED, lookup = "api");
+            }
         }
     }
 }
@@ -186,7 +221,7 @@ mod test {
         let mut incoming = builder.body(Body::empty()).unwrap();
         incoming.extensions_mut().insert(Peer(Some("10.0.0.1:4000".parse().unwrap())));
         // the bridge is moved in and dropped when the call is answered, which ends `Local::run`
-        let call = async move { bridge.call(incoming).await };
+        let call = async move { bridge.call(incoming, Duration::from_secs(5)).await };
         let (response, ()) = tokio::join!(call, local.run());
         let status = response.status().as_u16();
         let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();

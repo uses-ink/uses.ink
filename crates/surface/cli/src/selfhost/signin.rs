@@ -146,6 +146,10 @@ pub struct Flags {
     /// account, so this is what bounds them. [default: 5/1h]
     #[arg(long, env = "INK_ABUSE_LIMIT", help_heading = Heading::LIMITS)]
     pub abuse_limit: Option<Rate>,
+    /// Asks to enrol a key that may be sent per source, as `<count>/<window>`. They take no
+    /// account, so this keeps one source from filling the queue of waiting keys. [default: 5/1h]
+    #[arg(long, env = "INK_ENROL_LIMIT", help_heading = Heading::LIMITS)]
+    pub enrol_limit: Option<Rate>,
     /// How recent a passkey sign-in must be to add or remove a passkey, approve a key or make
     /// recovery codes. [default: 5m]
     #[arg(long, env = "INK_STEP_UP_WINDOW", help_heading = Heading::SIGN_IN)]

@@ -75,14 +75,18 @@ impl<P: Ports + 'static, K: Clock, L: Locate> Back<P, K, L> {
                         logging::warn!(name: logging::event::SITES_FAILED, error = logging::Failure(failure).field());
                     }
                     // a caller that went away no longer wants its answer
-                    reply.send(answer).ok();
+                    if reply.send(answer).is_err() {
+                        logging::debug!(name: logging::event::REPLY_DROPPED, lookup = "serve");
+                    }
                 }
                 Ask::Suspended(reply) => {
                     let answer = self.notice(&hostname).await;
                     if let Err(failure) = &answer {
                         logging::warn!(name: logging::event::SITES_FAILED, error = logging::Failure(failure).field());
                     }
-                    reply.send(answer).ok();
+                    if reply.send(answer).is_err() {
+                        logging::debug!(name: logging::event::REPLY_DROPPED, lookup = "suspended");
+                    }
                 }
             }
         }
