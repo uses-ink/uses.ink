@@ -49,6 +49,10 @@ pub(crate) enum Fault {
     Wire { path: String, wire: Wire },
     /// The Worker answered with a status that is not 200.
     Status { path: String, status: u16, body: String, log: String },
+    /// What wrangler printed as JSON is not.
+    Json { what: String, source: serde_json::Error },
+    /// The schema or the ledger wrangler made is not the one SQLite made.
+    Differs { expected: String, found: String },
     /// The Worker said no to something it checks.
     Refused { path: String, line: String },
 }
@@ -69,6 +73,10 @@ impl fmt::Display for Fault {
             Self::Status { path, status, body, log } => {
                 write!(out, "{path} answered {status}:\n{body}\nthe Worker's output:\n{log}")
             }
+            Self::Json { what, .. } => write!(out, "wrangler's answer to {what} is not JSON"),
+            Self::Differs { expected, found } => {
+                write!(out, "D1 made another schema than SQLite.\nSQLite:\n{expected}\nD1:\n{found}")
+            }
             Self::Refused { path, line } => write!(out, "{path} says no: {line}"),
         }
     }
@@ -81,7 +89,8 @@ impl std::error::Error for Fault {
             Self::Spawn { source, .. } | Self::File { source, .. } | Self::Connect(source) => Some(source),
             Self::Send { source, .. } => Some(source),
             Self::Wire { wire, .. } => Some(wire),
-            Self::Lock { .. } | Self::Ready { .. } | Self::Status { .. } | Self::Refused { .. } => None,
+            Self::Json { source, .. } => Some(source),
+            Self::Lock { .. } | Self::Ready { .. } | Self::Status { .. } | Self::Refused { .. } | Self::Differs { .. } => None,
         }
     }
 }

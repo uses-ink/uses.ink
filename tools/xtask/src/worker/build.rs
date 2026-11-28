@@ -55,10 +55,12 @@ impl Crate<'_> {
     /// The size of the file at `module`.
     fn size(&self, module: &Path) -> Result<Size, Fault> {
         let bytes = Shell::read(module)?;
+        // gzip reads the file and writes the pipe: feeding its stdin from here while it fills its
+        // stdout would deadlock once the compressed bytes pass the pipe's buffer.
         let mut gzip = self.shell.command("gzip", self.shell.root());
-        gzip.args(["-9", "-c"]);
+        gzip.args(["-9", "-c"]).arg(module);
         let zipped = Process::from(gzip)
-            .stdout(&bytes)
+            .stdout(&[])
             .map_err(|source| Fault::Command { program: "gzip -9 -c".to_owned(), source })?;
         Ok(Size { raw: bytes.len(), gzip: zipped.len() })
     }

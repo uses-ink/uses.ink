@@ -212,6 +212,7 @@ impl Order {
         // only crates that know a driver.
         ("uses-ink-db", &["uses-ink-logging"]),
         ("uses-ink-db-conformance", &["uses-ink-db"]),
+        ("uses-ink-db-d1", &["uses-ink-db", "uses-ink-logging"]),
         ("uses-ink-db-sqlite", &["uses-ink-db", "uses-ink-db-conformance", "uses-ink-logging"]),
         ("uses-ink-queue", &["uses-ink-model"]),
         ("uses-ink-queue-conformance", &["uses-ink-model", "uses-ink-queue"]),

@@ -6,13 +6,27 @@
 
 mod ceremony;
 
+/// The server's WebAuthn adapter, compiled from the API crate's own file.
+#[path = "../../../../crates/server/edge/api/src/webauthn.rs"]
+mod webauthn;
+
+// the crates the API stands on, linked so their size counts
+use blob as _;
+use build as _;
+use db as _;
+use edge as _;
+use mail as _;
+use queue as _;
+use secret as _;
+
 use worker::{Context, Env, Request, Response, Result, event};
 
 #[event(fetch)]
 async fn fetch(req: Request, _env: Env, _ctx: Context) -> Result<Response> {
     match req.path().as_str() {
         "/ping" => Response::ok("ok ping pong\n"),
-        "/passkey" => Response::ok(ceremony::Ceremony::run().text()),
+        "/passkey" => Response::ok(ceremony::Ceremony::login().text()),
+        "/passkey/register" => Response::ok(ceremony::Ceremony::register().text()),
         _ => Response::error("not found", 404),
     }
 }

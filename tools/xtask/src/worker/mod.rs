@@ -8,6 +8,7 @@ mod build;
 mod case;
 mod fault;
 mod loopback;
+mod migrate;
 mod npm;
 mod probe;
 mod serve;

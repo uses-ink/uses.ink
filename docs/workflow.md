@@ -82,7 +82,7 @@ fixture builds' cache.
 
 Jobs run in the order of the file. A job name is lowercase letters, digits, `-` and `_`, at most
 32 characters. `farm check` with no names runs every job at once; `farm check lint test` runs
-those, in that order. This repo declares `lint`, `test`, `docs`, `wasm` and `sites`, the stages
+those, in that order. This repo declares `lint`, `test`, `docs`, `wasm`, `sites` and `worker` (Workers in `workerd`, on hosts with node), the stages
 of `cargo xtask check <stage>`; `test` and `sites` are golden. A file that is missing, does not
 parse or names an unknown job is an error (an unknown job is exit 2).
 
@@ -146,7 +146,7 @@ ssh = "local"           # this machine, in the workspace itself, with no copy
 
 | Verb | What it does |
 | --- | --- |
-| `farm check [job...]` | The repo's jobs from `.config/farm.toml` (here `lint test docs wasm sites`), all placed at once. |
+| `farm check [job...]` | The repo's jobs from `.config/farm.toml` (here `lint test docs wasm sites worker`), all placed at once. |
 | `farm cargo <args...>` | Any cargo command on a placed host, in the synced workspace. |
 | `farm bless [nextest args]` | Nextest with `INSTA_UPDATE=always` on a golden host; brings back only changed `*.snap`. |
 | `farm test [nextest args]` | Nextest for the crates the change affects and their dependents, on a golden host. `farm check test --affected` is the same for a job that declares `affected = true`. See Testing only what changed. |

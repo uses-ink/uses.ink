@@ -4,15 +4,16 @@
 use std::collections::BTreeMap;
 
 use control::keys::Label;
-use control::passkeys::{Asserted, Created, Passkeys, Person, Relying};
+use control::passkeys::{Asserted, Bytes, Created, CredentialId, Passkeys, Person, Relying, Stored};
 use control::{AccountKind, Id};
-use edge_api::Webauthn;
+use crate::webauthn::Webauthn;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey};
 use serde_cbor_2::Value;
 use serde_json::{Value as Json, json};
 use sha2::{Digest, Sha256};
 use sig::Base64;
+use webauthn_rs_core::proto::{COSEAlgorithm, COSEEC2Key, COSEKey, COSEKeyType, ECDSACurve};
 
 /// What the run says, a line each.
 #[derive(Default)]
@@ -65,6 +66,22 @@ impl Authenticator {
         serde_cbor_2::to_vec(&Value::Map(map)).map_err(|error| error.to_string())
     }
 
+    /// The credential as the server stores it after a registration, built without one.
+    fn stored(&self) -> Result<Stored, String> {
+        let point = self.key.verifying_key().to_sec1_point(false);
+        let x = point.x().ok_or("no x")?.to_vec();
+        let y = point.y().ok_or("no y")?.to_vec();
+        let key = COSEKey { type_: COSEAlgorithm::ES256, key: COSEKeyType::EC_EC2(COSEEC2Key { curve: ECDSACurve::SECP256R1, x, y }) };
+        Ok(Stored {
+            credential: CredentialId::new(self.id.clone()),
+            key: Bytes::new(serde_json::to_vec(&key).map_err(|error| error.to_string())?),
+            counter: 0,
+            eligible: false,
+            backed_up: false,
+            transports: Vec::new(),
+        })
+    }
+
     fn client(&self, kind: &str, challenge: &Json, origin: &str) -> Vec<u8> {
         json!({"type": kind, "challenge": challenge, "origin": origin, "crossOrigin": false}).to_string().into_bytes()
     }
@@ -114,19 +131,28 @@ impl Authenticator {
 pub struct Ceremony;
 
 impl Ceremony {
-    /// Registers a passkey, signs in with it, and tries four answers that must be refused.
-    pub fn run() -> Lines {
+    /// Starts a registration (which needs no clock) and signs in with a stored credential: the
+    /// verification that every sign-in runs, and four answers that must be refused.
+    pub fn login() -> Lines {
+        Self::timed(Self::sign_in)
+    }
+
+    /// Registers a passkey: `webauthn-rs-core` reads the clock here.
+    pub fn register() -> Lines {
+        Self::timed(Self::enrol)
+    }
+
+    fn timed(run: fn(&mut Lines) -> Result<(), String>) -> Lines {
         let mut lines = Lines::default();
         let started = worker::js_sys::Date::now();
-        match Self::all(&mut lines) {
-            Ok(()) => {}
-            Err(error) => lines.say("fail", "ceremony", error),
+        if let Err(error) = run(&mut lines) {
+            lines.say("fail", "ceremony", error);
         }
-        lines.say("note", "elapsed", format!("{} ms for the whole ceremony, registration to refusals", worker::js_sys::Date::now() - started));
+        lines.say("note", "elapsed", format!("{} ms", worker::js_sys::Date::now() - started));
         lines
     }
 
-    fn all(lines: &mut Lines) -> Result<(), String> {
+    fn enrol(lines: &mut Lines) -> Result<(), String> {
         let relying = Relying::hosted();
         let origin = relying.origins().first().cloned().ok_or("no origin")?;
         let verifier = Webauthn::new(relying.clone()).map_err(|error| format!("{error:?}"))?;
@@ -136,11 +162,26 @@ impl Ceremony {
             label: Label::parse("ada").map_err(|error| error.to_string())?,
         };
         let (creation, pending) = verifier.start_registration(&person, &[]).map_err(|error| format!("{error:?}"))?;
+        lines.say("ok", "registration challenge", "made");
         let options = serde_json::to_value(&creation).map_err(|error| error.to_string())?;
         let created: Created = serde_json::from_value(phone.create(&options)?).map_err(|error| error.to_string())?;
         let stored = verifier.finish_registration(&pending, &created).map_err(|error| format!("{error:?}"))?;
-        lines.say("ok", "registration", format!("credential of {} bytes, eligible={}", stored.credential.as_slice().len(), stored.eligible));
+        lines.say("ok", "registration", format!("credential of {} bytes", stored.credential.as_slice().len()));
+        Ok(())
+    }
 
+    fn sign_in(lines: &mut Lines) -> Result<(), String> {
+        let relying = Relying::hosted();
+        let origin = relying.origins().first().cloned().ok_or("no origin")?;
+        let verifier = Webauthn::new(relying.clone()).map_err(|error| format!("{error:?}"))?;
+        let phone = Authenticator::new(&origin, relying.id())?;
+        let person = Person {
+            account: Id::<AccountKind>::from_bytes([7; 16]),
+            label: Label::parse("ada").map_err(|error| error.to_string())?,
+        };
+        let (creation, _) = verifier.start_registration(&person, &[]).map_err(|error| format!("{error:?}"))?;
+        lines.say("ok", "registration challenge", format!("{} bytes", creation.challenge.as_slice().len()));
+        let stored = phone.stored()?;
         let mut counter = 0_u32;
         for (name, origin_for, flip, accepted) in [
             ("login", origin.as_str(), false, true),

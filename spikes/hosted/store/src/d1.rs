@@ -1,7 +1,7 @@
 //! D1 values and errors, as the JavaScript boundary gives them.
 
 use worker::js_sys::{Array, ArrayBuffer, BigInt, Object, Uint8Array};
-use worker::wasm_bindgen::JsValue;
+use worker::wasm_bindgen::{JsCast, JsValue};
 use worker::{D1Database, Error};
 
 /// The lines the run says.
@@ -32,8 +32,12 @@ impl Shown {
             let json = worker::js_sys::JSON::stringify(value).ok().and_then(|text| text.as_string()).unwrap_or_default();
             let cut: String = json.chars().take(48).collect();
             format!("{class} {cut}")
+        } else if let Some(number) = value.as_f64() {
+            format!("{number}")
+        } else if let Some(text) = value.as_string() {
+            format!("{text:?}")
         } else {
-            worker::js_sys::JsString::from(value.clone()).as_string().unwrap_or_default()
+            "?".to_owned()
         };
         format!("{kind} {text}")
     }
@@ -74,7 +78,7 @@ impl Values {
     async fn rows(&self, sql: &str, values: &[JsValue]) -> Result<Vec<Array>, String> {
         let statement = self.db.prepare(sql).bind(values).map_err(|error| Shown::error(&error))?;
         let rows = statement.raw_js_value().await.map_err(|error| Shown::error(&error))?;
-        Ok(rows.into_iter().map(Array::from).collect())
+        Ok(rows.into_iter().map(|row| row.unchecked_into::<Array>()).collect())
     }
 
     async fn schema(&mut self) {

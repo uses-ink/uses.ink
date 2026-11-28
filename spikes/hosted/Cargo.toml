@@ -3,7 +3,7 @@
 # ["spikes"]`); its own lockfile, its own `target/`.
 [workspace]
 resolver = "3"
-members = ["api", "store"]
+members = ["api", "store", "rig"]
 
 [workspace.package]
 version = "0.0.0"
@@ -16,3 +16,9 @@ license = "AGPL-3.0-or-later"
 opt-level = "s"
 lto = true
 codegen-units = 1
+
+# webauthn-rs-core reads the clock with `SystemTime::now()`, which panics on wasm32-unknown-unknown:
+# a registration traps in workerd. This copy of 0.6.2 differs in one place (see `Clock` in
+# `src/interface.rs`); decision 0096 records it.
+[patch.crates-io]
+webauthn-rs-core = { path = "vendor/webauthn-rs-core" }

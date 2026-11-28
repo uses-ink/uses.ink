@@ -4,6 +4,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use super::fault::Fault;
+use super::migrate::Migrated;
 use super::npm::Packages;
 use super::probe::Probe;
 use super::serve::Served;
@@ -24,14 +25,16 @@ pub(crate) enum Case {
     Store,
     /// The row port's conformance suite, run through the D1 adapter in workerd.
     Db,
+    /// H1b: the generated migrations applied by wrangler, compared with SQLite's schema.
+    Migrate,
 }
 
 impl Case {
     /// Every case, in the order they are listed.
-    pub(crate) const ALL: [Self; 5] = [Self::Probe, Self::Lock, Self::Api, Self::Store, Self::Db];
+    pub(crate) const ALL: [Self; 6] = [Self::Probe, Self::Lock, Self::Api, Self::Store, Self::Db, Self::Migrate];
 
     /// The cases the gate's stage `worker` runs: tests, not spikes.
-    pub(crate) const GATE: [Self; 1] = [Self::Db];
+    pub(crate) const GATE: [Self; 2] = [Self::Db, Self::Migrate];
 
     /// Its name on the command line.
     pub(crate) const fn name(self) -> &'static str {
@@ -41,6 +44,7 @@ impl Case {
             Self::Api => "api",
             Self::Store => "store",
             Self::Db => "db",
+            Self::Migrate => "migrate",
         }
     }
 
@@ -48,6 +52,7 @@ impl Case {
     pub(super) const fn dir(self) -> &'static str {
         match self {
             Self::Probe | Self::Lock => "spikes/hosted",
+            Self::Migrate => "spikes/hosted/migrate",
             Self::Api => "spikes/hosted/api",
             Self::Store => "spikes/hosted/store",
             Self::Db => "spikes/hosted/rig",
@@ -57,7 +62,7 @@ impl Case {
     /// The port its `wrangler dev` listens on: one each, so two runs on one host do not collide.
     pub(super) const fn port(self) -> u16 {
         match self {
-            Self::Probe | Self::Lock => 0,
+            Self::Probe | Self::Lock | Self::Migrate => 0,
             Self::Api => 8731,
             Self::Store => 8732,
             Self::Db => 8733,
@@ -69,6 +74,7 @@ impl Case {
         match self {
             Self::Probe => Probe { shell }.run(report),
             Self::Lock => Self::lock(shell, report),
+            Self::Migrate => Migrated { shell }.run(report),
             Self::Api | Self::Store | Self::Db => Served { case: self, shell }.run(report),
         }
     }

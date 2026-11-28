@@ -296,6 +296,7 @@ mod tests {
         "uses-ink-control-signin",
         "uses-ink-db",
         "uses-ink-db-conformance",
+        "uses-ink-db-d1",
         "uses-ink-db-sqlite",
         "uses-ink-diag",
         "uses-ink-edge",

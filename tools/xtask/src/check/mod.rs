@@ -53,6 +53,7 @@ impl Gate {
                     "uses-ink-source-git",
                     "uses-ink-source-git-guest",
                     "uses-ink-host-wasmtime-hostile",
+                    "uses-ink-db-d1",
                 ],
                 flags: &[],
                 target: Target::Browser,
@@ -94,7 +95,7 @@ impl Gate {
 
     /// The Worker tests: what runs in `workerd` with no account.
     fn worker() -> impl Steps {
-        (Worker(Case::GATE[0]),)
+        (Worker(Case::GATE[0]), Worker(Case::GATE[1]))
     }
 
     /// Runs the stage, or every stage in order, and reports every failure, then whether all passed.

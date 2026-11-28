@@ -90,7 +90,8 @@ impl Session {
 
     /// The Worker's output so far, last lines.
     pub(super) fn log(&mut self) -> String {
-        while let Ok(line) = self.lines.try_recv() {
+        // a panic's text reaches the pipe a moment after the answer does: wait until it goes quiet
+        while let Ok(line) = self.lines.recv_timeout(Duration::from_millis(500)) {
             self.keep(line);
         }
         self.tail.iter().cloned().collect::<Vec<_>>().join("\n")

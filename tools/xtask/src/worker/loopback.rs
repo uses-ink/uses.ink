@@ -22,7 +22,7 @@ pub(crate) struct Stream {
 impl Stream {
     /// The bytes, in order, as one buffer.
     pub(crate) fn bytes(&self) -> Vec<u8> {
-        let mut state = self.seed | 1;
+        let mut state = self.seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
         let mut bytes = Vec::with_capacity(self.total);
         while bytes.len() < self.total {
             state ^= state << 13;

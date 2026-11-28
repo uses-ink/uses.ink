@@ -376,7 +376,7 @@ and hands the generator a `Files` that writes or, for `layout`, compares each fi
 which task a stale one comes from. The generators' Rust is built through `ToTokens` impls
 (`Palette`, `Faces`) and methods on the catalog's types, never free functions.
 
-The gate is one tuple of steps per stage (`Gate::lint()`, `test()`, `docs()`, `wasm()`, `sites()`, in `tools/xtask/src/check/`): each cargo step is one generic
+The gate is one tuple of steps per stage (`Gate::lint()`, `test()`, `docs()`, `wasm()`, `sites()`, `worker()`, in `tools/xtask/src/check/`): each cargo step is one generic
 `Cargo<S: Scope>` (a `Command`, a scope of `Every` crate, a `[&str; N]` of packages or `()`,
 typed `Flag`s and a `Target`), whose command line and needed `Tool`s follow from that data, and
 the last step is `Layout`. Rules run over a `Workspace` read once: `cargo metadata`, the
@@ -396,7 +396,7 @@ by what a module does: `generate/` (the generators and `Output`), `build/` (comp
 (`Gate`, `Stage`, the `Cargo` step), `layout/` (`Workspace`, `Config`, `rules/`, and `release/` with its
 workflow and Dockerfile readers). Lists of generators, steps and rules are tuples, given their list
 trait by one `tuples!` macro. `cargo xtask check` runs every step and reports every failure; `cargo xtask check <stage>`
-(`lint`, `test`, `docs`, `wasm`, `sites`) runs one `Stage`, which is how CI runs them in parallel
+(`lint`, `test`, `docs`, `wasm`, `sites`, `worker`) runs one `Stage`, which is how CI runs them in parallel
 jobs. A new check is a new `Rule` added to `Layout::RULES`.
 
 `farm <verb>` (the `farm` crate at `tools/farm/`, docs/workflow.md, decision 0047) is a separate

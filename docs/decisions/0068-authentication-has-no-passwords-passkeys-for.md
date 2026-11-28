@@ -96,8 +96,8 @@ are not. What differs from the text above, or was left out:
   routes; the stored key is the JSON of the library's COSE key; the credential link to a session is
   a `passkey_session` table, because `db` has no ALTER. Operator registration goes through the
   admin-link session.
-- **Not done.** The delayed email recovery, a run in `workerd`, and the browser matrix (spike 2) stay
-  open. Built since (2026-11-28): the challenge limit and the Origin check (0083), step-up (0084) and
+- **Not done.** The delayed email recovery and the browser matrix (spike 2) stay open. The run in
+  `workerd` is done (0096): sign-in runs as is; registration needs a clock patch. Built since (2026-11-28): the challenge limit and the Origin check (0083), step-up (0084) and
   recovery codes (0085).
 - **Tests.** `crates/server/edge/api/tests/passkey.rs` drives the real handlers with a software authenticator
   (`tests/support/authenticator.rs`, p256 ECDSA): the full ceremony, wrong origin, wrong rp id,

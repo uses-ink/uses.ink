@@ -22,6 +22,8 @@ impl Probe<'_> {
         ("gzip", &["--version"]),
         ("curl", &["-sSI", "-m", "20", "https://github.com/cloudflare/workerd/releases"]),
         ("curl", &["-sSI", "-m", "20", "https://registry.npmjs.org/wrangler"]),
+        ("sh", &["-c", "ps -eo pid,etimes,args | grep -E 'wrangler|workerd|worker-build|npm' | grep -v grep | cut -c1-220"]),
+        ("sh", &["-c", "d=$HOME/.config/.wrangler/logs; ls -t $d | head -3; tail -n 25 $d/$(ls -t $d | head -1) | cut -c1-240"]),
     ];
 
     /// Asks each tool, and says what it answered, or that it did not.
@@ -35,7 +37,7 @@ impl Probe<'_> {
                 Err(fault) => format!("failed: {fault}"),
             };
             report.line(Line::Worker { case: Case::Probe, text: format!("$ {name}") });
-            for line in text.lines().take(6) {
+            for line in text.lines().take(40) {
                 report.line(Line::Worker { case: Case::Probe, text: format!("  {line}") });
             }
         }
