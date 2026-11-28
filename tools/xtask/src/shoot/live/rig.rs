@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
-use super::fault::Fault;
+use super::super::fault::Fault;
 use crate::process::Process;
 
 /// What `ink org create --json` answers, as far as the run needs it.
@@ -61,7 +61,7 @@ impl Content {
 
 /// A run of the real `ink` and of raw HTTP against one server, with a home of its own.
 #[derive(Debug)]
-pub(super) struct Rig {
+pub(crate) struct Rig {
     ink: PathBuf,
     home: PathBuf,
     port: u16,
@@ -73,13 +73,13 @@ impl Rig {
     const PATIENCE: Duration = Duration::from_secs(30);
 
     /// The rig of the server on `port` that logs to `log`, run from `home`.
-    pub(super) fn new(ink: &Path, home: &Path, port: u16, log: &Path) -> Self {
+    pub(crate) fn new(ink: &Path, home: &Path, port: u16, log: &Path) -> Self {
         Self { ink: ink.to_path_buf(), home: home.to_path_buf(), port, log: log.to_path_buf() }
     }
 
     /// The flags that give the server what the pictures need: open sign-up, no site expiry, and
     /// an audience that the real `ink` can reach by name.
-    pub(super) fn flags(&self) -> Vec<String> {
+    pub(crate) fn flags(&self) -> Vec<String> {
         ["--signup", "open", "--site-ttl", "0", "--auth-skew", "10", "--audience"]
             .into_iter()
             .map(str::to_owned)
@@ -150,7 +150,7 @@ impl Rig {
         let io = |source| Fault::Http { call: call.clone(), source };
         let mut stream = TcpStream::connect(("127.0.0.1", self.port)).map_err(io)?;
         stream.set_read_timeout(Some(Duration::from_secs(10))).map_err(io)?;
-        let jar = cookie.map(|cookie| format!("Cookie: {cookie}\r\n")).unwrap_or_default();
+        let jar = cookie.map_or_else(String::new, |cookie| format!("Cookie: {cookie}\r\n"));
         let head = format!(
             "{method} {target} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nSec-Fetch-Site: same-origin\r\nContent-Type: application/json\r\nContent-Length: {}\r\n{jar}\r\n",
             self.audience(),
@@ -208,7 +208,7 @@ impl Rig {
     /// Plants the data: an owner with a site of three deploys, a domain claim and an organization
     /// with a member, and a newcomer who has nothing. Returns the owner's and the newcomer's
     /// sign-in paths, unspent.
-    pub(super) fn plant(&self, data: &Path) -> Result<Planted, Fault> {
+    pub(crate) fn plant(&self, data: &Path) -> Result<Planted, Fault> {
         let owner = self.link(1)?;
         let dir = self.home.join("diary");
         std::fs::create_dir_all(&dir).map_err(|source| Fault::File { path: dir.clone(), source })?;
@@ -236,9 +236,9 @@ impl Rig {
 
 /// The sign-in paths the planted data leaves for the browser.
 #[derive(Debug)]
-pub(super) struct Planted {
+pub(crate) struct Planted {
     /// The owner's: the first-run link.
-    pub(super) owner: String,
+    pub(crate) owner: String,
     /// The newcomer's: a mail link of an account with no site.
-    pub(super) newcomer: String,
+    pub(crate) newcomer: String,
 }

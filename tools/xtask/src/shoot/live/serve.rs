@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
-use super::fault::Fault;
+use super::super::fault::Fault;
 
 /// A running server, and the file its output goes to.
 #[derive(Debug)]

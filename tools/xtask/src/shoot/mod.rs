@@ -8,9 +8,8 @@
 mod fault;
 mod flags;
 mod host;
+mod live;
 mod plan;
-mod rig;
-mod serve;
 mod session;
 mod target;
 

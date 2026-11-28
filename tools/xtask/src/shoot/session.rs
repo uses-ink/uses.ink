@@ -7,9 +7,8 @@ use std::process::Command;
 use super::fault::Fault;
 use super::flags::Flags;
 use super::host::Host;
-use super::plan::{Login, Plan, Shot, Static};
-use super::rig::Rig;
-use super::serve::{Served, Servers};
+use super::live::{Planted, Rig, Served, Servers};
+use super::plan::{Login, Plan, Setting, Shot, Static};
 use super::target::{Folder, Target};
 use crate::report::{Line, Report};
 
@@ -82,17 +81,12 @@ impl Session {
 
     /// Takes the pictures of `shots`, and stops the servers whatever happened.
     fn finish(&mut self, report: &mut Report, shots: Vec<Shot>, serve: Option<Static>) -> Result<(), Fault> {
-        self.finish_as(report, shots, serve, Vec::new())
+        self.finish_as(report, shots, Setting { serve, logins: Vec::new() })
     }
 
     /// As `finish`, with sign-ins the shots refer to.
-    fn finish_as(
-        &mut self,
-        report: &mut Report,
-        shots: Vec<Shot>,
-        serve: Option<Static>,
-        logins: Vec<Login>,
-    ) -> Result<(), Fault> {
+    fn finish_as(&mut self, report: &mut Report, shots: Vec<Shot>, setting: Setting) -> Result<(), Fault> {
+        let Setting { serve, logins } = setting;
         let plan = Plan {
             probe: false,
             out: self.root.join(Target::OUT),
@@ -122,32 +116,8 @@ impl Session {
         self.finish(report, shots, None)
     }
 
-    /// The dashboard of `ink serve --data`: a data folder the real `ink` plants a site, deploys, a
-    /// domain claim and an organization in, drawn signed out, as its owner and as a newcomer.
-    pub(super) fn dashboard(&mut self, report: &mut Report) -> Result<(), Fault> {
-        let ink = self.ink()?;
-        let home = self.root.join(Host::HOME).join("dash");
-        std::fs::remove_dir_all(&home).or_else(|source| {
-            if source.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(Fault::File { path: home.clone(), source }) }
-        })?;
-        let (data, sites, log) = (home.join("data"), home.join("sites"), home.join("serve.log"));
-        for dir in [&data, &sites] {
-            std::fs::create_dir_all(dir).map_err(|source| Fault::File { path: dir.clone(), source })?;
-        }
-        let rig = Rig::new(&ink, &home, Self::DASH, &log);
-        let address = SocketAddr::from(([127, 0, 0, 1], Self::DASH));
-        let mut command = Command::new(&ink);
-        command
-            .arg("serve")
-            .arg(&sites)
-            .args(["--addr", &address.to_string(), "--api-host", "api.localhost", "--origin"])
-            .arg(format!("http://api.localhost:{}", Self::DASH))
-            .arg("--data")
-            .arg(&data)
-            .args(rig.flags());
-        self.servers.add(Served::start(command, "dashboard", address, &log)?);
-        let planted = rig.plant(&data)?;
-        Self::say(report, "planted: a site with three deploys, a domain claim, an organization with a member".to_owned());
+    /// The pictures of the dashboard and the sign-ins they need, after the data is planted.
+    fn views(planted: Planted) -> (Vec<Shot>, Vec<Login>) {
         let base = format!("http://api.localhost:{}", Self::DASH);
         let shot = |name: &str, route: &str, login: Option<&str>| Shot {
             name: format!("dash-{name}"),
@@ -170,7 +140,44 @@ impl Session {
             Login { name: "owner".to_owned(), url: planted.owner },
             Login { name: "newcomer".to_owned(), url: planted.newcomer },
         ];
-        self.finish_as(report, shots, None, logins)
+        (shots, logins)
+    }
+
+    /// The dashboard of `ink serve --data`: a data folder the real `ink` plants a site, deploys, a
+    /// domain claim and an organization in, drawn signed out, as its owner and as a newcomer.
+    pub(super) fn dashboard(&mut self, report: &mut Report) -> Result<(), Fault> {
+        let ink = self.ink()?;
+        let home = self.root.join(Host::HOME).join("dash");
+        std::fs::remove_dir_all(&home).or_else(|source| {
+            if source.kind() == std::io::ErrorKind::NotFound {
+                Ok(())
+            } else {
+                Err(Fault::File { path: home.clone(), source })
+            }
+        })?;
+        let (data, sites, log) = (home.join("data"), home.join("sites"), home.join("serve.log"));
+        for dir in [&data, &sites] {
+            std::fs::create_dir_all(dir).map_err(|source| Fault::File { path: dir.clone(), source })?;
+        }
+        let rig = Rig::new(&ink, &home, Self::DASH, &log);
+        let address = SocketAddr::from(([127, 0, 0, 1], Self::DASH));
+        let mut command = Command::new(&ink);
+        command
+            .arg("serve")
+            .arg(&sites)
+            .args(["--addr", &address.to_string(), "--api-host", "api.localhost", "--origin"])
+            .arg(format!("http://api.localhost:{}", Self::DASH))
+            .arg("--data")
+            .arg(&data)
+            .args(rig.flags());
+        self.servers.add(Served::start(command, "dashboard", address, &log)?);
+        let planted = rig.plant(&data)?;
+        Self::say(
+            report,
+            "planted: a site with three deploys, a domain claim, an organization with a member".to_owned(),
+        );
+        let (shots, logins) = Self::views(planted);
+        self.finish_as(report, shots, Setting { serve: None, logins })
     }
 
     /// The mock's pages, served by the driver from `--from`.

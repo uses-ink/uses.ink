@@ -37,6 +37,15 @@ pub(crate) struct Static {
     pub(crate) port: u16,
 }
 
+/// What a run adds to its shots: a folder the driver serves, and the sign-ins the shots refer to.
+#[derive(Debug, Default)]
+pub(crate) struct Setting {
+    /// A folder to serve for the shots, if any.
+    pub(crate) serve: Option<Static>,
+    /// The sign-ins.
+    pub(crate) logins: Vec<Login>,
+}
+
 /// What the driver is asked: the pictures, or only whether a browser starts.
 #[derive(Debug, Serialize)]
 pub(crate) struct Plan {

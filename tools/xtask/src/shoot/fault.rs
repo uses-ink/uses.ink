@@ -89,8 +89,7 @@ impl std::error::Error for Fault {
             Self::Width { source, .. } => Some(source),
             Self::Command { source, .. } => Some(source),
             Self::Spawn { source, .. } | Self::File { source, .. } | Self::Http { source, .. } => Some(source),
-            Self::Json { source, .. } => Some(source),
-            Self::Plan(source) => Some(source),
+            Self::Json { source, .. } | Self::Plan(source) => Some(source),
             Self::Range { .. }
             | Self::Flag { .. }
             | Self::Exited { .. }
