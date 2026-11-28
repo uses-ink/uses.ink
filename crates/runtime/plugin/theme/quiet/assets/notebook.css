@@ -157,8 +157,8 @@ hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0
 .hand-show article a:hover { background-size: 100% 6px, 100% 60%; }
 
 .hand-panel { display: flow-root; padding-block: 96px; }
-.hand-panel h2 { max-width: 22ch; font: 700 clamp(2.75rem, 4.8vw, 4.25rem) / .98 var(--face-hand); letter-spacing: -.015em; word-spacing: -.12em; text-wrap: balance; }
-.hand-panel h2 + p { margin-top: 16px; max-width: 44ch; font-size: 1.4375rem; line-height: 1.35; }
+.hand-panel h2 { max-width: 18ch; font: 700 clamp(2.75rem, 4.8vw, 4.25rem) / .98 var(--face-hand); letter-spacing: -.015em; word-spacing: -.12em; text-wrap: balance; }
+.hand-panel h2 + p { display: flow-root; margin-top: 16px; max-width: 44ch; font-size: 1.4375rem; line-height: 1.35; }
 
 /* the hero: one drawn comic panel, the words on the left and the picture on the right */
 .hand-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 40px; align-content: center; align-items: center; min-height: min(620px, calc(100svh - 110px)); padding: 56px 64px 48px; border: 14px solid transparent; border-image: url(/marks/frame.svg) 18 stretch; }
@@ -205,7 +205,7 @@ hr { height: 10px; margin: 2rem 0; border: 0; background: url(/marks/rule.svg) 0
 .hand-panel ul:has(> li > strong) > li { display: block; text-align: left; font-size: 1.4375rem; }
 .hand-panel ul:has(> li > strong) > li > img { display: block; }
 .hand-panel li > img:first-child { width: 180px; margin-left: -8px; }
-.hand-panel li > strong { margin: 14px 0 10px; font: 700 2.375rem/1 var(--face-hand); letter-spacing: -.05em; word-spacing: -.14em; }
+.hand-panel li > strong { display: block; margin: 14px 0 10px; font: 700 2.375rem/1 var(--face-hand); letter-spacing: -.05em; word-spacing: -.14em; }
 .hand-panel li > em:not(:first-child) { display: block; margin-top: 12px; color: var(--accent); font: 700 1.3125rem/1.2 var(--face-hand); font-style: normal; rotate: -1.5deg; }
 
 /* what readers get: ticks drawn in red, and a post in a browser window */
