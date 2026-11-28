@@ -22,6 +22,7 @@ use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::SystemTime;
 
 use engine::cache::{Cache, Key};
+use logging::Field as _;
 use model::{Announcement, Bytes, Hash, Notice};
 
 use crate::blob::StoreError;

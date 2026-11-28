@@ -9,6 +9,7 @@
 //! The order the jobs finish in changes no byte: each copy lands in its own slot, and an image
 //! is put together from its slots in ladder order.
 
+use logging::Field as _;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::sync::{Arc, Condvar, Mutex, PoisonError};

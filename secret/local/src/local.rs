@@ -6,6 +6,7 @@ use std::path::Path;
 use chacha20poly1305::aead::rand_core::RngCore;
 use chacha20poly1305::aead::{OsRng, Payload};
 use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce, aead::Aead};
+use logging::Field as _;
 use secret::{Binding, Plain, Sealed, Secret};
 
 use crate::Error;

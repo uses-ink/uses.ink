@@ -3,6 +3,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
+use logging::Field as _;
 use model::{DeployId, DuplicateRoute, PathError, Route};
 
 /// A folder that cannot be served, or a file that cannot be read.

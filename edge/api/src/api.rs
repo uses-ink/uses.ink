@@ -3,6 +3,7 @@
 use build::{BuildId, Trigger};
 use clock::{Clock, Draw};
 use control::{Control, Id, NewJob, NewSite, Ports, Requested, Resumed, Site, SiteKind};
+use logging::{Field as _, Instrument as _};
 use model::git::Scheme;
 use serde::Serialize;
 

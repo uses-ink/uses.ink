@@ -10,6 +10,7 @@ use control::{Control, Handle, Id, Ports, SiteKind};
 use edge::{Deploy, Hostname, Resolved};
 use edge_folder::Placed;
 use jiff::{SignedDuration, Timestamp};
+use logging::Field as _;
 use model::{ContentPath, DeployId};
 use tokio::sync::mpsc;
 

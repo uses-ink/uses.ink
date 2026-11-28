@@ -4,6 +4,7 @@ use blob::Blob;
 use build::BuildId;
 use db::{Db, Statement};
 use jiff::Timestamp;
+use logging::Field as _;
 use model::{Bytes, DeployId};
 use sea_query::{Expr, ExprTrait, Func, JoinType, OnConflict, Order, Query};
 

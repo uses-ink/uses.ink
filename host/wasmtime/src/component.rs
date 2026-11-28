@@ -170,12 +170,7 @@ impl engine::Format for Component<Format> {
 impl Component<Theme> {
     /// Makes `slot` the session rendering `site`, unless it already is: a new site, or a session
     /// a failed call ended, gets a fresh instance. What a failed start said goes to `record`.
-    fn start<R: Sink + ?Sized>(
-        &self,
-        site: &Site,
-        slot: &mut Option<Session>,
-        record: &mut R,
-    ) -> Result<(), Failure> {
+    fn start<R: Sink + ?Sized>(&self, site: &Site, slot: &mut Option<Session>, record: &mut R) -> Result<(), Failure> {
         if slot.as_ref().is_some_and(|session| session.site == *site) {
             return Ok(());
         }

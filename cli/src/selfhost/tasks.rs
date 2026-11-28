@@ -15,6 +15,7 @@ use build::BuildId;
 use clock::{Clock, Slept, System};
 use control::{Dropped, Id, Published, SiteKind, Worked};
 use edge_control::Chain;
+use logging::Field as _;
 use tokio::sync::{mpsc, watch as flag};
 use watch::{Done, Head, Outcome, Report, Round};
 

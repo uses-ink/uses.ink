@@ -1,6 +1,7 @@
 //! What a render has produced so far: one entry per route with the policy's headers, the bytes
 //! behind new blobs, and what was said along the way.
 
+use logging::Field as _;
 use std::collections::BTreeMap;
 use std::io;
 

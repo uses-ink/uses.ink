@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
+use logging::Field as _;
 use tokio::io::AsyncReadExt as _;
 
 use edge::{Deploy, Hostname, Resolved, Sites};

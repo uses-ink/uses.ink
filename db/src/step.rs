@@ -1,6 +1,7 @@
 //! Migrations: typed values with a number and a name, applied in order through any [`Db`], with
 //! wrangler's ledger table so a D1 database keeps one history.
 
+use logging::Field as _;
 use std::fmt;
 
 use sea_query::{ColumnDef, Expr, IdenStatic, Order, Query, Table};

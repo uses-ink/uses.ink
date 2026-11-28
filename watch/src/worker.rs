@@ -1,5 +1,6 @@
 //! Working builds off the queue.
 
+use logging::Field as _;
 use std::error::Error;
 use std::time::Duration;
 

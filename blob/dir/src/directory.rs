@@ -1,5 +1,6 @@
 //! The adapter.
 
+use logging::Field as _;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};

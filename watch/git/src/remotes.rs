@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use build::Revision;
 use https::Https;
+use logging::Field as _;
 use model::git::{Locator, Network, Scheme};
 use secret::Plain;
 use watch::{Access, Head, Heads};

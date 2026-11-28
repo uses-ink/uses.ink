@@ -10,6 +10,7 @@
 use std::time::Duration;
 
 use edge::Limits;
+use logging::Field as _;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 

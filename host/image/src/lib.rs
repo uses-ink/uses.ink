@@ -25,6 +25,7 @@ mod settings;
 mod thumbhash;
 mod work;
 
+use logging::Field as _;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;

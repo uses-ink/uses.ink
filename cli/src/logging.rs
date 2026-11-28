@@ -4,6 +4,7 @@
 
 use std::io::Write;
 
+use logging::{Entered, Guard, Logging, Process, Variables, Vars};
 use model::Chain;
 
 use crate::settings::{Log, Preferences, Process as Terminal};

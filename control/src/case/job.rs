@@ -6,6 +6,7 @@ use blob::Blob;
 use build::{Build, BuildId, Outcome, Request};
 use db::Db;
 use jiff::Timestamp;
+use logging::{Field as _, Instrument as _};
 use model::Hash;
 use queue::{Delivery, Message, Queue, Sent};
 use sea_query::{Expr, ExprTrait, Order, Query};

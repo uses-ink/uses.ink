@@ -1,5 +1,6 @@
 //! The poll.
 
+use logging::Field as _;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::time::Duration;
