@@ -110,8 +110,6 @@ pub enum Scope {
     Address,
     /// Too many requests from this source.
     Source,
-    /// Too many addresses and sources are being tracked at once.
-    Full,
 }
 
 /// A request turned away, and when to try again.
@@ -159,11 +157,33 @@ impl Key {
 struct Counts(HashMap<Key, VecDeque<i64>>);
 
 impl Counts {
-    /// Forgets keys whose last request is older than `longest`, when more than `tracked` are held.
-    fn trim(&mut self, tracked: usize, longest: Duration, now: i64) {
-        if self.0.len() >= tracked {
-            let cut = now.saturating_sub(i64::try_from(longest.as_millis()).unwrap_or(i64::MAX));
-            self.0.retain(|_, hits| hits.back().is_some_and(|last| *last > cut));
+    /// Makes room for the keys of `wanted` that are not held yet, within `tracked` keys: forgets
+    /// those whose last request is older than `longest`, then, if that is not enough, the ones
+    /// whose last request is oldest, so a flood of new sources forgets old counts (which only
+    /// makes the limiter more generous) and never turns a new source away. Keys in `wanted` stay.
+    fn make_room(&mut self, wanted: &[Key], (tracked, longest): (usize, Duration), now: i64) {
+        let fresh = wanted.iter().filter(|key| !self.0.contains_key(key)).count();
+        if self.0.len().saturating_add(fresh) <= tracked {
+            return;
+        }
+        let cut = now.saturating_sub(i64::try_from(longest.as_millis()).unwrap_or(i64::MAX));
+        self.0.retain(|key, hits| wanted.contains(key) || hits.back().is_some_and(|last| *last > cut));
+        let mut extra = self.0.len().saturating_add(fresh).saturating_sub(tracked);
+        if extra > 0 {
+            let mut order: Vec<(i64, Key)> = self
+                .0
+                .iter()
+                .filter(|(key, _)| !wanted.contains(key))
+                .map(|(key, hits)| (hits.back().copied().unwrap_or(i64::MIN), *key))
+                .collect();
+            order.sort_unstable_by_key(|(last, _)| *last);
+            for (_, key) in order {
+                if extra == 0 {
+                    break;
+                }
+                self.0.remove(&key);
+                extra -= 1;
+            }
         }
     }
 
@@ -209,12 +229,10 @@ impl Limiter {
         let mut checks = vec![(Key::of(who.address), rates.address, Scope::Address)];
         checks.extend(who.source.map(|source| (Key::network(source), rates.source, Scope::Source)));
         let mut seen = self.seen.lock().unwrap_or_else(PoisonError::into_inner);
-        seen.trim(rates.tracked, rates.address.window.duration().max(rates.source.window.duration()), now);
+        let wanted: Vec<Key> = checks.iter().map(|(key, ..)| *key).collect();
+        let longest = rates.address.window.duration().max(rates.source.window.duration());
+        seen.make_room(&wanted, (rates.tracked, longest), now);
         for (key, rate, scope) in &checks {
-            if !seen.0.contains_key(key) && seen.0.len() >= rates.tracked {
-                let retry = rates.address.window.duration().min(rates.source.window.duration());
-                return Err(Limited { scope: Scope::Full, retry });
-            }
             seen.check(*key, *rate, now).map_err(|retry| Limited { scope: *scope, retry })?;
         }
         for (key, ..) in &checks {
@@ -263,10 +281,7 @@ impl Quota {
         let now = now.as_millisecond();
         let key = source.map_or(Key::Unknown, Key::network);
         let mut seen = self.seen.lock().unwrap_or_else(PoisonError::into_inner);
-        seen.trim(self.tracked, self.rate.window.duration(), now);
-        if !seen.0.contains_key(&key) && seen.0.len() >= self.tracked {
-            return Err(Limited { scope: Scope::Full, retry: self.rate.window.duration() });
-        }
+        seen.make_room(&[key], (self.tracked, self.rate.window.duration()), now);
         seen.check(key, self.rate, now).map_err(|retry| Limited { scope: Scope::Source, retry })?;
         seen.record(key, now);
         Ok(())
@@ -337,18 +352,16 @@ mod test {
     }
 
     #[test]
-    fn the_number_of_things_tracked_is_bounded() {
+    fn a_full_table_forgets_the_oldest_and_turns_no_one_away() {
         let limiter = Limiter::new();
         let rates = Rates { tracked: 4, ..rates("5/1h", "5/1h") };
-        for n in 0..2 {
+        for n in 0..20 {
             let address: Address = format!("a{n}@example.org").parse().unwrap();
-            assert!(limiter.admit(&rates, who(&address, &format!("10.0.0.{n}")), at(n)).is_ok());
+            assert!(limiter.admit(&rates, who(&address, &format!("10.0.0.{n}")), at(n)).is_ok(), "{n}");
+            assert!(limiter.seen.lock().unwrap().0.len() <= 4);
         }
         let late: Address = "late@example.org".parse().unwrap();
-        let full = limiter.admit(&rates, who(&late, "10.0.1.1"), at(5)).unwrap_err();
-        assert_eq!(full.scope, Scope::Full);
-        // once the old ones are out of their windows there is room again
-        assert!(limiter.admit(&rates, who(&late, "10.0.1.1"), at(4000)).is_ok());
+        assert!(limiter.admit(&rates, who(&late, "10.0.1.1"), at(30)).is_ok());
     }
 
     #[test]
@@ -369,13 +382,11 @@ mod test {
     }
 
     #[test]
-    fn a_quota_remembers_a_bounded_number_of_sources() {
+    fn a_quota_remembers_a_bounded_number_of_sources_and_turns_no_new_one_away() {
         let quota = Quota::new("5/1h".parse().unwrap(), 2);
-        for n in 1..=2 {
-            assert!(quota.admit(Some(format!("10.0.0.{n}").parse().unwrap()), at(n)).is_ok());
+        for n in 1..=50 {
+            assert!(quota.admit(Some(format!("10.0.0.{n}").parse().unwrap()), at(n)).is_ok(), "{n}");
+            assert!(quota.seen.lock().unwrap().0.len() <= 2);
         }
-        let full = quota.admit(Some("10.0.0.3".parse().unwrap()), at(3)).unwrap_err();
-        assert_eq!(full.scope, Scope::Full);
-        assert!(quota.admit(Some("10.0.0.3".parse().unwrap()), at(4000)).is_ok());
     }
 }
