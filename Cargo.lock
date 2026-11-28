@@ -6555,6 +6555,7 @@ dependencies = [
  "jiff 1.0.3",
  "p256",
  "pollster",
+ "sea-query",
  "serde",
  "serde_cbor_2",
  "serde_json",
