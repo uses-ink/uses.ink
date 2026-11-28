@@ -28,10 +28,8 @@ pub(super) struct Folder {
 
 impl Folder {
     /// The sites the repository publishes (decisions 0120 and 0171).
-    pub(super) const ALL: [Self; 2] = [
-        Self { name: "landing", dir: "landing", port: 8741 },
-        Self { name: "docs", dir: "docs", port: 8742 },
-    ];
+    pub(super) const ALL: [Self; 2] =
+        [Self { name: "landing", dir: "landing", port: 8741 }, Self { name: "docs", dir: "docs", port: 8742 }];
 
     /// The pages of the documentation site that are pictured: the home page, the longest page, a
     /// decision page, and the decisions index; each as its name and its route.
@@ -156,6 +154,9 @@ impl FromStr for Target {
     type Err = Error;
 
     fn from_str(given: &str) -> Result<Self, Error> {
-        Self::ALL.into_iter().find(|target| target.name() == given).ok_or_else(|| Error::Target { given: given.to_owned() })
+        Self::ALL
+            .into_iter()
+            .find(|target| target.name() == given)
+            .ok_or_else(|| Error::Target { given: given.to_owned() })
     }
 }

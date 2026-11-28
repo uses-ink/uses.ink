@@ -43,7 +43,10 @@ impl fmt::Display for Fault {
                 write!(out, "`--width {given}` must list from one to eight widths, each from 200 to 4000")
             }
             Self::Flag { given } => {
-                write!(out, "no flag `{given}`, or it has no value; the flags are `--width 1440,390` and `--from <folder>`")
+                write!(
+                    out,
+                    "no flag `{given}`, or it has no value; the flags are `--width 1440,390` and `--from <folder>`"
+                )
             }
             Self::Command { line, .. } => write!(out, "`{line}` failed"),
             Self::Spawn { program, .. } => {
@@ -56,7 +59,9 @@ impl fmt::Display for Fault {
                 write!(out, "the {name} server did not listen in {seconds} s, saying:\n{log}")
             }
             Self::Decision { number } => write!(out, "no decision {number} in docs/decisions/ to take a picture of"),
-            Self::Mock { path } => write!(out, "{} has no index.html: `--from` names the mock's folder", path.display()),
+            Self::Mock { path } => {
+                write!(out, "{} has no index.html: `--from` names the mock's folder", path.display())
+            }
             Self::Lock { path } => {
                 write!(out, "{} is missing: `cargo xtask shoot lock` prints it, and it is committed", path.display())
             }

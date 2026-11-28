@@ -47,7 +47,12 @@ impl Session {
     /// Puts the lockfile in the report between markers, as the farm's log is the way back.
     pub(super) fn lock(&self, report: &mut Report) -> Result<(), Fault> {
         let text = self.host.resolve()?;
-        Self::say(report, format!("=====BEGIN tools/shoot/package-lock.json=====\n{text}\n=====END tools/shoot/package-lock.json====="));
+        Self::say(
+            report,
+            format!(
+                "=====BEGIN tools/shoot/package-lock.json=====\n{text}\n=====END tools/shoot/package-lock.json====="
+            ),
+        );
         Ok(())
     }
 
@@ -64,12 +69,19 @@ impl Session {
     /// Whether a browser starts here.
     pub(super) fn probe(&mut self, report: &mut Report) -> Result<(), Fault> {
         self.prepare(report)?;
-        self.host.drive(&Plan { probe: true, out: self.root.join(Target::OUT), widths: Vec::new(), shots: Vec::new(), serve: None })
+        self.host.drive(&Plan {
+            probe: true,
+            out: self.root.join(Target::OUT),
+            widths: Vec::new(),
+            shots: Vec::new(),
+            serve: None,
+        })
     }
 
     /// Takes the pictures of `shots`, and stops the servers whatever happened.
     fn finish(&mut self, report: &mut Report, shots: Vec<Shot>, serve: Option<Static>) -> Result<(), Fault> {
-        let plan = Plan { probe: false, out: self.root.join(Target::OUT), widths: self.flags.widths.clone(), shots, serve };
+        let plan =
+            Plan { probe: false, out: self.root.join(Target::OUT), widths: self.flags.widths.clone(), shots, serve };
         let driven = self.prepare(report).and_then(|()| self.host.drive(&plan));
         let stopped = std::mem::take(&mut self.servers).stop();
         driven?;
@@ -119,8 +131,12 @@ impl Session {
             return Err(Fault::Mock { path: from });
         }
         let port = Self::MOCK;
-        let page = |name: &str, route: &str| Shot { name: format!("mock-{name}"), url: format!("http://127.0.0.1:{port}/{route}") };
-        let shots = vec![page("landing", "index.html"), page("reader", "reader/index.html"), page("post", "reader/post.html")];
+        let page = |name: &str, route: &str| Shot {
+            name: format!("mock-{name}"),
+            url: format!("http://127.0.0.1:{port}/{route}"),
+        };
+        let shots =
+            vec![page("landing", "index.html"), page("reader", "reader/index.html"), page("post", "reader/post.html")];
         self.finish(report, shots, Some(Static { root: from, port }))
     }
 }
