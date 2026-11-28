@@ -11,35 +11,10 @@
 !rustfmt.toml
 !.cargo
 
-# The crates of the workspace, by their top folder, and the WIT worlds they bind
-!blob
-!build
-!cli
-!clock
-!config
-!control
-!db
-!diag
-!edge
-!engine
-!fixture
-!freehand
-!freehand-web
-!mail
-!host
-!https
-!model
-!plugin
-!queue
-!secret
-!sig
-!token
-!logging
-!watch
-!web
+# The crates of the workspace and the tools that build them, and the WIT worlds they bind
+!crates
 !tools
 !wit
-!xtask
 
 # Local state inside an allowed folder
 **/target/

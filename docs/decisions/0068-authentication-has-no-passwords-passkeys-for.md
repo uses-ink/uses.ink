@@ -47,7 +47,7 @@ changes behind its port, and the scheme stands. The open choices are the last se
 are not. What differs from the text above, or was left out:
 
 - The profile, the verifier, the key table, device-code enrolment and the `auth_event` audit
-  table are built (`sig`, `control/keys`, `edge/api`, `ink login|logout|whoami|key`). The verifier
+  table are built (`sig`, `crates/server/control/keys`, `crates/server/edge/api`, `ink login|logout|whoami|key`). The verifier
   runs in the documented order; the nonce store is in memory, bounded per key, with a boot barrier
   of one skew window so a restart cannot replay.
 - `ink serve --data` makes no key: the server holds no private key. It makes an empty
@@ -67,7 +67,7 @@ are not. What differs from the text above, or was left out:
 
 - **Spike: it builds.** `webauthn-rs-core` 0.6.2 compiles and links for `wasm32-unknown-unknown`
   (`spikes/passkeys`), with `getrandom` 0.4 `wasm_js` and `uuid` `js`, both set in
-  `edge/api/Cargo.toml` for that target. Not run in `workerd`, size not measured, and no browser was
+  `crates/server/edge/api/Cargo.toml` for that target. Not run in `workerd`, size not measured, and no browser was
   involved: the verifier is tested natively. The tree is 167 crates; the workspace pins
   `=0.6.2` because its constructor is `new_unsafe_experts_only` and its API may move in a minor.
   `rsa` resolves to 0.10.0, past RUSTSEC-2023-0071.
@@ -80,7 +80,7 @@ are not. What differs from the text above, or was left out:
 - **Where it lives.** The `Passkeys` port, the typed ceremonies (`Creation`, `Asking`, `Created`,
   `Asserted`), the refusals (`Reason`, `Refusal`), the audit events and the store (`Registry`) are
   in `control::passkeys`. The `webauthn-rs-core` adapter (`Webauthn`) and the routes
-  (`Ceremonies`) are in `edge/api`; `web` has the Account list, the sign-in page and the one script
+  (`Ceremonies`) are in `crates/server/edge/api`; `web` has the Account list, the sign-in page and the one script
   `passkey.js`, which is static text. The relying party comes from `--rp-id` and `--rp-origin`
   (default the API host and its origin), and `ink serve` prints it. The store keeps the first
   passkey's id; a changed id refuses with `auth.relying-party.changed` and names how many would stop.
@@ -91,7 +91,7 @@ are not. What differs from the text above, or was left out:
 - **Counter.** The library is handed counter 0 and `Counter::judge` decides: a hardware passkey
   whose counter does not rise once it was nonzero is refused, a synced one is flagged and audited.
   A change of the backup-eligible flag is refused both ways.
-- **Deviations.** Routes are `/v1/passkeys...` in `edge/api` (JSON) rather than `/auth/...` in
+- **Deviations.** Routes are `/v1/passkeys...` in `crates/server/edge/api` (JSON) rather than `/auth/...` in
   `web`; the Origin and Fetch Metadata check is on the new routes only, not yet on the older Door
   routes; the stored key is the JSON of the library's COSE key; the credential link to a session is
   a `passkey_session` table, because `db` has no ALTER. Operator registration goes through the
@@ -99,6 +99,6 @@ are not. What differs from the text above, or was left out:
 - **Not done.** The delayed email recovery, a run in `workerd`, and the browser matrix (spike 2) stay
   open. Built since (2026-11-28): the challenge limit and the Origin check (0083), step-up (0084) and
   recovery codes (0085).
-- **Tests.** `edge/api/tests/passkey.rs` drives the real handlers with a software authenticator
+- **Tests.** `crates/server/edge/api/tests/passkey.rs` drives the real handlers with a software authenticator
   (`tests/support/authenticator.rs`, p256 ECDSA): the full ceremony, wrong origin, wrong rp id,
   replayed and expired challenge, counter rollback, unknown credential, user verification missing.

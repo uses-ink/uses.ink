@@ -52,7 +52,7 @@ cores) the CLI tests missed their 100 ms and 5 s budgets, and one push end-to-en
 - **The skew is not clock skew.** `chronyc tracking` on `farm-a`, `farm-b` and `petal` shows
   offsets under 0.2 ms of NTP time, so the hosts agree. The push test starts `ink serve` and the
   `ink` client on the same host, so both read one clock, and passes `--auth-skew 1`: a window of
-  one second either side (`cli/tests/push.rs`; the default of the API is 60 s). A request whose
+  one second either side (`crates/surface/cli/tests/push.rs`; the default of the API is 60 s). A request whose
   `created` differs from the server's time by 8 to 10 s was therefore stamped, then held for 8
   to 10 s before the server read it, which is what a process starved of CPU does at load 15 on 16
   cores (the client is descheduled between signing and sending, or the server between accept and

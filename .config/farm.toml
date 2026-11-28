@@ -4,7 +4,7 @@
 # `inputs` lists the files a job reads, as globs read in order (the last match wins, `!` takes
 # files out). A pass of the job is reused only while those files, `Cargo.lock`,
 # `rust-toolchain.toml` and `.config/**` are byte for byte the same. Without `inputs` the whole
-# tree counts. Every job here is `cargo xtask check <stage>`, so a change to `xtask/**` (and to
+# tree counts. Every job here is `cargo xtask check <stage>`, so a change to `tools/xtask/**` (and to
 # the crates xtask builds: `freehand`, `token`) or to the root `Cargo.toml` or `.cargo/**` is an
 # input of every job; the globs below keep the Rust jobs on everything but prose.
 [job.lint]
@@ -41,7 +41,15 @@ golden = false
 # `freehand` on wasi and `freehand-web` for the browser. They depend on `fixture` (dev) and, through
 # `cargo xtask`, on `xtask` and `token`; the workspace manifest and `.cargo/**` (the wasi runner)
 # configure the build. No other crate is compiled by this stage.
-inputs = ["freehand/**", "freehand-web/**", "fixture/**", "token/**", "xtask/**", "/Cargo.toml", ".cargo/**"]
+inputs = [
+    "crates/standalone/freehand/**",
+    "crates/standalone/freehand-web/**",
+    "crates/standalone/fixture/**",
+    "crates/core/token/**",
+    "tools/xtask/**",
+    "/Cargo.toml",
+    ".cargo/**",
+]
 
 [job.sites]
 run = "cargo xtask check sites"

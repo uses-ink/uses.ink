@@ -45,7 +45,7 @@ costs more than it clarifies, or a grammar the M3 verbs do not fit: keep the typ
 colour roles, and go back to clap's help and the per-command folder. The open choices are the
 last section of `docs/cli.md`.
 
-**Amendment, slice 1 and 3 (the output layer).** `cli/src/output/term` is built on `anstyle` and `anstream`
+**Amendment, slice 1 and 3 (the output layer).** `crates/surface/cli/src/output/term` is built on `anstyle` and `anstream`
 (already in the tree through clap) with `unicode-width` and `terminal_size`; the live line is a small
 typed meter (`Meter`, driven by the `clock` port) instead of `indicatif`, which is not in the tree
 and cannot target the CLI's `&mut dyn Write` streams. Nothing in `term` reads the process:
@@ -60,7 +60,7 @@ left. The `[ui]` table of `~/.config/ink/config.toml` (slice 2's `Settings`) fee
 more` cuts, hiding default decisions, and the table header (all need a flag or a verb of the
 command tree).
 
-Build note (slice 2, the command tree): `cli/src/tree` declares every command once as typed values
+Build note (slice 2, the command tree): `crates/surface/cli/src/tree` declares every command once as typed values
 (group, aliases, wording, examples, exit codes, environment). It decorates the clap command the
 argument types derive, and `help`, `completions` (bash, zsh, fish, elvish, nushell, powershell) and
 `man` read it, so a command is in all four places or a test fails. Global `-C`, `-q`, `--color`

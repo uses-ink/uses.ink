@@ -12,13 +12,13 @@ supersedes: []
 Built (2026-11-27), closing M2's "bundle the components into `ink`". Supersedes the bullet of 0041
 that reads components from a folder.
 
-- **One list.** `cargo xtask component` (the `Guest` list of `xtask/src/build/component.rs`) builds every
+- **One list.** `cargo xtask component` (the `Guest` list of `tools/xtask/src/build/component.rs`) builds every
   guest and writes `target/plugin/<name>.wasm` plus `target/plugin/bundle.json`
   (`uses.bundle/v1`): for each guest that `ink` carries, its plugin id, file, version and BLAKE3.
   `ink:format-markdown`, `ink:format-obsidian`, `ink:theme-quiet` and `ink:source-git` are carried;
-  the test guest `hostile` is not. `cli/build.rs` reads `bundle.json`, checks every file against
+  the test guest `hostile` is not. `crates/surface/cli/build.rs` reads `bundle.json`, checks every file against
   its hash and writes the registry (`Bundled`, a const slice of `Entry`: id, version, hash,
-  `include_bytes!`) that `cli/src/command/bundle.rs` includes. No component is named in `cli/`: a guest
+  `include_bytes!`) that `crates/surface/cli/src/command/bundle.rs` includes. No component is named in `crates/surface/cli/`: a guest
   added to xtask's list with an id is carried with no other edit.
 - **The prerequisite is typed, and depends on the profile.** A release-profile build (`cargo
   install --path cli`, `dist`, the image) with no `bundle.json` fails with the command to run
@@ -53,7 +53,7 @@ that reads components from a folder.
   `bundle.json` records every hash, so two builds' components are compared by one file. Not
   verified: that a release workflow's runners (different hosts) write byte-identical wasm.
 
-Measured (dist profile, `x86_64` Linux, `cli/tests/measure.rs`): `ink` is 56,590,936 bytes without
+Measured (dist profile, `x86_64` Linux, `crates/surface/cli/tests/measure.rs`): `ink` is 56,590,936 bytes without
 the components and 60,144,096 with them, +3,553,160 (+6.3%), of which 3,550,196 are the four
 components. `ink --version` takes a median of 2.4 ms bundled and 2.8 ms unbundled, and `ink check`
 of the blog fixture 3.5 ms and 3.7 ms: the embedded bytes are mapped, not read, and no difference

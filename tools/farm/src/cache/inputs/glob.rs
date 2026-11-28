@@ -150,6 +150,14 @@ impl Selection {
             .map(Self)
     }
 
+    /// The positions of the patterns that take files in and match none of `paths`: a glob that
+    /// names a place the tree no longer has, which would make a stale pass look fresh.
+    #[cfg(test)]
+    pub(crate) fn idle(&self, paths: &[String]) -> Vec<usize> {
+        let unmatched = |pattern: &Pattern| pattern.sign == Sign::In && !paths.iter().any(|path| pattern.matches(path));
+        self.0.iter().enumerate().filter(|(_, pattern)| unmatched(pattern)).map(|(at, _)| at).collect()
+    }
+
     /// Whether the last pattern that matches `path` takes it in.
     pub(crate) fn selects(&self, path: &str) -> bool {
         self.0.iter().rev().find(|pattern| pattern.matches(path)).is_some_and(|pattern| pattern.sign == Sign::In)

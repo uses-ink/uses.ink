@@ -19,7 +19,7 @@ env:
   NEXTEST_PROFILE: ci
 
 jobs:
-  # `cargo xtask check <stage>` is one stage of the gate (xtask/src/check/mod.rs); the stages run in
+  # `cargo xtask check <stage>` is one stage of the gate (tools/xtask/src/check/mod.rs); the stages run in
   # parallel, and `cargo xtask check` with no stage runs them all, which is what a developer runs.
   check:
     name: ${{ matrix.stage }}

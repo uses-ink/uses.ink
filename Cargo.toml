@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "sig", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "logging", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/process", "control", "control/keys", "control/rows", "control/signin", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/rows", "web", "mail", "mail/smtp", "https"]
+members = ["crates/surface/cli", "crates/core/sig", "crates/port/clock", "crates/server/edge/api", "crates/server/edge/control", "crates/server/watch", "crates/server/watch/git", "crates/core/config", "crates/core/diag", "crates/server/edge", "crates/server/edge/axum", "crates/server/edge/folder", "crates/core/engine", "crates/standalone/fixture", "crates/standalone/freehand", "crates/standalone/freehand-web", "crates/runtime/host/image", "crates/runtime/host/native", "crates/core/model", "crates/runtime/plugin/format/markdown", "crates/runtime/plugin/theme/quiet", "crates/core/token", "crates/core/logging", "tools/farm", "tools/xtask", "crates/runtime/host/wasmtime", "crates/runtime/host/wasmtime/hostile", "crates/runtime/plugin/sdk", "crates/runtime/plugin/format/markdown/guest", "crates/runtime/plugin/format/obsidian", "crates/runtime/plugin/format/obsidian/guest", "crates/runtime/plugin/theme/quiet/guest", "crates/runtime/plugin/source/git", "crates/runtime/plugin/source/git/guest", "crates/port/blob", "crates/port/blob/conformance", "crates/port/blob/dir", "crates/port/build", "crates/port/build/conformance", "crates/runtime/build/process", "crates/server/control", "crates/server/control/keys", "crates/server/control/rows", "crates/server/control/signin", "crates/port/db", "crates/port/db/conformance", "crates/port/db/sqlite", "crates/port/secret", "crates/port/secret/conformance", "crates/port/secret/local", "crates/port/queue", "crates/port/queue/conformance", "crates/port/queue/rows", "crates/surface/web", "crates/port/mail", "crates/port/mail/smtp", "crates/core/https"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -13,57 +13,57 @@ publish = false
 
 # Every crate of ours by its short name, so code says `token::Colour`.
 [workspace.dependencies]
-blob = { package = "uses-ink-blob", path = "blob" }
-blob-conformance = { package = "uses-ink-blob-conformance", path = "blob/conformance" }
-blob-dir = { package = "uses-ink-blob-dir", path = "blob/dir" }
-build = { package = "uses-ink-build", path = "build" }
-build-conformance = { package = "uses-ink-build-conformance", path = "build/conformance" }
-build-process = { package = "uses-ink-build-process", path = "build/process" }
-clock = { package = "uses-ink-clock", path = "clock" }
-config = { package = "uses-ink-config", path = "config" }
-control = { package = "uses-ink-control", path = "control" }
-control-keys = { package = "uses-ink-control-keys", path = "control/keys" }
-control-rows = { package = "uses-ink-control-rows", path = "control/rows" }
-control-signin = { package = "uses-ink-control-signin", path = "control/signin" }
+blob = { package = "uses-ink-blob", path = "crates/port/blob" }
+blob-conformance = { package = "uses-ink-blob-conformance", path = "crates/port/blob/conformance" }
+blob-dir = { package = "uses-ink-blob-dir", path = "crates/port/blob/dir" }
+build = { package = "uses-ink-build", path = "crates/port/build" }
+build-conformance = { package = "uses-ink-build-conformance", path = "crates/port/build/conformance" }
+build-process = { package = "uses-ink-build-process", path = "crates/runtime/build/process" }
+clock = { package = "uses-ink-clock", path = "crates/port/clock" }
+config = { package = "uses-ink-config", path = "crates/core/config" }
+control = { package = "uses-ink-control", path = "crates/server/control" }
+control-keys = { package = "uses-ink-control-keys", path = "crates/server/control/keys" }
+control-rows = { package = "uses-ink-control-rows", path = "crates/server/control/rows" }
+control-signin = { package = "uses-ink-control-signin", path = "crates/server/control/signin" }
 # test-only: a dev-dependency of any crate, a normal dependency of none
-fixture = { package = "uses-ink-fixture", path = "fixture" }
-db = { package = "uses-ink-db", path = "db" }
-db-conformance = { package = "uses-ink-db-conformance", path = "db/conformance" }
-db-sqlite = { package = "uses-ink-db-sqlite", path = "db/sqlite" }
-diag = { package = "uses-ink-diag", path = "diag" }
-edge = { package = "uses-ink-edge", path = "edge" }
-edge-api = { package = "uses-ink-edge-api", path = "edge/api" }
-edge-control = { package = "uses-ink-edge-control", path = "edge/control" }
-edge-axum = { package = "uses-ink-edge-axum", path = "edge/axum" }
-edge-folder = { package = "uses-ink-edge-folder", path = "edge/folder" }
-engine = { package = "uses-ink-engine", path = "engine" }
-format-markdown = { package = "uses-ink-format-markdown", path = "plugin/format/markdown" }
-format-obsidian = { package = "uses-ink-format-obsidian", path = "plugin/format/obsidian" }
-freehand = { path = "freehand" }
-https = { package = "uses-ink-https", path = "https" }
-host-image = { package = "uses-ink-host-image", path = "host/image" }
-host-native = { package = "uses-ink-host-native", path = "host/native" }
-host-wasmtime = { package = "uses-ink-host-wasmtime", path = "host/wasmtime" }
-model = { package = "uses-ink-model", path = "model" }
-secret = { package = "uses-ink-secret", path = "secret" }
-sig = { package = "uses-ink-sig", path = "sig" }
-secret-conformance = { package = "uses-ink-secret-conformance", path = "secret/conformance" }
-secret-local = { package = "uses-ink-secret-local", path = "secret/local" }
-mail = { package = "uses-ink-mail", path = "mail" }
-mail-smtp = { package = "uses-ink-mail-smtp", path = "mail/smtp" }
-queue = { package = "uses-ink-queue", path = "queue" }
-queue-conformance = { package = "uses-ink-queue-conformance", path = "queue/conformance" }
-queue-rows = { package = "uses-ink-queue-rows", path = "queue/rows" }
-sdk = { package = "uses-ink-sdk", path = "plugin/sdk" }
-source-git = { package = "uses-ink-source-git", path = "plugin/source/git" }
-theme-quiet = { package = "uses-ink-theme-quiet", path = "plugin/theme/quiet" }
-token = { package = "uses-ink-token", path = "token" }
+fixture = { package = "uses-ink-fixture", path = "crates/standalone/fixture" }
+db = { package = "uses-ink-db", path = "crates/port/db" }
+db-conformance = { package = "uses-ink-db-conformance", path = "crates/port/db/conformance" }
+db-sqlite = { package = "uses-ink-db-sqlite", path = "crates/port/db/sqlite" }
+diag = { package = "uses-ink-diag", path = "crates/core/diag" }
+edge = { package = "uses-ink-edge", path = "crates/server/edge" }
+edge-api = { package = "uses-ink-edge-api", path = "crates/server/edge/api" }
+edge-control = { package = "uses-ink-edge-control", path = "crates/server/edge/control" }
+edge-axum = { package = "uses-ink-edge-axum", path = "crates/server/edge/axum" }
+edge-folder = { package = "uses-ink-edge-folder", path = "crates/server/edge/folder" }
+engine = { package = "uses-ink-engine", path = "crates/core/engine" }
+format-markdown = { package = "uses-ink-format-markdown", path = "crates/runtime/plugin/format/markdown" }
+format-obsidian = { package = "uses-ink-format-obsidian", path = "crates/runtime/plugin/format/obsidian" }
+freehand = { path = "crates/standalone/freehand" }
+https = { package = "uses-ink-https", path = "crates/core/https" }
+host-image = { package = "uses-ink-host-image", path = "crates/runtime/host/image" }
+host-native = { package = "uses-ink-host-native", path = "crates/runtime/host/native" }
+host-wasmtime = { package = "uses-ink-host-wasmtime", path = "crates/runtime/host/wasmtime" }
+model = { package = "uses-ink-model", path = "crates/core/model" }
+secret = { package = "uses-ink-secret", path = "crates/port/secret" }
+sig = { package = "uses-ink-sig", path = "crates/core/sig" }
+secret-conformance = { package = "uses-ink-secret-conformance", path = "crates/port/secret/conformance" }
+secret-local = { package = "uses-ink-secret-local", path = "crates/port/secret/local" }
+mail = { package = "uses-ink-mail", path = "crates/port/mail" }
+mail-smtp = { package = "uses-ink-mail-smtp", path = "crates/port/mail/smtp" }
+queue = { package = "uses-ink-queue", path = "crates/port/queue" }
+queue-conformance = { package = "uses-ink-queue-conformance", path = "crates/port/queue/conformance" }
+queue-rows = { package = "uses-ink-queue-rows", path = "crates/port/queue/rows" }
+sdk = { package = "uses-ink-sdk", path = "crates/runtime/plugin/sdk" }
+source-git = { package = "uses-ink-source-git", path = "crates/runtime/plugin/source/git" }
+theme-quiet = { package = "uses-ink-theme-quiet", path = "crates/runtime/plugin/theme/quiet" }
+token = { package = "uses-ink-token", path = "crates/core/token" }
 # logging (decision 0065): crates take it with `default-features = false`; the CLI adds `layers`, tests `capture`
-logging = { package = "uses-ink-logging", path = "logging", default-features = false }
-watch = { package = "uses-ink-watch", path = "watch" }
-watch-git = { package = "uses-ink-watch-git", path = "watch/git" }
+logging = { package = "uses-ink-logging", path = "crates/core/logging", default-features = false }
+watch = { package = "uses-ink-watch", path = "crates/server/watch" }
+watch-git = { package = "uses-ink-watch-git", path = "crates/server/watch/git" }
 annotate-snippets = "0.12.18"
-# colour and width for the terminal layer of the `ink` command (cli/src/term); clap already pulls both
+# colour and width for the terminal layer of the `ink` command (crates/surface/cli/src/output/term); clap already pulls both
 anstream = "1.0.0"
 anstyle = "1.0.14"
 terminal_size = "0.4.4"

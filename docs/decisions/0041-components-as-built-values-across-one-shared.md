@@ -9,7 +9,7 @@ supersedes: []
 
 ## 0041 Components as built: values across, one shared mirror
 
-Accepted. `ink:format-markdown` and `ink:theme-quiet` run as components through `host/wasmtime`,
+Accepted. `ink:format-markdown` and `ink:theme-quiet` run as components through `crates/runtime/host/wasmtime`,
 and `ink build --check` builds every CLI site fixture the same, byte for byte, natively and
 through them. What 0035 and architecture.md sections 6 and 7 did not settle, as built:
 
@@ -31,8 +31,8 @@ through them. What 0035 and architecture.md sections 6 and 7 did not settle, as 
   call. A format call gets an instance of its own (about 6 us, 0035). Architecture's host-owned
   `site` resource with lazy reads is not built: the native core takes a whole `Site`.
 - **Conversions are written once for both sides.** `wit/mirror/` holds them as `From` and
-  `TryFrom` impls naming the generated types through `super::wit`; `host/wasmtime` and
-  `plugin/sdk` each include its parts over their own bindings, since `bindgen!` and
+  `TryFrom` impls naming the generated types through `super::wit`; `crates/runtime/host/wasmtime` and
+  `crates/runtime/plugin/sdk` each include its parts over their own bindings, since `bindgen!` and
   `wit-bindgen` write the same shapes but no common type.
 - **Memory is limited by a `ResourceLimiter`**, not the pooling allocator, so a refused growth is
   told apart from other traps (`plugin.budget.memory`). Fuel and an epoch ticker (5 ms) give
@@ -54,7 +54,7 @@ through them. What 0035 and architecture.md sections 6 and 7 did not settle, as 
   component needs only the SDK, and a third-party native core written against them is a later
   decision.
 
-Measured (release, this machine, `host/wasmtime/tests/measure.rs`): the markdown component is
+Measured (release, this machine, `crates/runtime/host/wasmtime/tests/measure.rs`): the markdown component is
 1,369,744 bytes (464 KB gzipped, a 4.5 MB `.cwasm`), the quiet theme 657,499 (227 KB, 2.2 MB);
 a Cranelift compile takes 402 ms and 244 ms on all cores, a cached load (a new engine, the digest
 checked, `deserialize`) 10 ms and 5 ms. The blog fixture, interpreted and rendered, takes 0.31 ms

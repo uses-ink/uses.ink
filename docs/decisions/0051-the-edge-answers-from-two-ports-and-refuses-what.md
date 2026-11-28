@@ -9,7 +9,7 @@ supersedes: []
 
 ## 0051 The edge answers from two ports and refuses what it cannot name; the adapter owns the times
 
-Built (2026-11-27) as the serving half of M3: `edge`, `edge/axum`, `edge/folder` and `ink serve`.
+Built (2026-11-27) as the serving half of M3: `edge`, `crates/server/edge/axum`, `crates/server/edge/folder` and `ink serve`.
 The owner has not read it yet; the choices below are the ones to push back on.
 
 - **Two ports, no host types.** `Sites` (host to the deploy's manifest) and `Blobs` (a hash, read
@@ -17,7 +17,7 @@ The owner has not read it yet; the choices below are the ones to push back on.
   A blob is opened first, so its length is known before a byte is read (ranges, `content-length`,
   the size budget), then read as a stream of chunks. The core owns no socket, file, clock or
   runtime; `Edge::respond` takes bytes and returns a typed `Answer`. workers-rs futures are not
-  `Send`, so the planned `edge/worker` wraps these traits in its own twin; the logic is the same code.
+  `Send`, so the planned `crates/server/edge/worker` wraps these traits in its own twin; the logic is the same code.
 - **The edge parses the request, not the framework.** The adapter passes the method, the target
   and the header lines exactly as received, and the edge refuses with a typed `Refusal` that
   carries its data (`Refusal` has the data and a status; its text is its `Display`, once). The
@@ -36,7 +36,7 @@ The owner has not read it yet; the choices below are the ones to push back on.
   sandbox`, `cross-origin-resource-policy: same-origin`, `nosniff`) into any response lacking
   them: every refusal, 304, 301, 416, 500, `/healthz` and a manifest from another producer. That
   set is a copy of the engine's `Policy::FILE`, which stays `pub(crate)` so `edge` does not
-  depend on `engine`; `cli/tests/serve.rs` builds a site and fails when the copy drifts.
+  depend on `engine`; `crates/surface/cli/tests/serve.rs` builds a site and fails when the copy drifts.
   `Strict-Transport-Security` is sent only to a request that came over TLS, a setting of the
   adapter (`Scheme`), so a plain-HTTP self-host never tells a browser to pin it.
   `content-type` comes from the entry's media type, `etag` from the blob's hash (`"<hash>"`, or
@@ -78,7 +78,7 @@ The owner has not read it yet; the choices below are the ones to push back on.
   bytes, and no header: nothing in it is a credential or a reader's words. Peer addresses are not
   logged.
 - **The folder adapter reads what `ink build` wrote.** The manifest model serializes and does not
-  deserialize, so `edge/folder` mirrors the file's shape for the fields it needs, refuses a schema
+  deserialize, so `crates/server/edge/folder` mirrors the file's shape for the fields it needs, refuses a schema
   other than `uses.manifest/v3`, recomputes `Manifest::id` and refuses a deploy id that does not
   match, and checks every entry's blob is in the `files` list. Blobs are reached only through that
   list, never from a request path, so `.ink-manifest.json` and its record cannot be served and no

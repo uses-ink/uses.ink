@@ -3,7 +3,7 @@
 Status: **Accepted** (decision 0068): the owner took the recommendation on every open choice in
 section 23. This is the design the code follows; what is built is listed in the roadmap. `auth-preview.html` shows the flows as sequence diagrams and the
 screens (CLI and dashboard) in light and dark; open it in a browser. Mock-ups are illustrative:
-ids, codes and names are made up. A code marked (new) is not in `diag/catalog.toml` yet; every
+ids, codes and names are made up. A code marked (new) is not in `crates/core/diag/catalog.toml` yet; every
 other name is taken from the code on `main`.
 
 The owner's brief: holding passwords is scary, so design a cryptographic scheme that is practical,
@@ -26,7 +26,7 @@ machine made (session id, recovery code, link token). A person never invents one
 reuses, guesses or loses one to a phishing form.
 
 Out of that rule, and not a person's credential: the **operator's SMTP password** that
-`mail/smtp` holds (a service credential in the operator's config, sealed in memory), and the git
+`crates/port/mail/smtp` holds (a service credential in the operator's config, sealed in memory), and the git
 tokens an author hands the `secret` port for a private repository (0031). Neither signs anyone in.
 
 What the design covers: people in a browser, the `ink` CLI on a laptop, CI and deploy jobs, the
@@ -91,7 +91,7 @@ Facts found while reading that changed the first proposal:
   OpenSSL-based versions had does not cover what we would ship.
 - **`lettre` had six advisories on 2026-11-17** (SMTP command injection, forged STARTTLS replies,
   mail sent to the wrong address for a quoted local part, two panics, unbounded buffering), all
-  patched in 0.11.24. Pin `>= 0.11.24`. The `signin` agent's `mail/smtp` already uses `lettre`.
+  patched in 0.11.24. Pin `>= 0.11.24`. The `signin` agent's `crates/port/mail/smtp` already uses `lettre`.
 
 ## 4. Passkeys
 
@@ -450,7 +450,7 @@ scrollback: `auth.key.print-refused`, new). The private key never reaches the se
 container that has no binding to the control database and holds no deploy key; the source plugin
 is handed a grant by name and the host holds the bytes. A deploy key lives in the author's CI, and
 the hosted builder fetches by the sealed git token of the `secret` port, not by anything in this
-document. The self-host `build/process` runs plugins as wasm components with no file or environment
+document. The self-host `crates/runtime/build/process` runs plugins as wasm components with no file or environment
 capability, so a plugin cannot read `<data>`.
 
 **Better than a long-lived secret: trusted publishing.** A CI job that proves its own identity needs
@@ -616,7 +616,7 @@ above is the strict setting. Residual risk, stated in section 14.
 
 ## 10. The operator and the existing token
 
-`edge/api` today has `Owner`: one bearer token, kept as a BLAKE3 digest, compared in constant time,
+`crates/server/edge/api` today has `Owner`: one bearer token, kept as a BLAKE3 digest, compared in constant time,
 made by `ink serve --data` into `<data>/owner-token` (0600), shown once (0052). In the new model:
 
 - **`Owner` is deleted, not deprecated.** Nothing is released, so the only holder of such a token is
@@ -724,7 +724,7 @@ pub struct Grant { pub scope: Scope, pub rights: Rights }   // Rights is a set o
 `Right` has a `NAMES` table like `credential::Use` does, and the column that stores it is built
 from it (0049).
 
-The calls of `edge/api` today need these rights:
+The calls of `crates/server/edge/api` today need these rights:
 
 | Call | Right |
 |---|---|
@@ -778,7 +778,7 @@ cannot be removed. Roles and the org tables arrive with M4; self-host M3 has one
 Two kinds of record, kept apart so the second does not turn into a tracking log.
 
 - **Lifecycle events** are typed values, `control::Event` variants (the enum that exists in
-  `control/src/event.rs`), stored with the control plane's other events:
+  `crates/server/control/src/event.rs`), stored with the control plane's other events:
   `PasskeyAdded`, `PasskeyRemoved`, `PasskeyFlagged { why }`, `SessionStarted`, `SessionEnded { why }`,
   `StepUp`, `KeyApproved { key, kind, rights, scope }`, `KeyRevoked { key, why }`, `KeyExpired { key }`,
   `KeyRotated { old, new }`, `RecoveryStarted { completes_at }`, `RecoveryCancelled`,
@@ -822,7 +822,7 @@ Two kinds of record, kept apart so the second does not turn into a tracking log.
 |---|---|---|
 | Signatures of CLI and CI requests | **Ed25519** (RFC 8032), strict verification | Deterministic (no nonce reuse failure), 32-byte keys, fast, small, one algorithm. |
 | Passkey assertions | **ES256** (ECDSA P-256), by WebAuthn | What authenticators do. Not our choice, and verified by the library. |
-| Digests of random tokens (session id, link token, recovery code) | **BLAKE3**, `derive_key` with one context per purpose, 256-bit output | The inputs are 128 to 256 bits of OS randomness, so the digest only has to be one-way. **No salt**: a salt defends against precomputed tables of guessable inputs, and these are not guessable. **No slow hash** (Argon2, scrypt): slowness buys resistance to guessing a low-entropy secret, which these are not, and costs CPU on every request. A password would need both; there are none. Per-purpose `derive_key` contexts mean a session digest cannot be presented as a link token digest. BLAKE3 is already in the tree (`control/rows/src/digest.rs`, blob hashes). |
+| Digests of random tokens (session id, link token, recovery code) | **BLAKE3**, `derive_key` with one context per purpose, 256-bit output | The inputs are 128 to 256 bits of OS randomness, so the digest only has to be one-way. **No salt**: a salt defends against precomputed tables of guessable inputs, and these are not guessable. **No slow hash** (Argon2, scrypt): slowness buys resistance to guessing a low-entropy secret, which these are not, and costs CPU on every request. A password would need both; there are none. Per-purpose `derive_key` contexts mean a session digest cannot be presented as a link token digest. BLAKE3 is already in the tree (`crates/server/control/rows/src/digest.rs`, blob hashes). |
 | Body digest | **BLAKE3** | One hash across the product (section 5). |
 | Comparing digests | `blake3::Hash`'s `==` (constant time, documented), `subtle::ConstantTimeEq` where bytes are not a `Hash` | `subtle` is already an exception in `deny.toml` for the sealer. A database lookup by digest is not a secret comparison; its timing reveals a digest prefix, from which no preimage follows. |
 | Randomness | `clock::Draw` (16 bytes, OS CSPRNG in `System`, counting in `Counter`) | A token is two draws. A key seed is two draws. One exception: the WebAuthn challenge, from the library's OS-seeded `rand` (section 4). |
@@ -839,7 +839,7 @@ Checked 2026-11-27 on crates.io, in the RustSec database snapshot in `~/code/str
 | `ed25519-compact` | 2.6.1 | **MIT** | 2026-11-07 | none | **The no-exception alternative.** One maintainer, no required dependencies, rejects non-canonical `S` and small-order keys. Smaller review surface and smaller community. Open choice 2. |
 | `ring` | 0.17.14 | Apache-2.0 AND ISC | 2025-03-11 | none for it | Out: C and assembly, awkward on `wasm32-unknown-unknown`, ISC exception. |
 | `aws-lc-rs` | 1.19.0 | ISC AND (Apache-2.0 OR ISC) | 2026-10-28 | none for it | Out for the same reasons, plus a C build. |
-| `lettre` | 0.11.24 | MIT | 2026-11-17 | six on 2026-11-17, all patched in 0.11.24 | **In, self-host only**, pinned `>= 0.11.24`, through the `signin` agent's `mail/smtp`. Hosted email is another adapter of that `mail` port. Not for `wasm32`. |
+| `lettre` | 0.11.24 | MIT | 2026-11-17 | six on 2026-11-17, all patched in 0.11.24 | **In, self-host only**, pinned `>= 0.11.24`, through the `signin` agent's `crates/port/mail/smtp`. Hosted email is another adapter of that `mail` port. Not for `wasm32`. |
 | `keyring` | 4.2.0 | MIT OR Apache-2.0 | 2026-08-29 | none | **In** (CLI only). Platform stores are separate crates; a missing store is the file fallback. |
 | `blake3` | 1.8.8 | CC0-1.0 OR Apache-2.0 (workspace has it) | 2026-11-26 | none | In, already used. |
 | `coset` | 0.4.2 | Apache-2.0 | 2026-03-02 | none | Not needed: the library parses COSE. |
@@ -954,7 +954,7 @@ optimisation that waits for a measurement).
 
 ### Routes under `/v1`
 
-Added to `edge/api`'s `Call` enum next to the site routes. All are signed unless noted.
+Added to `crates/server/edge/api`'s `Call` enum next to the site routes. All are signed unless noted.
 
 | Route | Right | Does |
 |---|---|---|
@@ -1050,7 +1050,7 @@ $ ink key list
 
 A mock-up's glyphs follow `cli.md` section 5: `●` live, `✗` failed or revoked, `·` neutral.
 
-## 20. Errors, for `diag/catalog.toml`
+## 20. Errors, for `crates/core/diag/catalog.toml`
 
 Each has a code (`noun.noun.reason`), a cause (what is true), a fix (what to do), a `fault` and the
 **fields it carries**. None names a key, an address or a secret, and none distinguishes an unknown
@@ -1107,7 +1107,7 @@ The caller never sees the cause for `auth.signature.refused`; the operator's cou
 
 ## 22. Testing and review plan
 
-**Test vectors** are committed files with typed readers, the same way `fixture` and `host/image`
+**Test vectors** are committed files with typed readers, the same way `fixture` and `crates/runtime/host/image`
 goldens are:
 
 - Ed25519: RFC 8032 section 7.1 vectors; the Wycheproof Ed25519 set (malformed, non-canonical `S`,
@@ -1122,7 +1122,7 @@ goldens are:
   above 0).
 
 **A conformance suite per credential kind**, a crate of cases that are types with a `check` over any
-adapter, like `db/conformance` (architecture section 9): `signed`, `session`, `passkey`, `link`,
+adapter, like `crates/port/db/conformance` (architecture section 9): `signed`, `session`, `passkey`, `link`,
 `recovery`. A new adapter (D1, a Durable Object nonce store) runs the same cases. Required cases
 include: replay (same nonce twice, in the window and after it), expiry (key, session absolute, session
 idle, link, enrolment), **tamper** (flip each field of the header, each line of the signing input, a

@@ -1,6 +1,6 @@
 # Tracing: logging for debugging
 
-Decision 0065. This page is the design; `logging/` is the code. The word "trace" already means the
+Decision 0065. This page is the design; `crates/core/logging/` is the code. The word "trace" already means the
 replayed ladder of a decision (`ink explain --why`, `uses.trace/v1`). This page is about the
 process: what it was doing, how long each part took, and why it refused. The crate name is the
 owner's choice; docs and code say "log" for the output and "span" for a timed scope.
@@ -122,15 +122,15 @@ area filter then governs the structure and the events together).
 | Span | Macro | Level | Fields | Opened by |
 |---|---|---|---|---|
 | `command` | `command!` | info | `kind` (the verb) | the CLI |
-| `build` | `build!` | info | `build` (id), `kind` (trigger) | `build/process` |
-| `stage` | `stage!` | info | `kind` (a `Stage`), `step` | engine, `build/process` |
+| `build` | `build!` | info | `build` (id), `kind` (trigger) | `crates/runtime/build/process` |
+| `stage` | `stage!` | info | `kind` (a `Stage`), `step` | engine, `crates/runtime/build/process` |
 | `unit` | `unit!` | debug | `kind` (`file`, `page`, `generated`, `image`), `unit` | engine, image host |
 | `plugin` | `plugin!` | debug | `kind` (the plugin), `fuel`, `took_us` | wasm host |
-| `request` | `request!` | info | `request` (a counter), `method`, `path`, `host`, `status`, `took_us` | `edge/axum` |
-| `api` | `api!` | info | `kind` (method), `route`, `status` | `edge/api` |
+| `request` | `request!` | info | `request` (a counter), `method`, `path`, `host`, `status`, `took_us` | `crates/server/edge/axum` |
+| `api` | `api!` | info | `kind` (method), `route`, `status` | `crates/server/edge/api` |
 | `job` | `job!` | info | `job`, `site`, `attempt` | control plane |
-| `statement` | `statement!` | debug | `kind` (a `Shape`), `rows`, `changes` | `db/sqlite` |
-| `blob` | `blob!` | debug | `kind` (`read`, `write`, `remove`, `probe`), `digest`, `bytes` | `blob/dir` |
+| `statement` | `statement!` | debug | `kind` (a `Shape`), `rows`, `changes` | `crates/port/db/sqlite` |
+| `blob` | `blob!` | debug | `kind` (`read`, `write`, `remove`, `probe`), `digest`, `bytes` | `crates/port/blob/dir` |
 
 The stages, in the order a build runs them: `fetch` (the snapshot from its source: the git fetch,
 the folder read), `discover` (scope, layout, ignores, the vault's settings), `source` (each kept
@@ -260,7 +260,7 @@ command[build]            1     38.1ms      0.2ms     38.1ms
 The CLI builds a `logging::Logging` from the environment (`Logging::env`), then from `-v`, `--json`,
 `--log` and `--log-file`, and installs it once at the top of `run`; the guard it returns prints the
 timing table when the command ends and holds the `command` span. That is the whole seam
-(`cli/src/logging.rs`, two flags in `cli/src/grammar/args.rs`, one line in `Cli::run`). A failure to set
+(`crates/surface/cli/src/logging.rs`, two flags in `crates/surface/cli/src/grammar/args.rs`, one line in `Cli::run`). A failure to set
 logging up is said on stderr as text and the run goes on without it; under `--json` stderr is a
 machine channel, so it is not said there, and a log asked for with no file is withheld
 (`Guard::withheld`).
@@ -286,8 +286,8 @@ loop inside `capture.run`.
 
 The instrumentation is asserted on the key paths: an edge refusal is one `request.refused` event
 with its status and cause chain, and the query of a request never reaches the log
-(`edge/axum/tests/serve.rs`); a failed job logs its attempt and the chain of its error
-(`control/tests/control/job.rs`); the supervisor's crash, restart and give-up sequence is asserted in `cli/src/selfhost/tasks.rs`. The crate's own tests cover redaction, the filter language, the
+(`crates/server/edge/axum/tests/serve.rs`); a failed job logs its attempt and the chain of its error
+(`crates/server/control/tests/control/job.rs`); the supervisor's crash, restart and give-up sequence is asserted in `crates/surface/cli/src/selfhost/tasks.rs`. The crate's own tests cover redaction, the filter language, the
 precedence of flags, laziness and the timing table.
 
 ## Not done, and why

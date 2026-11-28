@@ -9,11 +9,11 @@ supersedes: []
 
 ## 0052 The API is routed by host and reaches the control plane over a channel; intake takes a built folder; the watch keeps its state in memory
 
-Built (2026-11-27) as the second half of M3's edge: `edge/api`, the polling `watch`, `clock`, the
-`edge/axum` mount and `ink serve --data`. The owner has not read it yet; these are the choices to
+Built (2026-11-27) as the second half of M3's edge: `crates/server/edge/api`, the polling `watch`, `clock`, the
+`crates/server/edge/axum` mount and `ink serve --data`. The owner has not read it yet; these are the choices to
 push back on.
 
-- **The API is a crate over the control plane, not part of the pure edge.** `edge/api` has
+- **The API is a crate over the control plane, not part of the pure edge.** `crates/server/edge/api` has
   `Api<P, C, K, D>` over a `Control<P>` and three ports: `Credentials` (a bearer token to an
   account), `Clock` and `Draw` (the new `clock` crate: time, a wait, 16 random bytes). Its input
   is a `Request` (method, path, `Authorization` bytes, a body that is whole or `Over { limit }`)
@@ -24,7 +24,7 @@ push back on.
   `Problem` (`problem`, `message`, `causes`; a 5xx gives no causes). Authentication runs before
   routing, so a caller with no token learns no route. A site of another account is no site (404).
 - **Host, not path.** The API answers on its own host (`--api-host`, default `api.localhost`),
-  routed in `edge/axum` before `Edge::respond`. A path prefix on site hosts would shadow an
+  routed in `crates/server/edge/axum` before `Edge::respond`. A path prefix on site hosts would shadow an
   author's route, the reasoning of `/healthz`; `api` is already a reserved handle. The edge also
   refuses a body on a read, which the API needs.
 - **The `Send` bridge.** The control plane's ports are not `Send` (D1, R2), and a connection is a
@@ -35,7 +35,7 @@ push back on.
 - **Intake takes what `ink build` wrote**, as a tar archive: `.ink-manifest.json` and the files.
   The tar reader accepts regular files and folders only, refuses links, devices, pax headers,
   names that are no `ContentPath`, duplicates and bad checksums, and counts sizes as it reads.
-  The manifest is checked by the folder adapter's own reader (now public in `edge/folder`):
+  The manifest is checked by the folder adapter's own reader (now public in `crates/server/edge/folder`):
   schema, deploy id, routes. Every listed file must be in the archive and hash to what the manifest
   says, and every entry's blob must be in the list, before anything is stored; then the blobs are
   stored under the site's tenant and `Control::deploy` records the deploy with no build. Source

@@ -283,7 +283,7 @@ component with no change and `ink build --check` builds a site both ways. A plug
 native core; its `guest/` crate only converts and calls. The conversions between the model and its
 WIT mirror are written once in `wit/mirror/`, as `From` and `TryFrom` impls (a model variant the
 WIT lacks is `Unmirrored`, a WIT value the model refuses `Malformed`), and included by both
-`host/wasmtime` and `plugin/sdk` over their own generated types: the two generators write the
+`crates/runtime/host/wasmtime` and `crates/runtime/plugin/sdk` over their own generated types: the two generators write the
 same shapes and share no type, so inclusion is the one way to write the impls once (decision
 0041). A call that fails (a trap, a budget, a refused value) becomes the diagnostic the trait's
 signature has room for: a format's read carries it, a theme's render returns it, and what has no
@@ -362,7 +362,7 @@ through the same tools and seeds.
 ```rust
 pub trait Generator {
     const TASK: Task;                                              // named in each file's header
-    const SOURCE: &'static str;                                    // "token/token.toml"
+    const SOURCE: &'static str;                                    // "crates/core/token/token.toml"
     type Source: TryFrom<toml::Table, Error: Into<Flaw>>;          // Tokens, Catalog, Figure
     fn generate(&self, source: &Self::Source, files: &mut Files<'_>) -> Result<(), Error>;
 }
@@ -376,7 +376,7 @@ and hands the generator a `Files` that writes or, for `layout`, compares each fi
 which task a stale one comes from. The generators' Rust is built through `ToTokens` impls
 (`Palette`, `Faces`) and methods on the catalog's types, never free functions.
 
-The gate is one tuple of steps per stage (`Gate::lint()`, `test()`, `docs()`, `wasm()`, `sites()`, in `xtask/src/check/`): each cargo step is one generic
+The gate is one tuple of steps per stage (`Gate::lint()`, `test()`, `docs()`, `wasm()`, `sites()`, in `tools/xtask/src/check/`): each cargo step is one generic
 `Cargo<S: Scope>` (a `Command`, a scope of `Every` crate, a `[&str; N]` of packages or `()`,
 typed `Flag`s and a `Target`), whose command line and needed `Tool`s follow from that data, and
 the last step is `Layout`. Rules run over a `Workspace` read once: `cargo metadata`, the
@@ -442,8 +442,8 @@ real nextest and cargo output.
 `control` is generic over five ports (`db`, `blob`, `queue`, `build`, `secret`) through one
 `Ports` trait that a tuple of four adapters implements, so a use case is a method of
 `Control<P>` and knows no adapter. Each port is a crate with its own error that keeps the
-adapter's as its source, an adapter crate (`db/sqlite`, `blob/dir`, `queue/rows`, `build/process`,
-`secret/local`), and a conformance crate whose cases are types with a `check` over any adapter;
+adapter's as its source, an adapter crate (`crates/port/db/sqlite`, `crates/port/blob/dir`, `crates/port/queue/rows`, `crates/runtime/build/process`,
+`crates/port/secret/local`), and a conformance crate whose cases are types with a `check` over any adapter;
 `suite!` turns them into tests, so a new adapter runs the same ones.
 
 SQL is never text (0049). A table is a type:
@@ -506,15 +506,15 @@ flight (`Limits::{connections, requests}`); the edge keeps the sizes. Headers ar
 every response carries (`nosniff`, a CSP, the cross-origin policy, HSTS over TLS) wherever the
 manifest entry did not already say.
 
-Adapters are crates with one job each: `edge/axum` (hyper's HTTP/1 loop under an axum router,
-streaming, graceful stop, `Observe` of typed `Event`s) and `edge/folder` (`Deploys` for `Sites`,
+Adapters are crates with one job each: `crates/server/edge/axum` (hyper's HTTP/1 loop under an axum router,
+streaming, graceful stop, `Observe` of typed `Event`s) and `crates/server/edge/folder` (`Deploys` for `Sites`,
 `Files` for `Blobs`, over what `ink build` writes). A new runtime or store is a new adapter, not
-an edit; the hostile-request table (`edge/tests/hostile.rs`) and the in-memory stand-ins
-(`edge/tests/support`) are what each one is held to.
+an edit; the hostile-request table (`crates/server/edge/tests/hostile.rs`) and the in-memory stand-ins
+(`crates/server/edge/tests/support`) are what each one is held to.
 
 ## 10. The API, intake and the watch
 
-`edge/api`'s `Api<P, C, K, D>` is `Control<P>` plus `Credentials`, `clock::Clock` and `clock::Draw`.
+`crates/server/edge/api`'s `Api<P, C, K, D>` is `Control<P>` plus `Credentials`, `clock::Clock` and `clock::Draw`.
 `Api::respond(&Request) -> Reply` never fails: `Call::parse(method, path)` makes one typed call,
 the use case is a method that returns `Result<Reply, Fault<P>>`, and `Fault::reply` turns a failure
 into a status and a `Problem`. Request bodies are `body::*` types (`Parsed<T>` reads a string by
@@ -530,7 +530,7 @@ Credentials are signatures (0068). `Credentials::verify(Offered, Presented)` ret
 barrier, key lookup (`OperatorFile`, then the key table, then a pending enrolment), key live, nonce,
 and the body digest once the body is read. `Call::needs()` gives the `Right` a call requires.
 The CLI signs through `auth::Identity`; its key is in `auth::Keystore`. Tests that speak raw HTTP
-sign with `cli/tests/keyed`.
+sign with `crates/surface/cli/tests/keyed`.
 
 Passkeys (0068, slice 2): `control::passkeys` has the `Passkeys` port, the ceremonies as values,
 `Refusal` with a typed `Reason`, `Counter::judge` and `Registry` (passkeys and single-use
@@ -561,18 +561,18 @@ A `Proof` is 256 random bits as 64 hex digits and prints as `Proof(<redacted>)`;
 `Queued`). `mail` is the port: `Address`, `LinkBase`, `Link`, `Template`, `Message` and `Mailer`;
 `mail::Capture` and `mail::Stdout<W>` are the stand-ins and `mail_smtp::Smtp` is the adapter.
 
-In `edge/api`, `Door<D, K, R>` answers `POST /v1/login`, `GET` and `POST /v1/login/{token}`,
+In `crates/server/edge/api`, `Door<D, K, R>` answers `POST /v1/login`, `GET` and `POST /v1/login/{token}`,
 `GET` and `DELETE /v1/session` (its module docs say what each answers); `Routed::new(api, door)`
 is the one `Answers` the server gets. `Door::ask` puts a `mail::Message` in the `Outbox`; a
 `Courier::run(&notes)` sends them through a `Mailer`. `Limiter` and `Rates` limit by address and
 source; `Jar` sets and reads the cookie. `Credentials` has three adapters: `Owner`, `Sessions`
 and `Either<A, B>`, so the API takes `Either(owner, Sessions::new(entry, clock))` and a later
 credential is one more arm. Decision 0066 has the reasons and what is not built.
-`edge/control`'s `Back<P, K, L>` is the edge's `Sites` over `Control`: `Back::pair(control, clock,
+`crates/server/edge/control`'s `Back<P, K, L>` is the edge's `Sites` over `Control`: `Back::pair(control, clock,
 locate, settings)` gives `Fronts` (a `Clone`, `Send` `Sites` that sends a host down a channel) and
 the `Back` that answers on the caller's task, so `back.run()` is joined with the server. A host is
 `Origin::handle`, a site `Control::serving`, a deploy `Control::manifest`; `Fallback` puts another
-`Sites` behind it. `ink serve --data` also runs `cli/src/selfhost/tasks.rs`: `Tasks::start(task, restart,
+`Sites` behind it. `ink serve --data` also runs `crates/surface/cli/src/selfhost/tasks.rs`: `Tasks::start(task, restart,
 events, body)` puts a loop on a thread and runtime of its own under a supervisor, and `Event` is
 everything it says. A git source is built by `build_process::Local::with_remote(Fetching)` and its
 head read by `watch_git::Remotes`, both with the site's `watch::Access`.
@@ -582,5 +582,5 @@ Both reach an `https` remote through the `https` crate (decision 0072): `Https` 
 `Connection::set_transport_options` takes, and `Remotes::with_https` and `Fetch::https` hold it.
 The client is `rustls` over `ring` with the `webpki-roots` roots, HTTP/1.1 only, `https_only`, no
 proxy, and no setting turns certificate checks off; `Https::trusting` and `--git-ca` add
-authorities. A test starts `https/tests/support/server.rs` (an `rcgen` authority and a TLS server
-that answers `git upload-pack`), included by `#[path]` as `host/native`'s `origin.rs` is.
+authorities. A test starts `crates/core/https/tests/support/server.rs` (an `rcgen` authority and a TLS server
+that answers `git upload-pack`), included by `#[path]` as `crates/runtime/host/native`'s `origin.rs` is.

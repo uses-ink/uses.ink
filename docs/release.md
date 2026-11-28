@@ -22,7 +22,7 @@ The container image is not part of the workflow. It is built from the `Dockerfil
 ## The components
 
 `ink` carries its first-party components inside the binary (decision 0054), built by
-`cargo xtask component` into `target/plugin/` along with a `bundle.json` that `cli/build.rs`
+`cargo xtask component` into `target/plugin/` along with a `bundle.json` that `crates/surface/cli/build.rs`
 embeds. A release-profile build without them fails and names that command, so the three release
 paths run it first:
 

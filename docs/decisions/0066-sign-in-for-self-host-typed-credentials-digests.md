@@ -9,7 +9,7 @@ supersedes: []
 
 ## 0066 Sign-in for self-host: typed credentials, digests at rest, a mail port, links that look before they spend
 
-Built (2026-11-27) as M3's sign-in: `control::signin`, `mail` and `mail/smtp`, and `edge/api`'s
+Built (2026-11-27) as M3's sign-in: `control::signin`, `mail` and `crates/port/mail/smtp`, and `crates/server/edge/api`'s
 `Door`. The owner has not read it yet; these are the choices to push back on. The dashboard
 screens are the `web` branch's and call these routes (the seam is the last bullet).
 
@@ -61,7 +61,7 @@ screens are the `web` branch's and call these routes (the seam is the last bulle
   for links and a `Message { to, Template }`. The template is an enum, so the subject is
   `Template::subject()` and the body is its `Display`; no call site formats text. `Link` prints as
   `Link(<redacted>)`. `Capture` keeps messages for tests; `Stdout<W>` writes them to a writer for
-  a dev run (this crate prints nothing itself); `mail/smtp` is `lettre` with rustls, a
+  a dev run (this crate prints nothing itself); `crates/port/mail/smtp` is `lettre` with rustls, a
   `Settings` of host, port, `Security` (`starttls`, `implicit`, `plain`), an optional `Login` and
   the from address. The password is a `secret::Plain` read from an environment variable or a
   file, never a flag, and is in no `Debug` or error.

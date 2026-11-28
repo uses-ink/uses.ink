@@ -48,7 +48,7 @@ Each word means one thing everywhere: code, CLI, dashboard copy, docs, diagnosti
 | **build** | one run of the pipeline from a snapshot | a deploy |
 | **deploy** | the hashed manifest a build produced | a build |
 | **live** | the deploy a site serves right now | |
-| **local** | two meanings: on this machine with no hosted service (`ink serve`, the local baseline), and the `secret/local` adapter, whose key file sits beside the database; the queue and builder adapters are named for what they do (`queue/rows`, `build/process`) | hosted, remote |
+| **local** | two meanings: on this machine with no hosted service (`ink serve`, the local baseline), and the `crates/port/secret/local` adapter, whose key file sits beside the database; the queue and builder adapters are named for what they do (`crates/port/queue/rows`, `crates/runtime/build/process`) | hosted, remote |
 | **preview** | a deploy that is not live, reachable by its own URL | a draft |
 | **diagnostic** | a problem: code, severity, cause, fix | a log line |
 | **notice** | an announcement that is not a problem, such as a default being chosen | a diagnostic |
@@ -62,7 +62,7 @@ Each word means one thing everywhere: code, CLI, dashboard copy, docs, diagnosti
 | **stroke** | one pen line, before it becomes a mark | a mark |
 | **token** | a typed theme setting an author can set in `ink.toml` (`accent`) | a credential |
 | **credential** | a secret that grants access (installation token, refresh token) | a token |
-| **hostname** | the validated DNS name or address a request is for (`edge::Hostname`) | a host capability (`host/`) |
+| **hostname** | the validated DNS name or address a request is for (`edge::Hostname`) | a host capability (`crates/runtime/host/`) |
 | **refusal** | a request the edge will not serve, as typed data with its status (`edge::Refusal`) | a diagnostic |
 
 A new word gets a row here before it gets used.
@@ -118,7 +118,8 @@ Config keys name what they set, never their unit; the value carries the unit
 - Dry and behavioral: a name says what a thing does or refuses to do. No puns, no food, no
   metaphors, no garden words.
 - Banned anywhere: `util`, `utils`, `common`, `core`, `helpers`, `misc`, `base`, `shared`,
-  `manager`, `handler`, `service`, `impl`. They collect unrelated code.
+  `manager`, `handler`, `service`, `impl`. They collect unrelated code. The one exception is a
+  layer directory under `crates/` (`crates/core`): a slot of a closed list in `.config/layout.toml`.
 - Abbreviations only from a closed list: `id`, `url`, `tls`, `api`, `cli`, `db`, `wit`, `ui`,
   `dns`, `did`, `og`, `css`, `html`, `svg`, `toml`, `rgb`, `hex`, `dir`. A new one is added here
   first. Ported code keeps its original's names (`prev` in `freehand`'s perfect-freehand port) so it
@@ -141,18 +142,26 @@ Config keys name what they set, never their unit; the value carries the unit
 
 The path predicts the name and the name predicts the path.
 
-- A crate is `uses-ink-` plus its path joined with `-`: `plugin/theme/quiet` is
-  `uses-ink-theme-quiet` (the `plugin/` segment drops, as in agon), `db/sqlite` is
-  `uses-ink-db-sqlite`. The prefix is `uses-ink-`, never `ink-`: crates.io treats `-` and `_` as
+- Every workspace crate sits under `crates/<layer>/`, and a family stays whole (`crates/port/blob/dir`).
+  The layers, first to last: `core` (the vocabulary, the pure engine and the leaves every layer may take),
+  `port` (traits and their adapters), `server` (the hosted side), `runtime` (what runs plugins and
+  builds), `surface` (`cli`, `web`) and `standalone` (`freehand`, `freehand-web`, `fixture`). A crate
+  depends only on its own layer and the layers before it; `standalone` depends on nothing outside
+  itself and any crate may take it. `cargo xtask layout` checks this against the dependencies.
+  An adapter that needs a later layer sits in that layer: `build/process` runs the engine and the
+  plugins, so it is `crates/runtime/build/process`, though its port is `crates/port/build`.
+- A crate is `uses-ink-` plus its path below `crates/<layer>/` joined with `-`:
+  `crates/runtime/plugin/theme/quiet` is `uses-ink-theme-quiet` (the layer and the `plugin/` segment
+  drop, as in agon), `crates/port/db/sqlite` is `uses-ink-db-sqlite`. The prefix is `uses-ink-`, never `ink-`: crates.io treats `-` and `_` as
   one character, and `ink_*` belongs to Polkadot's ink!.
 - The workspace aliases every crate to its short name (`engine = { package = "uses-ink-engine",
-  path = "engine" }`), so code says `engine::Site`.
+  path = "crates/core/engine" }`), so code says `engine::Site`.
 - A crate useful outside uses.ink (the pen) gets no prefix and a name of its own,
   so it can be published and reused as is. Its name is checked free on
   crates.io when it is cut.
 - A port is a directory with the trait crate at its root and one directory per adapter:
-  `db/` is `uses-ink-db` and `db/sqlite/` is its adapter (`db/d1/` is planned for the hosted shape).
-- A plugin lives at `plugin/<slot>/<variant>/`, its wasm export in a thin `guest/` crate beside
+  `crates/port/db/` is `uses-ink-db` and `crates/port/db/sqlite/` is its adapter (`crates/port/db/d1/` is planned for the hosted shape).
+- A plugin lives at `crates/runtime/plugin/<slot>/<variant>/`, its wasm export in a thin `guest/` crate beside
   its native core; every WIT package lives at `wit/<package>/` (`wit/theme/` is `ink:theme`).
   First-party plugins are laid out exactly like third-party ones.
 - `spikes/` holds throwaway experiments. Nothing depends on a spike.
@@ -161,16 +170,16 @@ The path predicts the name and the name predicts the path.
   The build farm client is its own binary, `farm` at `tools/farm`, so xtask and CI never compile it
   for a task (docs/workflow.md).
 - Binaries: `ink`, and `farm` (a developer tool, crate `farm` at `tools/farm/`, named as it is run
-  like `xtask`). `ink`'s crate is `uses-ink-cli` at `cli/`.
+  like `xtask`). `ink`'s crate is `uses-ink-cli` at `crates/surface/cli/`.
 - Cut a crate when its second user appears, not before; its tests move with it. A crate useful
   outside uses.ink is cut with a name of its own (above).
-- A third-party crate is wrapped in one module of one crate (gix in `host/native`, comrak in the
-  markdown format, wasmtime in `host/wasmtime`); the rest of the code sees our types. Swapping it
+- A third-party crate is wrapped in one module of one crate (gix in `crates/runtime/host/native`, comrak in the
+  markdown format, wasmtime in `crates/runtime/host/wasmtime`); the rest of the code sees our types. Swapping it
   touches one place.
 - A new dependency needs its row in `libraries.md` in the same change, saying why; a maintained
   small crate beats writing our own, a large one for a small job does not.
 - A directory holds about eight entries at most (tests and support files aside); past that, nest
-  by domain. The repository root, `cli/src`, `model/src` and `docs/` are over the limit today;
+  by domain. `crates/surface/cli/src`, `crates/core/model/src` and `docs/` are over the limit today;
   `docs/layout.md` (decision 0074) brings them under it and has xtask enforce the limit.
 
 ## Licence
@@ -252,7 +261,7 @@ enum with `Display`, not a string pushed into a `Vec<String>`. Nothing parses a 
   exit status and its stderr as bytes, in a type of its own.
 - No aggregate error type and no `Box<dyn Error>` in library code. Erasure to text happens once,
   at the edge (the CLI or the API), through `Display` and the `source()` chain.
-- Problems an author or operator sees go through the catalog (`diag/catalog.toml`), not through
+- Problems an author or operator sees go through the catalog (`crates/core/diag/catalog.toml`), not through
   a crate error: the crate error converts into a `Diagnostic` with a code at the boundary.
 - Denied by lint in library code: `unwrap`, `expect`, `panic!`, `todo!`, `unimplemented!`,
   indexing that can panic on unvalidated input, `println!`, `eprintln!`, `dbg!`.
@@ -310,7 +319,7 @@ a doc comment.
 - **Fast.** The suite runs in seconds. A test over 100 ms is a bug or `#[ignore = "reason"]`.
   No network, no sleeping, no real clocks. Run with `cargo nextest run --workspace`.
 - **Fixtures are files** under the crate's `fixture/`: `name.<ext>` is the input, `name.snap`
-  the expected result. One harness runs them all: `uses-ink-fixture` (`fixture/`), a
+  the expected result. One harness runs them all: `uses-ink-fixture` (`crates/standalone/fixture/`), a
   dev-dependency any crate may take. `fixture::files(dir, ext, render)` runs each input through
   `render`; `fixture::cases(dir, outputs)` takes outputs built in code. It compares through
   `insta` and updates with `INSTA_UPDATE`, never a bless variable per crate. Adding a case is
@@ -323,8 +332,8 @@ a doc comment.
 - **Site fixtures** are whole folders (`fixture/site/<name>/`) whose expected output is the
   deploy manifest plus the HTML of every page. `ink build --check` must reproduce the same
   hashes twice and on both native and wasm plugin builds.
-- **Ports have conformance suites** that every adapter runs (`db/conformance`,
-  `blob/conformance`).
+- **Ports have conformance suites** that every adapter runs (`crates/port/db/conformance`,
+  `crates/port/blob/conformance`).
 - **Refusals are visible.** A test of a refusal checks the diagnostic or notice it emits, not only
   the returned error.
 - Properties beat examples for parsers and the model; a property test is seeded and prints its
@@ -348,7 +357,7 @@ a doc comment.
 - A diagnostic is one block: `error[code]: wording` from the catalog, then where it is, the span
   with its source line where there is one, then `fix:`, then the `caused by` rail. A notice is
   `note[code]: wording` and its `fix:`. An error that stops a command ends with a state line
-  (`nothing was changed`). Each is a typed value rendered once through `cli/src/output/term` (decision
+  (`nothing was changed`). Each is a typed value rendered once through `crates/surface/cli/src/output/term` (decision
   0061); no command builds output with `format!`.
 - The log is a channel of its own (`docs/tracing.md`, decision 0065): off by default, never
   stdout, never inside `--json`. `-v` count, then `INK_LOG`, then `--log` set its filter, each

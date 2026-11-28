@@ -11,7 +11,7 @@ supersedes: []
 
 Accepted. The engine decides which files get copies, their routes, headers and what a theme
 learns of them; the host does the pixel work behind `engine::Images`, as with highlighting
-(0039), in `host/image` (`uses-ink-host-image`). Before any page is rendered, each raster asset
+(0039), in `crates/runtime/host/image` (`uses-ink-host-image`). Before any page is rendered, each raster asset
 is decoded within a pixel budget (50 million by default; a header over it is
 `image.budget.pixels`, refused before a pixel is decoded), its EXIF orientation applied, resized
 with Catmull-Rom to the widths 480, 960 and 1440 that are narrower than it (a width within a tenth of the image's own is replaced by the
@@ -30,7 +30,7 @@ since decoding it takes dav1d (C); each is a notice.
 Determinism, measured: ravif cuts as many tiles as rayon has threads, so its bytes followed the
 core count; the work runs rav1e on one thread (one tile) without assembly, jpeg-encoder without
 its SIMD feature, `fast_image_resize`'s SIMD paths give the scalar path's bytes for this filter,
-and the ported thumbhash takes its cosines from `libm`. The goldens in `host/image/fixture` hold
+and the ported thumbhash takes its cosines from `libm`. The goldens in `crates/runtime/host/image/fixture` hold
 the hash of every copy. A `Key` (the source's hash and media type, the settings, the pixel limit, and the version of
 every registry crate the image crate reaches through `Cargo.lock`) names one image's work; `host_image::Pixels` keeps what it made by key, and keeps it across builds
 in an `engine::Cache` (as measured, below). **Why:** layout stability and small pages for readers,
@@ -112,12 +112,12 @@ writes optimized tables only in its sequential mode, one scan per component, and
 libjpeg's decode of the 48 by 36 fixture was 31 dB and zune-jpeg's 5 dB, and a 1600 by 1200
 photo's copies came out at 8 dB beside libjpeg's at every width. The file is valid and browsers
 decode it with libjpeg-turbo. zune-jpeg 0.5.16-rc3 reads it (a 96 by 72 probe: 5.7 dB on 0.5.15,
-37.7 dB on rc3, the same as the other three sampling and table modes), so `host/image` depends on
+37.7 dB on rc3, the same as the other three sampling and table modes), so `crates/runtime/host/image` depends on
 `zune-jpeg =0.5.16-rc3` directly, turns off `image`'s `jpeg` feature, and reads JPEG itself
-(`host/image/src/jpeg.rs`: size from the headers, EXIF orientation, grey or RGB pixels, CMYK
+(`crates/runtime/host/image/src/jpeg.rs`: size from the headers, EXIF orientation, grey or RGB pixels, CMYK
 converted). A prerelease cannot satisfy `image`'s `^0.5` requirement, so no `[patch]` can swap it
 in under `image`; that is why the reader is ours. The cache key's codec tag is no longer typed by
-hand: `host/image/build.rs` reads the versions of the crate's registry dependencies from
+hand: `crates/runtime/host/image/build.rs` reads the versions of the crate's registry dependencies from
 `Cargo.lock`. The fixtures' JPEG copies shrink (773 to 310 bytes, 1074 to 599) since baseline
 carries less overhead than the progressive files they replace. **Reversal:** zune-jpeg 0.5.16
 is released and `image` accepts it: drop the direct reader and turn the feature back on.

@@ -11,7 +11,7 @@ supersedes: []
 
 **Decision.** `web` is the dashboard (Site, What we understood, Deploys, Settings, Account) as
 typed view models and pure rendering. A page is a function of a view model to `unspliced` values;
-the stylesheet is `css!` over the tokens (`token/token.toml`), and the pen's marks are drawn at
+the stylesheet is `css!` over the tokens (`crates/core/token/token.toml`), and the pen's marks are drawn at
 render time by `freehand`. Nothing is spliced, and no JavaScript ships: not Datastar, not maud,
 not htmx (the frontend research recommended maud plus Datastar; the owner rejected both).
 

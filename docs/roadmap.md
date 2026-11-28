@@ -17,7 +17,7 @@ The workspace, the rules, and the three unknowns answered.
 - `farm` (`tools/farm`, decision 0047): the build farm client, installed once with `cargo install
   --path tools/farm --locked`; a repo's jobs are `.config/farm.toml`, hosts are the user's own
   config. Agents build, lint and test through it (docs/workflow.md).
-- `token/`: one TOML file generating CSS custom properties and the pen palette.
+- `crates/core/token/`: one TOML file generating CSS custom properties and the pen palette.
 - `pen`: own perfect-freehand port, strokes, tools, marks; golden fixtures identical on
   native and wasm32; `cargo xtask brand` regenerates the logo, mark and favicon from
   `brand/` stroke data. Delete `pen-core.js` and `gen-*.mjs` once it reaches parity; the mock's
@@ -35,12 +35,12 @@ The workspace, the rules, and the three unknowns answered.
 
 Progress (2026-11-26): workspace, lints, `deny.toml`, nextest and CI workflow written; `cargo xtask
 check` checks names, dependency order, licences, banned names and generated files;
-`token/token.toml` generates `uses-ink-token`; `freehand` ports perfect-freehand 1.2.3 and the
+`crates/core/token/token.toml` generates `uses-ink-token`; `freehand` ports perfect-freehand 1.2.3 and the
 mock's pen core, with a golden fixture passing natively and on wasm32-wasip2; `cargo xtask brand`
 draws the logo, mark and favicon from `brand/figure.toml`, byte for byte the JS output (colours now
 spelled `#rrggbb`), and `gen-logo.mjs` is gone. `freehand::mark` draws the reader marks (line,
 frame, ring, patch) byte for byte the mock's, and `gen-marks.mjs` is gone. `cargo xtask token` also
-writes `token/token.css` (`--ink`, `--hand`, as the mocks name them). `freehand-web` is the pen in
+writes `crates/core/token/token.css` (`--ink`, `--hand`, as the mocks name them). `freehand-web` is the pen in
 the browser (0034); the mock draws through it and `pen-core.js` is gone. The three spikes are
 answered: wasmtime (0035), gix (0036), workers-rs (0037; containers could not start under `wrangler
 dev` on this host, workers-sdk #15394). Since 0038 paths are written in tenths as a `T` chain, about
@@ -58,7 +58,7 @@ The engine, end to end, on the local disk.
 - `model`, `config`, `diag` with the diagnostic and decision catalog.
 - `engine`: inferrers for root, layout, ignore, kind, publish, title, date, slug, home, nav,
   links; `Site` built only from decisions.
-- `host/wasmtime` and `host/native`; WIT for `ink:host`, `ink:format`, `ink:theme`.
+- `crates/runtime/host/wasmtime` and `crates/runtime/host/native`; WIT for `ink:host`, `ink:format`, `ink:theme`.
 - `ink:format-markdown` (comrak, math through math-core, highlighting) as a component.
 - `ink:theme-quiet` as a component **(owner: its design, theme rounds 4 onward)**.
 - Feeds, sitemap, 404, CSP headers in the manifest.
@@ -71,15 +71,15 @@ page. ("`ink explain --pin` output reproduces the deploy" was dropped by 0042: i
 pins freeze content.)
 
 Progress (2026-11-26): `model`, `config`, `diag`, the engine and `ink:format-markdown` run natively;
-`host/native` reads a folder into a snapshot (budgets, link refusals, mtimes as bounds), stores
+`crates/runtime/host/native` reads a folder into a snapshot (budgets, link refusals, mtimes as bounds), stores
 blobs in memory or a folder and highlights code through arborium; `ink:theme-quiet` renders every
 document node through `unspliced` as one `Visit`, code through the host's highlighting and math as
 MathML, as a placeholder design; the engine serves a generated
 home when a site has none; the CLI has `ink build`, `check`, `explain` and `preview` with
-`--json`. Site fixtures (`cli/fixture/site/`: blog, flat README repo, docs folder, broken
-frontmatter, ambiguous links, a notes folder) pass the three exit tests in `cli/tests/site`.
+`--json`. Site fixtures (`crates/surface/cli/fixture/site/`: blog, flat README repo, docs folder, broken
+frontmatter, ambiguous links, a notes folder) pass the three exit tests in `crates/surface/cli/tests/site`.
 Progress (2026-11-27): `wit/` holds `ink:model`, `ink:host` (pen, text, highlight, diagnostic),
-`ink:format` and `ink:theme`; `host/wasmtime` runs `ink:format-markdown` and `ink:theme-quiet` as
+`ink:format` and `ink:theme`; `crates/runtime/host/wasmtime` runs `ink:format-markdown` and `ink:theme-quiet` as
 components through the engine's own `Format` and `Theme` traits, with fuel, time and memory
 budgets and a `.cwasm` cache (decision 0041); `ink build --check` builds every CLI site fixture
 natively and through the components and refuses a different deploy, and `cargo xtask check`
@@ -129,7 +129,7 @@ dialect of the markdown format reading wikilinks, embeds of images and of notes 
 engine, with cycles refused), Obsidian's callouts with folding, block ids, `%%` comments, inline
 and frontmatter tags and `aliases`; links resolve by name in any case, by alias and by partial
 path, and the attachment folder of `.obsidian/app.json` settles a shared name. `ink` reads a
-folder holding `.obsidian/` as a vault through it; `cli/fixture/site/vault` builds the same both
+folder holding `.obsidian/` as a vault through it; `crates/surface/cli/fixture/site/vault` builds the same both
 ways. Inline tags are their own evidence (`Evidence::Inline`, joined with the frontmatter's by
 the `page.tags` ladder), and `site.format` pins the format (`ink pin site.format`, `[site]
 format = "ink:format-obsidian"`), with the pin, the `.obsidian/` marker and the default each
@@ -139,8 +139,8 @@ Progress (2026-11-27): incremental builds are built (0048). A page is a render u
 theme's identity and what `Theme::reads` says it reads; `ink build` keeps pages in `--cache`
 (`host_native::Disk`) and says `render.cache.cold` or `render.cache.used`. Properties over the
 fixtures and the generated blog hold that any single edit gives the deploy a cold build gives and
-that an untouched page is not rendered again (`engine/tests/engine/incremental.rs`,
-`cli/tests/incremental.rs`, `cli/benches/incremental.rs`). Left: the notebook theme declares its
+that an untouched page is not rendered again (`crates/core/engine/tests/engine/incremental.rs`,
+`crates/surface/cli/tests/incremental.rs`, `crates/surface/cli/benches/incremental.rs`). Left: the notebook theme declares its
 `reads` when it lands as a component.
 
 Progress (2026-11-27): the git source's native core is `host_native::Repository` (0036, as
@@ -180,8 +180,8 @@ The whole product on one machine.
   adapters, conformance suites.
 
 Progress (2026-11-27): the control plane is built and its crate gates pass. The ports `db`, `blob`,
-`queue`, `build` and `secret` have their adapters (`db/sqlite`, `blob/dir`, `queue/rows`,
-`build/process`, `secret/local`) and conformance suites; `control` holds the use cases (accounts,
+`queue`, `build` and `secret` have their adapters (`crates/port/db/sqlite`, `crates/port/blob/dir`, `crates/port/queue/rows`,
+`crates/runtime/build/process`, `crates/port/secret/local`) and conformance suites; `control` holds the use cases (accounts,
 sites and handles, deploys with rollback and resume, build jobs worked off the queue,
 credentials sealed at rest, export, removal with a tombstone) with tests on the real adapters.
 No SQL text exists: statements and migrations are typed values (0049). Not done: `web`,
@@ -190,9 +190,9 @@ sign-in, `ink push` and the CLI verbs.
 Progress (2026-11-27, 0066): sign-in is built. `control::signin` (typed `Credential` with the
 email link as its only variant, digests of 256-bit tokens at rest, single-use links, sliding or
 absolute sessions with revocation, the once-only first-run link, the sign-up policy), the `mail`
-port with `Capture`, `Stdout` and the SMTP adapter `mail/smtp`, rate limits, and the API routes
+port with `Capture`, `Stdout` and the SMTP adapter `crates/port/mail/smtp`, rate limits, and the API routes
 `POST /v1/login`, `GET` and `POST /v1/login/{token}`, `GET` and `DELETE /v1/session` in
-`edge/api`'s `Door`, beside the owner token. `ink serve --data` prints the first-run link once
+`crates/server/edge/api`'s `Door`, beside the owner token. `ink serve --data` prints the first-run link once
 and takes the `--mail`, `--smtp-*`, TTL, policy and rate flags. Not done then: the dashboard screens
 (`web`), a route to list and revoke sessions, a forwarded-header source, passkeys. Built since
 (2026-11-28): sessions are listed and ended by id with an Account screen (0082), the Origin check and
@@ -203,16 +203,16 @@ screen. Open: the email recovery with a delay, the mail notice on a recovery cod
 session, and the edge's mounting of `Screens` (nothing implements it yet, so `end_session` has no
 implementation to write).
 
-Progress (2026-11-27, 0052): the API and intake are built (`edge/api`, mounted by `edge/axum` on
+Progress (2026-11-27, 0052): the API and intake are built (`crates/server/edge/api`, mounted by `crates/server/edge/axum` on
 its own host, `ink serve --data`), with the `Credentials` port and a single-owner token adapter,
 bounded tar intake of a built folder, and the polling `watch` and in-process `worker` over `clock`
 ports. Not run by `ink serve`: the watch (no remote adapter for `Heads` yet) and the worker.
 `ink serve --data` does not yet serve the control plane's deploys.
 
 Progress (2026-11-27, 0067): `ink serve --data` runs the loop. It serves the control plane's
-deploys by host (`edge/control`), runs the watch and the worker as supervised threads with typed
-events, remembers the watch's last-seen commit, reads remote heads with `gix` (`watch/git`) and
-builds git sources through the `ink:source-git` component. `cli/tests/selfhost.rs` adds a
+deploys by host (`crates/server/edge/control`), runs the watch and the worker as supervised threads with typed
+events, remembers the watch's last-seen commit, reads remote heads with `gix` (`crates/server/watch/git`) and
+builds git sources through the `ink:source-git` component. `crates/surface/cli/tests/selfhost.rs` adds a
 `file://` repository, sees it served, pushes, sees the update, rolls back, exports and deletes,
 over the real binary with no network. Not done: `ink push`, streaming intake and export.
 Git over HTTPS followed (0072): the watch's head read and the source fetch go through one rustls and
@@ -220,12 +220,12 @@ Git over HTTPS followed (0072): the watch's head read and the source fetch go th
 Progress (2026-11-27, 0077): `ink init`, `push`, `status`, `watch` and `export` are built over the
 signed API: a tree is posted, the blobs the site lacks go up in bounded tar batches (resume is
 running the push again), the build is followed and the deploy printed, with exit codes 3, 4 and 5.
-Intake stays whole-body within the `tree` and `part` limits. `cli/tests/push.rs` runs all of it over
+Intake stays whole-body within the `tree` and `part` limits. `crates/surface/cli/tests/push.rs` runs all of it over
 the real binary. Not done: live build stages for `watch` (the log is stored when a build ends),
 domains in `status`, streaming intake.
-- `edge` and `edge/axum`: serve, API, intake; polling watch; on-demand ACME. **Serving built
-  (0051), gate green on the farm:** `edge` (ports, refusals, limits, conditional, range, 404, headers), `edge/axum`
-  (hyper loop, streaming, budgets, events, `/healthz`, graceful stop), `edge/folder` and
+- `edge` and `crates/server/edge/axum`: serve, API, intake; polling watch; on-demand ACME. **Serving built
+  (0051), gate green on the farm:** `edge` (ports, refusals, limits, conditional, range, 404, headers), `crates/server/edge/axum`
+  (hyper loop, streaming, budgets, events, `/healthz`, graceful stop), `crates/server/edge/folder` and
   `ink serve`. Open: API, intake, polling watch, on-demand ACME and TLS, the worker adapter,
   redirect and variant entries in the manifest.
 - `web`: dashboard (Site, What we understood, Deploys, Settings, Account) on the chosen stack,
@@ -259,12 +259,12 @@ pass, what runs in `workerd` with no account, and the owner questions with defau
 named for the layout after `docs/layout.md` S6; no M4 crate is added to the workspace before that
 freeze.
 
-- Planned, test rig first (H1): the conformance suites run inside `workerd`, then `db/d1` on it.
-- Planned adapters, in parallel after H1: `blob/r2`, `queue/cf` (the rows of `queue/rows` over D1 plus a
-  wake-up, since Cloudflare Queues has no lease or dedupe key), `secret/worker`, `mail/cf`,
-  `watch/worker`, the nonce store as a per-account Durable Object (`auth.md` section 5).
-- Planned: `edge/worker` (serve, API, dashboard, sign-in) over the `Send` twin of the edge traits (0051);
-  the per-handle build Durable Object and `build/container`, with the container's blobs written
+- Planned, test rig first (H1): the conformance suites run inside `workerd`, then `crates/port/db/d1` on it.
+- Planned adapters, in parallel after H1: `crates/port/blob/r2`, `crates/port/queue/cf` (the rows of `crates/port/queue/rows` over D1 plus a
+  wake-up, since Cloudflare Queues has no lease or dedupe key), `crates/port/secret/worker`, `crates/port/mail/cf`,
+  `crates/server/watch/worker`, the nonce store as a per-account Durable Object (`auth.md` section 5).
+- Planned: `crates/server/edge/worker` (serve, API, dashboard, sign-in) over the `Send` twin of the edge traits (0051);
+  the per-handle build Durable Object and `crates/port/build/container`, with the container's blobs written
   through the egress handler (0037); deploy pipeline from CI with `wrangler`.
 - `control` features, tested natively on SQLite, in parallel (S2 has landed): handles with reservations
   and tombstones **(owner: O3, Q5)**; budgets enforced and the limits page **(owner: O7, Q13)**;

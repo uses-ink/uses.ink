@@ -1,8 +1,9 @@
 # Repository layout and monolith proposal
 
 Status: **accepted** (decision 0074, owner, 2026-11-27). Every open choice of section 15 was taken
-as recommended. Nothing in this document has been done yet; section 13 splits the work into
-packages that agents take.
+as recommended. The move (S6) has landed: the tree is under `crates/<layer>/` as section 3.1 shows,
+with two deviations from the first draft, `build/process` in `runtime` and `standalone` outside the
+layer order (section 3.2). Section 13 splits the work into packages that agents take.
 
 The brief: make the directory structure and project organisation easier to navigate, and fix the
 monoliths. This document gives the principles, the target tree, the move map, the split of each
@@ -77,9 +78,9 @@ After (6 directories, 13 pinned files, 7 dot entries):
 uses.ink/
   crates/    every workspace crate, by layer
     core/        model config diag engine token logging sig https
-    port/        blob build clock db mail queue secret   (each with its adapters and conformance)
+    port/        blob build clock db mail queue secret   (each with its adapters and conformance, except build/process)
     server/      control watch edge                      (edge: api axum control folder)
-    runtime/     host plugin                             (host: image native wasmtime)
+    runtime/     host plugin build/process               (host: image native wasmtime)
     surface/     cli web
     standalone/  freehand freehand-web fixture
   wit/       the WIT packages and mirror/
@@ -105,9 +106,9 @@ The layers follow `MAY_USE`, not taste. Each depends only on layers above it in 
 | `core` | the vocabulary, the pure engine and the leaves every layer may take: `model`, `config`, `diag`, `engine`, `token`, `logging`, `sig`, `https` | itself |
 | `port` | traits and their adapters: `blob`, `build`, `clock`, `db`, `mail`, `queue`, `secret` | `core` |
 | `server` | the hosted side: `control` (use cases over ports), `watch`, `edge` | `core`, `port` |
-| `runtime` | what runs plugins and builds: `host`, `plugin` | `core`, `port` |
+| `runtime` | what runs plugins and builds: `host`, `plugin`, `build/process` | `core`, `port` |
 | `surface` | binaries and UIs: `cli`, `web` | everything |
-| `standalone` | product-independent or test-only: `freehand`, `freehand-web`, `fixture` | nothing of ours |
+| `standalone` | product-independent or test-only: `freehand`, `freehand-web`, `fixture` | nothing of ours; any crate may take it |
 
 The brief's example put `watch` with the ports and `build` with core. Both differ here, on
 evidence. `watch` depends on `control` (`MAY_USE` row for `uses-ink-watch`), so it is a use case,
@@ -115,9 +116,13 @@ not a port; its `Heads` port is a trait inside it, and `watch/git` is that port'
 stays beside it. `build` is the builder port (`build/process` is its adapter), and its
 `MAY_USE` row is `blob`, `model`, `logging`, so it sits with the ports.
 
-`layout` can check the table: a crate in layer X may not depend on a crate in a later layer. That
-turns the layer list into a rule, a stronger check than the per-crate `MAY_USE` rows give, and it
-is part of S6.
+`layout` checks the table: a crate in layer X may not depend on a crate in a later layer, with
+`standalone` the one exception (every layer takes `freehand` and `fixture`, and a standalone crate
+takes only its own layer; `[layers] open` in `.config/layout.toml`). That turns the layer list
+into a rule, a stronger check than the per-crate `MAY_USE` rows give, and it landed with S6. The
+check found one crate the table did not fit: `build/process` is the builder port's adapter, but it
+depends on `runtime` crates, so it lives in `runtime`. `Banned` exempts the layer directories
+themselves: `crates/core` is a slot of a closed list, not a heap of unrelated code.
 
 Whether ports stay with their adapters or the adapters move to their own layer: **keep them
 together.** `blob/dir` next to `blob` is why the port pattern is easy to read; an `adapter/` layer
@@ -166,7 +171,8 @@ with everything under it. The two columns are the same crate; a change of name i
 | `sig` | `crates/core/sig` |
 | `https` | `crates/core/https` |
 | `blob`, `blob/dir`, `blob/conformance` | `crates/port/blob`, `.../blob/dir`, `.../blob/conformance` |
-| `build`, `build/process`, `build/conformance` | `crates/port/build/...` |
+| `build`, `build/conformance` | `crates/port/build`, `crates/port/build/conformance` |
+| `build/process` | `crates/runtime/build/process` (not `port`: it takes the engine, `host/image`, `host/native` and the bundled plugins, so a `port` placement would fail the layer rule) |
 | `clock` | `crates/port/clock` |
 | `db`, `db/sqlite`, `db/conformance` | `crates/port/db/...` |
 | `mail`, `mail/smtp` | `crates/port/mail/...` |
@@ -667,7 +673,7 @@ and `PRODUCT.md` as inputs the moment D3 adds checks that read them.
 | rebase conflicts from moved files (jj has no rename tracking in a rebase) | certain if agents are active | lost work | the freeze; announce; in-flight work lands first |
 | depth-dependent strings missed | medium | a build or a test fails in S6 | P-packages remove most; the build is the check |
 | `Names` rule change hides a wrong layer | low | a crate in the wrong layer | the layer-order rule in S6 checks the layer table against dependencies |
-| a layer directory grows past eight | low | fan-out waiver | `core` has 8, `port` 7, `server` 3, `runtime` 2, `surface` 2, `standalone` 3 |
+| a layer directory grows past eight | low | fan-out waiver | `core` has 8, `port` 7, `server` 3, `runtime` 3, `surface` 2, `standalone` 3 |
 | `docs` citations by filename | certain | broken pointers | stub files; the link check |
 | splitting `control` or `edge/api` while `passkeys` edits them | high | a second, larger conflict | S1 and S2 wait for it |
 | an agent edits a file another package owns | medium | conflict | each package lists the paths it owns; the shared touch points are named in section 13 |

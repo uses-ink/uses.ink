@@ -10,7 +10,7 @@ supersedes: []
 ## 0072 Git over https: one TLS stack, rustls over ring, and one licence exception
 
 Accepted (2026-11-27). The owner took the recommendation to fix what 0067 refused: the watch's
-head read (`watch/git`) and the source fetch (`host/native`) now reach `https` remotes.
+head read (`crates/server/watch/git`) and the source fetch (`crates/runtime/host/native`) now reach `https` remotes.
 `Refused::Transport` and `Unlisted::Transport` are no longer produced for https; the model keeps
 the `source.git.transport` problem for a scheme a later build lacks.
 

@@ -6,10 +6,9 @@ work packages without asking what exists. Section 12 lists the questions only th
 answer, each with a recommended default; no account, domain, bucket or bill is touched until
 the owner answers them.
 
-Paths. The repository is being reorganised under `crates/<layer>/` (0074, `docs/layout.md`). New
-crates here are named for the layout after the move, with the path today in parentheses where a
-crate exists. Crate names do not change in the move, and the `Names` rule reads the path below the
-layer, so `crates/port/db/d1` is `uses-ink-db-d1`.
+Paths. The repository is organised under `crates/<layer>/` (0074, `docs/layout.md`). New crates
+here are named for that layout. Crate names did not change in the move, and the `Names` rule reads
+the path below the layer, so `crates/port/db/d1` is `uses-ink-db-d1`.
 
 ## 1. What M4 has to produce
 
@@ -32,18 +31,18 @@ All facts below were read on `main` (commit `dad76cc2`).
 
 | Fact | Where |
 |---|---|
-| Every port future is allowed to be `!Send`, with a comment naming D1, R2, Queues, Durable Objects or a Workers secret binding as the reason. | `db/src/port.rs`, `blob/src/port.rs`, `queue/src/port.rs`, `build/src/port.rs`, `secret/src/port.rs`, `mail/src/mailer.rs` |
-| `Db` is `run` and an atomic `batch` of typed statements; no interactive transaction; foreign keys enforced; a bound-parameter limit; a migration ledger. The conformance cases pin D1 behaviour. | `db/src/port.rs`, `db/conformance/src/lib.rs`, 0030, 0049 |
-| `blob::Blob` is `put` (hashed as taken, `Mismatch` stores nothing), `get` (chunked), `stat`, `list`, `delete`, per `Tenant`. | `blob/src/port.rs`, 0009 |
-| The queue adapter `queue/rows` is written over any `db::Db` and "runs on D1" by design: one claiming `UPDATE ... RETURNING`, leases, a dedupe key. | `queue/rows/src/lib.rs` |
-| `Build::run` takes a `Request` (build id, tenant, trigger, source, base) and an `Events` sink and returns `Built` or `Refused`; the same source gives the same deploy id. `build/process` is the whole pipeline over any `Blob`. | `build/src/port.rs`, `build/process/src/lib.rs` |
-| `Secret` is `seal` and `open` bound to a row id (XChaCha20-Poly1305, 0031); the key lives in the adapter. | `secret/src/port.rs`, `secret/local/src/lib.rs` |
-| `control::Control<P>` takes four ports, `(db, blob, queue, secret)`; the build port is passed only to the use case that runs builds. | `control/src/ports.rs` |
-| The edge's `Sites`, `Blobs`, `Blob` and `Chunks` traits are `Send + Sync`; 0051 says `edge/worker` "wraps these traits in its own twin" and gives the reversal (a `Send` and a local flavour behind one blanket impl). | `edge/src/serve/port.rs`, 0051 |
-| `edge/api` is `Api<P, C, K, D>` over a `Control<P>`, takes a `Request` and returns a `Reply`, names no HTTP library, and reaches the control plane through a `Bridge` because a connection is a spawned task. A Worker needs no bridge. | `edge/api/src/api.rs`, 0052 |
-| The signed-request nonce store is a concrete in-memory `Nonces` struct with a boot barrier, not a trait. | `edge/api/src/signature.rs`, `docs/auth.md` section 5 ("Hosted") |
-| `Handle::RESERVED` holds 24 infrastructure names; the brand list is the owner's and is not there. A `tombstone` table has `handle`, `site_id`, `removed_at`; `Receipt` carries counts, never content. | `control/src/handle.rs`, `control/src/migration.rs`, `control/src/receipt.rs`, 0022 |
-| `watch`'s `Heads` is a trait whose comment says a Worker's fetch is not `Send`; the only adapter, `watch/git`, uses `gix` over rustls (0072), which is not a Worker dependency. | `watch/src/head.rs`, `watch/git` |
+| Every port future is allowed to be `!Send`, with a comment naming D1, R2, Queues, Durable Objects or a Workers secret binding as the reason. | `crates/port/db/src/port.rs`, `crates/port/blob/src/port.rs`, `crates/port/queue/src/port.rs`, `crates/port/build/src/port.rs`, `crates/port/secret/src/port.rs`, `crates/port/mail/src/mailer.rs` |
+| `Db` is `run` and an atomic `batch` of typed statements; no interactive transaction; foreign keys enforced; a bound-parameter limit; a migration ledger. The conformance cases pin D1 behaviour. | `crates/port/db/src/port.rs`, `crates/port/db/conformance/src/lib.rs`, 0030, 0049 |
+| `blob::Blob` is `put` (hashed as taken, `Mismatch` stores nothing), `get` (chunked), `stat`, `list`, `delete`, per `Tenant`. | `crates/port/blob/src/port.rs`, 0009 |
+| The queue adapter `crates/port/queue/rows` is written over any `db::Db` and "runs on D1" by design: one claiming `UPDATE ... RETURNING`, leases, a dedupe key. | `crates/port/queue/rows/src/lib.rs` |
+| `Build::run` takes a `Request` (build id, tenant, trigger, source, base) and an `Events` sink and returns `Built` or `Refused`; the same source gives the same deploy id. `crates/runtime/build/process` is the whole pipeline over any `Blob`. | `crates/port/build/src/port.rs`, `crates/runtime/build/process/src/lib.rs` |
+| `Secret` is `seal` and `open` bound to a row id (XChaCha20-Poly1305, 0031); the key lives in the adapter. | `crates/port/secret/src/port.rs`, `crates/port/secret/local/src/lib.rs` |
+| `control::Control<P>` takes four ports, `(db, blob, queue, secret)`; the build port is passed only to the use case that runs builds. | `crates/server/control/src/ports.rs` |
+| The edge's `Sites`, `Blobs`, `Blob` and `Chunks` traits are `Send + Sync`; 0051 says `crates/server/edge/worker` "wraps these traits in its own twin" and gives the reversal (a `Send` and a local flavour behind one blanket impl). | `crates/server/edge/src/serve/port.rs`, 0051 |
+| `crates/server/edge/api` is `Api<P, C, K, D>` over a `Control<P>`, takes a `Request` and returns a `Reply`, names no HTTP library, and reaches the control plane through a `Bridge` because a connection is a spawned task. A Worker needs no bridge. | `crates/server/edge/api/src/api.rs`, 0052 |
+| The signed-request nonce store is a concrete in-memory `Nonces` struct with a boot barrier, not a trait. | `crates/server/edge/api/src/signature.rs`, `docs/auth.md` section 5 ("Hosted") |
+| `Handle::RESERVED` holds 24 infrastructure names; the brand list is the owner's and is not there. A `tombstone` table has `handle`, `site_id`, `removed_at`; `Receipt` carries counts, never content. | `crates/server/control/src/handle.rs`, `crates/server/control/src/migration.rs`, `crates/server/control/src/receipt.rs`, 0022 |
+| `watch`'s `Heads` is a trait whose comment says a Worker's fetch is not `Send`; the only adapter, `crates/server/watch/git`, uses `gix` over rustls (0072), which is not a Worker dependency. | `crates/server/watch/src/head.rs`, `crates/server/watch/git` |
 | The dashboard `web` is typed view models and a `Screens` trait the edge implements; mounting it, previews, custom domains and linked identities are "not done". | 0053 |
 | Container egress: the build Durable Object starts the Container with `enableInternet: false` and registers outbound intercepts from Rust through `js_sys::Reflect`; the Worker's own `fetch` is the egress policy and attaches the forge credential. Verified in workerd for DO streaming, R2 and the loopback handler; **the container itself never started under `wrangler dev` on this host** (workers-sdk #15394). | 0037, `spikes/workers/README.md` |
 | `webauthn-rs-core` 0.6.2 builds for `wasm32-unknown-unknown`; it has not been run in `workerd` and its size is not measured. | 0068 build note, `spikes/passkeys/README.md` |
@@ -56,8 +55,8 @@ Three consequences shape the plan.
 delay, and has no dedupe key. A pull consumer has a visibility timeout, but it is the HTTP API, not
 something a Worker calls. The port needs `send` that answers `Duplicate` for a repeated key, and a
 `receive` that takes a lease from inside the Worker (read against the Queues docs of 2026-04-21).
-`queue/rows` already implements both in rows of any `Db`, and runs on D1.
-So hosted uses it as it is, over `db/d1`, and `queue/cf` is only a wake-up: after a `send` it
+`crates/port/queue/rows` already implements both in rows of any `Db`, and runs on D1.
+So hosted uses it as it is, over `crates/port/db/d1`, and `crates/port/queue/cf` is only a wake-up: after a `send` it
 posts one message to a Cloudflare Queue so that a consumer Worker runs `receive` at once instead
 of at the next Cron tick. The rows stay the truth. This is decision 0079's first choice.
 
@@ -66,10 +65,10 @@ bindings. Following 0037, the container's builder writes each blob with an HTTP 
 the egress handler owns (`blobs.internal`), and the handler, which is the Worker and holds the R2
 binding, verifies the hash and puts the object under the tenant in the handler's props. The
 container never holds a credential or a bucket name. The builder in the container is
-`build/process`'s pipeline over a `Blob` adapter that speaks that `PUT`.
+`crates/runtime/build/process`'s pipeline over a `Blob` adapter that speaks that `PUT`.
 
 **The edge twin comes first.** The Worker cannot implement the `Send + Sync` edge traits. The
-split of 0051's reversal is the first edit of `edge/worker`, in `edge`, and changes no logic.
+split of 0051's reversal is the first edit of `crates/server/edge/worker`, in `edge`, and changes no logic.
 
 ## 3. Test strategy: what runs without an account
 
@@ -80,11 +79,11 @@ are the exception: they do not start under local `wrangler dev` on native Linux 
 
 | Layer | Without an account | Needs the account |
 |---|---|---|
-| Pure logic (handles, tombstones, budgets, abuse state, orgs, the Durable Object state machines) | Native tests on `db/sqlite`, as `control` is tested now | nothing |
-| `db/d1`, `blob/r2`, `queue/cf`, `secret/worker` against their conformance suites | Yes, in `workerd` | A real D1 and R2 run once for limits and consistency (section 3.2) |
-| `edge/worker` serving, API, dashboard, signed requests, passkey verification | Yes, in `workerd`, with `Miniflare` bindings | WebAuthn in a real browser against `app.uses.ink` (the origin must be real) |
+| Pure logic (handles, tombstones, budgets, abuse state, orgs, the Durable Object state machines) | Native tests on `crates/port/db/sqlite`, as `control` is tested now | nothing |
+| `crates/port/db/d1`, `crates/port/blob/r2`, `crates/port/queue/cf`, `crates/port/secret/worker` against their conformance suites | Yes, in `workerd` | A real D1 and R2 run once for limits and consistency (section 3.2) |
+| `crates/server/edge/worker` serving, API, dashboard, signed requests, passkey verification | Yes, in `workerd`, with `Miniflare` bindings | WebAuthn in a real browser against `app.uses.ink` (the origin must be real) |
 | Durable Objects (build coordinator, nonce store) | Yes, including alarms | Eviction and cold-start timing |
-| `build/container` | The Durable Object half and the egress handler, with an `emit`-style stand-in server; the `Build` conformance suite against a harness | The container start, start time, container-to-DO stream, enforced egress; or a host where local containers start (a VM, per the issue) |
+| `crates/port/build/container` | The Durable Object half and the egress handler, with an `emit`-style stand-in server; the `Build` conformance suite against a harness | The container start, start time, container-to-DO stream, enforced egress; or a host where local containers start (a VM, per the issue) |
 | Cron and Queue wake-ups | Yes (`wrangler dev --test-scheduled`) | Production timing |
 | Deploy pipeline | `wrangler deploy --dry-run`, `wrangler d1 migrations apply --local`, bundle size | An actual deploy |
 | Custom domains | The control-plane rows, the TXT proof (a fake resolver) and the hostname lookup | Cloudflare for SaaS: custom hostname creation, certificate issue, apex behaviour |
@@ -94,7 +93,7 @@ are the exception: they do not start under local `wrangler dev` on native Linux 
 ### 3.1 The harness gap
 
 The conformance suites are not runnable in `workerd` as written. `suite!` turns each case into a
-`#[test]` that blocks on `pollster` (`db/conformance/src/lib.rs`), and a blocking executor cannot
+`#[test]` that blocks on `pollster` (`crates/port/db/conformance/src/lib.rs`), and a blocking executor cannot
 drive a binding, whose futures need the JavaScript event loop. The first package, H1, adds one
 thing to each conformance crate: the cases as a list of async functions that any executor can run.
 A test Worker mounts that list at `/__conformance/<case>`, and a driver in `xtask` starts
@@ -122,11 +121,11 @@ members of the native workspace: `worker` types are `wasm32` only in part, and t
 
 ## 4. Crates, by their post-move paths
 
-| Crate | Path after the move (today) | Implements or is | Needs |
+| Crate | Path | Implements or is | Needs |
 |---|---|---|---|
 | `uses-ink-db-d1` | `crates/port/db/d1` (new) | `db::Db` on a D1 binding, with the `Ledger` | workers-rs `D1Database` |
 | `uses-ink-blob-r2` | `crates/port/blob/r2` (new) | `blob::Blob` on an R2 bucket | `Bucket` binding |
-| `uses-ink-queue-cf` | `crates/port/queue/cf` (new) | `queue::Queue`: `queue/rows` over `db/d1`, plus a Queues wake-up | `Queue` binding |
+| `uses-ink-queue-cf` | `crates/port/queue/cf` (new) | `queue::Queue`: `crates/port/queue/rows` over `crates/port/db/d1`, plus a Queues wake-up | `Queue` binding |
 | `uses-ink-secret-worker` | `crates/port/secret/worker` (new) | `secret::Secret` with the key from a Workers secret | secret binding |
 | `uses-ink-mail-cf` | `crates/port/mail/cf` (new, name set by owner question HQ9) | `mail::Mailer` over the provider's HTTP API | provider |
 | `uses-ink-build-container` | `crates/port/build/container` (new) | `build::Build` as the per-handle Durable Object client, the egress handler's blob gateway, and `image/` (the builder entry in the container) | Containers |
@@ -157,7 +156,7 @@ Whether a package can run in a parallel agent is in section 6.
 
 H0b answers four unknowns while the layout work runs, in a folder the layout moves do not touch:
 
-1. **Size and start of the Worker.** Build a Worker with `edge/api`'s dependencies including
+1. **Size and start of the Worker.** Build a Worker with `crates/server/edge/api`'s dependencies including
    `webauthn-rs-core` for `wasm32-unknown-unknown` and `worker-build --release`; record the wasm
    size (raw and gzip) against the plan's bundle limit, and run a passkey ceremony verifier in
    `workerd`. Closes the open "run in workerd" of 0068.
@@ -175,8 +174,8 @@ amends 0079.
 
 | Id | Package | Owns | Implements | Conformance | Without account / account | Size, risk |
 |---|---|---|---|---|---|---|
-| H1 | Test rig and `db/d1` | `crates/port/db/conformance` (async case list), `crates/port/db/d1`, `tools/xtask` (stage `worker`), `.config/farm.toml` (`[job.worker]`), the test Worker `crates/server/edge/worker/tests` skeleton | `db::Db`, `db::Ledger` | `db-conformance` (all cases, pinned to D1 by 0030) | all in workerd; account only for 3.2 | M, medium. The D1 value boundary is the risk. |
-| H1b | Worker migrations in wrangler's format | `crates/port/db/src/render.rs` use from xtask, `migrations/` (generated) | the renderer already used for SQLite | the rendered file applies with `wrangler d1 migrations apply --local` and gives the schema `db/sqlite` gives | workerd | S, low. 0030 says "one migration set in wrangler's format"; 0049 forbids raw SQL text in code, so the files are generated. |
+| H1 | Test rig and `crates/port/db/d1` | `crates/port/db/conformance` (async case list), `crates/port/db/d1`, `tools/xtask` (stage `worker`), `.config/farm.toml` (`[job.worker]`), the test Worker `crates/server/edge/worker/tests` skeleton | `db::Db`, `db::Ledger` | `db-conformance` (all cases, pinned to D1 by 0030) | all in workerd; account only for 3.2 | M, medium. The D1 value boundary is the risk. |
+| H1b | Worker migrations in wrangler's format | `crates/port/db/src/render.rs` use from xtask, `migrations/` (generated) | the renderer already used for SQLite | the rendered file applies with `wrangler d1 migrations apply --local` and gives the schema `crates/port/db/sqlite` gives | workerd | S, low. 0030 says "one migration set in wrangler's format"; 0049 forbids raw SQL text in code, so the files are generated. |
 
 H1 is serial and first: it is the rig every later adapter is tested on. H1b follows it.
 
@@ -187,40 +186,40 @@ merged by hand), `.config/layout.toml` rows and the `worker` stage's driver list
 
 | Id | Package | Owns | Implements | Conformance | Test locally | Account | Size, risk |
 |---|---|---|---|---|---|---|---|
-| A1 | `blob/r2` | `crates/port/blob/r2`, `crates/port/blob/conformance` (async list) | `blob::Blob` | `blob-conformance` (round trips, sizes, mismatch stores nothing, listing, delete, per-tenant isolation) | yes, Miniflare R2 | Real bucket for streamed put and multipart (3.2) | M, medium. A put hashes as it takes chunks and must not hold a large blob whole; R2 needs a known length or a multipart upload. |
-| A2 | `queue/cf` | `crates/port/queue/cf`, `crates/port/queue/conformance` (async list) | `queue::Queue` | `queue-conformance` (the rows' cases, plus: a wake-up is sent after `send` and never changes the answer) | yes | Real Queue for delivery timing | S, low. If the owner takes the default (Cron wake-up only), A2 shrinks to a configuration entry. |
-| A3 | `secret/worker` | `crates/port/secret/worker`, `crates/port/secret/conformance` | `secret::Secret` | `secret-conformance` | yes (a local secret in `.dev.vars`) | A real secret binding; key rotation procedure written down | S, low. Shares the sealing code of `secret/local`; the key source is the only difference, so first lift the seal into the port crate or a shared crate (a layout question, one line). |
-| A4 | `mail/cf` | `crates/port/mail/cf` | `mail::Mailer` | none exists for `mail`; add a small suite (message with a link, bad address refused, failure typed) that `Capture` and `Stdout` also pass | `Capture` | Sending domain, SPF, DKIM, DMARC, provider account | S, low. Blocked on owner question HQ9 only for the provider's API. |
-| A5 | Nonce store, extracted and in a Durable Object | trait `Nonces` in `crates/server/edge/api` (the extraction), `crates/server/edge/object/nonce`, the DO class in `edge/worker` | `Nonces` (new trait, async, `claim` bounded per key, boot rule) | a new `nonces` suite in `edge/api/tests` that the memory store and the DO both pass: first claim wins, replay refused, entry gone after `c + skew`, bounded per key, boot barrier | pure state machine natively; the DO class in workerd | Eviction timing | M, medium. The `edge/api` split (S1) and passkeys have landed; per-account DO versus a D1 unique key is decision 0079's third choice. |
-| A6 | `watch/worker` | `crates/server/watch/worker` | `watch::Heads` | a fixture of `info/refs` bodies of GitHub, Forgejo, GitLab (recorded) read the same as `watch/git` reads a local repository | yes, with a fake `fetch` | Real forges | S, low |
+| A1 | `crates/port/blob/r2` | `crates/port/blob/r2`, `crates/port/blob/conformance` (async list) | `blob::Blob` | `blob-conformance` (round trips, sizes, mismatch stores nothing, listing, delete, per-tenant isolation) | yes, Miniflare R2 | Real bucket for streamed put and multipart (3.2) | M, medium. A put hashes as it takes chunks and must not hold a large blob whole; R2 needs a known length or a multipart upload. |
+| A2 | `crates/port/queue/cf` | `crates/port/queue/cf`, `crates/port/queue/conformance` (async list) | `queue::Queue` | `queue-conformance` (the rows' cases, plus: a wake-up is sent after `send` and never changes the answer) | yes | Real Queue for delivery timing | S, low. If the owner takes the default (Cron wake-up only), A2 shrinks to a configuration entry. |
+| A3 | `crates/port/secret/worker` | `crates/port/secret/worker`, `crates/port/secret/conformance` | `secret::Secret` | `secret-conformance` | yes (a local secret in `.dev.vars`) | A real secret binding; key rotation procedure written down | S, low. Shares the sealing code of `crates/port/secret/local`; the key source is the only difference, so first lift the seal into the port crate or a shared crate (a layout question, one line). |
+| A4 | `crates/port/mail/cf` | `crates/port/mail/cf` | `mail::Mailer` | none exists for `mail`; add a small suite (message with a link, bad address refused, failure typed) that `Capture` and `Stdout` also pass | `Capture` | Sending domain, SPF, DKIM, DMARC, provider account | S, low. Blocked on owner question HQ9 only for the provider's API. |
+| A5 | Nonce store, extracted and in a Durable Object | trait `Nonces` in `crates/server/edge/api` (the extraction), `crates/server/edge/object/nonce`, the DO class in `crates/server/edge/worker` | `Nonces` (new trait, async, `claim` bounded per key, boot rule) | a new `nonces` suite in `crates/server/edge/api/tests` that the memory store and the DO both pass: first claim wins, replay refused, entry gone after `c + skew`, bounded per key, boot barrier | pure state machine natively; the DO class in workerd | Eviction timing | M, medium. The `crates/server/edge/api` split (S1) and passkeys have landed; per-account DO versus a D1 unique key is decision 0079's third choice. |
+| A6 | `crates/server/watch/worker` | `crates/server/watch/worker` | `watch::Heads` | a fixture of `info/refs` bodies of GitHub, Forgejo, GitLab (recorded) read the same as `crates/server/watch/git` reads a local repository | yes, with a fake `fetch` | Real forges | S, low |
 
 ### 5.3 The Worker, the builder, the pipeline
 
 | Id | Package | Owns | Depends on | Conformance | Account | Size, risk |
 |---|---|---|---|---|---|---|
-| W1 | Edge twin and `edge/worker` serving | `crates/server/edge/src/serve/port.rs` (the `Send` and local flavours, no logic change), `crates/server/edge/worker` (serve path: host to site, manifest blob, entry blob, streaming, range) | H1, A1 (can start on in-memory fakes); edge twin first | a new `edge-conformance` crate for `Sites` and `Blobs` adapters (0051 lists the absence); the existing edge tests run through the Worker via `Miniflare` | Cache API timing only | L, medium. The host lookup is cached per colo for at most 10 s, and the manifest is fetched per deploy, not per request: both through the Cache API keyed by deploy id. |
-| W2 | API, dashboard, sign-in on the Worker | `crates/server/edge/worker` (`api`, `dashboard`, `signin` modules), `crates/surface/web` (the `Screens` implementation if it lives there) | W1, A3, A4, A5, M3's dashboard mount (0053 "not done") | the API tests of `edge/api` and the dashboard goldens, run on workerd | Passkeys in a real browser on a real origin | L, high. Passkeys unrun in workerd until H0b, size of the bundle. |
-| B1 | The per-handle build Durable Object and the coordinator logic | `crates/server/edge/object/build` (state machine: one build at a time, lease, attempt count, the live log), the class in `edge/worker` | H1, A2 | pure state machine under native property tests (never two builds at once, a crash leaves a diagnosable row, the log is the typed `build::Event` stream, 0023) | Real alarms timing | M, medium |
-| B2 | `build/container` and the container image | `crates/port/build/container` (DO-side `Build`, the egress handler's blob gateway and credential attachment), `crates/port/build/container/image` (the builder entry and `Dockerfile`), `crates/port/build/conformance` (async list) | B1, A1; the builder pipeline of `build/process` with an HTTP `Blob` adapter | `build-conformance` (builds and stores what it names; same site same deploy; refuses a bad site and says why; leaves nothing under another tenant) against a harness; plus a test that the gateway refuses a put whose hash differs and a tenant that is not in the props | **Yes**, to start the container, measure cold start (0004's reversal threshold is about 15 s push-to-live) and enforce egress | XL, high. Split: B2a the gateway and handler (workerd), B2b the image, B2c the real start. #15394 blocks local runs here. |
+| W1 | Edge twin and `crates/server/edge/worker` serving | `crates/server/edge/src/serve/port.rs` (the `Send` and local flavours, no logic change), `crates/server/edge/worker` (serve path: host to site, manifest blob, entry blob, streaming, range) | H1, A1 (can start on in-memory fakes); edge twin first | a new `edge-conformance` crate for `Sites` and `Blobs` adapters (0051 lists the absence); the existing edge tests run through the Worker via `Miniflare` | Cache API timing only | L, medium. The host lookup is cached per colo for at most 10 s, and the manifest is fetched per deploy, not per request: both through the Cache API keyed by deploy id. |
+| W2 | API, dashboard, sign-in on the Worker | `crates/server/edge/worker` (`api`, `dashboard`, `signin` modules), `crates/surface/web` (the `Screens` implementation if it lives there) | W1, A3, A4, A5, M3's dashboard mount (0053 "not done") | the API tests of `crates/server/edge/api` and the dashboard goldens, run on workerd | Passkeys in a real browser on a real origin | L, high. Passkeys unrun in workerd until H0b, size of the bundle. |
+| B1 | The per-handle build Durable Object and the coordinator logic | `crates/server/edge/object/build` (state machine: one build at a time, lease, attempt count, the live log), the class in `crates/server/edge/worker` | H1, A2 | pure state machine under native property tests (never two builds at once, a crash leaves a diagnosable row, the log is the typed `build::Event` stream, 0023) | Real alarms timing | M, medium |
+| B2 | `crates/port/build/container` and the container image | `crates/port/build/container` (DO-side `Build`, the egress handler's blob gateway and credential attachment), `crates/port/build/container/image` (the builder entry and `Dockerfile`), `crates/port/build/conformance` (async list) | B1, A1; the builder pipeline of `crates/runtime/build/process` with an HTTP `Blob` adapter | `build-conformance` (builds and stores what it names; same site same deploy; refuses a bad site and says why; leaves nothing under another tenant) against a harness; plus a test that the gateway refuses a put whose hash differs and a tenant that is not in the props | **Yes**, to start the container, measure cold start (0004's reversal threshold is about 15 s push-to-live) and enforce egress | XL, high. Split: B2a the gateway and handler (workerd), B2b the image, B2c the real start. #15394 blocks local runs here. |
 | B3 | Hosted watch, webhooks, Cron | `crates/server/edge/worker` (`scheduled`, webhook routes), `crates/server/authority/github` (signature check, installation token per build, never stored, commit status) | B1, A6, W2 | recorded GitHub webhook fixtures; the `Heads` suite | A registered GitHub App | L, medium |
 
 ### 5.4 Control-plane features (native-testable, parallel)
 
-All of these are `control` work tested on `db/sqlite`, and so need no Cloudflare. Each adds its
+All of these are `control` work tested on `crates/port/db/sqlite`, and so need no Cloudflare. Each adds its
 own migration in its own module, following `queue::Queued` and `control`'s `Domain`, with the order
-of migration ids assigned up front so the packages do not collide. The split into `control/rows`, `control/signin`
-and `control/keys` (S2) has landed, so they can start as soon as the paths are final (S6) or, if the
+of migration ids assigned up front so the packages do not collide. The split into `crates/server/control/rows`, `crates/server/control/signin`
+and `crates/server/control/keys` (S2) has landed, so they can start as soon as the paths are final (S6) or, if the
 owner allows, on today's paths (section 6).
 
 | Id | Package | Owns | Ports | Conformance and tests | Size, risk |
 |---|---|---|---|---|---|
 | C1 | Handles: brand reservations, holds, tombstones | `crates/server/control/rows` (the `Reserved` migration, `Handle::reserve`, the hold), data file `reserved-handles.toml` read once | `Db` | properties: a tombstoned handle is not claimable for its hold; a verified handle is never reclaimed; first claim wins across forges; a reserved name is refused with the typed reason; the same on D1 through H1's rig | M, low. The brand list and the hold are owner answers (Q5, O3). |
 | C2 | Budgets and the limits page | `control` (`Budgeted` migration, counters: bytes stored, builds a day, sites), `crates/surface/web` (the limits page rendered from the same typed `Limits` the refusals use, 0021, 0044) | `Db`, `Blob` (`list` for sizes) | a refusal carries `{value, limit}`; the page and the refusals read one value; a deploy above budget is refused whole (Q6, all or nothing) | M, low. Numbers are an owner answer (O7, Q13). |
-| C3 | Deletion with receipt, hosted | `control` (resume and bounds), `edge/worker` (a Durable Object alarm drives a long delete), the receipt mail | `Blob`, `Db`, `Mailer` | the removal tests of `control` with a blob adapter that fails halfway: a crash leaves a diagnosable row, never orphaned bytes (0022); `Blob::list` after removal is empty; `Receipt` carries counts only | M, medium. R2 deletes in batches and a Worker has a time limit, so a delete is a resumable job, not one request. |
-| C4 | Abuse report and takedown | `control` (`Abused` migration, `Suspension` state of a site), `edge/api` (`POST /v1/abuse`, unauthenticated, rate limited), `edge` (a suspended site answers a typed status and a reason code, no content) | `Db`, `Mailer` | a suspended site serves the notice and no bytes; a report is rate limited per source; the operator action needs the operator key (0068); every action is an `auth_event` row | M, medium. Legal text and the contact are owner answers (HQ10). |
-| C5 | Orgs and roles | `control/keys` and `control/rows` (`Orged` migration; `Org`, `Member`; roles are code, `docs/auth.md` section 12) | `Db` | the role table of `auth.md` as a property: a Writer cannot `Members`; the last owner cannot be removed; an org's deploy key outlives its creator | M, medium. Waits for S2 and the `passkeys` work. |
+| C3 | Deletion with receipt, hosted | `control` (resume and bounds), `crates/server/edge/worker` (a Durable Object alarm drives a long delete), the receipt mail | `Blob`, `Db`, `Mailer` | the removal tests of `control` with a blob adapter that fails halfway: a crash leaves a diagnosable row, never orphaned bytes (0022); `Blob::list` after removal is empty; `Receipt` carries counts only | M, medium. R2 deletes in batches and a Worker has a time limit, so a delete is a resumable job, not one request. |
+| C4 | Abuse report and takedown | `control` (`Abused` migration, `Suspension` state of a site), `crates/server/edge/api` (`POST /v1/abuse`, unauthenticated, rate limited), `edge` (a suspended site answers a typed status and a reason code, no content) | `Db`, `Mailer` | a suspended site serves the notice and no bytes; a report is rate limited per source; the operator action needs the operator key (0068); every action is an `auth_event` row | M, medium. Legal text and the contact are owner answers (HQ10). |
+| C5 | Orgs and roles | `crates/server/control/keys` and `crates/server/control/rows` (`Orged` migration; `Org`, `Member`; roles are code, `docs/auth.md` section 12) | `Db` | the role table of `auth.md` as a property: a Writer cannot `Members`; the last owner cannot be removed; an org's deploy key outlives its creator | M, medium. Waits for S2 and the `passkeys` work. |
 | C6 | Previews of branches | `control` (`Previewed`: a deploy kind with a label and an expiry), `watch` (branches), `edge` (host `<label>--<handle>.uses.ink`), `web` (the screen) | `Db`, `Blob`, `Queue` | a preview expires and its blobs are swept; it is unlisted; it cannot name a real handle | M, medium. Handles have no `--` (architecture section 12), so `<label>--<handle>` cannot collide with a handle. Q7 decides who may see one. |
-| C7 | Custom domains rows and the TXT proof | `control` (`Domained` migration: the `domain` table of architecture section 11), `crates/server/authority/dns` (the TXT `_uses-ink.<name>` proof bound to a handle), `edge/control` (the host lookup includes custom hostnames) | `Db`, a `Resolver` port (new, small, with a fake) | proof binds name to handle; a second handle cannot take a proven name; a removed domain stops resolving; a tombstoned handle's domain is released | M, medium |
+| C7 | Custom domains rows and the TXT proof | `control` (`Domained` migration: the `domain` table of architecture section 11), `crates/server/authority/dns` (the TXT `_uses-ink.<name>` proof bound to a handle), `crates/server/edge/control` (the host lookup includes custom hostnames) | `Db`, a `Resolver` port (new, small, with a fake) | proof binds name to handle; a second handle cannot take a proven name; a removed domain stops resolving; a tombstoned handle's domain is released | M, medium |
 | C8 | `ink:authority-email` | `crates/server/authority/email` | `Mailer` | the magic link of 0066 (single use, 15 minutes), as authority proof of an address | S, low |
 
 Previews and the decisions diff need `web` screens that do not exist (0053). C6 adds the preview
@@ -231,10 +230,10 @@ screen only; the diff is not M4.
 | Id | Package | Owns | Needs | Size, risk |
 |---|---|---|---|---|
 | L1 | Deploy pipeline | `wrangler.toml` (committed, one per environment), `.github/workflows/deploy.yml`, `tools/xtask` (a `deploy` verb that prints what it will do and refuses without `--yes`), `docs/hosted.md` runbook | Cloudflare account, API token scoped to the account, GitHub environment secrets. Containers need Docker in the runner. `wrangler d1 migrations apply`, `wrangler deploy`, container image push. A deploy is gated by `farm check` and the `worker` stage. | M, medium |
-| L2 | Custom domains live | `edge/worker` (`/v1/domains`), `crates/server/authority/dns`, a Cloudflare API client behind a port `Hostnames` (new, with a fake for the suite) | Cloudflare for SaaS on the zone, the fallback origin `domains.uses.ink`, an API token that can only edit custom hostnames. Certificate validation and the `www` plus redirect rule for apex (0019, O5). | L, high. Apex without CNAME flattening is a stated limit. |
-| L3 | Hosted mail live | `mail/cf` configuration | the provider, the sending domain's DNS | S, low |
-| L4 | The exit check | `cli/tests` or a script under `tools/xtask` that signs in, adds a repo, times it to live, pushes, times it, adds a domain | everything above in a staging environment | M, medium. The three tests of section 1 are written first as failing checks so that L1 to L3 have a target. |
-| L5 | Observability and runbooks | `edge/worker` (`Observe` adapter writes typed events to Workers Logs; no request bodies, no peer addresses, 0051), `docs/hosted.md` runbooks: rotate a secret, restore L1 from Time Travel, stop a runaway build, suspend a site | Cloudflare | S, low |
+| L2 | Custom domains live | `crates/server/edge/worker` (`/v1/domains`), `crates/server/authority/dns`, a Cloudflare API client behind a port `Hostnames` (new, with a fake for the suite) | Cloudflare for SaaS on the zone, the fallback origin `domains.uses.ink`, an API token that can only edit custom hostnames. Certificate validation and the `www` plus redirect rule for apex (0019, O5). | L, high. Apex without CNAME flattening is a stated limit. |
+| L3 | Hosted mail live | `crates/port/mail/cf` configuration | the provider, the sending domain's DNS | S, low |
+| L4 | The exit check | `crates/surface/cli/tests` or a script under `tools/xtask` that signs in, adds a repo, times it to live, pushes, times it, adds a domain | everything above in a staging environment | M, medium. The three tests of section 1 are written first as failing checks so that L1 to L3 have a target. |
+| L5 | Observability and runbooks | `crates/server/edge/worker` (`Observe` adapter writes typed events to Workers Logs; no request bodies, no peer addresses, 0051), `docs/hosted.md` runbooks: rotate a secret, restore L1 from Time Travel, stop a runaway build, suspend a site | Cloudflare | S, low |
 
 ## 6. Order, parallelism and the layout freeze
 
@@ -243,9 +242,9 @@ now (no new workspace crate):   H0   H0b (spikes/hosted)        layout: S3, S4, 
 S6 freeze, one atomic commit:   nothing in M4 adds a crate or edits a moved path across it
 after S6:                       H1 -> H1b
                                 A1  A2  A3  A4  A6        (parallel, after H1)
-                                A5 (needs the edge/api auth/ split: landed)   W1 (needs the edge twin, H1)
+                                A5 (needs the crates/server/edge/api auth/ split: landed)   W1 (needs the edge twin, H1)
                                 B1 -> B2a -> B2b -> B2c
-                                C1..C8 (parallel; the control/rows split has landed; sqlite-tested; need no H1)
+                                C1..C8 (parallel; the crates/server/control/rows split has landed; sqlite-tested; need no H1)
                                 W2 (needs W1, A3, A4, A5)   B3 (needs B1, A6, W2)
 needs the account:              L1 -> L2, L3 -> L4 -> L5
 ```
@@ -258,10 +257,10 @@ Rules that follow from `docs/layout.md`:
   Before S6, M4 work is limited to the owner's decisions, `docs/`, and `spikes/hosted/**` (an
   excluded folder with its own `Cargo.lock`, like `spikes/workers`).
 - **What has landed, and what has not.** On `main` at `6219cd6b` the log shows P1 to P4 and P6, S1
-  (`edge/api` has `auth/`, `sites/`, `archive/`), S2 (`control/rows`, `control/signin` and
-  `control/keys` are workspace members), D2, D3 (the docs checks run) and passkeys (0068 slice 2).
-  P5 appears landed (`host/native/src/fetch/`). Not landed: S3 (one `Chain` and one `Written` in
-  `model`), S4 (the `cli` split; `cli/src` has 43 entries), S5 and S6. Re-read the log before
+  (`crates/server/edge/api` has `auth/`, `sites/`, `archive/`), S2 (`crates/server/control/rows`, `crates/server/control/signin` and
+  `crates/server/control/keys` are workspace members), D2, D3 (the docs checks run) and passkeys (0068 slice 2).
+  P5 appears landed (`crates/runtime/host/native/src/fetch/`). Not landed: S3 (one `Chain` and one `Written` in
+  `model`), S4 (the `cli` split; `crates/surface/cli/src` has 43 entries), S5 and S6. Re-read the log before
   acting. `cli` is S4's until it lands, so nothing in M4 edits it. The first edit of W1 (the `Send`
   twin in `edge`) waits for S6, since it is a change to a crate S6 moves.
 - **Use post-S5 names.** `queue/local` becomes `queue/rows`, `build/local` becomes `build/process`
@@ -289,13 +288,13 @@ build of a handle runs at a time, the live log has one writer and the container 
 
 - State: the current build id, its lease, its attempt count, the last events kept for the stream.
   Stored in the Durable Object's own storage; the truth of builds stays in D1 (`build` rows).
-- It claims a request from the queue rows (`queue/rows`, one claiming statement), starts the
+- It claims a request from the queue rows (`crates/port/queue/rows`, one claiming statement), starts the
   container with `enableInternet: false`, registers the outbound intercepts, streams the builder's
   events to the dashboard as the typed `build::Event` stream, writes the log to R2 at the end, and
   acks or releases. A crash leaves a lease that ends, and the request is delivered again.
 - The logic (which state follows which event, what a second `start` does) is the crate
-  `edge/object/build`, written without `worker` types so it is tested natively with property
-  tests. The class in `edge/worker` is the thin shell.
+  `crates/server/edge/object/build`, written without `worker` types so it is tested natively with property
+  tests. The class in `crates/server/edge/worker` is the thin shell.
 
 The nonce store is a second class, one instance per account (`docs/auth.md` section 5): `claim`
 after the signature verifies, bounded per key, evicted with the window, and the boot barrier on
@@ -364,9 +363,9 @@ the same retention sweep that keeps the last 20 deploys.
 |---|---|---|
 | Containers do not start locally (#15394) | B2 cannot be tested on this host | a Debian VM host or the account; the DO half and the gateway are tested in workerd with a stand-in server |
 | Worker bundle size with `webauthn-rs-core` and the control plane | the Worker cannot deploy at the plan's limit | H0b measures first; the API and the reader path can be two Workers sharing crates if one is too big |
-| D1 value boundary (`i64`) | silent truncation | typed error in `db/d1`, the conformance case exists, H0b checks |
+| D1 value boundary (`i64`) | silent truncation | typed error in `crates/port/db/d1`, the conformance case exists, H0b checks |
 | `!Send` futures and the `Send` edge | the twin is the first edit of W1 | 0051's reversal, no logic change |
-| Worker crates in the native workspace | the native stages run clippy, nextest and deny with `--workspace` (`xtask/src/check/cargo.rs`), so a `wasm32`-only crate would break them | H1 settles it: members whose whole body is `cfg(target_arch = "wasm32")`-gated (native sees an empty crate and the layout rules still cover them), or crates excluded from the workspace like `spikes/` (no layout coverage, own lockfile). Recommended: the gated members. The `worker` stage builds them for wasm. |
+| Worker crates in the native workspace | the native stages run clippy, nextest and deny with `--workspace` (`tools/xtask/src/check/cargo.rs`), so a `wasm32`-only crate would break them | H1 settles it: members whose whole body is `cfg(target_arch = "wasm32")`-gated (native sees an empty crate and the layout rules still cover them), or crates excluded from the workspace like `spikes/` (no layout coverage, own lockfile). Recommended: the gated members. The `worker` stage builds them for wasm. |
 | Queue semantics | wasted work on a Queues adapter that the port cannot use | rows on D1 plus a wake-up (0079) |
 | Container egress intercept not accepting the loopback in hosted runs | builds cannot reach the forge with a credential | 0037's reversal: a JS shim for the handler only |
 | Cold start above 15 s | exit check fails | 0004's reversal: a wasm fast path for small snapshots |

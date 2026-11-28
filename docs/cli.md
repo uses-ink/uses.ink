@@ -4,7 +4,7 @@ Status: **Accepted** (decision 0061). This is a design, not a description of wha
 says "today", it means the CLI as it is on `main`. Where it says "built", it names a decision or a
 slice of section 17. `cli-preview.html` shows every mock-up here in colour, light and dark; open it
 in a browser. Mock-ups are illustrative: names, numbers and ids are made up, and every code and
-every piece of wording is taken from the catalog (`diag/catalog.toml`) or from `cli/src` unless the
+every piece of wording is taken from the catalog (`crates/core/diag/catalog.toml`) or from `crates/surface/cli/src` unless the
 text says it is new.
 
 Contents: 1 Principles, 2 Command tree, 3 Global options, 4 Help, 5 Colour and glyphs, 6 Output
@@ -19,7 +19,7 @@ named below. Each one is a rule a reviewer can check.
 
 1. **Calm, plain, warm.** The product is a quiet publishing tool. Messages are sentences about the
    writer's folder, not stack traces about ink. Say "nothing was changed" when nothing was. No
-   shouting, no exclamation marks, no emoji, no jokes. The voice of `diag/catalog.toml` is the
+   shouting, no exclamation marks, no emoji, no jokes. The voice of `crates/core/diag/catalog.toml` is the
    voice of the CLI.
 2. **A result is data, everything else is talk.** The result goes to stdout and keeps one shape
    whether stdout is a terminal or a pipe. Progress, diagnostics, notices, change sets and
@@ -368,7 +368,7 @@ background. Three rules follow, each from a known failure:
   work on any theme and in a monochrome log.
 - **No colour is used as a background**, except by the person's selection.
 
-The brand's own ink colours (`token/token.toml`: pen red `#e8170b`, pencil `#5c5c5c`) live in the
+The brand's own ink colours (`crates/core/token/token.toml`: pen red `#e8170b`, pencil `#5c5c5c`) live in the
 HTML preview only, as the nearest readable stand-ins for the ANSI set. The CLI does not paint the
 brand: a terminal is not a page.
 
@@ -1017,7 +1017,7 @@ CLI in the same commit.
 
 ## 16. The renderer
 
-One module, `cli/src/output/term`, owns every byte written to a terminal. It is built; the table is the design's sketch, and the code may name things differently (`cli/src/output/term/mod.rs` is the source):
+One module, `crates/surface/cli/src/output/term`, owns every byte written to a terminal. It is built; the table is the design's sketch, and the code may name things differently (`crates/surface/cli/src/output/term/mod.rs` is the source):
 
 | Type | Is |
 |---|---|

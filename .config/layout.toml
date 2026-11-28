@@ -71,13 +71,13 @@ crates = [
 # these can allow it.
 [unsafe]
 allowed = [
-    "freehand-web/src/lib.rs",
-    "host/wasmtime/hostile/src/bind.rs",
-    "host/wasmtime/src/cache.rs",
-    "plugin/format/markdown/guest/src/bind.rs",
-    "plugin/format/obsidian/guest/src/bind.rs",
-    "plugin/source/git/guest/src/bind.rs",
-    "plugin/theme/quiet/guest/src/bind.rs",
+    "crates/runtime/host/wasmtime/hostile/src/bind.rs",
+    "crates/runtime/host/wasmtime/src/cache.rs",
+    "crates/runtime/plugin/format/markdown/guest/src/bind.rs",
+    "crates/runtime/plugin/format/obsidian/guest/src/bind.rs",
+    "crates/runtime/plugin/source/git/guest/src/bind.rs",
+    "crates/runtime/plugin/theme/quiet/guest/src/bind.rs",
+    "crates/standalone/freehand-web/src/lib.rs",
 ]
 
 # Free functions allowed outside a crate's entry points, by file and name, each with the reason no
@@ -88,7 +88,7 @@ allowed = []
 # `own` is the file of the SQL rule whose list of keywords is the one place they are written;
 # `foreign` the folders whose `.sql` files are not ours.
 [sql]
-own = ["xtask/src/layout/rules/sql.rs"]
+own = ["tools/xtask/src/layout/rules/sql.rs"]
 foreign = ["spikes", "target"]
 
 # The files outside the crates that the release rule reads and checks against each other.
@@ -102,10 +102,12 @@ toolchain = "rust-toolchain.toml"
 workflow = ".github/workflows/release.yml"
 workflows = ".github/workflows"
 
-# The layers a crate path may sit under, as `crates/<layer>/<family>`, first to last. A crate in a
-# layer depends only on layers before it. No crate sits under `crates/` yet.
+# The layers a crate path sits under, as `crates/<layer>/<family>`, first to last. A crate in a
+# layer depends only on layers before it, and on an `open` layer; an `open` layer is for crates
+# that stand alone: any crate may depend on them, and they depend on nothing outside their layer.
 [layers]
 order = ["core", "port", "server", "runtime", "surface", "standalone"]
+open = ["standalone"]
 
 # At most `limit` entries in a directory. `mode` is `report` (a note) or `enforce` (a failure).
 # Directories with a part named in `exempt` are not checked; a waiver names a path and why.
@@ -191,5 +193,5 @@ path = "docs/decisions/0079-hosted-is-adapters-of-the-existing-ports-queue.md"
 reason = "the hosted decision names the adapter crates to come"
 
 [[docs.quoted]]
-path = "xtask/src/docs"
+path = "tools/xtask/src/docs"
 reason = "the citation check's own tests quote the forms it reads"

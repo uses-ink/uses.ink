@@ -9,7 +9,7 @@ supersedes: []
 
 ## 0043 Obsidian is a dialect of the markdown format; the engine resolves and embeds
 
-Accepted. `ink:format-obsidian` (`plugin/format/obsidian`, its component in `guest/`) reads one
+Accepted. `ink:format-obsidian` (`crates/runtime/plugin/format/obsidian`, its component in `guest/`) reads one
 note through the markdown format's comrak setup and raw HTML allowlist (0027), as a dialect:
 `format_markdown::dialect::Dialect` turns on the syntax comrak parses for it and says what its
 own nodes mean, and `format_markdown::read_as` reads through the one builder, generic over the
@@ -88,7 +88,7 @@ the marker either way, so a vault can be read as plain markdown and a folder wit
 (`engine::Chosen`) and builds the engine over the format it names; the decision joins the
 engine's with `Understood::with`, so `ink explain`, `--why` and `ink pin` treat it as any other,
 and it is in the build's record. `ink build --check` builds a vault through
-`format-obsidian.wasm`, and `cli/fixture/site/vault` proves both builds match.
+`format-obsidian.wasm`, and `crates/surface/cli/fixture/site/vault` proves both builds match.
 
 **Tags** are the one decision both sources feed, since Obsidian shows a note's frontmatter tags
 and its inline tags together. A ladder takes the first value, so `page.tags` is `Pin`, `Inline`,

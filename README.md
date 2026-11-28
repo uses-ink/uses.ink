@@ -32,11 +32,12 @@ To self-host in a container, `docker build -t uses-ink .`; the run line is in th
 
 | Path | Holds |
 |---|---|
-| `model/`, `engine/`, `config/`, `diag/` | the data model and the pure engine |
-| `plugin/`, `wit/` | first-party plugins and the plugin contract |
-| `host/`, `edge/`, `control/`, `cli/` | the builder's capabilities, serving, the control plane, the `ink` binary |
+| `crates/core/` | the data model, the config, the diagnostics and the pure engine |
+| `crates/port/`, `crates/server/` | the ports and their adapters, and the control plane and the edge |
+| `crates/runtime/`, `wit/` | the plugin host, first-party plugins and the plugin contract |
+| `crates/surface/`, `crates/standalone/` | the `ink` binary and the dashboard, and the crates that stand alone |
 | `docs/` | the specs; start with `docs/architecture.md` |
-| `tools/farm/`, `xtask/` | the build farm client and the repo tasks |
+| `tools/farm/`, `tools/xtask/` | the build farm client and the repo tasks |
 | `spikes/` | experiments outside the workspace |
 
 ## Read next

@@ -16,8 +16,8 @@ the packages, the order and the owner questions. The choices to push back on:
   key, and its consumer is a push batch handler; a pull consumer's visibility timeout is the HTTP
   API, which a Worker does not call. The `Queue` port needs a `Duplicate` answer on `send` and a
   `receive` with a lease inside the Worker.
-  `queue/rows` is already written over any `db::Db` and runs on D1, so hosted uses it over
-  `db/d1`, and `queue/cf` sends one wake-up message after a `send`. The rows stay the truth.
+  `crates/port/queue/rows` is already written over any `db::Db` and runs on D1, so hosted uses it over
+  `crates/port/db/d1`, and `crates/port/queue/cf` sends one wake-up message after a `send`. The rows stay the truth.
 - **A container reaches R2 through the Worker.** The container has no R2 binding and holds no
   credential. Its builder `PUT`s each blob to a name the egress handler owns (0037); the handler
   checks the hash and writes the object under the tenant in its props.

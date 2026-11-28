@@ -161,3 +161,18 @@ fn the_affected_table_and_a_narrowable_job_are_read_and_bad_globs_are_named() {
     let bad = Jobs::parse(&format!("{FILE}\n[affected]\nbase = \"-x\"\n"), PathBuf::new()).unwrap_err();
     assert!(matches!(bad, Fault::Toml(_)), "{bad}");
 }
+
+#[test]
+fn every_input_glob_of_this_repo_matches_a_file() {
+    use crate::cache::inputs::{Tracked, Walk};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+    let files = Walk.files(&root).unwrap();
+    for job in Jobs::load(&root).unwrap().pick(&[]).unwrap() {
+        let idle: Vec<usize> = job.inputs.iter().flat_map(|inputs| inputs.idle(&files)).collect();
+        assert!(
+            idle.is_empty(),
+            "job {} has globs at {idle:?} that match no file: a stale pass would look fresh",
+            job.name.as_str()
+        );
+    }
+}

@@ -12,7 +12,7 @@ supersedes: []
 Accepted. 0052 left four gaps between a built control plane and a self-host that runs it. This
 closes them.
 
-- **Sites.** `edge/control` is the edge's `Sites` over `Control`: host to site (`Origin::handle`),
+- **Sites.** `crates/server/edge/control` is the edge's `Sites` over `Control`: host to site (`Origin::handle`),
   site to live deploy (`Control::serving`), deploy to decoded manifest (`Control::manifest`), and
   the blobs read from the tenant's folder of the blob directory through `edge_folder::Files`, so
   link refusal, swap safety and range reads are the ones the folder server has. The edge's
@@ -38,19 +38,19 @@ closes them.
   lookup and the loops are `Control`s over one set of adapters. SQLite is a mutex over one
   connection in WAL mode, the blob directory writes by atomic rename.
 - **Loops.** `ink serve --data` runs the watch and the worker, each on its own thread with its
-  own current-thread runtime, under a supervisor (`cli/src/selfhost/tasks.rs`). A panic or an early
+  own current-thread runtime, under a supervisor (`crates/surface/cli/src/selfhost/tasks.rs`). A panic or an early
   return is a typed event; the loop is started again after `--restart-delay`, and left stopped
   after `--restart-limit` crashes in a row (a run longer than `--restart-healthy` forgets them).
   A stop (Ctrl-C) is graceful: a loop finishes its step, and its next wait returns as stopped.
   Every event (started, queued, duplicate, unreachable, built, refused, dropped, failed, crashed,
   restarting, gave up, stopped) is one line on stderr with its time, and a test waits on them.
-- **Git heads.** `watch/git` is `Heads` over `gix`: it connects as `git ls-remote` does, reads the
+- **Git heads.** `crates/server/watch/git` is `Heads` over `gix`: it connects as `git ls-remote` does, reads the
   advertised references, picks the branch, tag (peeled) or commit the site names, and fetches
   nothing. `Heads::head` now takes the site's `Access`, which `Access::of` opens from the site's
   `git-token` credential: `user:password`, or a token alone sent as the user `git`. It redacts
   itself, is zeroed on drop and appears in no event.
-- **Git builds.** `build/process` takes a `Remote` for a git source (`Offline` by default, which
-  keeps `Unsupported`). `ink` implements it in `cli/src/command/remote.rs` over the bundled
+- **Git builds.** `crates/runtime/build/process` takes a `Remote` for a git source (`Offline` by default, which
+  keeps `Unsupported`). `ink` implements it in `crates/surface/cli/src/command/remote.rs` over the bundled
   `ink:source-git` component (0046): a `Fetch` with the operator's network, cache and a time
   budget (`--git-time`), the site's credential held under one grant name for the call. Every
   `Unsourced` becomes the diagnostic of a refused build; only a missing component, an unloadable

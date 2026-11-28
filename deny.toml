@@ -30,12 +30,12 @@ exceptions = [
     { crate = "zlib-rs", allow = ["Zlib"] },
     # axum's router, for `ink preview`
     { crate = "matchit", allow = ["BSD-3-Clause"] },
-    # the constant-time comparisons under the sealer's XChaCha20-Poly1305 (secret/local)
+    # the constant-time comparisons under the sealer's XChaCha20-Poly1305 (crates/port/secret/local)
     { crate = "subtle", allow = ["BSD-3-Clause"] },
     # Ed25519 for the signed-request profile (0068, `sig`), and the curve under it
     { crate = "curve25519-dalek", allow = ["BSD-3-Clause"] },
     { crate = "ed25519-dalek", allow = ["BSD-3-Clause"] },
-    # AVIF, through rav1e (host/image)
+    # AVIF, through rav1e (crates/runtime/host/image)
     { crate = "av1-grain", allow = ["BSD-2-Clause"] },
     { crate = "avif-serialize", allow = ["BSD-3-Clause"] },
     { crate = "rav1e", allow = ["BSD-2-Clause"] },
@@ -43,7 +43,7 @@ exceptions = [
     { crate = "v_frame", allow = ["BSD-2-Clause"] },
     # rav1e's `fuzzing` feature, which nothing enables; `all-features` above reaches it
     { crate = "libfuzzer-sys", allow = ["NCSA"] },
-    # TLS for the SMTP adapter (mail/smtp, decision 0066) and for git over https (decision 0072): rustls over `ring`, with the bundled web
+    # TLS for the SMTP adapter (crates/port/mail/smtp, decision 0066) and for git over https (decision 0072): rustls over `ring`, with the bundled web
     # PKI roots. ISC is the licence of `ring`'s and webpki's own code; CDLA-Permissive-2.0 covers
     # the root certificates' data.
     { crate = "quoted_printable", allow = ["0BSD"] },
@@ -64,7 +64,7 @@ exceptions = [
     { crate = "webauthn-rs-proto", allow = ["MPL-2.0"] },
     { crate = "webauthn-attestation-ca", allow = ["MPL-2.0"] },
     { crate = "crypto-glue", allow = ["MPL-2.0"] },
-    # JPEG copies (host/image): the IJG notice covers its port of libjpeg's tables
+    # JPEG copies (crates/runtime/host/image): the IJG notice covers its port of libjpeg's tables
     { crate = "jpeg-encoder", allow = ["IJG"] },
 ]
 
