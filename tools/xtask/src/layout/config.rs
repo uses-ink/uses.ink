@@ -385,7 +385,7 @@ mod tests {
         assert_eq!(config.layers.order, ["core", "port", "server", "runtime", "surface", "standalone"]);
         assert_eq!(config.layers.open, ["standalone"]);
         assert_eq!(config.fanout.limit, 8);
-        assert_eq!(config.fanout.mode, Strictness::Report);
+        assert_eq!(config.fanout.mode, Strictness::Enforce);
     }
 
     #[test]

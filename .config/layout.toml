@@ -109,16 +109,143 @@ workflows = ".github/workflows"
 order = ["core", "port", "server", "runtime", "surface", "standalone"]
 open = ["standalone"]
 
-# At most `limit` entries in a directory. `mode` is `report` (a note) or `enforce` (a failure).
-# Directories with a part named in `exempt` are not checked; a waiver names a path and why.
+# At most `limit` entries in a directory. `mode` is `report` (a note) or `enforce` (a failure); it is
+# `enforce`, so a directory that grows past the limit fails the layout step until it is split or
+# waived here. Directories with a part named in `exempt` are not checked; a waiver names a path (the
+# root is the empty path) and why it may hold more. `fixture`, `support` and `tests` hold data and
+# cases, one per file.
 [fanout]
 limit = 8
-mode = "report"
+mode = "enforce"
 exempt = ["fixture", "support", "tests"]
+
+[[fanout.waive]]
+path = ""
+reason = "the root's directories: each belongs to the tool that reads it (`.cargo`, `.config`, `.github`, `wit`) or to a different kind of content (`brand`, `spikes`)"
+
+[[fanout.waive]]
+path = "crates/core/config/src"
+reason = "one file per concern: each setting of `ink.toml` has its own, and each `x.rs` sits beside its `x/` folder"
+
+[[fanout.waive]]
+path = "crates/core/engine/src"
+reason = "one file per stage of the pure pipeline, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/core/engine/src/interpret/pipeline"
+reason = "one file per stage of the interpret pipeline, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/core/engine/src/render"
+reason = "one file per output the renderer writes, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/core/logging/src"
+reason = "one file per concern of one small crate: fields, filters, layers, records, timing"
+
+[[fanout.waive]]
+path = "crates/core/model/src/content"
+reason = "one file per content type (hash, path, size, time, url)"
+
+[[fanout.waive]]
+path = "crates/runtime/host/image/src"
+reason = "one file per step of the image work: decode, orient, resize, encode, thumbhash"
+
+[[fanout.waive]]
+path = "crates/runtime/host/native/src"
+reason = "one file per capability of the local host, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/runtime/host/wasmtime/src"
+reason = "one file per concern of the component host: binding, budgets, cache, capabilities"
+
+[[fanout.waive]]
+path = "crates/runtime/plugin/format/markdown/src"
+reason = "one file per concern of the markdown format, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/server/control/signin/src"
+reason = "one file per concern of signing in: challenge, factor, proof, session, store"
+
+[[fanout.waive]]
+path = "crates/server/control/src"
+reason = "one file per record of the control plane, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/server/control/src/case"
+reason = "one file per use case, each a type"
+
+[[fanout.waive]]
+path = "crates/server/control/src/passkeys"
+reason = "one file per concern of the passkey ceremony"
+
+[[fanout.waive]]
+path = "crates/server/edge/api/src"
+reason = "one file per route family and per concern of the API, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/server/edge/axum/src"
+reason = "one file per concern of the axum adapter"
+
+[[fanout.waive]]
+path = "crates/server/edge/src/http"
+reason = "one file per HTTP concern (etag, range, conditions, encoding), each a small type"
+
+[[fanout.waive]]
+path = "crates/standalone/freehand/src"
+reason = "one file per drawing concept, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/surface/cli/src"
+reason = "one folder per command family, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/surface/cli/src/command"
+reason = "one file per command of `ink`"
+
+[[fanout.waive]]
+path = "crates/surface/cli/src/command/publish"
+reason = "one file per verb of `ink publish`"
+
+[[fanout.waive]]
+path = "crates/surface/web/src"
+reason = "one file per concern of the dashboard, and `x.rs` beside `x/`"
+
+[[fanout.waive]]
+path = "crates/surface/web/src/view"
+reason = "one file per screen or part of a screen"
 
 [[fanout.waive]]
 path = "docs"
 reason = "one file per concern, and the decision files"
+
+[[fanout.waive]]
+path = "docs/decisions"
+reason = "one file per decision, and the generated index"
+
+[[fanout.waive]]
+path = "docs/research"
+reason = "one file per research note"
+
+[[fanout.waive]]
+path = "tools/farm/src"
+reason = "one folder per concern of the farm client (cache, host, job, run, ...)"
+
+[[fanout.waive]]
+path = "tools/farm/src/host"
+reason = "one file per concern of a host (fleet, member, queue, snapshot, transport)"
+
+[[fanout.waive]]
+path = "tools/xtask/src"
+reason = "one folder or file per task or generator"
+
+[[fanout.waive]]
+path = "tools/xtask/src/docs"
+reason = "one file per docs check or generated index"
+
+[[fanout.waive]]
+path = "tools/xtask/src/layout/rules"
+reason = "one file per layout rule"
 
 # The decisions, `docs/decisions/` (`cargo xtask docs`, xtask's `docs/`). A bare `(NNNN)` is a
 # citation only up to `ceiling`; above it the digits are a file mode, a year or a count. A number
