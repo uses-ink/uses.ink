@@ -31,7 +31,8 @@ use secret_local::Local as Sealer;
 
 use crate::grammar::args;
 use crate::selfhost::dash::{Hosted, Pages};
-use crate::selfhost::signin::{Flags, Sender, Told};
+use crate::selfhost::report::log::Logger;
+use crate::selfhost::signin::{Flags, Sender};
 
 /// The adapters of the control plane `ink serve` runs.
 pub(crate) type Parts = (Arc<Sqlite>, Directory, Queue<Arc<Sqlite>>, Sealer);
@@ -110,7 +111,7 @@ impl std::error::Error for Unready {
 /// listing.
 pub(crate) struct Mailing {
     pub(crate) courier: Courier<Sender, System>,
-    pub(crate) told: Told,
+    pub(crate) told: Logger,
     pub(crate) settings: Settings,
     pub(crate) rates: Rates,
     pub(crate) base: LinkBase,
@@ -162,7 +163,7 @@ impl Product {
 
     /// Sets the control plane up in `settings.data`, migrating the database and making the owner.
     #[expect(clippy::too_many_lines, reason = "one sequence of adapters, each a line")]
-    pub(crate) fn open(settings: &args::Serve, data: &Path, site: &str) -> Result<Self, Unready> {
+    pub(crate) fn open(settings: &args::Serve, data: &Path, (site, told): (&str, Logger)) -> Result<Self, Unready> {
         std::fs::create_dir_all(data).map_err(|source| Unready::Data { path: data.to_path_buf(), source })?;
         let file = data.join("ink.db");
         let db = Self::database(&file)?;
@@ -230,7 +231,6 @@ impl Product {
             .repos(&https)
             .map_err(|e| Unready::Setting { flag: "--forge-hooks", source: Box::new(e) })?;
         let pages = Pages::new(control, (origins, resolver, forges), limits);
-        let told = Told(std::sync::Mutex::new(std::io::stderr()));
         let mailing = Mailing {
             courier,
             told,
@@ -363,7 +363,7 @@ impl Product {
     }
 
     /// The operator's limits: the flags, over the defaults.
-    fn limits(settings: &args::Serve) -> Result<Limits, Unready> {
+    pub(crate) fn limits(settings: &args::Serve) -> Result<Limits, Unready> {
         let ceiling = Limits::default();
         let asked = edge_api::Asked::default();
         let mut limits = ceiling;
@@ -383,7 +383,8 @@ impl Product {
         settings.hosting.https().map_err(|e| Unready::Setting { flag: "--git-ca", source: Box::new(e) })
     }
 
-    fn interval(settings: &args::Serve) -> Result<watch::Interval, Unready> {
+    /// How often the watch polls: the flags, over the defaults.
+    pub(crate) fn interval(settings: &args::Serve) -> Result<watch::Interval, Unready> {
         let defaults = watch::Interval::default();
         let base = settings.poll_interval.map_or(defaults.base(), Duration::from_secs);
         let max = settings.poll_max.map_or(defaults.max(), Duration::from_secs);

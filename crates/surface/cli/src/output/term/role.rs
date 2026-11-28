@@ -24,6 +24,10 @@ pub(crate) enum Role {
     Place,
     /// A catalog code in a list.
     Code,
+    /// An address to open: a URL, underlined so it reads as a link.
+    Link,
+    /// A number, a size or a length of time: the values of a settings listing.
+    Figure,
     /// The second half of a story: evidence, rails, units.
     Quiet,
     /// Everything else.
@@ -60,8 +64,9 @@ impl Theme {
                 Role::Warn => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Yellow))),
                 Role::Bad => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Red))),
                 Role::Work => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Cyan))),
-                Role::Id => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Magenta))),
+                Role::Id | Role::Figure => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Magenta))),
                 Role::Place | Role::Code => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Blue))),
+                Role::Link => base.fg_color(Some(anstyle::Color::Ansi(AnsiColor::Cyan))).underline(),
                 Role::Quiet => base.dimmed(),
                 Role::Plain => base,
             },
@@ -74,7 +79,7 @@ impl Theme {
 
     /// Every role, for the golden that prints the table.
     #[cfg(test)]
-    pub(crate) const ROLES: [Role; 11] = [
+    pub(crate) const ROLES: [Role; 13] = [
         Role::Heading,
         Role::Literal,
         Role::Good,
@@ -84,6 +89,8 @@ impl Theme {
         Role::Id,
         Role::Place,
         Role::Code,
+        Role::Link,
+        Role::Figure,
         Role::Quiet,
         Role::Plain,
     ];

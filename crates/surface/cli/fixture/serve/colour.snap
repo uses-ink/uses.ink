@@ -1,0 +1,85 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+\e[1mink\e[0m \e[2m0.0.0\e[0m  \e[1mserve\e[0m  \e[2mlistening on\e[0m \e[35m127.0.0.1:8080\e[0m
+
+  \e[2msite     \e[0m  \e[1m\e[4m\e[36mhttp://localhost:8080\e[0m
+  \e[2mdashboard\e[0m  \e[1m\e[4m\e[36mhttp://api.localhost:8080\e[0m
+  \e[2mapi      \e[0m  \e[1m\e[4m\e[36mhttp://api.localhost:8080/v1/sites\e[0m
+
+\e[2m╭─\e[0m \e[1madmin link\e[0m  \e[2mworks for \e[0m\e[35m1\e[0m\e[2md\e[0m\e[2m, shown once and kept nowhere\e[0m
+\e[2m│\e[0m
+\e[2m│\e[0m \e[1m\e[4m\e[36mhttp://api.localhost:8080/login/Zx3kQ9vT2mLp7RwB4nHd6YcAeF8gJs1U\e[0m
+\e[2m╰─\e[0m \e[2mopening it signs you in as the owner\e[0m
+
+\e[1mAddresses\e[0m
+  \e[2mlisten\e[0m     127.0.0.1:8080           \e[2mdefault\e[0m
+  \e[2mfolder\e[0m     \e[34m.ink/out\e[0m                 \e[2mdefault\e[0m
+  \e[2mhost mode\e[0m  single                   \e[2mdefault\e[0m
+  \e[2morigin\e[0m     \e[4m\e[36mhttp://localhost:8080\e[0m    \e[2mderived (\e[0m\e[1m\e[36m--origin\e[0m\e[2m)\e[0m
+  \e[2mapi host\e[0m   api.localhost            \e[2mdefault\e[0m
+  \e[2msites\e[0m      <handle>.localhost:8080  \e[2mcomputed\e[0m
+
+\e[1mSign-in\e[0m
+  \e[2mlogin link\e[0m       \e[35m15\e[0m\e[2mm\e[0m                              \e[2mdefault\e[0m
+  \e[2msession\e[0m          sliding                          \e[2mdefault\e[0m
+  \e[2msession idle\e[0m     \e[35m7\e[0m\e[2md\e[0m                               \e[2mdefault\e[0m
+  \e[2msession limit\e[0m    \e[35m30\e[0m\e[2md\e[0m                              \e[2mdefault\e[0m
+  \e[2msignup\e[0m           first                            \e[2mdefault\e[0m
+  \e[2mlink base\e[0m        \e[4m\e[36mhttp://api.localhost:8080/login\e[0m  \e[2mdefault\e[0m
+  \e[2mcookie\e[0m           ink-session                      \e[2mdefault\e[0m
+  \e[2mcookie path\e[0m      /                                \e[2mdefault\e[0m
+  \e[2mcookie secure\e[0m    \e[2mno\e[0m                               \e[2mderived (\e[0m\e[1m\e[36m--origin\e[0m\e[2m)\e[0m
+  \e[2mpasskey id\e[0m       api.localhost                    \e[2mdefault\e[0m
+  \e[2mpasskey origins\e[0m  \e[4m\e[36mhttp://api.localhost:8080\e[0m        \e[2mdefault\e[0m
+  \e[2mclient address\e[0m   the connection                   \e[2mdefault\e[0m
+  \e[33m~\e[0m \e[33mcookie secure: plain http: the session cookie is not Secure\e[0m
+    \e[1m\e[36mfix:\e[0m \e[33mend TLS in a proxy and give \e[0m\e[33m`\e[0m\e[1m\e[36m--origin https://<your name>\e[0m\e[33m`\e[0m\e[33m; plain http is for this machine only\e[0m
+
+\e[1mData\e[0m
+  \e[2mdata\e[0m           \e[34m/srv/ink/state\e[0m                   \e[1m\e[36m--data\e[0m
+  \e[2moperator keys\e[0m  \e[34m/srv/ink/state/operator-keys\e[0m     \e[2mcomputed\e[0m
+  \e[2menrol yours\e[0m    \e[1m\e[36mink login --data /srv/ink/state\e[0m  \e[2mcomputed\e[0m
+
+\e[1mLimits\e[0m
+  \e[2mjson body\e[0m       \e[35m64\e[0m \e[2mKiB\e[0m   \e[2mdefault\e[0m
+  \e[2mupload archive\e[0m  \e[35m512\e[0m \e[2mMiB\e[0m  \e[1m\e[36m--upload-bytes\e[0m
+  \e[2mupload files\e[0m    \e[35m10000\e[0m    \e[2mdefault\e[0m
+  \e[2mupload file\e[0m     \e[35m64\e[0m \e[2mMiB\e[0m   \e[2mdefault\e[0m
+  \e[2mupload tree\e[0m     \e[35m8\e[0m \e[2mMiB\e[0m    \e[2mdefault\e[0m
+  \e[2mupload part\e[0m     \e[35m64\e[0m \e[2mMiB\e[0m   \e[2mdefault\e[0m
+  \e[2mexport archive\e[0m  \e[35m256\e[0m \e[2mMiB\e[0m  \e[2mdefault\e[0m
+  \e[2mlist rows\e[0m       \e[35m50\e[0m       \e[2mdefault\e[0m
+
+\e[1mBackground work\e[0m
+  \e[2mpoll every\e[0m        \e[35m30\e[0m\e[2ms\e[0m    \e[1m\e[36m--poll-interval\e[0m
+  \e[2mpoll backoff\e[0m      \e[35m1\e[0m\e[2mh\e[0m     \e[2mdefault\e[0m
+  \e[2mnew site within\e[0m   \e[35m5\e[0m\e[2ms\e[0m     \e[2mdefault\e[0m
+  \e[2mgit schemes\e[0m       https  \e[2mdefault\e[0m
+  \e[2mpreview branches\e[0m  \e[35m10\e[0m     \e[2mdefault\e[0m
+  \e[2mworker lease\e[0m      \e[35m10\e[0m\e[2mm\e[0m    \e[2mdefault\e[0m
+  \e[2mworker rest\e[0m       \e[35m2\e[0m\e[2ms\e[0m     \e[2mdefault\e[0m
+  \e[2mrestart after\e[0m     \e[35m2\e[0m\e[2ms\e[0m     \e[2mdefault\e[0m
+  \e[2mrestart limit\e[0m     \e[35m5\e[0m      \e[2mdefault\e[0m
+
+\e[1mSecurity\e[0m
+  \e[2maudience\e[0m        api.localhost:8080  \e[2mderived (\e[0m\e[1m\e[36m--audience\e[0m\e[2m)\e[0m
+  \e[2mskew\e[0m            \e[35m1\e[0m\e[2mm\e[0m                  \e[2mdefault\e[0m
+  \e[2mnonces per key\e[0m  \e[35m1024\e[0m                \e[2mdefault\e[0m
+  \e[2mdevice keys\e[0m     \e[35m180\e[0m\e[2md\e[0m                \e[2mdefault\e[0m
+  \e[2mdeploy keys\e[0m     \e[35m90\e[0m\e[2md\e[0m                 \e[2mdefault\e[0m
+  \e[2mkey ceiling\e[0m     \e[35m365\e[0m\e[2md\e[0m                \e[2mdefault\e[0m
+  \e[2menrol approval\e[0m  \e[35m10\e[0m\e[2mm\e[0m                 \e[2mdefault\e[0m
+  \e[2menrol guesses\e[0m   \e[35m5\e[0m                   \e[2mdefault\e[0m
+  \e[2menrol waiting\e[0m   \e[35m20\e[0m                  \e[2mdefault\e[0m
+  \e[2menrol closed\e[0m    \e[35m1\e[0m\e[2mm\e[0m                  \e[2mdefault\e[0m
+
+\e[1mMail\e[0m
+  \e[2mtransport\e[0m        stdout                        \e[2mdefault\e[0m
+  \e[2mmessages\e[0m         printed here, links included  \e[2mcomputed\e[0m
+  \e[2mask per address\e[0m  \e[35m5\e[0m\e[2m per \e[0m\e[35m1\e[0m\e[2mh\e[0m                      \e[2mdefault\e[0m
+  \e[2mask per source\e[0m   \e[35m20\e[0m\e[2m per \e[0m\e[35m1\e[0m\e[2mh\e[0m                     \e[2mdefault\e[0m
+  \e[2masks tracked\e[0m     \e[35m10000\e[0m                         \e[2mdefault\e[0m
+  \e[2moutbox\e[0m           \e[35m256\e[0m                           \e[2mdefault\e[0m
+
+\e[2mpress \e[0m\e[1m\e[36mctrl-c\e[0m\e[2m to stop\e[0m

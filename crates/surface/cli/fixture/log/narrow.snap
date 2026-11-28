@@ -1,0 +1,18 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+2026-11-28T10:30:00Z info  worker  started
+2026-11-28T10:30:00Z error watch   crashed attempt=2
+  ╰─ caused by: panicked: poll failed
+2026-11-28T10:30:00Z warn  watch   restarting after=2s
+2026-11-28T10:30:00Z error watch   stopped for good
+  attempts=6
+  fix: the loop stays stopped until `ink serve` starts again: read the cause above, or raise `--restart-limit` if the crashes were passing
+2026-11-28T10:30:00Z error worker  failed
+  ╰─ caused by: the builder component is missing
+2026-11-28T10:30:00Z info  http    GET /tea 200 3ms
+  kind=served
+2026-11-28T10:30:00Z info  http    GET /no/such/page 404 3ms
+  kind=served
+2026-11-28T10:30:00Z info  api     POST /v1/sites 201 1s
+2026-11-28T10:30:00Z info  http    stopping: no new connect…

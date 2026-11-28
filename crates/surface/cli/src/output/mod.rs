@@ -136,6 +136,12 @@ impl<'a> Io<'a> {
         self.say >= at
     }
 
+    /// How stderr looks, and whether it is a machine channel (`--json`): what a long-running
+    /// command needs to write its own lines there.
+    pub(crate) const fn logged(&self) -> (Look, bool) {
+        (self.err.look(), self.json)
+    }
+
     /// The result as text on stdout, or nothing with `--json` (see [`Io::json`]).
     pub(crate) fn result(&mut self, block: &impl Render) -> Result<(), Error> {
         if !self.json {

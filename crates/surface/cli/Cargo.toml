@@ -52,7 +52,7 @@ host-wasmtime.workspace = true
 http-body-util.workspace = true
 hyper.workspace = true
 hyper-util.workspace = true
-jiff.workspace = true
+jiff = { workspace = true, features = ["tz-system", "tzdb-zoneinfo", "tzdb-concatenated"] }
 mail.workspace = true
 mail-smtp.workspace = true
 queue-rows.workspace = true

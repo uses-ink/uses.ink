@@ -1,5 +1,5 @@
 ---
-source: fixture/src/lib.rs
+source: crates/standalone/fixture/src/lib.rs
 ---
 \e[1mHeading\e[0m \e[1mHeading\e[0m
 \e[1m\e[36mLiteral\e[0m \e[1m\e[36mLiteral\e[0m
@@ -10,5 +10,7 @@ source: fixture/src/lib.rs
 \e[35mId\e[0m \e[1m\e[35mId\e[0m
 \e[34mPlace\e[0m \e[1m\e[34mPlace\e[0m
 \e[34mCode\e[0m \e[1m\e[34mCode\e[0m
+\e[4m\e[36mLink\e[0m \e[1m\e[4m\e[36mLink\e[0m
+\e[35mFigure\e[0m \e[1m\e[35mFigure\e[0m
 \e[2mQuiet\e[0m \e[1m\e[2mQuiet\e[0m
 Plain \e[1mPlain\e[0m

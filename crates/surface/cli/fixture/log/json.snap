@@ -1,0 +1,12 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+{"time":"2026-11-28T10:30:00Z","level":"info","component":"worker","event":"task.started","message":"started","fields":{}}
+{"time":"2026-11-28T10:30:00Z","level":"error","component":"watch","event":"task.crashed","message":"crashed","fields":{"attempt":2},"causes":["panicked: poll failed"]}
+{"time":"2026-11-28T10:30:00Z","level":"warn","component":"watch","event":"task.restarting","message":"restarting","fields":{"after_ms":2000}}
+{"time":"2026-11-28T10:30:00Z","level":"error","component":"watch","event":"task.gave_up","message":"stopped for good","fields":{"attempts":6},"fix":"the loop stays stopped until `ink serve` starts again: read the cause above, or raise `--restart-limit` if the crashes were passing"}
+{"time":"2026-11-28T10:30:00Z","level":"error","component":"worker","event":"worker.failed","message":"failed","fields":{},"causes":["the builder component is missing"]}
+{"time":"2026-11-28T10:30:00Z","level":"info","component":"http","event":"http.answered","message":"GET /tea","fields":{"status":200,"took_ms":3,"kind":"served"}}
+{"time":"2026-11-28T10:30:00Z","level":"info","component":"http","event":"http.answered","message":"GET /no/such/page","fields":{"status":404,"took_ms":3,"kind":"served"}}
+{"time":"2026-11-28T10:30:00Z","level":"info","component":"api","event":"api.answered","message":"POST /v1/sites","fields":{"status":201,"took_ms":1400}}
+{"time":"2026-11-28T10:30:00Z","level":"info","component":"http","event":"http.stopping","message":"stopping: no new connections","fields":{}}

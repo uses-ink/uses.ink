@@ -63,7 +63,10 @@ fn passkeys_register_sign_in_step_up_and_recover_on_the_real_server() {
     let server = Server::start("passkey", &[]);
     let origin = server.api.clone();
     let mut link = owner(&server);
-    assert!(server.said().contains("relying party id api.localhost"), "the start says who passkeys are for");
+    assert!(
+        server.said().contains("passkey id") && server.said().contains("api.localhost"),
+        "the start says who passkeys are for"
+    );
 
     // the options are the ones documented
     let options = link.send(("POST", "/v1/passkeys/options"), &json!({ "label": "phone" }).to_string());

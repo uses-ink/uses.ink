@@ -3,13 +3,11 @@
 //! from it.
 
 use std::fmt;
-use std::io::Write as _;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 use clap::{Args, ValueEnum};
 use control::signin::{Expiry, Settings, Signup, Ttl};
-use edge_api::{Note, Notes, Rate, Rates};
+use edge_api::{Rate, Rates};
 use mail::{Address, LinkBase, Mailer, Message};
 use mail_smtp::{Login, Security, Settings as Smtp, Smtp as Mail};
 use secret::Plain;
@@ -389,26 +387,6 @@ impl Mailer for Sender {
         match self {
             Self::Printed(mailer) => mailer.send(message).await.map_err(Unsent::Print),
             Self::Smtp(mailer) => mailer.send(message).await.map_err(Unsent::Smtp),
-        }
-    }
-}
-
-/// What the mail sender says, as lines on standard error each after the time it happened, like
-/// the server's own events.
-#[derive(Debug)]
-pub(crate) struct Told(pub(crate) Mutex<std::io::Stderr>);
-
-impl Notes for Told {
-    fn note(&self, note: &Note) {
-        let mut stderr = self.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        // a closed stderr leaves nowhere to report to
-        writeln!(stderr, "{} mail: {note}", jiff::Timestamp::now()).ok();
-        if let Note::Failed { source } = note {
-            let mut cause: Option<&dyn std::error::Error> = Some(source.as_ref());
-            while let Some(error) = cause {
-                writeln!(stderr, "  caused by: {error}").ok();
-                cause = error.source();
-            }
         }
     }
 }

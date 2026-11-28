@@ -4,24 +4,24 @@
 //! already built, through the same `edge` code the hosted product runs: its refusals, budgets,
 //! conditional and range handling and the manifest's headers, unchanged.
 
-use std::io::Write;
 use std::sync::{Arc, Mutex};
 
 use edge::{Edge, Limits, Scheme};
-use edge_axum::{Bridge, Event, Local, Mount, Observe, Server};
+use edge_axum::{Bridge, Local, Mount, Server};
 use edge_control::{Fallback, Fronts};
 use edge_folder::{Deploys, Files, Mode};
-use serde::Serialize;
 
 use crate::command::remote::{Fetching, Settings};
 use crate::command::source::DEFAULT_OUT;
 use crate::grammar::args::{self, HostMode};
 use crate::output::error::{Error, ServeError};
 use crate::output::exit::Exit;
-use crate::output::term::{Answer, Line, Record, Role};
+use crate::output::term::Answer;
 use crate::output::{Io, Say};
 use crate::selfhost::product::{Mailing, Product};
-use crate::selfhost::signin::{Sender, Told, Transport};
+use crate::selfhost::report::log::Logger;
+use crate::selfhost::report::startup::{Admin, Frame, Hosted, Plan, Span, Stage, Startup};
+use crate::selfhost::signin::Sender;
 use crate::selfhost::tasks::{Event as Tasked, Events, Stoppable, Task, Tasks};
 
 impl From<HostMode> for Mode {
@@ -34,177 +34,92 @@ impl From<HostMode> for Mode {
     }
 }
 
-/// What `ink serve --json` prints before it serves: where, and how hosts map to folders.
-#[derive(Debug, Serialize)]
-struct Started {
-    schema: &'static str,
-    address: String,
-    mode: &'static str,
-}
-
-/// Events as lines on stderr, each after the time it happened: the one-shot commands log at warn
-/// without timestamps, `ink serve` logs at info with them (conventions.md, CLI output).
-#[derive(Debug)]
-struct Log(Mutex<std::io::Stderr>);
-
-impl Log {
-    /// One line of what a loop did, after the time it did it.
-    fn tasked(&self, event: &Tasked) {
-        let mut stderr = self.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        // a closed stderr leaves nowhere to report to
-        writeln!(stderr, "{} {event}", jiff::Timestamp::now()).ok();
-    }
-}
-
-impl Observe for Log {
-    fn event(&self, event: &Event) {
-        let mut stderr = self.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        // a closed stderr leaves nowhere to report to
-        writeln!(stderr, "{} {event}", jiff::Timestamp::now()).ok();
+impl HostMode {
+    /// The mode as `--host-mode` writes it.
+    const fn word(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Single => "single",
+            Self::Folders => "folders",
+        }
     }
 }
 
 /// What runs beside the server when there is an API: the half that answers it, and the mail
 /// sender with where it reports.
-type Beside = (Local<crate::selfhost::product::Wired>, edge_api::Courier<Sender, clock::System>, Told);
+type Beside = (Local<crate::selfhost::product::Wired>, edge_api::Courier<Sender, clock::System>, Logger);
 
 /// The sites a request's host picks from: the control plane's, then the folder's.
 type Sites = Fallback<Fronts, Deploys>;
 
 /// The server, and what runs beside it when `--data` turned the API on.
-type Attached = (Server<Sites, Files, Log>, Option<Beside>);
+type Attached = (Server<Sites, Files, Logger>, Option<Beside>);
 
 /// What runs beside the server and the API: the edge's lookups and the loops' events.
 struct Alongside {
     back: Option<crate::selfhost::product::Lookup>,
     told: tokio::sync::mpsc::UnboundedReceiver<Tasked>,
+    log: Logger,
 }
 
 impl args::Serve {
     /// The server with the API mounted, when `--data` turned it on, and the half that answers it.
-    fn attach(
-        &self,
-        server: Server<Sites, Files, Log>,
-        product: Option<Product>,
-        io: &mut Io<'_>,
-    ) -> Result<Attached, Error> {
-        let (Some(data), Some(product)) = (&self.data, product) else {
-            let off = Line::marked(Role::Plain, "off; give `--data <folder>` to turn on the control plane and its API");
-            io.aside(Say::Warnings, &Record::new(0).field("api", off))?;
-            return Ok((server, None));
-        };
-        let (mount, local) = self.start_api(product, data, io)?;
-        Ok((server.with_api(mount), Some(local)))
+    fn attach(&self, server: Server<Sites, Files, Logger>, product: Option<Product>) -> Attached {
+        let (Some(_), Some(product)) = (&self.data, product) else { return (server, None) };
+        let (mount, local) = self.mount(product);
+        (server.with_api(mount), Some(local))
     }
 
-    /// Sets the control plane up, prints every setting it runs with, and returns the API's way
-    /// into the server and the half that answers.
-    #[expect(clippy::too_many_lines, reason = "one listing of every setting, a field each")]
-    fn start_api(&self, product: Product, data: &std::path::Path, io: &mut Io<'_>) -> Result<(Mount, Beside), Error> {
-        let (limits, interval) = (product.limits, product.interval);
-        let sites = product.site.trim_start_matches("http://").trim_start_matches("https://");
-        let record = Record::new(0)
-            .field(
-                "api",
-                Line::plain(format!(
-                    "{}/v1/sites (host {})",
-                    crate::selfhost::signin::Flags::api_address(&product.site, &self.api_host),
-                    self.api_host
-                )),
-            )
-            .field(
-                "origin",
-                Line::plain(if self.origin.is_some() {
-                    format!("{} (from --origin)", product.site)
-                } else {
-                    format!("{} (from the listen address; give --origin to change it)", product.site)
-                }),
-            )
-            .field(
-                "dashboard",
-                Line::plain(format!(
-                    "{} (sign in with the link `ink` prints or mails)",
-                    crate::selfhost::signin::Flags::api_address(&product.site, &self.api_host)
-                )),
-            )
-            .field("data", Line::plain(data.display().to_string()))
-            .field(
-                "operator keys",
-                Line::plain(format!(
-                    "{} (enrol yours with `ink login --data {}`)",
-                    product.operators.display(),
-                    data.display()
-                )),
-            )
-            .field("signatures", Line::plain(Self::describe_keys(&product.keys)))
-            .field("sites", Line::plain(format!("<handle>.{sites}")))
-            .field(
-                "limits",
-                Line::plain(format!(
-                    "json body {} B, upload {} B, {} files, {} B a file, export {} B, lists {} rows",
-                    limits.body, limits.archive, limits.files, limits.file, limits.export, limits.rows
-                )),
-            );
-        let record = match &product.retired {
-            Some(file) => {
-                let note = model::Announcement::AuthTokenRetired { token_file: file.display().to_string() };
-                record.field(
-                    "owner token",
-                    Line::plain(format!(
-                        "{} ({})",
-                        diag::Message::from(&note),
-                        diag::Fix::of_announcement(&note).map_or_else(String::new, |fix| fix.to_string())
-                    )),
-                )
-            }
-            None => record,
-        };
-        let record = self.describe_loops(interval, record);
-        let record = self.list_signin(&product.mailing, record)?;
-        io.aside(Say::Warnings, &record)?;
-        let (bridge, local) = Bridge::new(product.api, limits);
+    /// The API's way into the server, and the half that answers it.
+    fn mount(&self, product: Product) -> (Mount, Beside) {
+        let (bridge, local) = Bridge::new(product.api, product.limits);
         let Mailing { courier, told, forwarded, .. } = product.mailing;
         let bridge = bridge.forwarded(forwarded);
-        Ok((Mount { host: self.api_host.to_ascii_lowercase().into(), bridge }, (local, courier, told)))
+        (Mount { host: self.api_host.to_ascii_lowercase().into(), bridge }, (local, courier, told))
     }
 
-    /// Says how requests are verified and keys are enrolled.
-    fn describe_keys(keys: &crate::command::auth::Resolved) -> String {
-        format!(
-            "audience {}, skew {}s, {} nonces a key; keys live {} (device), {} (deploy), at most {}; a person has {} to approve; {} wrong codes or {} waiting close enrolling for {}",
-            keys.audience,
-            keys.window.seconds(),
-            keys.nonces,
-            keys.keys.device,
-            keys.keys.deploy,
-            keys.keys.ceiling,
-            keys.keys.enrol,
-            keys.closing.guesses,
-            keys.closing.waiting,
-            keys.closing.closed,
-        )
+    /// The report of this start: what it runs with, and the first-run link when this start made
+    /// it. Built from the product that was set up, so it says what runs.
+    fn startup(&self, frame: Frame<'_>, product: Option<&Product>) -> Result<Startup, Error> {
+        let (Some(data), Some(product)) = (&self.data, product) else { return Ok(Startup::new(frame, None)) };
+        let admin = match &product.mailing.admin {
+            Some(link) => {
+                Admin::Issued { link: link.to_string(), valid: Span(product.mailing.settings.admin.duration()) }
+            }
+            None => Admin::Kept,
+        };
+        let plan = Plan::running(self, product).map_err(|source| ServeError::Product { source })?;
+        let hosted = Hosted {
+            plan,
+            site: product.site.clone(),
+            data: data.clone(),
+            operators: product.operators.clone(),
+            admin,
+            retired: product.retired.is_some(),
+        };
+        Ok(Startup::new(frame, Some(&hosted)))
     }
 
-    /// Says what the watch and the worker run with.
-    fn describe_loops(&self, interval: watch::Interval, record: Record) -> Record {
-        let schemes: Vec<String> = self.hosting.schemes().iter().map(ToString::to_string).collect();
-        let (restart, (lease, idle)) = (self.hosting.restart(), self.hosting.worker());
-        let poll = format!(
-            "every {}s, backing off to {}s, a new site within {}s; git over {}; up to {} branches of a public site as previews",
-            interval.base().as_secs(),
-            interval.max().as_secs(),
-            interval.lookout().as_secs(),
-            schemes.join(" and "),
-            self.hosting.previews().0
-        );
-        let worker = format!(
-            "lease {}s, rests {}s; a loop that crashes restarts after {}s, {} times in a row",
-            lease.as_secs(),
-            idle.as_secs(),
-            restart.delay.as_secs(),
-            restart.limit
-        );
-        record.field("poll", Line::plain(poll)).field("worker", Line::plain(worker))
+    /// What a start would run with, worked out from the flags alone: nothing is bound, made or
+    /// written, so the data folder and the first-run link are left as they are.
+    fn planned(&self, io: &mut Io<'_>) -> Result<Exit, Error> {
+        let frame = Frame { serve: self, address: self.address, mode: self.host_mode.word(), stage: Stage::Planned };
+        let site = self.origin.clone().unwrap_or_else(|| format!("http://localhost:{}", self.address.port()));
+        let hosted = match &self.data {
+            Some(data) => Some(Hosted {
+                plan: Plan::planned(self, &site).map_err(|source| ServeError::Product { source })?,
+                site,
+                data: data.clone(),
+                operators: data.join("operator-keys"),
+                admin: Admin::Unminted,
+                retired: data.join("owner-token").exists(),
+            }),
+            None => None,
+        };
+        let startup = Startup::new(frame, hosted.as_ref());
+        io.json(&startup)?;
+        io.result(&startup)?;
+        Ok(Exit::Done)
     }
 
     /// Starts the watch and the worker over `product`'s control plane.
@@ -294,96 +209,19 @@ impl args::Serve {
         });
     }
 
-    /// Says where mail goes.
-    fn list_mail(&self, record: Record) -> Record {
-        let flags = &self.signin;
-        let said = match flags.mail {
-            Transport::Stdout => "stdout (messages and their links are printed here)".to_owned(),
-            Transport::Smtp => format!(
-                "smtp {}:{} {:?} from {} (password {})",
-                flags.smtp_host.as_deref().unwrap_or_default(),
-                flags.smtp_port.unwrap_or(0),
-                flags.smtp_security,
-                flags.mail_from.as_deref().unwrap_or_default(),
-                if flags.smtp_user.is_some() { "set, never printed" } else { "none" },
-            ),
-        };
-        record.field("mail", Line::plain(said))
-    }
-
-    /// Says every sign-in setting it runs with, and the first-run link when this start made it.
-    /// Says who passkeys are made for.
-    fn list_passkeys(relying: &control::passkeys::Relying, record: Record) -> Record {
-        record.field(
-            "passkeys",
-            Line::plain(format!("relying party id {}, origins {}", relying.id(), relying.origins().join(", "))),
-        )
-    }
-
-    /// Says where the client's address is read from.
-    fn list_client(forwarded: edge_axum::Forwarded, record: Record) -> Record {
-        record.field(
-            "client address",
-            Line::plain(match forwarded {
-                edge_axum::Forwarded::Hops(hops) => format!("X-Forwarded-For, {hops} trusted proxies"),
-                _ => "the connection's address (--forwarded-hops is off)".to_owned(),
-            }),
-        )
-    }
-
-    fn list_signin(&self, mailing: &Mailing, record: Record) -> Result<Record, Error> {
-        let flags = &self.signin;
-        let settings = &mailing.settings;
-        let record = record.field(
-            "sign-in",
-            Line::plain(format!(
-                "link {}, session {}, sign-up {}, link base {}",
-                settings.login, settings.session, settings.signup, mailing.base
-            )),
-        );
-        let record = self.list_mail(record).field(
-            "ask limits",
-            Line::plain(format!(
-                "{} per address, {} per source, {} tracked, outbox {}",
-                mailing.rates.address, mailing.rates.source, mailing.rates.tracked, mailing.outbox
-            )),
-        );
-        let jar = flags.jar(mailing.secure).map_err(|source| ServeError::Product { source })?;
-        let record = record.field(
-            "cookie",
-            Line::plain(format!(
-                "{} path {} ({})",
-                jar.name(),
-                flags.cookie_path.as_deref().unwrap_or("/"),
-                if mailing.secure { "Secure" } else { "plain http, not Secure" }
-            )),
-        );
-        let record = Self::list_passkeys(&mailing.relying, record);
-        let record = Self::list_client(mailing.forwarded, record);
-        let admin = match &mailing.admin {
-            Some(link) => format!(
-                "{link} (shown once and kept nowhere; valid {}; opening it signs in as the owner)",
-                settings.admin
-            ),
-            None => "not made (one was made before, or an account can sign in)".to_owned(),
-        };
-        Ok(record.field("admin link", Line::plain(admin)))
-    }
-
     /// Serves until `stopped`, with the API's half, the mail sender, the edge's lookups and the
     /// loops' events beside the server.
     async fn serving(
-        server: Server<Sites, Files, Log>,
+        server: Server<Sites, Files, Logger>,
         listener: tokio::net::TcpListener,
         stopped: impl std::future::Future<Output = ()> + Send,
         (api, alongside): (Option<Beside>, Alongside),
     ) -> Result<(), edge_axum::Error> {
-        let Alongside { back, mut told } = alongside;
-        let log = Log(Mutex::new(std::io::stderr()));
+        let Alongside { back, mut told, log } = alongside;
         // ends when every loop has stopped and dropped its sender
         let telling = async {
             while let Some(event) = told.recv().await {
-                log.tasked(&event);
+                log.tell(&event);
             }
         };
         let looking = async {
@@ -404,8 +242,13 @@ impl args::Serve {
         }
     }
 
-    /// Binds, prints the address, and serves until Ctrl-C.
+    /// Binds, prints the address, and serves until Ctrl-C. With `--print-config` it only says
+    /// what it would run with.
+    #[expect(clippy::too_many_lines, reason = "one sequence of steps, each a line")]
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
+        if self.print_config {
+            return self.planned(io);
+        }
         let folder = self.folder.as_deref().unwrap_or_else(|| std::path::Path::new(DEFAULT_OUT));
         let deploys = Deploys::new(folder, self.host_mode.into()).map_err(|source| ServeError::Deploys { source })?;
         let mode = Self::mode(&deploys);
@@ -415,21 +258,24 @@ impl args::Serve {
             .map_err(|source| ServeError::Run { source })?;
         let (listener, address) = self.bind(&runtime)?;
         let site = self.origin.clone().unwrap_or_else(|| format!("http://localhost:{}", address.port()));
+        let log = Logger::new(io, &self);
         let mut product = self
             .data
             .as_deref()
-            .map(|data| Product::open(&self, data, &site))
+            .map(|data| Product::open(&self, data, (&site, log.clone())))
             .transpose()
             .map_err(|source| ServeError::Product { source })?;
         let fronts = product.as_ref().map(|product| product.fronts.clone());
         let back = product.as_mut().and_then(|product| product.back.take());
-        let server = Self::server(fronts, deploys)?;
-        io.json(&Started { schema: "uses.serve/v1", address: format!("http://{address}"), mode })?;
+        let server = Self::server(fronts, deploys, log.clone())?;
+        let startup = self.startup(Frame { serve: &self, address, mode, stage: Stage::Serving }, product.as_ref())?;
+        io.json(&startup)?;
         io.result(&Answer::of(format_args!("http://{address}")))?;
+        io.aside(Say::Warnings, &startup)?;
         let (events, told) = Events::channel();
         let tasks = product.as_ref().map(|product| self.start_tasks(product, &events));
         drop(events);
-        let (server, local) = self.attach(server, product, io)?;
+        let (server, local) = self.attach(server, product);
         let signal = Mutex::new(None);
         let stopped = async {
             if let Err(source) = tokio::signal::ctrl_c().await {
@@ -439,7 +285,7 @@ impl args::Serve {
                 tasks.halt();
             }
         };
-        let serving = Self::serving(server, listener, stopped, (local, Alongside { back, told }));
+        let serving = Self::serving(server, listener, stopped, (local, Alongside { back, told, log }));
         runtime.block_on(serving).map_err(|source| ServeError::Server { source })?;
         if let Some(tasks) = tasks {
             tasks.join();
@@ -447,7 +293,7 @@ impl args::Serve {
         Self::ended(signal.into_inner().unwrap_or_else(std::sync::PoisonError::into_inner))
     }
 
-    /// How the folders are served, as the start line names it.
+    /// How the folders are served, as the report names it.
     fn mode(deploys: &Deploys) -> &'static str {
         match deploys.mode() {
             Mode::Single => "single",
@@ -456,11 +302,10 @@ impl args::Serve {
     }
 
     /// The server over the control plane's sites, when there is one, and the folders.
-    fn server(fronts: Option<Fronts>, deploys: Deploys) -> Result<Server<Sites, Files, Log>, Error> {
+    fn server(fronts: Option<Fronts>, deploys: Deploys, log: Logger) -> Result<Server<Sites, Files, Logger>, Error> {
         let edge = Edge::new(Fallback::new(fronts, deploys), Files, Limits::default())
             .map_err(|source| ServeError::Edge { source })?;
-        Server::new(edge, Log(Mutex::new(std::io::stderr())), Scheme::Plain)
-            .map_err(|source| Error::from(ServeError::Server { source }))
+        Server::new(edge, log, Scheme::Plain).map_err(|source| Error::from(ServeError::Server { source }))
     }
 
     /// Binds the listener and says where it is.

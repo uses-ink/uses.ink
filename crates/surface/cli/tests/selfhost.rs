@@ -213,20 +213,20 @@ fn a_git_site_is_added_served_updated_rolled_back_exported_and_deleted() {
         (format!("/v1/sites/{site}/builds"), format!("/v1/sites/{site}/deploys"), "The first version.");
 
     // the watch finds the new site and queues its first build, the worker builds it
-    ink.lines.until("watch: queued build");
+    ink.lines.until("queued build");
     let built = loop {
-        let line = ink.lines.until("worker: ");
-        if !line.ends_with("worker: started") {
+        let line = ink.lines.until(" worker ");
+        if !line.ends_with(" started") {
             break line;
         }
     };
     // a binary built without its components cannot read a git source: that is a missing
     // precondition (`cargo xtask component` first), not a pass
     assert!(
-        !built.contains("worker: failed"),
+        !built.contains(" failed"),
         "this test needs the binary built with its components (run `cargo xtask component`): {built}"
     );
-    assert!(built.contains("(live)"), "{built}");
+    assert!(built.contains("state=live"), "{built}");
     let page = ink.page("diary", "/");
     assert_eq!(page.status(), "200", "{}", page.text);
     assert!(page.body().contains(one), "{}", page.text);
@@ -234,7 +234,7 @@ fn a_git_site_is_added_served_updated_rolled_back_exported_and_deleted() {
     // a commit, then a build asked for by hand: the poll's own interval is far longer
     repo.commit(&[first], &[("index.md", "# Home\n\nThe second version.\n")]);
     assert_eq!(ink.api((Verb::Post, &builds), &json!({})).status(), "201");
-    ink.lines.until("worker: built");
+    ink.lines.until(" built build=");
     let page = ink.page("diary", "/");
     assert!(page.body().contains("The second version."), "{}", page.text);
 

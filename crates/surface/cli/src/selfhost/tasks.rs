@@ -16,6 +16,9 @@ use clock::{Clock, Slept, System};
 use control::{Dropped, Id, Published, SiteKind, Worked};
 use edge_control::Chain;
 use logging::Field as _;
+
+use crate::output::term::Line;
+use crate::selfhost::report::log::{Component, Datum, Entry, Fact, Happens, Level, Remedy};
 use tokio::sync::{mpsc, watch as flag};
 use watch::{Done, Head, Outcome, Report, Round};
 
@@ -133,47 +136,177 @@ pub(crate) enum Event {
     Stopped(Task),
 }
 
-impl fmt::Display for Event {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl From<Task> for Component {
+    fn from(task: Task) -> Self {
+        match task {
+            Task::Watch => Self::Watch,
+            Task::Worker => Self::Worker,
+            Task::Domains => Self::Domains,
+        }
+    }
+}
+
+impl Event {
+    /// A length as whole milliseconds, kept in a fact.
+    fn millis(length: Duration) -> Datum {
+        Datum::Millis(u64::try_from(length.as_millis()).unwrap_or(u64::MAX))
+    }
+
+    /// The facts of a site and its commit.
+    fn site(site: Id<SiteKind>) -> Fact {
+        Fact::pair("site", Datum::Text(site.to_string()))
+    }
+}
+
+impl Happens for Event {
+    fn level(&self) -> Level {
         match self {
-            Self::Started(task) => write!(out, "{task}: started"),
-            Self::Queued { site, build, head } => write!(out, "watch: queued build {build} of site {site} at {head}"),
-            Self::Duplicate { site, head } => write!(out, "watch: site {site} at {head} is queued already"),
-            Self::Unreachable { site, cause } => write!(out, "watch: site {site}: {}", Self::chain(cause)),
-            Self::Unlisted { cause } => write!(out, "watch: sites not listed: {}", Self::chain(cause)),
+            Self::Crashed { .. } | Self::GaveUp { .. } | Self::Failed { .. } => Level::Error,
+            Self::Unreachable { .. }
+            | Self::BranchUnreachable { .. }
+            | Self::BranchesCapped { .. }
+            | Self::Unlisted { .. }
+            | Self::Refused { .. }
+            | Self::Dropped(_)
+            | Self::Restarting { .. } => Level::Warn,
+            _ => Level::Info,
+        }
+    }
+
+    fn component(&self) -> Component {
+        match self {
+            Self::Started(task) | Self::Stopped(task) => Component::from(*task),
+            Self::Crashed { task, .. } | Self::Restarting { task, .. } | Self::GaveUp { task, .. } => {
+                Component::from(*task)
+            }
+            Self::Queued { .. }
+            | Self::Duplicate { .. }
+            | Self::Unreachable { .. }
+            | Self::BranchQueued { .. }
+            | Self::BranchUnreachable { .. }
+            | Self::BranchesCapped { .. }
+            | Self::Unlisted { .. } => Component::Watch,
+            Self::Built { .. }
+            | Self::Previewed { .. }
+            | Self::Refused { .. }
+            | Self::Dropped(_)
+            | Self::Failed { .. }
+            | Self::Expired { .. } => Component::Worker,
+            Self::Rechecked(_) => Component::Domains,
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Started(_) => "task.started",
+            Self::Queued { .. } => "watch.queued",
+            Self::Duplicate { .. } => "watch.duplicate",
+            Self::Unreachable { .. } => "watch.unreachable",
+            Self::BranchQueued { .. } => "watch.branch_queued",
+            Self::BranchUnreachable { .. } => "watch.branch_unreachable",
+            Self::BranchesCapped { .. } => "watch.branches_capped",
+            Self::Unlisted { .. } => "watch.unlisted",
+            Self::Built { .. } => "worker.built",
+            Self::Previewed { .. } => "worker.previewed",
+            Self::Refused { .. } => "worker.refused",
+            Self::Dropped(_) => "worker.dropped",
+            Self::Failed { .. } => "worker.failed",
+            Self::Expired { .. } => "worker.expired",
+            Self::Rechecked(_) => "domains.rechecked",
+            Self::Crashed { .. } => "task.crashed",
+            Self::Restarting { .. } => "task.restarting",
+            Self::GaveUp { .. } => "task.gave_up",
+            Self::Stopped(_) => "task.stopped",
+        }
+    }
+
+    fn message(&self) -> Line {
+        Line::plain(match self {
+            Self::Started(_) => "started".to_owned(),
+            Self::Queued { .. } => "queued build".to_owned(),
+            Self::Duplicate { .. } => "commit is queued already".to_owned(),
+            Self::Unreachable { .. } => "source not read".to_owned(),
+            Self::BranchQueued { .. } => "queued preview build".to_owned(),
+            Self::BranchUnreachable { .. } => "branch not read".to_owned(),
+            Self::BranchesCapped { .. } => "more branches than the previews limit".to_owned(),
+            Self::Unlisted { .. } => "sites not listed".to_owned(),
+            Self::Built { .. } => "built".to_owned(),
+            Self::Previewed { .. } => "built a preview".to_owned(),
+            Self::Refused { .. } => "build refused: the site does not build".to_owned(),
+            Self::Dropped(_) => "dropped a request".to_owned(),
+            Self::Failed { .. } => "failed".to_owned(),
+            Self::Expired { .. } => "swept ended previews and unused blobs".to_owned(),
+            Self::Rechecked(found) => found.to_string(),
+            Self::Crashed { .. } => "crashed".to_owned(),
+            Self::Restarting { .. } => "restarting".to_owned(),
+            Self::GaveUp { .. } => "stopped for good".to_owned(),
+            Self::Stopped(_) => "stopped".to_owned(),
+        })
+    }
+
+    fn facts(&self) -> Vec<Fact> {
+        let text = |key, value: String| Fact::pair(key, Datum::Text(value));
+        match self {
+            Self::Started(_) | Self::Stopped(_) | Self::Unlisted { .. } | Self::Failed { .. } | Self::Rechecked(_) => {
+                Vec::new()
+            }
+            Self::Queued { site, build, head } => {
+                vec![text("build", build.to_string()), Self::site(*site), text("head", head.to_string())]
+            }
+            Self::Duplicate { site, head } => vec![Self::site(*site), text("head", head.to_string())],
+            Self::Unreachable { site, .. } => vec![Self::site(*site)],
             Self::BranchQueued { site, branch, build } => {
-                write!(out, "watch: queued preview build {build} of branch {branch} of site {site}")
+                vec![text("build", build.to_string()), text("branch", branch.clone()), Self::site(*site)]
             }
-            Self::BranchUnreachable { site, branch: Some(branch), cause } => {
-                write!(out, "watch: site {site}, branch {branch}: {}", Self::chain(cause))
-            }
-            Self::BranchUnreachable { site, branch: None, cause } => {
-                write!(out, "watch: site {site}, branches: {}", Self::chain(cause))
+            Self::BranchUnreachable { site, branch, .. } => {
+                let mut facts = vec![Self::site(*site)];
+                facts.extend(branch.iter().map(|branch| text("branch", branch.clone())));
+                facts
             }
             Self::BranchesCapped { site, left } => {
-                write!(out, "watch: site {site} has {left} more branches than the previews limit")
+                vec![Self::site(*site), Fact::pair("over", Datum::Count(u64::try_from(*left).unwrap_or(u64::MAX)))]
             }
-            Self::Previewed { build, slug } => write!(out, "worker: build {build} is the preview {slug}"),
             Self::Built { build, published } => {
-                let said = match published {
+                let state = match published {
                     Published::Live { .. } => "live",
                     Published::Unchanged => "unchanged",
-                    _ => "held, not live",
+                    _ => "held",
                 };
-                write!(out, "worker: built {build} ({said})")
+                vec![text("build", build.to_string()), text("state", state.to_owned())]
             }
-            Self::Refused { build } => write!(out, "worker: build {build} refused: the site does not build"),
-            Self::Dropped(reason) => write!(out, "worker: dropped a request: {reason:?}"),
-            Self::Failed { cause } => write!(out, "worker: failed: {}", Self::chain(cause)),
+            Self::Previewed { build, slug } => vec![text("build", build.to_string()), text("preview", slug.clone())],
+            Self::Refused { build } => vec![text("build", build.to_string())],
+            Self::Dropped(reason) => vec![text("reason", format!("{reason:?}"))],
             Self::Expired { previews, blobs } => {
-                write!(out, "worker: swept {previews} ended previews and {blobs} blobs")
+                vec![Fact::pair("previews", Datum::Count(*previews)), Fact::pair("blobs", Datum::Count(*blobs))]
             }
-            Self::Rechecked(found) => write!(out, "domains: {found}"),
-            Self::Crashed { task, attempt, cause } => write!(out, "{task}: crashed ({attempt}): {cause}"),
-            Self::Restarting { task, after } => write!(out, "{task}: restarting in {}s", after.as_secs()),
-            Self::GaveUp { task, attempts } => write!(out, "{task}: stopped for good after {attempts} crashes"),
-            Self::Stopped(task) => write!(out, "{task}: stopped"),
+            Self::Crashed { attempt, .. } => vec![Fact::pair("attempt", Datum::Count(u64::from(*attempt)))],
+            Self::Restarting { after, .. } => vec![Fact::pair("after", Self::millis(*after))],
+            Self::GaveUp { attempts, .. } => vec![Fact::pair("attempts", Datum::Count(u64::from(*attempts)))],
         }
+    }
+
+    fn causes(&self) -> Vec<String> {
+        match self {
+            Self::Unreachable { cause, .. }
+            | Self::BranchUnreachable { cause, .. }
+            | Self::Unlisted { cause }
+            | Self::Failed { cause } => Entry::chain(cause),
+            Self::Crashed { cause, .. } => vec![cause.to_string()],
+            _ => Vec::new(),
+        }
+    }
+
+    fn remedy(&self) -> Option<Remedy> {
+        matches!(self, Self::GaveUp { .. }).then_some(Remedy::Restart)
+    }
+}
+
+impl fmt::Display for Event {
+    /// The component, the message and the facts, as one line of text.
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "{}: {}", self.component(), self.message().text())?;
+        self.facts().iter().try_for_each(|fact| write!(out, " {}={}", fact.key, fact.text()))
     }
 }
 
@@ -206,11 +339,6 @@ impl Event {
             }
             _ => {}
         }
-    }
-
-    /// An error and its causes on one line.
-    fn chain(error: &Chain) -> String {
-        model::Chain::new(error).to_string()
     }
 }
 
@@ -466,8 +594,8 @@ mod test {
         tasks.join();
         assert_eq!(runs.load(Ordering::SeqCst), 3, "the first run and two restarts");
         let seen = drained(receiver);
-        assert!(seen.iter().any(|line| line == "worker: crashed (1): panicked: builder gone"), "{seen:?}");
-        assert_eq!(seen.last().unwrap(), "worker: stopped for good after 3 crashes");
+        assert!(seen.iter().any(|line| line == "worker: crashed attempt=1"), "{seen:?}");
+        assert_eq!(seen.last().unwrap(), "worker: stopped for good attempts=3");
     }
 
     #[test]

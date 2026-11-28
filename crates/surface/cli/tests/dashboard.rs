@@ -196,8 +196,10 @@ fn a_person_ends_another_session_signs_out_and_mints_recovery_codes() {
 fn the_origin_is_derived_from_the_listen_address_and_said() {
     let server = Server::derived("dash-derived", &[]);
     let said = server.said();
+    let origin = format!("http://localhost:{}", server.port);
     assert!(
-        said.contains(&format!("http://localhost:{} (from the listen address", server.port)),
+        said.lines()
+            .any(|line| line.contains("origin") && line.contains(&origin) && line.contains("derived (--origin)")),
         "the start says the origin it chose: {said}"
     );
     let seen = server.browser().send(("GET", "/signin"), "");

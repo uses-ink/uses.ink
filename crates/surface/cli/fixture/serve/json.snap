@@ -1,0 +1,627 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+{
+  "schema": "uses.serve/v2",
+  "address": "http://127.0.0.1:8080",
+  "mode": "single",
+  "stage": "serving",
+  "release": {
+    "name": "ink",
+    "version": "0.0.0"
+  },
+  "urls": {
+    "site": "http://localhost:8080",
+    "dashboard": "http://api.localhost:8080",
+    "api": "http://api.localhost:8080/v1/sites"
+  },
+  "admin": {
+    "state": "issued",
+    "link": "http://api.localhost:8080/login/Zx3kQ9vT2mLp7RwB4nHd6YcAeF8gJs1U",
+    "valid": 86400
+  },
+  "sections": [
+    {
+      "part": "addresses",
+      "rows": [
+        {
+          "key": "listen",
+          "value": {
+            "unit": "text",
+            "amount": "127.0.0.1:8080"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "folder",
+          "value": {
+            "unit": "path",
+            "amount": ".ink/out"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "host_mode",
+          "value": {
+            "unit": "text",
+            "amount": "single"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "origin",
+          "value": {
+            "unit": "url",
+            "amount": "http://localhost:8080"
+          },
+          "source": {
+            "kind": "derived",
+            "flag": "--origin"
+          }
+        },
+        {
+          "key": "api_host",
+          "value": {
+            "unit": "text",
+            "amount": "api.localhost"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "sites",
+          "value": {
+            "unit": "text",
+            "amount": "<handle>.localhost:8080"
+          },
+          "source": {
+            "kind": "computed"
+          }
+        }
+      ]
+    },
+    {
+      "part": "sign_in",
+      "rows": [
+        {
+          "key": "login_link",
+          "value": {
+            "unit": "seconds",
+            "amount": 900
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "session",
+          "value": {
+            "unit": "text",
+            "amount": "sliding"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "session_idle",
+          "value": {
+            "unit": "seconds",
+            "amount": 604800
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "session_limit",
+          "value": {
+            "unit": "seconds",
+            "amount": 2592000
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "signup",
+          "value": {
+            "unit": "text",
+            "amount": "first"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "link_base",
+          "value": {
+            "unit": "url",
+            "amount": "http://api.localhost:8080/login"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "cookie",
+          "value": {
+            "unit": "text",
+            "amount": "ink-session"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "cookie_path",
+          "value": {
+            "unit": "text",
+            "amount": "/"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "cookie_secure",
+          "value": {
+            "unit": "flag",
+            "amount": false
+          },
+          "source": {
+            "kind": "derived",
+            "flag": "--origin"
+          },
+          "caution": {
+            "kind": "cookie.plain_http",
+            "message": "plain http: the session cookie is not Secure",
+            "fix": "end TLS in a proxy and give `--origin https://<your name>`; plain http is for this machine only"
+          }
+        },
+        {
+          "key": "passkey_id",
+          "value": {
+            "unit": "text",
+            "amount": "api.localhost"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "passkey_origins",
+          "value": {
+            "unit": "list",
+            "amount": [
+              {
+                "unit": "url",
+                "amount": "http://api.localhost:8080"
+              }
+            ]
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "client_address",
+          "value": {
+            "unit": "text",
+            "amount": "the connection"
+          },
+          "source": {
+            "kind": "default"
+          }
+        }
+      ]
+    },
+    {
+      "part": "data",
+      "rows": [
+        {
+          "key": "data",
+          "value": {
+            "unit": "path",
+            "amount": "/srv/ink/state"
+          },
+          "source": {
+            "kind": "flag",
+            "flag": "--data"
+          }
+        },
+        {
+          "key": "operator_keys",
+          "value": {
+            "unit": "path",
+            "amount": "/srv/ink/state/operator-keys"
+          },
+          "source": {
+            "kind": "computed"
+          }
+        },
+        {
+          "key": "enrol_yours",
+          "value": {
+            "unit": "command",
+            "amount": "ink login --data /srv/ink/state"
+          },
+          "source": {
+            "kind": "computed"
+          }
+        }
+      ]
+    },
+    {
+      "part": "limits",
+      "rows": [
+        {
+          "key": "json_body",
+          "value": {
+            "unit": "bytes",
+            "amount": 65536
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "upload_archive",
+          "value": {
+            "unit": "bytes",
+            "amount": 536870912
+          },
+          "source": {
+            "kind": "flag",
+            "flag": "--upload-bytes"
+          }
+        },
+        {
+          "key": "upload_files",
+          "value": {
+            "unit": "count",
+            "amount": 10000
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "upload_file",
+          "value": {
+            "unit": "bytes",
+            "amount": 67108864
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "upload_tree",
+          "value": {
+            "unit": "bytes",
+            "amount": 8388608
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "upload_part",
+          "value": {
+            "unit": "bytes",
+            "amount": 67108864
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "export_archive",
+          "value": {
+            "unit": "bytes",
+            "amount": 268435456
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "list_rows",
+          "value": {
+            "unit": "count",
+            "amount": 50
+          },
+          "source": {
+            "kind": "default"
+          }
+        }
+      ]
+    },
+    {
+      "part": "background",
+      "rows": [
+        {
+          "key": "poll_every",
+          "value": {
+            "unit": "seconds",
+            "amount": 30
+          },
+          "source": {
+            "kind": "flag",
+            "flag": "--poll-interval"
+          }
+        },
+        {
+          "key": "poll_backoff",
+          "value": {
+            "unit": "seconds",
+            "amount": 3600
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "new_site_within",
+          "value": {
+            "unit": "seconds",
+            "amount": 5
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "git_schemes",
+          "value": {
+            "unit": "list",
+            "amount": [
+              {
+                "unit": "text",
+                "amount": "https"
+              }
+            ]
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "preview_branches",
+          "value": {
+            "unit": "count",
+            "amount": 10
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "worker_lease",
+          "value": {
+            "unit": "seconds",
+            "amount": 600
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "worker_rest",
+          "value": {
+            "unit": "seconds",
+            "amount": 2
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "restart_after",
+          "value": {
+            "unit": "seconds",
+            "amount": 2
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "restart_limit",
+          "value": {
+            "unit": "count",
+            "amount": 5
+          },
+          "source": {
+            "kind": "default"
+          }
+        }
+      ]
+    },
+    {
+      "part": "security",
+      "rows": [
+        {
+          "key": "audience",
+          "value": {
+            "unit": "text",
+            "amount": "api.localhost:8080"
+          },
+          "source": {
+            "kind": "derived",
+            "flag": "--audience"
+          }
+        },
+        {
+          "key": "skew",
+          "value": {
+            "unit": "seconds",
+            "amount": 60
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "nonces_per_key",
+          "value": {
+            "unit": "count",
+            "amount": 1024
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "device_keys",
+          "value": {
+            "unit": "seconds",
+            "amount": 15552000
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "deploy_keys",
+          "value": {
+            "unit": "seconds",
+            "amount": 7776000
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "key_ceiling",
+          "value": {
+            "unit": "seconds",
+            "amount": 31536000
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "enrol_approval",
+          "value": {
+            "unit": "seconds",
+            "amount": 600
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "enrol_guesses",
+          "value": {
+            "unit": "count",
+            "amount": 5
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "enrol_waiting",
+          "value": {
+            "unit": "count",
+            "amount": 20
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "enrol_closed",
+          "value": {
+            "unit": "seconds",
+            "amount": 60
+          },
+          "source": {
+            "kind": "default"
+          }
+        }
+      ]
+    },
+    {
+      "part": "mail",
+      "rows": [
+        {
+          "key": "transport",
+          "value": {
+            "unit": "text",
+            "amount": "stdout"
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "messages",
+          "value": {
+            "unit": "text",
+            "amount": "printed here, links included"
+          },
+          "source": {
+            "kind": "computed"
+          }
+        },
+        {
+          "key": "ask_per_address",
+          "value": {
+            "unit": "rate",
+            "amount": {
+              "count": 5,
+              "per": 3600
+            }
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "ask_per_source",
+          "value": {
+            "unit": "rate",
+            "amount": {
+              "count": 20,
+              "per": 3600
+            }
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "asks_tracked",
+          "value": {
+            "unit": "count",
+            "amount": 10000
+          },
+          "source": {
+            "kind": "default"
+          }
+        },
+        {
+          "key": "outbox",
+          "value": {
+            "unit": "count",
+            "amount": 256
+          },
+          "source": {
+            "kind": "default"
+          }
+        }
+      ]
+    }
+  ]
+}

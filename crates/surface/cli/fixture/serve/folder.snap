@@ -1,0 +1,14 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+ink 0.0.0  serve  listening on 127.0.0.1:8080
+
+  site       http://127.0.0.1:8080
+
+Addresses
+  listen     127.0.0.1:8080  default
+  folder     .ink/out        default
+  host mode  single          default
+  api        off             turn on with --data
+
+press ctrl-c to stop

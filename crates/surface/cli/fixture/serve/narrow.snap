@@ -1,0 +1,85 @@
+---
+source: crates/standalone/fixture/src/lib.rs
+---
+ink 0.0.0  serve  listening on 127.0.0.1:8080
+
+  site       http://localhost:8080
+  dashboard  http://api.localhost:8080
+  api        http://api.localhost:8080/v1/sites
+
+╭─ admin link  works for 1d, shown once and kept nowhere
+│
+│ http://api.localhost:8080/login/Zx3kQ9vT2mLp7RwB4nHd6YcAeF8gJs1U
+╰─ opening it signs you in as the owner
+
+Addresses
+  listen     127.0.0.1:8080           default
+  folder     .ink/out                 default
+  host mode  single                   default
+  origin     http://localhost:8080    derived (--origin)
+  api host   api.localhost            default
+  sites      <handle>.localhost:8080  computed
+
+Sign-in
+  login link       15m                              default
+  session          sliding                          default
+  session idle     7d                               default
+  session limit    30d                              default
+  signup           first                            default
+  link base        http://api.localhost:8080/login  default
+  cookie           ink-session                      default
+  cookie path      /                                default
+  cookie secure    no                               derived…
+  passkey id       api.localhost                    default
+  passkey origins  http://api.localhost:8080        default
+  client address   the connection                   default
+  ~ cookie secure: plain http: the session cookie is not Secure
+    fix: end TLS in a proxy and give `--origin https://<your name>`; plain http is for this machine only
+
+Data
+  data           /srv/ink/state                   --data
+  operator keys  /srv/ink/state/operator-keys     computed
+  enrol yours    ink login --data /srv/ink/state  computed
+
+Limits
+  json body       64 KiB   default
+  upload archive  512 MiB  --upload-bytes
+  upload files    10000    default
+  upload file     64 MiB   default
+  upload tree     8 MiB    default
+  upload part     64 MiB   default
+  export archive  256 MiB  default
+  list rows       50       default
+
+Background work
+  poll every        30s    --poll-interval
+  poll backoff      1h     default
+  new site within   5s     default
+  git schemes       https  default
+  preview branches  10     default
+  worker lease      10m    default
+  worker rest       2s     default
+  restart after     2s     default
+  restart limit     5      default
+
+Security
+  audience        api.localhost:8080  derived (--audience)
+  skew            1m                  default
+  nonces per key  1024                default
+  device keys     180d                default
+  deploy keys     90d                 default
+  key ceiling     365d                default
+  enrol approval  10m                 default
+  enrol guesses   5                   default
+  enrol waiting   20                  default
+  enrol closed    1m                  default
+
+Mail
+  transport        stdout                        default
+  messages         printed here, links included  computed
+  ask per address  5 per 1h                      default
+  ask per source   20 per 1h                     default
+  asks tracked     10000                         default
+  outbox           256                           default
+
+press ctrl-c to stop

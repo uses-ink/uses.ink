@@ -352,6 +352,24 @@ pub struct Serve {
     /// [default: `http://localhost:` and the port the server listens on, which the start says]
     #[arg(long, help_heading = Heading::SERVER)]
     pub origin: Option<String>,
+    /// Prints every setting a start would run with, each with its default or the flag that
+    /// changed it, and exits. With `--json` it is the document `ink serve --json` prints when it
+    /// starts. Nothing is bound, made or written: the data folder and the first-run link are left
+    /// as they are.
+    #[arg(long, help_heading = Heading::SERVER)]
+    pub print_config: bool,
+    /// How the log of what the server does is written: lines for a person, or one JSON object a
+    /// line with stable field names and no colour. `--json` makes it JSON.
+    #[arg(long, value_enum, default_value_t, help_heading = Heading::DIAGNOSTICS)]
+    pub log_format: crate::selfhost::report::log::Shape,
+    /// The least severe event the log shows. Ordinary request lines are shown only with `-v`;
+    /// `-q` lowers this to `warn` and `-qq` to `error`.
+    #[arg(long, value_enum, default_value_t = crate::selfhost::report::log::Level::Info, help_heading = Heading::DIAGNOSTICS)]
+    pub log_level: crate::selfhost::report::log::Level,
+    /// The zone the log's times are written in: UTC with a `Z`, or this machine's own with its
+    /// offset.
+    #[arg(long, value_enum, default_value_t, help_heading = Heading::DIAGNOSTICS)]
+    pub log_time: crate::selfhost::report::log::Zone,
     /// The largest JSON request body, in bytes. [default: 65536]
     #[arg(long, help_heading = Heading::LIMITS)]
     pub api_body: Option<u64>,

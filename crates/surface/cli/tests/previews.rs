@@ -112,7 +112,7 @@ fn operator(server: &Server) -> Machine<'_> {
 #[test]
 fn a_branch_of_a_git_site_is_built_as_a_preview_listed_served_and_removed() {
     let (server, _repo, site) = start("previews-branch", &[]);
-    until("the preview", &server, |log| log.contains("is the preview draft"));
+    until("the preview", &server, |log| log.contains("preview=draft"));
     let machine = operator(&server);
     let listed = machine.ink(&["preview", "list", "--site", &site, "--json"]);
     assert_eq!(listed.code, 0, "{}", listed.said());
@@ -126,7 +126,7 @@ fn a_branch_of_a_git_site_is_built_as_a_preview_listed_served_and_removed() {
     let page = server.page("draft--diary", "/");
     assert_eq!(page.status(), "200", "{}", page.text);
     assert!(page.text.contains("The draft branch."), "{}", page.text);
-    until("the site's own build", &server, |log| log.contains("(live)"));
+    until("the site's own build", &server, |log| log.contains("state=live"));
     assert!(server.page("diary", "/").text.contains("The main branch."));
 
     let removed = machine.ink(&["preview", "remove", "draft", "--site", &site, "--json"]);
@@ -145,7 +145,7 @@ fn a_branch_of_a_git_site_is_built_as_a_preview_listed_served_and_removed() {
 #[test]
 fn zero_branches_turns_the_previews_off() {
     let (server, _repo, _site) = start("previews-off", &["--preview-branches", "0"]);
-    until("the site's own build", &server, |log| log.contains("(live)"));
+    until("the site's own build", &server, |log| log.contains("state=live"));
     assert!(!server.said().contains("queued preview build"), "{}", server.said());
     assert_eq!(server.page("draft--diary", "/").status(), "404");
 }
