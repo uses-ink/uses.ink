@@ -86,6 +86,7 @@ build = "The build's id."
 host = "The forge's host name, as written."
 delivery = "The delivery id the forge gave the webhook call."
 login = "The account's name on the forge."
+repo = "The repository, as its host and path: `codeberg.org/octo/docs`."
 status = "The HTTP status the forge answered with."
 
 [diagnostic."config.syntax.invalid"]
@@ -967,6 +968,27 @@ fault = "author"
 fields = { id = "text", limit = "count" }
 message = "the site {id} has as many custom domains as it may, {limit}"
 fix = "remove a domain the site does not use, or ask the operator for a higher limit"
+
+[diagnostic."repo.claim.taken"]
+severity = "error"
+fault = "author"
+fields = { repo = "text" }
+message = "{repo} belongs to another site"
+fix = "if you own the repository, the other site's proof is out of date: ask the operator to release it, or build from another repository"
+
+[diagnostic."repo.claim.unknown"]
+severity = "error"
+fault = "author"
+fields = { id = "text", repo = "text" }
+message = "the site {id} has not claimed {repo}"
+fix = "claim the repository first; it answers with the line to commit and the webhook secret"
+
+[diagnostic."repo.site.mismatch"]
+severity = "error"
+fault = "author"
+fields = { id = "text", repo = "text" }
+message = "the source of the site {id} is not {repo}"
+fix = "claim the repository the site builds from, written as host and path, such as `codeberg.org/octo/docs`"
 
 [diagnostic."abuse.reports.full"]
 severity = "error"

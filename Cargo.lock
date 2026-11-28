@@ -6613,6 +6613,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "toml",
+ "uses-ink-authority-forge",
  "uses-ink-blob",
  "uses-ink-blob-dir",
  "uses-ink-build",

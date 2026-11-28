@@ -1,6 +1,6 @@
 //! Credentials: stored sealed, opened only when a build needs one.
 
-use db::{Constraint, Db};
+use db::{Constraint, Db, Statement};
 use sea_query::{Expr, ExprTrait, Order, Query};
 use secret::{Binding, Plain, Sealed, Secret};
 
@@ -11,7 +11,7 @@ use crate::{Control, Error, Ports, Refusal, table};
 impl<P: Ports> Control<P> {
     /// What a sealed credential is bound to: its own row id, so a sealed value copied to another
     /// row does not open (decision 0031).
-    fn binding(id: Id<Kind>) -> Binding {
+    pub(crate) fn binding(id: Id<Kind>) -> Binding {
         Binding::from(id.to_string().as_str())
     }
 
@@ -20,7 +20,18 @@ impl<P: Ports> Control<P> {
     pub async fn add_credential(&self, new: credential::New) -> Result<Credential, Error<P>> {
         self.active(new.site).await?;
         let sealed = self.ports.secret().seal(&new.secret, &Self::binding(new.id)).await?;
-        let insert = Query::insert()
+        match self.ports.db().run(Self::credential_row(&new, &sealed)?).await {
+            Ok(_) => Ok(Credential { id: new.id, site: new.site, purpose: new.purpose, created: new.at }),
+            Err(error) if error.constraint() == Some(Constraint::Unique) => {
+                Err(Refusal::Exists { id: new.id.to_string() }.into())
+            }
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    /// The statement that stores `new`, sealed as `sealed`.
+    pub(crate) fn credential_row(new: &credential::New, sealed: &Sealed) -> Result<Statement, sea_query::error::Error> {
+        Ok(Query::insert()
             .into_table(table::Credential::Table)
             .columns([
                 table::Credential::Id,
@@ -36,14 +47,8 @@ impl<P: Ports> Control<P> {
                 Expr::val(sealed.as_ref()),
                 Expr::val(new.at.as_millisecond()),
             ])?
-            .to_owned();
-        match self.ports.db().run(insert.into()).await {
-            Ok(_) => Ok(Credential { id: new.id, site: new.site, purpose: new.purpose, created: new.at }),
-            Err(error) if error.constraint() == Some(Constraint::Unique) => {
-                Err(Refusal::Exists { id: new.id.to_string() }.into())
-            }
-            Err(error) => Err(error.into()),
-        }
+            .to_owned()
+            .into())
     }
 
     /// Opens a credential. This is the only way a secret leaves its row.

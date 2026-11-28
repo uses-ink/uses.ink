@@ -409,6 +409,7 @@ impl<P: Ports> Fault<P> {
         match refusal {
             Refusal::Reserved { .. }
             | Refusal::DomainTaken { .. }
+            | Refusal::RepoTaken { .. }
             | Refusal::Taken { .. }
             | Refusal::Held { .. }
             | Refusal::Exists { .. }
@@ -423,6 +424,7 @@ impl<P: Ports> Fault<P> {
             | Refusal::NoBuild { .. }
             | Refusal::NoManifest { .. }
             | Refusal::NoClaim { .. }
+            | Refusal::NoRepo { .. }
             | Refusal::NoDomain { .. }
             | Refusal::NoLabel { .. }
             | Refusal::NoOrg { .. }
@@ -431,6 +433,7 @@ impl<P: Ports> Fault<P> {
             Refusal::NoAccount { .. }
             | Refusal::NoPreview { .. }
             | Refusal::DomainOurs { .. }
+            | Refusal::RepoSource { .. }
             | Refusal::Unproven { .. }
             | Refusal::MissingBlob { .. } => Status::Unprocessable,
             Refusal::ReportsFull { .. } => Status::Unavailable,

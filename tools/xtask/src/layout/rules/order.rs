@@ -318,6 +318,7 @@ impl Order {
         (
             "uses-ink-control",
             &[
+                "uses-ink-authority-forge",
                 "uses-ink-blob",
                 "uses-ink-blob-dir",
                 "uses-ink-build",

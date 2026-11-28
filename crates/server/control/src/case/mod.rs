@@ -13,6 +13,7 @@ pub(crate) mod org;
 pub(crate) mod preview;
 mod read;
 mod remove;
+pub(crate) mod repo;
 mod reproof;
 mod seen;
 pub(crate) mod serve;

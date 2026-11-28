@@ -259,6 +259,41 @@ impl fmt::Display for Repo {
     }
 }
 
+impl FromStr for Repo {
+    type Err = NameError;
+
+    /// Reads what [`Repo`] prints: the host, a slash and the path.
+    fn from_str(text: &str) -> Result<Self, NameError> {
+        let (host, path) = text.split_once('/').ok_or(NameError::Depth { found: 0 })?;
+        Ok(Self { host: host.parse()?, path: path.parse()? })
+    }
+}
+
+impl Repo {
+    /// The repository an `https` address names: `https://host/owner/name`, with a trailing `.git`
+    /// and slash left off. Anything else (another scheme, a port, a user, a query) is no address of
+    /// a repository on a forge, and says why.
+    pub fn at(address: &str) -> Result<Self, NameError> {
+        let rest = address.strip_prefix("https://").ok_or(NameError::Shape)?;
+        let rest = rest.trim_end_matches('/');
+        let rest = rest.strip_suffix(".git").unwrap_or(rest);
+        rest.parse()
+    }
+}
+
+impl serde::Serialize for Repo {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Repo {
+    fn deserialize<D: serde::Deserializer<'de>>(reader: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(reader)?;
+        text.parse().map_err(serde::de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -274,6 +309,19 @@ mod test {
         assert_eq!("Codeberg.ORG".parse::<Host>().unwrap().as_str(), "codeberg.org");
         assert_eq!("a..b".parse::<Host>(), Err(NameError::Shape));
         assert_eq!("a b".parse::<Host>(), Err(NameError::Character { at: 1 }));
+    }
+
+    #[test]
+    fn a_repo_reads_what_it_prints_and_an_address() {
+        let repo: Repo = "Codeberg.org/Octo/Docs".parse().unwrap();
+        assert_eq!(repo.to_string(), "codeberg.org/octo/docs");
+        assert_eq!(repo.to_string().parse::<Repo>().unwrap(), repo);
+        assert_eq!(Repo::at("https://codeberg.org/Octo/Docs.git/").unwrap(), repo);
+        assert_eq!(serde_json::to_string(&repo).unwrap(), "\"codeberg.org/octo/docs\"");
+        assert!(Repo::at("file:///srv/repo").is_err());
+        assert!(Repo::at("https://host:8443/a/b").is_err(), "a port is no part of a forge repository");
+        assert!(Repo::at("https://user@host/a/b").is_err());
+        assert!("nohost".parse::<Repo>().is_err());
     }
 
     #[test]

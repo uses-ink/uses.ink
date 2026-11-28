@@ -98,6 +98,26 @@ pub enum Event {
         /// The name.
         name: crate::DomainName,
     },
+    /// The site asked to prove a repository.
+    RepoClaimed {
+        /// The repository.
+        repo: authority_forge::Repo,
+    },
+    /// The site proved a repository: pushes to it build the site.
+    RepoProven {
+        /// The repository.
+        repo: authority_forge::Repo,
+    },
+    /// The webhook secret of a claim was replaced.
+    RepoRotated {
+        /// The repository.
+        repo: authority_forge::Repo,
+    },
+    /// The site let go of a repository, proved or not.
+    RepoReleased {
+        /// The repository.
+        repo: authority_forge::Repo,
+    },
     /// The site took another handle, and the old one is held.
     SiteRenamed {
         /// The handle it had.
@@ -126,6 +146,10 @@ impl Event {
             Self::DomainLapsed { .. } => "domain.lapsed",
             Self::DomainRestored { .. } => "domain.restored",
             Self::DomainRemoved { .. } => "domain.removed",
+            Self::RepoClaimed { .. } => "repo.claimed",
+            Self::RepoProven { .. } => "repo.proven",
+            Self::RepoRotated { .. } => "repo.rotated",
+            Self::RepoReleased { .. } => "repo.released",
             Self::SiteSuspended { .. } => "site.suspended",
             Self::SiteReinstated => "site.reinstated",
         }

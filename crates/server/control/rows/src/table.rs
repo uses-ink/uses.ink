@@ -425,6 +425,21 @@ pub enum Claim {
     CreatedAt,
 }
 
+/// `repo_claim`: a repository a site asked to prove it controls, and the site that proved it
+/// (decision 0160).
+#[derive(Clone, Copy, Debug, IdenStatic)]
+#[iden = "repo_claim"]
+pub enum Repo {
+    Table,
+    Repo,
+    SiteId,
+    Challenge,
+    SecretId,
+    CreatedAt,
+    ProvenAt,
+    Owned,
+}
+
 /// `org`: an account that is an organization, with a name for people to read.
 #[derive(Clone, Copy, Debug, IdenStatic)]
 #[iden = "org"]
@@ -486,6 +501,8 @@ pub enum Named {
     RecoveryAccount,
     DomainSite,
     ClaimSite,
+    RepoSite,
+    RepoOwned,
     MemberAccount,
 }
 

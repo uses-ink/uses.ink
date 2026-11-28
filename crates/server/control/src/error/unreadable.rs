@@ -32,6 +32,16 @@ pub enum Unreadable {
         /// Why.
         source: crate::TokenError,
     },
+    /// The column holds a bad repository name.
+    Repo {
+        /// Why.
+        source: authority_forge::NameError,
+    },
+    /// The column holds a bad repository challenge.
+    Challenge {
+        /// Why.
+        source: authority_forge::ChallengeError,
+    },
     /// The column holds a bad build id.
     Build {
         /// Why.
@@ -71,6 +81,8 @@ impl fmt::Display for Unreadable {
             Self::Slug { .. } => out.write_str("column `slug` holds a bad preview label"),
             Self::Domain { .. } => out.write_str("column `name` holds a bad domain name"),
             Self::Token { .. } => out.write_str("column `token` holds a bad domain token"),
+            Self::Repo { .. } => out.write_str("column `repo` holds a bad repository name"),
+            Self::Challenge { .. } => out.write_str("column `challenge` holds a bad repository challenge"),
             Self::Build { .. } => out.write_str("a stored build id is bad"),
             Self::Locator { column } => {
                 write!(out, "column `{column}` holds a kind of source this version does not know")
@@ -93,6 +105,8 @@ impl std::error::Error for Unreadable {
             Self::Domain { source } => Some(source),
             Self::Token { source } => Some(source),
             Self::Build { source } => Some(source),
+            Self::Repo { source } => Some(source),
+            Self::Challenge { source } => Some(source),
             Self::Url { source, .. } => Some(source),
             Self::Revision { source, .. } => Some(source),
             Self::Commit { source } => Some(source),

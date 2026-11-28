@@ -27,6 +27,41 @@ impl Challenge {
     }
 }
 
+/// Text that is no challenge.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ChallengeError {
+    /// Not `uses-ink-repo=` and 32 hex digits.
+    Shape,
+}
+
+impl fmt::Display for ChallengeError {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, "a challenge is `{}` and 32 lower-case hex digits", Challenge::PREFIX)
+    }
+}
+
+impl std::error::Error for ChallengeError {}
+
+impl std::str::FromStr for Challenge {
+    type Err = ChallengeError;
+
+    /// Reads what [`Challenge`] prints.
+    fn from_str(text: &str) -> Result<Self, ChallengeError> {
+        let digits = text.strip_prefix(Self::PREFIX).ok_or(ChallengeError::Shape)?;
+        if digits.len() != 32 || !digits.bytes().all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f')) {
+            return Err(ChallengeError::Shape);
+        }
+        let mut bytes = [0_u8; 16];
+        for (at, pair) in digits.as_bytes().chunks(2).enumerate() {
+            let pair = std::str::from_utf8(pair).map_err(|_| ChallengeError::Shape)?;
+            *bytes.get_mut(at).ok_or(ChallengeError::Shape)? =
+                u8::from_str_radix(pair, 16).map_err(|_| ChallengeError::Shape)?;
+        }
+        Ok(Self(bytes))
+    }
+}
+
 impl fmt::Display for Challenge {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         out.write_str(Self::PREFIX)?;
@@ -123,5 +158,18 @@ impl Challenge {
             Some(text) if self.found_in(text) => Ok(Proven::of(repo)),
             Some(_) => Err(Unproven::Wrong),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn a_challenge_reads_what_it_prints() {
+        let challenge = Challenge::from_bytes([7; 16]);
+        assert_eq!(challenge.to_string().parse::<Challenge>(), Ok(challenge));
+        assert_eq!("uses-ink-repo=zz".parse::<Challenge>(), Err(ChallengeError::Shape));
+        assert_eq!("07070707070707070707070707070707".parse::<Challenge>(), Err(ChallengeError::Shape));
     }
 }

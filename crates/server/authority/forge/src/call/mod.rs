@@ -4,6 +4,6 @@ mod challenge;
 mod status;
 mod transport;
 
-pub use challenge::{Challenge, Proven, Unproven};
+pub use challenge::{Challenge, ChallengeError, Proven, Unproven};
 pub use status::{State, Status};
 pub use transport::{Client, Fake, Faked, Method, Request, Response, Transport};

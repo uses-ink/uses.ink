@@ -36,8 +36,7 @@ impl<T: Transport> Open<T> {
             return Err(Unproven::Unlisted { host: repo.host.clone() });
         }
         let path = &repo.path;
-        let parts =
-            ["repos", path.owner().as_str(), path.name().as_str(), "contents", ".well-known", "uses-ink"];
+        let parts = ["repos", path.owner().as_str(), path.name().as_str(), "contents", ".well-known", "uses-ink"];
         let url = Host::API.url(&parts).map_err(Fail::Url)?;
         let request = Request::new(Method::Get, url).header("Accept", RAW).header("X-GitHub-Api-Version", VERSION);
         let response = self.client.send(request).await?;

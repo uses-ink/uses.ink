@@ -9,6 +9,8 @@ use crate::hold::Why;
 use crate::id::{Account, Credential, Id, Site};
 use crate::keys::Right;
 use crate::org::Role;
+use authority_forge::Repo;
+
 use crate::{DomainName, Handle, Reservation, Spent};
 
 /// A request the control plane refuses, and the fact that makes it wrong. Nothing was changed.
@@ -104,6 +106,25 @@ pub enum Refusal {
         site: Id<Site>,
         /// The limit.
         limit: u64,
+    },
+    /// Another site proved the repository.
+    RepoTaken {
+        /// The repository.
+        repo: Repo,
+    },
+    /// The site has not claimed the repository, or let it go.
+    NoRepo {
+        /// The site.
+        site: Id<Site>,
+        /// The repository.
+        repo: Repo,
+    },
+    /// The site's source is not the repository, so a push to it has nothing to build.
+    RepoSource {
+        /// The site.
+        site: Id<Site>,
+        /// The repository.
+        repo: Repo,
     },
     /// The control plane holds as many open abuse reports as the operator allows.
     ReportsFull {
@@ -235,19 +256,15 @@ impl fmt::Display for Refusal {
             Self::Taken { handle } => write!(out, "{handle} is taken"),
             Self::Suspended { site, kind } => write!(out, "the site {site} is suspended for {kind}"),
             Self::Serving { site } => write!(out, "the site {site} is not suspended"),
-            Self::NoPreview { site } => {
-                write!(out, "the site {site} has no git source, so it has no branches to preview")
-            }
-            Self::Private { site } => {
-                write!(out, "the repository of site {site} is private, so its branches are not previewed")
-            }
-            Self::NoLabel { site, label } => write!(out, "the site {site} has no preview labelled {label}"),
             Self::DomainOurs { .. }
             | Self::DomainTaken { .. }
             | Self::NoClaim { .. }
             | Self::Unproven { .. }
             | Self::NoDomain { .. }
             | Self::DomainRoom { .. }
+            | Self::RepoTaken { .. }
+            | Self::NoRepo { .. }
+            | Self::RepoSource { .. }
             | Self::NoOrg { .. }
             | Self::Member { .. }
             | Self::NotMember { .. }
@@ -265,7 +282,10 @@ impl fmt::Display for Refusal {
             | Self::NoCredential { .. }
             | Self::NoManifest { .. }
             | Self::NoBuild { .. }
-            | Self::MissingLog { .. } => self.stored(out),
+            | Self::MissingLog { .. }
+            | Self::NoPreview { .. }
+            | Self::Private { .. }
+            | Self::NoLabel { .. } => self.stored(out),
             Self::Over { spent, value, limit } => Self::over(out, *spent, (*value, *limit)),
             Self::Unstorable => out.write_str("a folder path that is not text cannot be stored"),
             Self::Tenant(_) => out.write_str("the site's id is not a valid tenant"),
@@ -274,7 +294,7 @@ impl fmt::Display for Refusal {
 }
 
 impl Refusal {
-    /// Words a refusal about a deploy, a build, a credential or a blob.
+    /// Words a refusal about a deploy, a build, a credential, a blob or a preview.
     fn stored(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MissingBlob { route, blob } => {
@@ -289,6 +309,13 @@ impl Refusal {
             Self::MissingLog { build, blob } => {
                 write!(out, "the log of build {build} is {blob}, which the store does not hold")
             }
+            Self::NoPreview { site } => {
+                write!(out, "the site {site} has no git source, so it has no branches to preview")
+            }
+            Self::Private { site } => {
+                write!(out, "the repository of site {site} is private, so its branches are not previewed")
+            }
+            Self::NoLabel { site, label } => write!(out, "the site {site} has no preview labelled {label}"),
             _ => Ok(()),
         }
     }
@@ -355,6 +382,9 @@ impl Refusal {
             Self::DomainRoom { site, limit } => {
                 write!(out, "the site {site} has as many custom domains as it may, {limit}")
             }
+            Self::RepoTaken { repo } => write!(out, "{repo} belongs to another site"),
+            Self::NoRepo { site, repo } => write!(out, "the site {site} has not claimed {repo}"),
+            Self::RepoSource { site, repo } => write!(out, "the source of the site {site} is not {repo}"),
             _ => Ok(()),
         }
     }
@@ -370,6 +400,26 @@ impl Refusal {
             }
             Spent::Builds => write!(out, "the account started {value} builds in a day, which is its limit of {limit}"),
             Spent::Sites => write!(out, "the account has {value} sites, which is its limit of {limit}"),
+        }
+    }
+
+    /// The code of a refusal about a claimed repository.
+    const fn repo_code(&self) -> &'static str {
+        match self {
+            Self::RepoTaken { .. } => "repo.claim.taken",
+            Self::NoRepo { .. } => "repo.claim.unknown",
+            _ => "repo.site.mismatch",
+        }
+    }
+
+    /// The code of a refusal about an organization.
+    const fn org_code(&self) -> &'static str {
+        match self {
+            Self::NoOrg { .. } => "org.id.unknown",
+            Self::Member { .. } => "org.member.exists",
+            Self::NotMember { .. } => "org.member.unknown",
+            Self::LastOwner { .. } => "org.owner.last",
+            _ => "org.role.denied",
         }
     }
 
@@ -393,11 +443,12 @@ impl Refusal {
             Self::NoDomain { .. } => "domain.name.unknown",
             Self::DomainRoom { .. } => "domain.site.full",
             Self::ReportsFull { .. } => "abuse.reports.full",
-            Self::NoOrg { .. } => "org.id.unknown",
-            Self::Member { .. } => "org.member.exists",
-            Self::NotMember { .. } => "org.member.unknown",
-            Self::LastOwner { .. } => "org.owner.last",
-            Self::Role { .. } => "org.role.denied",
+            Self::RepoTaken { .. } | Self::NoRepo { .. } | Self::RepoSource { .. } => self.repo_code(),
+            Self::NoOrg { .. }
+            | Self::Member { .. }
+            | Self::NotMember { .. }
+            | Self::LastOwner { .. }
+            | Self::Role { .. } => self.org_code(),
             Self::Exists { .. } => "row.id.exists",
             Self::NoAccount { .. } => "account.id.unknown",
             Self::NoSite { .. } => "site.id.unknown",
@@ -457,6 +508,10 @@ impl Refusal {
             }
             Self::Unproven { name, records } => vec![("name", name.to_string()), ("count", records.to_string())],
             Self::DomainRoom { site, limit } => vec![("id", site.to_string()), ("limit", limit.to_string())],
+            Self::RepoTaken { repo } => vec![("repo", repo.to_string())],
+            Self::NoRepo { site, repo } | Self::RepoSource { site, repo } => {
+                vec![("id", site.to_string()), ("repo", repo.to_string())]
+            }
             Self::ReportsFull { limit } => vec![("limit", limit.to_string())],
             Self::NoOrg { org } | Self::LastOwner { org } => vec![("id", org.to_string())],
             Self::Member { org, account } | Self::NotMember { org, account } => {

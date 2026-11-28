@@ -22,7 +22,10 @@ mod limits;
 mod name;
 mod secret;
 
-pub use call::{Challenge, Client, Fake, Faked, Method, Proven, Request, Response, State, Status, Transport, Unproven};
+pub use call::{
+    Challenge, ChallengeError, Client, Fake, Faked, Method, Proven, Request, Response, State, Status, Transport,
+    Unproven,
+};
 pub use error::{Fail, Refused};
 pub use hook::{
     Commit, CommitError, Delivery, Headers, Ignored, Intake, Pinned, Push, Received, Replay, Replayed, Roster,

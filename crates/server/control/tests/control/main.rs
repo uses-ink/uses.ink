@@ -27,6 +27,7 @@ mod org;
 mod preview;
 mod read;
 mod remove;
+mod repo;
 mod signin;
 mod site;
 mod world;

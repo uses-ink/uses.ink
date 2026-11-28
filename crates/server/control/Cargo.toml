@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+authority-forge.workspace = true
 blob.workspace = true
 build.workspace = true
 control-keys.workspace = true

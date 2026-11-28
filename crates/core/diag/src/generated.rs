@@ -413,6 +413,15 @@ impl Message<'_> {
             Problem::DomainSiteFull { id, limit, .. } => {
                 write!(out, "the site {id} has as many custom domains as it may, {limit}")
             }
+            Problem::RepoClaimTaken { repo, .. } => {
+                write!(out, "{repo} belongs to another site")
+            }
+            Problem::RepoClaimUnknown { id, repo, .. } => {
+                write!(out, "the site {id} has not claimed {repo}")
+            }
+            Problem::RepoSiteMismatch { id, repo, .. } => {
+                write!(out, "the source of the site {id} is not {repo}")
+            }
             Problem::AbuseReportsFull { limit, .. } => {
                 write!(out, "the control plane holds as many open abuse reports as it may, {limit}")
             }
@@ -862,6 +871,9 @@ impl Fix<'_> {
             Problem::DomainNameUnknown { .. } => true,
             Problem::DomainLookupFailed => true,
             Problem::DomainSiteFull { .. } => true,
+            Problem::RepoClaimTaken { .. } => true,
+            Problem::RepoClaimUnknown { .. } => true,
+            Problem::RepoSiteMismatch { .. } => true,
             Problem::AbuseReportsFull { .. } => true,
             Problem::OrgIdUnknown { .. } => true,
             Problem::OrgMemberExists { .. } => true,
@@ -1353,6 +1365,21 @@ impl Fix<'_> {
             }
             Problem::DomainSiteFull { .. } => {
                 write!(out, "remove a domain the site does not use, or ask the operator for a higher limit")
+            }
+            Problem::RepoClaimTaken { .. } => {
+                write!(
+                    out,
+                    "if you own the repository, the other site's proof is out of date: ask the operator to release it, or build from another repository"
+                )
+            }
+            Problem::RepoClaimUnknown { .. } => {
+                write!(out, "claim the repository first; it answers with the line to commit and the webhook secret")
+            }
+            Problem::RepoSiteMismatch { .. } => {
+                write!(
+                    out,
+                    "claim the repository the site builds from, written as host and path, such as `codeberg.org/octo/docs`"
+                )
             }
             Problem::AbuseReportsFull { .. } => {
                 write!(
