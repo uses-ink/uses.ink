@@ -344,7 +344,7 @@ fn asking_is_limited_per_address_and_per_source_whether_or_not_the_address_exist
     let limited = fixture.ask("nobody@example.org", "10.0.0.3");
     assert_eq!(limited.status, Status::TooMany);
     assert_eq!(limited.retry, Some(Duration::from_hours(1)));
-    assert_eq!(json(&limited)["problem"], json!("rate-limited"));
+    assert_eq!(json(&limited)["problem"], json!("auth.rate.limited"));
     // the source: three requests, and a fourth for another address is turned away
     assert_eq!(fixture.ask("a@example.org", "10.1.0.1").status, Status::Accepted);
     assert_eq!(fixture.ask("b@example.org", "10.1.0.1").status, Status::Accepted);

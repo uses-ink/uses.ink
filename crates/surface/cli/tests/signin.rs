@@ -201,3 +201,31 @@ fn a_stranger_signs_in_enrols_a_machine_publishes_and_logs_out() {
         "the site is served again after a restart"
     );
 }
+
+#[test]
+fn links_are_asked_for_within_limits_and_only_from_the_dashboards_origin() {
+    let server = Server::start("limits", &["--signup", "open", "--rate-address", "2/1h", "--rate-source", "4/1h"]);
+    let ask = |address: &str| server.browser().send(("POST", "/v1/login"), &json!({ "address": address }).to_string());
+    // an address gets two links an hour, and the third ask says when to come back
+    assert_eq!(ask("ann@example.org").status(), "202");
+    assert_eq!(ask("ann@example.org").status(), "202");
+    let limited = ask("ann@example.org");
+    assert_eq!((limited.status(), limited.problem().as_str()), ("429", "auth.rate.limited"), "{}", limited.text);
+    assert!(limited.header("retry-after").is_some(), "{}", limited.text);
+    // a source gets four asks an hour whatever the addresses
+    assert_eq!(ask("bob@example.org").status(), "202");
+    assert_eq!(ask("cy@example.org").status(), "202");
+    let source = ask("di@example.org");
+    assert_eq!((source.status(), source.problem().as_str()), ("429", "auth.rate.limited"), "{}", source.text);
+    // a page of another origin cannot ask, and nothing is counted or sent for it
+    let cross = server.browser().send_with(
+        ("POST", "/v1/login"),
+        &[("Origin", "https://evil.example")],
+        &json!({ "address": "eve@example.org" }).to_string(),
+    );
+    assert_eq!((cross.status(), cross.problem().as_str()), ("403", "auth.origin.refused"), "{}", cross.text);
+    // a request that is no JSON object is refused with a reason, not a silent 202
+    let bad = server.browser().send(("POST", "/v1/login"), "not json");
+    assert!(bad.status().starts_with('4'), "{}", bad.text);
+    assert!(!bad.problem().is_empty(), "a refusal names its code: {}", bad.text);
+}

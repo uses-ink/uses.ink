@@ -178,7 +178,7 @@ impl<E: std::error::Error + 'static> Step<E> {
             Self::Route | Self::Method(_) => "route",
             Self::Body(_) => "body",
             Self::Large { .. } => "too-large",
-            Self::Limited(_) => "rate-limited",
+            Self::Limited(_) => "auth.rate.limited",
             Self::Closed(_) => "auth.enrolment.limited",
             Self::Keys(refused) => Turned(refused).code(),
             Self::Store(_) => "keys",
