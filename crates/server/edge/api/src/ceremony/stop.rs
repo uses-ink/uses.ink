@@ -11,6 +11,7 @@ use control::signin::Error as SignError;
 use super::route::StepError;
 use crate::auth::signin::Limited;
 use crate::body::Unreadable;
+use crate::port::{Port, Unnamed};
 use crate::reply::{Media, Reply, Status};
 use crate::view::Problem;
 
@@ -73,11 +74,11 @@ pub enum Stop {
     /// Another sign-in with the same passkey wrote its counter first.
     Raced,
     /// The stores failed.
-    Store(Box<dyn Error>),
+    Store(Unnamed),
     /// The verifier failed.
-    Verifier(Box<dyn Error>),
+    Verifier(Unnamed),
     /// The random source gave nothing.
-    Draw(Box<dyn Error>),
+    Draw(Unnamed),
     /// The answer could not be written as JSON.
     Json(serde_json::Error),
 }
@@ -124,7 +125,7 @@ impl Error for Stop {
             Self::Label(source) => Some(source),
             Self::Limited(source) => Some(source),
             Self::Code(source) => Some(source),
-            Self::Store(source) | Self::Verifier(source) | Self::Draw(source) => Some(source.as_ref()),
+            Self::Store(source) | Self::Verifier(source) | Self::Draw(source) => Some(source),
             Self::Json(source) => Some(source),
             _ => None,
         }
@@ -141,18 +142,18 @@ impl Stop {
             Some(Stored::Moved { was, now, passkeys }) => {
                 Self::Moved { was: was.clone(), now: now.clone(), passkeys: *passkeys }
             }
-            _ => Self::Store(Box::new(error)),
+            _ => Self::Store(Unnamed::new(Port::Store, error)),
         }
     }
 
     /// The failure of the recovery code store this is.
     pub fn stored_codes<E: Error + 'static>(error: control::recovery::Error<E>) -> Self {
-        Self::Store(Box::new(error))
+        Self::Store(Unnamed::new(Port::Store, error))
     }
 
     /// The failure of the sign-in store this is.
     pub fn signed<E: Error + 'static>(error: SignError<E>) -> Self {
-        Self::Store(Box::new(error))
+        Self::Store(Unnamed::new(Port::Store, error))
     }
 
     /// The catalog code, or the plain name of a failure that has none.

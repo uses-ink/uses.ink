@@ -47,6 +47,7 @@ pub use stop::Stop;
 use crate::auth::cookie::Jar;
 use crate::auth::signin::{Draws, Quota, Rate};
 use crate::body::Unreadable;
+use crate::port::{Port, Unnamed};
 use crate::reply::{Media, Payload, Reply, Request, Status};
 use crate::{Answers, Owner};
 
@@ -262,7 +263,7 @@ impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
     }
 
     fn drawn(&self) -> Result<control::signin::Drawn, Stop> {
-        Draws(&self.draw).drawn().map_err(|error| Stop::Draw(Box::new(error)))
+        Draws(&self.draw).drawn().map_err(|error| Stop::Draw(Unnamed::new(Port::Draw, error)))
     }
 
     /// The session of the request's cookie, which is the only credential these routes read.
@@ -324,7 +325,7 @@ impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
             .collect();
         let who = Person { account, label };
         let (creation, Registering(state)) =
-            self.passkeys.start_registration(&who, &existing).map_err(|error| Stop::Verifier(Box::new(error)))?;
+            self.passkeys.start_registration(&who, &existing).map_err(|error| Stop::Verifier(Unnamed::new(Port::Verifier, error)))?;
         let drawn = self.drawn()?;
         let mut reply = Self::json(Status::Ok, &creation)?;
         let begin = Begin { flow: Flow::Register, account: Some(account), state: &state, proof: &drawn.proof };
@@ -343,7 +344,7 @@ impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
     async fn mint(&self, request: &Request, now: Timestamp) -> Result<Reply, Stop> {
         let session = self.session(request, now).await?;
         self.fresh(&session, now).await?;
-        let drawn = Draws(&self.draw).minted().map_err(|error| Stop::Draw(Box::new(error)))?;
+        let drawn = Draws(&self.draw).minted().map_err(|error| Stop::Draw(Unnamed::new(Port::Draw, error)))?;
         let codes = self.codes.mint(session.account, drawn, now).await.map_err(Stop::stored_codes)?;
         let shown = Minted { codes: codes.iter().map(Code::reveal).collect() };
         Self::json(Status::Created, &shown)
@@ -397,7 +398,7 @@ impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
     async fn challenge(&self, request: &Request, now: Timestamp) -> Result<Reply, Stop> {
         self.challenge.admit(request.source, now).map_err(Stop::Limited)?;
         let (asking, Authenticating(state)) =
-            self.passkeys.start_login().map_err(|error| Stop::Verifier(Box::new(error)))?;
+            self.passkeys.start_login().map_err(|error| Stop::Verifier(Unnamed::new(Port::Verifier, error)))?;
         let drawn = self.drawn()?;
         let mut reply = Self::json(Status::Ok, &asking)?;
         let begin = Begin { flow: Flow::Login, account: None, state: &state, proof: &drawn.proof };

@@ -3,7 +3,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use secret::Plain;
+use zeroize::Zeroizing;
 
 use control_rows::Digest;
 
@@ -12,7 +12,7 @@ use control_rows::id::{Account as AccountKind, Factor as FactorKind, Id, Session
 /// A random 256-bit secret as 64 lower-case hex digits: a one-time sign-in token, or the secret
 /// of a session. It prints as `Proof(<redacted>)`, is zeroed when dropped, and cannot be cloned
 /// or serialized; the only way to its text is [`Proof::reveal`], which names every read of it.
-pub struct Proof(Plain);
+pub struct Proof(Zeroizing<String>);
 
 impl Proof {
     /// How many hex digits a proof has.
@@ -26,12 +26,12 @@ impl Proof {
             .flat_map(|byte| [byte >> 4, byte & 15])
             .filter_map(|digit| char::from_digit(u32::from(digit), 16))
             .collect();
-        Self(Plain::from(digits.as_str()))
+        Self(Zeroizing::new(digits))
     }
 
     /// The proof's text, to put in a link or a cookie.
     pub fn reveal(&self) -> &str {
-        std::str::from_utf8(self.0.expose()).unwrap_or_default()
+        &self.0
     }
 }
 
@@ -75,7 +75,7 @@ impl FromStr for Proof {
         if !text.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)) {
             return Err(ProofError::Digit);
         }
-        Ok(Self(Plain::from(text)))
+        Ok(Self(Zeroizing::new(text.to_owned())))
     }
 }
 

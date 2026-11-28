@@ -6529,8 +6529,8 @@ dependencies = [
  "uses-ink-control-rows",
  "uses-ink-db",
  "uses-ink-mail",
- "uses-ink-secret",
  "uses-ink-sig",
+ "zeroize",
 ]
 
 [[package]]

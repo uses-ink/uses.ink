@@ -70,6 +70,8 @@ impl fmt::Display for Reason {
 pub struct Refusal {
     /// What was wrong.
     pub reason: Reason,
+    /// What the verifier said. Its error type belongs to the WebAuthn library the caller chose, and a
+    /// generic would put it in every signature that can see a refusal: this is the one boxed edge.
     source: Option<Box<dyn Error + Send + Sync>>,
 }
 

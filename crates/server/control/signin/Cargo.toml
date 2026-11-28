@@ -14,9 +14,9 @@ db.workspace = true
 jiff.workspace = true
 mail.workspace = true
 sea-query.workspace = true
-secret.workspace = true
 serde_json.workspace = true
 sig.workspace = true
+zeroize.workspace = true
 
 [lints]
 workspace = true

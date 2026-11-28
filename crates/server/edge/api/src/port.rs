@@ -15,11 +15,17 @@ pub enum Port {
     Mailer,
     /// The resolver got no answer for a proof record.
     Resolver,
+    /// The passkey, recovery code or sign-in store failed.
+    Store,
+    /// The WebAuthn verifier failed.
+    Verifier,
 }
 
 /// The error of a port, kept as the cause of a failure that names the port. The port's own error
-/// type is a parameter of the code that calls it, not of the values that report it, so the cause
-/// is held by what it can do: say what happened, and say why.
+/// type is a parameter of the code that calls it, not of the values that report it (a generic
+/// here would put the store, verifier and random source types in every signature of the API), so
+/// the cause is held by what it can do: say what happened, and say why. This is the one boxed
+/// edge of the API's errors.
 #[derive(Debug)]
 pub struct Unnamed {
     port: Port,
@@ -50,6 +56,8 @@ impl fmt::Display for Unnamed {
             Port::Draw => "no random bytes were available",
             Port::Mailer => "a sign-in message could not be sent",
             Port::Resolver => "the proof record could not be looked up",
+            Port::Store => "the passkeys could not be read or written",
+            Port::Verifier => "the passkey verifier failed",
         })
     }
 }
