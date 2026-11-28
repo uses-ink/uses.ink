@@ -18,7 +18,7 @@ use clock::System;
 use model::{Diagnostic, Notice, Severity};
 use serde::Serialize;
 
-use crate::output::error::Error;
+use crate::output::error::{Error, SourceError};
 use crate::output::exit::Exit;
 use crate::output::failure::Failure;
 use crate::output::report::{Event, Noted, Shown, Texts};
@@ -290,7 +290,7 @@ impl<'a> Io<'a> {
     pub(crate) fn fail(&mut self, error: &Error) -> Exit {
         let exit = error.exit();
         let written = match error {
-            Error::Refused(refused) if !self.json => {
+            Error::Source(SourceError::Refused(refused)) if !self.json => {
                 self.said(&[Diagnostic::from(refused)], &[], Texts::NONE).map(|_| ())
             }
             _ => self.failed(&Failure::of(error, exit)),

@@ -7,7 +7,7 @@ use engine::Format;
 use model::record::PluginId;
 use model::{ContentPath, Read};
 
-use crate::output::error::Error;
+use crate::output::error::{Error, SourceError};
 
 /// The format a site's markdown is read with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,7 +36,7 @@ impl TryFrom<&PluginId> for Native {
         [Self::Markdown, Self::Obsidian]
             .into_iter()
             .find(|native| native.id() == id.to_string())
-            .ok_or_else(|| Error::Format { id: id.clone() })
+            .ok_or_else(|| SourceError::Format { id: id.clone() }.into())
     }
 }
 

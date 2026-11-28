@@ -23,7 +23,7 @@ use serde::Serialize;
 use crate::command::source::{Loaded, Source};
 use crate::folder::replace::Replacing;
 use crate::grammar::args::{Kind as Reading, Origin, Select};
-use crate::output::error::Error;
+use crate::output::error::{AskError, EditError, Error, FolderError};
 use crate::output::exit::Exit;
 use crate::output::report::Texts;
 use crate::output::stage::{Plural, StageLine, Verb as Stage};
@@ -372,11 +372,11 @@ impl Select {
 
     fn folder_step(&self, loaded: &Loaded, written: &str, verb: Verb) -> Result<Step, Error> {
         let pattern: Pattern =
-            written.parse().map_err(|source| Error::Folder { written: written.to_owned(), source })?;
+            written.parse().map_err(|source| AskError::Folder { written: written.to_owned(), source })?;
         let listing = if verb == Verb::Select { Listing::Add } else { Listing::Remove };
         let existing = Self::existing(&self.dir.join(Self::CONFIG))?;
         let included =
-            config::include_into(&existing, &pattern, listing).map_err(|source| Error::Include { source })?;
+            config::include_into(&existing, &pattern, listing).map_err(|source| EditError::Include { source })?;
         let matches = loaded.snapshot.tree().iter().filter(|entry| pattern.matches(&entry.path)).count();
         let changed = matches!(included.listed, Listed::Added | Listed::Removed);
         Ok(Step {
@@ -388,9 +388,9 @@ impl Select {
 
     fn file_step(&self, loaded: &Loaded, written: &str, verb: Verb) -> Result<Step, Error> {
         let path: ContentPath =
-            written.parse().map_err(|source| Error::Path { written: written.to_owned(), source })?;
+            written.parse().map_err(|source| AskError::Path { written: written.to_owned(), source })?;
         if loaded.snapshot.entry(&path).is_none() {
-            return Err(Error::Unknown { path });
+            return Err(AskError::Unknown { path }.into());
         }
         let pages = Pages(loaded);
         let why = if pages.ignores(&path) {
@@ -403,21 +403,21 @@ impl Select {
             None
         };
         if let Some(why) = why {
-            return Err(Error::Unselectable { path, why });
+            return Err(AskError::Unselectable { path, why }.into());
         }
         let place = Place::File { path: path.clone() };
         if loaded.config.pin::<Publish>(&File(path.clone())).is_some() {
             return Ok(Step { place, outcome: Outcome::Pinned, text: None });
         }
         let disk = self.dir.join(path.as_str());
-        let bytes = std::fs::read(&disk).map_err(|source| Error::Read { path: disk, source })?;
-        let publishing =
-            Publishing::of(&bytes).map_err(|source| Error::Front { path: path.clone(), source: Box::new(source) })?;
+        let bytes = std::fs::read(&disk).map_err(|source| FolderError::Read { path: disk, source })?;
+        let publishing = Publishing::of(&bytes)
+            .map_err(|source| EditError::Front { path: path.clone(), source: Box::new(source) })?;
         let edit = match verb {
             Verb::Select => publishing.select(),
             Verb::Remove => publishing.clear(),
         };
-        let Edit { was, text, .. } = edit.map_err(|source| Error::Front { path, source: Box::new(source) })?;
+        let Edit { was, text, .. } = edit.map_err(|source| EditError::Front { path, source: Box::new(source) })?;
         let outcome = match (verb, was, text.is_some()) {
             (Verb::Select, Some(_), true) => Outcome::Replaced,
             (Verb::Select, None, _) => Outcome::Added,
@@ -437,7 +437,7 @@ impl Select {
         match std::fs::read_to_string(path) {
             Ok(text) => Ok(text),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
-            Err(source) => Err(Error::Read { path: path.to_path_buf(), source }),
+            Err(source) => Err(FolderError::Read { path: path.to_path_buf(), source }.into()),
         }
     }
 

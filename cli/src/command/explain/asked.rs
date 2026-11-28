@@ -3,7 +3,7 @@
 
 use model::{AnyCode, ContentPath, Snapshot, Subject};
 
-use crate::output::error::Error;
+use crate::output::error::{AskError, Error};
 
 /// A decision code and the subject it is asked about.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -16,17 +16,17 @@ impl Asked {
     /// `code` on the file at `path`, or on the site without one. A code of the other scope is
     /// refused: a file's code needs its path, a site code takes none.
     pub(crate) fn read(path: Option<&str>, code: &str) -> Result<Self, Error> {
-        let code: AnyCode = code.parse().map_err(|source| Error::Code { source })?;
+        let code: AnyCode = code.parse().map_err(|source| AskError::Code { source })?;
         let subject = match path {
             Some(written) => {
                 let path: ContentPath =
-                    written.parse().map_err(|source| Error::Path { written: written.to_owned(), source })?;
+                    written.parse().map_err(|source| AskError::Path { written: written.to_owned(), source })?;
                 Subject::File(path)
             }
             None => Subject::Site,
         };
         if subject.scope() != code.scope() {
-            return Err(Error::Scope { code, subject });
+            return Err(AskError::Scope { code, subject }.into());
         }
         Ok(Self { code, subject })
     }
@@ -36,14 +36,16 @@ impl Asked {
         match words {
             [code] => Self::read(None, code),
             [path, code] => Self::read(Some(path), code),
-            _ => Err(Error::Words { given: words.len() }),
+            _ => Err(AskError::Words { given: words.len() }.into()),
         }
     }
 
     /// Refuses a file the snapshot does not hold.
     pub(crate) fn within(&self, snapshot: &Snapshot) -> Result<(), Error> {
         match &self.subject {
-            Subject::File(path) if snapshot.entry(path).is_none() => Err(Error::Unknown { path: path.clone() }),
+            Subject::File(path) if snapshot.entry(path).is_none() => {
+                Err(AskError::Unknown { path: path.clone() }.into())
+            }
             _ => Ok(()),
         }
     }

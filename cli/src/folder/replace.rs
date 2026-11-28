@@ -8,7 +8,7 @@
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
-use crate::output::error::Error;
+use crate::output::error::{Error, FolderError};
 
 /// Texts to put in place of files, all or none.
 #[derive(Debug, Default)]
@@ -47,7 +47,7 @@ impl Replacing {
         for (done, one) in staged.iter().enumerate() {
             if let Err(source) = std::fs::rename(&one.temp, &one.target) {
                 staged.iter().skip(done).for_each(Staged::discard);
-                return Err(Error::Write { path: one.target.clone(), source });
+                return Err(FolderError::Write { path: one.target.clone(), source }.into());
             }
         }
         Ok(staged.len())
@@ -58,7 +58,7 @@ impl Staged {
     /// `text` in a new file beside `path`, with `path`'s permissions when it exists. A symbolic
     /// link is followed, so the file it names is the one replaced.
     fn write(path: &Path, text: &str) -> Result<Self, Error> {
-        let write = |source| Error::Write { path: path.to_path_buf(), source };
+        let write = |source| Error::from(FolderError::Write { path: path.to_path_buf(), source });
         let target = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
         let name = target.file_name().map_or_default(|name| name.to_string_lossy().into_owned());
         let temp = target.with_file_name(format!(".{name}.{}", Replacing::SUFFIX));

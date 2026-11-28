@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use model::{Announcement, Hash, Notice};
 use serde::Serialize;
 
-use crate::output::error::Error;
+use crate::output::error::{ComponentError, Error};
 
 /// One embedded component.
 #[derive(Debug)]
@@ -46,7 +46,10 @@ impl Bundled {
 
     /// The component carried under `id`.
     pub(crate) fn entry(id: &str) -> Result<&'static Entry, Error> {
-        Self::ENTRIES.iter().find(|entry| entry.id == id).ok_or_else(|| Error::Unbundled { id: id.to_owned() })
+        Self::ENTRIES
+            .iter()
+            .find(|entry| entry.id == id)
+            .ok_or_else(|| ComponentError::Unbundled { id: id.to_owned() }.into())
     }
 }
 
@@ -142,7 +145,7 @@ impl Components {
                     });
                 }
                 Err(missing) if missing.kind() == std::io::ErrorKind::NotFound => {}
-                Err(source) => return Err(Error::Component { path, source }),
+                Err(source) => return Err(ComponentError::Component { path, source }.into()),
             }
         }
         let entry = Bundled::entry(id)?;
@@ -191,7 +194,7 @@ mod tests {
         let dir = std::env::temp_dir().join("ink-bundle-absent");
         let held = Components::new(Some(&dir)).hold("ink:theme-quiet");
         if Bundled::all().is_empty() {
-            assert!(matches!(held, Err(Error::Unbundled { .. })));
+            assert!(matches!(held, Err(Error::Component(ComponentError::Unbundled { .. }))));
         } else {
             assert_eq!(held.expect("the bundled one").origin, Origin::Bundled);
         }

@@ -16,7 +16,7 @@ use crate::command::images::Watched;
 use crate::command::source::{Address, Loaded, Rendering, Source};
 use crate::folder::cache::Caching;
 use crate::grammar::args;
-use crate::output::error::Error;
+use crate::output::error::{Error, ServeError};
 use crate::output::exit::Exit;
 use crate::output::report::Texts;
 use crate::output::term::Answer;
@@ -43,7 +43,7 @@ impl args::Preview {
     /// Binds the port first, so the site is built for the address it is served at: with
     /// `--port 0`, the port the system chose.
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let serve = |source| Error::Serve { source };
+        let serve = |source| Error::from(ServeError::Serve { source });
         let listener = std::net::TcpListener::bind(("127.0.0.1", self.port)).map_err(serve)?;
         let port = listener.local_addr().map_err(serve)?.port();
         let address = format!("http://127.0.0.1:{port}");
@@ -93,7 +93,7 @@ impl Preview {
 
     /// Serves on `listener` until the process ends.
     pub fn serve(self, listener: std::net::TcpListener) -> Result<(), Error> {
-        let serve = |source| Error::Serve { source };
+        let serve = |source| Error::from(ServeError::Serve { source });
         listener.set_nonblocking(true).map_err(serve)?;
         let runtime = tokio::runtime::Builder::new_current_thread().enable_io().build().map_err(serve)?;
         runtime.block_on(async move {

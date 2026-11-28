@@ -12,7 +12,7 @@ use crate::command::bundle::{Components, Used};
 use crate::command::source::{Address, Source};
 use crate::folder::cache::Caching;
 use crate::grammar::args::Build;
-use crate::output::error::Error;
+use crate::output::error::{ComponentError, Error};
 use crate::output::exit::Exit;
 use crate::output::report::Texts;
 use crate::output::term::Answer;
@@ -96,7 +96,7 @@ impl Compare<'_> {
     }
 
     fn plugin(source: host_wasmtime::Error) -> Error {
-        Error::Plugin { source }
+        ComponentError::Plugin { source }.into()
     }
 
     fn aside<W>(component: &Component<W>) -> Said {

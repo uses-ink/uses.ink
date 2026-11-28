@@ -12,7 +12,7 @@ use crate::command::explain::asked::Asked;
 use crate::command::source::Source;
 use crate::folder::replace::Replacing;
 use crate::grammar::args::PinArgs;
-use crate::output::error::Error;
+use crate::output::error::{AskError, EditError, Error, FolderError};
 use crate::output::exit::Exit;
 use crate::output::report::Texts;
 use crate::output::stage::{StageLine, Verb as Stage};
@@ -67,16 +67,16 @@ impl PinArgs {
             .decisions
             .iter()
             .find(|decision| decision.code() == asked.code && decision.subject() == asked.subject)
-            .ok_or_else(|| Error::Undecided { code: asked.code, subject: asked.subject.clone() })?;
-        let pin = config::pins_into("", [decision]).map_err(|source| Error::Pin { source })?;
+            .ok_or_else(|| AskError::Undecided { code: asked.code, subject: asked.subject.clone() })?;
+        let pin = config::pins_into("", [decision]).map_err(|source| EditError::Pin { source })?;
         let path: PathBuf = self.dir.join(Self::FILE);
         if !self.dry_run {
             let existing = match std::fs::read_to_string(&path) {
                 Ok(text) => text,
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
-                Err(source) => return Err(Error::Read { path, source }),
+                Err(source) => return Err(FolderError::Read { path, source }.into()),
             };
-            let text = config::pins_into(&existing, [decision]).map_err(|source| Error::Pin { source })?;
+            let text = config::pins_into(&existing, [decision]).map_err(|source| EditError::Pin { source })?;
             let mut replacing = Replacing::default();
             replacing.push(path.clone(), text);
             replacing.commit()?;

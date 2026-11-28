@@ -16,7 +16,7 @@ use diag::{Because, Pin, Short, Value};
 use crate::command::explain::asked::Asked;
 use crate::command::source::Source;
 use crate::grammar::args::Explain;
-use crate::output::error::Error;
+use crate::output::error::{AskError, Error};
 use crate::output::exit::Exit;
 use crate::output::report::Texts;
 use crate::output::term::{Cut, Doc, Flex, Glyph, Line, Rail, Render, Role, Tree, Trees};
@@ -49,7 +49,7 @@ impl Explain {
         if let Some(Subject::File(path)) = &subject
             && loaded.snapshot.entry(path).is_none()
         {
-            return Err(Error::Unknown { path: path.clone() });
+            return Err(AskError::Unknown { path: path.clone() }.into());
         }
         let texts = Texts { snapshot: Some(&loaded.snapshot), store: Some(&loaded.store) };
         let understood = &loaded.understood;
@@ -76,7 +76,7 @@ impl Explain {
         let understood = &loaded.understood;
         let tally = io.said(&understood.diagnostics, &understood.notices, texts)?;
         let Some(trace) = &understood.trace else {
-            return Err(Error::Undecided { code: asked.code, subject: asked.subject });
+            return Err(AskError::Undecided { code: asked.code, subject: asked.subject }.into());
         };
         io.result(&Ladder { trace, asked: &asked })?;
         io.json(&Traced { schema: "uses.trace/v1", trace })?;
@@ -162,7 +162,8 @@ impl Explain {
     /// The file asked about, or `None` for the whole site.
     fn subject(&self) -> Result<Option<Subject>, Error> {
         let Some(written) = &self.path else { return Ok(None) };
-        let path: ContentPath = written.parse().map_err(|source| Error::Path { written: written.clone(), source })?;
+        let path: ContentPath =
+            written.parse().map_err(|source| AskError::Path { written: written.clone(), source })?;
         Ok(Some(Subject::File(path)))
     }
 

@@ -9,7 +9,7 @@ use model::{Chain, Diagnostic};
 use serde::Serialize;
 
 use crate::command::select::Unselectable;
-use crate::output::error::Error;
+use crate::output::error::{AskError, ComponentError, Error, FolderError, ServeError, SourceError};
 use crate::output::exit::Exit;
 use crate::output::report::{Advice, Event, Label, Texts};
 use crate::output::term::{Doc, Line, Render, Role, Tree};
@@ -140,37 +140,16 @@ impl Error {
     #[allow(clippy::too_many_lines, reason = "one arm for each variant of the error")]
     pub(crate) fn remedy(&self) -> Option<Remedy> {
         Some(match self {
-            Self::Refused(_) => return None,
+            Self::Source(SourceError::Refused(_)) => return None,
+            Self::Source(source) => source.remedy(),
+            Self::Ask(source) => source.remedy(),
+            Self::Edit(_) => Remedy::FixCause,
+            Self::Folder(source) => source.remedy(),
+            Self::Serve(source) => source.remedy(),
+            Self::Component(source) => source.remedy(),
             Self::Deploy { source } => Remedy::Said(source.remedy()?),
-            Self::Unversioned { .. } => Remedy::DropRev,
-            Self::Base { .. } => Remedy::GiveAddress,
-            Self::Path { .. } => Remedy::GivePath,
-            Self::Unknown { .. } => Remedy::ListFiles,
-            Self::Code { .. } | Self::Undecided { .. } => Remedy::ListCodes,
-            Self::Scope { subject: model::Subject::File(_), .. } => Remedy::CodeAlone,
-            Self::Scope { .. } => Remedy::PathFirst,
-            Self::Words { .. } => Remedy::NameDecision,
-            Self::Pin { .. } | Self::Front { .. } | Self::Include { .. } => Remedy::FixCause,
-            Self::Unselectable { why, .. } => Remedy::Unselect(*why),
-            Self::Folder { .. } => Remedy::GiveGlob,
-            Self::Format { .. } => Remedy::HoldFormat,
-            Self::Output(refusal) => refusal.remedy(),
-            Self::Placed { .. }
-            | Self::Blob { .. }
-            | Self::Edge { .. }
-            | Self::Server { .. }
-            | Self::Plugin { .. }
-            | Self::Json { .. }
-            | Self::Manual { .. } => Remedy::Report,
-            Self::Read { .. } | Self::Component { .. } => Remedy::Access,
-            Self::Write { .. } => Remedy::Room,
-            Self::Manifest { path, .. } => Remedy::RemoveFile(path.clone()),
-            Self::Serve { .. } => Remedy::FreePort,
-            Self::Listen { .. } => Remedy::FreeAddress,
-            Self::Deploys { .. } => Remedy::GiveDeploy,
-            Self::Product { .. } => Remedy::GiveData,
-            Self::Run { .. } | Self::Terminal { .. } => Remedy::Retry,
-            Self::Unbundled { .. } => Remedy::Bundle,
+            Self::Json { .. } | Self::Manual { .. } => Remedy::Report,
+            Self::Terminal { .. } => Remedy::Retry,
             Self::Preferences { .. } => Remedy::FixConfig,
             Self::Help { .. } => Remedy::ListTopics,
         })
@@ -180,7 +159,7 @@ impl Error {
     /// anything that is not known to be untouched.
     pub(crate) fn state(&self) -> State {
         match self {
-            Self::Write { path, .. } => State::Partial { path: Self::shown(path) },
+            Self::Folder(FolderError::Write { path, .. }) => State::Partial { path: Self::shown(path) },
             Self::Terminal { .. } | Self::Json { .. } => State::Unknown,
             Self::Deploy { source } => source.stored().map_or(State::Unchanged, |sent| State::Uploaded { sent }),
             _ => State::Unchanged,
@@ -189,6 +168,72 @@ impl Error {
 
     fn shown(path: &Path) -> String {
         path.to_string_lossy().into_owned()
+    }
+}
+
+impl SourceError {
+    /// What to do about it. A refused folder says so as its own diagnostic, so it has no fix.
+    fn remedy(&self) -> Remedy {
+        match self {
+            Self::Unversioned { .. } => Remedy::DropRev,
+            Self::Base { .. } => Remedy::GiveAddress,
+            Self::Format { .. } => Remedy::HoldFormat,
+            Self::Refused(_) => Remedy::Report,
+        }
+    }
+}
+
+impl AskError {
+    /// What to do about it.
+    fn remedy(&self) -> Remedy {
+        match self {
+            Self::Path { .. } => Remedy::GivePath,
+            Self::Unknown { .. } => Remedy::ListFiles,
+            Self::Code { .. } | Self::Undecided { .. } => Remedy::ListCodes,
+            Self::Scope { subject: model::Subject::File(_), .. } => Remedy::CodeAlone,
+            Self::Scope { .. } => Remedy::PathFirst,
+            Self::Words { .. } => Remedy::NameDecision,
+            Self::Unselectable { why, .. } => Remedy::Unselect(*why),
+            Self::Folder { .. } => Remedy::GiveGlob,
+        }
+    }
+}
+
+impl FolderError {
+    /// What to do about it.
+    fn remedy(&self) -> Remedy {
+        match self {
+            Self::Output(refusal) => refusal.remedy(),
+            Self::Placed { .. } | Self::Blob { .. } => Remedy::Report,
+            Self::Read { .. } => Remedy::Access,
+            Self::Write { .. } => Remedy::Room,
+            Self::Manifest { path, .. } => Remedy::RemoveFile(path.clone()),
+        }
+    }
+}
+
+impl ServeError {
+    /// What to do about it.
+    fn remedy(&self) -> Remedy {
+        match self {
+            Self::Edge { .. } | Self::Server { .. } => Remedy::Report,
+            Self::Serve { .. } => Remedy::FreePort,
+            Self::Listen { .. } => Remedy::FreeAddress,
+            Self::Deploys { .. } => Remedy::GiveDeploy,
+            Self::Product { .. } => Remedy::GiveData,
+            Self::Run { .. } => Remedy::Retry,
+        }
+    }
+}
+
+impl ComponentError {
+    /// What to do about it.
+    fn remedy(&self) -> Remedy {
+        match self {
+            Self::Plugin { .. } => Remedy::Report,
+            Self::Component { .. } => Remedy::Access,
+            Self::Unbundled { .. } => Remedy::Bundle,
+        }
     }
 }
 
@@ -221,7 +266,9 @@ impl Failure {
     pub(crate) fn of(error: &Error, exit: Exit) -> Self {
         let causes = Chain::new(error).causes().map(ToString::to_string).collect();
         let diagnostic = match error {
-            Error::Refused(refused) => Some(Event::diagnostic(&Diagnostic::from(refused), Texts::NONE)),
+            Error::Source(SourceError::Refused(refused)) => {
+                Some(Event::diagnostic(&Diagnostic::from(refused), Texts::NONE))
+            }
             _ => None,
         };
         Self {

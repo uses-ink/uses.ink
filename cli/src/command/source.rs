@@ -16,7 +16,7 @@ use crate::command::format::Native;
 use crate::command::pin::pins::Configured;
 use crate::grammar::args::{Kind, Origin};
 use crate::output::Io;
-use crate::output::error::Error;
+use crate::output::error::{Error, SourceError};
 use crate::output::stage::{Plural, Sourced, StageLine, Verb};
 
 /// The output folder when `ink build` is given no `-o`, inside the site's folder.
@@ -75,7 +75,7 @@ impl<'a> Source<'a> {
         let versioned = std::fs::symlink_metadata(self.dir.join(".git")).is_ok();
         match (self.origin.source, self.origin.rev.is_some(), versioned) {
             (Some(Kind::Folder), true, _) | (None, true, false) => {
-                Err(Error::Unversioned { dir: self.dir.to_path_buf() })
+                Err(SourceError::Unversioned { dir: self.dir.to_path_buf() }.into())
             }
             (Some(Kind::Folder), false, _) | (None, false, false) => Ok(Reading::Folder),
             (Some(Kind::Git), _, _) | (None, true, true) => Ok(Reading::Git { chosen: false }),
@@ -94,7 +94,7 @@ impl<'a> Source<'a> {
                 Repository { revision, output, ..Repository::new(self.dir) }.read(store)
             }
         }
-        .map_err(Error::Refused)?;
+        .map_err(SourceError::Refused)?;
         let mut notices = Vec::new();
         if let (Reading::Git { chosen: true }, Version::GitCommit(commit)) = (reading, read.snapshot.version()) {
             notices.push(Notice::new(Announcement::SourceGitChosen { commit: commit.to_string() }));
@@ -178,7 +178,8 @@ impl Address {
     /// `--base`, or the default with a notice saying so.
     pub(crate) fn from_flag(flag: Option<&str>) -> Result<Self, Error> {
         let written = flag.unwrap_or(Self::DEFAULT);
-        let base: BaseUrl = written.parse().map_err(|source| Error::Base { written: written.to_owned(), source })?;
+        let base: BaseUrl =
+            written.parse().map_err(|source| SourceError::Base { written: written.to_owned(), source })?;
         let chosen =
             flag.is_none().then(|| Notice::new(Announcement::BuildAddressDefault { address: written.to_owned() }));
         Ok(Self { base, chosen })

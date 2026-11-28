@@ -23,7 +23,7 @@ use super::view::Pushed;
 use crate::command::source::DEFAULT_OUT;
 use crate::deploy::{Calls, Failure, Remote, Short, Size};
 use crate::output::Io;
-use crate::output::error::Error;
+use crate::output::error::{Error, SourceError};
 use crate::output::exit::Exit;
 use crate::output::stage::{Plural, StageLine, Verb};
 use crate::output::term::{Answer, Phase};
@@ -75,7 +75,7 @@ impl Scanned {
         let mut store = Memory::default();
         let output: Vec<ContentPath> =
             DEFAULT_OUT.parse().ok().filter(|_| dir.join(DEFAULT_OUT).is_dir()).into_iter().collect();
-        let read = Folder { output, ..Folder::new(dir) }.read(&mut store).map_err(Error::Refused)?;
+        let read = Folder { output, ..Folder::new(dir) }.read(&mut store).map_err(SourceError::Refused)?;
         let snapshot = read.snapshot;
         let modified = |path: &ContentPath| snapshot.facts_of(path).and_then(|facts| facts.updated.exact()).copied();
         let leaves = snapshot

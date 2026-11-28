@@ -12,7 +12,7 @@ use model::record::{Against, Build};
 use model::{ContentPath, DeployId, Hash, Manifest, MediaType, PathError, Route, Written};
 use serde::{Deserialize, Serialize};
 
-use crate::output::error::Error;
+use crate::output::error::{Error, FolderError, SourceError};
 use crate::output::failure::Remedy;
 
 /// The manifest's file in the output folder. A dotted name is never a route, so no entry can
@@ -194,7 +194,7 @@ impl Refusal {
 
 impl From<Refusal> for Error {
     fn from(refusal: Refusal) -> Self {
-        Self::Output(refusal)
+        Self::Folder(FolderError::Output(refusal))
     }
 }
 
@@ -218,7 +218,7 @@ impl From<Placed<'_>> for String {
 impl Relative {
     /// `file` as a path in the output folder, or the error saying why it is none.
     fn place(file: String) -> Result<Self, Error> {
-        Self::try_from(file.clone()).map_err(|source| Error::Placed { file, source })
+        Self::try_from(file.clone()).map_err(|source| Error::from(FolderError::Placed { file, source }))
     }
 
     /// Each path from the first part of this one to the whole of it: `a`, `a/b`, `a/b/c`.
@@ -241,7 +241,7 @@ impl OutFolder {
     /// it: clearing it could reach the site's own files. A `dir` that cannot be listed is refused
     /// as the folder walk would refuse it.
     pub(crate) fn new(root: &Path, dir: &Path) -> Result<Self, Error> {
-        let refused = |source| Error::Refused(host_native::Refused::Root { path: dir.to_path_buf(), source });
+        let refused = |source| SourceError::Refused(host_native::Refused::Root { path: dir.to_path_buf(), source });
         std::fs::read_dir(dir).map_err(refused)?;
         let dir = std::fs::canonicalize(dir).map_err(refused)?;
         let resolved = Resolved::of(root)?;
@@ -304,7 +304,8 @@ impl OutFolder {
         }
         let bytes = Under(&self.root).bytes(&self.manifest)?;
         let path = self.root.join(MANIFEST);
-        let recorded: Recorded = serde_json::from_slice(&bytes).map_err(|source| Error::Manifest { path, source })?;
+        let recorded: Recorded =
+            serde_json::from_slice(&bytes).map_err(|source| FolderError::Manifest { path, source })?;
         let deploy = recorded.deploy;
         let unrecorded = Against::Unrecorded { deploy };
         Ok(match recorded.record.map(serde_json::from_value::<Build>) {
@@ -337,11 +338,11 @@ impl OutFolder {
                     Err(Refusal::Foreign { path: self.root.clone() }.into())
                 };
             }
-            Err(source) => return Err(Error::Read { path: manifest, source }),
+            Err(source) => return Err(FolderError::Read { path: manifest, source }.into()),
         }
         let bytes = Under(&self.root).bytes(&self.manifest)?;
         let previous: Previous =
-            serde_json::from_slice(&bytes).map_err(|source| Error::Manifest { path: manifest, source })?;
+            serde_json::from_slice(&bytes).map_err(|source| FolderError::Manifest { path: manifest, source })?;
         let mut files = previous.files;
         files.push(Listed { path: self.manifest.clone(), hash: Hash::of(&bytes) });
         Ok(files)
@@ -349,7 +350,7 @@ impl OutFolder {
 
     /// Whether the folder is missing or holds nothing.
     fn is_empty(&self) -> Result<bool, Error> {
-        let read = |source| Error::Read { path: self.root.clone(), source };
+        let read = |source| Error::from(FolderError::Read { path: self.root.clone(), source });
         match std::fs::read_dir(&self.root) {
             Ok(mut entries) => Ok(entries.next().transpose().map_err(read)?.is_none()),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(true),
@@ -382,7 +383,9 @@ impl<'a> Files<'a> {
             let hash = entry.blob();
             let bytes = match blobs.get(&hash) {
                 Some(bytes) => std::borrow::Cow::Borrowed(bytes.as_slice()),
-                None => store.read(&hash).map_err(|source| Error::Blob { route: entry.route().clone(), source })?,
+                None => {
+                    store.read(&hash).map_err(|source| FolderError::Blob { route: entry.route().clone(), source })?
+                }
             };
             if files.insert(path.clone(), bytes).is_some() {
                 return Err(Refusal::Occupied { path: PathBuf::from(String::from(path)) }.into());
@@ -416,7 +419,7 @@ impl Under<'_> {
             Ok(metadata) if metadata.is_file() => Ok(Kind::File),
             Ok(_) => Ok(Kind::Other),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Kind::Missing),
-            Err(source) => Err(Error::Read { path, source }),
+            Err(source) => Err(FolderError::Read { path, source }.into()),
         }
     }
 
@@ -436,7 +439,7 @@ impl Under<'_> {
     /// The bytes of the file at `relative`, read through one handle.
     fn bytes(self, relative: &Relative) -> Result<Vec<u8>, Error> {
         let path = self.0.join(relative);
-        let read = |source| Error::Read { path: path.clone(), source };
+        let read = |source| Error::from(FolderError::Read { path: path.clone(), source });
         let mut file = std::fs::File::open(&path).map_err(read)?;
         let mut bytes = Vec::new();
         file.read_to_end(&mut bytes).map_err(read)?;
@@ -465,19 +468,19 @@ impl Under<'_> {
             return Ok(());
         }
         let path = self.0.join(relative);
-        std::fs::remove_file(&path).map_err(|source| Error::Write { path, source })
+        std::fs::remove_file(&path).map_err(|source| Error::from(FolderError::Write { path, source }))
     }
 
     /// Writes `bytes` to a new file at `relative`, making each folder on the way and refusing
     /// a link or a file already there.
     fn put(self, relative: &Relative, bytes: &[u8]) -> Result<(), Error> {
         let root = self.0;
-        std::fs::create_dir_all(root).map_err(|source| Error::Write { path: root.to_path_buf(), source })?;
+        std::fs::create_dir_all(root).map_err(|source| FolderError::Write { path: root.to_path_buf(), source })?;
         let mut parts = relative.prefixes().peekable();
         while let Some(part) = parts.next() {
             let path = root.join(part);
             if parts.peek().is_none() {
-                let write = |source| Error::Write { path: path.clone(), source };
+                let write = |source| Error::from(FolderError::Write { path: path.clone(), source });
                 let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&path).map_err(write)?;
                 return file.write_all(bytes).map_err(write);
             }
@@ -488,7 +491,7 @@ impl Under<'_> {
                         return Err(Refusal::Occupied { path }.into());
                     }
                 }
-                Err(source) => return Err(Error::Write { path, source }),
+                Err(source) => return Err(FolderError::Write { path, source }.into()),
             }
         }
         Ok(())
@@ -502,7 +505,7 @@ struct Resolved;
 impl Resolved {
     /// `path` made absolute, its longest existing ancestor canonical and the rest appended.
     fn of(path: &Path) -> Result<PathBuf, Error> {
-        let read = |source| Error::Read { path: path.to_path_buf(), source };
+        let read = |source| Error::from(FolderError::Read { path: path.to_path_buf(), source });
         let absolute = std::path::absolute(path).map_err(read)?;
         let mut rest = Vec::new();
         let mut existing = absolute.as_path();

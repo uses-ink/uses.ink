@@ -15,7 +15,7 @@ use serde::Serialize;
 
 use crate::command::remote::{Fetching, Settings};
 use crate::grammar::args::{self, HostMode};
-use crate::output::error::Error;
+use crate::output::error::{Error, ServeError};
 use crate::output::exit::Exit;
 use crate::output::term::{Answer, Line, Record, Role};
 use crate::output::{Io, Say};
@@ -278,7 +278,7 @@ impl args::Serve {
                 mailing.rates.address, mailing.rates.source, mailing.rates.tracked, mailing.outbox
             )),
         );
-        let jar = flags.jar(mailing.secure).map_err(|source| Error::Product { source })?;
+        let jar = flags.jar(mailing.secure).map_err(|source| ServeError::Product { source })?;
         let record = record.field(
             "cookie",
             Line::plain(format!(
@@ -335,21 +335,22 @@ impl args::Serve {
 
     /// Binds, prints the address, and serves until Ctrl-C.
     pub(crate) fn run(self, io: &mut Io<'_>) -> Result<Exit, Error> {
-        let deploys = Deploys::new(&self.folder, self.host_mode.into()).map_err(|source| Error::Deploys { source })?;
+        let deploys =
+            Deploys::new(&self.folder, self.host_mode.into()).map_err(|source| ServeError::Deploys { source })?;
         let mode = Self::mode(&deploys);
         let mut product = self
             .data
             .as_deref()
             .map(|data| Product::open(&self, data))
             .transpose()
-            .map_err(|source| Error::Product { source })?;
+            .map_err(|source| ServeError::Product { source })?;
         let fronts = product.as_ref().map(|product| product.fronts.clone());
         let back = product.as_mut().and_then(|product| product.back.take());
         let server = Self::server(fronts, deploys)?;
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .map_err(|source| Error::Run { source })?;
+            .map_err(|source| ServeError::Run { source })?;
         let (listener, address) = self.bind(&runtime)?;
         io.json(&Started { schema: "uses.serve/v1", address: format!("http://{address}"), mode })?;
         io.result(&Answer::of(format_args!("http://{address}")))?;
@@ -367,7 +368,7 @@ impl args::Serve {
             }
         };
         let serving = Self::serving(server, listener, stopped, (local, Alongside { back, told }));
-        runtime.block_on(serving).map_err(|source| Error::Server { source })?;
+        runtime.block_on(serving).map_err(|source| ServeError::Server { source })?;
         if let Some(tasks) = tasks {
             tasks.join();
         }
@@ -385,8 +386,9 @@ impl args::Serve {
     /// The server over the control plane's sites, when there is one, and the folders.
     fn server(fronts: Option<Fronts>, deploys: Deploys) -> Result<Server<Sites, Files, Log>, Error> {
         let edge = Edge::new(Fallback::new(fronts, deploys), Files, Limits::default())
-            .map_err(|source| Error::Edge { source })?;
-        Server::new(edge, Log(Mutex::new(std::io::stderr())), Scheme::Plain).map_err(|source| Error::Server { source })
+            .map_err(|source| ServeError::Edge { source })?;
+        Server::new(edge, Log(Mutex::new(std::io::stderr())), Scheme::Plain)
+            .map_err(|source| Error::from(ServeError::Server { source }))
     }
 
     /// Binds the listener and says where it is.
@@ -394,7 +396,7 @@ impl args::Serve {
         &self,
         runtime: &tokio::runtime::Runtime,
     ) -> Result<(tokio::net::TcpListener, std::net::SocketAddr), Error> {
-        let listen = |source| Error::Listen { address: self.address, source };
+        let listen = |source| Error::from(ServeError::Listen { address: self.address, source });
         let listener = runtime.block_on(tokio::net::TcpListener::bind(self.address)).map_err(listen)?;
         let address = listener.local_addr().map_err(listen)?;
         Ok((listener, address))
@@ -403,7 +405,7 @@ impl args::Serve {
     /// How the run ended: done, or by the signal handler's failure.
     fn ended(signal: Option<std::io::Error>) -> Result<Exit, Error> {
         match signal {
-            Some(source) => Err(Error::Run { source }),
+            Some(source) => Err(ServeError::Run { source }.into()),
             None => Ok(Exit::Done),
         }
     }

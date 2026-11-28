@@ -15,7 +15,7 @@ use crate::deploy::Failure as Refused;
 use crate::deploy::Logged;
 use crate::grammar::args::{Cli, Origin};
 use crate::output::Tally;
-use crate::output::error::Error;
+use crate::output::error::{AskError, Error, FolderError};
 use crate::output::failure::Failure;
 use crate::output::report::{Event, Noted, Shown, Texts};
 use crate::output::stage::{StageLine, Verb};
@@ -109,9 +109,13 @@ impl Stopped {
     fn errors() -> Vec<Error> {
         let broken = serde_json::from_str::<()>("{ \"files\": [").unwrap_err();
         vec![
-            Error::Manifest { path: PathBuf::from(".ink/out/.ink-manifest.json"), source: broken },
-            Error::Write { path: PathBuf::from(".ink/out/index.html"), source: std::io::Error::other("no space left") },
-            Error::Code { source: "page.titel".parse::<model::AnyCode>().unwrap_err() },
+            FolderError::Manifest { path: PathBuf::from(".ink/out/.ink-manifest.json"), source: broken }.into(),
+            FolderError::Write {
+                path: PathBuf::from(".ink/out/index.html"),
+                source: std::io::Error::other("no space left"),
+            }
+            .into(),
+            AskError::Code { source: "page.titel".parse::<model::AnyCode>().unwrap_err() }.into(),
             Refused::Unlinked { dir: PathBuf::from("/home/me/garden") }.into(),
             Refused::Uploading { sent: 212, source: Box::new(Refused::Timeout { after: Duration::from_secs(30) }) }
                 .into(),
