@@ -102,3 +102,11 @@ are not. What differs from the text above, or was left out:
 - **Tests.** `crates/server/edge/api/tests/passkey.rs` drives the real handlers with a software authenticator
   (`tests/support/authenticator.rs`, p256 ECDSA): the full ceremony, wrong origin, wrong rp id,
   replayed and expired challenge, counter rollback, unknown credential, user verification missing.
+
+**Follow-up (2026-11-28, 0152).** The gate of section 8 is one switch for every caller, and that is accepted. The ask is
+limited per source (`--enrol-limit`), so one address cannot fill the 20 waiting keys, but about four can; and a
+signed-in person, which anyone can become, can close approval for a minute with five wrong codes, again each minute. A
+per-source cap on waiting keys needs the source stored on the key row, and the table cannot gain a column. The
+operator's tools are `--enrol-limit` and the gate's own numbers. The signature window's edge is closed too: a nonce is
+kept through the last second its request passes the skew check, so a request replayed at exactly the window is a
+replay (`auth.signature.replayed`).

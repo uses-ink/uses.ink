@@ -117,3 +117,4 @@ Numbers 0058 and 0060 are reserved: they were review-fix logs, now in [`../histo
 | 0142 | [A theme declares tokens, and the uses.ink docs look comes from `token.toml`](0142-a-theme-declares-tokens-and-the-uses-ink-docs-look-comes-from-token-toml.md) | built | 2026-11-28 | theme |
 | 0150 | [A blob nothing names is queued and deleted only after a grace](0150-a-blob-nothing-names-is-queued-and-deleted-only-after-a-grace.md) | accepted | 2026-11-28 | control |
 | 0151 | [A proved custom domain is read again and lapses when its record is gone](0151-a-proved-custom-domain-is-read-again-and-lapses-when-its-record-is-gone.md) | accepted | 2026-11-28 | control |
+| 0152 | [The limits a review found are set by the operator or written down](0152-the-limits-a-review-found-are-set-by-the-operator-or-written-down.md) | accepted | 2026-11-28 | security |
