@@ -121,10 +121,13 @@ class Page {
 
   /** Loads the page and returns what the browser said about it. */
   async open() {
+    const session = this.shot.login ? SESSIONS.get(this.shot.login) : undefined;
+    if (this.shot.login && session === undefined) throw new Error(`no sign-in named ${this.shot.login}`);
     this.context = await this.browser.newContext({
       viewport: { width: this.width, height: 900 },
       deviceScaleFactor: 1,
       reducedMotion: "reduce",
+      storageState: session,
     });
     this.page = await this.context.newPage();
     this.notes = [];
@@ -137,8 +140,9 @@ class Page {
       if (response.status() >= 400) this.notes.push(`status ${response.status()}: ${response.url()}`);
     });
     const response = await this.page.goto(this.shot.url, { waitUntil: "load" });
-    if (response !== null && response.status() !== 200) {
-      throw new Error(`${this.shot.url} answered ${response.status()}`);
+    const wanted = this.shot.status ?? 200;
+    if (response !== null && response.status() !== wanted) {
+      throw new Error(`${this.shot.url} answered ${response.status()}, not ${wanted}`);
     }
     await this.page.evaluate(() => document.fonts.ready);
   }
@@ -181,6 +185,27 @@ class Page {
   }
 }
 
+/** The sessions of the plan's sign-ins, by name: each link is opened once in a browser of its own and its button pressed. */
+const SESSIONS = new Map();
+
+class Signin {
+  static async all(browser, logins) {
+    for (const login of logins) {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      try {
+        const page = await context.newPage();
+        const opened = await page.goto(login.url, { waitUntil: "load" });
+        if (opened === null || opened.status() !== 200) throw new Error(`sign-in ${login.name} answered ${opened?.status()}`);
+        await Promise.all([page.waitForURL((url) => !url.pathname.startsWith("/login/")), page.click("button[type=submit]")]);
+        SESSIONS.set(login.name, await context.storageState());
+        say(`signed in as ${login.name}, now at ${new URL(page.url()).pathname}`);
+      } finally {
+        await context.close();
+      }
+    }
+  }
+}
+
 const folder = plan.serve ? await Folder.start(plan.serve) : null;
 const browser = await Engines.start();
 let failed = 0;
@@ -189,6 +214,7 @@ if (plan.probe) {
   await page.setContent("<p style='font:20px Gaegu,serif'>probe</p>");
   say(`probe drew a page, chromium ${browser.version()}`);
 } else {
+  await Signin.all(browser, plan.logins ?? []);
   for (const shot of plan.shots) {
     for (const width of plan.widths) {
       const page = new Page(browser, shot, width);

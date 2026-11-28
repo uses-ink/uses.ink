@@ -75,7 +75,7 @@ impl Folder {
     /// The pages it has pictures of.
     pub(super) fn shots(self, root: &Path) -> Result<Vec<Shot>, Fault> {
         let url = |route: &str| format!("http://{}{route}", self.address());
-        let shot = |name: String, route: &str| Shot { name, url: url(route) };
+        let shot = |name: String, route: &str| Shot { name, url: url(route), login: None, status: 200 };
         if self.name == "landing" {
             return Ok(vec![shot("landing".to_owned(), "/")]);
         }
@@ -103,7 +103,7 @@ impl Folder {
 pub(crate) enum Target {
     /// The landing page and the documentation site, built by `ink` and served by `ink serve`.
     Site,
-    /// `ink serve` with a data folder: the dashboard's pages that need no sign-in.
+    /// `ink serve` with a seeded data folder: the dashboard signed out and signed in, as an owner and as a newcomer.
     Dashboard,
     /// The design mock, served as it is, for a reference from the same browser (`--from <folder>`).
     Mock,

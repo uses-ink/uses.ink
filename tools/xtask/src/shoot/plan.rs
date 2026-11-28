@@ -13,6 +13,19 @@ pub(crate) struct Shot {
     pub(crate) name: String,
     /// Where the browser loads it.
     pub(crate) url: String,
+    /// The name of the sign-in the page is drawn after, if any.
+    pub(crate) login: Option<String>,
+    /// The status the page answers with: 200 unless it is an error page that is looked at.
+    pub(crate) status: u16,
+}
+
+/// A sign-in the driver does once, in a browser of its own, and keeps the session of.
+#[derive(Debug, Serialize)]
+pub(crate) struct Login {
+    /// What shots call it.
+    pub(crate) name: String,
+    /// The link, opened and confirmed with its button.
+    pub(crate) url: String,
 }
 
 /// A folder the driver serves itself, for what `ink serve` does not serve: the mock.
@@ -37,6 +50,8 @@ pub(crate) struct Plan {
     pub(crate) shots: Vec<Shot>,
     /// A folder to serve for the shots, if any.
     pub(crate) serve: Option<Static>,
+    /// The sign-ins the shots refer to.
+    pub(crate) logins: Vec<Login>,
 }
 
 impl Plan {

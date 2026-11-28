@@ -9,6 +9,7 @@ mod fault;
 mod flags;
 mod host;
 mod plan;
+mod rig;
 mod serve;
 mod session;
 mod target;

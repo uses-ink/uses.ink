@@ -31,6 +31,14 @@ pub(crate) enum Fault {
     Decision { number: &'static str },
     /// A folder given as the mock that holds no `index.html`.
     Mock { path: PathBuf },
+    /// A sign-in link the server never printed.
+    Mail { count: usize, seconds: u64, log: String },
+    /// A request to the server that could not be made or read.
+    Http { call: String, source: std::io::Error },
+    /// The server answered a request of the run with something else than was needed.
+    Reply { call: String, status: String, body: String },
+    /// An answer that is not the JSON the run reads.
+    Json { what: &'static str, source: serde_json::Error },
     /// `package-lock.json` is missing: `cargo xtask shoot lock` prints it, and it is committed.
     Lock { path: PathBuf },
 }
@@ -62,6 +70,12 @@ impl fmt::Display for Fault {
             Self::Mock { path } => {
                 write!(out, "{} has no index.html: `--from` names the mock's folder", path.display())
             }
+            Self::Mail { count, seconds, log } => {
+                write!(out, "sign-in link {count} was not printed in {seconds} s; the server said:\n{log}")
+            }
+            Self::Http { call, .. } => write!(out, "`{call}` could not be made"),
+            Self::Reply { call, status, body } => write!(out, "`{call}` answered {status}: {body}"),
+            Self::Json { what, .. } => write!(out, "the {what} answer is not the JSON the run reads"),
             Self::Lock { path } => {
                 write!(out, "{} is missing: `cargo xtask shoot lock` prints it, and it is committed", path.display())
             }
@@ -74,7 +88,8 @@ impl std::error::Error for Fault {
         match self {
             Self::Width { source, .. } => Some(source),
             Self::Command { source, .. } => Some(source),
-            Self::Spawn { source, .. } | Self::File { source, .. } => Some(source),
+            Self::Spawn { source, .. } | Self::File { source, .. } | Self::Http { source, .. } => Some(source),
+            Self::Json { source, .. } => Some(source),
             Self::Plan(source) => Some(source),
             Self::Range { .. }
             | Self::Flag { .. }
@@ -82,6 +97,8 @@ impl std::error::Error for Fault {
             | Self::Unready { .. }
             | Self::Decision { .. }
             | Self::Mock { .. }
+            | Self::Mail { .. }
+            | Self::Reply { .. }
             | Self::Lock { .. } => None,
         }
     }
