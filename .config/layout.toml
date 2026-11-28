@@ -15,6 +15,7 @@ crates = [
     "uses-ink-authority-forgejo",
     "uses-ink-authority-github",
     "uses-ink-authority-gitlab",
+    "uses-ink-authority-repo",
     "uses-ink-blob",
     "uses-ink-blob-conformance",
     "uses-ink-blob-dir",

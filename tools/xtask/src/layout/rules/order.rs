@@ -294,6 +294,28 @@ impl Order {
         ("uses-ink-authority-github", &["uses-ink-authority-forge", "uses-ink-build"]),
         ("uses-ink-authority-forgejo", &["uses-ink-authority-forge"]),
         ("uses-ink-authority-gitlab", &["uses-ink-authority-forge"]),
+        // The repository authority (decision 0160): the three forges over one transport, the control
+        // plane's claims, and the https client behind the real transport; tests run it on the adapters.
+        (
+            "uses-ink-authority-repo",
+            &[
+                "uses-ink-authority-forge",
+                "uses-ink-authority-forgejo",
+                "uses-ink-authority-github",
+                "uses-ink-authority-gitlab",
+                "uses-ink-blob-dir",
+                "uses-ink-build",
+                "uses-ink-clock",
+                "uses-ink-control",
+                "uses-ink-db",
+                "uses-ink-db-sqlite",
+                "uses-ink-https",
+                "uses-ink-model",
+                "uses-ink-queue-rows",
+                "uses-ink-secret",
+                "uses-ink-secret-local",
+            ],
+        ),
         // The DNS authority (decision 0093): the control plane's use cases and the adapters its
         // tests run them on; the resolver port is its own.
         (
