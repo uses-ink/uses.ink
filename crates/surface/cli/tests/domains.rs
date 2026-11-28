@@ -191,13 +191,13 @@ fn the_settings_screen_claims_proves_and_removes_a_name() {
     let proved = browser.send(("POST", "/diary/prove"), &field("name", "www.example.org"));
     assert_eq!(proved.status(), "303", "{}{}", proved.text, server.said());
     let serving = browser.send(("GET", "/diary/settings"), "");
-    assert!(serving.body().contains("serves this site since"), "{}", serving.body());
+    assert!(serving.body().contains("Serves this site since"), "{}", serving.body());
     assert_eq!(under(&server, "www.example.org").status(), "200");
 
     let removed = browser.send(("POST", "/diary/unclaim"), &field("name", "www.example.org"));
     assert_eq!(removed.status(), "303", "{}", removed.text);
     let after = browser.send(("GET", "/diary/settings"), "");
-    assert!(!after.body().contains("<code>www.example.org</code>"), "{}", after.body());
+    assert!(!after.body().contains(">www.example.org</code>"), "{}", after.body());
     assert_eq!(under(&server, "www.example.org").status(), "404");
 }
 

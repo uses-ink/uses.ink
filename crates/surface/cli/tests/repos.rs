@@ -250,7 +250,7 @@ fn the_settings_screen_claims_proves_rotates_and_releases_and_shows_a_secret_onc
     fixture.publish(&challenge);
     let proved = browser.send(("POST", "/journal/repo-prove"), "");
     assert_eq!(proved.status(), "303", "{}{}", proved.text, fixture.server.said());
-    assert!(browser.send(("GET", "/journal/settings"), "").body().contains("builds the site on every push"));
+    assert!(browser.send(("GET", "/journal/settings"), "").body().contains("Builds the site on every push"));
     assert_eq!(fixture.push(&secret, "w-1", SHA).status(), "202");
 
     let rotated = browser.send(("POST", "/journal/repo-rotate"), "");

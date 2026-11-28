@@ -13,7 +13,7 @@ use uses_ink_web::{
 /// What the edge provides, over fixtures.
 struct Fake;
 
-struct Replay(std::vec::IntoIter<Event>);
+pub(crate) struct Replay(std::vec::IntoIter<Event>);
 
 impl Follow for Replay {
     fn next(&mut self) -> impl Future<Output = Result<Option<Event>, Failure>> {

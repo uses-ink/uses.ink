@@ -205,6 +205,28 @@ fn the_origin_is_derived_from_the_listen_address_and_said() {
 }
 
 #[test]
+fn a_face_or_a_stroke_is_served_to_anyone_cached_and_with_no_cookie() {
+    let server = Server::start("dash-assets", &[]);
+    let browser = server.browser();
+    for (path, kind) in [
+        ("/gaegu-regular.woff2", "font/woff2"),
+        ("/outline-1.svg", "image/svg+xml"),
+        ("/outline-small.svg", "image/svg+xml"),
+        ("/token.css", "text/css; charset=utf-8"),
+    ] {
+        let got = browser.send(("GET", path), "");
+        assert_eq!(got.status(), "200", "{path}: {}", got.text);
+        assert_eq!(got.header("content-type"), Some(kind), "{path}");
+        assert_eq!(got.header("cache-control"), Some("public, max-age=86400"), "{path}");
+        assert_eq!(got.header("set-cookie"), None, "{path}: a public file sets no cookie");
+    }
+    let page = browser.send(("GET", "/signin"), "");
+    let csp = page.header("content-security-policy").unwrap();
+    assert!(csp.contains("font-src 'self'"), "{csp}");
+    assert_eq!(page.header("cache-control"), Some("no-store"), "a page is still never kept");
+}
+
+#[test]
 fn every_form_route_refuses_a_post_from_another_origin() {
     let server = Server::start("dash-origin", &[]);
     let browser = server.browser();

@@ -6,8 +6,9 @@ use std::fmt;
 use control::Handle;
 use model::{Diagnostic, ExternalUrl, Observed};
 use unspliced::keyword::ButtonType;
-use unspliced::{Halt, Lazy, Render, Sink, html};
+use unspliced::{Halt, Lazy, Render, Sink, Url, html};
 
+use crate::asset::Asset;
 use crate::escaped::Escaped;
 use crate::route::{Path, Screen};
 use crate::shell::{Frame, Glyph, View};
@@ -107,64 +108,66 @@ impl Site {
         let (deploys, understood) =
             (Path::of(Screen::Deploys, &self.handle), Path::of(Screen::Understood, &self.handle));
         html! {
-            h2 { "To fix" }
-            @if self.problems.is_empty() && self.flagged.is_empty() {
-                p { "Nothing to fix. The last build raised no warnings or errors." }
-            } @else {
-                @for found in &self.problems { (Problem(found)) }
-                @for line in &self.flagged { div.look::CARD { p.look::LINE { code.look::PATH { (&line.event) } " " (&line.detail) } } }
-                p { "Why a page looks as it does: " (Link(&understood, "What we understood")) "." }
+            section aria-labelledby="fix" {
+                h2 #fix { "Worth fixing" }
+                @if self.problems.is_empty() && self.flagged.is_empty() {
+                    p { "Nothing to fix. The last build raised no warnings or errors." }
+                } @else {
+                    @for found in &self.problems { (Problem(found)) }
+                    @for line in &self.flagged { div.look::ITEM { span.look::RING aria-hidden="true" { "!" } p.look::LINE { code.look::PATH { (&line.event) } " " (&line.detail) } } }
+                    p { "Why a page looks as it does: " (Link(&understood, "What we understood")) "." }
+                }
             }
-
-            h2 { "What the source can do" }
-            (Lazy(|out: &mut dyn Sink| self.abilities(out)))
-
-            h2 { "Recent builds" }
-            @if self.recent.is_empty() {
-                (Empty {
-                    title: "No build yet",
-                    what: "Nothing has been built for this site. Press Build now, or push your source with `ink push`, and the first deploy shows up here.",
-                })
-            } @else {
-                (Lazy(|out: &mut dyn Sink| self.table(out)))
-                p { (Link(&deploys, "All deploys")) }
+            section aria-labelledby="recent" {
+                h2 #recent { "Lately" }
+                @if self.recent.is_empty() {
+                    (Empty {
+                        title: "No build yet",
+                        what: "Nothing has been built for this site. Press Build now, or push your source with `ink push`, and the first deploy shows up here.",
+                    })
+                } @else {
+                    (Lazy(|out: &mut dyn Sink| self.table(out)))
+                    p { a.look::MORE href=(&deploys) { "All deploys" } }
+                }
             }
-            p.look::META { "No visitor analytics. Server logs are kept 7 days for abuse handling only." }
+            section aria-labelledby="facts" {
+                h2 #facts { "Good to know" }
+                (Lazy(|out: &mut dyn Sink| self.abilities(out)))
+            }
         }
         .render(out)
     }
 
-    /// The live address, the deploy served and the latest build, side by side.
+    /// The live address, the deploy served and the latest build: one hello, in the little guy's words.
     fn state(&self, out: &mut dyn Sink, address: &str) -> Result<(), Halt> {
+        let big = match &self.serving {
+            Serving::Nothing => "nothing is live yet.",
+            Serving::Live(_) if self.problems.is_empty() => "it is live, and it went fine.",
+            Serving::Live(_) => "it is live, with something to fix.",
+            Serving::Paused(_) => "it is live, and paused.",
+        };
         html! {
-            div.look::GRID {
-                section.look::CARD aria-labelledby="live-head" {
-                    h2 #live-head { "Live" }
-                    @match &self.serving {
-                        Serving::Nothing => {
-                            p { span.look::STATE.look::NONE { (Glyph("-", "nothing live")) } }
-                            p { "Nothing is published at " (Outside(address)) " yet." }
-                        },
-                        Serving::Live(pointer) => {
-                            p { span.look::STATE.look::LIVE { (Glyph("ok", "live")) } }
-                            p { "Serving " (Outside(address)) }
-                            p.look::META { "deploy " (Id(pointer.deploy)) ", " (pointer.files) " files, " (Escaped(pointer.bytes)) ", since " (Stamp(pointer.since)) }
-                        },
-                        Serving::Paused(pointer) => {
-                            p { span.look::STATE.look::PAUSED { (Glyph("||", "live, paused")) } }
-                            p { "Serving " (Outside(address)) }
-                            p.look::META { "deploy " (Id(pointer.deploy)) ", " (pointer.files) " files, " (Escaped(pointer.bytes)) ", since " (Stamp(pointer.since)) }
-                        },
-                    }
-                }
-                section.look::CARD aria-labelledby="latest-head" {
-                    h2 #latest-head { "Latest build" }
+            @if let (Some(_), Ok(url)) = (self.serving.pointer(), Url::checked(address)) {
+                a.look::OPEN href=(url) { "Open it" }
+            }
+            @match &self.serving {
+                Serving::Nothing => {
+                    p.look::LEDE { span.look::STATE.look::NONE { (Glyph("-", "nothing live")) } }
+                },
+                Serving::Live(pointer) => {
+                    p.look::LEDE { span.look::STATE.look::LIVE { (Glyph("ok", "live")) } " deploy " (Id(pointer.deploy)) ", " (pointer.files) " files, " (Escaped(pointer.bytes)) ", since " (Stamp(pointer.since)) }
+                },
+                Serving::Paused(pointer) => {
+                    p.look::LEDE { span.look::STATE.look::PAUSED { (Glyph("||", "live, paused")) } " deploy " (Id(pointer.deploy)) ", " (pointer.files) " files, " (Escaped(pointer.bytes)) ", since " (Stamp(pointer.since)) }
+                },
+            }
+            div.look::HELLO {
+                img src=(Url::new(Asset::Mark.path())) alt="" width=110 height=110;
+                div {
+                    p.look::BIG { (big) }
+                    @if self.serving.pointer().is_some() { p { "Serving " (Outside(address)) } } @else { p { "Nothing is published at " (Outside(address)) " yet." } }
                     @if let Some(latest) = self.recent.first() {
-                        p { (Pill(latest.state)) }
-                        p.look::META { "requested " (Stamp(latest.requested)) ", by " (Escaped(Word(latest.trigger))) }
-                        p { (Log(&self.handle, latest.build)) }
-                    } @else {
-                        p { "No build has run." }
+                        p.look::META { "latest build " (Pill(latest.state)) " requested " (Stamp(latest.requested)) ", by " (Escaped(Word(latest.trigger))) " " (Log(&self.handle, latest.build)) }
                     }
                 }
             }
@@ -176,17 +179,12 @@ impl Site {
     fn abilities(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         let has = &self.observed.has;
         let lacks = &self.observed.lacks;
-        if has.is_empty() && lacks.is_empty() {
-            return Empty {
-                title: "Not read yet",
-                what: "A build tells what its source can do (snapshot, history, watch, private). Build the site once to see it.",
-            }
-            .render(out);
-        }
         html! {
-            ul {
-                @for ability in has { li { (Glyph("+", "")) (Escaped(Word(*ability))) } }
-                @for lack in lacks { li { (Glyph("-", "")) "limited: " (Escaped(Word(lack.ability))) ", so " code.look::PATH { (lack.consequence.name()) } " may be a guess" } }
+            ul.look::TICKS {
+                @for ability in has { li { span.look::TICK aria-hidden="true" {} "the source reads: " (Escaped(Word(*ability))) } }
+                @for lack in lacks { li { span.look::DASH aria-hidden="true" { "-" } "limited: " (Escaped(Word(lack.ability))) ", so " code.look::PATH { (lack.consequence.name()) } " may be a guess" } }
+                @if has.is_empty() && lacks.is_empty() { li { span.look::DASH aria-hidden="true" { "-" } "not read yet: a build tells what its source can do (snapshot, history, watch, private)" } }
+                li { span.look::TICK aria-hidden="true" {} "no visitor analytics. server logs are kept 7 days, only for abuse handling" }
             }
         }
         .render(out)

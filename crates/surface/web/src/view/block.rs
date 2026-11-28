@@ -204,7 +204,9 @@ impl Render for Problem<'_> {
     fn render(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         let chain: Vec<&Diagnostic> = self.0.chain().collect();
         html! {
-            div.look::CARD {
+            div.look::ITEM {
+                span.look::RING aria-hidden="true" { "!" }
+                div {
                 @for (depth, found) in chain.iter().enumerate() {
                     p.look::LINE {
                         @if depth > 0 { span.look::META { "caused by" } }
@@ -216,8 +218,9 @@ impl Render for Problem<'_> {
                         p.look::META { "at " code.look::PATH { (Escaped(subject)) } @if let Some(span) = found.span { ", " (Escaped(span)) } }
                     }
                     @if let Some(fix) = diag::Fix::of_problem(&found.problem) {
-                        p { strong { "fix: " } (Escaped(fix)) }
+                        p.look::WHY { strong { "fix: " } (Escaped(fix)) }
                     }
+                }
                 }
             }
         }

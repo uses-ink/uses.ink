@@ -90,7 +90,7 @@ impl View for Deploys {
             } @else {
                 @if self.refresh() { p.look::NOTE role="status" { "A build is running. This page checks again every few seconds until it ends." } }
                 (Lazy(|out: &mut dyn Sink| self.table(out)))
-                p.look::META { "Rolling back serves an older deploy and pauses publishing until you resume. Nothing is deleted." }
+                p.look::WHY { "Rolling back serves an older deploy and pauses publishing until you resume. Nothing is deleted." }
             }
             @if !self.previews.is_empty() {
                 (Lazy(|out: &mut dyn Sink| self.branches(out)))
@@ -127,38 +127,36 @@ impl Deploys {
 
     fn table(&self, out: &mut dyn Sink) -> Result<(), Halt> {
         html! {
-            div.look::TABLE role="region" aria-label="Builds and deploys" tabindex=0 {
-                table {
-                    caption { "Builds and deploys" }
-                    thead { tr { th scope="col" { "Requested" } th scope="col" { "Build" } th scope="col" { "Set off by" } th scope="col" { "State" } th scope="col" { "Deploy" } th scope="col" { "Roll back" } } }
-                    tbody { @for attempt in &self.history { (Lazy(move |out: &mut dyn Sink| self.row(attempt, out))) } }
-                }
+            ol.look::DEPLOYS aria-label="Builds and deploys" {
+                @for attempt in &self.history { li { (Lazy(move |out: &mut dyn Sink| self.row(attempt, out))) } }
             }
         }
         .render(out)
     }
 
+    /// One build as a card: its state, the deploy it made, its log, and the way back to it.
     fn row(&self, attempt: &Attempt, out: &mut dyn Sink) -> Result<(), Halt> {
         let rollback = Path::act(&self.handle, "rollback");
         html! {
-            tr {
-                td { (Stamp(attempt.requested)) @if let Some(done) = attempt.finished { br; "ended " (Stamp(done)) } }
-                td { (Log(&self.handle, attempt.build)) }
-                td { (Escaped(Word(attempt.trigger))) }
-                td { (Pill(attempt.state)) }
-                td {
+            div.look::DEP {
+                div.look::HEAD {
+                    (Pill(attempt.state))
                     @if let Some(deploy) = &attempt.deploy {
-                        (Id(deploy.id)) @if deploy.is_live { " " strong { "live" } }
-                        br; (deploy.files) " files, " (Escaped(deploy.bytes)) ", " (Stamp(deploy.created))
-                    } @else { "none" }
-                }
-                td {
+                        (Id(deploy.id)) @if deploy.is_live { strong { "live" } }
+                    }
+                    span.look::META { "set off by " (Escaped(Word(attempt.trigger))) ", requested " (Stamp(attempt.requested)) @if let Some(done) = attempt.finished { ", ended " (Stamp(done)) } }
+                    (Log(&self.handle, attempt.build))
                     @if let Some(deploy) = attempt.deploy.as_ref().filter(|deploy| !deploy.is_live) {
                         (Post { to: &rollback, name: "Roll back to this deploy", body: html! {
                             input type=(unspliced::keyword::InputType::Hidden) name="deploy" value=(Escaped(deploy.id));
-                            button type=(ButtonType::Submit) { "Roll back" span.look::META { " to " (Id(deploy.id)) } }
+                            button.look::MAIN type=(ButtonType::Submit) { "Roll back" span.look::META { " to " (Id(deploy.id)) } }
                         } })
-                    } @else { "-" }
+                    }
+                }
+                @if let Some(deploy) = &attempt.deploy {
+                    p { (deploy.files) " files, " (Escaped(deploy.bytes)) ", made " (Stamp(deploy.created)) }
+                } @else {
+                    p.look::META { "no deploy was made" }
                 }
             }
         }

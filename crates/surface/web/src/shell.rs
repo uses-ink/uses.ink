@@ -1,13 +1,13 @@
-//! The page around every screen: head, skip link, header with the navigation, the one `<h1>`
-//! with its pen rule, and the footer.
+//! The page around every screen (decision 0190): the head, the skip link, the rail of tabs with
+//! the mark and the person's own tab, and the sheet holding the one `<h1>` and the screen.
 
 use std::fmt;
 
 use control::Handle;
 use unspliced::{Halt, Lazy, Render, Sink, Url, html};
 
+use crate::asset::Asset;
 use crate::escaped::Escaped;
-use crate::mark::{Ink, Rule};
 use crate::route::{Path, Screen};
 use crate::style::look;
 
@@ -70,18 +70,25 @@ impl<V: View + ?Sized> Render for Document<'_, V> {
                     meta name="color-scheme" content="light";
                     @if view.refresh() { meta http-equiv="refresh" content="3"; }
                     title { (&title) " - uses.ink" }
+                    link rel="stylesheet" href=(Url::new(Asset::Tokens.path()));
+                    link rel="icon" href=(Url::new(Asset::Mark.path())) type="image/svg+xml";
                     style { (look::SHEET) }
                 }
                 body {
                     a.look::SKIP href=(Url::new("#main")) { "Skip to the page" }
-                    div.look::PAGE {
-                        header.look::HEAD {
-                            a.look::BRAND href=(Url::new("/")) { "uses.ink" }
+                    div.look::APP {
+                        header.look::RAIL {
+                            a.look::BRAND href=(Url::new("/")) {
+                                img src=(Url::new(Asset::Mark.path())) alt="" width=34 height=34;
+                                "uses.ink"
+                            }
+                            @if let Some(handle) = &frame.site {
+                                p.look::PICK { "your site" b { (Escaped(handle)) } }
+                            }
                             (Nav(frame))
                         }
-                        main #main {
+                        main #main.look::PAGE {
                             h1 { (&title) }
-                            (Rule { under: &title, ink: Ink::Pencil })
                             (Lazy(|out: &mut dyn Sink| view.body(out)))
                         }
                     }
@@ -117,8 +124,17 @@ impl Render for Nav<'_> {
             nav aria-label="Screens" {
                 ul.look::NAV {
                     @for (screen, path) in &screens {
-                        li {
-                            a href=(path) aria-current=(Self::current(frame, *screen)) { (screen.name()) }
+                        @if *screen == Screen::Account {
+                            li.look::ME {
+                                a.look::TAB href=(path) aria-current=(Self::current(frame, *screen)) {
+                                    img src=(Url::new(Asset::Face.path())) alt="" width=38 height=38;
+                                    (screen.name())
+                                }
+                            }
+                        } @else {
+                            li {
+                                a.look::TAB href=(path) aria-current=(Self::current(frame, *screen)) { (screen.name()) }
+                            }
                         }
                     }
                 }

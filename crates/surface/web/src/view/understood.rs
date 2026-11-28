@@ -123,8 +123,8 @@ impl View for Understood {
         html! {
             p.look::LEDE { "Everything uses.ink inferred about " (Escaped(&self.handle)) ", and why. To change a value, pin it in `ink.toml` in your own source; this page writes nothing." }
             p.look::LINE {
-                "Source " (Escaped(Describe(&self.source)))
-                @if let Some(deploy) = self.deploy { "deploy " (Id(deploy)) }
+                "reading " code.look::PATH { (Escaped(Describe(&self.source))) }
+                @if let Some(deploy) = self.deploy { " from deploy " (Id(deploy)) }
             }
             @if self.decisions.is_empty() {
                 (Empty {
@@ -132,11 +132,59 @@ impl View for Understood {
                     what: "Decisions are recorded by a build. Build the site from the Site screen, then come back to see what was understood and why.",
                 })
             } @else {
-                p { (self.decisions.len()) " decisions, " (self.checks()) " to check." }
                 p.look::LINE {
+                    (self.decisions.len()) " decisions, "
+                    @if self.checks() > 0 { span.look::FLAG { (self.checks()) " worth a look" } } @else { "none worth a look" }
                     @if self.only == Only::Check { (Link(&all, "Show every decision")) } @else { (Link(&check, "Show only decisions to check")) }
                 }
+                @if self.only == Only::Everything { (Lazy(|out: &mut dyn Sink| self.looks(out))) }
                 @for group in Group::ALL { (Lazy(move |out: &mut dyn Sink| self.table(group, out))) }
+            }
+        }
+        .render(out)
+    }
+}
+
+impl Understood {
+    /// The decisions to check, first and in the red pen, each with the line that pins it.
+    fn looks(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        let checks: Vec<&AnyDecision> = self.decisions.iter().filter(|decision| Self::is_check(decision)).collect();
+        if checks.is_empty() {
+            return Ok(());
+        }
+        html! {
+            section aria-labelledby="look" {
+                h2 #look { "Worth a look" }
+                @for decision in &checks { (Look { handle: &self.handle, decision }) }
+            }
+        }
+        .render(out)
+    }
+}
+
+/// One decision to check, as an item: what it is about, why it is a guess, and how to pin it.
+#[derive(Clone, Copy, Debug)]
+struct Look<'a> {
+    handle: &'a Handle,
+    decision: &'a AnyDecision,
+}
+
+impl Render for Look<'_> {
+    fn render(&self, out: &mut dyn Sink) -> Result<(), Halt> {
+        let decision = self.decision;
+        let (code, subject) = (decision.code(), decision.subject());
+        let replay = Path::why(self.handle, &Asked { code, subject: subject.clone() });
+        let because = diag::Because(decision.evidence());
+        let pin = diag::PinCommand(&code, &subject);
+        let (about, name) = (Escaped(&subject), code.name());
+        html! {
+            div.look::ITEM {
+                span.look::RING aria-hidden="true" { "!" }
+                div {
+                    p { code.look::PATH { (about) } " " code.look::PATH { (name) } ": " (Escaped(diag::Value(decision))) }
+                    p.look::WHY { "chosen " (Escaped(because)) }
+                    p.look::META { "to pin it: " code.look::PATH { (Escaped(pin)) } " " (Link(&replay, "Replay the ladder")) }
+                }
             }
         }
         .render(out)
