@@ -7095,6 +7095,7 @@ dependencies = [
  "unspliced",
  "uses-ink-engine",
  "uses-ink-model",
+ "uses-ink-token",
 ]
 
 [[package]]

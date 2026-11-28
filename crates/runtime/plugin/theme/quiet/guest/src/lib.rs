@@ -19,6 +19,12 @@ pub(crate) struct Quiet;
 impl Quiet {
     const NAME: &'static str = "ink:theme-quiet";
 
+    /// The tokens the site set, or the diagnostic of the first the theme refuses.
+    fn tokens(wire: &[sited::Token]) -> Result<theme_quiet::Tokens, Box<Diagnostic>> {
+        theme_quiet::Tokens::read(wire.iter().map(|token| (token.name.as_str(), token.value.as_str())))
+            .map_err(|refused| Box::new(Diagnostic::new(refused.problem())))
+    }
+
     /// A value the host sent that the model refuses.
     fn malformed(reason: &impl std::error::Error) -> Diagnostic {
         Diagnostic::new(Problem::PluginValueMalformed { plugin: Self::NAME.to_owned(), reason: reason.to_string() })
@@ -30,10 +36,15 @@ impl bind::Guest for Quiet {
         Self::NAME.to_owned()
     }
 
-    /// The theme's files; one the boundary cannot carry is left out and said.
-    fn assets() -> Vec<file::File> {
+    /// The theme's files for the tokens the site set; one the boundary cannot carry is left out
+    /// and said, and tokens the theme refuses are said and set aside.
+    fn assets(tokens: Vec<sited::Token>) -> Vec<file::File> {
+        let tokens = Self::tokens(&tokens).unwrap_or_else(|refused| {
+            diagnostic::emit(&Host::carried(&refused));
+            theme_quiet::Tokens::default()
+        });
         let mut files = Vec::new();
-        for asset in theme_quiet::Quiet::<Host>::files() {
+        for asset in theme_quiet::Quiet::<Host>::files(&tokens) {
             match file::File::try_from(asset) {
                 Ok(file) => files.push(file),
                 Err(unmirrored) => diagnostic::emit(&Host::carried(&Diagnostic::new(Problem::PluginValueUnmirrored {
@@ -53,10 +64,11 @@ impl Guest for Quiet {
 pub(crate) struct Renderer(Result<(theme_quiet::Quiet<Host>, Site), said::Diagnostic>);
 
 impl GuestRenderer for Renderer {
-    fn new(base: String, site: sited::Site) -> Self {
+    fn new(base: String, tokens: Vec<sited::Token>, site: sited::Site) -> Self {
         let base = base.parse::<BaseUrl>().map_err(|refused| Host::carried(&Quiet::malformed(&refused)));
         let site = Site::try_from(site).map_err(|refused| Host::carried(&Quiet::malformed(&refused)));
-        Self(base.and_then(|base| Ok((theme_quiet::Quiet::new(base, Host), site?))))
+        let tokens = Quiet::tokens(&tokens).map_err(|refused| Host::carried(&refused));
+        Self(base.and_then(|base| Ok((theme_quiet::Quiet::new(base, Host).tokened(tokens?), site?))))
     }
 
     fn render(&self, page: sited::Page) -> Result<String, said::Diagnostic> {

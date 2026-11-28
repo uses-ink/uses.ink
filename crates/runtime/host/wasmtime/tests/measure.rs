@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 use engine::{BaseUrl, Engine, NoPins, RenderSettings};
 use host_image::Pixels;
 use host_native::{Folder, Grammars, Memory};
-use host_wasmtime::{Budget, Cache, Origin, Runtime};
+use host_wasmtime::{Budget, Cache, Hosting, Origin, Runtime};
 use model::{ContentPath, Read};
 use theme_quiet::Quiet;
 
@@ -65,7 +65,7 @@ fn measure() {
         let load = |cache: Option<Cache>| {
             let runtime = Runtime::new(Budget::default(), cache).unwrap();
             if name == "theme-quiet" {
-                runtime.theme("ink:theme-quiet", &bytes, "https://a.b".parse().unwrap()).unwrap().origin()
+                runtime.theme("ink:theme-quiet", &bytes, Hosting::at("https://a.b".parse().unwrap())).unwrap().origin()
             } else {
                 runtime.format(name, &bytes).unwrap().origin()
             }
@@ -88,7 +88,7 @@ fn measure() {
     });
     let runtime = Runtime::new(Budget::default(), Some(Cache::new(root().join("target/plugin/cache")))).unwrap();
     let format = runtime.format("ink:format-markdown", &plugin("format-markdown")).unwrap();
-    let theme = runtime.theme("ink:theme-quiet", &plugin("theme-quiet"), base).unwrap();
+    let theme = runtime.theme("ink:theme-quiet", &plugin("theme-quiet"), Hosting::at(base)).unwrap();
     let through = median(21, || {
         let site = Engine::new(&store, NoPins, (&format,), ()).interpret(&snapshot).site.unwrap();
         Engine::new(&store, NoPins, (), &theme).render(&site, &settings, &Pixels::default());

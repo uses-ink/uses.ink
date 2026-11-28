@@ -15,8 +15,18 @@ exclude = [
     "decisions.md",
 ]
 
+# Decisions carry a `date`, which would make them posts; here they are pages, listed by number
+# (decision 0140).
+[folder."decisions"]
+kind = "page"
+order = "route"
+
+# The documentation look (decision 0142) and the sidebar, outline and previous and next links
+# (decision 0141).
 [theme]
 use = "ink:theme-quiet"
+look = "uses-ink"
+navigation = "docs"
 
 [site]
 title = "uses.ink docs"

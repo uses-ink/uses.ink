@@ -1,11 +1,11 @@
 ---
-source: cli/tests/site.rs
+source: crates/surface/cli/tests/site/build.rs
 ---
 # exit 0
 {"schema":"uses.event/v1","code":"embed.target.cycle","severity":"warning","file":"Loop.md","line":null,"what":"`Loop.md` is embedded inside itself, through Loop.md and Notes/Rust.md, so the inner embed is shown as a link","why":null,"fix":"remove one of the embeds"}
 {"schema":"uses.event/v1","code":"embed.target.cycle","severity":"warning","file":"Notes/Rust.md","line":null,"what":"`Loop.md` is embedded inside itself, through Notes/Rust.md, Loop.md and Notes/Rust.md, so the inner embed is shown as a link","why":null,"fix":"remove one of the embeds"}
 # result
-{"schema":"uses.build/v2","deploy":"a20b18e10ce71b5c2b6301a7c55c93b5c6272c43d5a97c5e0f616e33998c2f83","written":true,"out":"<out>","entries":11,"changes":{"against":"nothing","public":[{"path":"Loop.md","route":"/loop"},{"path":"Notes/Ownership.md","route":"/notes/ownership"},{"path":"Notes/Rust.md","route":"/notes/rust"},{"path":"attachments/ferris.png","route":"/attachments/ferris.png"},{"path":"index.md","route":"/"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":2}
+{"schema":"uses.build/v2","deploy":"da5892aae7e9f4c0171c11096bb37aca0b9ee220e08f18f230d211943e1b6a07","written":true,"out":"<out>","entries":11,"changes":{"against":"nothing","public":[{"path":"Loop.md","route":"/loop"},{"path":"Notes/Ownership.md","route":"/notes/ownership"},{"path":"Notes/Rust.md","route":"/notes/rust"},{"path":"attachments/ferris.png","route":"/attachments/ferris.png"},{"path":"index.md","route":"/"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":2}
 # files
 .ink-manifest.json
 404.html

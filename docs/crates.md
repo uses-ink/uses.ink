@@ -78,7 +78,7 @@ A layer depends only on the layers before it, and `standalone` crates depend on 
 | `uses-ink-sdk` | `crates/runtime/plugin/sdk` | The guest side of the plugin boundary: bindings to ink:host and the model's WIT, and their conversions | `freehand`, `uses-ink-model` |
 | `uses-ink-source-git` | `crates/runtime/plugin/source/git` | The git source: a repository fetched through the host's git capability and read into a snapshot | `uses-ink-model`, `uses-ink-host-native`, `uses-ink-logging` |
 | `uses-ink-source-git-guest` | `crates/runtime/plugin/source/git/guest` | ink:source-git as a wasm component: the git source behind the ink:source world | `uses-ink-model`, `uses-ink-sdk`, `uses-ink-source-git` |
-| `uses-ink-theme-quiet` | `crates/runtime/plugin/theme/quiet` | ink:theme-quiet, the default theme: plain semantic HTML, one small stylesheet, no JavaScript | `uses-ink-model`, `uses-ink-engine` |
+| `uses-ink-theme-quiet` | `crates/runtime/plugin/theme/quiet` | ink:theme-quiet, the default theme: plain semantic HTML, one small stylesheet, no JavaScript | `uses-ink-model`, `uses-ink-engine`, `uses-ink-token` |
 | `uses-ink-theme-quiet-guest` | `crates/runtime/plugin/theme/quiet/guest` | ink:theme-quiet as a wasm component: the quiet theme behind the ink:theme world | `uses-ink-model`, `uses-ink-engine`, `uses-ink-sdk`, `uses-ink-theme-quiet` |
 
 ## surface

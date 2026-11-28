@@ -19,6 +19,5 @@ itself from the `docs/` folder of the repository ([how](site.md)). Pre-release: 
 
 ## Reasons
 
-- [Decisions](decisions/README.md): one file per decision, with its status, date and area. The
-  newest are listed below.
+- [Decisions](decisions/README.md): one file per decision, with its status, date and area.
 - [How this site is built](site.md).

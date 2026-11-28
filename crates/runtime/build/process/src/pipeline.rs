@@ -12,7 +12,7 @@ use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
 use logging::Field as _;
 use model::record::PluginId;
 use model::{Bytes, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Severity, Snapshot, Subject};
-use theme_quiet::Quiet;
+use theme_quiet::{Quiet, Tokens};
 
 use crate::pins::Pinned;
 use crate::reader::Reader;
@@ -102,6 +102,23 @@ impl Pipeline {
         }
     }
 
+    /// The tokens `[theme]` sets, or none after saying each one the theme refuses, about the
+    /// config file at the place it is written.
+    fn dressed(config: &Config, events: &mut impl Events) -> Option<Tokens> {
+        let refused = match Tokens::gather(config.tokens()) {
+            Ok(tokens) => return Some(tokens),
+            Err(refused) => refused,
+        };
+        let file = CONFIG.parse().ok().map(Subject::File);
+        let about = |diagnostic: Diagnostic| match &file {
+            Some(file) => diagnostic.on(file.clone()),
+            None => diagnostic,
+        };
+        let refused: Vec<Diagnostic> = refused.into_iter().map(about).collect();
+        Self::say(events, &refused, &[]);
+        None
+    }
+
     /// Says the snapshot arrived: to the log, and as an event.
     fn arrived(events: &mut impl Events, snapshot: &Snapshot) {
         let bytes = Bytes(snapshot.tree().iter().map(|entry| entry.size.count()).sum());
@@ -148,7 +165,8 @@ impl Pipeline {
         understood.decisions.iter().for_each(|decision| events.event(Event::Decided(decision.clone())));
         Self::say(events, &understood.diagnostics, &understood.notices);
         let Some(site) = understood.site.filter(|_| !stopped) else { return Ok(None) };
-        let theme = Quiet::new(self.base.clone(), Grammars::default());
+        let Some(tokens) = Self::dressed(&config, events) else { return Ok(None) };
+        let theme = Quiet::new(self.base.clone(), Grammars::default()).tokened(tokens);
         let rendered = Engine::new(&store, NoPins, (), &theme).render(
             &site,
             &RenderSettings { base: self.base.clone() },

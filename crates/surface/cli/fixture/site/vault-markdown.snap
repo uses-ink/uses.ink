@@ -1,9 +1,9 @@
 ---
-source: cli/tests/site.rs
+source: crates/surface/cli/tests/site/build.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v2","deploy":"c4dd6c7a92915be5f2950bf1d61cc1bd91b27ae4f3b6cbce70c6df9e0210e75f","written":true,"out":"<out>","entries":6,"changes":{"against":"nothing","public":[{"path":"index.md","route":"/"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
+{"schema":"uses.build/v2","deploy":"69098f909db586f138c6f14f5393ac0348c411bd3811fdc7f548c2b5df7cebe7","written":true,"out":"<out>","entries":6,"changes":{"against":"nothing","public":[{"path":"index.md","route":"/"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html

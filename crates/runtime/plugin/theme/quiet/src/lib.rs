@@ -7,6 +7,10 @@
 //! [`Highlight`](model::highlight::Highlight), the capability of decision 0039, and links no
 //! highlighter of its own.
 //!
+//! A site sets the theme's tokens in `[theme]` ([`Tokens`]): the [`Look`] it wears, whose palette,
+//! faces and sizes come from `crates/core/token/token.toml`, and the [`Navigation`] it draws, a
+//! header alone or a sidebar, an outline and previous and next links for documentation.
+//!
 //! It implements [`engine::Theme`] directly: this crate is the theme's native core, and `guest/`
 //! exports it as the `ink:theme` world of a wasm component (decision 0041).
 //!
@@ -16,6 +20,9 @@
 mod document;
 mod page;
 mod style;
+mod tokens;
+
+pub use tokens::{Declared, Look, Navigation, Refused, Tokens};
 
 use engine::{BaseUrl, File, Html, Reads, Sink, Theme};
 use model::highlight::Highlight;
@@ -29,19 +36,27 @@ use page::Layout;
 pub struct Quiet<H> {
     base: BaseUrl,
     highlight: H,
+    tokens: Tokens,
 }
 
 impl<H: Highlight> Quiet<H> {
     /// The theme for a site served at `base`, for canonical links and `og:url`, its code
     /// highlighted by `highlight`.
     pub fn new(base: BaseUrl, highlight: H) -> Self {
-        Self { base, highlight }
+        Self { base, highlight, tokens: Tokens::default() }
+    }
+
+    /// The same theme with the tokens a site set.
+    #[must_use]
+    pub fn tokened(self, tokens: Tokens) -> Self {
+        Self { tokens, ..self }
     }
 }
 
 impl<H> Quiet<H> {
-    /// The theme's own files: its stylesheet and its code stylesheet, the same for every site.
-    pub fn files() -> Vec<File> {
+    /// The theme's own files: its stylesheet and its code stylesheet, and the stylesheet of the
+    /// look when it is not the theme's own. They are a function of the tokens alone.
+    pub fn files(tokens: &Tokens) -> Vec<File> {
         let mut files = Vec::new();
         let style = style::quiet::SHEET.text().as_bytes().to_vec();
         if let Ok(route) = page::STYLE.parse::<Route>() {
@@ -50,6 +65,11 @@ impl<H> Quiet<H> {
         let code = style::code::SHEET.text().as_bytes().to_vec();
         if let Ok(route) = page::CODE.parse::<Route>() {
             files.push(File { route, media: MediaType::Css, bytes: code });
+        }
+        if tokens.look == Look::UsesInk
+            && let Ok(route) = page::LOOK.parse::<Route>()
+        {
+            files.push(File { route, media: MediaType::Css, bytes: token::Look::UsesInk.css().as_bytes().to_vec() });
         }
         files
     }
@@ -65,6 +85,7 @@ impl Code {
         include_bytes!("lib.rs"),
         include_bytes!("page.rs"),
         include_bytes!("style.rs"),
+        include_bytes!("tokens.rs"),
         include_bytes!("document.rs"),
         include_bytes!("document/code.rs"),
         include_bytes!("document/math.rs"),
@@ -83,19 +104,21 @@ impl<H: Highlight> Theme for Quiet<H> {
     }
 
     fn assets(&self) -> Vec<File> {
-        Self::files()
+        Self::files(&self.tokens)
     }
 
     /// What its pages are made from besides the page and the site: its name and release, its
     /// stylesheets, its own code as compiled in (a change to how a page is written changes the
     /// key, with no version bump), and the workspace's `Cargo.lock`, which holds the versions of
     /// `unspliced`, the highlighter's grammars and every other crate that reaches a page's
-    /// bytes. It has no tokens yet; when it has, they join this hash.
+    /// bytes. The tokens a site set join it, each as its name and word.
     fn identity(&self) -> Option<Hash> {
         let mut parts = vec![self.name().as_bytes(), env!("CARGO_PKG_VERSION").as_bytes(), Code::LOCK];
         parts.extend(Code::SOURCES);
-        let files = Self::files();
+        let files = Self::files(&self.tokens);
         parts.extend(files.iter().map(|file| file.bytes.as_slice()));
+        let words = self.tokens.words();
+        parts.extend(words.iter().flat_map(|(name, word)| [name.as_bytes(), word.as_bytes()]));
         // each part is length-prefixed, so two lists of parts never join into the same bytes
         let mut joined = Vec::new();
         for part in parts {
@@ -105,17 +128,22 @@ impl<H: Highlight> Theme for Quiet<H> {
         Some(Hash::of(joined))
     }
 
-    /// The home lists the posts and, on a generated home, every page; every other page shows
-    /// the site's navigation, its links and its images.
+    /// The home lists the posts and, on a generated home, every page; with the docs navigation
+    /// every page shows the site's folders and its neighbours, so it reads every page's front. Any
+    /// other page shows the site's navigation, its links and its images.
     fn reads(&self, page: &Page) -> Reads {
-        if page.kind == PageKind::Home { Reads::Listed } else { Reads::Linked }
+        if page.kind == PageKind::Home || self.tokens.navigation == Navigation::Docs {
+            Reads::Listed
+        } else {
+            Reads::Linked
+        }
     }
 
     /// A page the theme could not write whole is `render.page.failed`: a bug in the theme.
     fn render<R: Sink + ?Sized>(&self, page: &Page, site: &Site, record: &mut R) -> Result<Html, Diagnostic> {
         let mut html = String::new();
         let source = Source { page, site, highlight: &self.highlight };
-        let layout = Layout { source, base: &self.base };
+        let layout = Layout { source, base: &self.base, tokens: self.tokens };
         match layout.write(&mut html, record) {
             Ok(()) => Ok(Html::from(html)),
             Err(unwritten) => {

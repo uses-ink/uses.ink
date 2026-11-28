@@ -9,7 +9,7 @@ use engine::{BaseUrl, Blobs, Cache, Chosen, Engine, Formats, Host, Images, NoPin
 use host_native::{Folder, Grammars, Memory, Read, Repository, Revision};
 use model::record::{Build, Inputs};
 use model::{Announcement, ContentPath, Diagnostic, Hash, Manifest, Notice, Problem, Snapshot, Subject, Version};
-use theme_quiet::Quiet;
+use theme_quiet::{Quiet, Tokens};
 
 use crate::command::explain::asked::Asked;
 use crate::command::format::Native;
@@ -229,7 +229,36 @@ impl Loaded {
     /// Renders the site through `ink:theme-quiet`, its images through the host's image work, if
     /// interpreting gave one.
     pub(crate) fn render<I: Images, C: Cache>(&self, address: &Address, host: Host<'_, I, C>) -> Rendering {
-        self.through(address, &Quiet::new(address.base.clone(), Grammars::default()), host)
+        match self.dressed() {
+            Ok(tokens) => {
+                self.through(address, &Quiet::new(address.base.clone(), Grammars::default()).tokened(tokens), host)
+            }
+            Err(refused) => {
+                let mut diagnostics = self.understood.diagnostics.clone();
+                diagnostics.extend(refused);
+                let mut notices = self.understood.notices.clone();
+                notices.extend(address.chosen.clone());
+                Rendering { deploy: None, blobs: BTreeMap::new(), diagnostics, notices }
+            }
+        }
+    }
+
+    /// The tokens `[theme]` sets, each name and word as written: what a component is given.
+    pub(crate) fn tokens(&self) -> Vec<(String, String)> {
+        self.config.tokens().map(|(name, value)| (name.value.to_owned(), value.value.to_owned())).collect()
+    }
+
+    /// The tokens the theme takes from `[theme]`, or a diagnostic for each it refuses, about
+    /// `ink.toml` at the place the token is written.
+    fn dressed(&self) -> Result<Tokens, Vec<Diagnostic>> {
+        let file = CONFIG.parse().ok().map(Subject::File);
+        Tokens::gather(self.config.tokens()).map_err(|refused| {
+            let about = |diagnostic: Diagnostic| match &file {
+                Some(file) => diagnostic.on(file.clone()),
+                None => diagnostic,
+            };
+            refused.into_iter().map(about).collect()
+        })
     }
 
     /// Renders the site through `theme`, its images through `images`, if interpreting gave one.

@@ -4,7 +4,7 @@
 //! written; a difference is `build.check.mismatch`, a content failure (exit 1).
 
 use engine::{Host, Said};
-use host_wasmtime::{Budget, Cache, Component, Runtime};
+use host_wasmtime::{Budget, Cache, Component, Hosting, Runtime};
 use model::{DeployId, Diagnostic, Manifest, Problem};
 use serde::Serialize;
 
@@ -55,7 +55,8 @@ impl Compare<'_> {
         let chosen = loaded.native;
         let (held_format, held_theme) = (self.components.hold(chosen.id())?, self.components.hold(Self::THEME)?);
         let format = runtime.format(chosen.id(), held_format.bytes()).map_err(Self::plugin)?;
-        let theme = runtime.theme(Self::THEME, held_theme.bytes(), address.base.clone()).map_err(Self::plugin)?;
+        let hosting = Hosting::at(address.base.clone()).tokened(loaded.tokens());
+        let theme = runtime.theme(Self::THEME, held_theme.bytes(), hosting).map_err(Self::plugin)?;
         let through = Source::new(&self.build.dir, &self.build.origin).interpret(|_| (&format,))?;
         let built = through.through(&address, &theme, Host::new(&images));
 

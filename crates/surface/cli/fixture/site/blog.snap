@@ -1,9 +1,9 @@
 ---
-source: cli/tests/site.rs
+source: crates/surface/cli/tests/site/build.rs
 ---
 # exit 0
 # result
-{"schema":"uses.build/v2","deploy":"b50ccc1d6fda91d465e831b3594a53f85086b70077ea08b2fc6e54e0ab39534f","written":true,"out":"<out>","entries":19,"changes":{"against":"nothing","public":[{"path":"about.md","route":"/about"},{"path":"index.md","route":"/"},{"path":"posts/2024-03-01-first-steps.md","route":"/posts/first-steps"},{"path":"posts/blink.gif","route":"/posts/blink.gif"},{"path":"posts/leaf.png","route":"/posts/leaf.png"},{"path":"posts/nib.svg","route":"/posts/nib.svg"},{"path":"posts/pictures.md","route":"/posts/pictures"},{"path":"posts/second.md","route":"/posts/second"},{"path":"posts/turned.jpg","route":"/posts/turned.jpg"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
+{"schema":"uses.build/v2","deploy":"6554b5a9485b086a5559420f6a637bc0a31ef74ce710b75881cf578e831178dd","written":true,"out":"<out>","entries":19,"changes":{"against":"nothing","public":[{"path":"about.md","route":"/about"},{"path":"index.md","route":"/"},{"path":"posts/2024-03-01-first-steps.md","route":"/posts/first-steps"},{"path":"posts/blink.gif","route":"/posts/blink.gif"},{"path":"posts/leaf.png","route":"/posts/leaf.png"},{"path":"posts/nib.svg","route":"/posts/nib.svg"},{"path":"posts/pictures.md","route":"/posts/pictures"},{"path":"posts/second.md","route":"/posts/second"},{"path":"posts/turned.jpg","route":"/posts/turned.jpg"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":0}
 # files
 .ink-manifest.json
 404.html

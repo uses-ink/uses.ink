@@ -342,3 +342,150 @@ fn a_prepared_image_is_a_picture_with_its_size_and_placeholder() {
     );
     assert_eq!(pictured(), expected);
 }
+
+/// A documentation site: two pages at the top and a folder of three, the folder's `README` among
+/// them. The page `guide/x.md` has three headings.
+fn docs() -> Site {
+    let heading = |level, words: &str| Block::Heading {
+        level: Level::new(level).unwrap(),
+        anchor: Anchor::of_heading(words).unwrap(),
+        inlines: vec![text(words)],
+    };
+    let page = |file: &str, route: &str, title: &str| {
+        Page::new(file.parse().unwrap(), route.parse().unwrap(), PageKind::Page, title)
+    };
+    let long = page("guide/x.md", "/guide/x", "X").holding(Document::new(vec![
+        heading(2, "Run it"),
+        para(vec![text("text")]),
+        heading(3, "Flags"),
+        heading(2, "Read it"),
+    ]));
+    let home = Page::new("index.md".parse().unwrap(), Route::root(), PageKind::Home, "Docs");
+    let mut parts =
+        SiteParts::new(model::Identity::new("Docs", "en".parse().unwrap()), model::Root::Top, model::Layout::Docs);
+    parts.home = Some(home.id);
+    parts.pages = vec![
+        home,
+        page("a.md", "/a", "Alpha"),
+        page("b.md", "/b", "Beta"),
+        page("guide/README.md", "/guide", "The guide"),
+        long,
+        page("guide/y.md", "/guide/y", "Y"),
+        page("other/z.md", "/other/z", "Z"),
+    ];
+    Site::new(parts).unwrap()
+}
+
+fn docs_theme() -> Quiet<Stand> {
+    quiet().tokened(theme_quiet::Tokens::read([("navigation", "docs")]).unwrap())
+}
+
+#[test]
+fn the_docs_navigation_draws_the_folders_the_neighbours_and_the_outline() {
+    let (site, theme) = (docs(), docs_theme());
+    let html = theme.render(page(&site, "/guide/x"), &site, &mut Said::default()).unwrap();
+    let html = html.as_ref();
+    for landmark in [
+        "aria-label=\"Site\"",
+        "aria-label=\"Contents\"",
+        "aria-label=\"On this page\"",
+        "aria-label=\"Previous and next\"",
+    ] {
+        assert_eq!(
+            html.matches(landmark).count(),
+            usize::from(landmark != "aria-label=\"Site\""),
+            "{landmark} in {html}"
+        );
+    }
+    assert!(html.contains(r#"aria-current="page">X</a>"#), "the current page is marked: {html}");
+    assert_eq!(html.matches("aria-current").count(), 1, "only the current page is: {html}");
+    assert!(
+        html.contains("<details open><summary>The guide</summary>"),
+        "the folder that holds the page is open: {html}"
+    );
+    assert!(html.contains("<details><summary>other</summary>"), "another folder is closed: {html}");
+    assert!(
+        html.contains(r##"<a href="#run-it">Run it</a>"##) && html.contains(r##"<a href="#read-it">Read it</a>"##),
+        "{html}"
+    );
+    assert!(html.contains("Previous</span>The guide</a>") && html.contains("Next</span>Y</a>"), "{html}");
+}
+
+#[test]
+fn a_page_without_two_subheadings_has_no_outline_and_the_first_page_no_previous_link() {
+    let (site, theme) = (docs(), docs_theme());
+    let html = theme.render(page(&site, "/a"), &site, &mut Said::default()).unwrap();
+    let html = html.as_ref();
+    assert!(!html.contains("On this page"), "{html}");
+    assert!(html.contains("Next</span>Beta</a>") && !html.contains("Previous</span>"), "{html}");
+}
+
+#[test]
+fn without_the_docs_navigation_a_page_has_the_header_alone() {
+    let site = docs();
+    let html = quiet().render(page(&site, "/guide/x"), &site, &mut Said::default()).unwrap();
+    let html = html.as_ref();
+    for drawn in ["Contents", "On this page", "Previous and next", "<details", "quiet-wide"] {
+        assert!(!html.contains(drawn), "{drawn} in {html}");
+    }
+    assert!(!html.contains("/look.css"), "{html}");
+}
+
+#[test]
+fn the_docs_navigation_reads_every_front_and_the_header_alone_reads_what_it_links() {
+    let site = docs();
+    let (header, docs) = (quiet(), docs_theme());
+    let (inner, home) = (page(&site, "/guide/x"), page(&site, "/"));
+    assert_eq!((header.reads(inner), header.reads(home)), (engine::Reads::Linked, engine::Reads::Listed));
+    assert_eq!((docs.reads(inner), docs.reads(home)), (engine::Reads::Listed, engine::Reads::Listed));
+}
+
+#[test]
+fn a_look_adds_its_stylesheet_and_changes_the_identity() {
+    let tokens = |pairs: &[(&'static str, &'static str)]| theme_quiet::Tokens::read(pairs.iter().copied()).unwrap();
+    let plain = quiet();
+    let worn = quiet().tokened(tokens(&[("look", "uses-ink")]));
+    let routes: Vec<String> = worn.assets().iter().map(|file| file.route.to_string()).collect();
+    assert_eq!(routes, ["/style.css", "/code.css", "/look.css"]);
+    let look = String::from_utf8(worn.assets()[2].bytes.clone()).unwrap();
+    assert!(look.contains("--paper: #fffdf8") && look.contains("prefers-color-scheme: dark"), "{look}");
+    let site = docs();
+    let html = worn.render(page(&site, "/a"), &site, &mut Said::default()).unwrap();
+    assert!(html.as_ref().contains(r#"<link rel="stylesheet" href="/look.css">"#));
+    assert_ne!(plain.identity(), worn.identity());
+    assert_ne!(plain.identity(), quiet().tokened(tokens(&[("navigation", "docs")])).identity());
+}
+
+#[test]
+fn a_token_the_theme_does_not_declare_or_a_word_it_does_not_take_is_refused_with_the_words_it_has() {
+    use theme_quiet::{Refused, Tokens};
+    let unknown = Tokens::read([("colour", "red")]).unwrap_err();
+    assert_eq!(unknown, Refused::Unknown { token: "colour".to_owned(), known: vec!["look", "navigation"] });
+    assert_eq!(unknown.problem().code(), "theme.token.unknown");
+    let invalid = Tokens::read([("look", "loud")]).unwrap_err();
+    assert_eq!(
+        invalid,
+        Refused::Invalid { token: "look", value: "loud".to_owned(), accepted: vec!["quiet", "uses-ink"] }
+    );
+    assert_eq!(invalid.problem().code(), "theme.token.invalid");
+    let declared: Vec<_> = Tokens::declared().iter().map(|token| (token.name, token.default)).collect();
+    assert_eq!(declared, [("look", "quiet"), ("navigation", "header")]);
+}
+
+#[test]
+fn a_generated_home_lists_the_pages_as_the_folders_do() {
+    let mut site = docs();
+    let mut parts = SiteParts::new(site.identity().clone(), model::Root::Top, model::Layout::Docs);
+    parts.pages = site.pages().iter().filter(|page| page.kind != PageKind::Home).cloned().collect();
+    parts.nav = vec![page(&site, "/b").id];
+    site = Site::new(parts).unwrap();
+    let generated = Page::new("index".parse().unwrap(), Route::root(), PageKind::Home, "Docs");
+    let html = quiet().render(&generated, &site, &mut Said::default()).unwrap();
+    let html = html.as_ref();
+    let order: Vec<usize> =
+        ["Beta", "Alpha", "The guide"].iter().map(|title| html.find(&format!(">{title}</a>")).unwrap()).collect();
+    assert!(
+        order.windows(2).all(|pair| pair[0] < pair[1]),
+        "the navigation's page first, then the rest, then the folders: {html}"
+    );
+}

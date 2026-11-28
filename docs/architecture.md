@@ -297,7 +297,7 @@ extra route is `theme.route.collision`, never an overwrite.
 | Layer | Author does | Mechanism |
 |---|---|---|
 | 0 | nothing | `ink:theme-quiet` |
-| 1 | set tokens | `[theme] accent = "#2b59c3"`; tokens are typed by the theme's `describe()`; an unknown token or bad value is a diagnostic |
+| 1 | set tokens | `[theme] look = "uses-ink"`; tokens are typed by the theme's `describe()`; an unknown token or bad value is a diagnostic |
 | 2 | add CSS | `theme/custom.css`, appended after the theme's CSS |
 | 3 | override a named slot | a theme declares slots in `describe()` (`header`, `footer`, `post-meta`); the author's `theme/<slot>.html` is rendered by the host with minijinja against the typed page data and handed to the theme |
 | 4 | another theme | `theme = "bob:theme-zine@1.2.0"`, pinned in `ink.lock` |
@@ -381,7 +381,8 @@ exclude = ["notes/private/**"]
 
 [theme]
 use = "ink:theme-quiet"              # slot choice; omitted means the default, recorded as a notice
-accent = "#2b59c3"                   # every other key is a token the chosen theme declared
+look = "uses-ink"                   # every other key is a token the chosen theme declared (0142)
+navigation = "docs"                  # theme-quiet: a sidebar, an outline, previous and next (0141)
 
 [image]                              # defaults shown; every key is optional and range-checked
 widths = [480, 960, 1440]            # pixel widths of the copies, narrowest first, each 1 to 65535
@@ -395,6 +396,11 @@ authors = ["Ann"]                    # pins site.authors; always an array, first
 language = "fr-CH"                   # pins site.language, a BCP 47 tag
 home = "README.md"                   # pins site.home; false pins a generated listing
 nav = ["about.md"]                   # pins site.nav
+
+[folder."guides"]                    # a rule for a folder, not a decision (0140)
+kind = "page"                        # page or post, below a page's own front matter
+weight = 10                          # among sibling folders: lower first, then by name
+order = "title"                      # route, title, newest or oldest
 
 [file."drafts/x.md"]
 ignore = true                        # pins file.ignore

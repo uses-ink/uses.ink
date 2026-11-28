@@ -34,10 +34,36 @@ pub struct Format {
     pre: FormatPre<State>,
 }
 
+/// What a theme is given besides its component: where the site is served and the tokens the site
+/// set for it.
+#[derive(Clone, Debug)]
+pub struct Hosting {
+    base: BaseUrl,
+    tokens: Vec<(String, String)>,
+}
+
+impl Hosting {
+    /// A site served at `base`, with no token set.
+    pub const fn at(base: BaseUrl) -> Self {
+        Self { base, tokens: Vec::new() }
+    }
+
+    /// The same, with these tokens, each a name and a word.
+    #[must_use]
+    pub fn tokened(self, tokens: Vec<(String, String)>) -> Self {
+        Self { tokens, ..self }
+    }
+
+    /// The tokens as the boundary carries them.
+    fn wire(&self) -> Vec<sited::Token> {
+        self.tokens.iter().map(|(name, value)| sited::Token { name: name.clone(), value: value.clone() }).collect()
+    }
+}
+
 /// The `ink:theme` world, with the instance rendering the current site.
 pub struct Theme {
     pre: ThemePre<State>,
-    base: BaseUrl,
+    hosting: Hosting,
     /// The hash of the component's bytes.
     digest: Hash,
     session: RefCell<Option<Session>>,
@@ -59,7 +85,7 @@ impl std::fmt::Debug for Format {
 
 impl std::fmt::Debug for Theme {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        out.debug_struct("Theme").field("base", &self.base).finish_non_exhaustive()
+        out.debug_struct("Theme").field("hosting", &self.hosting).finish_non_exhaustive()
     }
 }
 
@@ -81,10 +107,10 @@ impl Runtime {
         })
     }
 
-    /// The theme plugin `plugin` from the component in `bytes`, for a site served at `base`. The
-    /// plugin's id names it in the cache, in traces and in errors; the component's own name is
-    /// the one it gives.
-    pub fn theme(&self, plugin: &str, bytes: &[u8], base: BaseUrl) -> Result<Component<Theme>, Error> {
+    /// The theme plugin `plugin` from the component in `bytes`, for a site served as `hosting`
+    /// says. The plugin's id names it in the cache, in traces and in errors; the component's own
+    /// name is the one it gives.
+    pub fn theme(&self, plugin: &str, bytes: &[u8], hosting: Hosting) -> Result<Component<Theme>, Error> {
         let (compiled, origin) = self.machine.compile(plugin, bytes)?;
         let mut linker = Linker::new(&self.machine.engine);
         let link = |source| Error::Link { plugin: plugin.to_owned(), source };
@@ -96,7 +122,7 @@ impl Runtime {
             .machine
             .call(&mut store, |store| pre.instantiate(&mut *store)?.call_name(store))
             .map_err(|failure| Error::Named { failure })?;
-        let world = Theme { pre, base, digest: Hash::of(bytes), session: RefCell::new(None) };
+        let world = Theme { pre, hosting, digest: Hash::of(bytes), session: RefCell::new(None) };
         Ok(Component { machine: self.machine.clone(), name, origin, world, aside: RefCell::default() })
     }
 }
@@ -177,10 +203,10 @@ impl Component<Theme> {
         *slot = None;
         let wire = sited::Site::try_from(site).map_err(|source| Failure::Unmirrored { source })?;
         let mut store = self.machine.store(&self.name);
-        let (pre, base) = (&self.world.pre, self.world.base.as_ref());
+        let (pre, base, tokens) = (&self.world.pre, self.world.hosting.base.as_ref(), self.world.hosting.wire());
         let started = self.machine.call(&mut store, |store| {
             let bindings = pre.instantiate(&mut *store)?;
-            let renderer = bindings.pages().renderer().call_constructor(&mut *store, base, &wire)?;
+            let renderer = bindings.pages().renderer().call_constructor(&mut *store, base, &tokens, &wire)?;
             Ok((bindings, renderer))
         });
         let said = std::mem::take(&mut store.data_mut().said);
@@ -228,8 +254,8 @@ impl engine::Theme for Component<Theme> {
     /// The theme's files; a call that fails, or a file the model refuses, is kept aside.
     fn assets(&self) -> Vec<File> {
         let mut store = self.machine.store(&self.name);
-        let pre = &self.world.pre;
-        let result = self.machine.call(&mut store, |store| pre.instantiate(&mut *store)?.call_assets(store));
+        let (pre, tokens) = (&self.world.pre, self.world.hosting.wire());
+        let result = self.machine.call(&mut store, |store| pre.instantiate(&mut *store)?.call_assets(store, &tokens));
         Self::pass(store.into_data().said, &mut *self.aside.borrow_mut());
         let files = result.unwrap_or_else(|failure| {
             self.fail(&failure);
@@ -243,10 +269,15 @@ impl engine::Theme for Component<Theme> {
 
     /// The hash of the component's bytes and of the workspace's `Cargo.lock`: the host's
     /// highlighter is imported by the component and reaches its bytes, so its version is part of
-    /// what the pages are made from. Its tokens join the hash when themes take them.
+    /// what the pages are made from. So are the tokens the site set, each as its name and word.
     fn identity(&self) -> Option<Hash> {
         const LOCK: &[u8] = include_bytes!("../../../../../Cargo.lock");
-        Some(Hash::of([self.world.digest.as_bytes().as_slice(), LOCK].concat()))
+        let mut parts = vec![self.world.digest.as_bytes().to_vec(), LOCK.to_vec()];
+        parts.extend(self.world.hosting.tokens.iter().map(|(name, value)| format!("{name}={value}").into_bytes()));
+        // each part is length-prefixed, so two lists of parts never join into the same bytes
+        let joined =
+            parts.iter().flat_map(|part| (part.len() as u64).to_le_bytes().into_iter().chain(part.iter().copied()));
+        Some(Hash::of(joined.collect::<Vec<u8>>()))
     }
 
     /// The page as the component renders it; a call that fails is the theme's refusal, with

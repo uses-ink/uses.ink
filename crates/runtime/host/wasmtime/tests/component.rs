@@ -18,7 +18,7 @@ use std::time::Duration;
 use engine::{BaseUrl, Engine, Format as _, NoPins, RenderSettings};
 use host_image::Pixels;
 use host_native::{Folder, Grammars, Memory};
-use host_wasmtime::{Budget, Cache, Component, Format, Origin, Runtime};
+use host_wasmtime::{Budget, Cache, Component, Format, Hosting, Origin, Runtime};
 use model::{Bytes, ContentPath, Read};
 use theme_quiet::Quiet;
 
@@ -105,7 +105,7 @@ fn the_quiet_component_renders_a_site_as_its_native_core() {
     let native = Quiet::new(base.clone(), Grammars::default());
     let natively = Engine::new(&store, NoPins, (), &native).render(&site, &settings, &Pixels::default());
     let runtime = runtime(Budget::default());
-    let theme = runtime.theme("ink:theme-quiet", &plugin("theme-quiet"), base).unwrap();
+    let theme = runtime.theme("ink:theme-quiet", &plugin("theme-quiet"), Hosting::at(base)).unwrap();
     let through = Engine::new(&store, NoPins, (), &theme).render(&site, &settings, &Pixels::default());
 
     assert_eq!(engine::Theme::name(&theme), "ink:theme-quiet");

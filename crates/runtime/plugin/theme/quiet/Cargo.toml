@@ -13,6 +13,7 @@ publish.workspace = true
 engine.workspace = true
 math-core.workspace = true
 model.workspace = true
+token.workspace = true
 unspliced.workspace = true
 
 [dev-dependencies]

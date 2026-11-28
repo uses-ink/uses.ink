@@ -1,10 +1,10 @@
 ---
-source: cli/tests/site.rs
+source: crates/surface/cli/tests/site/build.rs
 ---
 # exit 0
 {"schema":"uses.event/v1","code":"frontmatter.syntax.invalid","severity":"warning","file":"odd.md","line":2,"what":"the frontmatter does not parse, so the page is built without it: unclosed bracket '[' at line 2, column 8","why":null,"fix":"fix the YAML between the `---` lines"}
 # result
-{"schema":"uses.build/v2","deploy":"0f0117cd1e2ec3a9b2d9e669db78f950bf1bdd374cc9494985fb6d8d90d40080","written":true,"out":"<out>","entries":7,"changes":{"against":"nothing","public":[{"path":"index.md","route":"/"},{"path":"odd.md","route":"/odd"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":1}
+{"schema":"uses.build/v2","deploy":"f83a0221d91754b5722c8f95c9a8b12922a450f8d1fd6de44685ff3e36e47ed2","written":true,"out":"<out>","entries":7,"changes":{"against":"nothing","public":[{"path":"index.md","route":"/"},{"path":"odd.md","route":"/odd"}],"withdrawn":[],"moved":[],"decisions":[]},"errors":0,"warnings":1}
 # files
 .ink-manifest.json
 404.html
