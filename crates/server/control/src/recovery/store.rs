@@ -143,10 +143,12 @@ impl<D: Db> Codes<D> {
         Ok(row.map(|row| Fields(&row).count(table::Computed::Count)).transpose()?.unwrap_or(0))
     }
 
-    /// Spends `code`: the account it belongs to, or `None` when no unspent code has this digest,
-    /// whether it was never made, was spent or was replaced by a new set (the three look the same).
-    /// The stored digest is compared in constant time, though the lookup already named the row.
-    pub async fn spend(&self, code: &Code, now: Timestamp) -> Result<Option<Id<AccountKind>>, Error<D::Error>> {
+    /// The unspent code `code` names: its id and its account, or `None` when no unspent code has
+    /// this digest, whether it was never made, was spent or was replaced by a new set (the three
+    /// look the same). The stored digest is compared in constant time, though the lookup already
+    /// named the row. Nothing is changed, so a caller can check that it can do its work before
+    /// [`Codes::spend`] makes the code gone.
+    pub async fn find(&self, code: &Code) -> Result<Option<(Id<crate::id::Factor>, Id<AccountKind>)>, Error<D::Error>> {
         let digest = code.digest();
         let select = Query::select()
             .columns([table::RecoveryCode::Id, table::RecoveryCode::Digest, table::RecoveryCode::AccountId])
@@ -160,8 +162,13 @@ impl<D: Db> Codes<D> {
         if stored != digest {
             return Ok(None);
         }
-        let (id, account): (Id<crate::id::Factor>, Id<AccountKind>) =
-            (fields.id(table::RecoveryCode::Id)?, fields.id(table::RecoveryCode::AccountId)?);
+        Ok(Some((fields.id(table::RecoveryCode::Id)?, fields.id(table::RecoveryCode::AccountId)?)))
+    }
+
+    /// Spends `code`: the account it belongs to, or `None` when no unspent code has this digest
+    /// (see [`Codes::find`]). Of two calls with the same code, one gets the account.
+    pub async fn spend(&self, code: &Code, now: Timestamp) -> Result<Option<Id<AccountKind>>, Error<D::Error>> {
+        let Some((id, account)) = self.find(code).await? else { return Ok(None) };
         let spend = Query::update()
             .table(table::RecoveryCode::Table)
             .value(table::RecoveryCode::UsedAt, now.as_millisecond())

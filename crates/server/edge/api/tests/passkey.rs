@@ -783,6 +783,63 @@ fn recovery_codes_are_shown_once_kept_as_digests_and_a_new_set_voids_the_old() {
     assert_eq!(events.iter().filter(|name| *name == "recovery.minted").count(), 2, "{events:?}");
 }
 
+/// A random source that has run dry.
+#[derive(Debug)]
+struct Dry;
+
+impl std::fmt::Display for Dry {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str("no randomness")
+    }
+}
+
+impl std::error::Error for Dry {}
+
+impl clock::Draw for Dry {
+    type Error = Dry;
+
+    fn bytes(&self) -> Result<[u8; 16], Dry> {
+        Err(Dry)
+    }
+}
+
+#[test]
+fn a_recovery_code_is_not_burned_by_a_registration_that_could_not_start() {
+    let fixture = Fixture::new();
+    let (account, link) = fixture.person("me@example.org");
+    let phone = Authenticator::synced(1, ORIGIN, HOST);
+    assert_eq!(fixture.register(&link, &phone).status, Status::Created);
+    let held = cookie_of(&fixture.sign_in(&phone, account.as_bytes()));
+    let minted = fixture.send((Method::Post, "/v1/recovery/codes"), &held, &Value::Null);
+    let code = body(&minted)["codes"][0].as_str().unwrap().to_owned();
+    // the same routes over a random source that fails once the code is looked up
+    let config = Passing { session: jar(), ceremony: ceremony_jar(), relying: Relying::hosted() };
+    let broken = Ceremonies::new(
+        (fixture.entry.clone(), Registry::new(fixture.db.clone())),
+        (fixture.clock, Dry),
+        Webauthn::new(Relying::hosted()).unwrap(),
+        config,
+    );
+    let request = Request {
+        method: Method::Post,
+        path: "/v1/recovery".to_owned(),
+        query: None,
+        authorization: None,
+        cookie: None,
+        origin: Some(ORIGIN.to_owned()),
+        site: None,
+        source: Some("10.0.0.1".parse().unwrap()),
+        body: Payload::Whole(json!({"code": code, "label": "new phone"}).to_string().into_bytes()),
+    };
+    let failed = pollster::block_on(broken.answer(&request));
+    assert_eq!(failed.status, Status::Internal, "{}", text(&failed));
+    // nothing was spent: the code still works, and ten are left
+    assert_eq!(body(&fixture.send((Method::Get, "/v1/recovery/codes"), &held, &Value::Null))["remaining"], json!(10));
+    let started = fixture.send((Method::Post, "/v1/recovery"), "", &json!({"code": code, "label": "new phone"}));
+    assert_eq!(started.status, Status::Ok, "{}", text(&started));
+    assert_eq!(body(&fixture.send((Method::Get, "/v1/recovery/codes"), &held, &Value::Null))["remaining"], json!(9));
+}
+
 #[test]
 fn a_recovery_code_is_spent_once_to_register_a_passkey_and_a_wrong_one_is_limited() {
     let fixture = Fixture::new();

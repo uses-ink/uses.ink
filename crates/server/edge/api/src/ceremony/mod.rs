@@ -359,8 +359,11 @@ impl<D: Db + Clone, K: Clock, R: Draw, P: Passkeys> Ceremonies<D, K, R, P> {
         let code: Code = asked.code.parse().map_err(Stop::Code)?;
         let label = Label::parse(&asked.label).map_err(Stop::Label)?;
         self.recovery.admit(request.source, now).map_err(Stop::Limited)?;
-        let account = self.codes.spend(&code, now).await.map_err(Stop::stored_codes)?.ok_or(Stop::Spent)?;
+        // the code is spent last: a registration that cannot be started (the store, the verifier or
+        // the random source failed) must not burn the only code a person has left
+        let (_, account) = self.codes.find(&code).await.map_err(Stop::stored_codes)?.ok_or(Stop::Spent)?;
         let mut reply = self.starting(account, label, now).await?;
+        self.codes.spend(&code, now).await.map_err(Stop::stored_codes)?.ok_or(Stop::Spent)?;
         reply.cookie = Some(self.config.session.clear());
         Ok(reply)
     }
