@@ -4,7 +4,6 @@ use std::fmt;
 use std::path::PathBuf;
 
 use model::{DeployId, DuplicateRoute, PathError, Route};
-use trace::Field as _;
 
 /// A folder that cannot be served, or a file that cannot be read.
 #[derive(Debug)]
@@ -105,7 +104,7 @@ pub enum Error {
     },
 }
 
-impl trace::Kind for &Error {
+impl logging::Kind for &Error {
     fn kind(self) -> &'static str {
         match self {
             Error::NotDeploy { .. } => "not-deploy",
@@ -132,15 +131,15 @@ impl Error {
     /// for a file the system would not read or one that changed under a read.
     pub(crate) fn said(&self) {
         match self {
-            Self::Read { .. } | Self::Short { .. } => trace::error!(
-                name: trace::event::FOLDER_REFUSED,
-                kind = trace::Kind::kind(self),
-                error = trace::Failure(self).field(),
+            Self::Read { .. } | Self::Short { .. } => logging::error!(
+                name: logging::event::FOLDER_REFUSED,
+                kind = logging::Kind::kind(self),
+                error = logging::Failure(self).field(),
             ),
-            _ => trace::warn!(
-                name: trace::event::FOLDER_REFUSED,
-                kind = trace::Kind::kind(self),
-                error = trace::Failure(self).field(),
+            _ => logging::warn!(
+                name: logging::event::FOLDER_REFUSED,
+                kind = logging::Kind::kind(self),
+                error = logging::Failure(self).field(),
             ),
         }
     }

@@ -6,7 +6,7 @@ use db::{Db, Row, Statement};
 use model::Timestamp;
 use queue::{Delivery, Message, MessageId, Queue, Sent, Settled};
 use sea_query::{Expr, ExprTrait, OnConflict, Order, Query};
-use trace::Field as _;
+use logging::Field as _;
 
 use crate::Error;
 use crate::schema::Message as Table;
@@ -53,11 +53,11 @@ impl<D: Db> Local<D> {
     /// Says how settling `delivery` went, as `how`. A stale settlement changed nothing because
     /// the lease had ended: a `warn`, since the work it was for may run twice.
     fn said(how: &'static str, delivery: &Delivery, settled: Settled) -> Settled {
-        let id = trace::Count(delivery.id.0).field();
+        let id = logging::Count(delivery.id.0).field();
         if settled == Settled::Done {
-            trace::debug!(name: trace::event::QUEUE_SETTLED, how, id, outcome = "done");
+            logging::debug!(name: logging::event::QUEUE_SETTLED, how, id, outcome = "done");
         } else {
-            trace::warn!(name: trace::event::QUEUE_SETTLED, how, id, outcome = "stale");
+            logging::warn!(name: logging::event::QUEUE_SETTLED, how, id, outcome = "stale");
         }
         settled
     }
@@ -79,7 +79,7 @@ impl<D: Db> Queue for Local<D> {
                 .to_owned();
             if let Some(row) = self.run(insert.into()).await?.rows.first() {
                 let id = Self::id(row)?;
-                trace::debug!(name: trace::event::QUEUE_SENT, id = trace::Count(id.0).field(), outcome = "queued");
+                logging::debug!(name: logging::event::QUEUE_SENT, id = logging::Count(id.0).field(), outcome = "queued");
                 return Ok(Sent::Queued(id));
             }
             // not inserted, so the key is held; unless the holder was acked in between, then try again
@@ -90,9 +90,9 @@ impl<D: Db> Queue for Local<D> {
                 .to_owned();
             if let Some(row) = self.run(held.into()).await?.rows.first() {
                 let id = Self::id(row)?;
-                trace::debug!(
-                    name: trace::event::QUEUE_SENT,
-                    id = trace::Count(id.0).field(),
+                logging::debug!(
+                    name: logging::event::QUEUE_SENT,
+                    id = logging::Count(id.0).field(),
                     outcome = "duplicate",
                 );
                 return Ok(Sent::Duplicate(id));
@@ -127,10 +127,10 @@ impl<D: Db> Queue for Local<D> {
             })
         };
         let delivery = read(row).map_err(|error| Self::backend(error.into()))?;
-        trace::debug!(
-            name: trace::event::QUEUE_RECEIVED,
-            id = trace::Count(delivery.id.0).field(),
-            attempt = trace::Count(u64::from(delivery.attempt)).field(),
+        logging::debug!(
+            name: logging::event::QUEUE_RECEIVED,
+            id = logging::Count(delivery.id.0).field(),
+            attempt = logging::Count(u64::from(delivery.attempt)).field(),
         );
         Ok(Some(delivery))
     }

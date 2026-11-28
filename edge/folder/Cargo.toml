@@ -15,7 +15,7 @@ model.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
-trace.workspace = true
+logging.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

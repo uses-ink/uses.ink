@@ -7,7 +7,6 @@ use chacha20poly1305::aead::rand_core::RngCore;
 use chacha20poly1305::aead::{OsRng, Payload};
 use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce, aead::Aead};
 use secret::{Binding, Plain, Sealed, Secret};
-use trace::Field as _;
 
 use crate::Error;
 use crate::key::{Key, Origin};
@@ -39,18 +38,18 @@ impl Local {
         let path = path.as_ref();
         match Key::open(path) {
             Ok((key, origin)) => {
-                trace::info!(
-                    name: trace::event::KEY_OPENED,
-                    key_file = trace::Located(path).field(),
+                logging::info!(
+                    name: logging::event::KEY_OPENED,
+                    key_file = logging::Located(path).field(),
                     outcome = if origin == Origin::Made { "made" } else { "read" },
                 );
                 Ok(Self { key })
             }
             Err(error) => {
-                trace::error!(
-                    name: trace::event::KEY_REFUSED,
-                    key_file = trace::Located(path).field(),
-                    error = trace::Failure(&error).field(),
+                logging::error!(
+                    name: logging::event::KEY_REFUSED,
+                    key_file = logging::Located(path).field(),
+                    error = logging::Failure(&error).field(),
                 );
                 Err(error)
             }
@@ -70,7 +69,7 @@ impl Local {
 
     /// A sealed value that is not one: said, and the error to return.
     fn malformed() -> Failure {
-        trace::warn!(name: trace::event::SECRET_OPENED, outcome = "malformed");
+        logging::warn!(name: logging::event::SECRET_OPENED, outcome = "malformed");
         Failure::Malformed
     }
 
@@ -97,7 +96,7 @@ impl Secret for Local {
         bytes.push(Self::VERSION);
         bytes.extend_from_slice(&nonce);
         bytes.extend_from_slice(&sealed);
-        trace::debug!(name: trace::event::SECRET_SEALED, bytes = trace::Size::from(bytes.len()).field());
+        logging::debug!(name: logging::event::SECRET_SEALED, bytes = logging::Size::from(bytes.len()).field());
         Ok(Sealed::from(bytes))
     }
 
@@ -112,10 +111,10 @@ impl Secret for Local {
         let payload = Payload { msg: ciphertext, aad: binding.as_ref() };
         let opened = self.cipher().decrypt(XNonce::from_slice(nonce), payload).map_err(|_| {
             // altered, or bound to another row: said by outcome only, never by what it held
-            trace::warn!(name: trace::event::SECRET_OPENED, outcome = "refused");
+            logging::warn!(name: logging::event::SECRET_OPENED, outcome = "refused");
             Failure::Refused
         })?;
-        trace::debug!(name: trace::event::SECRET_OPENED, outcome = "opened");
+        logging::debug!(name: logging::event::SECRET_OPENED, outcome = "opened");
         Ok(Plain::from(opened))
     }
 }

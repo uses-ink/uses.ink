@@ -9,7 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-trace.workspace = true
+logging.workspace = true
 blake3.workspace = true
 engine.workspace = true
 freehand.workspace = true
@@ -18,7 +18,7 @@ model.workspace = true
 wasmtime.workspace = true
 
 [dev-dependencies]
-trace = { workspace = true, features = ["capture"] }
+logging = { workspace = true, features = ["capture"] }
 fixture = { workspace = true, features = ["origin"] }
 source-git.workspace = true
 host-image.workspace = true

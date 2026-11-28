@@ -66,7 +66,7 @@ uses.ink/
   queue/ (conformance local)     secret/ (conformance local)    mail/ (smtp)
   watch/ (git)                   edge/ (api axum control folder)
   host/ (image native wasmtime)  plugin/ (format sdk source theme)
-  model  config  diag  engine  token  trace  sig  https  clock  control  cli  web
+  model  config  diag  engine  token  logging  sig  https  clock  control  cli  web
   freehand  freehand-web  fixture  brand  wit/ (format host mirror model source theme)
   docs/  spikes/ (gix workers)  tools/ (farm)  xtask/
 ```
@@ -76,7 +76,7 @@ After (6 directories, 13 pinned files, 7 dot entries):
 ```
 uses.ink/
   crates/    every workspace crate, by layer
-    core/        model config diag engine token trace sig https
+    core/        model config diag engine token logging sig https
     port/        blob build clock db mail queue secret   (each with its adapters and conformance)
     server/      control watch edge                      (edge: api axum control folder)
     runtime/     host plugin                             (host: image native wasmtime)
@@ -102,7 +102,7 @@ The layers follow `MAY_USE`, not taste. Each depends only on layers above it in 
 
 | Layer | Holds | Depends on |
 |---|---|---|
-| `core` | the vocabulary, the pure engine and the leaves every layer may take: `model`, `config`, `diag`, `engine`, `token`, `trace`, `sig`, `https` | itself |
+| `core` | the vocabulary, the pure engine and the leaves every layer may take: `model`, `config`, `diag`, `engine`, `token`, `logging`, `sig`, `https` | itself |
 | `port` | traits and their adapters: `blob`, `build`, `clock`, `db`, `mail`, `queue`, `secret` | `core` |
 | `server` | the hosted side: `control` (use cases over ports), `watch`, `edge` | `core`, `port` |
 | `runtime` | what runs plugins and builds: `host`, `plugin` | `core`, `port` |
@@ -113,7 +113,7 @@ The brief's example put `watch` with the ports and `build` with core. Both diffe
 evidence. `watch` depends on `control` (`MAY_USE` row for `uses-ink-watch`), so it is a use case,
 not a port; its `Heads` port is a trait inside it, and `watch/git` is that port's adapter, which
 stays beside it. `build` is the builder port (`build/local` is its adapter), and its
-`MAY_USE` row is `blob`, `model`, `trace`, so it sits with the ports.
+`MAY_USE` row is `blob`, `model`, `logging`, so it sits with the ports.
 
 `layout` can check the table: a crate in layer X may not depend on a crate in a later layer. That
 turns the layer list into a rule, a stronger check than the per-crate `MAY_USE` rows give, and it

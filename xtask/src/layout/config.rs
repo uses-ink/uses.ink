@@ -311,7 +311,6 @@ mod tests {
         "uses-ink-theme-quiet",
         "uses-ink-theme-quiet-guest",
         "uses-ink-token",
-        "uses-ink-trace",
         "uses-ink-watch",
         "uses-ink-watch-git",
         "uses-ink-web",

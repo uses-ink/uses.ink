@@ -5,7 +5,6 @@
 use std::io::Write;
 
 use model::Chain;
-use trace::{Entered, Guard, Logging, Process, Variables, Vars};
 
 use crate::settings::{Log, Preferences, Process as Terminal};
 use crate::{Cli, Command};
@@ -67,7 +66,7 @@ impl Vars for Layered<'_> {
 impl Cli {
     /// The logging the settings ask for, weakest first: the `-v` count, the config file, the
     /// variables, then the flags (which clap also reads `INK_LOG` and `INK_LOG_FILE` into).
-    fn logging(&self) -> Result<Logging, trace::Error> {
+    fn logging(&self) -> Result<Logging, logging::Error> {
         // a config file that cannot be read is reported by `settings`, not here
         let preferences = Preferences::load(&Terminal).unwrap_or_default();
         let mut logging =
@@ -98,6 +97,6 @@ impl Cli {
                 return None;
             }
         };
-        Some(Scope { _span: trace::command!(self.command.verb()).entered(), _guard: guard })
+        Some(Scope { _span: logging::command!(self.command.verb()).entered(), _guard: guard })
     }
 }

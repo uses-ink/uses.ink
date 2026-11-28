@@ -190,7 +190,7 @@ impl<B: Blobs, P, F, T: Theme> Engine<B, P, F, T> {
             Robots,
             ThemeFiles { theme },
         );
-        let stage = trace::stage!(trace::Stage::Render, "artifacts").entered();
+        let stage = logging::stage!(logging::Stage::Render, "artifacts").entered();
         if let Err(error) = artifacts.files(site, &mut out) {
             out.fail(error);
         }

@@ -28,7 +28,6 @@ mod work;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
-use trace::Field as _;
 
 use engine::cache::Cache;
 use engine::image::{Prepared, Source};
@@ -82,11 +81,11 @@ impl Pixels {
     /// does not read back as a record is rejected, so the cache drops it and says so.
     /// Says how the image cache answered for `key`, which is a hit or a miss and never a reason.
     fn looked(outcome: &'static str, key: &cache::Key) {
-        trace::debug!(
-            name: trace::event::CACHE_LOOKUP,
+        logging::debug!(
+            name: logging::event::CACHE_LOOKUP,
             kind = "image",
             outcome,
-            key = trace::Digest(key.digest.as_bytes()).field(),
+            key = logging::Digest(key.digest.as_bytes()).field(),
         );
     }
 

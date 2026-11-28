@@ -6,7 +6,6 @@ use build::Revision;
 use https::Https;
 use model::git::{Locator, Network, Scheme};
 use secret::Plain;
-use trace::Field as _;
 use watch::{Access, Head, Heads};
 
 use crate::Unlisted;
@@ -34,7 +33,7 @@ impl Remotes {
     }
 }
 
-impl trace::Kind for &Unlisted {
+impl logging::Kind for &Unlisted {
     fn kind(self) -> &'static str {
         match self {
             Unlisted::Network { .. } => "network",
@@ -53,28 +52,28 @@ impl Remotes {
     /// (`watch.polled`), so a failure here is `debug` detail; only a refusal by the operator's
     /// network setting is a `warn`.
     fn said(scheme: Scheme, revision: Option<&Revision>, read: &Result<Head, Unlisted>) {
-        let (scheme, named) = (trace::Shown(scheme), revision.is_some());
+        let (scheme, named) = (logging::Shown(scheme), revision.is_some());
         match read {
-            Ok(head) => trace::debug!(
-                name: trace::event::GIT_HEAD,
+            Ok(head) => logging::debug!(
+                name: logging::event::GIT_HEAD,
                 scheme = scheme.field(),
                 named,
                 outcome = "read",
-                head = trace::Shown(head).field(),
+                head = logging::Shown(head).field(),
             ),
-            Err(error @ Unlisted::Network { .. }) => trace::warn!(
-                name: trace::event::GIT_HEAD,
+            Err(error @ Unlisted::Network { .. }) => logging::warn!(
+                name: logging::event::GIT_HEAD,
                 scheme = scheme.field(),
                 named,
-                outcome = trace::Kind::kind(error),
-                error = trace::Failure(error).field(),
+                outcome = logging::Kind::kind(error),
+                error = logging::Failure(error).field(),
             ),
-            Err(error) => trace::debug!(
-                name: trace::event::GIT_HEAD,
+            Err(error) => logging::debug!(
+                name: logging::event::GIT_HEAD,
                 scheme = scheme.field(),
                 named,
-                outcome = trace::Kind::kind(error),
-                error = trace::Failure(error).field(),
+                outcome = logging::Kind::kind(error),
+                error = logging::Failure(error).field(),
             ),
         }
     }

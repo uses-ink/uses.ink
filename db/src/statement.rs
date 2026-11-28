@@ -99,7 +99,7 @@ statements! {
     IndexCreateStatement => Index,
 }
 
-impl trace::Kind for Shape {
+impl logging::Kind for Shape {
     fn kind(self) -> &'static str {
         match self {
             Self::Select => "select",

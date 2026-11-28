@@ -23,10 +23,10 @@ secret.workspace = true
 sig.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-trace.workspace = true
+logging.workspace = true
 
 [dev-dependencies]
-trace = { workspace = true, features = ["capture"] }
+logging = { workspace = true, features = ["capture"] }
 blob-dir.workspace = true
 db-sqlite.workspace = true
 mail.workspace = true

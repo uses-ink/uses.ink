@@ -14,7 +14,7 @@ jiff.workspace = true
 model.workspace = true
 queue.workspace = true
 sea-query.workspace = true
-trace.workspace = true
+logging.workspace = true
 
 [dev-dependencies]
 db-sqlite.workspace = true

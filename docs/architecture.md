@@ -84,7 +84,7 @@ uses.ink/
   https/                 uses-ink-https         how git reaches an https remote: one rustls configuration over ring (0072)
   freehand/              freehand               the pen: strokes, tools, marks; native and wasm32
   freehand-web/          freehand-web           the pen as plain wasm exports, and its loader freehand.js
-  trace/                 uses-ink-trace         logging: the macros every crate instruments through (0065)
+  logging/               uses-ink-logging       logging: the macros every crate instruments through (0065)
   control/               uses-ink-control       accounts, handles, identities, sources, builds, deploys, domains
   db/  db/sqlite/  db/conformance/              row port and its adapter; planned: db/d1
   blob/  blob/dir/  blob/conformance/           blob port and its adapter; planned: blob/r2
@@ -106,7 +106,7 @@ uses.ink/
     (worker/             planned: uses-ink-edge-worker, the workers-rs entry point)
   web/                   uses-ink-web           the dashboard screens (stack in section 14); the landing is planned
   cli/                   uses-ink-cli           the `ink` binary
-  trace/                 uses-ink-trace         the log: typed fields, span macros, the one subscriber setup
+  logging/               uses-ink-logging       the log: typed fields, span macros, the one subscriber setup
   plugin/
     sdk/                 uses-ink-sdk           guest-side bindings and their conversions to the model;
                                                 MIT OR Apache-2.0, depends on model and freehand only (0041)
@@ -148,7 +148,7 @@ plugin/*                 take model, plugin/sdk, wit; a theme takes engine; form
                          Never control or edge.
 plugin/sdk               takes model, freehand only: a permissive crate depends on no AGPL crate of ours
 freehand-web             takes freehand
-freehand, token, sig, trace, https, clock, mail   take nothing of ours
+freehand, token, sig, logging, https, clock, mail   take nothing of ours
 fixture                  takes nothing of ours; every crate may take it as a dev-dependency, none as a normal one
 ```
 

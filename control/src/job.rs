@@ -184,7 +184,7 @@ pub enum Dropped {
     },
 }
 
-impl trace::Kind for &Dropped {
+impl logging::Kind for &Dropped {
     fn kind(self) -> &'static str {
         match self {
             Dropped::Unnamed => "unnamed",

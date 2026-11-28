@@ -18,7 +18,7 @@ edge-folder.workspace = true
 jiff.workspace = true
 model.workspace = true
 tokio.workspace = true
-trace.workspace = true
+logging.workspace = true
 
 [dev-dependencies]
 db.workspace = true

@@ -6,7 +6,6 @@ use db::{Db, Statement};
 use jiff::Timestamp;
 use model::{Bytes, DeployId};
 use sea_query::{Expr, ExprTrait, Func, JoinType, OnConflict, Order, Query};
-use trace::Field as _;
 
 use crate::deploy::{self, Cause, Deploy, Live, Published, Recorded, Resumed};
 use crate::id::{Id, Site as SiteKind};
@@ -45,16 +44,16 @@ impl<P: Ports> Control<P> {
             (false, Some(live)) if live.paused => Published::Held,
             (false, _) => Published::Unchanged,
         };
-        trace::info!(
-            name: trace::event::DEPLOY_PUBLISHED,
-            deploy = trace::Digest(id.hash().as_bytes()).field(),
+        logging::info!(
+            name: logging::event::DEPLOY_PUBLISHED,
+            deploy = logging::Digest(id.hash().as_bytes()).field(),
             outcome = match published {
                 Published::Live { .. } => "live",
                 Published::Held => "held",
                 _ => "unchanged",
             },
-            files = trace::Count::from(new.manifest.entries().len()).field(),
-            bytes = trace::Size(bytes.count()).field(),
+            files = logging::Count::from(new.manifest.entries().len()).field(),
+            bytes = logging::Size(bytes.count()).field(),
         );
         Ok(Recorded { deploy: id, published })
     }
@@ -124,10 +123,10 @@ impl<P: Ports> Control<P> {
             ];
             let outcomes = self.ports.db().batch(batch).await?;
             if outcomes.first().is_some_and(|outcome| outcome.changes == 1) {
-                trace::info!(
-                    name: trace::event::DEPLOY_ROLLED,
-                    to = trace::Digest(to.hash().as_bytes()).field(),
-                    from = trace::Digest(before.deploy.hash().as_bytes()).field(),
+                logging::info!(
+                    name: logging::event::DEPLOY_ROLLED,
+                    to = logging::Digest(to.hash().as_bytes()).field(),
+                    from = logging::Digest(before.deploy.hash().as_bytes()).field(),
                 );
                 return self.live(site).await?.ok_or_else(|| Refusal::NotLive { site }.into());
             }

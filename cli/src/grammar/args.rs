@@ -38,7 +38,7 @@ pub struct Cli {
     /// blob, host, plugin, watch, queue, cli) or targets, at a level. Off unless this, `-v` or
     /// `INK_LOG` asks.
     #[arg(long, global = true, value_name = "FILTER", env = "INK_LOG", help_heading = Heading::DIAGNOSTICS)]
-    pub log: Option<trace::Filter>,
+    pub log: Option<logging::Filter>,
     /// Also write the log as JSON lines to this file.
     #[arg(long, global = true, value_name = "PATH", env = "INK_LOG_FILE", help_heading = Heading::DIAGNOSTICS)]
     pub log_file: Option<PathBuf>,

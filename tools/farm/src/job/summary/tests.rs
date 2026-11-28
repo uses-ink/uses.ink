@@ -211,7 +211,7 @@ error: this function has too many lines (45/40)
 error: consider adding a `;` to the last statement for consistent formatting
   --> edge/api/src/api.rs:73:17
    |
-73 |                 trace::warn!(name: trace::event::API_AUTH)
+73 |                 logging::warn!(name: logging::event::API_AUTH)
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here
    |
    = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`

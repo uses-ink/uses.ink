@@ -8,7 +8,7 @@ use build::{Build, Built, Event, Events, Outcome, Request, Source, Status};
 use engine::{BaseUrl, Blobs};
 use host_native::Memory;
 use model::Bytes;
-use trace::{Field as _, Instrument as _};
+use logging::{Field as _, Instrument as _};
 
 use crate::Error;
 use crate::bundle::Bundle;
@@ -77,11 +77,11 @@ impl<B: Blob, R: Remote> Local<B, R> {
                 other => Err(build::Error::Unsupported { kind: other.kind() }),
             }
         };
-        let read = fetching.instrument(trace::stage!(trace::Stage::Fetch, "snapshot")).await?;
+        let read = fetching.instrument(logging::stage!(logging::Stage::Fetch, "snapshot")).await?;
         let base: BaseUrl = request.base.as_str().parse().map_err(|source| Self::fail(Error::Base { source }))?;
         let made = Pipeline { base }.run(read, store, events).map_err(|id| Self::fail(Error::Format { id }))?;
         let Some(made) = made else { return Ok(Outcome::Refused) };
-        let built = self.store(request, made).instrument(trace::stage!(trace::Stage::Write, "blobs")).await?;
+        let built = self.store(request, made).instrument(logging::stage!(logging::Stage::Write, "blobs")).await?;
         events.event(Event::Rendered { files: built.manifest.entries().len() as u64, bytes: built.bytes });
         Ok(Outcome::Built(built))
     }
@@ -93,8 +93,8 @@ impl<B: Blob, R: Remote> Build for Local<B, R> {
     async fn run(&self, request: &Request, events: &mut impl Events) -> Result<Outcome, Failure<B::Error>> {
         let started = Instant::now();
         events.event(Event::Started { build: request.build, trigger: request.trigger });
-        let span = trace::build!(request.build, request.trigger);
-        span.in_scope(|| trace::info!(name: trace::event::BUILD_START, trigger = trace::Kind::kind(request.trigger)));
+        let span = logging::build!(request.build, request.trigger);
+        span.in_scope(|| logging::info!(name: logging::event::BUILD_START, trigger = logging::Kind::kind(request.trigger)));
         let result = self.attempt(request, events).instrument(span.clone()).await;
         let status = match &result {
             Ok(Outcome::Built(_)) => Status::Succeeded,
@@ -102,11 +102,11 @@ impl<B: Blob, R: Remote> Build for Local<B, R> {
             Err(_) => Status::Failed,
         };
         span.in_scope(|| {
-            let took = trace::Took(started.elapsed()).field();
+            let took = logging::Took(started.elapsed()).field();
             if let Err(error) = &result {
-                trace::error!(name: trace::event::BUILD_END, status = trace::Kind::kind(status), took_us = took, error = trace::Failure(error).field());
+                logging::error!(name: logging::event::BUILD_END, status = logging::Kind::kind(status), took_us = took, error = logging::Failure(error).field());
             } else {
-                trace::info!(name: trace::event::BUILD_END, status = trace::Kind::kind(status), took_us = took);
+                logging::info!(name: logging::event::BUILD_END, status = logging::Kind::kind(status), took_us = took);
             }
         });
         events.event(Event::Finished { status, wall: started.elapsed() });

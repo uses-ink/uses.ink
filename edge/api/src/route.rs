@@ -245,7 +245,7 @@ impl Call {
     }
 }
 
-impl trace::Kind for &Call {
+impl logging::Kind for &Call {
     /// The route's name, with no site or build in it.
     fn kind(self) -> &'static str {
         match self {

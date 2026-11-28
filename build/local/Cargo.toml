@@ -9,7 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-trace.workspace = true
+logging.workspace = true
 blob.workspace = true
 build.workspace = true
 config.workspace = true
@@ -22,7 +22,7 @@ model.workspace = true
 theme-quiet.workspace = true
 
 [dev-dependencies]
-trace = { workspace = true, features = ["capture"] }
+logging = { workspace = true, features = ["capture"] }
 blob-dir.workspace = true
 build-conformance.workspace = true
 pollster.workspace = true

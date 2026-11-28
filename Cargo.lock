@@ -6293,8 +6293,8 @@ dependencies = [
  "tempfile",
  "uses-ink-blob",
  "uses-ink-blob-conformance",
+ "uses-ink-logging",
  "uses-ink-model",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6304,8 +6304,8 @@ dependencies = [
  "serde",
  "serde_json",
  "uses-ink-blob",
+ "uses-ink-logging",
  "uses-ink-model",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6334,9 +6334,9 @@ dependencies = [
  "uses-ink-format-obsidian",
  "uses-ink-host-image",
  "uses-ink-host-native",
+ "uses-ink-logging",
  "uses-ink-model",
  "uses-ink-theme-quiet",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6391,6 +6391,7 @@ dependencies = [
  "uses-ink-host-native",
  "uses-ink-host-wasmtime",
  "uses-ink-https",
+ "uses-ink-logging",
  "uses-ink-mail",
  "uses-ink-mail-smtp",
  "uses-ink-model",
@@ -6399,7 +6400,6 @@ dependencies = [
  "uses-ink-secret-local",
  "uses-ink-sig",
  "uses-ink-theme-quiet",
- "uses-ink-trace",
  "uses-ink-watch",
  "uses-ink-watch-git",
 ]
@@ -6444,6 +6444,7 @@ dependencies = [
  "uses-ink-control-signin",
  "uses-ink-db",
  "uses-ink-db-sqlite",
+ "uses-ink-logging",
  "uses-ink-mail",
  "uses-ink-model",
  "uses-ink-queue",
@@ -6451,7 +6452,6 @@ dependencies = [
  "uses-ink-secret",
  "uses-ink-secret-local",
  "uses-ink-sig",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6502,7 +6502,7 @@ name = "uses-ink-db"
 version = "0.0.0"
 dependencies = [
  "sea-query",
- "uses-ink-trace",
+ "uses-ink-logging",
 ]
 
 [[package]]
@@ -6521,7 +6521,7 @@ dependencies = [
  "rusqlite",
  "uses-ink-db",
  "uses-ink-db-conformance",
- "uses-ink-trace",
+ "uses-ink-logging",
 ]
 
 [[package]]
@@ -6566,12 +6566,12 @@ dependencies = [
  "uses-ink-db",
  "uses-ink-db-sqlite",
  "uses-ink-edge-folder",
+ "uses-ink-logging",
  "uses-ink-mail",
  "uses-ink-model",
  "uses-ink-queue-local",
  "uses-ink-secret-local",
  "uses-ink-sig",
- "uses-ink-trace",
  "uuid",
  "webauthn-rs-core",
 ]
@@ -6588,8 +6588,8 @@ dependencies = [
  "tokio",
  "uses-ink-edge",
  "uses-ink-edge-api",
+ "uses-ink-logging",
  "uses-ink-model",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6609,10 +6609,10 @@ dependencies = [
  "uses-ink-db-sqlite",
  "uses-ink-edge",
  "uses-ink-edge-folder",
+ "uses-ink-logging",
  "uses-ink-model",
  "uses-ink-queue-local",
  "uses-ink-secret-local",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6624,8 +6624,8 @@ dependencies = [
  "serde_json",
  "tokio",
  "uses-ink-edge",
+ "uses-ink-logging",
  "uses-ink-model",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6639,8 +6639,8 @@ dependencies = [
  "serde_json",
  "uses-ink-diag",
  "uses-ink-fixture",
+ "uses-ink-logging",
  "uses-ink-model",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6712,8 +6712,8 @@ dependencies = [
  "toml",
  "uses-ink-engine",
  "uses-ink-fixture",
+ "uses-ink-logging",
  "uses-ink-model",
- "uses-ink-trace",
  "zune-jpeg",
 ]
 
@@ -6730,8 +6730,8 @@ dependencies = [
  "uses-ink-engine",
  "uses-ink-fixture",
  "uses-ink-https",
+ "uses-ink-logging",
  "uses-ink-model",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6746,10 +6746,10 @@ dependencies = [
  "uses-ink-format-obsidian",
  "uses-ink-host-image",
  "uses-ink-host-native",
+ "uses-ink-logging",
  "uses-ink-model",
  "uses-ink-source-git",
  "uses-ink-theme-quiet",
- "uses-ink-trace",
  "wasmtime",
 ]
 
@@ -6769,6 +6769,15 @@ dependencies = [
  "reqwest",
  "rustls",
  "webpki-roots",
+]
+
+[[package]]
+name = "uses-ink-logging"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -6824,10 +6833,10 @@ dependencies = [
  "sea-query",
  "uses-ink-db",
  "uses-ink-db-sqlite",
+ "uses-ink-logging",
  "uses-ink-model",
  "uses-ink-queue",
  "uses-ink-queue-conformance",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6862,9 +6871,9 @@ dependencies = [
  "pollster",
  "rand_core 0.6.4",
  "tempfile",
+ "uses-ink-logging",
  "uses-ink-secret",
  "uses-ink-secret-conformance",
- "uses-ink-trace",
  "zeroize",
 ]
 
@@ -6924,15 +6933,6 @@ name = "uses-ink-token"
 version = "0.0.0"
 
 [[package]]
-name = "uses-ink-trace"
-version = "0.0.0"
-dependencies = [
- "serde_json",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "uses-ink-watch"
 version = "0.0.0"
 dependencies = [
@@ -6945,12 +6945,12 @@ dependencies = [
  "uses-ink-control",
  "uses-ink-db",
  "uses-ink-db-sqlite",
+ "uses-ink-logging",
  "uses-ink-model",
  "uses-ink-queue",
  "uses-ink-queue-local",
  "uses-ink-secret",
  "uses-ink-secret-local",
- "uses-ink-trace",
 ]
 
 [[package]]
@@ -6964,9 +6964,9 @@ dependencies = [
  "tokio",
  "uses-ink-build",
  "uses-ink-https",
+ "uses-ink-logging",
  "uses-ink-model",
  "uses-ink-secret",
- "uses-ink-trace",
  "uses-ink-watch",
 ]
 

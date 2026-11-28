@@ -16,7 +16,6 @@ use clock::{Clock, Slept, System};
 use control::{Dropped, Id, Published, SiteKind, Worked};
 use edge_control::Chain;
 use tokio::sync::{mpsc, watch as flag};
-use trace::Field as _;
 use watch::{Done, Head, Outcome, Report, Round};
 
 /// Which loop.
@@ -28,7 +27,7 @@ pub(crate) enum Task {
     Worker,
 }
 
-impl trace::Kind for Task {
+impl logging::Kind for Task {
     fn kind(self) -> &'static str {
         match self {
             Self::Watch => "watch",
@@ -149,24 +148,28 @@ impl Event {
     /// happen (`watch.polled`, `worker.tick`), so they are not logged again here.
     fn log(&self) {
         match self {
-            Self::Started(task) => trace::info!(name: trace::event::TASK_STARTED, task = trace::Kind::kind(*task)),
-            Self::Crashed { task, attempt, cause } => trace::error!(
-                name: trace::event::TASK_CRASHED,
-                task = trace::Kind::kind(*task),
-                attempt = trace::Count(u64::from(*attempt)).field(),
-                error = trace::Failure(cause).field(),
+            Self::Started(task) => {
+                logging::info!(name: logging::event::TASK_STARTED, task = logging::Kind::kind(*task));
+            }
+            Self::Crashed { task, attempt, cause } => logging::error!(
+                name: logging::event::TASK_CRASHED,
+                task = logging::Kind::kind(*task),
+                attempt = logging::Count(u64::from(*attempt)).field(),
+                error = logging::Failure(cause).field(),
             ),
-            Self::Restarting { task, after } => trace::warn!(
-                name: trace::event::TASK_RESTARTING,
-                task = trace::Kind::kind(*task),
-                after_us = trace::Took(*after).field(),
+            Self::Restarting { task, after } => logging::warn!(
+                name: logging::event::TASK_RESTARTING,
+                task = logging::Kind::kind(*task),
+                after_us = logging::Took(*after).field(),
             ),
-            Self::GaveUp { task, attempts } => trace::error!(
-                name: trace::event::TASK_GAVE_UP,
-                task = trace::Kind::kind(*task),
-                attempt = trace::Count(u64::from(*attempts)).field(),
+            Self::GaveUp { task, attempts } => logging::error!(
+                name: logging::event::TASK_GAVE_UP,
+                task = logging::Kind::kind(*task),
+                attempt = logging::Count(u64::from(*attempts)).field(),
             ),
-            Self::Stopped(task) => trace::info!(name: trace::event::TASK_STOPPED, task = trace::Kind::kind(*task)),
+            Self::Stopped(task) => {
+                logging::info!(name: logging::event::TASK_STOPPED, task = logging::Kind::kind(*task));
+            }
             _ => {}
         }
     }
@@ -410,7 +413,7 @@ mod test {
 
     #[test]
     fn supervision_is_logged_as_typed_events() {
-        let capture = trace::Capture::new();
+        let capture = logging::Capture::new();
         let (events, _receiver) = Events::channel();
         // the sender stays alive, so no wait ends as stopped
         let (halt, clock) = flag::channel(false);
@@ -419,17 +422,27 @@ mod test {
         drop(halt);
         let names: Vec<_> = capture.events().iter().map(|seen| seen.name).collect();
         let (started, crashed, restarting) =
-            (trace::event::TASK_STARTED, trace::event::TASK_CRASHED, trace::event::TASK_RESTARTING);
+            (logging::event::TASK_STARTED, logging::event::TASK_CRASHED, logging::event::TASK_RESTARTING);
         assert_eq!(
             names,
-            [started, crashed, restarting, started, crashed, restarting, started, crashed, trace::event::TASK_GAVE_UP]
+            [
+                started,
+                crashed,
+                restarting,
+                started,
+                crashed,
+                restarting,
+                started,
+                crashed,
+                logging::event::TASK_GAVE_UP
+            ]
         );
         let ended = capture.named(crashed);
         assert_eq!(ended.iter().map(|seen| seen.number("attempt")).collect::<Vec<_>>(), [Some(1), Some(2), Some(3)]);
         assert_eq!(ended[0].text("task"), Some("worker"));
-        assert_eq!(ended[0].level, trace::Level::ERROR);
-        assert_eq!(capture.named(restarting)[0].level, trace::Level::WARN);
-        assert_eq!(capture.named(trace::event::TASK_GAVE_UP)[0].number("attempt"), Some(3));
+        assert_eq!(ended[0].level, logging::Level::ERROR);
+        assert_eq!(capture.named(restarting)[0].level, logging::Level::WARN);
+        assert_eq!(capture.named(logging::event::TASK_GAVE_UP)[0].number("attempt"), Some(3));
     }
 
     #[test]

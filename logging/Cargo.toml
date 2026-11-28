@@ -1,5 +1,5 @@
 [package]
-name = "uses-ink-trace"
+name = "uses-ink-logging"
 description = "Logging for debugging and tracing: typed span and event fields, redaction by construction, and the one place a subscriber is set up (decision 0065)"
 version.workspace = true
 edition.workspace = true

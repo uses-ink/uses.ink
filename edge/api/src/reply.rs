@@ -262,7 +262,7 @@ impl Reply {
     }
 }
 
-impl trace::Kind for Method {
+impl logging::Kind for Method {
     fn kind(self) -> &'static str {
         match self {
             Self::Get => "get",

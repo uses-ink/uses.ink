@@ -1,6 +1,6 @@
 # Tracing: logging for debugging
 
-Decision 0065. This page is the design; `trace/` is the code. The word "trace" already means the
+Decision 0065. This page is the design; `logging/` is the code. The word "trace" already means the
 replayed ladder of a decision (`ink explain --why`, `uses.trace/v1`). This page is about the
 process: what it was doing, how long each part took, and why it refused. The crate name is the
 owner's choice; docs and code say "log" for the output and "span" for a timed scope.
@@ -28,9 +28,9 @@ interleaved with the NDJSON events: with `--json` the log goes to `--log-file` o
 
 ## One crate
 
-`trace` (package `uses-ink-trace`) owns the subscriber. Every other crate instruments through it
+`logging` (package `uses-ink-logging`) owns the subscriber. Every other crate instruments through it
 and depends on nothing else for logging; no crate sets up a subscriber. It re-exports the macros
-of `tracing` (`trace::info!`, `trace::warn!`, ...) and adds the typed parts below.
+of `tracing` (`logging::info!`, `logging::warn!`, ...) and adds the typed parts below.
 
 It has two features, so the lean part stays small:
 
@@ -70,7 +70,7 @@ its place. Each type says what it records as, and a call site names the type, ne
 string:
 
 ```rust
-trace::debug!(name: trace::event::BLOB_IO, bytes = trace::Size(n).field(), created = !held);
+logging::debug!(name: logging::event::BLOB_IO, bytes = logging::Size(n).field(), created = !held);
 ```
 
 The conversion is an argument of the `tracing` macro, so it runs only when the callsite is
@@ -87,7 +87,7 @@ enabled; a disabled event costs one level check. The types:
 | `Failure(&dyn Error)` | an error, with its whole `source()` chain | see Errors |
 | `Kind` implementors | a name constant | `Stage`, `Unit`, `Io`, and each crate's own enums |
 
-Names are constants: span names in `trace::name::span`, event names in `trace::name::event`. Field
+Names are constants: span names in `logging::name::span`, event names in `logging::name::event`. Field
 keys must be identifiers (a `tracing` rule), so they are listed here instead and kept few.
 
 Keys used: `kind` (what tells spans of one name apart), `step`, `unit`, `build`, `job`, `site`,
@@ -96,7 +96,7 @@ Keys used: `kind` (what tells spans of one name apart), `step`, `unit`, `build`,
 
 ### Errors
 
-An error is logged as `error = trace::Failure(&e).field()`. It reaches the layers as
+An error is logged as `error = logging::Failure(&e).field()`. It reaches the layers as
 `record_error`, and they walk `source()`: the human layer prints the message and one `caused by:`
 line per cause, the JSON layer writes `{"message": ..., "causes": [...]}`. No call site joins a
 chain into one string. `Capture` keeps the same structure, so a test asserts on the causes.
@@ -116,7 +116,7 @@ Redaction is by construction, not by care at the call site.
 
 ## The layers of the span tree
 
-Outermost first. Each is a macro in `trace` so the span's target is the module that opened it (an
+Outermost first. Each is a macro in `logging` so the span's target is the module that opened it (an
 area filter then governs the structure and the events together).
 
 | Span | Macro | Level | Fields | Opened by |
@@ -257,7 +257,7 @@ command[build]            1     38.1ms      0.2ms     38.1ms
 
 ## Seam with the CLI
 
-The CLI builds a `trace::Logging` from the environment (`Logging::env`), then from `-v`, `--json`,
+The CLI builds a `logging::Logging` from the environment (`Logging::env`), then from `-v`, `--json`,
 `--log` and `--log-file`, and installs it once at the top of `run`; the guard it returns prints the
 timing table when the command ends and holds the `command` span. That is the whole seam
 (`cli/src/logging.rs`, two flags in `cli/src/grammar/args.rs`, one line in `Cli::run`). A failure to set
@@ -278,7 +278,7 @@ A plugin call reads the clock only when its span is enabled.
 
 ## Testing
 
-`trace::Capture` is a test subscriber that keeps spans and events as typed data: name, level,
+`logging::Capture` is a test subscriber that keeps spans and events as typed data: name, level,
 target, typed fields, the span names around it. It records no time and starts no thread, so a
 test is deterministic and sleeps for nothing. `capture.run(|| ...)` installs it for the current
 thread, which covers `pollster` and a current-thread runtime; a server on its own thread runs its

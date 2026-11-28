@@ -7,7 +7,7 @@
 //! feature adds [`Capture`] for tests.
 //!
 //! Logging is a channel of its own: stderr or a file, never stdout and never inside a `--json`
-//! document. A word of caution about the name: the product's `trace` is the replayed ladder of a
+//! document. A word of caution about the name: the product's "trace" is the replayed ladder of a
 //! decision (`ink explain --why`). This crate is about the process, not about decisions.
 
 mod field;
@@ -38,7 +38,7 @@ pub use name::{event, span};
 /// A span that was entered and stays entered until it drops.
 pub use tracing::span::EnteredSpan as Entered;
 /// The macros of `tracing` that write events, so a crate depends on this one alone. An event
-/// is written `trace::info!(name: event::UNIT_PLANNED, bytes = Size(n).field())`.
+/// is written `logging::info!(name: event::UNIT_PLANNED, bytes = Size(n).field())`.
 pub use tracing::{self, Instrument, debug, error, info, trace, warn};
 pub use tracing::{Level, Span};
 pub use tree::{Io, Stage, Unit};

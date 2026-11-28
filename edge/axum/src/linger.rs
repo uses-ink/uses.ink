@@ -12,7 +12,6 @@ use std::time::Duration;
 use edge::Limits;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use trace::Field as _;
 
 /// How many bytes one read of the dropped input takes.
 const SCRATCH: usize = 4096;
@@ -55,10 +54,10 @@ impl Linger {
             }
         };
         let finished = tokio::time::timeout(self.deadline, drained).await.is_ok();
-        trace::debug!(
-            name: trace::event::CONNECTION_LINGERED,
+        logging::debug!(
+            name: logging::event::CONNECTION_LINGERED,
             drained = finished,
-            bytes = trace::Size(seen).field(),
+            bytes = logging::Size(seen).field(),
         );
     }
 }

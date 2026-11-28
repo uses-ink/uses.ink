@@ -3,7 +3,6 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::time::Duration;
-use trace::Field as _;
 
 use build::{BuildId, Source, Trigger};
 use clock::{Clock, Draw, Slept};
@@ -145,20 +144,20 @@ impl<'c, P: Ports + 'static, H: Heads, K: Clock, D: Draw> Watch<'c, P, H, K, D> 
             },
         };
         match &outcome {
-            Outcome::Failed(error) => trace::warn!(
-                name: trace::event::WATCH_POLLED,
-                site = trace::Shown(site).field(),
+            Outcome::Failed(error) => logging::warn!(
+                name: logging::event::WATCH_POLLED,
+                site = logging::Shown(site).field(),
                 outcome = "failed",
-                error = trace::Failure(error.as_ref()).field(),
+                error = logging::Failure(error.as_ref()).field(),
             ),
-            Outcome::Queued { build, .. } => trace::info!(
-                name: trace::event::WATCH_QUEUED,
-                site = trace::Shown(site).field(),
-                build = trace::Shown(build).field(),
+            Outcome::Queued { build, .. } => logging::info!(
+                name: logging::event::WATCH_QUEUED,
+                site = logging::Shown(site).field(),
+                build = logging::Shown(build).field(),
             ),
-            other => trace::debug!(
-                name: trace::event::WATCH_POLLED,
-                site = trace::Shown(site).field(),
+            other => logging::debug!(
+                name: logging::event::WATCH_POLLED,
+                site = logging::Shown(site).field(),
                 outcome = if matches!(other, Outcome::Unchanged) { "unchanged" } else { "duplicate" },
             ),
         }

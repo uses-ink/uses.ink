@@ -2,7 +2,6 @@
 
 use std::error::Error;
 use std::time::Duration;
-use trace::Field as _;
 
 use build::Build;
 use clock::{Clock, Slept};
@@ -43,8 +42,8 @@ where
     pub async fn step(&self) -> Done {
         match self.control.work(&self.builder, self.clock.now(), self.lease).await {
             Ok(worked) => {
-                trace::debug!(
-                    name: trace::event::WORKER_TICK,
+                logging::debug!(
+                    name: logging::event::WORKER_TICK,
                     outcome = match &worked {
                         Worked::Idle => "idle",
                         Worked::Built { .. } => "built",
@@ -55,7 +54,7 @@ where
                 Done::Worked(worked)
             }
             Err(error) => {
-                trace::error!(name: trace::event::WORKER_TICK, outcome = "failed", error = trace::Failure(&error).field());
+                logging::error!(name: logging::event::WORKER_TICK, outcome = "failed", error = logging::Failure(&error).field());
                 Done::Failed(Box::new(error))
             }
         }

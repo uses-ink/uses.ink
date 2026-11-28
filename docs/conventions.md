@@ -351,7 +351,7 @@ a doc comment.
   0061); no command builds output with `format!`.
 - The log is a channel of its own (`docs/tracing.md`, decision 0065): off by default, never
   stdout, never inside `--json`. `-v` count, then `INK_LOG`, then `--log` set its filter, each
-  stronger than the last; `RUST_LOG` is not read. Only the `trace` crate sets up a subscriber.
+  stronger than the last; `RUST_LOG` is not read. Only the `logging` crate sets up a subscriber.
 - Exit codes are a closed, documented set (`research/flow.md` section 7).
 
 ## Docs and prose

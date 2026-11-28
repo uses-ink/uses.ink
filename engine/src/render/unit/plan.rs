@@ -38,15 +38,15 @@ pub enum Unit {
 
 impl Unit {
     /// The kind of `unit` span this is.
-    pub(crate) const fn layer(&self) -> trace::Unit {
+    pub(crate) const fn layer(&self) -> logging::Unit {
         match self {
-            Self::Page(_) => trace::Unit::Page,
-            Self::Generated(_) => trace::Unit::Generated,
+            Self::Page(_) => logging::Unit::Page,
+            Self::Generated(_) => logging::Unit::Generated,
         }
     }
 }
 
-impl trace::Kind for Outcome {
+impl logging::Kind for Outcome {
     fn kind(self) -> &'static str {
         match self {
             Self::Reused => "reused",
@@ -67,7 +67,7 @@ pub(crate) enum Reason {
     Unkeyed,
 }
 
-impl trace::Kind for Reason {
+impl logging::Kind for Reason {
     fn kind(self) -> &'static str {
         match self {
             Self::Hit => "hit",

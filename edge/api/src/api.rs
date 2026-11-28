@@ -5,7 +5,6 @@ use clock::{Clock, Draw};
 use control::{Control, Id, NewJob, NewSite, Ports, Requested, Resumed, Site, SiteKind};
 use model::git::Scheme;
 use serde::Serialize;
-use trace::{Field as _, Instrument as _};
 
 use control::keys::{NewEnrolment, Poll, Target, UserCode, Why};
 use db::Db;
@@ -76,19 +75,19 @@ where
 
     /// Answers `request`. Never fails: a failure is a reply that says what went wrong.
     pub async fn respond(&self, request: &Request) -> Reply {
-        let span = trace::api!(request.method);
+        let span = logging::api!(request.method);
         let reply = async {
             match self.answer(request).await {
                 Ok(reply) => reply,
                 Err(fault) => {
-                    trace::warn!(name: trace::event::API_ANSWERED, error = trace::Failure(&fault).field());
+                    logging::warn!(name: logging::event::API_ANSWERED, error = logging::Failure(&fault).field());
                     fault.reply()
                 }
             }
         }
         .instrument(span.clone())
         .await;
-        span.record("status", trace::Count(u64::from(reply.status.code())).field());
+        span.record("status", logging::Count(u64::from(reply.status.code())).field());
         reply
     }
 
@@ -97,7 +96,7 @@ where
         // asking to enrol is the one call nobody signs: the key has no account yet
         let caller = if matches!(parsed, Ok(Call::Enrol)) { None } else { Some(self.caller(request).await?) };
         let call = parsed.map_err(Fault::Route)?;
-        trace::Span::current().record("route", trace::Kind::kind(&call));
+        logging::Span::current().record("route", logging::Kind::kind(&call));
         let body = match &request.body {
             Payload::Whole(body) => body.as_slice(),
             Payload::Over { limit } => return Err(Fault::Large { limit: *limit }),
@@ -165,15 +164,15 @@ where
         // what was decided, and never the header
         let caller = match verdict? {
             Verdict::Granted(principal) => {
-                trace::debug!(name: trace::event::API_AUTH, outcome = "granted");
+                logging::debug!(name: logging::event::API_AUTH, outcome = "granted");
                 Caller::Known(Box::new(principal))
             }
             Verdict::Enrolling(key) => {
-                trace::debug!(name: trace::event::API_AUTH, outcome = "enrolling");
+                logging::debug!(name: logging::event::API_AUTH, outcome = "enrolling");
                 Caller::Waiting(key)
             }
             Verdict::Refused(denied) => {
-                trace::warn!(name: trace::event::API_AUTH, outcome = trace::Kind::kind(&denied));
+                logging::warn!(name: logging::event::API_AUTH, outcome = logging::Kind::kind(&denied));
                 return Err(Fault::Denied(denied));
             }
         };

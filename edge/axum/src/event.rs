@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use axum::http::StatusCode;
 use edge::{Chain, Hostname, Outcome, Refusal, Stage, Status};
-use trace::Field as _;
+use logging::Field as _;
 
 use crate::fault::{AnswerFault, ConnectionFault};
 use crate::respond::Code;
@@ -207,31 +207,31 @@ impl Event {
     pub(crate) fn emit(&self) {
         match self {
             Self::Listening { address } => {
-                trace::info!(name: trace::event::EDGE_LISTENING, address = trace::Shown(address).field());
+                logging::info!(name: logging::event::EDGE_LISTENING, address = logging::Shown(address).field());
             }
             Self::Answered(answered) => answered.emit(),
-            Self::Called(Called { method, path, status, took }) => trace::info!(
-                name: trace::event::API_ANSWERED,
+            Self::Called(Called { method, path, status, took }) => logging::info!(
+                name: logging::event::API_ANSWERED,
                 method = method.as_str(),
-                path = trace::Shown(path).field(),
-                status = trace::Count(u64::from(*status)).field(),
-                took_us = trace::Took(*took).field(),
+                path = logging::Shown(path).field(),
+                status = logging::Count(u64::from(*status)).field(),
+                took_us = logging::Took(*took).field(),
             ),
-            Self::Cut(Cut { stage, limit, sent }) => trace::warn!(
-                name: trace::event::RESPONSE_CUT,
-                stage = trace::Shown(stage).field(),
-                limit_us = trace::Took(*limit).field(),
-                sent = trace::Size(*sent).field(),
+            Self::Cut(Cut { stage, limit, sent }) => logging::warn!(
+                name: logging::event::RESPONSE_CUT,
+                stage = logging::Shown(stage).field(),
+                limit_us = logging::Took(*limit).field(),
+                sent = logging::Size(*sent).field(),
             ),
             Self::Connection { source } => {
-                trace::error!(name: trace::event::CONNECTION_FAILED, error = trace::Failure(source).field());
+                logging::error!(name: logging::event::CONNECTION_FAILED, error = logging::Failure(source).field());
             }
-            Self::Stopping => trace::info!(name: trace::event::EDGE_STOPPING, accepting = false),
-            Self::Stopped(Stopped::Drained) => trace::info!(name: trace::event::EDGE_STOPPED, drained = true),
-            Self::Stopped(Stopped::Abandoned { limit }) => trace::warn!(
-                name: trace::event::EDGE_STOPPED,
+            Self::Stopping => logging::info!(name: logging::event::EDGE_STOPPING, accepting = false),
+            Self::Stopped(Stopped::Drained) => logging::info!(name: logging::event::EDGE_STOPPED, drained = true),
+            Self::Stopped(Stopped::Abandoned { limit }) => logging::warn!(
+                name: logging::event::EDGE_STOPPED,
                 drained = false,
-                limit_us = trace::Took(*limit).field(),
+                limit_us = logging::Took(*limit).field(),
             ),
         }
     }
@@ -239,42 +239,42 @@ impl Event {
 
 impl Answered {
     fn emit(&self) {
-        let status = trace::Count(u64::from(StatusCode::from(Code(self.status)).as_u16())).field();
-        let host = self.hostname.as_ref().map(|hostname| trace::Shown(hostname.as_str()).field());
-        let took = trace::Took(self.took).field();
+        let status = logging::Count(u64::from(StatusCode::from(Code(self.status)).as_u16())).field();
+        let host = self.hostname.as_ref().map(|hostname| logging::Shown(hostname.as_str()).field());
+        let took = logging::Took(self.took).field();
         match (&self.refusal, &self.fault, self.kind) {
-            (Some(refusal), _, _) => trace::warn!(
-                name: trace::event::REQUEST_REFUSED,
+            (Some(refusal), _, _) => logging::warn!(
+                name: logging::event::REQUEST_REFUSED,
                 method = self.method.as_str(),
-                path = trace::Shown(&self.path).field(),
+                path = logging::Shown(&self.path).field(),
                 host,
                 status,
                 took_us = took,
-                error = trace::Failure(refusal).field(),
+                error = logging::Failure(refusal).field(),
             ),
-            (_, Some(fault), _) => trace::error!(
-                name: trace::event::REQUEST_FAILED,
+            (_, Some(fault), _) => logging::error!(
+                name: logging::event::REQUEST_FAILED,
                 method = self.method.as_str(),
-                path = trace::Shown(&self.path).field(),
+                path = logging::Shown(&self.path).field(),
                 host,
                 status,
                 took_us = took,
-                error = trace::Failure(fault).field(),
+                error = logging::Failure(fault).field(),
             ),
-            (_, _, kind) => trace::info!(
-                name: trace::event::REQUEST_ANSWERED,
+            (_, _, kind) => logging::info!(
+                name: logging::event::REQUEST_ANSWERED,
                 method = self.method.as_str(),
-                path = trace::Shown(&self.path).field(),
+                path = logging::Shown(&self.path).field(),
                 host,
                 status,
-                outcome = trace::Kind::kind(kind),
+                outcome = logging::Kind::kind(kind),
                 took_us = took,
             ),
         }
     }
 }
 
-impl trace::Kind for Kind {
+impl logging::Kind for Kind {
     fn kind(self) -> &'static str {
         match self {
             Self::Served => "served",

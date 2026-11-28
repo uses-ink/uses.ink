@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use chacha20poly1305::aead::OsRng;
 use chacha20poly1305::aead::rand_core::RngCore;
-use trace::Field as _;
+use logging::Field as _;
 use zeroize::Zeroizing;
 
 use crate::Error;
@@ -93,7 +93,7 @@ impl Key {
             Err(error) => {
                 // the first failure is the one returned; a temporary that stays is said besides
                 if let Err(stays) = gone {
-                    trace::warn!(name: trace::event::KEY_REFUSED, kind = "leftover", error = trace::Failure(&stays).field());
+                    logging::warn!(name: logging::event::KEY_REFUSED, kind = "leftover", error = logging::Failure(&stays).field());
                 }
                 Err(error)
             }

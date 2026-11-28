@@ -6,7 +6,6 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
 use tokio::io::AsyncReadExt as _;
-use trace::Field as _;
 
 use edge::{Deploy, Hostname, Resolved, Sites};
 use model::ContentPath;
@@ -85,9 +84,9 @@ impl Deploys {
             (Mode::Auto, false) | (Mode::Folders, _) => Mode::Folders,
             (Mode::Single, false) => return Err(Error::NotDeploy { root }),
         };
-        trace::debug!(
-            name: trace::event::FOLDER_OPENED,
-            root = trace::Located(&root).field(),
+        logging::debug!(
+            name: logging::event::FOLDER_OPENED,
+            root = logging::Located(&root).field(),
             mode = if mode == Mode::Single { "single" } else { "folders" },
         );
         Ok(Self { root, mode, cache: Mutex::new(BTreeMap::new()) })
@@ -168,11 +167,11 @@ impl Deploys {
         if let Some(entry) = checked.manifest.entries().iter().find(|entry| !files.contains_key(&entry.blob())) {
             return Err(Error::Unplaced { route: entry.route().clone() });
         }
-        trace::debug!(
-            name: trace::event::FOLDER_LOADED,
-            folder = trace::Located(&folder).field(),
-            bytes = trace::Size::from(bytes.len()).field(),
-            files = trace::Count::from(files.len()).field(),
+        logging::debug!(
+            name: logging::event::FOLDER_LOADED,
+            folder = logging::Located(&folder).field(),
+            bytes = logging::Size::from(bytes.len()).field(),
+            files = logging::Count::from(files.len()).field(),
         );
         let deploy = Arc::new(Deploy { manifest: checked.manifest, ..Deploy::default() });
         let placed = Arc::new(Placed { root: folder.clone(), files });

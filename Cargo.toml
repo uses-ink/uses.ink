@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cli", "sig", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "trace", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "control/keys", "control/rows", "control/signin", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp", "https"]
+members = ["cli", "sig", "clock", "edge/api", "edge/control", "watch", "watch/git", "config", "diag", "edge", "edge/axum", "edge/folder", "engine", "fixture", "freehand", "freehand-web", "host/image", "host/native", "model", "plugin/format/markdown", "plugin/theme/quiet", "token", "logging", "tools/farm", "xtask", "host/wasmtime", "host/wasmtime/hostile", "plugin/sdk", "plugin/format/markdown/guest", "plugin/format/obsidian", "plugin/format/obsidian/guest", "plugin/theme/quiet/guest", "plugin/source/git", "plugin/source/git/guest", "blob", "blob/conformance", "blob/dir", "build", "build/conformance", "build/local", "control", "control/keys", "control/rows", "control/signin", "db", "db/conformance", "db/sqlite", "secret", "secret/conformance", "secret/local", "queue", "queue/conformance", "queue/local", "web", "mail", "mail/smtp", "https"]
 exclude = ["spikes"]
 
 [workspace.package]
@@ -59,7 +59,7 @@ source-git = { package = "uses-ink-source-git", path = "plugin/source/git" }
 theme-quiet = { package = "uses-ink-theme-quiet", path = "plugin/theme/quiet" }
 token = { package = "uses-ink-token", path = "token" }
 # logging (decision 0065): crates take it with `default-features = false`; the CLI adds `layers`, tests `capture`
-trace = { package = "uses-ink-trace", path = "trace", default-features = false }
+logging = { package = "uses-ink-logging", path = "logging", default-features = false }
 watch = { package = "uses-ink-watch", path = "watch" }
 watch-git = { package = "uses-ink-watch-git", path = "watch/git" }
 annotate-snippets = "0.12.18"
@@ -127,7 +127,7 @@ serde-saphyr = { version = "2.2.0", default-features = false, features = ["deser
 tokio = { version = "1.54.1", features = ["fs", "io-util", "macros", "net", "rt", "signal", "sync", "time"] }
 toml = "1.2.3"
 tracing = { version = "0.1.44", default-features = false, features = ["std"] }
-# the subscriber behind `trace`: the registry for span data and `filter::Targets` for the filter
+# the subscriber behind `logging`: the registry for span data and `filter::Targets` for the filter
 # language; no `fmt`, `env-filter` or `ansi`, so no regex engine and no second formatter
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["registry", "std"] }
 toml_edit = "0.25.21"

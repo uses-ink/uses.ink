@@ -34,7 +34,7 @@
 !secret
 !sig
 !token
-!trace
+!logging
 !watch
 !web
 !tools

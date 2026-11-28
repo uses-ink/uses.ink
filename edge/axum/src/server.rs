@@ -22,7 +22,7 @@ use tokio::time::Instant;
 use crate::body::Pump;
 use crate::bridge::{Mount, Peer};
 use crate::error::Error;
-use trace::{Field as _, Instrument as _};
+use logging::{Field as _, Instrument as _};
 
 use crate::event::{Answered, Called, Clip, Event, Kind, Logged as _, Observe, Stopped};
 use crate::fault::{AnswerFault, Cause, ConnectionFault};
@@ -150,7 +150,7 @@ where
             tokio::select! {
                 accepted = listener.accept() => match accepted {
                     Ok((stream, peer)) => {
-                        trace::debug!(name: trace::event::EDGE_ACCEPTED, peer = trace::Shown(peer).field());
+                        logging::debug!(name: logging::event::EDGE_ACCEPTED, peer = logging::Shown(peer).field());
                         self.connect(&graceful, router.clone(), Accepted { stream, slot });
                     }
                     Err(source) => {
@@ -197,7 +197,7 @@ where
     /// One request: within the concurrency limit, within the lookup budget, answered by the edge.
     async fn answer(State(inner): State<Arc<Self>>, request: Request) -> Response<Body> {
         let id = inner.requests.fetch_add(1, Ordering::Relaxed);
-        let span = trace::request!(id, request.method().as_str(), Clip(request.uri().path()));
+        let span = logging::request!(id, request.method().as_str(), Clip(request.uri().path()));
         Self::serve(inner, request).instrument(span).await
     }
 
@@ -274,7 +274,7 @@ where
     ) -> Response<Body> {
         let edge::Answer { response, outcome, hostname } = reply;
         if let Some(hostname) = &hostname {
-            trace::Span::current().record("host", trace::Shown(hostname.as_str()).field());
+            logging::Span::current().record("host", logging::Shown(hostname.as_str()).field());
         }
         let mut kind = Kind::from(&outcome);
         let (refusal, mut fault) = match outcome {
@@ -301,9 +301,9 @@ where
             refusal,
             fault,
         }));
-        let span = trace::Span::current();
-        span.record("status", trace::Count(u64::from(built.status().as_u16())).field());
-        span.record("took_us", trace::Took(seen.started.elapsed()).field());
+        let span = logging::Span::current();
+        span.record("status", logging::Count(u64::from(built.status().as_u16())).field());
+        span.record("took_us", logging::Took(seen.started.elapsed()).field());
         built
     }
 }

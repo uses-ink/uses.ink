@@ -2,7 +2,6 @@
 //! wrangler's ledger table so a D1 database keeps one history.
 
 use std::fmt;
-use trace::Field as _;
 
 use sea_query::{ColumnDef, Expr, IdenStatic, Order, Query, Table};
 
@@ -187,10 +186,10 @@ impl Steps {
 
     /// Says a migration was applied.
     fn announce(name: &str, statements: usize) {
-        trace::info!(
-            name: trace::event::DB_MIGRATED,
-            migration = trace::Shown(name).field(),
-            statements = trace::Count::from(statements).field(),
+        logging::info!(
+            name: logging::event::DB_MIGRATED,
+            migration = logging::Shown(name).field(),
+            statements = logging::Count::from(statements).field(),
         );
     }
 

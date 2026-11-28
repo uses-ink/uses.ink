@@ -9,7 +9,6 @@ use jiff::Timestamp;
 use model::Hash;
 use queue::{Delivery, Message, Queue, Sent};
 use sea_query::{Expr, ExprTrait, Order, Query};
-use trace::{Field as _, Instrument as _};
 
 use crate::deploy::{self, Published};
 use crate::id::{Id, Site as SiteKind};
@@ -167,7 +166,7 @@ impl<P: Ports> Control<P> {
             Taken::Dropped(dropped) => return Ok(Worked::Dropped(dropped)),
             Taken::Job(claimed) => claimed,
         };
-        let span = trace::job!(claimed.job.id, claimed.job.site, claimed.delivery.attempt);
+        let span = logging::job!(claimed.job.id, claimed.job.site, claimed.delivery.attempt);
         self.attempt(builder, claimed).instrument(span).await
     }
 
@@ -182,10 +181,10 @@ impl<P: Ports> Control<P> {
 
     /// Says an attempt failed, with its whole chain, and whether the queue will try again.
     fn lost(delivery: &Delivery, error: &(dyn std::error::Error + 'static)) {
-        trace::error!(
-            name: trace::event::JOB_FAILED,
+        logging::error!(
+            name: logging::event::JOB_FAILED,
             retry = delivery.attempt < Self::ATTEMPTS,
-            error = trace::Failure(error).field(),
+            error = logging::Failure(error).field(),
         );
     }
 
@@ -199,10 +198,10 @@ impl<P: Ports> Control<P> {
         P: 'static,
     {
         let Claimed { delivery, job, now } = claimed;
-        trace::info!(
-            name: trace::event::JOB_CLAIMED,
-            trigger = trace::Kind::kind(job.trigger),
-            tries = trace::Count(u64::from(Self::ATTEMPTS)).field(),
+        logging::info!(
+            name: logging::event::JOB_CLAIMED,
+            trigger = logging::Kind::kind(job.trigger),
+            tries = logging::Count(u64::from(Self::ATTEMPTS)).field(),
         );
         let site = self.active(job.site).await?;
         let tenant = Self::tenant(site.id).map_err(Error::from)?;
@@ -257,10 +256,10 @@ impl<P: Ports> Control<P> {
         };
         let log = self.log(&tenant, &events).await?;
         self.finish(&job, Ended { state: ended, deploy, log }, now).await?;
-        trace::info!(
-            name: trace::event::JOB_SETTLED,
+        logging::info!(
+            name: logging::event::JOB_SETTLED,
             state = ended.name(),
-            events = trace::Count::from(events.len()).field(),
+            events = logging::Count::from(events.len()).field(),
         );
         Ok(worked)
     }
@@ -303,7 +302,7 @@ impl<P: Ports> Control<P> {
             },
         };
         self.ports.queue().ack(delivery).await?;
-        trace::info!(name: trace::event::JOB_DROPPED, reason = trace::Kind::kind(&dropped));
+        logging::info!(name: logging::event::JOB_DROPPED, reason = logging::Kind::kind(&dropped));
         Ok(dropped)
     }
 

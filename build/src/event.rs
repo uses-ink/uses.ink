@@ -116,7 +116,7 @@ impl Events for Vec<Event> {
     }
 }
 
-impl trace::Kind for Trigger {
+impl logging::Kind for Trigger {
     fn kind(self) -> &'static str {
         match self {
             Self::Manual => "manual",
@@ -127,7 +127,7 @@ impl trace::Kind for Trigger {
     }
 }
 
-impl trace::Kind for Status {
+impl logging::Kind for Status {
     fn kind(self) -> &'static str {
         match self {
             Self::Succeeded => "succeeded",

@@ -114,7 +114,7 @@ impl Encoded {
     }
 }
 
-impl trace::Kind for Kept {
+impl logging::Kind for Kept {
     fn kind(self) -> &'static str {
         match self {
             Self::Animated => "animated",

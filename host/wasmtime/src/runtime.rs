@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use trace::Field as _;
+use logging::Field as _;
 
 use host_native::Grammars;
 use model::Bytes;
@@ -61,15 +61,15 @@ impl Machine {
             None => Ok((Compile(plugin).run(&self.engine, bytes)?, Origin::Compiled)),
         };
         if let Ok((_, origin)) = &loaded {
-            trace::debug!(
-                name: trace::event::PLUGIN_LOADED,
-                plugin = trace::Shown(plugin).field(),
+            logging::debug!(
+                name: logging::event::PLUGIN_LOADED,
+                plugin = logging::Shown(plugin).field(),
                 origin = match origin {
                     Origin::Compiled => "compiled",
                     Origin::Cached => "cached",
                     _ => "replaced",
                 },
-                bytes = trace::Size::from(bytes.len()).field(),
+                bytes = logging::Size::from(bytes.len()).field(),
             );
         }
         loaded
@@ -101,9 +101,9 @@ impl Machine {
     /// Like [`Machine::call`], with `budget` in place of the runtime's: a source's fetch takes
     /// longer than a page's render.
     /// Records on a call's span what it used: fuel, and how long it took.
-    fn measured(span: &trace::Span, started: Instant, fuel: u64) {
-        span.record("fuel", trace::Count(fuel).field());
-        span.record("took_us", trace::Took(started.elapsed()).field());
+    fn measured(span: &logging::Span, started: Instant, fuel: u64) {
+        span.record("fuel", logging::Count(fuel).field());
+        span.record("took_us", logging::Took(started.elapsed()).field());
     }
 
     pub(crate) fn call_in<T>(
@@ -114,7 +114,7 @@ impl Machine {
         // A refusal belongs to the call that met it: one a plugin handled on an earlier call
         // (a theme's session lives across pages) must not name a later trap.
         store.data_mut().limit.refused = None;
-        let span = trace::plugin!(store.data().plugin());
+        let span = logging::plugin!(store.data().plugin());
         let _entered = span.clone().entered();
         // the clock is read only when something listens
         let started = (!span.is_disabled()).then(Instant::now);
@@ -148,10 +148,10 @@ impl Machine {
             Failure::Trapped { source }
         });
         if let Err(failure) = &result {
-            trace::warn!(
-                name: trace::event::PLUGIN_REFUSED,
-                plugin = trace::Shown(store.data().plugin()).field(),
-                error = trace::Failure(failure).field(),
+            logging::warn!(
+                name: logging::event::PLUGIN_REFUSED,
+                plugin = logging::Shown(store.data().plugin()).field(),
+                error = logging::Failure(failure).field(),
             );
         }
         result

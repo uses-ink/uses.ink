@@ -13,7 +13,7 @@ use crate::render::policy::Cache;
 use crate::render::unit::{Reason, Units};
 use crate::render::{Artifact, Outcome, Reserved, Unit};
 use crate::{Record, Theme};
-use trace::Field as _;
+use logging::Field as _;
 
 /// A page the engine makes when the author wrote none, rendered by the theme like any other.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -83,11 +83,11 @@ pub(crate) struct Served<'p> {
 impl<T: Theme, C: Kept> Pages<'_, T, C> {
     /// Says what the planner decided for the unit in scope, and why.
     fn planned(outcome: Outcome, reason: Reason, key: Option<&crate::cache::Key>) {
-        trace::debug!(
-            name: trace::event::UNIT_PLANNED,
-            outcome = trace::Kind::kind(outcome),
-            reason = trace::Kind::kind(reason),
-            key = key.map(|key| trace::Digest(key.digest.as_bytes()).field()),
+        logging::debug!(
+            name: logging::event::UNIT_PLANNED,
+            outcome = logging::Kind::kind(outcome),
+            reason = logging::Kind::kind(reason),
+            key = key.map(|key| logging::Digest(key.digest.as_bytes()).field()),
         );
     }
 
@@ -97,7 +97,7 @@ impl<T: Theme, C: Kept> Pages<'_, T, C> {
     /// wrote without a word to say is kept: what it says is said again by the next build.
     fn serve(&self, served: Served<'_>, site: &Site, out: &mut Output<'_>) -> Result<(), Error> {
         let Served { unit, page } = served;
-        let _unit = trace::unit!(unit.layer(), &unit).entered();
+        let _unit = logging::unit!(unit.layer(), &unit).entered();
         let status = if page.route == Reserved::NotFound.route()? { Status::NotFound } else { Status::Ok };
         let entry = |body| Entry {
             route: page.route.clone(),

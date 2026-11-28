@@ -23,7 +23,6 @@ use std::time::SystemTime;
 
 use engine::cache::{Cache, Key};
 use model::{Announcement, Bytes, Hash, Notice};
-use trace::Field as _;
 
 use crate::blob::StoreError;
 use values::{Partial, Values};
@@ -133,10 +132,10 @@ impl Disk {
         let Some(first) = stays.first() else { return };
         let count = u64::try_from(stays.len()).unwrap_or(u64::MAX);
         self.stayed.fetch_add(count, Ordering::Relaxed);
-        trace::warn!(
-            name: trace::event::CACHE_STAYED,
-            count = trace::Count(count).field(),
-            error = trace::Failure(first).field(),
+        logging::warn!(
+            name: logging::event::CACHE_STAYED,
+            count = logging::Count(count).field(),
+            error = logging::Failure(first).field(),
         );
     }
 
